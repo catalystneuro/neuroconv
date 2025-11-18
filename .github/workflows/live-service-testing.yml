@@ -19,13 +19,13 @@ on:
         required: true
       S3_GIN_BUCKET:
         required: true
-      DANDI_API_KEY:
+      DANDI_SANDBOX_API_KEY:
         required: true
       EMBER_API_KEY:
         required: true
 
 env:
-  DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+  DANDI_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
   EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
 
 jobs:
@@ -68,7 +68,7 @@ jobs:
           missing_vars=()
 
           if [ -z "$DANDI_API_KEY" ] || [ "$DANDI_API_KEY" = "" ]; then
-            missing_vars+=("DANDI_API_KEY")
+            missing_vars+=("DANDI_SANDBOX_API_KEY")
           fi
 
           if [ -z "$EMBER_API_KEY" ] || [ "$EMBER_API_KEY" = "" ]; then
@@ -90,7 +90,7 @@ jobs:
           if [ ${#missing_vars[@]} -gt 0 ]; then
             echo "::endgroup::"
             echo "::error::Live service testing requires repository secrets that are not available"
-            echo "::error::Missing environment variables: ${missing_vars[*]}"
+            echo "::error::Missing secrets: ${missing_vars[*]}"
             echo "::error::"
             echo "::error::FOR EXTERNAL CONTRIBUTORS:"
             echo "::error::This is expected behavior! Live service tests require credentials that are only available to maintainers."
@@ -104,7 +104,7 @@ jobs:
           echo "All required environment variables are present"
           echo "::endgroup::"
         env:
-          DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+          DANDI_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
           EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
