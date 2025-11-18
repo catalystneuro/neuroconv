@@ -16,21 +16,13 @@ EMBER_API_KEY = os.getenv("EMBER_API_KEY")
 if EMBER_API_KEY is not None:
     del os.environ["EMBER_API_KEY"]  # Will only remove within this test run
 
-DANDI_API_KEY = os.getenv("DANDI_API_KEY")
-# For sandbox tests, we need DANDI_SANDBOX_API_KEY
-# For backward compatibility, if DANDI_SANDBOX_API_KEY is not set but DANDI_API_KEY is, use it
 DANDI_SANDBOX_API_KEY = os.getenv("DANDI_SANDBOX_API_KEY")
-if DANDI_SANDBOX_API_KEY is None and DANDI_API_KEY is not None:
-    # Set DANDI_SANDBOX_API_KEY from DANDI_API_KEY for backward compatibility
-    os.environ["DANDI_SANDBOX_API_KEY"] = DANDI_API_KEY
-    DANDI_SANDBOX_API_KEY = DANDI_API_KEY
-
 HAVE_DANDI_KEY = DANDI_SANDBOX_API_KEY is not None and DANDI_SANDBOX_API_KEY != ""  # can be "" from external forks
 
 
 @pytest.mark.skipif(
     not HAVE_DANDI_KEY,
-    reason="You must set your DANDI_SANDBOX_API_KEY (or DANDI_API_KEY for backward compatibility) to run this test!",
+    reason="You must set your DANDI_SANDBOX_API_KEY to run this test!",
 )
 def test_automatic_dandi_upload(tmp_path):
     nwb_folder_path = tmp_path / "test_nwb"
@@ -49,7 +41,7 @@ def test_automatic_dandi_upload(tmp_path):
 
 @pytest.mark.skipif(
     not HAVE_DANDI_KEY,
-    reason="You must set your DANDI_SANDBOX_API_KEY (or DANDI_API_KEY for backward compatibility) to run this test!",
+    reason="You must set your DANDI_SANDBOX_API_KEY to run this test!",
 )
 def test_automatic_dandi_upload_non_parallel(tmp_path):
     nwb_folder_path = tmp_path / "test_nwb"
@@ -68,7 +60,7 @@ def test_automatic_dandi_upload_non_parallel(tmp_path):
 
 @pytest.mark.skipif(
     not HAVE_DANDI_KEY,
-    reason="You must set your DANDI_SANDBOX_API_KEY (or DANDI_API_KEY for backward compatibility) to run this test!",
+    reason="You must set your DANDI_SANDBOX_API_KEY to run this test!",
 )
 def test_automatic_dandi_upload_non_parallel_non_threaded(tmp_path):
     nwb_folder_path = tmp_path / "test_nwb"
@@ -96,7 +88,7 @@ def test_automatic_dandi_upload_non_parallel_non_threaded(tmp_path):
 
 @pytest.mark.skipif(
     not HAVE_DANDI_KEY,
-    reason="You must set your DANDI_SANDBOX_API_KEY (or DANDI_API_KEY for backward compatibility) to run this test!",
+    reason="You must set your DANDI_SANDBOX_API_KEY to run this test!",
 )
 def test_staging_sandbox_conflict(tmp_path):
     """Test that providing both 'staging' and 'sandbox' parameters raises ValueError."""
@@ -110,7 +102,7 @@ def test_staging_sandbox_conflict(tmp_path):
 
 @pytest.mark.skipif(
     not HAVE_DANDI_KEY,
-    reason="You must set your DANDI_SANDBOX_API_KEY (or DANDI_API_KEY for backward compatibility) to run this test!",
+    reason="You must set your DANDI_SANDBOX_API_KEY to run this test!",
 )
 def test_staging_backward_compatibility(tmp_path):
     """Test that staging=True works the same as sandbox=True with deprecation warning."""

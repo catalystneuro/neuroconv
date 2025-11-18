@@ -12,22 +12,14 @@ from neuroconv import run_conversion_from_yaml
 
 from ..test_on_data.setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 
-DANDI_API_KEY = os.getenv("DANDI_API_KEY")
-# For sandbox tests, we need DANDI_SANDBOX_API_KEY
-# For backward compatibility, if DANDI_SANDBOX_API_KEY is not set but DANDI_API_KEY is, use it
 DANDI_SANDBOX_API_KEY = os.getenv("DANDI_SANDBOX_API_KEY")
-if DANDI_SANDBOX_API_KEY is None and DANDI_API_KEY is not None:
-    # Set DANDI_SANDBOX_API_KEY from DANDI_API_KEY for backward compatibility
-    os.environ["DANDI_SANDBOX_API_KEY"] = DANDI_API_KEY
-    DANDI_SANDBOX_API_KEY = DANDI_API_KEY
-
 HAVE_DANDI_KEY = DANDI_SANDBOX_API_KEY is not None and DANDI_SANDBOX_API_KEY != ""  # can be "" from external forks
 _PYTHON_VERSION = platform.python_version()
 
 
 @pytest.mark.skipif(
     not HAVE_DANDI_KEY or Version(".".join(_PYTHON_VERSION.split(".")[:2])) != Version("3.12"),
-    reason="You must set your DANDI_SANDBOX_API_KEY (or DANDI_API_KEY for backward compatibility) to run this test!",
+    reason="You must set your DANDI_SANDBOX_API_KEY to run this test!",
 )
 def test_run_conversion_from_yaml_with_dandi_upload():
     path_to_test_yml_files = Path(__file__).parent.parent / "test_on_data" / "test_yaml" / "conversion_specifications"

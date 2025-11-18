@@ -19,14 +19,13 @@ on:
         required: true
       S3_GIN_BUCKET:
         required: true
-      DANDI_API_KEY:
+      DANDI_SANDBOX_API_KEY:
         required: true
       EMBER_API_KEY:
         required: true
 
 env:
-  DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
-  DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_API_KEY }}
+  DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
   EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
 
 jobs:
