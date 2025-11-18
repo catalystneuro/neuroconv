@@ -1,7 +1,6 @@
 import os
-import platform
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import dandi.dandiapi
@@ -13,7 +12,6 @@ from ..test_on_data.setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 
 DANDI_SANDBOX_API_KEY = os.getenv("DANDI_SANDBOX_API_KEY")
 HAVE_DANDI_KEY = DANDI_SANDBOX_API_KEY is not None and DANDI_SANDBOX_API_KEY != ""  # can be "" from external forks
-_PYTHON_VERSION = platform.python_version()
 
 
 @pytest.mark.skipif(
@@ -32,7 +30,7 @@ def test_run_conversion_from_yaml_with_dandi_upload():
 
     time.sleep(60)  # Give some buffer room for server to process before making assertions against DANDI API
 
-    client = dandi.dandiapi.DandiAPIClient(api_url="https://api-sandbox.dandiarchive.org/api")
+    client = dandi.dandiapi.DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
     dandiset = client.get_dandiset("200560")
 
     expected_asset_paths = [
@@ -49,4 +47,4 @@ def test_run_conversion_from_yaml_with_dandi_upload():
         date_modified = datetime.fromisoformat(
             test_asset_metadata["dateModified"].split("Z")[0]  # Timezones look a little messy
         )
-        assert datetime.now() - date_modified < timedelta(minutes=10)
+        assert datetime.now(timezone.utc) - date_modified < timedelta(minutes=10)
