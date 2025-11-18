@@ -6,7 +6,6 @@ from pathlib import Path
 
 import dandi.dandiapi
 import pytest
-from packaging.version import Version
 
 from neuroconv import run_conversion_from_yaml
 
@@ -18,7 +17,7 @@ _PYTHON_VERSION = platform.python_version()
 
 
 @pytest.mark.skipif(
-    not HAVE_DANDI_KEY or Version(".".join(_PYTHON_VERSION.split(".")[:2])) != Version("3.12"),
+    not HAVE_DANDI_KEY,
     reason="You must set your DANDI_SANDBOX_API_KEY to run this test!",
 )
 def test_run_conversion_from_yaml_with_dandi_upload():
