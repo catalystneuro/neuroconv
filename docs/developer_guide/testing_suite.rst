@@ -187,7 +187,7 @@ Since these tests are not automatically collected, you need to run them explicit
 .. code:: bash
 
     # Install required dependencies
-    pip install --editable ".[dandi,spikeglx,phy]"
+    pip install --editable ".[dandi,aws,spikeglx,phy]"
     pip install --group test
 
     # Run specific service tests (requires appropriate credentials)
@@ -195,6 +195,9 @@ Since these tests are not automatically collected, you need to run them explicit
     pytest tests/remote_transfer_services/ember_transfer_tools.py
     pytest tests/remote_transfer_services/yaml_dandi_transfer_tools.py
     pytest tests/remote_transfer_services/globus_transfer_tools.py
+    pytest tests/remote_transfer_services/aws_tools_tests.py
+    pytest tests/remote_transfer_services/yaml_aws_tools_tests.py
+    pytest tests/remote_transfer_services/neuroconv_deployment_aws_tools_tests.py
 
 Import Structure Tests
 ----------------------
