@@ -44,5 +44,5 @@ def test_run_conversion_from_yaml_with_dandi_upload():
 
         # Past uploads may have created the same apparent file, so look at the modification time to ensure
         # this test is actually testing the most recent upload
-        date_modified = datetime.fromisoformat(test_asset_metadata["dateModified"])
+        date_modified = datetime.fromisoformat(test_asset_metadata["dateModified"].replace("Z", "+00:00"))
         assert datetime.now(timezone.utc) - date_modified < timedelta(minutes=10)
