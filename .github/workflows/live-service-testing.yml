@@ -25,7 +25,7 @@ on:
         required: true
 
 env:
-  DANDI_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
+  DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
   EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
 
 jobs:
@@ -104,7 +104,7 @@ jobs:
           echo "All required environment variables are present"
           echo "::endgroup::"
         env:
-          DANDI_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
+          DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
           EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
