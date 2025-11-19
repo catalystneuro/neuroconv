@@ -143,7 +143,7 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
             The type of photon series to be added, either "TwoPhotonSeries" or "OnePhotonSeries", by default "OnePhotonSeries".
         stub_test : bool, optional
-            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            If True, only a subset of the data (defined by `stub_samples`) will be added for testing purposes,
             by default False.
         stub_frames : int, optional
             The number of frames to include if `stub_test` is True, by default 100.
