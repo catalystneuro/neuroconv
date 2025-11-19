@@ -1,14 +1,12 @@
 import warnings
+from copy import deepcopy
 
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import (
-    ExternalVideoInterface,
-    InternalVideoInterface,
-    LightningPoseDataInterface,
-)
+from neuroconv.datainterfaces import LightningPoseDataInterface
+from neuroconv.datainterfaces.behavior.video.videodatainterface import _VideoInterface
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from neuroconv.utils import (
     DeepDict,
@@ -59,37 +57,28 @@ class LightningPoseConverter(NWBConverter):
             controls verbosity. ``True`` by default.
         """
         self.verbose = verbose
-        self.original_video_name = image_series_original_video_name or "ImageSeriesOriginalVideo"
-        self.labeled_video_name = None
 
-        # Store video file paths for dynamic interface creation
-        self.original_video_file_path = original_video_file_path
-        self.labeled_video_file_path = labeled_video_file_path
+        # TODO: Remove after May 2026 - Replace _VideoInterface with ExternalVideoInterface/InternalVideoInterface
+        warnings.warn(
+            "LightningPoseConverter is using the deprecated _VideoInterface. "
+            "This will be replaced with ExternalVideoInterface and InternalVideoInterface in May 2026.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        # Create default ExternalVideoInterface for schema generation and metadata
-        # The actual interface type (External vs Internal) will be determined at conversion time
         self.data_interface_objects = dict(
-            OriginalVideo=ExternalVideoInterface(
-                file_paths=[original_video_file_path],
-                video_name=self.original_video_name,
-            ),
+            OriginalVideo=_VideoInterface(file_paths=[original_video_file_path]),
             PoseEstimation=LightningPoseDataInterface(
                 file_path=file_path,
                 original_video_file_path=original_video_file_path,
                 labeled_video_file_path=labeled_video_file_path,
             ),
         )
-
+        self.original_video_name = image_series_original_video_name or "ImageSeriesOriginalVideo"
+        self.labeled_video_name = None
         if labeled_video_file_path:
             self.labeled_video_name = image_series_labeled_video_name or "ImageSeriesLabeledVideo"
-            self.data_interface_objects.update(
-                dict(
-                    LabeledVideo=ExternalVideoInterface(
-                        file_paths=[labeled_video_file_path],
-                        video_name=self.labeled_video_name,
-                    )
-                )
-            )
+            self.data_interface_objects.update(dict(LabeledVideo=_VideoInterface(file_paths=[labeled_video_file_path])))
 
     def get_conversion_options_schema(self) -> dict:
         conversion_options_schema = get_json_schema_from_method_signature(
@@ -102,18 +91,18 @@ class LightningPoseConverter(NWBConverter):
         metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         original_videos_metadata = original_video_interface.get_metadata()
+        metadata = dict_deep_update(metadata, original_videos_metadata)
 
-        # Update the original video metadata with custom description
-        original_videos_metadata["Behavior"]["ExternalVideos"][self.original_video_name].update(
+        original_videos_metadata["Behavior"]["Videos"][0].update(
+            name=self.original_video_name,
             description="The original video used for pose estimation.",
         )
-
-        metadata = dict_deep_update(metadata, original_videos_metadata)
 
         if "LabeledVideo" in self.data_interface_objects:
             labeled_video_interface = self.data_interface_objects["LabeledVideo"]
             labeled_videos_metadata = labeled_video_interface.get_metadata()
-            labeled_videos_metadata["Behavior"]["ExternalVideos"][self.labeled_video_name].update(
+            labeled_videos_metadata["Behavior"]["Videos"][0].update(
+                name=self.labeled_video_name,
                 description="The video recorded by camera with the pose estimation labels.",
             )
 
@@ -146,95 +135,69 @@ class LightningPoseConverter(NWBConverter):
         confidence_definition : str, optional
             Definition for the confidence levels in pose estimation, by default None.
         external_mode : bool, optional
-            If True, videos will be stored as external files (ExternalVideoInterface).
-            If False, videos will be embedded in the NWB file (InternalVideoInterface).
-            Default is True.
+            DEPRECATED. This parameter will be removed in May 2026.
+            If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
-            Only used when external_mode=True.
         starting_frames_labeled_videos : list of int, optional
             List of starting frames for the labeled videos, by default None.
-            Only used when external_mode=True.
         stub_test : bool, optional
             If True, only a subset of the data will be added for testing purposes, by default False.
         """
-        # Check if old Videos metadata structure is being used and convert it
-        metadata_key = "ExternalVideos" if external_mode else "InternalVideos"
-        if "Videos" in metadata.get("Behavior", {}):
+        # Deprecate external_mode parameter
+        # TODO: Remove after May 2026
+        if external_mode is not True:
             warnings.warn(
-                f"The 'Videos' metadata structure is deprecated and will be removed in May 2026. "
-                f"Please use '{metadata_key}' metadata structure instead. "
-                f"The metadata will be automatically converted for this conversion.",
+                "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
+                "It will be replaced with a choice between ExternalVideoInterface and InternalVideoInterface.",
                 FutureWarning,
                 stacklevel=2,
             )
-            # Convert old Videos metadata to new format
-            metadata = self._convert_videos_metadata(metadata, external_mode=external_mode)
 
-        # Create video interface based on external_mode
-        # If external_mode matches the default (True), use existing interfaces
-        # Otherwise, create new appropriate interfaces
-        if external_mode:
-            # Use ExternalVideoInterface
-            if isinstance(self.data_interface_objects.get("OriginalVideo"), ExternalVideoInterface):
-                original_video_interface = self.data_interface_objects["OriginalVideo"]
-            else:
-                original_video_interface = ExternalVideoInterface(
-                    file_paths=[self.original_video_file_path],
-                    video_name=self.original_video_name,
+        # Convert new metadata structure to old structure for _VideoInterface compatibility
+        # TODO: Remove after May 2026 when _VideoInterface is replaced
+        metadata = self._convert_new_metadata_to_old(metadata)
+
+        original_video_interface = self.data_interface_objects["OriginalVideo"]
+
+        original_video_metadata = next(
+            video_metadata
+            for video_metadata in metadata["Behavior"]["Videos"]
+            if video_metadata["name"] == self.original_video_name
+        )
+        if original_video_metadata is None:
+            raise ValueError(f"Metadata for '{self.original_video_name}' not found in metadata['Behavior']['Videos'].")
+        metadata_copy = deepcopy(metadata)
+        metadata_copy["Behavior"]["Videos"] = [original_video_metadata]
+        original_video_interface.add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata_copy,
+            stub_test=stub_test,
+            external_mode=external_mode,
+            starting_frames=starting_frames_original_videos,
+        )
+
+        if "LabeledVideo" in self.data_interface_objects:
+            labeled_video_interface = self.data_interface_objects["LabeledVideo"]
+            labeled_video_metadata = next(
+                video_metadata
+                for video_metadata in metadata["Behavior"]["Videos"]
+                if video_metadata["name"] == self.labeled_video_name
+            )
+            if labeled_video_metadata is None:
+                raise ValueError(
+                    f"Metadata for '{self.labeled_video_name}' not found in metadata['Behavior']['Videos']."
                 )
-        else:
-            # Use InternalVideoInterface
-            original_video_interface = InternalVideoInterface(
-                file_path=self.original_video_file_path,
-                video_name=self.original_video_name,
-            )
-
-        # Add original video
-        if external_mode:
-            original_video_interface.add_to_nwbfile(
+            metadata_copy["Behavior"]["Videos"] = [labeled_video_metadata]
+            labeled_video_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
-                metadata=metadata,
-                starting_frames=starting_frames_original_videos,
-                parent_container="acquisition",
-            )
-        else:
-            original_video_interface.add_to_nwbfile(
-                nwbfile=nwbfile,
-                metadata=metadata,
+                metadata=metadata_copy,
                 stub_test=stub_test,
-                parent_container="acquisition",
+                external_mode=external_mode,
+                starting_frames=starting_frames_labeled_videos,
+                module_name="behavior",
             )
 
-        # Add labeled video if present
-        if self.labeled_video_file_path:
-            if external_mode:
-                if isinstance(self.data_interface_objects.get("LabeledVideo"), ExternalVideoInterface):
-                    labeled_video_interface = self.data_interface_objects["LabeledVideo"]
-                else:
-                    labeled_video_interface = ExternalVideoInterface(
-                        file_paths=[self.labeled_video_file_path],
-                        video_name=self.labeled_video_name,
-                    )
-                labeled_video_interface.add_to_nwbfile(
-                    nwbfile=nwbfile,
-                    metadata=metadata,
-                    starting_frames=starting_frames_labeled_videos,
-                    parent_container="processing/behavior",
-                )
-            else:
-                labeled_video_interface = InternalVideoInterface(
-                    file_path=self.labeled_video_file_path,
-                    video_name=self.labeled_video_name,
-                )
-                labeled_video_interface.add_to_nwbfile(
-                    nwbfile=nwbfile,
-                    metadata=metadata,
-                    stub_test=stub_test,
-                    parent_container="processing/behavior",
-                )
-
-        # Add pose estimation
         self.data_interface_objects["PoseEstimation"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
@@ -243,27 +206,41 @@ class LightningPoseConverter(NWBConverter):
             stub_test=stub_test,
         )
 
-    def _convert_videos_metadata(self, metadata: dict, external_mode: bool = True) -> dict:
-        """Convert old Videos list metadata to new ExternalVideos or InternalVideos dict metadata."""
-        from copy import deepcopy
+    def _convert_new_metadata_to_old(self, metadata: dict) -> dict:
+        """
+        Convert new ExternalVideos/InternalVideos dict metadata to old Videos list metadata.
 
+        TODO: Remove after May 2026 when _VideoInterface is replaced with
+        ExternalVideoInterface/InternalVideoInterface.
+        """
         metadata = deepcopy(metadata)
-        metadata_key = "ExternalVideos" if external_mode else "InternalVideos"
 
-        if "Videos" in metadata.get("Behavior", {}):
-            videos_list = metadata["Behavior"]["Videos"]
-            videos_dict = {}
-            for video_metadata in videos_list:
-                video_name = video_metadata.pop("name")
-                # Add default device if not present
-                if "device" not in video_metadata:
-                    video_metadata["device"] = {
-                        "name": f"{video_name} Camera Device",
-                        "description": "Video camera used for recording.",
-                    }
-                videos_dict[video_name] = video_metadata
-            metadata["Behavior"][metadata_key] = videos_dict
-            del metadata["Behavior"]["Videos"]
+        # Check if new metadata structure is being used
+        if "ExternalVideos" in metadata.get("Behavior", {}) or "InternalVideos" in metadata.get("Behavior", {}):
+            warnings.warn(
+                "The 'ExternalVideos' and 'InternalVideos' metadata structures are not yet fully supported. "
+                "They will be supported in May 2026 when ExternalVideoInterface and InternalVideoInterface replace _VideoInterface. "
+                "The metadata will be automatically converted to the legacy 'Videos' structure for this conversion.",
+                FutureWarning,
+                stacklevel=3,
+            )
+
+            # Convert ExternalVideos or InternalVideos dict to Videos list
+            videos_dict = metadata["Behavior"].get("ExternalVideos") or metadata["Behavior"].get("InternalVideos")
+            videos_list = []
+            for video_name, video_metadata in videos_dict.items():
+                video_dict = {"name": video_name}
+                # Copy all metadata except device (not in old structure)
+                video_dict.update({k: v for k, v in video_metadata.items() if k != "device"})
+                videos_list.append(video_dict)
+
+            metadata["Behavior"]["Videos"] = videos_list
+            # Remove new structure keys
+            if "ExternalVideos" in metadata["Behavior"]:
+                del metadata["Behavior"]["ExternalVideos"]
+            if "InternalVideos" in metadata["Behavior"]:
+                del metadata["Behavior"]["InternalVideos"]
+
         return metadata
 
     def run_conversion(
@@ -297,19 +274,26 @@ class LightningPoseConverter(NWBConverter):
         confidence_definition : str, optional
             Definition for confidence levels in pose estimation, by default None.
         external_mode : bool, optional
-            If True, videos will be stored as external files (ExternalVideoInterface).
-            If False, videos will be embedded in the NWB file (InternalVideoInterface).
-            Default is True.
+            DEPRECATED. This parameter will be removed in May 2026.
+            If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
-            Only used when external_mode=True.
         starting_frames_labeled_videos : list of int, optional
             List of starting frames for the labeled videos, by default None.
-            Only used when external_mode=True.
         stub_test : bool, optional
             If True, only a subset of the data will be added for testing purposes, by default False.
 
         """
+        # Deprecate external_mode parameter
+        # TODO: Remove after May 2026
+        if external_mode is not True:
+            warnings.warn(
+                "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
+                "It will be replaced with a choice between ExternalVideoInterface and InternalVideoInterface.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
         if metadata is None:
             metadata = self.get_metadata()
 

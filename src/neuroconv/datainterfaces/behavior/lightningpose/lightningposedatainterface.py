@@ -224,28 +224,9 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         if pose_estimation_name in behavior.data_interfaces:
             raise ValueError(f"The nwbfile already contains a data interface with the name '{pose_estimation_name}'.")
 
-        if (
-            "Videos" not in metadata_copy["Behavior"]
-            and "ExternalVideos" not in metadata_copy["Behavior"]
-            and "InternalVideos" not in metadata_copy["Behavior"]
-        ):
+        if "Videos" not in metadata_copy["Behavior"]:
             original_video_name = str(self.original_video_file_path)
-        elif "ExternalVideos" in metadata_copy["Behavior"]:
-            # Get the first video name from ExternalVideos dict
-            original_video_name = list(metadata_copy["Behavior"]["ExternalVideos"].keys())[0]
-        elif "InternalVideos" in metadata_copy["Behavior"]:
-            # Get the first video name from InternalVideos dict
-            original_video_name = list(metadata_copy["Behavior"]["InternalVideos"].keys())[0]
         else:
-            # Old Videos metadata structure (deprecated)
-            import warnings
-
-            warnings.warn(
-                "The 'Videos' metadata structure in LightningPoseDataInterface is deprecated and will be removed in May 2026. "
-                "Please use 'ExternalVideos' or 'InternalVideos' metadata structure instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
             original_video_name = metadata_copy["Behavior"]["Videos"][0]["name"]
         camera_name = pose_estimation_metadata["camera_name"]
         if camera_name in nwbfile.devices:
@@ -311,28 +292,9 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         )
 
         if self.source_data["labeled_video_file_path"]:
-            if (
-                "Videos" not in metadata_copy["Behavior"]
-                and "ExternalVideos" not in metadata_copy["Behavior"]
-                and "InternalVideos" not in metadata_copy["Behavior"]
-            ):
+            if "Videos" not in metadata_copy["Behavior"]:
                 labeled_video_name = str(self.source_data["labeled_video_file_path"])
-            elif "ExternalVideos" in metadata_copy["Behavior"]:
-                # Get the second video name from ExternalVideos dict
-                labeled_video_name = list(metadata_copy["Behavior"]["ExternalVideos"].keys())[1]
-            elif "InternalVideos" in metadata_copy["Behavior"]:
-                # Get the second video name from InternalVideos dict
-                labeled_video_name = list(metadata_copy["Behavior"]["InternalVideos"].keys())[1]
             else:
-                # Old Videos metadata structure (deprecated)
-                import warnings
-
-                warnings.warn(
-                    "The 'Videos' metadata structure in LightningPoseDataInterface is deprecated and will be removed in May 2026. "
-                    "Please use 'ExternalVideos' or 'InternalVideos' metadata structure instead.",
-                    FutureWarning,
-                    stacklevel=2,
-                )
                 labeled_video_name = metadata_copy["Behavior"]["Videos"][1]["name"]
 
             pose_estimation_kwargs.update(labeled_videos=[labeled_video_name])

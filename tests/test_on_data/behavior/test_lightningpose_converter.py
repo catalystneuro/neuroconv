@@ -80,24 +80,18 @@ class TestLightningPoseConverter(TestCase):
         cls.converter_metadata = dict(
             Behavior=dict(
                 PoseEstimation=cls.pose_estimation_metadata,
-                ExternalVideos={
-                    "original_video_name": dict(
+                Videos=[
+                    dict(
                         description="The original video used for pose estimation.",
+                        name="original_video_name",
                         unit="Frames",
-                        device=dict(
-                            name="original_video_name Camera Device",
-                            description="Video camera used for recording.",
-                        ),
                     ),
-                    "labeled_video_name": dict(
+                    dict(
                         description="The video recorded by camera with the pose estimation labels.",
+                        name="labeled_video_name",
                         unit="Frames",
-                        device=dict(
-                            name="labeled_video_name Camera Device",
-                            description="Video camera used for recording.",
-                        ),
                     ),
-                },
+                ],
             )
         )
 
@@ -116,7 +110,7 @@ class TestLightningPoseConverter(TestCase):
 
     def test_expected_metadata(self):
         metadata = self.converter.get_metadata()
-        videos_metadata = metadata["Behavior"]["ExternalVideos"]
+        videos_metadata = metadata["Behavior"]["Videos"]
         self.assertEqual(len(videos_metadata), 2)
         self.assertDictEqual(metadata["Behavior"], self.converter_metadata["Behavior"])
 
@@ -215,110 +209,3 @@ class TestLightningPoseConverter(TestCase):
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.conversion_options)
-
-    def test_old_videos_metadata_structure(self):
-        """Test that old Videos metadata structure still works with deprecation warning.
-        TODO: Remove this test after May 2026 when the old Videos metadata structure is removed.
-        """
-        # Get the default metadata and modify it to use old structure
-        metadata = self.converter.get_metadata()
-
-        # Convert ExternalVideos to old Videos structure
-        videos_list = []
-        for video_name, video_metadata in metadata["Behavior"]["ExternalVideos"].items():
-            video_dict = {"name": video_name}
-            video_dict.update({k: v for k, v in video_metadata.items() if k != "device"})
-            videos_list.append(video_dict)
-
-        # Replace with old structure
-        metadata["Behavior"]["Videos"] = videos_list
-        del metadata["Behavior"]["ExternalVideos"]
-
-        nwbfile_path = str(self.test_dir / "test_lightningpose_converter_old_metadata.nwb")
-
-        # Create NWBFile to bypass metadata validation
-        from pynwb import NWBHDF5IO
-        from pynwb import NWBFile as NWBFileClass
-
-        nwbfile = NWBFileClass(
-            session_description=metadata["NWBFile"]["session_description"],
-            identifier=metadata["NWBFile"]["identifier"],
-            session_start_time=metadata["NWBFile"]["session_start_time"],
-        )
-
-        # Test that conversion works and raises FutureWarning
-        with self.assertWarns(FutureWarning):
-            self.converter.add_to_nwbfile(
-                nwbfile=nwbfile,
-                metadata=metadata,
-                stub_test=True,
-            )
-
-        # Write to file
-        with NWBHDF5IO(nwbfile_path, mode="w") as io:
-            io.write(nwbfile)
-
-        self.assertNWBFileStructure(nwbfile_path, stub_test=True)
-
-    def test_internal_mode(self):
-        """Test that internal_mode parameter works correctly to embed videos in NWB file."""
-        nwbfile_path = str(self.test_dir / "test_lightningpose_converter_internal_mode.nwb")
-
-        # Get metadata and convert to InternalVideos structure
-        metadata = self.converter.get_metadata()
-        internal_videos_dict = {}
-        for video_name, video_metadata in metadata["Behavior"]["ExternalVideos"].items():
-            internal_videos_dict[video_name] = video_metadata
-
-        # Replace ExternalVideos with InternalVideos
-        metadata["Behavior"]["InternalVideos"] = internal_videos_dict
-        del metadata["Behavior"]["ExternalVideos"]
-
-        # Create NWBFile to bypass metadata validation (InternalVideos not in schema)
-        from pynwb import NWBHDF5IO
-        from pynwb import NWBFile as NWBFileClass
-
-        nwbfile = NWBFileClass(
-            session_description=metadata["NWBFile"]["session_description"],
-            identifier=metadata["NWBFile"]["identifier"],
-            session_start_time=metadata["NWBFile"]["session_start_time"],
-        )
-
-        # Add to NWBFile with external_mode=False
-        self.converter.add_to_nwbfile(
-            nwbfile=nwbfile,
-            metadata=metadata,
-            external_mode=False,
-            stub_test=True,
-        )
-
-        # Write to file
-        with NWBHDF5IO(nwbfile_path, mode="w") as io:
-            io.write(nwbfile)
-
-        # Verify the file was created with internal videos (no external_file attribute)
-        from ndx_pose import PoseEstimation
-
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
-
-            # Check original video added to acquisition
-            self.assertIn(self.original_video_name, nwbfile.acquisition)
-            image_series = nwbfile.acquisition[self.original_video_name]
-            self.assertIsInstance(image_series, ImageSeries)
-            # For internal mode, external_file should be None
-            self.assertIsNone(image_series.external_file)
-            # Video data should be embedded
-            self.assertIsNotNone(image_series.data)
-
-            # Check labeled video added to behavior processing module
-            behavior = get_module(nwbfile=nwbfile, name="behavior")
-            self.assertIn(self.labeled_video_name, behavior.data_interfaces)
-            image_series_labeled_video = behavior.data_interfaces[self.labeled_video_name]
-            self.assertIsInstance(image_series_labeled_video, ImageSeries)
-            self.assertIsNone(image_series_labeled_video.external_file)
-            self.assertIsNotNone(image_series_labeled_video.data)
-
-            # Check pose estimation
-            self.assertIn(self.pose_estimation_name, behavior.data_interfaces)
-            self.assertIsInstance(behavior[self.pose_estimation_name], PoseEstimation)
