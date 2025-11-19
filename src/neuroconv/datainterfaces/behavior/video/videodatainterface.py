@@ -1,4 +1,3 @@
-import warnings
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal
@@ -16,8 +15,13 @@ from ....tools import get_package
 from ....utils import DeepDict, get_base_schema, get_schema_from_hdmf_class
 
 
-class VideoInterface(BaseDataInterface):
-    """Data interface for writing videos as ImageSeries."""
+class _VideoInterface(BaseDataInterface):
+    """
+    PRIVATE: Data interface for writing videos as ImageSeries.
+
+    This is a private interface used internally by LightningPoseConverter.
+    For external use, please use ExternalVideoInterface or InternalVideoInterface instead.
+    """
 
     display_name = "Video"
     keywords = ("movie", "natural behavior", "tracking")
@@ -66,12 +70,8 @@ class VideoInterface(BaseDataInterface):
                 ...
             ]
         """
-        warnings.warn(
-            "The VideoInterface is deprecated and will be removed on or after September 2025. "
-            "Please use the ExternalVideoInterface or InternalVideoInterface instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+        # Note: This is a private interface, deprecation warning removed
+        # External users should use ExternalVideoInterface or InternalVideoInterface
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         self._number_of_files = len(file_paths)

@@ -129,7 +129,6 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
     repack_nwbfile(
         nwbfile_path=str(nwbfile_path),
         export_nwbfile_path=str(export_path),
-        backend=backend,
     )
     IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
     with IO(str(export_path), mode="r") as io:
@@ -163,7 +162,6 @@ def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
     repack_nwbfile(
         nwbfile_path=Path(hdf5_nwbfile_path),
         export_nwbfile_path=export_nwbfile_path,
-        backend="hdf5",
         export_backend="zarr",
     )
 
@@ -219,7 +217,6 @@ def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
     repack_nwbfile(
         nwbfile_path=Path(zarr_nwbfile_path),
         export_nwbfile_path=export_nwbfile_path,
-        backend="zarr",
         export_backend="hdf5",
     )
 
