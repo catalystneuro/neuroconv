@@ -35,8 +35,11 @@ def test_automatic_ember_upload(tmp_path, monkeypatch):
     # Note: It is not a valid usage to have a shell that contains both DANDI_API_KEY and EMBER_API_KEY
     # So in the tests we will ensure that only the appropriate one is set at runtime
     DANDI_API_KEY_PRESENT = "DANDI_API_KEY" in os.environ
+    DANDI_SANDBOX_API_KEY_PRESENT = "DANDI_SANDBOX_API_KEY" in os.environ
     if DANDI_API_KEY_PRESENT:
         DANDI_API_KEY = os.environ.pop(key="DANDI_API_KEY")
+    if DANDI_SANDBOX_API_KEY_PRESENT:
+        DANDI_SANDBOX_API_KEY = os.environ.pop(key="DANDI_SANDBOX_API_KEY")
 
     # Some systems and setups (mostly CI) have trouble passing the env variable to the keyring; just mimic user input
     monkeypatch.setattr("getpass.getpass", lambda _: EMBER_API_KEY)
@@ -46,3 +49,5 @@ def test_automatic_ember_upload(tmp_path, monkeypatch):
     # Restore the environment variable in case any other tests in this session need it
     if DANDI_API_KEY_PRESENT:
         os.environ["DANDI_API_KEY"] = DANDI_API_KEY
+    if DANDI_SANDBOX_API_KEY_PRESENT:
+        os.environ["DANDI_SANDBOX_API_KEY"] = DANDI_SANDBOX_API_KEY
