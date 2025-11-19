@@ -230,6 +230,15 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             # Get the first video name from ExternalVideos dict
             original_video_name = list(metadata_copy["Behavior"]["ExternalVideos"].keys())[0]
         else:
+            # Old Videos metadata structure (deprecated)
+            import warnings
+
+            warnings.warn(
+                "The 'Videos' metadata structure in LightningPoseDataInterface is deprecated and will be removed in May 2026. "
+                "Please use 'ExternalVideos' metadata structure instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
             original_video_name = metadata_copy["Behavior"]["Videos"][0]["name"]
         camera_name = pose_estimation_metadata["camera_name"]
         if camera_name in nwbfile.devices:
@@ -301,6 +310,15 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
                 # Get the second video name from ExternalVideos dict
                 labeled_video_name = list(metadata_copy["Behavior"]["ExternalVideos"].keys())[1]
             else:
+                # Old Videos metadata structure (deprecated)
+                import warnings
+
+                warnings.warn(
+                    "The 'Videos' metadata structure in LightningPoseDataInterface is deprecated and will be removed in May 2026. "
+                    "Please use 'ExternalVideos' metadata structure instead.",
+                    FutureWarning,
+                    stacklevel=2,
+                )
                 labeled_video_name = metadata_copy["Behavior"]["Videos"][1]["name"]
 
             pose_estimation_kwargs.update(labeled_videos=[labeled_video_name])

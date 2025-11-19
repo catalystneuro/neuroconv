@@ -1,3 +1,5 @@
+import warnings
+
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
@@ -115,6 +117,7 @@ class LightningPoseConverter(NWBConverter):
         metadata: dict,
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
+        external_mode: bool = True,
         starting_frames_original_videos: list[int] | None = None,
         starting_frames_labeled_videos: list[int] | None = None,
         stub_test: bool = False,
@@ -132,6 +135,9 @@ class LightningPoseConverter(NWBConverter):
             Description of the reference frame for pose estimation, by default None.
         confidence_definition : str, optional
             Definition for the confidence levels in pose estimation, by default None.
+        external_mode : bool, optional
+            DEPRECATED. This parameter is no longer used as ExternalVideoInterface always uses external mode.
+            Will be removed in May 2026.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
         starting_frames_labeled_videos : list of int, optional
@@ -139,6 +145,26 @@ class LightningPoseConverter(NWBConverter):
         stub_test : bool, optional
             If True, only a subset of the data will be added for testing purposes, by default False.
         """
+        if external_mode is not True:
+            warnings.warn(
+                "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
+                "ExternalVideoInterface always uses external mode. This parameter has no effect.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        # Check if old Videos metadata structure is being used and convert it
+        if "Videos" in metadata.get("Behavior", {}):
+            warnings.warn(
+                "The 'Videos' metadata structure is deprecated and will be removed in May 2026. "
+                "Please use 'ExternalVideos' metadata structure instead. "
+                "The metadata will be automatically converted for this conversion.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            # Convert old Videos metadata to new ExternalVideos structure
+            metadata = self._convert_videos_metadata_to_external_videos(metadata)
+
         original_video_interface = self.data_interface_objects["OriginalVideo"]
 
         # ExternalVideoInterface expects metadata in ExternalVideos dict format
@@ -166,6 +192,27 @@ class LightningPoseConverter(NWBConverter):
             stub_test=stub_test,
         )
 
+    def _convert_videos_metadata_to_external_videos(self, metadata: dict) -> dict:
+        """Convert old Videos list metadata to new ExternalVideos dict metadata."""
+        from copy import deepcopy
+
+        metadata = deepcopy(metadata)
+        if "Videos" in metadata.get("Behavior", {}):
+            videos_list = metadata["Behavior"]["Videos"]
+            external_videos_dict = {}
+            for video_metadata in videos_list:
+                video_name = video_metadata.pop("name")
+                # Add default device if not present
+                if "device" not in video_metadata:
+                    video_metadata["device"] = {
+                        "name": f"{video_name} Camera Device",
+                        "description": "Video camera used for recording.",
+                    }
+                external_videos_dict[video_name] = video_metadata
+            metadata["Behavior"]["ExternalVideos"] = external_videos_dict
+            del metadata["Behavior"]["Videos"]
+        return metadata
+
     def run_conversion(
         self,
         nwbfile_path: FilePath | None = None,
@@ -174,6 +221,7 @@ class LightningPoseConverter(NWBConverter):
         overwrite: bool = False,
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
+        external_mode: bool = True,
         starting_frames_original_videos: list | None = None,
         starting_frames_labeled_videos: list | None = None,
         stub_test: bool = False,
@@ -195,6 +243,9 @@ class LightningPoseConverter(NWBConverter):
             Description of the reference frame for pose estimation, by default None.
         confidence_definition : str, optional
             Definition for confidence levels in pose estimation, by default None.
+        external_mode : bool, optional
+            DEPRECATED. This parameter is no longer used as ExternalVideoInterface always uses external mode.
+            Will be removed in May 2026.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
         starting_frames_labeled_videos : list of int, optional
@@ -203,6 +254,14 @@ class LightningPoseConverter(NWBConverter):
             If True, only a subset of the data will be added for testing purposes, by default False.
 
         """
+        if external_mode is not True:
+            warnings.warn(
+                "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
+                "ExternalVideoInterface always uses external mode. This parameter has no effect.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
         if metadata is None:
             metadata = self.get_metadata()
 
@@ -222,6 +281,7 @@ class LightningPoseConverter(NWBConverter):
                 metadata=metadata,
                 reference_frame=reference_frame,
                 confidence_definition=confidence_definition,
+                external_mode=external_mode,
                 starting_frames_original_videos=starting_frames_original_videos,
                 starting_frames_labeled_videos=starting_frames_labeled_videos,
                 stub_test=stub_test,

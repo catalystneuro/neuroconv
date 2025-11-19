@@ -215,3 +215,47 @@ class TestLightningPoseConverter(TestCase):
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.conversion_options)
+
+    def test_old_videos_metadata_structure(self):
+        """Test that old Videos metadata structure still works with deprecation warning.
+        TODO: Remove this test after May 2026 when the old Videos metadata structure is removed.
+        """
+        # Get the default metadata and modify it to use old structure
+        metadata = self.converter.get_metadata()
+
+        # Convert ExternalVideos to old Videos structure
+        videos_list = []
+        for video_name, video_metadata in metadata["Behavior"]["ExternalVideos"].items():
+            video_dict = {"name": video_name}
+            video_dict.update({k: v for k, v in video_metadata.items() if k != "device"})
+            videos_list.append(video_dict)
+
+        # Replace with old structure
+        metadata["Behavior"]["Videos"] = videos_list
+        del metadata["Behavior"]["ExternalVideos"]
+
+        nwbfile_path = str(self.test_dir / "test_lightningpose_converter_old_metadata.nwb")
+
+        # Create NWBFile to bypass metadata validation
+        from pynwb import NWBHDF5IO
+        from pynwb import NWBFile as NWBFileClass
+
+        nwbfile = NWBFileClass(
+            session_description=metadata["NWBFile"]["session_description"],
+            identifier=metadata["NWBFile"]["identifier"],
+            session_start_time=metadata["NWBFile"]["session_start_time"],
+        )
+
+        # Test that conversion works and raises FutureWarning
+        with self.assertWarns(FutureWarning):
+            self.converter.add_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                stub_test=True,
+            )
+
+        # Write to file
+        with NWBHDF5IO(nwbfile_path, mode="w") as io:
+            io.write(nwbfile)
+
+        self.assertNWBFileStructure(nwbfile_path, stub_test=True)
