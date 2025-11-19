@@ -1,11 +1,8 @@
-from copy import deepcopy
-
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import LightningPoseDataInterface
-from neuroconv.datainterfaces.behavior.video.videodatainterface import _VideoInterface
+from neuroconv.datainterfaces import ExternalVideoInterface, LightningPoseDataInterface
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from neuroconv.utils import (
     DeepDict,
@@ -56,19 +53,31 @@ class LightningPoseConverter(NWBConverter):
             controls verbosity. ``True`` by default.
         """
         self.verbose = verbose
+        self.original_video_name = image_series_original_video_name or "ImageSeriesOriginalVideo"
+        self.labeled_video_name = None
+
         self.data_interface_objects = dict(
-            OriginalVideo=_VideoInterface(file_paths=[original_video_file_path]),
+            OriginalVideo=ExternalVideoInterface(
+                file_paths=[original_video_file_path],
+                video_name=self.original_video_name,
+            ),
             PoseEstimation=LightningPoseDataInterface(
                 file_path=file_path,
                 original_video_file_path=original_video_file_path,
                 labeled_video_file_path=labeled_video_file_path,
             ),
         )
-        self.original_video_name = image_series_original_video_name or "ImageSeriesOriginalVideo"
-        self.labeled_video_name = None
+
         if labeled_video_file_path:
             self.labeled_video_name = image_series_labeled_video_name or "ImageSeriesLabeledVideo"
-            self.data_interface_objects.update(dict(LabeledVideo=_VideoInterface(file_paths=[labeled_video_file_path])))
+            self.data_interface_objects.update(
+                dict(
+                    LabeledVideo=ExternalVideoInterface(
+                        file_paths=[labeled_video_file_path],
+                        video_name=self.labeled_video_name,
+                    )
+                )
+            )
 
     def get_conversion_options_schema(self) -> dict:
         conversion_options_schema = get_json_schema_from_method_signature(
@@ -81,18 +90,18 @@ class LightningPoseConverter(NWBConverter):
         metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         original_videos_metadata = original_video_interface.get_metadata()
-        metadata = dict_deep_update(metadata, original_videos_metadata)
 
-        original_videos_metadata["Behavior"]["Videos"][0].update(
-            name=self.original_video_name,
+        # Update the original video metadata with custom description
+        original_videos_metadata["Behavior"]["ExternalVideos"][self.original_video_name].update(
             description="The original video used for pose estimation.",
         )
+
+        metadata = dict_deep_update(metadata, original_videos_metadata)
 
         if "LabeledVideo" in self.data_interface_objects:
             labeled_video_interface = self.data_interface_objects["LabeledVideo"]
             labeled_videos_metadata = labeled_video_interface.get_metadata()
-            labeled_videos_metadata["Behavior"]["Videos"][0].update(
-                name=self.labeled_video_name,
+            labeled_videos_metadata["Behavior"]["ExternalVideos"][self.labeled_video_name].update(
                 description="The video recorded by camera with the pose estimation labels.",
             )
 
@@ -106,7 +115,6 @@ class LightningPoseConverter(NWBConverter):
         metadata: dict,
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
-        external_mode: bool = True,
         starting_frames_original_videos: list[int] | None = None,
         starting_frames_labeled_videos: list[int] | None = None,
         stub_test: bool = False,
@@ -124,8 +132,6 @@ class LightningPoseConverter(NWBConverter):
             Description of the reference frame for pose estimation, by default None.
         confidence_definition : str, optional
             Definition for the confidence levels in pose estimation, by default None.
-        external_mode : bool, optional
-            If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
         starting_frames_labeled_videos : list of int, optional
@@ -135,42 +141,21 @@ class LightningPoseConverter(NWBConverter):
         """
         original_video_interface = self.data_interface_objects["OriginalVideo"]
 
-        original_video_metadata = next(
-            video_metadata
-            for video_metadata in metadata["Behavior"]["Videos"]
-            if video_metadata["name"] == self.original_video_name
-        )
-        if original_video_metadata is None:
-            raise ValueError(f"Metadata for '{self.original_video_name}' not found in metadata['Behavior']['Videos'].")
-        metadata_copy = deepcopy(metadata)
-        metadata_copy["Behavior"]["Videos"] = [original_video_metadata]
+        # ExternalVideoInterface expects metadata in ExternalVideos dict format
         original_video_interface.add_to_nwbfile(
             nwbfile=nwbfile,
-            metadata=metadata_copy,
-            stub_test=stub_test,
-            external_mode=external_mode,
+            metadata=metadata,
             starting_frames=starting_frames_original_videos,
+            parent_container="acquisition",
         )
 
         if "LabeledVideo" in self.data_interface_objects:
             labeled_video_interface = self.data_interface_objects["LabeledVideo"]
-            labeled_video_metadata = next(
-                video_metadata
-                for video_metadata in metadata["Behavior"]["Videos"]
-                if video_metadata["name"] == self.labeled_video_name
-            )
-            if labeled_video_metadata is None:
-                raise ValueError(
-                    f"Metadata for '{self.labeled_video_name}' not found in metadata['Behavior']['Videos']."
-                )
-            metadata_copy["Behavior"]["Videos"] = [labeled_video_metadata]
             labeled_video_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
-                metadata=metadata_copy,
-                stub_test=stub_test,
-                external_mode=external_mode,
+                metadata=metadata,
                 starting_frames=starting_frames_labeled_videos,
-                module_name="behavior",
+                parent_container="processing/behavior",
             )
 
         self.data_interface_objects["PoseEstimation"].add_to_nwbfile(
@@ -189,7 +174,6 @@ class LightningPoseConverter(NWBConverter):
         overwrite: bool = False,
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
-        external_mode: bool = True,
         starting_frames_original_videos: list | None = None,
         starting_frames_labeled_videos: list | None = None,
         stub_test: bool = False,
@@ -211,8 +195,6 @@ class LightningPoseConverter(NWBConverter):
             Description of the reference frame for pose estimation, by default None.
         confidence_definition : str, optional
             Definition for confidence levels in pose estimation, by default None.
-        external_mode : bool, optional
-            If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
         starting_frames_labeled_videos : list of int, optional
@@ -240,7 +222,6 @@ class LightningPoseConverter(NWBConverter):
                 metadata=metadata,
                 reference_frame=reference_frame,
                 confidence_definition=confidence_definition,
-                external_mode=external_mode,
                 starting_frames_original_videos=starting_frames_original_videos,
                 starting_frames_labeled_videos=starting_frames_labeled_videos,
                 stub_test=stub_test,

@@ -80,18 +80,24 @@ class TestLightningPoseConverter(TestCase):
         cls.converter_metadata = dict(
             Behavior=dict(
                 PoseEstimation=cls.pose_estimation_metadata,
-                Videos=[
-                    dict(
+                ExternalVideos={
+                    "original_video_name": dict(
                         description="The original video used for pose estimation.",
-                        name="original_video_name",
                         unit="Frames",
+                        device=dict(
+                            name="original_video_name Camera Device",
+                            description="Video camera used for recording.",
+                        ),
                     ),
-                    dict(
+                    "labeled_video_name": dict(
                         description="The video recorded by camera with the pose estimation labels.",
-                        name="labeled_video_name",
                         unit="Frames",
+                        device=dict(
+                            name="labeled_video_name Camera Device",
+                            description="Video camera used for recording.",
+                        ),
                     ),
-                ],
+                },
             )
         )
 
@@ -110,7 +116,7 @@ class TestLightningPoseConverter(TestCase):
 
     def test_expected_metadata(self):
         metadata = self.converter.get_metadata()
-        videos_metadata = metadata["Behavior"]["Videos"]
+        videos_metadata = metadata["Behavior"]["ExternalVideos"]
         self.assertEqual(len(videos_metadata), 2)
         self.assertDictEqual(metadata["Behavior"], self.converter_metadata["Behavior"])
 
