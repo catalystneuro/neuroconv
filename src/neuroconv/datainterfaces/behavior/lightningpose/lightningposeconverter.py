@@ -4,7 +4,11 @@ from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import ExternalVideoInterface, LightningPoseDataInterface
+from neuroconv.datainterfaces import (
+    ExternalVideoInterface,
+    InternalVideoInterface,
+    LightningPoseDataInterface,
+)
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from neuroconv.utils import (
     DeepDict,
@@ -58,6 +62,12 @@ class LightningPoseConverter(NWBConverter):
         self.original_video_name = image_series_original_video_name or "ImageSeriesOriginalVideo"
         self.labeled_video_name = None
 
+        # Store video file paths for dynamic interface creation
+        self.original_video_file_path = original_video_file_path
+        self.labeled_video_file_path = labeled_video_file_path
+
+        # Create default ExternalVideoInterface for schema generation and metadata
+        # The actual interface type (External vs Internal) will be determined at conversion time
         self.data_interface_objects = dict(
             OriginalVideo=ExternalVideoInterface(
                 file_paths=[original_video_file_path],
@@ -136,54 +146,95 @@ class LightningPoseConverter(NWBConverter):
         confidence_definition : str, optional
             Definition for the confidence levels in pose estimation, by default None.
         external_mode : bool, optional
-            DEPRECATED. This parameter is no longer used as ExternalVideoInterface always uses external mode.
-            Will be removed in May 2026.
+            If True, videos will be stored as external files (ExternalVideoInterface).
+            If False, videos will be embedded in the NWB file (InternalVideoInterface).
+            Default is True.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
+            Only used when external_mode=True.
         starting_frames_labeled_videos : list of int, optional
             List of starting frames for the labeled videos, by default None.
+            Only used when external_mode=True.
         stub_test : bool, optional
             If True, only a subset of the data will be added for testing purposes, by default False.
         """
-        if external_mode is not True:
-            warnings.warn(
-                "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
-                "ExternalVideoInterface always uses external mode. This parameter has no effect.",
-                FutureWarning,
-                stacklevel=2,
-            )
-
         # Check if old Videos metadata structure is being used and convert it
+        metadata_key = "ExternalVideos" if external_mode else "InternalVideos"
         if "Videos" in metadata.get("Behavior", {}):
             warnings.warn(
-                "The 'Videos' metadata structure is deprecated and will be removed in May 2026. "
-                "Please use 'ExternalVideos' metadata structure instead. "
-                "The metadata will be automatically converted for this conversion.",
+                f"The 'Videos' metadata structure is deprecated and will be removed in May 2026. "
+                f"Please use '{metadata_key}' metadata structure instead. "
+                f"The metadata will be automatically converted for this conversion.",
                 FutureWarning,
                 stacklevel=2,
             )
-            # Convert old Videos metadata to new ExternalVideos structure
-            metadata = self._convert_videos_metadata_to_external_videos(metadata)
+            # Convert old Videos metadata to new format
+            metadata = self._convert_videos_metadata(metadata, external_mode=external_mode)
 
-        original_video_interface = self.data_interface_objects["OriginalVideo"]
-
-        # ExternalVideoInterface expects metadata in ExternalVideos dict format
-        original_video_interface.add_to_nwbfile(
-            nwbfile=nwbfile,
-            metadata=metadata,
-            starting_frames=starting_frames_original_videos,
-            parent_container="acquisition",
-        )
-
-        if "LabeledVideo" in self.data_interface_objects:
-            labeled_video_interface = self.data_interface_objects["LabeledVideo"]
-            labeled_video_interface.add_to_nwbfile(
-                nwbfile=nwbfile,
-                metadata=metadata,
-                starting_frames=starting_frames_labeled_videos,
-                parent_container="processing/behavior",
+        # Create video interface based on external_mode
+        # If external_mode matches the default (True), use existing interfaces
+        # Otherwise, create new appropriate interfaces
+        if external_mode:
+            # Use ExternalVideoInterface
+            if isinstance(self.data_interface_objects.get("OriginalVideo"), ExternalVideoInterface):
+                original_video_interface = self.data_interface_objects["OriginalVideo"]
+            else:
+                original_video_interface = ExternalVideoInterface(
+                    file_paths=[self.original_video_file_path],
+                    video_name=self.original_video_name,
+                )
+        else:
+            # Use InternalVideoInterface
+            original_video_interface = InternalVideoInterface(
+                file_path=self.original_video_file_path,
+                video_name=self.original_video_name,
             )
 
+        # Add original video
+        if external_mode:
+            original_video_interface.add_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                starting_frames=starting_frames_original_videos,
+                parent_container="acquisition",
+            )
+        else:
+            original_video_interface.add_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                stub_test=stub_test,
+                parent_container="acquisition",
+            )
+
+        # Add labeled video if present
+        if self.labeled_video_file_path:
+            if external_mode:
+                if isinstance(self.data_interface_objects.get("LabeledVideo"), ExternalVideoInterface):
+                    labeled_video_interface = self.data_interface_objects["LabeledVideo"]
+                else:
+                    labeled_video_interface = ExternalVideoInterface(
+                        file_paths=[self.labeled_video_file_path],
+                        video_name=self.labeled_video_name,
+                    )
+                labeled_video_interface.add_to_nwbfile(
+                    nwbfile=nwbfile,
+                    metadata=metadata,
+                    starting_frames=starting_frames_labeled_videos,
+                    parent_container="processing/behavior",
+                )
+            else:
+                labeled_video_interface = InternalVideoInterface(
+                    file_path=self.labeled_video_file_path,
+                    video_name=self.labeled_video_name,
+                )
+                labeled_video_interface.add_to_nwbfile(
+                    nwbfile=nwbfile,
+                    metadata=metadata,
+                    stub_test=stub_test,
+                    parent_container="processing/behavior",
+                )
+
+        # Add pose estimation
         self.data_interface_objects["PoseEstimation"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
@@ -192,14 +243,16 @@ class LightningPoseConverter(NWBConverter):
             stub_test=stub_test,
         )
 
-    def _convert_videos_metadata_to_external_videos(self, metadata: dict) -> dict:
-        """Convert old Videos list metadata to new ExternalVideos dict metadata."""
+    def _convert_videos_metadata(self, metadata: dict, external_mode: bool = True) -> dict:
+        """Convert old Videos list metadata to new ExternalVideos or InternalVideos dict metadata."""
         from copy import deepcopy
 
         metadata = deepcopy(metadata)
+        metadata_key = "ExternalVideos" if external_mode else "InternalVideos"
+
         if "Videos" in metadata.get("Behavior", {}):
             videos_list = metadata["Behavior"]["Videos"]
-            external_videos_dict = {}
+            videos_dict = {}
             for video_metadata in videos_list:
                 video_name = video_metadata.pop("name")
                 # Add default device if not present
@@ -208,8 +261,8 @@ class LightningPoseConverter(NWBConverter):
                         "name": f"{video_name} Camera Device",
                         "description": "Video camera used for recording.",
                     }
-                external_videos_dict[video_name] = video_metadata
-            metadata["Behavior"]["ExternalVideos"] = external_videos_dict
+                videos_dict[video_name] = video_metadata
+            metadata["Behavior"][metadata_key] = videos_dict
             del metadata["Behavior"]["Videos"]
         return metadata
 
@@ -244,24 +297,19 @@ class LightningPoseConverter(NWBConverter):
         confidence_definition : str, optional
             Definition for confidence levels in pose estimation, by default None.
         external_mode : bool, optional
-            DEPRECATED. This parameter is no longer used as ExternalVideoInterface always uses external mode.
-            Will be removed in May 2026.
+            If True, videos will be stored as external files (ExternalVideoInterface).
+            If False, videos will be embedded in the NWB file (InternalVideoInterface).
+            Default is True.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
+            Only used when external_mode=True.
         starting_frames_labeled_videos : list of int, optional
             List of starting frames for the labeled videos, by default None.
+            Only used when external_mode=True.
         stub_test : bool, optional
             If True, only a subset of the data will be added for testing purposes, by default False.
 
         """
-        if external_mode is not True:
-            warnings.warn(
-                "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
-                "ExternalVideoInterface always uses external mode. This parameter has no effect.",
-                FutureWarning,
-                stacklevel=2,
-            )
-
         if metadata is None:
             metadata = self.get_metadata()
 
