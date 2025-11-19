@@ -69,29 +69,6 @@ To follow this convention use the
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 
-If using an older version of neuroconv (<0.8), you can use the :py:class:`~neuroconv.datainterfaces.behavior.video.videodatainterface.VideoInterface` class.
-
-.. code-block:: python
-
-    >>> from datetime import datetime
-    >>> from zoneinfo import ZoneInfo
-    >>> from pathlib import Path
-    >>>
-    >>> from neuroconv.datainterfaces import VideoInterface
-    >>>
-    >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
-    >>> interface = VideoInterface(file_paths=[video_file_path], verbose=False)
-    >>>
-    >>> metadata = interface.get_metadata()
-    >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>>
-    >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
-
-
 Specifying Metadata
 ~~~~~~~~~~~~~~~~~~~
 

@@ -1,6 +1,7 @@
-# v0.8.4 (Upcoming)
+# v0.9.0 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed  `VideoInterface` class scheduled for removal in September 2025. The class is now private (`_VideoInterface`) and used internally by `LightningPoseConverter`. Users should use `ExternalVideoInterface` or `InternalVideoInterface` instead. [PR #1589](https://github.com/catalystneuro/neuroconv/pull/1589)
 * Removed deprecated ScanImage interfaces that were scheduled for removal in October 2025: `ScanImageMultiFileImagingInterface`, `ScanImageMultiPlaneImagingInterface`, `ScanImageMultiPlaneMultiFileImagingInterface`, `ScanImageSinglePlaneImagingInterface`, and `ScanImageSinglePlaneMultiFileImagingInterface`. Use `ScanImageImagingInterface` instead. [PR #1576](https://github.com/catalystneuro/neuroconv/pull/1576)
 * Removed deprecated SpikeInterface functions scheduled for removal in October 2025: `add_electrical_series_to_nwbfile`, `check_if_recording_traces_fit_into_memory`, `add_electrodes_info_to_nwbfile`, and `add_units_table_to_nwbfile`. Use `add_recording_to_nwbfile`, `add_recording_metadata_to_nwbfile`, and `add_sorting_to_nwbfile` instead. [PR #1583](https://github.com/catalystneuro/neuroconv/pull/1583)
 * Removed deprecated `BaseRecordingExtractorInterface.subset_recording()` method scheduled for removal in October 2025. [PR #1583](https://github.com/catalystneuro/neuroconv/pull/1583)
