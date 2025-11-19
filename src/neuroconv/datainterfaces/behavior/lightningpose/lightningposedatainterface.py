@@ -224,9 +224,14 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         if pose_estimation_name in behavior.data_interfaces:
             raise ValueError(f"The nwbfile already contains a data interface with the name '{pose_estimation_name}'.")
 
-        if "Videos" not in metadata_copy["Behavior"]:
+        if "Videos" not in metadata_copy["Behavior"] and "ExternalVideos" not in metadata_copy["Behavior"]:
             original_video_name = str(self.original_video_file_path)
+        elif "ExternalVideos" in metadata_copy["Behavior"]:
+            # ExternalVideoInterface uses a dict structure
+            external_videos = metadata_copy["Behavior"]["ExternalVideos"]
+            original_video_name = list(external_videos.keys())[0]
         else:
+            # Legacy VideoInterface uses a list structure
             original_video_name = metadata_copy["Behavior"]["Videos"][0]["name"]
         camera_name = pose_estimation_metadata["camera_name"]
         if camera_name in nwbfile.devices:
@@ -292,9 +297,15 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         )
 
         if self.source_data["labeled_video_file_path"]:
-            if "Videos" not in metadata_copy["Behavior"]:
+            if "Videos" not in metadata_copy["Behavior"] and "ExternalVideos" not in metadata_copy["Behavior"]:
                 labeled_video_name = str(self.source_data["labeled_video_file_path"])
+            elif "ExternalVideos" in metadata_copy["Behavior"]:
+                # ExternalVideoInterface uses a dict structure
+                external_videos = metadata_copy["Behavior"]["ExternalVideos"]
+                # Get the second video (labeled video)
+                labeled_video_name = list(external_videos.keys())[1]
             else:
+                # Legacy VideoInterface uses a list structure
                 labeled_video_name = metadata_copy["Behavior"]["Videos"][1]["name"]
 
             pose_estimation_kwargs.update(labeled_videos=[labeled_video_name])
