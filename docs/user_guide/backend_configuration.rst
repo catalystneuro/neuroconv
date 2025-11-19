@@ -14,7 +14,7 @@ Find out more about memory buffering of large source files in the `advanced NWB 
 Default configuration
 ---------------------
 
-To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the :py:meth:`~neuroconv.tools.nwb_helpers.get_default_backend_configuration` function:
+To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the :py:method:`~neuroconv.tools.nwb_helpers.get_default_backend_configuration` function:
 
 .. code-block:: python
 
@@ -139,6 +139,34 @@ Then we can use this configuration to write the NWB file:
     configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output.nwb")
 
 
+Existing configuration
+----------------------
+
+If you have already written a file and want to get the configuration that was used, you can use the :py:method:`~neuroconv.tools.nwb_helpers.get_existing_backend_configuration` function:
+
+.. code-block:: python
+
+    from neuroconv.tools.nwb_helpers import get_existing_backend_configuration
+    from pynwb import NWBHDF5IO
+
+    with NWBHDF5IO(nwbfile_path="output.nwb", mode="r") as io:
+        nwbfile = io.read()
+        backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
+
+    print(backend_configuration)
+
+Then, you can modify the configuration and write a new file using the same method as above. For example, we can increase
+the compression level but leave all the other settings the same.
+
+.. code-block:: python
+
+    backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compression_options["clevel"] = 4
+
+    with NWBHDF5IO(nwbfile_path="output.nwb", mode="r") as io:
+        nwbfile = io.read()
+        configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output2.nwb", export=True)
+
+
 Interfaces and Converters
 -------------------------
 
@@ -255,6 +283,51 @@ You can use the :py:meth:`~neuroconv.tools.nwb_helpers._configuration_models._ba
         nwbfile_path="compressed_file.nwb",
         backend_configuration=backend_configuration,
     )
+
+
+Repacking
+---------
+
+If you simply want to update the backend configuration of an existing NWB file to conform with our recommended settings,
+you can use the :py:method:`~neuroconv.tools.nwb_helpers.repack_nwbfile` function.
+For example, this function can be used to apply recommended chunking and compression settings to an NWB file that was created without them.
+
+.. code-block:: python
+
+    from datetime import datetime
+    from uuid import uuid4
+
+    from pynwb import NWBFile, TimeSeries, NWBHDF5IO
+    from neuroconv.tools.nwb_helpers import repack_nwbfile
+
+    session_start_time = datetime(2020, 1, 1, 12, 30, 0)
+    nwbfile = NWBFile(
+        identifier=str(uuid4()),
+        session_start_time=session_start_time,
+        session_description="A session of my experiment.",
+    )
+
+    time_series = TimeSeries(
+        name="MyTimeSeries",
+        description="A time series from my experiment.",
+        unit="cm/s",
+        data=[1., 2., 3.],
+        timestamps=[0.0, 0.2, 0.4],
+    )
+    nwbfile.add_acquisition(time_series)
+
+    with NWBHDF5IO(nwbfile_path="uncompressed_nwbfile.nwb", mode="w") as io:
+        io.write(nwbfile)
+
+    repack_nwbfile(
+        nwbfile_path="uncompressed_nwbfile.nwb",
+        export_nwbfile_path="repacked_nwbfile.nwb",
+        backend="hdf5",
+    )
+
+This will create a new NWB file with the same data as the original,
+but with the recommended chunking and compression settings applied.
+
 
 FAQ
 ---

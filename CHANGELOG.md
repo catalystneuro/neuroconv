@@ -1,14 +1,27 @@
 # v0.8.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed deprecated ScanImage interfaces that were scheduled for removal in October 2025: `ScanImageMultiFileImagingInterface`, `ScanImageMultiPlaneImagingInterface`, `ScanImageMultiPlaneMultiFileImagingInterface`, `ScanImageSinglePlaneImagingInterface`, and `ScanImageSinglePlaneMultiFileImagingInterface`. Use `ScanImageImagingInterface` instead. [PR #1576](https://github.com/catalystneuro/neuroconv/pull/1576)
+* Removed deprecated SpikeInterface functions scheduled for removal in October 2025: `add_electrical_series_to_nwbfile`, `check_if_recording_traces_fit_into_memory`, `add_electrodes_info_to_nwbfile`, and `add_units_table_to_nwbfile`. Use `add_recording_to_nwbfile`, `add_recording_metadata_to_nwbfile`, and `add_sorting_to_nwbfile` instead. [PR #1583](https://github.com/catalystneuro/neuroconv/pull/1583)
+* Removed deprecated `BaseRecordingExtractorInterface.subset_recording()` method scheduled for removal in October 2025. [PR #1583](https://github.com/catalystneuro/neuroconv/pull/1583)
+* Removed deprecated `write_electrical_series` parameter from `add_recording_to_nwbfile` scheduled for removal in October 2025. Use `add_recording_metadata_to_nwbfile` if only metadata addition is desired. [PR #1583](https://github.com/catalystneuro/neuroconv/pull/1583)
+* Removed deprecated `write_scaled` parameter from `add_recording_to_nwbfile` and `write_recording_to_nwbfile` scheduled for removal in October 2025. The functions now automatically handle channel conversion and offsets. [PR #1583](https://github.com/catalystneuro/neuroconv/pull/1583)
+* Removed deprecated `num_frames` parameter from `MockImagingInterface` and `MockSegmentationInterface` scheduled for removal in February 2025. Use `num_samples` instead. [PR #1583](https://github.com/catalystneuro/neuroconv/pull/1583)
+* Removed deprecated `output_filepath` parameter from `configure_and_write_nwbfile`. Use `nwbfile_path` instead. [PR #1582](https://github.com/catalystneuro/neuroconv/pull/1582)
 
 ## Bug Fixes
+* Fixed bug with TDTFiberPhotometryInterface tests by swapping out test_all_conversion_checks_stub_test_invalid with test_check_run_conversion_stub_test_invalid (avoiding unittest.TestCase.subTests).  [PR #1579](https://github.com/catalystneuro/neuroconv/pull/1579)
+* Fixed DANDI live service tests to support dandi-cli 0.73.2 instance-specific API key environment variables (`DANDI_SANDBOX_API_KEY`, `EMBER_SANDBOX_API_KEY`, etc.). Updated all workflows and test files to use the appropriate API key for each DANDI instance. [PR #1588](https://github.com/catalystneuro/neuroconv/pull/1588)
 
 ## Features
 * Enhanced `TiffImagingInterface` to support multi-file TIFF datasets using `MultiTIFFMultiPageExtractor` from roiextractors. Added support for configurable dimension orders (`dimension_order`), multi-channel data (`num_channels`, `channel_name`), and volumetric imaging (`num_planes`). Both `file_path` (single file) and `file_paths` (multiple files) parameters are now supported for backward compatibility. [PR #1577](https://github.com/catalystneuro/neuroconv/pull/1577)
+* Added a workflow to repack nwbfiles that have already been written to disk with desired chunking and compression settings: [PR #1003](https://github.com/catalystneuro/neuroconv/pull/1003)
+* Added `add_recording_as_spatial_series_to_nwbfile` function to write SpikeInterface recordings as `SpatialSeries` for behavioral tracking data (e.g., position, head direction, gaze tracking). [PR #1574](https://github.com/catalystneuro/neuroconv/pull/1574)
+* Enhanced `SpikeGLXNIDQInterface` to support custom metadata for digital channels, enabling users to specify semantic labels, descriptions, and names for NIDQ digital events. Added `metadata_key` parameter to support multiple NIDQ interfaces in the same conversion. [PR #1579](https://github.com/catalystneuro/neuroconv/pull/1579)
 
 ## Improvements
-
+* Added comprehensive how-to guide "How to Add Behavioral and Sensor Data from Acquisition Systems" documenting usage of `add_recording_as_time_series_to_nwbfile` and `add_recording_as_spatial_series_to_nwbfile` for adding behavioral data from any SpikeInterface-supported format. [PR #1575](https://github.com/catalystneuro/neuroconv/pull/1575)
+* Enhanced CSV interface documentation with comprehensive tutorial-style examples showing CSV format requirements, basic usage with column descriptions, customization options for storage location (trials/epochs/custom intervals), and advanced reading options. Fixed in-memory access to `nwbfile.trials` and `nwbfile.epochs`. Improved docstrings across `TimeIntervalsInterface` and `convert_df_to_time_intervals`. [PR #1572](https://github.com/catalystneuro/neuroconv/pull/1572)
 
 # v0.8.3 (November 6, 2025)
 
@@ -29,6 +42,7 @@
 ## Improvements
 * SpikeInterface tools: Enhanced `write_recording_to_nwbfile`, `write_sorting_to_nwbfile`, and `write_sorting_analyzer_to_nwbfile` to support backend configuration parameters (`backend`, `backend_configuration`) for controlling HDF5/Zarr compression and chunking settings, matching the pattern used in `BaseDataInterface.run_conversion`. [PR #1565](https://github.com/catalystneuro/neuroconv/pull/1565)
 * Added citation information to README, documentation, and CITATION.cff with reference to the SciPy 2025 conference paper [PR #1569](https://github.com/catalystneuro/neuroconv/pull/1569)
+
 
 # v0.8.2 (October 17, 2025)
 

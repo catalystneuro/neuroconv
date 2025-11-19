@@ -40,8 +40,6 @@ def add_recording_to_nwbfile(
     metadata: dict | None = None,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str | None = None,
-    write_electrical_series: bool = True,
-    write_scaled: bool = False,
     iterator_type: str = "v2",
     iterator_options: dict | None = None,
     iterator_opts: dict | None = None,
@@ -109,15 +107,6 @@ def add_recording_to_nwbfile(
         metadata = _get_default_ecephys_metadata()
 
     add_recording_metadata_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    # Early termination just adds the metadata
-    if not write_electrical_series:
-        warning_message = (
-            "`write_electrical_series` is deprecated and will be removed in or after October 2025."
-            "If only metadata addition is desired, use `add_recording_metadata_to_nwbfile` instead."
-        )
-
-        warnings.warn(warning_message, stacklevel=2)
-        return None
 
     number_of_segments = recording.get_num_segments()
     for segment_index in range(number_of_segments):
@@ -128,7 +117,6 @@ def add_recording_to_nwbfile(
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
-            write_scaled=write_scaled,
             iterator_type=iterator_type,
             iterator_opts=iterator_options,
             always_write_timestamps=always_write_timestamps,
@@ -210,42 +198,6 @@ def add_sorting_to_nwbfile(
     )
 
 
-def add_electrical_series_to_nwbfile(
-    recording: BaseRecording,
-    nwbfile: pynwb.NWBFile,
-    metadata: dict = None,
-    segment_index: int = 0,
-    write_as: Literal["raw", "processed", "lfp"] = "raw",
-    es_key: str = None,
-    write_scaled: bool = False,
-    iterator_type: str | None = "v2",
-    iterator_opts: dict | None = None,
-    always_write_timestamps: bool = False,
-):
-    """
-    Deprecated. Call `add_recording_to_nwbfile` instead.
-    """
-
-    warnings.warn(
-        "This function is deprecated and will be removed in or October 2025. "
-        "Use the 'add_recording_to_nwbfile' function instead.",
-        DeprecationWarning,
-    )
-
-    _add_recording_segment_to_nwbfile(
-        recording=recording,
-        nwbfile=nwbfile,
-        segment_index=segment_index,
-        metadata=metadata,
-        write_as=write_as,
-        es_key=es_key,
-        write_scaled=write_scaled,
-        iterator_type=iterator_type,
-        iterator_opts=iterator_opts,
-        always_write_timestamps=always_write_timestamps,
-    )
-
-
 def _add_recording_segment_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -253,7 +205,6 @@ def _add_recording_segment_to_nwbfile(
     segment_index: int = 0,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
-    write_scaled: bool = False,
     iterator_type: str | None = "v2",
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
@@ -261,15 +212,6 @@ def _add_recording_segment_to_nwbfile(
     """
     See add_recording_to_nwbfile for details.
     """
-
-    if write_scaled:
-        warnings.warn(
-            "The 'write_scaled' parameter is deprecated and will be removed in October 2025. "
-            "The function will automatically handle channel conversion and offsets using "
-            "'gain_to_physical_unit' and 'offset_to_physical_unit' properties.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
 
     assert write_as in [
         "raw",
@@ -1106,18 +1048,6 @@ def add_electrodes_to_nwbfile(
         nwbfile.add_electrode_column(property, **cols_args)
 
 
-def check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment_index: int = 0) -> None:
-    """
-    Deprecated. This function will no longer be exposed in the public API
-    """
-
-    warnings.warn(
-        "This function is deprecated and will be removed in or October 2025. ",
-        DeprecationWarning,
-    )
-    _check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
-
-
 def _check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment_index: int = 0) -> None:
     """
     Raises an error if the full traces of a recording extractor are larger than psutil.virtual_memory().available.
@@ -1412,6 +1342,197 @@ def _add_time_series_segment_to_nwbfile(
     nwbfile.add_acquisition(time_series)
 
 
+def _get_default_spatial_series_metadata():
+    """
+    Returns fresh spatial series default metadata dictionary.
+
+    Single source of truth for all spatial series default metadata.
+    Structure matches the output of behavioral interfaces.
+    Each call returns a new instance to prevent accidental mutation of global state.
+    """
+    from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata
+
+    metadata = get_default_nwbfile_metadata()
+
+    metadata["SpatialSeries"] = {
+        "name": "SpatialSeries",
+        "description": "Spatial or directional data",
+        "unit": "meters",
+    }
+
+    return metadata
+
+
+def add_recording_as_spatial_series_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict | None = None,
+    metadata_key: str = "SpatialSeries",
+    write_as: Literal["acquisition", "processing"] = "acquisition",
+    iterator_type: str = "v2",
+    iterator_options: dict | None = None,
+    always_write_timestamps: bool = False,
+):
+    """
+    Adds traces from recording object as SpatialSeries to an NWBFile object.
+
+    This function is designed for behavioral tracking data where the recording represents spatial
+    or directional information (e.g., position, head direction, gaze tracking).
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        A recording extractor from spikeinterface containing behavioral tracking data.
+    nwbfile : NWBFile
+        NWB file to which the spatial series information is to be added.
+    metadata : dict, optional
+        Metadata info for constructing the NWB file.
+        Should be of the format::
+
+            metadata['SpatialSeries'] = {
+                'metadata_key': {
+                    'name': 'my_spatial_series',
+                    'description': 'my_description',
+                    'reference_frame': 'origin at top-left corner of arena...',
+                    'unit': 'meters'
+                }
+            }
+
+        Where the metadata_key is used to look up metadata in the metadata dictionary.
+    metadata_key : str, default: 'SpatialSeries'
+        The entry in SpatialSeries metadata to use.
+    write_as : {'acquisition', 'processing'}, default: 'acquisition'
+        Where to save the spatial series data:
+        - 'acquisition': Save in nwbfile.acquisition
+        - 'processing': Save in a processing module under 'behavior'
+    iterator_type : {"v2", None}, default: 'v2'
+        The type of DataChunkIterator to use.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator.
+        None: write the SpatialSeries with no memory chunking.
+    iterator_options : dict, optional
+        Dictionary of options for the iterator.
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps explicitly.
+        By default (False), the function checks if timestamps are uniformly sampled,
+        and if so, stores data using a regular sampling rate.
+
+
+    """
+    # Validate write_as parameter
+    if write_as not in ["acquisition", "processing"]:
+        raise ValueError(f"write_as must be 'acquisition' or 'processing', got '{write_as}'")
+
+    # Handle multiple segments
+    number_of_segments = recording.get_num_segments()
+    for segment_index in range(number_of_segments):
+        _add_spatial_series_segment_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=metadata_key,
+            segment_index=segment_index,
+            write_as=write_as,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
+            always_write_timestamps=always_write_timestamps,
+        )
+
+
+def _add_spatial_series_segment_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    segment_index: int,
+    metadata: dict | None = None,
+    metadata_key: str = "SpatialSeries",
+    write_as: Literal["acquisition", "processing"] = "acquisition",
+    iterator_type: str | None = "v2",
+    iterator_options: dict | None = None,
+    always_write_timestamps: bool = False,
+):
+    """
+    See add_recording_as_spatial_series_to_nwbfile for details.
+    """
+    # Validate recording dimensions for SpatialSeries
+    num_channels = recording.get_num_channels()
+    if num_channels > 3:
+        channel_names = _get_channel_name(recording)
+        raise ValueError(
+            f"SpatialSeries only supports 1D, 2D, or 3D data (up to 3 channels). "
+            f"This recording has {num_channels} channels: {channel_names}. "
+            f"Use recording.select_channels(channel_ids) to select only the spatial data channels, "
+            f"or verify you loaded the correct stream if working with multi-stream data."
+        )
+
+    # Get default metadata from single source of truth
+    default_metadata = _get_default_spatial_series_metadata()
+    default_spatial_series = default_metadata["SpatialSeries"]
+
+    metadata = metadata if metadata is not None else {}
+
+    # Get spatial series metadata or empty dict
+    spatial_series_metadata = metadata.get("SpatialSeries", {}).get(metadata_key, {})
+
+    # Copy user metadata to avoid mutation
+    series_kwargs = spatial_series_metadata.copy()
+
+    # Fill in missing required fields with defaults
+    required_fields = ["name", "description", "unit"]
+    for field in required_fields:
+        if field not in series_kwargs:
+            series_kwargs[field] = default_spatial_series[field]
+
+    # If multiple segments, append index to name
+    if recording.get_num_segments() > 1:
+        width = int(np.ceil(np.log10(recording.get_num_segments())))
+        series_kwargs["name"] += f"{segment_index:0{width}}"
+
+    # Add data iterator
+    data_iterator = _recording_traces_to_hdmf_iterator(
+        recording=recording,
+        segment_index=segment_index,
+        iterator_type=iterator_type,
+        iterator_opts=iterator_options,
+    )
+    series_kwargs["data"] = data_iterator
+
+    # Handle timestamps or rate
+    if always_write_timestamps:
+        timestamps = recording.get_times(segment_index=segment_index)
+        series_kwargs["timestamps"] = timestamps
+    else:
+        # Check if timestamps are regular
+        recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
+        if recording_has_timestamps:
+            timestamps = recording.get_times(segment_index=segment_index)
+            rate = calculate_regular_series_rate(series=timestamps)
+            recording_t_start = timestamps[0]
+        else:
+            rate = recording.get_sampling_frequency()
+            recording_t_start = recording.get_start_time(segment_index=segment_index)
+
+        if rate:
+            starting_time = float(recording_t_start)
+            series_kwargs["starting_time"] = starting_time
+            series_kwargs["rate"] = recording.get_sampling_frequency()
+        else:
+            series_kwargs["timestamps"] = timestamps
+
+    # Create the SpatialSeries instance
+    spatial_series = pynwb.behavior.SpatialSeries(**series_kwargs)
+
+    # Add to nwbfile
+    if write_as == "acquisition":
+        nwbfile.add_acquisition(spatial_series)
+    elif write_as == "processing":
+        # Create or get behavior processing module
+        behavior_module = get_module(
+            nwbfile=nwbfile,
+            name="behavior",
+            description="Processed behavioral data",
+        )
+        behavior_module.add(spatial_series)
+
+
 def add_recording_metadata_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
     """
     Add device, electrode_groups, and electrodes info to the nwbfile.
@@ -1450,18 +1571,6 @@ def add_recording_metadata_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.N
     add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
-def add_electrodes_info_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
-    """
-    Dreprecated use `add_recording_metadata_to_nwbfile` instead.
-    """
-    warnings.warn(
-        "This function is deprecated and will be removed in or October 2025. "
-        "Use the 'add_recording_metadata_to_nwbfile' function instead.",
-        DeprecationWarning,
-    )
-    add_recording_metadata_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
-
-
 def write_recording_to_nwbfile(
     recording: BaseRecording,
     nwbfile_path: FilePath | None = None,
@@ -1471,8 +1580,6 @@ def write_recording_to_nwbfile(
     verbose: bool = False,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str | None = None,
-    write_electrical_series: bool = True,
-    write_scaled: bool = False,
     *,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -1544,11 +1651,6 @@ def write_recording_to_nwbfile(
         - 'lfp' will save it as LFP, in a processing module
     es_key: str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series
-    write_electrical_series: bool, default: True
-        If True, electrical series are written in acquisition. If False, only device, electrode_groups,
-        and electrodes are written to NWB.
-    write_scaled: bool, default: True
-        If True, writes the scaled traces (return_scaled=True)
     iterator_type: {"v2",  None}
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -1615,8 +1717,6 @@ def write_recording_to_nwbfile(
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
-            write_electrical_series=write_electrical_series,
-            write_scaled=write_scaled,
             iterator_type=iterator_type,
             iterator_options=iterator_options if iterator_options is not None else iterator_opts,
         )
@@ -1677,8 +1777,6 @@ def write_recording_to_nwbfile(
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
-            write_electrical_series=write_electrical_series,
-            write_scaled=write_scaled,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
         )
@@ -1718,8 +1816,6 @@ def write_recording_to_nwbfile(
                 metadata=metadata,
                 write_as=write_as,
                 es_key=es_key,
-                write_electrical_series=write_electrical_series,
-                write_scaled=write_scaled,
                 iterator_type=iterator_type,
                 iterator_options=iterator_options,
             )
@@ -1735,45 +1831,6 @@ def write_recording_to_nwbfile(
             print(f"NWB file saved at {nwbfile_path}!")
 
         return nwbfile  # Will return None in March 2026
-
-
-def add_units_table_to_nwbfile(
-    sorting: BaseSorting,
-    nwbfile: pynwb.NWBFile,
-    unit_ids: list[str | int] | None = None,
-    property_descriptions: dict | None = None,
-    skip_properties: list[str] | None = None,
-    units_table_name: str = "units",
-    unit_table_description: str | None = None,
-    write_in_processing_module: bool = False,
-    waveform_means: np.ndarray | None = None,
-    waveform_sds: np.ndarray | None = None,
-    unit_electrode_indices: list[list[int]] | None = None,
-    null_values_for_properties: dict | None = None,
-):
-    """
-    add unist table will become a private method, use `add_sorting_to_nwbfile` instead.
-    """
-
-    warnings.warn(
-        "This function is deprecated and will be removed in or after October 2025. "
-        "Use the 'add_sorting_to_nwbfile' function instead.",
-        DeprecationWarning,
-    )
-    _add_units_table_to_nwbfile(
-        sorting=sorting,
-        nwbfile=nwbfile,
-        unit_ids=unit_ids,
-        property_descriptions=property_descriptions,
-        skip_properties=skip_properties,
-        units_table_name=units_table_name,
-        unit_table_description=unit_table_description,
-        write_in_processing_module=write_in_processing_module,
-        waveform_means=waveform_means,
-        waveform_sds=waveform_sds,
-        unit_electrode_indices=unit_electrode_indices,
-        null_values_for_properties=null_values_for_properties,
-    )
 
 
 def _add_units_table_to_nwbfile(

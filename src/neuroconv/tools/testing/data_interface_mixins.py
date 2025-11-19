@@ -1123,66 +1123,6 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
             assert_array_equal(one_photon_series.timestamps, interface_times)
 
 
-class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    """
-    A mixing for testing ScanImage Single Plane Imaging interfaces.
-    """
-
-    def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-
-            assert self.imaging_plane_name in nwbfile.imaging_planes
-            assert self.photon_series_name in nwbfile.acquisition
-
-            two_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
-            assert two_photon_series.unit == "n.a."
-            assert two_photon_series.data.dtype == np.int16
-            assert two_photon_series.rate is None
-            assert two_photon_series.starting_time is None
-
-            imaging_extractor = self.interface.imaging_extractor
-            times_from_extractor = imaging_extractor._times
-            assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
-
-            data_from_extractor = imaging_extractor.get_series()
-            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
-
-            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
-            optical_channel_names = [channel.name for channel in optical_channels]
-            assert len(optical_channels) == 1
-
-
-class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    """
-    A mixin for testing ScanImage MultiPlane Imaging interfaces.
-    """
-
-    def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-
-            assert self.imaging_plane_name in nwbfile.imaging_planes
-            assert self.photon_series_name in nwbfile.acquisition
-
-            two_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
-            assert two_photon_series.unit == "n.a."
-            assert two_photon_series.data.dtype == np.int16
-
-            assert two_photon_series.rate == self.expected_rate
-            assert two_photon_series.starting_time == self.expected_starting_time
-
-            imaging_extractor = self.interface.imaging_extractor
-            data_from_extractor = imaging_extractor.get_series()
-            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
-
-            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
-            optical_channel_names = [channel.name for channel in optical_channels]
-            assert len(optical_channels) == 1
-
-
 class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """Mixin for testing TDT Fiber Photometry interfaces."""
 
