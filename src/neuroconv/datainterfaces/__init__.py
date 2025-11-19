@@ -9,7 +9,6 @@ from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
-from .behavior.video.videodatainterface import VideoInterface
 from .behavior.video.externalvideointerface import ExternalVideoInterface
 from .behavior.video.internalvideointerface import InternalVideoInterface
 
@@ -179,7 +178,6 @@ interface_list = [
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
-    VideoInterface,
     ExternalVideoInterface,
     InternalVideoInterface,
     AudioInterface,
@@ -226,7 +224,6 @@ interfaces_by_category = dict(
     ),
     icephys=dict(Abf=AbfInterface),
     behavior=dict(
-        Video=VideoInterface,
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
         DeepLabCut=DeepLabCutInterface,

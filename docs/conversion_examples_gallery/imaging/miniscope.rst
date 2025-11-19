@@ -216,4 +216,4 @@ To summarize the workflow for aggregating multiple Miniscope acquisitions:
 2. For sequential acquisitions, use ``set_aligned_starting_time()`` to set the starting time for each acquisition to preserve the temporal relationship between them
 3. Combine interfaces with ``ConverterPipe`` using descriptive names
 4. Configure metadata with unique ``OnePhotonSeries`` names and use ``photon_series_index`` in conversion options
-5. (Optional) Add behavioral video using :py:class:`~neuroconv.datainterfaces.behavior.video.videodatainterface.VideoInterface`
+5. (Optional) Add behavioral video using :py:class:`~neuroconv.datainterfaces.behavior.video.externalvideodatainterface.ExternalVideoInterface`

@@ -322,11 +322,21 @@ For example, this function can be used to apply recommended chunking and compres
     repack_nwbfile(
         nwbfile_path="uncompressed_nwbfile.nwb",
         export_nwbfile_path="repacked_nwbfile.nwb",
-        backend="hdf5",
     )
 
 This will create a new NWB file with the same data as the original,
 but with the recommended chunking and compression settings applied.
+
+You can also convert between backends by specifying the ``export_backend`` parameter:
+
+.. code-block:: python
+
+    # Convert HDF5 to Zarr
+    repack_nwbfile(
+        nwbfile_path="file.nwb",
+        export_nwbfile_path="file.nwb.zarr",
+        export_backend="zarr",
+    )
 
 
 FAQ

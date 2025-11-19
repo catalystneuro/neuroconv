@@ -1,3 +1,4 @@
+import warnings
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal
@@ -266,6 +267,15 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
                 "Use either folder_path alone or provide file_paths with configuration_file_path."
             )
 
+        # Deprecation warning for configuration_file_path
+        if configuration_file_path is not None:
+            warnings.warn(
+                "The 'configuration_file_path' parameter is deprecated and will be removed on or after May 2026. "
+                "Use 'folder_path' instead for standard folder structures.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         # Store the device folder path for metadata extraction
         # The device folder contains metaData.json and .avi files
         if folder_path is not None:
@@ -288,6 +298,25 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         )
 
         self.photon_series_type = "OnePhotonSeries"
+
+    @staticmethod
+    def _get_session_start_time(folder_path):
+        """
+        Get session start time from the session-level metaData.json file.
+
+        Parameters
+        ----------
+        folder_path : PathType
+            Path to the folder containing the session-level metaData.json file.
+
+        Returns
+        -------
+        datetime | None
+            The session start time if available, None otherwise.
+        """
+        from roiextractors import MiniscopeImagingExtractor
+
+        return MiniscopeImagingExtractor._get_session_start_time(miniscope_folder_path=folder_path)
 
     def get_metadata(self) -> dict:
         """Get metadata with device information from Miniscope configuration."""
@@ -333,20 +362,10 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             one_photon_series_metadata.update(unit="px")
 
         # Extract session_start_time from parent folder's metaData.json if available
-        # The parent folder of the Miniscope folder may contain the recording session metaData.json
-        parent_metadata_path = self._device_folder_path.parent / "metaData.json"
-
-        if parent_metadata_path.exists():
-            from roiextractors.extractors.miniscopeimagingextractor.miniscope_utils import (
-                get_recording_start_time,
-            )
-
-            try:
-                session_start_time = get_recording_start_time(file_path=str(parent_metadata_path))
-                metadata["NWBFile"]["session_start_time"] = session_start_time
-            except KeyError:
-                # metaData.json exists but doesn't have required recording start time fields
-                pass
+        # The parent folder of the device folder contains the session-level metaData.json
+        session_start_time = self._get_session_start_time(folder_path=self._device_folder_path.parent)
+        if session_start_time is not None:
+            metadata["NWBFile"]["session_start_time"] = session_start_time
 
         return metadata
 

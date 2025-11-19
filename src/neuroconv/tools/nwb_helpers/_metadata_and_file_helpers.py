@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import FilePath
-from pynwb import NWBFile
+from pynwb import NWBFile, read_nwb
 from pynwb.file import Subject
 
 from . import (
@@ -418,7 +418,6 @@ def repack_nwbfile(
     *,
     nwbfile_path: Path,
     export_nwbfile_path: Path,
-    backend: Literal["hdf5", "zarr"] = "hdf5",
     export_backend: Literal["hdf5", "zarr", None] = None,
 ):
     """
@@ -430,20 +429,28 @@ def repack_nwbfile(
         Path to the NWB file to be repacked.
     export_nwbfile_path : Path
         Path to export the repacked NWB file.
-    backend : {"hdf5", "zarr"}, default: "hdf5"
-        The type of backend used to read the file.
     export_backend : {"hdf5", "zarr", None}, default: None
         The type of backend used to write the repacked file. If None, the same backend as the input file is used.
     """
-    export_backend = export_backend or backend
+    # Read the file using read_nwb (automatically detects backend)
+    nwbfile = read_nwb(nwbfile_path)
 
-    IO = BACKEND_NWB_IO[backend]
-    with IO(nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=export_backend)
-        configure_and_write_nwbfile(
-            nwbfile=nwbfile,
-            backend_configuration=backend_configuration,
-            nwbfile_path=export_nwbfile_path,
-            backend=export_backend,
-        )
+    # If no export backend specified, detect from the read_io attribute
+    if export_backend is None:
+        # Determine the backend from the IO class that was used to read the file
+        io_class_name = nwbfile.read_io.__class__.__name__
+        # Map IO class names to backend names
+        if "NWBHDF5IO" in io_class_name:
+            export_backend = "hdf5"
+        elif "NWBZarrIO" in io_class_name:
+            export_backend = "zarr"
+        else:
+            raise ValueError(f"Unable to determine backend from IO class: {io_class_name}")
+
+    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=export_backend)
+    configure_and_write_nwbfile(
+        nwbfile=nwbfile,
+        backend_configuration=backend_configuration,
+        nwbfile_path=export_nwbfile_path,
+        backend=export_backend,
+    )
