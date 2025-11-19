@@ -45,7 +45,7 @@ class TestMiniscopeConverter(TestCase):
         )
 
         cls.image_series_name = "BehavCamImageSeries"
-        cls.photon_series_name = "OnePhotonSeries"
+        cls.photon_series_name = "OnePhotonSeriesMiniscope"
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -97,7 +97,7 @@ class TestMiniscopeConverter(TestCase):
 
             self.assertIn(test_device_name, nwbfile.devices)
             self.assertIn(test_behavcam_name, nwbfile.devices)
-            self.assertEqual(nwbfile.devices[test_device_name], nwbfile.imaging_planes["ImagingPlane"].device)
+            self.assertEqual(nwbfile.devices[test_device_name], nwbfile.imaging_planes["ImagingPlaneMiniscope"].device)
             self.assertEqual(nwbfile.devices[test_behavcam_name], nwbfile.acquisition[self.image_series_name].device)
 
     def test_converter_in_converter(self):

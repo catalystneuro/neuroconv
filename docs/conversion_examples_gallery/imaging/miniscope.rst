@@ -12,63 +12,46 @@ Miniscope simultaneously records optical physiology and behavior in the form of 
 Miniscope Converter
 ~~~~~~~~~~~~~~~~~~~
 
-The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter` is designed for
-data where multiple recordings are organized in timestamp subfolders. It combines both imaging
-and behavioral video data streams into a single conversion. Behavioral video is handled automatically
-when present in the expected folder structure (e.g., BehavCam_2 folders).
-
-
-
-**Expected folder structure:**
-
-.. code-block::
-
-    main_folder/
-    ├── 15_03_28/              # timestamp folder
-    │   ├── Miniscope/         # imaging data
-    │   │   ├── 0.avi
-    │   │   ├── 1.avi
-    │   │   ├── metaData.json
-    │   │   └── timeStamps.csv
-    │   ├── BehavCam_2/        # behavioral video
-    │   │   ├── 0.avi
-    │   │   ├── metaData.json
-    │   │   └── timeStamps.csv
-    │   └── metaData.json
-    ├── 15_06_28/              # another timestamp folder
-    │   ├── Miniscope/
-    │   ├── BehavCam_2/
-    │   └── metaData.json
-    └── 15_12_28/
-        └── ...
+The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter` follows the folder
+hierarchy recorded by the Miniscope acquisition software. That layout is defined by the
+``directoryStructure`` array in ``UserConfigFile.json``—many templates include ``"date"`` and ``"time"`` keys (yielding
+``YYYY_MM_DD/HH_MM_SS`` folders), but users can replace those entries with any fields they prefer. The converter reads
+that configuration to discover session folders and per-device subdirectories, combining imaging and behavioral video
+streams into a single NWB conversion. Behavioral video is handled automatically when present in the dataset.
 
 
 .. code-block:: python
 
+    >>> from pathlib import Path
     >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.converters import MiniscopeConverter
     >>>
-    >>> # The 'folder_path' is the path to the main Miniscope folder containing timestamp subfolders
-    >>> folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
-    >>> converter = MiniscopeConverter(folder_path=folder_path, verbose=False)
+    >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
+    >>> converter = MiniscopeConverter(
+    ...     folder_path=folder_path,
+    ...     user_configuration_file_path=folder_path / "UserConfigFile.json",
+    ...     verbose=False,
+    ... )
     >>>
     >>> metadata = converter.get_metadata()
-    >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=ZoneInfo("US/Pacific")))
     >>>
-    >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-**Important:** The converter concatenates all recordings into a single continuous data stream.
-Timestamps are preserved to maintain the actual time gaps between acquisitions. For example,
-if you have three acquisitions at different times, they will appear as one continuous
-``OnePhotonSeries`` with timestamps showing large intervals (e.g., 180 seconds) between the last
-frame of one acquisition and the first frame of the next.
+If the configuration file is unavailable, the converter assumes the legacy layout used by historical datasets: each recording is
+stored in a timestamp-named folder that contains ``Miniscope/`` and optional ``BehavCam_*/`` subdirectories with their
+own ``metaData.json`` and ``timeStamps.csv`` files. For other arrangements, supply ``UserConfigFile.json`` so the
+converter can follow the declared directory structure.
+
+**Important:** The converter concatenates all recordings into a single continuous data stream. Timestamps are
+preserved to maintain the actual time gaps between acquisitions. For example, if you have three acquisitions at
+different times, they will appear as one continuous ``OnePhotonSeries`` with timestamps showing large intervals (e.g.,
+180 seconds) between the last frame of one acquisition and the first frame of the next.
 
 Miniscope Imaging Interface
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` provides a flexible interface
 for converting imaging data from a single Miniscope acquisition. It supports two usage modes to accommodate
@@ -201,10 +184,10 @@ we need to use ``set_aligned_starting_time()`` to shift the timestamps of the se
     ...     overwrite=True
     ... )
 
-Note that unlike ``MiniscopeConverter`` which concatenates all acquisitions into a single ``OnePhotonSeries``,
-using ``ConverterPipe`` with multiple ``MiniscopeImagingInterface`` instances writes each Miniscope acquisition
-as a separate ``OnePhotonSeries`` object in the NWB file. This gives you more control over how each acquisition
-is represented and named.
+When you instantiate multiple ``MiniscopeImagingInterface`` objects directly they still produce individual
+``OnePhotonSeries`` entries—exactly what happens under the hood when ``MiniscopeConverter`` discovers multiple
+segments for a device. With ``ConverterPipe`` you can configure metadata and conversion options explicitly, while
+``MiniscopeConverter`` handles that bookkeeping automatically based on the Miniscope configuration.
 
 If your acquisitions were **simultaneous** (e.g., recording from two brain regions at the same time), you would
 NOT need to use ``set_aligned_starting_time()`` - each interface would have its own ``OnePhotonSeries`` with
