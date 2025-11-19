@@ -67,7 +67,7 @@ jobs:
           echo "::group::Checking required environment variables"
           missing_vars=()
 
-          if [ -z "$DANDI_API_KEY" ] || [ "$DANDI_API_KEY" = "" ]; then
+          if [ -z "$DANDI_SANDBOX_API_KEY" ] || [ "$DANDI_SANDBOX_API_KEY" = "" ]; then
             missing_vars+=("DANDI_SANDBOX_API_KEY")
           fi
 
