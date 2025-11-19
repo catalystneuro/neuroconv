@@ -103,12 +103,19 @@ def run_conversion_from_yaml(
     )
 
     upload_to_dandiset = "upload_to_dandiset" in specification
-    if upload_to_dandiset and "DANDI_API_KEY" not in os.environ:
-        message = (
-            "The 'upload_to_dandiset' prompt was found in the YAML specification, "
-            "but the environment variable 'DANDI_API_KEY' was not set."
-        )
-        raise ValueError(message)
+    if upload_to_dandiset:
+        dandiset_id = specification["upload_to_dandiset"]
+        sandbox = (
+            int(dandiset_id) >= 200_000
+        )  # This is a heuristic for determining sandboxed Dandiset from the ID alone -- see https://github.com/catalystneuro/neuroconv/pull/1588 for more details
+        # Check for the appropriate API key based on whether this is a sandbox upload
+        expected_env_var = "DANDI_SANDBOX_API_KEY" if sandbox else "DANDI_API_KEY"
+        if not os.getenv(expected_env_var):
+            message = (
+                "The 'upload_to_dandiset' prompt was found in the YAML specification, "
+                f"but the environment variable '{expected_env_var}' was not set."
+            )
+            raise ValueError(message)
 
     global_metadata = specification.get("metadata", dict())
     global_conversion_options = specification.get("conversion_options", dict())
@@ -165,7 +172,9 @@ def run_conversion_from_yaml(
 
     if upload_to_dandiset:
         dandiset_id = specification["upload_to_dandiset"]
-        sandbox = int(dandiset_id) >= 200_000
+        sandbox = (
+            int(dandiset_id) >= 200_000
+        )  # This is a heuristic for determining sandboxed Dandiset from the ID alone -- see https://github.com/catalystneuro/neuroconv/pull/1588 for more details
         automatic_dandi_upload(
             dandiset_id=dandiset_id,
             nwb_folder_path=output_folder_path,
