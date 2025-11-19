@@ -26,7 +26,11 @@ def automatic_dandi_upload(
     """
     Fully automated upload of NWB files to a Dandiset.
 
-    Requires an API token set as an environment variable named ``DANDI_API_KEY``.
+    Requires an API token set as an environment variable. The variable name depends on the instance:
+    - ``DANDI_API_KEY`` for the main DANDI instance
+    - ``DANDI_SANDBOX_API_KEY`` for the DANDI sandbox instance
+    - ``EMBER_API_KEY`` for the EMBER instance
+    - ``EMBER_SANDBOX_API_KEY`` for the EMBER sandbox instance
 
     To set this in your bash terminal in Linux or macOS, run
         export DANDI_API_KEY=...
@@ -68,17 +72,7 @@ def automatic_dandi_upload(
     from dandi.organize import organize as dandi_organize
     from dandi.upload import upload as dandi_upload
 
-    if instance == "dandi":
-        assert os.getenv("DANDI_API_KEY"), (
-            "Unable to find environment variable 'DANDI_API_KEY'. "
-            "Please retrieve your token from DANDI and set this environment variable."
-        )
-    elif instance == "ember" and os.getenv("EMBER_API_KEY", None) is None:
-        message = (
-            "Unable to find environment variable 'EMBER_API_KEY'. "
-            "Please retrieve your token from EMBER and set this environment variable."
-        )
-        raise KeyError(message)
+    # Validate instance parameter first
     if instance not in ["dandi", "ember"] and not instance.startswith("https://"):
         message = "The 'instance' parameter must be either 'dandi', 'ember', or a full URL starting with 'https://'."
         raise ValueError(message)
@@ -98,18 +92,42 @@ def automatic_dandi_upload(
     if sandbox is None:
         sandbox = False
 
+    # Determine the actual dandi_instance name and URL based on instance and sandbox parameters
     if instance == "dandi" and sandbox:
         url_base = "https://sandbox.dandiarchive.org"
         dandi_instance = "dandi-sandbox"
     elif instance == "dandi" and not sandbox:
         url_base = "https://dandiarchive.org"
         dandi_instance = "dandi"
-    elif instance == "ember":
+    elif instance == "ember" and sandbox:
+        url_base = "https://dandi-sandbox.emberarchive.org"
+        dandi_instance = "ember-sandbox"
+    elif instance == "ember" and not sandbox:
         url_base = "https://dandi.emberarchive.org"
         dandi_instance = "ember"
     else:
         url_base = instance.removesuffix("/")
         dandi_instance = instance
+
+    # Check for the appropriate API key environment variable based on the determined instance
+    # Map instance names to their expected environment variable names
+    api_key_map = {
+        "dandi": "DANDI_API_KEY",
+        "dandi-sandbox": "DANDI_SANDBOX_API_KEY",
+        "ember": "EMBER_API_KEY",
+        "ember-sandbox": "EMBER_SANDBOX_API_KEY",
+    }
+
+    # Only check for known instances; custom URLs don't have a predefined env var
+    if dandi_instance in api_key_map:
+        expected_env_var = api_key_map[dandi_instance]
+        if not os.getenv(expected_env_var):
+            message = (
+                f"Unable to find environment variable '{expected_env_var}'. "
+                f"Please retrieve your token from {dandi_instance.upper().replace('-', ' ')} "
+                f"and set this environment variable."
+            )
+            raise KeyError(message)
 
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
