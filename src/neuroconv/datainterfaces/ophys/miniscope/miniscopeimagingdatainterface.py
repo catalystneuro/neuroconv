@@ -127,7 +127,10 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         metadata: dict | None = None,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "OnePhotonSeries",
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_frames: int | None = None,
+        *,
+        photon_series_index: int = 0,  # Ignore, here for backwards compatibility
+        stub_samples: int | None = None,  # Ignore, here for backwards compatibility
     ):
         """
         Add imaging data to the specified NWBFile, including device and photon series information.
@@ -141,7 +144,7 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
             The type of photon series to be added, either "TwoPhotonSeries" or "OnePhotonSeries", by default "OnePhotonSeries".
         stub_test : bool, optional
-            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            If True, only a subset of the data (defined by `stub_samples`) will be added for testing purposes,
             by default False.
         stub_frames : int, optional
             The number of frames to include if `stub_test` is True, by default 100.
@@ -152,11 +155,11 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
 
         miniscope_timestamps = self.get_original_timestamps()
         imaging_extractor = self.imaging_extractor
-
+        stub_samples = stub_frames if stub_frames is not None else stub_samples
         if stub_test:
-            stub_frames = min([stub_frames, self.imaging_extractor.get_num_samples()])
-            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_frames)
-            miniscope_timestamps = miniscope_timestamps[:stub_frames]
+            stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
+            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
+            miniscope_timestamps = miniscope_timestamps[:stub_samples]
 
         imaging_extractor.set_times(times=miniscope_timestamps)
 
