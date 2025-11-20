@@ -63,6 +63,7 @@ jobs:
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
 
       - name: Validate required credentials for live service tests
+        shell: bash
         run: |
           echo "::group::Checking required environment variables"
           missing_vars=()
