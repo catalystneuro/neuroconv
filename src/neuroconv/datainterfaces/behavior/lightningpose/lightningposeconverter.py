@@ -58,14 +58,6 @@ class LightningPoseConverter(NWBConverter):
         """
         self.verbose = verbose
 
-        # TODO: Remove after May 2026 - Replace _VideoInterface with ExternalVideoInterface/InternalVideoInterface
-        warnings.warn(
-            "LightningPoseConverter is using the deprecated _VideoInterface. "
-            "This will be replaced with ExternalVideoInterface and InternalVideoInterface in May 2026.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
         self.data_interface_objects = dict(
             OriginalVideo=_VideoInterface(file_paths=[original_video_file_path]),
             PoseEstimation=LightningPoseDataInterface(
@@ -145,11 +137,20 @@ class LightningPoseConverter(NWBConverter):
             If True, only a subset of the data will be added for testing purposes, by default False.
         """
         # Deprecate external_mode parameter
-        # TODO: Remove after May 2026
+        # TODO: Remove after May 2026 - Only external videos will be supported
         if external_mode is not True:
             warnings.warn(
                 "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
-                "It will be replaced with a choice between ExternalVideoInterface and InternalVideoInterface.",
+                "After May 2026, only external videos will be supported by LightningPoseConverter.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        # Detect old metadata structure and warn user to migrate
+        if "Videos" in metadata.get("Behavior", {}):
+            warnings.warn(
+                "The 'Videos' metadata structure is deprecated and will be removed in May 2026. "
+                "Please use 'ExternalVideos' metadata structure instead.",
                 FutureWarning,
                 stacklevel=2,
             )
@@ -208,25 +209,16 @@ class LightningPoseConverter(NWBConverter):
 
     def _convert_new_metadata_to_old(self, metadata: dict) -> dict:
         """
-        Convert new ExternalVideos/InternalVideos dict metadata to old Videos list metadata.
+        Convert new ExternalVideos dict metadata to old Videos list metadata.
 
-        TODO: Remove after May 2026 when _VideoInterface is replaced with
-        ExternalVideoInterface/InternalVideoInterface.
+        TODO: Remove after May 2026 when _VideoInterface is replaced with ExternalVideoInterface.
         """
         metadata = deepcopy(metadata)
 
         # Check if new metadata structure is being used
-        if "ExternalVideos" in metadata.get("Behavior", {}) or "InternalVideos" in metadata.get("Behavior", {}):
-            warnings.warn(
-                "The 'ExternalVideos' and 'InternalVideos' metadata structures are not yet fully supported. "
-                "They will be supported in May 2026 when ExternalVideoInterface and InternalVideoInterface replace _VideoInterface. "
-                "The metadata will be automatically converted to the legacy 'Videos' structure for this conversion.",
-                FutureWarning,
-                stacklevel=3,
-            )
-
-            # Convert ExternalVideos or InternalVideos dict to Videos list
-            videos_dict = metadata["Behavior"].get("ExternalVideos") or metadata["Behavior"].get("InternalVideos")
+        if "ExternalVideos" in metadata.get("Behavior", {}):
+            # Convert ExternalVideos dict to Videos list
+            videos_dict = metadata["Behavior"]["ExternalVideos"]
             videos_list = []
             for video_name, video_metadata in videos_dict.items():
                 video_dict = {"name": video_name}
@@ -235,11 +227,8 @@ class LightningPoseConverter(NWBConverter):
                 videos_list.append(video_dict)
 
             metadata["Behavior"]["Videos"] = videos_list
-            # Remove new structure keys
-            if "ExternalVideos" in metadata["Behavior"]:
-                del metadata["Behavior"]["ExternalVideos"]
-            if "InternalVideos" in metadata["Behavior"]:
-                del metadata["Behavior"]["InternalVideos"]
+            # Remove new structure key
+            del metadata["Behavior"]["ExternalVideos"]
 
         return metadata
 
@@ -275,6 +264,7 @@ class LightningPoseConverter(NWBConverter):
             Definition for confidence levels in pose estimation, by default None.
         external_mode : bool, optional
             DEPRECATED. This parameter will be removed in May 2026.
+            After May 2026, only external videos will be supported.
             If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
@@ -285,11 +275,11 @@ class LightningPoseConverter(NWBConverter):
 
         """
         # Deprecate external_mode parameter
-        # TODO: Remove after May 2026
+        # TODO: Remove after May 2026 - Only external videos will be supported
         if external_mode is not True:
             warnings.warn(
                 "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
-                "It will be replaced with a choice between ExternalVideoInterface and InternalVideoInterface.",
+                "After May 2026, only external videos will be supported by LightningPoseConverter.",
                 FutureWarning,
                 stacklevel=2,
             )
