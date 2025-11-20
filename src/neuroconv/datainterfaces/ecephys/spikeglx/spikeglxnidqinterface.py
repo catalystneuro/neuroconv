@@ -5,7 +5,6 @@ import numpy as np
 from pydantic import ConfigDict, DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
 
-from .spikeglx_utils import get_session_start_time
 from ....basedatainterface import BaseDataInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
 from ....utils import (
@@ -157,10 +156,23 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         return default_metadata
 
+    def _get_session_start_time(self) -> "datetime | None":
+        """
+        Fetches the session start time from the recording metadata.
+
+        Returns
+        -------
+        datetime or None
+            the session start time in datetime format.
+        """
+        from .spikeglx_utils import get_session_start_time
+
+        return get_session_start_time(self.meta)
+
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
-        session_start_time = get_session_start_time(self.meta)
+        session_start_time = self._get_session_start_time()
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 

@@ -9,7 +9,6 @@ from pydantic import DirectoryPath, FilePath, validate_call
 from .spikeglx_utils import (
     fetch_stream_id_for_spikelgx_file,
     get_device_metadata,
-    get_session_start_time,
 )
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
@@ -150,6 +149,15 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         contact_shapes = probe.contact_shapes
         self.recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
 
+        # Set ADC multiplexing properties if available
+        if "adc_group" in probe.contact_annotations:
+            adc_group = probe.contact_annotations["adc_group"]
+            self.recording_extractor.set_property(key="adc_group", ids=channel_ids, values=adc_group)
+
+        if "adc_sample_order" in probe.contact_annotations:
+            adc_sample_order = probe.contact_annotations["adc_sample_order"]
+            self.recording_extractor.set_property(key="adc_sample_order", ids=channel_ids, values=adc_sample_order)
+
         # Set channel_name property for multi-stream deduplication
         # For SpikeGLX, multiple streams (AP, LF) can record from the same electrodes
         # We set channel_name to show all streams for each electrode (e.g., "AP0,LF0")
@@ -181,9 +189,22 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
 
+    def _get_session_start_time(self) -> "datetime | None":
+        """
+        Fetches the session start time from the recording metadata.
+
+        Returns
+        -------
+        datetime or None
+            the session start time in datetime format.
+        """
+        from .spikeglx_utils import get_session_start_time
+
+        return get_session_start_time(self.meta)
+
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
-        session_start_time = get_session_start_time(self.meta)
+        session_start_time = self._get_session_start_time()
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
@@ -220,10 +241,17 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             ),
             dict(name="contact_shapes", description="The shape of the electrode"),
             dict(
-                name="inter_sample_shift",
+                name="adc_group",
                 description=(
-                    "Array of relative phase shifts for each channel, with values ranging from 0 to 1, "
-                    "representing the fractional delay within the sampling period due to sequential ADC."
+                    "The ADC (Analog-to-Digital Converter) index to which each electrode is connected. "
+                    "This hardware configuration determines which channels are sampled simultaneously."
+                ),
+            ),
+            dict(
+                name="adc_sample_order",
+                description=(
+                    "The sampling order index (0-based) of this electrode within its ADC group. "
+                    "Combined with adc_group, this determines the precise temporal offset of each channel's samples."
                 ),
             ),
         ]

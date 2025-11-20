@@ -209,6 +209,7 @@ spikegadgets = [
 ]
 spikeglx = [
     "neuroconv[ecephys_minimal]",
+    "probeinterface>=0.3.1",  # For ADC multiplexing properties (adc_group, adc_sample_order)
     "ndx-events==0.2.1",  # For adding events from the nidq recording
 ]
 tdt = [

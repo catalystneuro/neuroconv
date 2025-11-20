@@ -37,8 +37,12 @@
         "description": "The shape of the electrode"
       },
       {
-        "name": "inter_sample_shift",
-        "description": "Array of relative phase shifts for each channel, with values ranging from 0 to 1, representing the fractional delay within the sampling period due to sequential ADC."
+        "name": "adc_group",
+        "description": "The ADC (Analog-to-Digital Converter) index to which each electrode is connected. This hardware configuration determines which channels are sampled simultaneously."
+      },
+      {
+        "name": "adc_sample_order",
+        "description": "The sampling order index (0-based) of this electrode within its ADC group. Combined with adc_group, this determines the precise temporal offset of each channel's samples."
       }
     ],
     "ElectricalSeriesLF": {

@@ -202,6 +202,14 @@ def test_electrode_table_writing(tmp_path):
     expected_channel_names_ap = recording_extractor.get_property("channel_name")
     np.testing.assert_array_equal(saved_channel_names, expected_channel_names_ap)
 
+    # Test ADC properties for AP stream
+    saved_adc_group = electrodes_table[region_indices]["adc_group"]
+    saved_adc_sample_order = electrodes_table[region_indices]["adc_sample_order"]
+    expected_adc_group = recording_extractor.get_property("adc_group")
+    expected_adc_sample_order = recording_extractor.get_property("adc_sample_order")
+    np.testing.assert_array_equal(saved_adc_group, expected_adc_group)
+    np.testing.assert_array_equal(saved_adc_sample_order, expected_adc_sample_order)
+
     # Test LF
     electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
     lf_electrodes_table_region = electrical_series.electrodes
