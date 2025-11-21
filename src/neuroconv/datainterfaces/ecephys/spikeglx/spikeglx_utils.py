@@ -70,6 +70,11 @@ def get_device_metadata(meta) -> dict:
     """Returns a device with description including the metadata as described here
     # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
 
+    .. deprecated:: 0.7.0
+        This function is deprecated and will be removed in May 2026 or later.
+        Use SpikeGLXRecordingInterface._get_device_metadata_from_probe() instead,
+        which extracts device metadata directly from probe information.
+
     Parameters
     ----------
     meta : dict
@@ -80,6 +85,14 @@ def get_device_metadata(meta) -> dict:
     dict
         a dict containing the metadata necessary for creating the device
     """
+    import warnings
+
+    warnings.warn(
+        "get_device_metadata is deprecated and will be removed in May 2026 or later. "
+        "Use SpikeGLXRecordingInterface._get_device_metadata_from_probe() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     # TODO, get probe metadata from spikeinterface
     metadata_dict = dict()
     if "imDatPrb_type" in meta:

@@ -8,7 +8,6 @@ from pydantic import DirectoryPath, FilePath, validate_call
 
 from .spikeglx_utils import (
     fetch_stream_id_for_spikelgx_file,
-    get_device_metadata,
     get_session_start_time,
 )
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -181,6 +180,60 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
 
+    def _get_device_metadata_from_probe(self) -> dict:
+        """Returns device metadata extracted from probe information.
+
+        Returns
+        -------
+        dict
+            A dict containing the metadata necessary for creating the device.
+        """
+        import json
+
+        # Get probe info from recording extractor annotation
+        probes_info = self.recording_extractor.get_annotation("probes_info")
+        probe_info = probes_info[0]  # Get first probe info
+
+        metadata_dict = dict()
+
+        # Add available fields from probe_info
+
+        # Serial number is a separate field in device metadata
+        serial_number = probe_info.get("serial_number")
+
+        if "part_number" in probe_info:
+            metadata_dict.update(part_number=probe_info["part_number"])
+
+        if "port" in probe_info:
+            metadata_dict.update(port=probe_info["port"])
+
+        if "slot" in probe_info:
+            metadata_dict.update(slot=probe_info["slot"])
+
+        if "model_name" in probe_info:
+            metadata_dict.update(model_name=probe_info["model_name"])
+
+        # Use description from probe_info if available
+        description_string = probe_info.get("description", "A Neuropixel probe of unknown subtype.")
+
+        # Get manufacturer from probe_info, default to "Imec"
+        manufacturer = probe_info.get("manufacturer", "Imec")
+
+        # Add manufacturer to metadata_dict
+        metadata_dict.update(manufacturer=manufacturer)
+
+        # Append additional metadata to description as JSON
+        if metadata_dict:
+            description_string = f"{description_string}. Additional metadata: {json.dumps(metadata_dict)}"
+
+        device_metadata = dict(name="NeuropixelImec", description=description_string)
+
+        # Add serial_number as a separate field if available
+        if serial_number:
+            device_metadata["serial_number"] = serial_number
+
+        return device_metadata
+
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
@@ -188,7 +241,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
         # Device metadata
-        device = get_device_metadata(self.meta)
+        device = self._get_device_metadata_from_probe()
 
         # Should follow pattern 'Imec0', 'Imec1', etc.
         probe_name = self._signals_info_dict["device"].capitalize()

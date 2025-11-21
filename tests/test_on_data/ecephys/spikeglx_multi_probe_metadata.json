@@ -6,13 +6,13 @@
     "Device": [
       {
         "name": "NeuropixelsImec0",
-        "description": "{\"probe_type\": \"0\", \"probe_type_description\": \"NP1.0\", \"flex_part_number\": \"NP2_FLEX_0\", \"connected_base_station_part_number\": \"NP2_QBSC_00\"}",
-        "manufacturer": "Imec"
+        "description": "Neuropixels 1.0 probe. Additional metadata: {\"part_number\": \"PRB_1_4_0480_1\", \"port\": \"1\", \"slot\": \"2\", \"model_name\": \"PRB_1_4_0480_1\", \"manufacturer\": \"imec\"}",
+        "serial_number": "18194803162"
       },
       {
         "name": "NeuropixelsImec1",
-        "description": "{\"probe_type\": \"0\", \"probe_type_description\": \"NP1.0\", \"flex_part_number\": \"NP2_FLEX_0\", \"connected_base_station_part_number\": \"NP2_QBSC_00\"}",
-        "manufacturer": "Imec"
+        "description": "Neuropixels 1.0 probe. Additional metadata: {\"part_number\": \"PRB_1_4_0480_1\", \"port\": \"2\", \"slot\": \"2\", \"model_name\": \"PRB_1_4_0480_1\", \"manufacturer\": \"imec\"}",
+        "serial_number": "18194803842"
       }
     ],
     "ElectrodeGroup": [

@@ -724,13 +724,8 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 3, 10, 35, 10)
         assert metadata["Ecephys"]["Device"][-1] == dict(
             name="NeuropixelsImec0",
-            description="{"
-            '"probe_type": "0", '
-            '"probe_type_description": "NP1.0", '
-            '"flex_part_number": "NP2_FLEX_0", '
-            '"connected_base_station_part_number": "NP2_QBSC_00"'
-            "}",
-            manufacturer="Imec",
+            description='Neuropixels 1.0 probe. Additional metadata: {"part_number": "PRB_1_4_0480_1", "port": "2", "slot": "2", "model_name": "PRB_1_4_0480_1", "manufacturer": "imec"}',
+            serial_number="18194809281",
         )
 
 
@@ -752,13 +747,8 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 1, 3, 11, 51, 51)
         assert metadata["Ecephys"]["Device"][-1] == dict(
             name="NeuropixelsImec0",
-            description="{"
-            '"probe_type": "1030", '
-            '"probe_type_description": "NP1.0 NHP", '
-            '"flex_part_number": "NPNH_AFLEX_00", '
-            '"connected_base_station_part_number": "NP2_QBSC_00"'
-            "}",
-            manufacturer="Imec",
+            description='Neuropixels 1.0 NHP long linear probe with cap. Additional metadata: {"part_number": "NP1032", "port": "2", "slot": "2", "model_name": "NP1032", "manufacturer": "imec"}',
+            serial_number="22327214192",
         )
 
 
