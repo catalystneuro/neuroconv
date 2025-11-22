@@ -8,7 +8,50 @@ from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
 class SpikeGLXSyncChannelInterface(BaseDataInterface):
-    """Data interface for SpikeGLX synchronization channels from Neuropixel probes."""
+    """
+    Data interface for SpikeGLX synchronization channels from Neuropixel probes.
+
+    SpikeGLX records synchronization channels (labeled as SY0) as the last channel in Neuropixel
+    probe data streams. These channels contain a 16-bit status word where bit 6 carries a 1 Hz
+    square wave (toggling between 0 and 1 every 0.5 seconds) used for sub-millisecond timing
+    alignment across multiple acquisition devices and data streams. The other bits in the status
+    word carry hardware status and error flags.
+
+    Technical Details
+    -----------------
+    - **Neuropixels 1.0**: The sync channel appears identically in both AP and LF files, providing
+      redundant timing information for alignment.
+    - **Neuropixels 2.0** (full-band): The sync channel appears in the single AP file.
+    - **Sync Generation**: Can be generated internally by the Imec module (PXIe or OneBox) or
+      externally by an NI-DAQ device acting as the master sync generator.
+    - **Multi-probe setups**: The same 1 Hz sync pulse is distributed to all probes, enabling
+      precise cross-probe alignment by matching the rising edges in each stream's sync channel.
+
+    When to Use
+    -----------
+    Use this interface when you need explicit control over which sync channel to convert. For most
+    use cases, the :py:class:`~neuroconv.converters.SpikeGLXConverterPipe` is recommended, which
+    automatically includes sync channels (one per probe, preferring AP over LF) by default.
+
+    Use this interface directly when you need to:
+    - Convert only a specific sync channel stream
+    - Handle sync channels separately from neural data
+
+    See Also
+    --------
+    :py:class:`~neuroconv.converters.SpikeGLXConverterPipe` : Recommended for most use cases
+    :py:class:`~neuroconv.datainterfaces.SpikeGLXRecordingInterface` : For neural data streams
+    :py:class:`~neuroconv.datainterfaces.SpikeGLXNIDQInterface` : For NIDQ analog/digital channels
+
+    Notes
+    -----
+    Valid stream_id formats include:
+    - "imec0.ap-SYNC" : AP sync channel from probe 0
+    - "imec1.lf-SYNC" : LF sync channel from probe 1
+    - "imec2.ap-SYNC" : AP sync channel from probe 2
+
+    The sync channel is stored as a TimeSeries in the NWB file's acquisition group
+    """
 
     display_name = "SpikeGLX Sync Channel"
     keywords = ("Neuropixels", "sync", "synchronization", "SpikeGLX")
