@@ -1,15 +1,13 @@
 """DataInterfaces for SpikeGLX."""
 
 import warnings
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 from pydantic import DirectoryPath, FilePath, validate_call
 
-from .spikeglx_utils import (
-    fetch_stream_id_for_spikelgx_file,
-    get_session_start_time,
-)
+from .spikeglx_utils import fetch_stream_id_for_spikelgx_file
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
@@ -149,6 +147,15 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         contact_shapes = probe.contact_shapes
         self.recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
 
+        # Set ADC multiplexing properties if available
+        if "adc_group" in probe.contact_annotations:
+            adc_group = probe.contact_annotations["adc_group"]
+            self.recording_extractor.set_property(key="adc_group", ids=channel_ids, values=adc_group)
+
+        if "adc_sample_order" in probe.contact_annotations:
+            adc_sample_order = probe.contact_annotations["adc_sample_order"]
+            self.recording_extractor.set_property(key="adc_sample_order", ids=channel_ids, values=adc_sample_order)
+
         # Set channel_name property for multi-stream deduplication
         # For SpikeGLX, multiple streams (AP, LF) can record from the same electrodes
         # We set channel_name to show all streams for each electrode (e.g., "AP0,LF0")
@@ -179,6 +186,97 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             channel_names.append(channel_name)
 
         self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        session_start_time = self._get_session_start_time()
+        if session_start_time:
+            metadata["NWBFile"]["session_start_time"] = session_start_time
+
+        # Device metadata
+        device = self._get_device_metadata_from_probe()
+
+        # Should follow pattern 'Imec0', 'Imec1', etc.
+        probe_name = self._signals_info_dict["device"].capitalize()
+        device["name"] = f"Neuropixels{probe_name}"
+
+        # Add groups metadata
+        metadata["Ecephys"]["Device"] = [device]
+        electrode_groups = [
+            dict(
+                name=group_name,
+                description=f"A group representing probe/shank '{group_name}'.",
+                location="unknown",
+                device=device["name"],
+            )
+            for group_name in set(self.recording_extractor.get_property("group_name"))
+        ]
+        metadata["Ecephys"]["ElectrodeGroup"] = electrode_groups
+
+        # Electrodes columns descriptions
+        metadata["Ecephys"]["Electrodes"] = [
+            dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
+            dict(
+                name="electrode_name",
+                description=(
+                    "The unique name of this electrode. Derived from probe contact identifiers. "
+                    "Multiple channels (e.g., AP and LF bands) from the same physical electrode "
+                    "will share the same electrode_name."
+                ),
+            ),
+            dict(name="contact_shapes", description="The shape of the electrode"),
+            dict(
+                name="adc_group",
+                description=(
+                    "The ADC (Analog-to-Digital Converter) index to which each electrode is connected. "
+                    "This hardware configuration determines which channels are sampled simultaneously."
+                ),
+            ),
+            dict(
+                name="adc_sample_order",
+                description=(
+                    "The sampling order index (0-based) of this electrode within its ADC group. "
+                    "Combined with adc_group, this determines the precise temporal offset of each channel's samples."
+                ),
+            ),
+        ]
+
+        if self.recording_extractor.get_probe().get_shank_count() > 1:
+            metadata["Ecephys"]["Electrodes"].append(
+                dict(name="shank_ids", description="The shank id of the electrode")
+            )
+
+        return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        new_recording = self._initialize_extractor(
+            self.source_data
+        )  # TODO: add generic method for aliasing from NeuroConv signature to SI init
+        if self._number_of_segments == 1:
+            return new_recording.get_times()
+        else:
+            return [
+                new_recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
+
+    def _get_session_start_time(self) -> datetime | None:
+        """
+        Fetches the session start time from the recording metadata.
+
+        Returns
+        -------
+        datetime or None
+            the session start time in datetime format.
+        """
+        session_start_time = self.meta.get("fileCreateTime", None)
+        if session_start_time.startswith("0000-00-00"):
+            # date was removed. This sometimes happens with human data to protect the
+            # anonymity of medical patients.
+            return
+        if session_start_time:
+            session_start_time = datetime.fromisoformat(session_start_time)
+        return session_start_time
 
     def _get_device_metadata_from_probe(self) -> dict:
         """Returns device metadata extracted from probe information.
@@ -233,69 +331,3 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             device_metadata["serial_number"] = serial_number
 
         return device_metadata
-
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
-        session_start_time = get_session_start_time(self.meta)
-        if session_start_time:
-            metadata["NWBFile"]["session_start_time"] = session_start_time
-
-        # Device metadata
-        device = self._get_device_metadata_from_probe()
-
-        # Should follow pattern 'Imec0', 'Imec1', etc.
-        probe_name = self._signals_info_dict["device"].capitalize()
-        device["name"] = f"Neuropixels{probe_name}"
-
-        # Add groups metadata
-        metadata["Ecephys"]["Device"] = [device]
-        electrode_groups = [
-            dict(
-                name=group_name,
-                description=f"A group representing probe/shank '{group_name}'.",
-                location="unknown",
-                device=device["name"],
-            )
-            for group_name in set(self.recording_extractor.get_property("group_name"))
-        ]
-        metadata["Ecephys"]["ElectrodeGroup"] = electrode_groups
-
-        # Electrodes columns descriptions
-        metadata["Ecephys"]["Electrodes"] = [
-            dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
-            dict(
-                name="electrode_name",
-                description=(
-                    "The unique name of this electrode. Derived from probe contact identifiers. "
-                    "Multiple channels (e.g., AP and LF bands) from the same physical electrode "
-                    "will share the same electrode_name."
-                ),
-            ),
-            dict(name="contact_shapes", description="The shape of the electrode"),
-            dict(
-                name="inter_sample_shift",
-                description=(
-                    "Array of relative phase shifts for each channel, with values ranging from 0 to 1, "
-                    "representing the fractional delay within the sampling period due to sequential ADC."
-                ),
-            ),
-        ]
-
-        if self.recording_extractor.get_probe().get_shank_count() > 1:
-            metadata["Ecephys"]["Electrodes"].append(
-                dict(name="shank_ids", description="The shank id of the electrode")
-            )
-
-        return metadata
-
-    def get_original_timestamps(self) -> np.ndarray:
-        new_recording = self._initialize_extractor(
-            self.source_data
-        )  # TODO: add generic method for aliasing from NeuroConv signature to SI init
-        if self._number_of_segments == 1:
-            return new_recording.get_times()
-        else:
-            return [
-                new_recording.get_times(segment_index=segment_index)
-                for segment_index in range(self._number_of_segments)
-            ]
