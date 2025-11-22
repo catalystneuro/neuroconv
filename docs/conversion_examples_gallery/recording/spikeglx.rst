@@ -15,6 +15,11 @@ SpikeGLXConverter
 We can easily convert all data stored in the native SpikeGLX folder structure to NWB using
 :py:class:`~neuroconv.converters.SpikeGLXConverterPipe`.
 
+By default, the converter includes synchronization channels from Neuropixel probes (one per probe).
+These channels contain a 16-bit status word where bit 6 carries a 1 Hz square wave (toggling every
+0.5 seconds) used for sub-millisecond timing alignment across acquisition devices. To exclude sync
+channels, set ``include_sync_channels=False``.
+
 .. code-block:: python
 
     >>> from datetime import datetime
@@ -23,6 +28,7 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
     >>> from neuroconv.converters import SpikeGLXConverterPipe
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0"
+    >>> # Sync channels are included by default
     >>> converter = SpikeGLXConverterPipe(folder_path=folder_path)
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()
@@ -133,4 +139,51 @@ interfaces in the same conversion, each interface must have a unique ``metadata_
     >>>
     >>> # Run conversion with custom metadata
     >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+
+Synchronization Channels
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SpikeGLX records synchronization channels (labeled as SY0) as the last channel in Neuropixel probe data streams.
+These channels contain a 16-bit status word where **bit 6** carries a **1 Hz square wave** (toggling between 0 and 1
+every 0.5 seconds) used for sub-millisecond timing alignment across multiple acquisition devices and data streams.
+The other bits in the status word carry hardware status and error flags.
+
+**Key technical details:**
+
+- For **Neuropixels 1.0**, the sync channel appears **identically** in both AP and LF files, providing redundant
+  timing information for alignment.
+- For **Neuropixels 2.0** (full-band), the sync channel appears in the single AP file.
+- The sync signal can be generated either **internally** by the Imec module (PXIe or OneBox) or **externally**
+  by an NI-DAQ device acting as the master sync generator.
+- In **multi-probe** setups, the same 1 Hz sync pulse is distributed to all probes, enabling precise cross-probe
+  alignment by matching the rising edges in each stream's sync channel.
+- When using **NIDQ**, the sync pulse is typically recorded on a designated analog or digital input channel
+  rather than in a dedicated status word.
+
+By default, the :py:class:`~neuroconv.converters.SpikeGLXConverterPipe` includes sync channels (one per probe,
+preferring AP over LF when both are available). For more control over specific sync channels, you can use
+:py:class:`~neuroconv.datainterfaces.ecephys.spikeglx.spikeglxsyncchannelinterface.SpikeGLXSyncChannelInterface`.
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import SpikeGLXSyncChannelInterface
+    >>>
+    >>> # For this interface we need to specify the sync stream ID
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0"
+    >>> # Options for sync streams: "imec0.ap-SYNC", "imec0.lf-SYNC", "imec1.ap-SYNC", etc.
+    >>> interface = SpikeGLXSyncChannelInterface(folder_path=folder_path, stream_id="imec0.ap-SYNC", verbose=False)
+    >>>
+    >>> # Extract what metadata we can from the source files
+    >>> metadata = interface.get_metadata()
+    >>> # For data provenance we add the time zone information to the conversion
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>>
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> nwbfile_path = output_folder / "my_spikeglx_sync.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
