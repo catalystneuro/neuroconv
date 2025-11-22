@@ -22,6 +22,7 @@
 * Added `add_recording_as_spatial_series_to_nwbfile` function to write SpikeInterface recordings as `SpatialSeries` for behavioral tracking data (e.g., position, head direction, gaze tracking). [PR #1574](https://github.com/catalystneuro/neuroconv/pull/1574)
 * Enhanced `SpikeGLXNIDQInterface` to support custom metadata for digital channels, enabling users to specify semantic labels, descriptions, and names for NIDQ digital events. Added `metadata_key` parameter to support multiple NIDQ interfaces in the same conversion. [PR #1580](https://github.com/catalystneuro/neuroconv/pull/1580)
 * Miniscope converter now uses the configuration file to read general folder structures [PR #1528](https://github.com/catalystneuro/neuroconv/pull/1528)
+* Added ADC multiplexing properties (`adc_group` and `adc_sample_order`) to SpikeGLX recordings. These properties preserve hardware provenance information about which ADC each electrode is connected to and its sampling order, enabling downstream computation of inter-sample shifts even when channels are sliced. Requires probeinterface >= 0.3.1. [PR #1597](https://github.com/catalystneuro/neuroconv/pull/1597)
 
 ## Improvements
 * Added comprehensive how-to guide "How to Add Behavioral and Sensor Data from Acquisition Systems" documenting usage of `add_recording_as_time_series_to_nwbfile` and `add_recording_as_spatial_series_to_nwbfile` for adding behavioral data from any SpikeInterface-supported format. [PR #1575](https://github.com/catalystneuro/neuroconv/pull/1575)
