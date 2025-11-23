@@ -200,9 +200,10 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         if "TimeSeries" not in metadata:
             metadata["TimeSeries"] = {}
 
-        # Generate TimeSeries name based on probe and stream kind
-        # Example: "TimeSeriesSyncImec0AP" for imec0.ap-SYNC
-        timeseries_name = f"TimeSeriesSyncImec{self._probe_index}{self._stream_kind}"
+        # Generate TimeSeries name based on probe only (band info in description)
+        # Example: "TimeSeriesImec0Sync" for imec0.ap-SYNC or imec0.lf-SYNC
+        # Multi-segment recordings will have segment suffix added automatically (e.g., "TimeSeriesImec0Sync0")
+        timeseries_name = f"TimeSeriesImec{self._probe_index}Sync"
 
         metadata["TimeSeries"][self.metadata_key] = {
             "name": timeseries_name,

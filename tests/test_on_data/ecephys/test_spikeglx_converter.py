@@ -195,15 +195,15 @@ class TestMultiProbeSpikeGLXConverter:
 
         # Check sync channels - multi-segment recordings get segment suffixes like electrical series
         # This data has 4 segments, so we expect segment indices 0-3 for each probe
-        assert "TimeSeriesSyncImec0AP0" in nwbfile.acquisition
-        assert "TimeSeriesSyncImec0AP1" in nwbfile.acquisition
-        assert "TimeSeriesSyncImec0AP2" in nwbfile.acquisition
-        assert "TimeSeriesSyncImec0AP3" in nwbfile.acquisition
+        assert "TimeSeriesImec0Sync0" in nwbfile.acquisition
+        assert "TimeSeriesImec0Sync1" in nwbfile.acquisition
+        assert "TimeSeriesImec0Sync2" in nwbfile.acquisition
+        assert "TimeSeriesImec0Sync3" in nwbfile.acquisition
         # Second probe sync channel
-        assert "TimeSeriesSyncImec1AP0" in nwbfile.acquisition
-        assert "TimeSeriesSyncImec1AP1" in nwbfile.acquisition
-        assert "TimeSeriesSyncImec1AP2" in nwbfile.acquisition
-        assert "TimeSeriesSyncImec1AP3" in nwbfile.acquisition
+        assert "TimeSeriesImec1Sync0" in nwbfile.acquisition
+        assert "TimeSeriesImec1Sync1" in nwbfile.acquisition
+        assert "TimeSeriesImec1Sync2" in nwbfile.acquisition
+        assert "TimeSeriesImec1Sync3" in nwbfile.acquisition
 
         # Total: 16 electrical series (2 probes × 2 streams × 4 segments) + 8 sync TimeSeries (2 probes × 4 segments)
         assert len(nwbfile.acquisition) == 24
@@ -228,8 +228,8 @@ class TestMultiProbeSpikeGLXConverter:
         nwbfile = converter.create_nwbfile()
 
         # Verify sync channels are NOT present
-        assert "TimeSeriesSyncImec0AP" not in nwbfile.acquisition
-        assert "TimeSeriesSyncImec1AP" not in nwbfile.acquisition
+        assert "TimeSeriesImec0Sync" not in nwbfile.acquisition
+        assert "TimeSeriesImec1Sync" not in nwbfile.acquisition
 
         # Total: 16 electrical series only (no sync channels)
         assert len(nwbfile.acquisition) == 16

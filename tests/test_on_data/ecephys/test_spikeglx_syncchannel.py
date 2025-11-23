@@ -55,7 +55,7 @@ class TestSpikeGLXSyncChannelInterface:
         }
 
         expected_timeseries = {
-            "name": "TimeSeriesSyncImec0AP",
+            "name": "TimeSeriesImec0Sync",
             "description": (
                 "Synchronization channel (SY0) from Neuropixel probe 0 "
                 "AP stream (stream: imec0.ap-SYNC). Contains a 16-bit status word where bit 6 carries a 1 Hz "
@@ -108,11 +108,11 @@ class TestSpikeGLXSyncChannelInterface:
             assert device.manufacturer == "Imec"
 
             # Check that TimeSeries was added to acquisition
-            assert "TimeSeriesSyncImec0AP" in nwbfile.acquisition
-            timeseries = nwbfile.acquisition["TimeSeriesSyncImec0AP"]
+            assert "TimeSeriesImec0Sync" in nwbfile.acquisition
+            timeseries = nwbfile.acquisition["TimeSeriesImec0Sync"]
 
             # Verify TimeSeries properties
-            assert timeseries.name == "TimeSeriesSyncImec0AP"
+            assert timeseries.name == "TimeSeriesImec0Sync"
             assert "Synchronization channel" in timeseries.description
 
             # Verify shape as tuple and exact sampling rate
@@ -131,7 +131,7 @@ class TestSpikeGLXSyncChannelInterface:
 
         # Verify stub creates exactly 100 samples
         # Note: iterator_type=None means data is not wrapped in an iterator so we can access shape directly
-        timeseries = nwbfile.acquisition["TimeSeriesSyncImec0AP"]
+        timeseries = nwbfile.acquisition["TimeSeriesImec0Sync"]
         assert timeseries.data.shape == (100, 1)  # Exactly 100 samples, 1 channel
 
     def test_adding_sync_from_lf_band(self):
@@ -147,15 +147,15 @@ class TestSpikeGLXSyncChannelInterface:
 
         # Verify metadata is generated correctly for LF stream
         metadata = interface.get_metadata()
-        assert metadata["TimeSeries"]["SpikeGLXSync"]["name"] == "TimeSeriesSyncImec0LF"
+        assert metadata["TimeSeries"]["SpikeGLXSync"]["name"] == "TimeSeriesImec0Sync"
         assert "LF stream" in metadata["TimeSeries"]["SpikeGLXSync"]["description"]
 
         # Create NWBFile without iterator wrapping to access data directly
         nwbfile = interface.create_nwbfile(stub_test=True, iterator_type=None)
 
         # Verify TimeSeries is present
-        assert "TimeSeriesSyncImec0LF" in nwbfile.acquisition
-        timeseries = nwbfile.acquisition["TimeSeriesSyncImec0LF"]
+        assert "TimeSeriesImec0Sync" in nwbfile.acquisition
+        timeseries = nwbfile.acquisition["TimeSeriesImec0Sync"]
 
         # Verify shape as tuple
         assert timeseries.data.shape == (100, 1)
