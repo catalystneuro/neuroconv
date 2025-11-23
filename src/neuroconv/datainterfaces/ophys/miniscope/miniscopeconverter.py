@@ -267,6 +267,65 @@ class MiniscopeConverter(ConverterPipe):
                     "Miniscope behavior videos were not found under the provided folder and will be omitted from conversion."
                 )
 
+        # Align session start times across all imaging interfaces
+        self._align_session_start_times()
+
+    def _align_session_start_times(self):
+        """
+        Align all Miniscope imaging interfaces to a common session start time.
+
+        For each interface:
+        1. Extract its session_start_time from the session-level metaData.json
+        2. Find the minimum session_start_time across all interfaces
+        3. Shift each interface's timestamps by (session_start_time - min_session_start_time)
+
+        This ensures that sessions recorded at different times maintain their temporal relationship.
+        """
+        # Get ophys interface names (exclude behavior camera)
+        ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
+
+        # Calculate session_start_time for each interface
+        session_start_times = {}
+        for interface_name in ophys_interface_names:
+            interface = self.data_interface_objects[interface_name]
+
+            # Handle different interface types
+            if hasattr(interface, "_device_folder_path"):
+                # MiniscopeImagingInterface (config file mode)
+                device_folder_path = interface._device_folder_path
+                # The parent folder contains the session-level metaData.json with session_start_time
+                session_start_time = interface._get_session_start_time(folder_path=device_folder_path.parent)
+            elif hasattr(interface, "_recording_start_times"):
+                # _MiniscopeMultiRecordingInterface (legacy mode)
+                # This interface manages multiple recordings, use the first start time
+                session_start_time = interface._recording_start_times[0] if interface._recording_start_times else None
+            else:
+                session_start_time = None
+
+            if session_start_time is not None:
+                session_start_times[interface_name] = session_start_time
+
+        if not session_start_times:
+            # No session start times found, nothing to align
+            self._converter_session_start_time = None
+            return
+
+        # Find the minimum session_start_time (this becomes the reference)
+        min_session_start_time = min(session_start_times.values())
+
+        # Store the minimum session start time for use in get_metadata()
+        self._converter_session_start_time = min_session_start_time
+
+        # Align each interface's timestamps
+        for interface_name, session_start_time in session_start_times.items():
+            interface = self.data_interface_objects[interface_name]
+
+            # Calculate the time offset in seconds
+            time_offset = (session_start_time - min_session_start_time).total_seconds()
+
+            # Shift the interface timestamps
+            interface.set_aligned_starting_time(aligned_starting_time=time_offset)
+
     def get_metadata(self):
         from neuroconv.tools.roiextractors.roiextractors import (
             _get_default_ophys_metadata,
@@ -274,6 +333,9 @@ class MiniscopeConverter(ConverterPipe):
 
         default_ophys_metadata = _get_default_ophys_metadata()
         metadata = super().get_metadata()
+
+        # Use the minimum session start time if it was calculated during alignment
+        metadata["NWBFile"]["session_start_time"] = self._converter_session_start_time
 
         ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
 
