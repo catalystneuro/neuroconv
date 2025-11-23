@@ -37,8 +37,8 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
 Note that by default, the converter includes synchronization channels from Neuropixel probes (one per probe).
 This can be controlled with the ``include_sync_channels`` argument of the :py:class:`~neuroconv.converters.SpikeGLXConverterPipe`.
 
-Single-band
-~~~~~~~~~~~
+Single-stream
+~~~~~~~~~~~~~
 
 Defining a 'stream' as a single band on a single NeuroPixels probe, we can convert either an AP or LF SpikeGLX stream to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface.SpikeGLXRecordingInterface`.
