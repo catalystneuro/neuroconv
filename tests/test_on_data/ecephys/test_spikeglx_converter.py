@@ -170,16 +170,28 @@ class TestMultiProbeSpikeGLXConverter:
         # The timezone is set by pynwb automatically
         assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
 
-        # Check electrical series acquisition objects
+        # Check electrical series acquisition objects - all 4 segments for each stream
         # TODO: improve name of segments using 'Segment{index}' for clarity
+        # Probe 0 AP stream (4 segments)
         assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
         assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec02" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec03" in nwbfile.acquisition
+        # Probe 1 AP stream (4 segments)
         assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
         assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec12" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec13" in nwbfile.acquisition
+        # Probe 0 LF stream (4 segments)
         assert "ElectricalSeriesLFImec00" in nwbfile.acquisition
         assert "ElectricalSeriesLFImec01" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec02" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec03" in nwbfile.acquisition
+        # Probe 1 LF stream (4 segments)
         assert "ElectricalSeriesLFImec10" in nwbfile.acquisition
         assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec12" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec13" in nwbfile.acquisition
 
         # Check sync channels - multi-segment recordings get segment suffixes like electrical series
         # This data has 4 segments, so we expect segment indices 0-3 for each probe
@@ -187,6 +199,7 @@ class TestMultiProbeSpikeGLXConverter:
         assert "TimeSeriesSyncImec0AP1" in nwbfile.acquisition
         assert "TimeSeriesSyncImec0AP2" in nwbfile.acquisition
         assert "TimeSeriesSyncImec0AP3" in nwbfile.acquisition
+        # Second probe sync channel
         assert "TimeSeriesSyncImec1AP0" in nwbfile.acquisition
         assert "TimeSeriesSyncImec1AP1" in nwbfile.acquisition
         assert "TimeSeriesSyncImec1AP2" in nwbfile.acquisition
