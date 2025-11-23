@@ -1309,7 +1309,7 @@ def _add_time_series_segment_to_nwbfile(
         recording=recording,
         segment_index=segment_index,
         iterator_type=iterator_type,
-        iterator_opts=iterator_options,
+        iterator_opts=iterator_opts,
     )
     tseries_kwargs.update(data=data_iterator)
 
