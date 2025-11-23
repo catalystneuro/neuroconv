@@ -256,7 +256,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         Get configuration for a digital channel from metadata or use defaults.
 
         This method can be overridden in subclasses to provide custom channel configurations.
-        For example, IBL-specific interfaces can override this to provide semantic channel names.
 
         Parameters
         ----------
@@ -359,6 +358,8 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         groups = []
 
+        # TODO: remove _get_analog_channel_groups once the deprecation in in-place and
+        # we implement metadata validation for the channels and name fields
         for config_key, config in ts_configs.items():
             # Validate required fields
             if "channels" not in config:
@@ -367,10 +368,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 raise ValueError(f"Configuration '{config_key}' missing required 'name' field")
 
             channels = config["channels"]
-
-            # Note: Invalid channel IDs will be caught by SpikeInterface's select_channels()
-            # which raises AssertionError if channel_ids not in parent recording.
-            # Duplicate channels across TimeSeries are allowed.
 
             # Prepare TimeSeries metadata (remove "channels" field)
             ts_metadata = {k: v for k, v in config.items() if k != "channels"}
@@ -476,15 +473,15 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             return
 
         # Create a TimeSeries for each group
-        for channels, ts_config in channel_groups:
+        for channels, ts_metadata in channel_groups:
             # Select subset of channels
             channel_recording = recording.select_channels(channel_ids=channels)
 
             # Create metadata structure for this TimeSeries
-            ts_name = ts_config["name"]
+            ts_name = ts_metadata["name"]
             temp_metadata_key = f"{self.metadata_key}_{ts_name}"
 
-            temp_metadata = {"TimeSeries": {temp_metadata_key: ts_config}}
+            temp_metadata = {"TimeSeries": {temp_metadata_key: ts_metadata}}
 
             # Write this group as a TimeSeries
             add_recording_as_time_series_to_nwbfile(
