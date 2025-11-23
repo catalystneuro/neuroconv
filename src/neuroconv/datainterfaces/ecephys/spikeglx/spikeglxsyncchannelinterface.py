@@ -132,25 +132,25 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         )
 
         # Extract probe information from stream_id
-        # Example: "imec0.ap-SYNC" -> probe_index="0", stream_kind="ap"
+        # Example: "imec0.ap-SYNC" -> _probe_index="0", _stream_kind="ap"
         base_stream_id = self.stream_id.replace("-SYNC", "")  # "imec0.ap"
         parts = base_stream_id.split(".")
 
         # Extract device (e.g., "imec0")
         device_part = parts[0]  # "imec0"
-        self.probe_index = device_part.replace("imec", "")  # "0"
+        self._probe_index = device_part.replace("imec", "")  # "0"
 
         # Extract stream kind (e.g., "ap" or "lf")
         if len(parts) > 1:
-            self.stream_kind = parts[1].upper()  # "AP" or "LF"
+            self._stream_kind = parts[1].upper()  # "AP" or "LF"
         else:
-            self.stream_kind = ""
+            self._stream_kind = ""
 
         # Get metadata from the parent stream (sync channels share metadata with their parent stream)
         # The sync stream is derived from the parent stream, so we access metadata using the base stream_id
         signal_info_key = (0, base_stream_id)
         self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
-        self.meta = self._signals_info_dict["meta"]
+        self._meta = self._signals_info_dict["meta"]
 
     def _get_session_start_time(self) -> datetime | None:
         """
@@ -161,7 +161,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         datetime or None
             The session start time in datetime format.
         """
-        session_start_time = self.meta.get("fileCreateTime", None)
+        session_start_time = self._meta.get("fileCreateTime", None)
         if session_start_time.startswith("0000-00-00"):
             # date was removed. This sometimes happens with human data to protect the
             # anonymity of medical patients.
@@ -187,10 +187,10 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
         # Device metadata - link to the parent probe device
-        device_name = f"NeuropixelsImec{self.probe_index}"
+        device_name = f"NeuropixelsImec{self._probe_index}"
         device = dict(
             name=device_name,
-            description=f"Neuropixels probe {self.probe_index} used with SpikeGLX.",
+            description=f"Neuropixels probe {self._probe_index} used with SpikeGLX.",
             manufacturer="Imec",
         )
 
@@ -202,20 +202,19 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
 
         # Generate TimeSeries name based on probe and stream kind
         # Example: "TimeSeriesSyncImec0AP" for imec0.ap-SYNC
-        timeseries_name = f"TimeSeriesSyncImec{self.probe_index}{self.stream_kind}"
+        timeseries_name = f"TimeSeriesSyncImec{self._probe_index}{self._stream_kind}"
 
         metadata["TimeSeries"][self.metadata_key] = {
             "name": timeseries_name,
             "description": (
-                f"Synchronization channel (SY0) from Neuropixel probe {self.probe_index} "
-                f"{self.stream_kind} stream. Contains a 16-bit status word where bit 6 carries a 1 Hz "
+                f"Synchronization channel (SY0) from Neuropixel probe {self._probe_index} "
+                f"{self._stream_kind} stream (stream: {self.stream_id}). Contains a 16-bit status word where bit 6 carries a 1 Hz "
                 f"square wave (toggling between 0 and 1 every 0.5 seconds) used for sub-millisecond timing "
                 f"alignment across acquisition devices and data streams. The other bits carry hardware status "
                 f"and error flags. For NP1.0 probes, the sync channel appears identically in both AP and LF files. "
                 f"The sync signal can be generated internally by the Imec module (PXIe or OneBox) or externally "
                 f"by an NI-DAQ device acting as the master sync generator for multi-device setups."
             ),
-            "comments": f"Sync channel from stream: {self.stream_id}",
         }
 
         return metadata

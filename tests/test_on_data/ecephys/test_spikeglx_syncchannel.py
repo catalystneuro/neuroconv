@@ -1,7 +1,4 @@
 from datetime import datetime
-from pathlib import Path
-from shutil import rmtree
-from tempfile import mkdtemp
 
 import pytest
 from pynwb import NWBHDF5IO
@@ -13,78 +10,80 @@ from ..setup_paths import ECEPHY_DATA_PATH
 SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 
 
-class TestSpikeGLXSyncChannelInterface:
-    """Tests for SpikeGLXSyncChannelInterface with sync channel data."""
+class TestSpikeGLXSyncChannelInterfaceValidation:
+    """Tests for SpikeGLXSyncChannelInterface validation logic."""
 
-    @pytest.fixture(autouse=True)
-    def setup_teardown(self):
-        """Setup and teardown for each test."""
-        self.tmpdir = Path(mkdtemp())
-        self.test_folder = SPIKEGLX_PATH / "NP2_with_sync"
-        yield
-        rmtree(self.tmpdir)
-
-    def test_interface_initialization(self):
-        """Test that the interface initializes correctly with a valid sync stream."""
-        interface = SpikeGLXSyncChannelInterface(
-            folder_path=self.test_folder,
-            stream_id="imec0.ap-SYNC",
-        )
-
-        assert interface.stream_id == "imec0.ap-SYNC"
-        assert interface.probe_index == "0"
-        assert interface.stream_kind == "AP"
-
-    def test_invalid_stream_id_no_sync(self):
+    def test_invalid_stream_id_no_sync(self, tmp_path):
         """Test that interface raises error when stream_id doesn't contain '-SYNC'."""
         with pytest.raises(ValueError, match="stream_id must contain '-SYNC'"):
             SpikeGLXSyncChannelInterface(
-                folder_path=self.test_folder,
+                folder_path=tmp_path,
                 stream_id="imec0.ap",
             )
 
-    def test_invalid_stream_id_no_imec(self):
-        """Test that interface raises error when stream_id doesn't contain 'imec'."""
-        with pytest.raises(ValueError, match="stream_id must contain 'imec'"):
-            SpikeGLXSyncChannelInterface(
-                folder_path=self.test_folder,
-                stream_id="nidq-SYNC",
-            )
-
-    def test_obx_not_implemented(self):
+    def test_obx_not_implemented(self, tmp_path):
         """Test that OneBox sync channels raise NotImplementedError."""
         with pytest.raises(NotImplementedError, match="OneBox.*not yet implemented"):
             SpikeGLXSyncChannelInterface(
-                folder_path=self.test_folder,
+                folder_path=tmp_path,
                 stream_id="obx0-SYNC",
             )
 
+
+class TestSpikeGLXSyncChannelInterface:
+    """Tests for SpikeGLXSyncChannelInterface with sync channel data."""
+
+    test_folder = SPIKEGLX_PATH / "Noise4Sam_g0"
+
     def test_get_metadata(self):
-        """Test that metadata is generated correctly."""
+        """Test that metadata is generated correctly, including session start time."""
+
+        metadata_key = "custom_metadata_key"
         interface = SpikeGLXSyncChannelInterface(
             folder_path=self.test_folder,
             stream_id="imec0.ap-SYNC",
+            metadata_key=metadata_key,
         )
 
         metadata = interface.get_metadata()
 
+        # Define expected metadata structure
+        expected_device = {
+            "name": "NeuropixelsImec0",
+            "description": "Neuropixels probe 0 used with SpikeGLX.",
+            "manufacturer": "Imec",
+        }
+
+        expected_timeseries = {
+            "name": "TimeSeriesSyncImec0AP",
+            "description": (
+                "Synchronization channel (SY0) from Neuropixel probe 0 "
+                "AP stream (stream: imec0.ap-SYNC). Contains a 16-bit status word where bit 6 carries a 1 Hz "
+                "square wave (toggling between 0 and 1 every 0.5 seconds) used for sub-millisecond timing "
+                "alignment across acquisition devices and data streams. The other bits carry hardware status "
+                "and error flags. For NP1.0 probes, the sync channel appears identically in both AP and LF files. "
+                "The sync signal can be generated internally by the Imec module (PXIe or OneBox) or externally "
+                "by an NI-DAQ device acting as the master sync generator for multi-device setups."
+            ),
+        }
+
         # Check device metadata
         assert "Devices" in metadata
         assert len(metadata["Devices"]) == 1
-        device = metadata["Devices"][0]
-        assert device["name"] == "NeuropixelsImec0"
-        assert device["manufacturer"] == "Imec"
-        assert "Neuropixels probe 0" in device["description"]
+        assert metadata["Devices"][0] == expected_device
 
         # Check TimeSeries metadata
         assert "TimeSeries" in metadata
-        assert "SpikeGLXSync" in metadata["TimeSeries"]
-        timeseries_metadata = metadata["TimeSeries"]["SpikeGLXSync"]
-        assert timeseries_metadata["name"] == "TimeSeriesSyncImec0AP"
-        assert "Synchronization channel" in timeseries_metadata["description"]
-        assert "imec0.ap-SYNC" in timeseries_metadata["comments"]
+        assert metadata_key in metadata["TimeSeries"]
+        assert metadata["TimeSeries"][metadata_key] == expected_timeseries
 
-    def test_add_to_nwbfile(self):
+        # Check session start time matches the expected value from test data
+        expected_session_start_time = datetime.fromisoformat("2020-11-03T10:35:10")
+        assert "NWBFile" in metadata
+        assert "session_start_time" in metadata["NWBFile"]
+        assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
+
+    def test_run_conversion(self, tmp_path):
         """Test that sync channel data is added to NWB file correctly."""
         interface = SpikeGLXSyncChannelInterface(
             folder_path=self.test_folder,
@@ -92,7 +91,10 @@ class TestSpikeGLXSyncChannelInterface:
         )
 
         metadata = interface.get_metadata()
-        nwbfile_path = self.tmpdir / "test_sync_channel.nwb"
+        nwbfile_path = tmp_path / "test_sync_channel.nwb"
+
+        # Get expected sampling rate from the recording extractor
+        expected_rate = interface.recording_extractor.get_sampling_frequency()
 
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
@@ -112,109 +114,64 @@ class TestSpikeGLXSyncChannelInterface:
             # Verify TimeSeries properties
             assert timeseries.name == "TimeSeriesSyncImec0AP"
             assert "Synchronization channel" in timeseries.description
-            assert timeseries.data.shape[1] == 1  # Should be single channel
-            assert timeseries.rate > 0  # Should have valid sampling rate
 
-            # Note: TimeSeries objects don't have a device attribute
-            # Device information is in the metadata and linked via NWB file structure
+            # Verify shape as tuple and exact sampling rate
+            assert timeseries.data.shape == (1155, 1)  # Expected shape for full recording
+            assert timeseries.rate == expected_rate
 
     def test_stub_test(self):
-        """Test that stub_test parameter works correctly."""
+        """Test that stub_test parameter creates data with exactly 100 samples."""
         interface = SpikeGLXSyncChannelInterface(
             folder_path=self.test_folder,
             stream_id="imec0.ap-SYNC",
         )
 
-        nwbfile_path = self.tmpdir / "test_sync_channel_stub.nwb"
-        interface.run_conversion(nwbfile_path=nwbfile_path, stub_test=True)
+        # Create NWBFile with stub data without iterator wrapping
+        nwbfile = interface.create_nwbfile(stub_test=True, iterator_type=None)
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
+        # Verify stub creates exactly 100 samples
+        # Note: iterator_type=None means data is not wrapped in an iterator so we can access shape directly
+        timeseries = nwbfile.acquisition["TimeSeriesSyncImec0AP"]
+        assert timeseries.data.shape == (100, 1)  # Exactly 100 samples, 1 channel
 
-            # Stub test should create smaller data
-            assert "TimeSeriesSyncImec0AP" in nwbfile.acquisition
-            timeseries = nwbfile.acquisition["TimeSeriesSyncImec0AP"]
-            assert timeseries.data.shape[0] <= 100  # Stub should be small
-
-    def test_session_start_time(self):
-        """Test that session start time is extracted correctly."""
-        interface = SpikeGLXSyncChannelInterface(
-            folder_path=self.test_folder,
-            stream_id="imec0.ap-SYNC",
-        )
-
-        metadata = interface.get_metadata()
-
-        # Session start time should be present in metadata
-        assert "NWBFile" in metadata
-        assert "session_start_time" in metadata["NWBFile"]
-
-        # Verify it's a datetime object
-        session_start_time = metadata["NWBFile"]["session_start_time"]
-        assert isinstance(session_start_time, datetime)
-
-    def test_lf_sync_stream(self):
+    def test_adding_sync_from_lf_band(self):
         """Test interface with LF sync stream instead of AP."""
-        # Check if LF sync stream exists in test data
         from spikeinterface.extractors.extractor_classes import (
             SpikeGLXRecordingExtractor,
         )
 
-        available_streams = SpikeGLXRecordingExtractor.get_streams(folder_path=self.test_folder)[0]
+        interface = SpikeGLXSyncChannelInterface(
+            folder_path=self.test_folder,
+            stream_id="imec0.lf-SYNC",
+        )
 
-        if "imec0.lf-SYNC" in available_streams:
-            interface = SpikeGLXSyncChannelInterface(
-                folder_path=self.test_folder,
-                stream_id="imec0.lf-SYNC",
-            )
+        # Verify metadata is generated correctly for LF stream
+        metadata = interface.get_metadata()
+        assert metadata["TimeSeries"]["SpikeGLXSync"]["name"] == "TimeSeriesSyncImec0LF"
+        assert "LF stream" in metadata["TimeSeries"]["SpikeGLXSync"]["description"]
 
-            assert interface.stream_id == "imec0.lf-SYNC"
-            assert interface.probe_index == "0"
-            assert interface.stream_kind == "LF"
+        # Create NWBFile without iterator wrapping to access data directly
+        nwbfile = interface.create_nwbfile(stub_test=True, iterator_type=None)
 
-            metadata = interface.get_metadata()
-            assert metadata["TimeSeries"]["SpikeGLXSync"]["name"] == "TimeSeriesSyncImec0LF"
-        else:
-            pytest.skip("LF sync stream not available in test data")
+        # Verify TimeSeries is present
+        assert "TimeSeriesSyncImec0LF" in nwbfile.acquisition
+        timeseries = nwbfile.acquisition["TimeSeriesSyncImec0LF"]
 
+        # Verify shape as tuple
+        assert timeseries.data.shape == (100, 1)
 
-class TestSpikeGLXSyncChannelMultiProbe:
-    """Tests for multi-probe scenarios with sync channels."""
+        # Get expected data from recording extractor
+        recording = SpikeGLXRecordingExtractor(
+            folder_path=self.test_folder,
+            stream_id="imec0.lf-SYNC",
+            all_annotations=True,
+        )
+        expected_traces = recording.get_traces(start_frame=0, end_frame=100)
 
-    @pytest.fixture(autouse=True)
-    def setup_teardown(self):
-        """Setup and teardown for each test."""
-        self.tmpdir = Path(mkdtemp())
-        # This would be a path to multi-probe test data when available
-        # For now, we'll use single probe data
-        self.test_folder = SPIKEGLX_PATH / "NP2_with_sync"
-        yield
-        rmtree(self.tmpdir)
+        # Verify data values match the source recording
+        import numpy as np
 
-    def test_probe_index_extraction(self):
-        """Test that probe index is correctly extracted from different stream IDs."""
-        test_cases = [
-            ("imec0.ap-SYNC", "0", "AP"),
-            ("imec1.ap-SYNC", "1", "AP"),
-            ("imec2.lf-SYNC", "2", "LF"),
-        ]
-
-        for stream_id, expected_index, expected_kind in test_cases:
-            # We can't actually instantiate these without the data existing,
-            # but we can test the parsing logic by checking the initialization would work
-            # if the data existed (the error would be from SpikeInterface, not our validation)
-            try:
-                interface = SpikeGLXSyncChannelInterface(
-                    folder_path=self.test_folder,
-                    stream_id=stream_id,
-                )
-                # If it works, verify the extracted values
-                assert interface.probe_index == expected_index
-                assert interface.stream_kind == expected_kind
-            except Exception as e:
-                # If it fails, it should be because the stream doesn't exist in the data,
-                # not because of our validation logic
-                assert "stream" in str(e).lower() or "not found" in str(e).lower()
+        np.testing.assert_array_equal(timeseries.data[:], expected_traces)
 
 
 if __name__ == "__main__":
