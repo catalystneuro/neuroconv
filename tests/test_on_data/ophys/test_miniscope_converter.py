@@ -14,6 +14,81 @@ from neuroconv.converters import MiniscopeConverter
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
 
 
+class TestMiniscopeConverter:
+    """Test MiniscopeConverter with dual miniscope setup and time alignment."""
+
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
+    config_file_path = folder_path / "UserConfigFile.json"
+
+    def test_run_conversion(self, tmp_path):
+        """Test conversion with dual miniscope setup, multiple sessions, and time alignment."""
+        from pynwb import read_nwb
+
+        # Create converter
+        converter = MiniscopeConverter(
+            folder_path=str(self.folder_path), user_configuration_file_path=str(self.config_file_path)
+        )
+
+        # Run conversion
+        nwbfile_path = str(tmp_path / "test_miniscope_dual.nwb")
+        converter.run_conversion(nwbfile_path=nwbfile_path, stub_test=True, stub_samples=2)
+
+        # Read the NWB file
+        nwbfile = read_nwb(nwbfile_path)
+
+        # 1. Check session_start_time is the minimum across all sessions
+        expected_min_start_time = datetime(2025, 6, 12, 15, 15, 4, 724000)
+        assert nwbfile.session_start_time.replace(tzinfo=None) == expected_min_start_time
+
+        # 2. Check that all 4 expected OnePhotonSeries exist
+        # 2 devices (ACC_miniscope2, HPC_miniscope1) x 2 sessions (15_15_04, 15_26_31)
+        assert "OnePhotonSeries2025_06_1215_15_04ACC_miniscope2" in nwbfile.acquisition
+        assert "OnePhotonSeries2025_06_1215_15_04HPC_miniscope1" in nwbfile.acquisition
+        assert "OnePhotonSeries2025_06_1215_26_31ACC_miniscope2" in nwbfile.acquisition
+        assert "OnePhotonSeries2025_06_1215_26_31HPC_miniscope1" in nwbfile.acquisition
+
+        assert len(nwbfile.acquisition) == 4
+
+        # 3. Check that both devices exist
+        assert "ACC_miniscope2" in nwbfile.devices
+        assert "HPC_miniscope1" in nwbfile.devices
+
+        # 4. Check that both imaging planes exist (one per device, not per session)
+        assert "ImagingPlaneACC_miniscope2" in nwbfile.imaging_planes
+        assert "ImagingPlaneHPC_miniscope1" in nwbfile.imaging_planes
+
+        # 5. Verify time alignment - timestamps of later sessions should be shifted
+
+        # Session 1 (15_15_04) - both devices should start at t=0
+        series_acc_session1 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_15_04ACC_miniscope2"]
+        series_hpc_session1 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_15_04HPC_miniscope1"]
+        assert series_acc_session1.starting_time == 0.0
+        assert series_hpc_session1.starting_time == 0.0
+
+        # Session 2 (15_26_31) - both devices should start at t=686.452
+
+        expected_offset = (
+            datetime(2025, 6, 12, 15, 26, 31, 176000) - datetime(2025, 6, 12, 15, 15, 4, 724000)
+        ).total_seconds()
+
+        series_acc_session2 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_26_31ACC_miniscope2"]
+        series_hpc_session2 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_26_31HPC_miniscope1"]
+        assert series_acc_session2.starting_time == expected_offset
+        assert series_hpc_session2.starting_time == expected_offset
+
+        # 6. Verify each series has correct imaging plane link
+        assert series_acc_session1.imaging_plane.name == "ImagingPlaneACC_miniscope2"
+        assert series_hpc_session1.imaging_plane.name == "ImagingPlaneHPC_miniscope1"
+        assert series_acc_session2.imaging_plane.name == "ImagingPlaneACC_miniscope2"
+        assert series_hpc_session2.imaging_plane.name == "ImagingPlaneHPC_miniscope1"
+
+        # 7. Verify stub test worked (only 2 frames per series)
+        assert series_acc_session1.data.shape[0] == 2
+        assert series_hpc_session1.data.shape[0] == 2
+        assert series_acc_session2.data.shape[0] == 2
+        assert series_hpc_session2.data.shape[0] == 2
+
+
 class TestMiniscopeConverterTyeLabLegacy:
     """Test MiniscopeConverter with Tye Lab legacy folder structure."""
 
@@ -181,75 +256,3 @@ class TestMiniscopeConverterTyeLabLegacy:
             nwbfile = io.read()
         num_frames = nwbfile.acquisition[self.photon_series_name].data.shape[0]
         assert num_frames == self.stub_frames
-
-
-class TestMiniscopeConverter:
-    """Test MiniscopeConverter with dual miniscope setup and time alignment."""
-
-    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
-    config_file_path = folder_path / "UserConfigFile.json"
-
-    def test_run_conversion(self, tmp_path):
-        """Test conversion with dual miniscope setup, multiple sessions, and time alignment."""
-        from pynwb import NWBHDF5IO
-
-        # Create converter
-        converter = MiniscopeConverter(
-            folder_path=str(self.folder_path), user_configuration_file_path=str(self.config_file_path)
-        )
-
-        # Run conversion
-        nwbfile_path = str(tmp_path / "test_miniscope_dual.nwb")
-        converter.run_conversion(nwbfile_path=nwbfile_path, stub_test=True, stub_samples=2)
-
-        # Read the NWB file
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-
-            # 1. Check session_start_time is the minimum across all sessions
-            expected_min_start_time = datetime(2025, 6, 12, 15, 15, 4, 724000)
-            assert nwbfile.session_start_time.replace(tzinfo=None) == expected_min_start_time
-
-            # 2. Check that all 4 expected OnePhotonSeries exist
-            # 2 devices (ACC_miniscope2, HPC_miniscope1) x 2 sessions (15_15_04, 15_26_31)
-            assert "OnePhotonSeries2025_06_1215_15_04ACC_miniscope2" in nwbfile.acquisition
-            assert "OnePhotonSeries2025_06_1215_15_04HPC_miniscope1" in nwbfile.acquisition
-            assert "OnePhotonSeries2025_06_1215_26_31ACC_miniscope2" in nwbfile.acquisition
-            assert "OnePhotonSeries2025_06_1215_26_31HPC_miniscope1" in nwbfile.acquisition
-
-            # 3. Check that both devices exist
-            assert "ACC_miniscope2" in nwbfile.devices
-            assert "HPC_miniscope1" in nwbfile.devices
-
-            # 4. Check that both imaging planes exist (one per device, not per session)
-            assert "ImagingPlaneACC_miniscope2" in nwbfile.imaging_planes
-            assert "ImagingPlaneHPC_miniscope1" in nwbfile.imaging_planes
-
-            # 5. Verify time alignment - timestamps of later sessions should be shifted
-            expected_offset = (
-                datetime(2025, 6, 12, 15, 26, 31, 176000) - datetime(2025, 6, 12, 15, 15, 4, 724000)
-            ).total_seconds()
-
-            # Session 1 (15_15_04) - both devices should start at t=0
-            series_acc_session1 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_15_04ACC_miniscope2"]
-            series_hpc_session1 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_15_04HPC_miniscope1"]
-            assert series_acc_session1.starting_time == 0.0
-            assert series_hpc_session1.starting_time == 0.0
-
-            # Session 2 (15_26_31) - both devices should start at t=686.452
-            series_acc_session2 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_26_31ACC_miniscope2"]
-            series_hpc_session2 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_26_31HPC_miniscope1"]
-            assert series_acc_session2.starting_time == expected_offset
-            assert series_hpc_session2.starting_time == expected_offset
-
-            # 6. Verify each series has correct imaging plane link
-            assert series_acc_session1.imaging_plane.name == "ImagingPlaneACC_miniscope2"
-            assert series_hpc_session1.imaging_plane.name == "ImagingPlaneHPC_miniscope1"
-            assert series_acc_session2.imaging_plane.name == "ImagingPlaneACC_miniscope2"
-            assert series_hpc_session2.imaging_plane.name == "ImagingPlaneHPC_miniscope1"
-
-            # 7. Verify stub test worked (only 2 frames per series)
-            assert series_acc_session1.data.shape[0] == 2
-            assert series_hpc_session1.data.shape[0] == 2
-            assert series_acc_session2.data.shape[0] == 2
-            assert series_hpc_session2.data.shape[0] == 2
