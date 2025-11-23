@@ -1,6 +1,5 @@
 import warnings
 from collections import defaultdict
-from copy import deepcopy
 from typing import Any, Literal, Optional
 
 import numpy as np
@@ -1165,6 +1164,24 @@ def _report_variable_offset(recording: BaseRecording) -> None:
     raise ValueError(message)
 
 
+def _get_default_time_series_metadata() -> dict:
+    """
+    Returns the default values for required TimeSeries fields.
+
+    These are fallback values used when metadata doesn't specify required fields.
+
+    Returns
+    -------
+    dict
+        Dictionary with default values for required TimeSeries fields only.
+    """
+    return {
+        "name": "TimeSeries",
+        "description": "no description",
+        "unit": "n.a.",
+    }
+
+
 def add_recording_as_time_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -1200,6 +1217,20 @@ def add_recording_as_time_series_to_nwbfile(
                 }
             }
         Where the metadata_key is used to look up metadata in the metadata dictionary.
+
+        The metadata may optionally include a 'channels' field to select a subset of channels:
+
+            metadata['TimeSeries'] = {
+                'metadata_key': {
+                    "channels": ["channel_id1", "channel_id2", ...],
+                    "name": "my_name",
+                    ...
+                }
+            }
+
+        If 'channels' is provided, the recording will be filtered to include only those channels
+        before creating the TimeSeries. The 'channels' field will be removed from the metadata
+        before creating the TimeSeries object.
     metadata_key: str
         The entry in TimeSeries metadata to use.
     iterator_type: {"v2",  None}, default: 'v2'
@@ -1216,6 +1247,8 @@ def add_recording_as_time_series_to_nwbfile(
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
     """
+
+    # Handle backward compatibility for time_series_name
     if time_series_name is not None:
         warnings.warn(
             "The 'time_series_name' parameter is deprecated and will be removed in or after February 2026. "
@@ -1223,6 +1256,17 @@ def add_recording_as_time_series_to_nwbfile(
             DeprecationWarning,
             stacklevel=2,
         )
+        metadata_key = time_series_name
+
+    # Handle channel selection if 'channels' field is present in metadata
+    if metadata is not None and "TimeSeries" in metadata and metadata_key in metadata["TimeSeries"]:
+        time_series_metadata = metadata["TimeSeries"][metadata_key]
+
+        # Select channels if 'channels' field is present
+        if "channels" in time_series_metadata:
+            channels = time_series_metadata["channels"]
+            recording = recording.select_channels(channel_ids=channels)
+
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):
         _add_time_series_segment_to_nwbfile(
@@ -1233,7 +1277,6 @@ def add_recording_as_time_series_to_nwbfile(
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,
-            time_series_name=time_series_name,
             metadata_key=metadata_key,
         )
 
@@ -1246,38 +1289,27 @@ def _add_time_series_segment_to_nwbfile(
     iterator_type: str | None = "v2",
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
-    time_series_name: Optional[str] = None,
     metadata_key: str = "time_series_metadata_key",
 ):
     """
-    See `add_recording_as_time_series_to_nwbfile` for details.
+    Internal function to add a single recording segment as a TimeSeries to an NWBFile.
+
+    See `add_recording_as_time_series_to_nwbfile` for public API details.
+    All backward compatibility handling and metadata filtering should be done
+    in the public function before calling this.
     """
 
-    # For backwards compatibility
-    metadata_key = time_series_name or metadata_key
     metadata = DeepDict() if metadata is None else metadata
 
-    time_series_name = time_series_name or metadata["TimeSeries"][metadata_key].get("name", "TimeSeries")
-    tseries_kwargs = dict(name=time_series_name)
-    metadata = deepcopy(metadata)
+    # Build TimeSeries kwargs from recording properties
+    tseries_kwargs = {}
 
-    # Apply metadata if available
-    if "TimeSeries" in metadata and metadata_key in metadata["TimeSeries"]:
-        time_series_metadata = metadata["TimeSeries"][metadata_key]
-        tseries_kwargs.update(time_series_metadata)
+    # Get user-provided metadata
+    user_metadata = metadata.get("TimeSeries", {}).get(metadata_key, {})
 
-    # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique.
-    # 0-pad these names based on the number of segments.
-    # If there are 10 segments use 2 digits, if there are 100 segments use 3 digits, etc.
-    if recording.get_num_segments() > 1:
-        width = int(np.ceil(np.log10((recording.get_num_segments()))))
-        tseries_kwargs["name"] += f"{segment_index:0{width}}"
-
-    # metadata "unit" has priority over recording properties
-    if "unit" not in tseries_kwargs:
-        # Get physical units from recording properties
+    # Extract unit, conversion, offset from recording properties if not in metadata
+    if "unit" not in user_metadata:
         units = recording.get_property("physical_unit")
-        # Get gain and offset from recording properties
         gain_to_unit = recording.get_property("gain_to_physical_unit")
         offset_to_unit = recording.get_property("offset_to_physical_unit")
 
@@ -1304,37 +1336,69 @@ def _add_time_series_segment_to_nwbfile(
             warnings.warn(warning_msg, UserWarning, stacklevel=2)
             tseries_kwargs.update(unit="n.a.")
 
-    # Iterator
+    # Add data iterator
     data_iterator = _recording_traces_to_hdmf_iterator(
         recording=recording,
         segment_index=segment_index,
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
-    tseries_kwargs.update(data=data_iterator)
+    tseries_kwargs["data"] = data_iterator
 
+    # Add timestamps or rate
     if always_write_timestamps:
         timestamps = recording.get_times(segment_index=segment_index)
-        tseries_kwargs.update(timestamps=timestamps)
+        tseries_kwargs["timestamps"] = timestamps
     else:
-        # By default we write the rate if the timestamps are regular
         recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
         if recording_has_timestamps:
             timestamps = recording.get_times(segment_index=segment_index)
-            rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
+            rate = calculate_regular_series_rate(series=timestamps)
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
             recording_t_start = recording._recording_segments[segment_index].t_start or 0
 
-        # Set starting time and rate or timestamps
         if rate:
             starting_time = float(recording_t_start)
-            # Note that we call the sampling frequency again because the estimated rate might be different from the
-            # sampling frequency of the recording extractor by some epsilon.
-            tseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
+            tseries_kwargs["starting_time"] = starting_time
+            tseries_kwargs["rate"] = recording.get_sampling_frequency()
         else:
-            tseries_kwargs.update(timestamps=timestamps)
+            tseries_kwargs["timestamps"] = timestamps
+
+    # List of valid fields that can be passed to pynwb.base.TimeSeries
+    valid_timeseries_fields = [
+        "name",
+        "description",
+        "unit",
+        "comments",
+        "resolution",
+        "conversion",
+        "offset",
+        "data",
+        "timestamps",
+        "starting_time",
+        "rate",
+        "control",
+        "control_description",
+        "continuity",
+    ]
+
+    # Filter user metadata to only valid fields and update tseries_kwargs
+    filtered_user_metadata = {k: v for k, v in user_metadata.items() if k in valid_timeseries_fields}
+    tseries_kwargs.update(filtered_user_metadata)
+
+    # Handle multi-segment naming
+    if recording.get_num_segments() > 1 and "name" in tseries_kwargs:
+        width = int(np.ceil(np.log10((recording.get_num_segments()))))
+        tseries_kwargs["name"] += f"{segment_index:0{width}}"
+
+    # Fill in required fields with defaults if missing
+    required_fields = ["name", "description", "unit"]
+    default_metadata = _get_default_time_series_metadata()
+    for field in required_fields:
+        if field not in tseries_kwargs:
+            tseries_kwargs[field] = default_metadata[field]
 
     # Create TimeSeries object and add it to nwbfile
     time_series = pynwb.base.TimeSeries(**tseries_kwargs)

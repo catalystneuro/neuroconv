@@ -132,7 +132,7 @@ interfaces in the same conversion, each interface must have a unique ``metadata_
     ... }
     >>>
     >>> # Run conversion with custom metadata
-    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom.nwb"
+    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom_digital.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
@@ -168,7 +168,7 @@ audio, sensors, accelerometers).
     ... }
     >>>
     >>> # Run conversion - only nidq#XA0, nidq#XA3, nidq#XA4, nidq#XA5 written
-    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom.nwb"
+    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom_analog.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 Note: Channels not listed in the configuration will not be written to the NWB file.
