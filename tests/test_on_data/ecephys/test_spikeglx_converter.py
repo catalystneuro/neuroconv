@@ -110,50 +110,16 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
 
 
-class TestMultiProbeSpikeGLXConverter(TestCase):
-    maxDiff = None
+class TestMultiProbeSpikeGLXConverter:
+    """Tests for multi-probe SpikeGLX converter."""
 
-    def setUp(self):
-        self.tmpdir = Path(mkdtemp())
+    test_folder = SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0"
 
-    def tearDown(self):
-        rmtree(self.tmpdir)
-
-    def assertNWBFileStructure(
-        self, nwbfile_path: FilePath, expected_session_start_time: datetime, include_sync: bool = True
-    ):
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
-
-        # Do the comparison without timezone information to avoid CI timezone issues
-        # The timezone is set by pynbw automatically
-        assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
-
-        # TODO: improve name of segments using 'Segment{index}' for clarity
-        assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec00" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec01" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec10" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
-        # Sync channels are now included by default (one per probe = 2 for multi-probe)
-        expected_acquisition_count = 18 if include_sync else 16
-        assert len(nwbfile.acquisition) == expected_acquisition_count
-
-        assert "NeuropixelsImec0" in nwbfile.devices
-        assert "NeuropixelsImec1" in nwbfile.devices
-        assert len(nwbfile.devices) == 2
-
-        assert "NeuropixelsImec0" in nwbfile.electrode_groups
-        assert "NeuropixelsImec1" in nwbfile.electrode_groups
-        assert len(nwbfile.electrode_groups) == 2
-
-    def test_multi_probe_spikeglx_converter(self):
+    def test_multi_probe_metadata(self):
+        """Test that metadata is generated correctly for multi-probe setup."""
         # Temporarily disable sync channels for this test - metadata comparison needs updating
         converter = SpikeGLXConverterPipe(
-            folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0",
+            folder_path=self.test_folder,
             include_sync_channels=False,
         )
         metadata = converter.get_metadata()
@@ -184,13 +150,76 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         # Test all the dictionary
         assert test_ecephys_metadata == expected_ecephys_metadata
 
-        nwbfile_path = self.tmpdir / "test_multi_probe_spikeglx_converter.nwb"
-        converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
-        expected_session_start_time = datetime(2022, 5, 19, 17, 37, 47)
-        self.assertNWBFileStructure(
-            nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time, include_sync=False
+    def test_multi_probe_run_conversion(self, tmp_path):
+        """Test that multi-probe data with sync channels is written to NWB file correctly."""
+        converter = SpikeGLXConverterPipe(
+            folder_path=self.test_folder,
+            include_sync_channels=True,
         )
+
+        nwbfile_path = tmp_path / "test_multi_probe_spikeglx_converter.nwb"
+        converter.run_conversion(nwbfile_path=nwbfile_path)
+
+        # Verify NWB file structure
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+
+        # Check session start time
+        expected_session_start_time = datetime(2022, 5, 19, 17, 37, 47)
+        # Do the comparison without timezone information to avoid CI timezone issues
+        # The timezone is set by pynwb automatically
+        assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
+
+        # Check electrical series acquisition objects
+        # TODO: improve name of segments using 'Segment{index}' for clarity
+        assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec00" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec01" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec10" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
+
+        # Check sync channels - multi-segment recordings get segment suffixes like electrical series
+        # This data has 4 segments, so we expect segment indices 0-3 for each probe
+        assert "TimeSeriesSyncImec0AP0" in nwbfile.acquisition
+        assert "TimeSeriesSyncImec0AP1" in nwbfile.acquisition
+        assert "TimeSeriesSyncImec0AP2" in nwbfile.acquisition
+        assert "TimeSeriesSyncImec0AP3" in nwbfile.acquisition
+        assert "TimeSeriesSyncImec1AP0" in nwbfile.acquisition
+        assert "TimeSeriesSyncImec1AP1" in nwbfile.acquisition
+        assert "TimeSeriesSyncImec1AP2" in nwbfile.acquisition
+        assert "TimeSeriesSyncImec1AP3" in nwbfile.acquisition
+
+        # Total: 16 electrical series (2 probes × 2 streams × 4 segments) + 8 sync TimeSeries (2 probes × 4 segments)
+        assert len(nwbfile.acquisition) == 24
+
+        # Check devices
+        assert "NeuropixelsImec0" in nwbfile.devices
+        assert "NeuropixelsImec1" in nwbfile.devices
+        assert len(nwbfile.devices) == 2
+
+        # Check electrode groups
+        assert "NeuropixelsImec0" in nwbfile.electrode_groups
+        assert "NeuropixelsImec1" in nwbfile.electrode_groups
+        assert len(nwbfile.electrode_groups) == 2
+
+    def test_multi_probe_run_conversion_without_sync(self):
+        """Test that multi-probe data without sync channels excludes sync TimeSeries."""
+        converter = SpikeGLXConverterPipe(
+            folder_path=self.test_folder,
+            include_sync_channels=False,
+        )
+
+        nwbfile = converter.create_nwbfile()
+
+        # Verify sync channels are NOT present
+        assert "TimeSeriesSyncImec0AP" not in nwbfile.acquisition
+        assert "TimeSeriesSyncImec1AP" not in nwbfile.acquisition
+
+        # Total: 16 electrical series only (no sync channels)
+        assert len(nwbfile.acquisition) == 16
 
 
 def test_electrode_table_writing(tmp_path):
@@ -508,13 +537,7 @@ class TestSortedSpikeGLXConverter:
 class TestSpikeGLXConverterWithSyncChannels:
     """Tests for SpikeGLXConverterPipe with sync channel support."""
 
-    @pytest.fixture(autouse=True)
-    def setup_teardown(self):
-        """Setup and teardown for each test."""
-        self.tmpdir = Path(mkdtemp())
-        self.test_folder = SPIKEGLX_PATH / "NP2_with_sync"
-        yield
-        rmtree(self.tmpdir)
+    test_folder = SPIKEGLX_PATH / "NP2_with_sync"
 
     def test_converter_without_sync_channels(self):
         """Test that sync channels can be explicitly excluded."""
@@ -554,13 +577,13 @@ class TestSpikeGLXConverterWithSyncChannels:
         selected_sync = sync_interfaces[0]
         assert ".ap-SYNC" in selected_sync or ".lf-SYNC" in selected_sync, "Sync stream should be AP or LF"
 
-    def test_sync_channels_in_nwb_file(self):
+    def test_sync_channels_in_nwb_file(self, tmp_path):
         """Test that sync channels are written to NWB file correctly by default (one per probe)."""
         converter = SpikeGLXConverterPipe(
             folder_path=self.test_folder,
         )
 
-        nwbfile_path = self.tmpdir / "test_with_sync.nwb"
+        nwbfile_path = tmp_path / "test_with_sync.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path)
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
@@ -597,21 +620,21 @@ class TestSpikeGLXConverterWithSyncChannels:
         sync_metadata_keys = [key for key in metadata["TimeSeries"].keys() if "Sync" in key]
         assert len(sync_metadata_keys) > 0, "Expected sync-related metadata in TimeSeries"
 
-    def test_converter_with_and_without_sync(self):
+    def test_converter_with_and_without_sync(self, tmp_path):
         """Test that conversion works the same except for sync data."""
         # Convert without sync (explicitly opt-out)
         converter_no_sync = SpikeGLXConverterPipe(
             folder_path=self.test_folder,
             include_sync_channels=False,
         )
-        nwbfile_no_sync = self.tmpdir / "no_sync.nwb"
+        nwbfile_no_sync = tmp_path / "no_sync.nwb"
         converter_no_sync.run_conversion(nwbfile_path=nwbfile_no_sync)
 
         # Convert with sync (default behavior)
         converter_with_sync = SpikeGLXConverterPipe(
             folder_path=self.test_folder,
         )
-        nwbfile_with_sync = self.tmpdir / "with_sync.nwb"
+        nwbfile_with_sync = tmp_path / "with_sync.nwb"
         converter_with_sync.run_conversion(nwbfile_path=nwbfile_with_sync)
 
         # Compare files

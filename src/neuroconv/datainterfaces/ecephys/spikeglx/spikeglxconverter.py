@@ -144,8 +144,11 @@ class SpikeGLXConverterPipe(ConverterPipe):
                 sync_stream_list.sort()
                 selected_sync_stream = sync_stream_list[0]  # First one (AP if both exist)
 
+                # Use unique metadata_key for each probe to avoid naming collisions
                 data_interfaces[selected_sync_stream] = SpikeGLXSyncChannelInterface(
-                    folder_path=folder_path, stream_id=selected_sync_stream
+                    folder_path=folder_path,
+                    stream_id=selected_sync_stream,
+                    metadata_key=f"SpikeGLXSync{selected_sync_stream}",
                 )
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
