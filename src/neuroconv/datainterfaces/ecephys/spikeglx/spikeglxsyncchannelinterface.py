@@ -266,12 +266,14 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
                 nwbfile.create_device(**device)
 
         # Add sync channel as TimeSeries
+        # Note: We use iterator_options parameter but translate to iterator_opts for now
+        # until the underlying function is updated to use iterator_options
         add_recording_as_time_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
             iterator_type=iterator_type,
-            iterator_options=iterator_options,
+            iterator_opts=iterator_options,
             always_write_timestamps=always_write_timestamps,
             metadata_key=self.metadata_key,
         )

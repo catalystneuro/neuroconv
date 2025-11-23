@@ -1169,9 +1169,7 @@ def add_recording_as_time_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
-    *,
     iterator_type: str | None = "v2",
-    iterator_options: dict | None = None,
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
     time_series_name: Optional[str] = None,
@@ -1202,38 +1200,22 @@ def add_recording_as_time_series_to_nwbfile(
                 }
             }
         Where the metadata_key is used to look up metadata in the metadata dictionary.
-    metadata_key : str, default: "TimeSeries"
+    metadata_key: str
         The entry in TimeSeries metadata to use.
-    iterator_type : {"v2",  None}, default: 'v2'
+    iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
         None: write the TimeSeries with no memory chunking.
-    iterator_options : dict, optional
+    iterator_opts: dict, optional
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
-    iterator_opts : dict, optional
-        Deprecated. Use 'iterator_options' instead.
     always_write_timestamps : bool, default: False
         Set to True to always write timestamps.
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
-    time_series_name : str, optional
-        Deprecated. Use 'metadata_key' instead.
     """
-    # Handle deprecated iterator_opts parameter
-    if iterator_opts is not None:
-        warnings.warn(
-            "The 'iterator_opts' parameter is deprecated and will be removed in or after March 2026. "
-            "Use 'iterator_options' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if iterator_options is not None:
-            raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
-        iterator_options = iterator_opts
-
     if time_series_name is not None:
         warnings.warn(
             "The 'time_series_name' parameter is deprecated and will be removed in or after February 2026. "
@@ -1249,7 +1231,7 @@ def add_recording_as_time_series_to_nwbfile(
             metadata=metadata,
             segment_index=segment_index,
             iterator_type=iterator_type,
-            iterator_options=iterator_options,
+            iterator_opts=iterator_opts,
             always_write_timestamps=always_write_timestamps,
             time_series_name=time_series_name,
             metadata_key=metadata_key,
@@ -1260,10 +1242,8 @@ def _add_time_series_segment_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
-    *,
     segment_index: int = 0,
     iterator_type: str | None = "v2",
-    iterator_options: dict | None = None,
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
     time_series_name: Optional[str] = None,
@@ -1272,13 +1252,6 @@ def _add_time_series_segment_to_nwbfile(
     """
     See `add_recording_as_time_series_to_nwbfile` for details.
     """
-    # Handle deprecated iterator_opts parameter
-    if iterator_opts is not None:
-        if iterator_options is None:
-            iterator_options = iterator_opts
-        else:
-            # If both are specified, iterator_options takes precedence (no warning needed as parent function warns)
-            pass
 
     # For backwards compatibility
     metadata_key = time_series_name or metadata_key
