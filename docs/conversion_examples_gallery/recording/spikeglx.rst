@@ -15,11 +15,6 @@ SpikeGLXConverter
 We can easily convert all data stored in the native SpikeGLX folder structure to NWB using
 :py:class:`~neuroconv.converters.SpikeGLXConverterPipe`.
 
-By default, the converter includes synchronization channels from Neuropixel probes (one per probe).
-These channels contain a 16-bit status word where bit 6 carries a 1 Hz square wave (toggling every
-0.5 seconds) used for sub-millisecond timing alignment across acquisition devices. To exclude sync
-channels, set ``include_sync_channels=False``.
-
 .. code-block:: python
 
     >>> from datetime import datetime
@@ -28,7 +23,6 @@ channels, set ``include_sync_channels=False``.
     >>> from neuroconv.converters import SpikeGLXConverterPipe
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0"
-    >>> # Sync channels are included by default
     >>> converter = SpikeGLXConverterPipe(folder_path=folder_path)
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()
@@ -40,10 +34,11 @@ channels, set ``include_sync_channels=False``.
     >>> nwbfile_path = output_folder / "my_spikeglx_converter_session.nwb"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
+Note that by default, the converter includes synchronization channels from Neuropixel probes (one per probe).
+This can be controlled with the ``include_sync_channels`` argument of the :py:class:`~neuroconv.converters.SpikeGLXConverterPipe`.
 
-
-Single-stream
-~~~~~~~~~~~~~
+Single-band
+~~~~~~~~~~~
 
 Defining a 'stream' as a single band on a single NeuroPixels probe, we can convert either an AP or LF SpikeGLX stream to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface.SpikeGLXRecordingInterface`.
@@ -142,29 +137,13 @@ interfaces in the same conversion, each interface must have a unique ``metadata_
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
+
 Synchronization Channels
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SpikeGLX records synchronization channels (labeled as SY0) as the last channel in Neuropixel probe data streams.
-These channels contain a 16-bit status word where **bit 6** carries a **1 Hz square wave** (toggling between 0 and 1
-every 0.5 seconds) used for sub-millisecond timing alignment across multiple acquisition devices and data streams.
-The other bits in the status word carry hardware status and error flags.
-
-**Key technical details:**
-
-- For **Neuropixels 1.0**, the sync channel appears **identically** in both AP and LF files, providing redundant
-  timing information for alignment.
-- For **Neuropixels 2.0** (full-band), the sync channel appears in the single AP file.
-- The sync signal can be generated either **internally** by the Imec module (PXIe or OneBox) or **externally**
-  by an NI-DAQ device acting as the master sync generator.
-- In **multi-probe** setups, the same 1 Hz sync pulse is distributed to all probes, enabling precise cross-probe
-  alignment by matching the rising edges in each stream's sync channel.
-- When using **NIDQ**, the sync pulse is typically recorded on a designated analog or digital input channel
-  rather than in a dedicated status word.
-
 By default, the :py:class:`~neuroconv.converters.SpikeGLXConverterPipe` includes sync channels (one per probe,
-preferring AP over LF when both are available). For more control over specific sync channels, you can use
-:py:class:`~neuroconv.datainterfaces.ecephys.spikeglx.spikeglxsyncchannelinterface.SpikeGLXSyncChannelInterface`.
+preferring AP over LF when both are available). For more control over the addition of the sync channels, you can use
+:py:class:`~neuroconv.datainterfaces.ecephys.spikeglx.spikeglxsyncchannelinterface.SpikeGLXSyncChannelInterface` directly.
 
 .. code-block:: python
 
