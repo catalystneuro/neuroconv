@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 from pydantic import ConfigDict, DirectoryPath, validate_call
@@ -26,6 +27,8 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
       externally by an NI-DAQ device acting as the master sync generator.
     - **Multi-probe setups**: The same 1 Hz sync pulse is distributed to all probes, enabling
       precise cross-probe alignment by matching the rising edges in each stream's sync channel.
+    - **NIDQ**: When using NIDQ, the sync pulse is typically recorded on a designated analog or
+      digital input channel rather than in a dedicated status word.
 
     When to Use
     -----------
@@ -36,19 +39,6 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
     Use this interface directly when you need to:
     - Convert only a specific sync channel stream
     - Handle sync channels separately from neural data
-
-    See Also
-    --------
-    :py:class:`~neuroconv.converters.SpikeGLXConverterPipe` : Recommended for most use cases
-    :py:class:`~neuroconv.datainterfaces.SpikeGLXRecordingInterface` : For neural data streams
-    :py:class:`~neuroconv.datainterfaces.SpikeGLXNIDQInterface` : For NIDQ analog/digital channels
-
-    Notes
-    -----
-    Valid stream_id formats include:
-    - "imec0.ap-SYNC" : AP sync channel from probe 0
-    - "imec1.lf-SYNC" : LF sync channel from probe 1
-    - "imec2.ap-SYNC" : AP sync channel from probe 2
 
     The sync channel is stored as a TimeSeries in the NWB file's acquisition group
     """
@@ -65,6 +55,11 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         source_schema["properties"]["stream_id"][
             "description"
         ] = "The stream ID for the sync channel (e.g., 'imec0.ap-SYNC' or 'imec1.lf-SYNC')."
+        source_schema["properties"]["metadata_key"]["description"] = (
+            "Key used to organize metadata in the metadata dictionary. This is especially useful "
+            "when multiple sync channel interfaces are used in the same conversion. The metadata_key is used "
+            "to organize TimeSeries metadata."
+        )
         return source_schema
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -73,6 +68,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         folder_path: DirectoryPath,
         stream_id: str,
         verbose: bool = False,
+        metadata_key: str = "SpikeGLXSync",
     ):
         """
         Read synchronization channel data from SpikeGLX Neuropixel probe recordings.
@@ -89,6 +85,10 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
             Examples: 'imec0.ap-SYNC', 'imec1.lf-SYNC'
         verbose : bool, default: False
             Whether to output verbose text.
+        metadata_key : str, default: "SpikeGLXSync"
+            Key used to organize metadata in the metadata dictionary. This is especially useful
+            when multiple sync channel interfaces are used in the same conversion. The metadata_key is used
+            to organize TimeSeries metadata.
 
         Raises
         ------
@@ -104,20 +104,15 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
                 f"Example valid stream_ids: 'imec0.ap-SYNC', 'imec1.lf-SYNC'"
             )
 
-        if "imec" not in stream_id:
-            if "obx" in stream_id:
-                raise NotImplementedError(
-                    "OneBox (obx) synchronization channel support is not yet implemented. "
-                    "Only Neuropixel probe (imec) sync channels are currently supported."
-                )
-            else:
-                raise ValueError(
-                    f"stream_id must contain 'imec' for Neuropixel probe sync channels. Got: {stream_id}\n"
-                    f"Example valid stream_ids: 'imec0.ap-SYNC', 'imec1.lf-SYNC'"
-                )
+        if "obx" in stream_id:
+            raise NotImplementedError(
+                "OneBox (obx) synchronization channel support is not yet implemented. "
+                "Only Neuropixel probe (imec) sync channels are currently supported."
+            )
 
         self.folder_path = Path(folder_path)
         self.stream_id = stream_id
+        self.metadata_key = metadata_key
 
         from spikeinterface.extractors.extractor_classes import (
             SpikeGLXRecordingExtractor,
@@ -133,6 +128,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
             verbose=verbose,
             folder_path=self.folder_path,
             stream_id=self.stream_id,
+            metadata_key=self.metadata_key,
         )
 
         # Extract probe information from stream_id
@@ -156,7 +152,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
         self.meta = self._signals_info_dict["meta"]
 
-    def _get_session_start_time(self) -> "datetime | None":
+    def _get_session_start_time(self) -> datetime | None:
         """
         Fetches the session start time from the recording metadata.
 
@@ -165,9 +161,15 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         datetime or None
             The session start time in datetime format.
         """
-        from .spikeglx_utils import get_session_start_time
+        session_start_time = self.meta.get("fileCreateTime", None)
+        if session_start_time.startswith("0000-00-00"):
+            # date was removed. This sometimes happens with human data to protect the
+            # anonymity of medical patients.
+            return
+        if session_start_time:
+            session_start_time = datetime.fromisoformat(session_start_time)
 
-        return get_session_start_time(self.meta)
+        return session_start_time
 
     def get_metadata(self) -> DeepDict:
         """
@@ -202,7 +204,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         # Example: "TimeSeriesSyncImec0AP" for imec0.ap-SYNC
         timeseries_name = f"TimeSeriesSyncImec{self.probe_index}{self.stream_kind}"
 
-        metadata["TimeSeries"]["SpikeGLXSync"] = {
+        metadata["TimeSeries"][self.metadata_key] = {
             "name": timeseries_name,
             "description": (
                 f"Synchronization channel (SY0) from Neuropixel probe {self.probe_index} "
@@ -224,7 +226,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         metadata: dict | None = None,
         stub_test: bool = False,
         iterator_type: str | None = "v2",
-        iterator_opts: dict | None = None,
+        iterator_options: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -241,7 +243,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
             If True, only writes a small amount of data for testing.
         iterator_type : str | None, default: "v2"
             Type of iterator to use for data streaming.
-        iterator_opts : dict | None, default: None
+        iterator_options : dict | None, default: None
             Additional options for the iterator.
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate.
@@ -269,7 +271,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            metadata_key="SpikeGLXSync",
+            metadata_key=self.metadata_key,
         )
