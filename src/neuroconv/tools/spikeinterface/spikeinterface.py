@@ -1506,7 +1506,7 @@ def _add_spatial_series_segment_to_nwbfile(
         recording=recording,
         segment_index=segment_index,
         iterator_type=iterator_type,
-        iterator_opts=iterator_options,
+        iterator_options=iterator_options,
     )
     series_kwargs["data"] = data_iterator
 
