@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO
-from pynwb.testing.mock.file import mock_NWBFile
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import SpikeGLXNIDQInterface
 
@@ -15,65 +14,112 @@ if not ECEPHY_DATA_PATH.exists():
     pytest.fail(f"No folder found in location: {ECEPHY_DATA_PATH}!")
 
 
-def test_nidq_interface_digital_data(tmp_path):
-    """Test digital channels with default and custom metadata configurations."""
+def test_nidq_digital_data(tmp_path):
+    """Test digital channels with default metadata configuration."""
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
     interface = SpikeGLXNIDQInterface(folder_path=folder_path)
 
-    # Test 1: Verify metadata structure with Events section
+    # Verify metadata structure with Events section
     metadata = interface.get_metadata()
-    assert "Events" in metadata
-    assert "SpikeGLXNIDQ" in metadata["Events"]
-    assert "nidq#XD0" in metadata["Events"]["SpikeGLXNIDQ"]
+    events_metadata = metadata.get("Events", {})
 
-    # Default configuration - should contain extractor labels in labels_map
-    xd0_config = metadata["Events"]["SpikeGLXNIDQ"]["nidq#XD0"]
-    assert xd0_config["name"] == "EventsNIDQDigitalChannelXD0"
-    assert "labels_map" in xd0_config
-    assert len(xd0_config["labels_map"]) == 2  # Two states: OFF and ON
-    assert isinstance(xd0_config["labels_map"], dict)
+    # Expected Events metadata structure for all 8 digital channels
+    # Note: labels_map values are extractor-dependent
+    expected_events_metadata = {
+        "SpikeGLXNIDQ": {
+            "nidq#XD0": {
+                "name": "EventsNIDQDigitalChannelXD0",
+                "description": "On and Off Events from channel XD0",
+                "labels_map": {0: "XD0 OFF", 1: "XD0 ON"},
+            },
+            "nidq#XD1": {
+                "name": "EventsNIDQDigitalChannelXD1",
+                "description": "On and Off Events from channel XD1",
+                "labels_map": {},
+            },
+            "nidq#XD2": {
+                "name": "EventsNIDQDigitalChannelXD2",
+                "description": "On and Off Events from channel XD2",
+                "labels_map": {},
+            },
+            "nidq#XD3": {
+                "name": "EventsNIDQDigitalChannelXD3",
+                "description": "On and Off Events from channel XD3",
+                "labels_map": {},
+            },
+            "nidq#XD4": {
+                "name": "EventsNIDQDigitalChannelXD4",
+                "description": "On and Off Events from channel XD4",
+                "labels_map": {},
+            },
+            "nidq#XD5": {
+                "name": "EventsNIDQDigitalChannelXD5",
+                "description": "On and Off Events from channel XD5",
+                "labels_map": {},
+            },
+            "nidq#XD6": {
+                "name": "EventsNIDQDigitalChannelXD6",
+                "description": "On and Off Events from channel XD6",
+                "labels_map": {},
+            },
+            "nidq#XD7": {
+                "name": "EventsNIDQDigitalChannelXD7",
+                "description": "On and Off Events from channel XD7",
+                "labels_map": {},
+            },
+        }
+    }
 
-    # Test 2: Write with default configuration
+    # Validate that events_metadata matches expected structure
+    assert events_metadata == expected_events_metadata
+
+    # Write with default configuration
     nwbfile_path = tmp_path / "nidq_test_digital_default.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
 
-    with NWBHDF5IO(nwbfile_path, "r") as io:
-        nwbfile = io.read()
-        assert len(nwbfile.acquisition) == 1
-        events = nwbfile.acquisition["EventsNIDQDigitalChannelXD0"]
-        assert events.timestamps.size == 326
-        # Check that data alternates between the two label indices
-        assert len(np.unique(events.data)) == 2
-        # The exact label-to-index mapping depends on extractor, but should have equal counts
-        unique_data = np.unique(events.data)
-        assert np.sum(events.data == unique_data[0]) == 163
-        assert np.sum(events.data == unique_data[1]) == 163
+    nwbfile = read_nwb(nwbfile_path)
+    assert len(nwbfile.acquisition) == 1
+    events = nwbfile.acquisition["EventsNIDQDigitalChannelXD0"]
+    assert events.timestamps.size == 326
+    # Check that data alternates between the two label indices
+    assert len(np.unique(events.data)) == 2
+    # The exact label-to-index mapping depends on extractor, but should have equal counts
+    unique_data = np.unique(events.data)
+    assert np.sum(events.data == unique_data[0]) == 163
+    assert np.sum(events.data == unique_data[1]) == 163
 
-    # Test 3: Customize metadata for semantic labels
-    # Get fresh metadata and override with custom semantic labels
+
+def test_nidq_digital_metadata_customization(tmp_path):
+    """Test digital channels with custom semantic labels."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
+    metadata_key = "custom_key"
+    interface = SpikeGLXNIDQInterface(folder_path=folder_path, metadata_key=metadata_key)
+
+    # Customize metadata for semantic labels
     metadata = interface.get_metadata()
-    metadata["Events"]["SpikeGLXNIDQ"]["nidq#XD0"] = {
-        "name": "EventsCustomCamera",
+    labels_map = {0: "exposure_end", 1: "frame_start"}
+    events_name = "EventsCustomCamera"
+    metadata["Events"][metadata_key]["nidq#XD0"] = {
+        "name": events_name,
         "description": "Custom camera with semantic labels",
-        "labels_map": {0: "exposure_end", 1: "frame_start"},
+        "labels_map": labels_map,
     }
 
-    nwbfile_path_custom = tmp_path / "nidq_test_digital_custom.nwb"
-    interface.run_conversion(nwbfile_path=nwbfile_path_custom, metadata=metadata, overwrite=True)
+    nwbfile_path = tmp_path / "nidq_test_digital_custom.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-    with NWBHDF5IO(nwbfile_path_custom, "r") as io:
-        nwbfile = io.read()
-        assert "EventsCustomCamera" in nwbfile.acquisition
-        events = nwbfile.acquisition["EventsCustomCamera"]
-        assert list(events.labels) == ["exposure_end", "frame_start"]
-        # Check that both semantic labels are used
-        unique_data = np.unique(events.data)
-        assert len(unique_data) == 2
-        assert np.sum(events.data == unique_data[0]) == 163
-        assert np.sum(events.data == unique_data[1]) == 163
+    nwbfile = read_nwb(nwbfile_path)
+    assert events_name in nwbfile.acquisition
+    events = nwbfile.acquisition[events_name]
+    assert list(events.labels) == list(labels_map.values())
+    # Check that both semantic labels are used
+    unique_data = np.unique(events.data)
+    assert len(unique_data) == 2
+    assert np.sum(events.data == unique_data[0]) == 163
+    assert np.sum(events.data == unique_data[1]) == 163
 
 
-def test_nidq_interface_partial_labels_map(tmp_path):
+def test_nidq_partial_labels_map(tmp_path):
     """Test that partial labels_map is auto-filled with defaults."""
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
     interface = SpikeGLXNIDQInterface(folder_path=folder_path)
@@ -93,16 +139,15 @@ def test_nidq_interface_partial_labels_map(tmp_path):
     nwbfile_path = tmp_path / "nidq_test_partial.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-    with NWBHDF5IO(nwbfile_path, "r") as io:
-        nwbfile = io.read()
-        events = nwbfile.acquisition["EventsPartialCustom"]
-        # Should have both labels: custom one and default one
-        assert len(events.labels) == 2
-        assert events.labels[0] == "custom_label_0"  # Custom label for data value 0
-        assert events.labels[1] == default_labels_map[1]  # Default label for data value 1
+    nwbfile = read_nwb(nwbfile_path)
+    events = nwbfile.acquisition["EventsPartialCustom"]
+    # Should have both labels: custom one and default one
+    assert len(events.labels) == 2
+    assert events.labels[0] == "custom_label_0"  # Custom label for data value 0
+    assert events.labels[1] == default_labels_map[1]  # Default label for data value 1
 
 
-def test_nidq_interface_analog_data(tmp_path):
+def test_nidq_analog_data(tmp_path):
     """Test analog channels with default metadata_key."""
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
     interface = SpikeGLXNIDQInterface(folder_path=folder_path)
@@ -110,50 +155,130 @@ def test_nidq_interface_analog_data(tmp_path):
     # Test metadata structure with default metadata_key
     assert interface.metadata_key == "SpikeGLXNIDQ"
     metadata = interface.get_metadata()
-    assert "TimeSeries" in metadata
-    assert "SpikeGLXNIDQ" in metadata["TimeSeries"]
-    assert metadata["TimeSeries"]["SpikeGLXNIDQ"]["name"] == "TimeSeriesNIDQ"
+    time_series_metadata = metadata.get("TimeSeries", {})
+
+    # Expected TimeSeries metadata structure (NEW format with nidq_analog config)
+    expected_time_series_metadata = {
+        "SpikeGLXNIDQ": {
+            "nidq_analog": {
+                "channels": [
+                    "nidq#XA0",
+                    "nidq#XA1",
+                    "nidq#XA2",
+                    "nidq#XA3",
+                    "nidq#XA4",
+                    "nidq#XA5",
+                    "nidq#XA6",
+                    "nidq#XA7",
+                ],
+                "name": "TimeSeriesNIDQ",
+                "description": "Analog data from the NIDQ board. Channels are ['XA0', 'XA1', 'XA2', 'XA3', 'XA4', 'XA5', 'XA6', 'XA7'] in that order.",
+            }
+        }
+    }
+
+    # Validate that time_series_metadata matches expected structure
+    assert time_series_metadata == expected_time_series_metadata
 
     # Write to NWB and verify
     nwbfile_path = tmp_path / "nidq_test_analog.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
 
-    with NWBHDF5IO(nwbfile_path, "r") as io:
-        nwbfile = io.read()
-        assert len(nwbfile.acquisition) == 1  # The time series object
-        time_series = nwbfile.acquisition["TimeSeriesNIDQ"]
-        assert time_series.name == "TimeSeriesNIDQ"
-        # Check that description contains channel information
-        assert "Analog data from the NIDQ board" in time_series.description
-        assert "XA0" in time_series.description
-        assert "XA7" in time_series.description
-        number_of_samples = time_series.data.shape[0]
-        assert number_of_samples == 60_864
-        number_of_channels = time_series.data.shape[1]
-        assert number_of_channels == 8
-        assert len(nwbfile.devices) == 1
+    nwbfile = read_nwb(nwbfile_path)
+    assert len(nwbfile.acquisition) == 1  # The time series object
+    time_series = nwbfile.acquisition["TimeSeriesNIDQ"]
+    assert time_series.name == "TimeSeriesNIDQ"
+    # Check that description contains channel information
+    assert "Analog data from the NIDQ board" in time_series.description
+    assert "XA0" in time_series.description
+    assert "XA7" in time_series.description
+    number_of_samples = time_series.data.shape[0]
+    assert number_of_samples == 60_864
+    number_of_channels = time_series.data.shape[1]
+    assert number_of_channels == 8
+    assert len(nwbfile.devices) == 1
 
 
-def test_nidq_interface_with_custom_metadata_key(tmp_path):
-    """Test custom metadata_key for multiple NIDQ interface scenario."""
+def test_nidq_analog_old_metadata_format(tmp_path):
+    """Test that old metadata format still works but raises FutureWarning."""
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
-    interface = SpikeGLXNIDQInterface(folder_path=folder_path, metadata_key="nidq_custom")
+    interface = SpikeGLXNIDQInterface(folder_path=folder_path)
 
-    # Verify custom metadata_key is used throughout
-    assert interface.metadata_key == "nidq_custom"
+    # Get default metadata and use OLD format (single "name" at top level)
     metadata = interface.get_metadata()
 
-    # Check TimeSeries uses custom key
-    assert "TimeSeries" in metadata
-    assert "nidq_custom" in metadata["TimeSeries"]
-    assert metadata["TimeSeries"]["nidq_custom"]["name"] == "TimeSeriesNIDQ"
+    # OLD FORMAT - has "name" at top level, no "channels" field
+    metadata["TimeSeries"]["SpikeGLXNIDQ"] = {
+        "name": "TimeSeriesNIDQOldFormat",
+        "description": "Old format with all analog channels",
+    }
 
-    # Write to NWB and verify the custom key was used
-    nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True)
+    # Write to NWB - should work but emit FutureWarning
+    nwbfile_path = tmp_path / "nidq_test_old_format.nwb"
+    with pytest.warns(
+        FutureWarning,
+        match="The old metadata format for NIDQ analog channels is deprecated and will be removed on or after May 2026",
+    ):
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-    assert "TimeSeriesNIDQ" in nwbfile.acquisition
-    time_series = nwbfile.acquisition["TimeSeriesNIDQ"]
-    # Verify that analog data was written
-    assert time_series.data is not None
-    assert hasattr(time_series, "timestamps") or hasattr(time_series, "rate")
+    # Verify the data was written correctly
+    nwbfile = read_nwb(nwbfile_path)
+    assert len(nwbfile.acquisition) == 1
+    time_series = nwbfile.acquisition["TimeSeriesNIDQOldFormat"]
+    assert time_series.name == "TimeSeriesNIDQOldFormat"
+    assert time_series.data.shape[1] == 8  # All 8 analog channels
+
+
+def test_nidq_analog_metadata_customization(tmp_path):
+    """Test dividing analog channels into multiple TimeSeries with custom configurations."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+    interface = SpikeGLXNIDQInterface(folder_path=folder_path)
+
+    # Get default metadata and customize to split channels into multiple TimeSeries
+    metadata = interface.get_metadata()
+
+    # Divide the 8 analog channels (XA0-XA7) into 3 separate TimeSeries
+    metadata["TimeSeries"]["SpikeGLXNIDQ"] = {
+        "audio": {
+            "channels": ["nidq#XA0", "nidq#XA1"],
+            "name": "TimeSeriesAudioSignals",
+            "description": "Audio signals from microphones",
+        },
+        "accelerometer": {
+            "channels": ["nidq#XA2", "nidq#XA3", "nidq#XA4"],
+            "name": "TimeSeriesAccelerometer",
+            "description": "3-axis accelerometer data",
+        },
+        "temperature": {
+            "channels": ["nidq#XA5", "nidq#XA6", "nidq#XA7"],
+            "name": "TimeSeriesTemperature",
+            "description": "Temperature sensor readings",
+        },
+    }
+
+    # Write to NWB and verify multiple TimeSeries were created
+    nwbfile_path = tmp_path / "nidq_test_multiple_timeseries.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+    nwbfile = read_nwb(nwbfile_path)
+
+    # Should have 3 TimeSeries objects in acquisition
+    assert len(nwbfile.acquisition) == 3
+
+    # Verify audio TimeSeries
+    assert "TimeSeriesAudioSignals" in nwbfile.acquisition
+    audio_ts = nwbfile.acquisition["TimeSeriesAudioSignals"]
+    assert audio_ts.data.shape[1] == 2  # 2 channels
+    assert "Audio signals from microphones" in audio_ts.description
+
+    # Verify accelerometer TimeSeries
+    assert "TimeSeriesAccelerometer" in nwbfile.acquisition
+    accel_ts = nwbfile.acquisition["TimeSeriesAccelerometer"]
+    assert accel_ts.data.shape[1] == 3  # 3 channels
+    assert "3-axis accelerometer data" in accel_ts.description
+
+    # Verify temperature TimeSeries
+    assert "TimeSeriesTemperature" in nwbfile.acquisition
+    temp_ts = nwbfile.acquisition["TimeSeriesTemperature"]
+    assert temp_ts.data.shape[1] == 3  # 3 channels
+    assert "Temperature sensor readings" in temp_ts.description

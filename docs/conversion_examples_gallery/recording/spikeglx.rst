@@ -134,3 +134,42 @@ interfaces in the same conversion, each interface must have a unique ``metadata_
     >>> # Run conversion with custom metadata
     >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+
+Customizing analog channel metadata
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Analog channels (XA and MA channels) can be split into separate TimeSeries objects with custom
+metadata. This is useful when different analog channels represent different signal types (e.g.,
+audio, sensors, accelerometers).
+
+.. code-block:: python
+
+    >>> from neuroconv.datainterfaces import SpikeGLXNIDQInterface
+    >>>
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0"
+    >>> interface = SpikeGLXNIDQInterface(folder_path=folder_path)
+    >>>
+    >>> # Get default metadata
+    >>> metadata = interface.get_metadata()
+    >>>
+    >>> # Customize analog channels with flat dictionary structure
+    >>> metadata["TimeSeries"]["SpikeGLXNIDQ"] = {
+    ...     "audio": {  # Arbitrary key for organization
+    ...         "channels": ["nidq#XA0"],  # Required: list of channel IDs with nidq# prefix
+    ...         "name": "TimeSeriesAudioSignal",  # Required: NWB TimeSeries name
+    ...         "description": "Microphone audio recording",
+    ...     },
+    ...     "accel": {
+    ...         "channels": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],  # Group multiple channels
+    ...         "name": "TimeSeriesAccelerometer",
+    ...         "description": "3-axis accelerometer (X, Y, Z)",
+    ...     }
+    ... }
+    >>>
+    >>> # Run conversion - only nidq#XA0, nidq#XA3, nidq#XA4, nidq#XA5 written
+    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+Note: Channels not listed in the configuration will not be written to the NWB file.
+Each TimeSeries can contain one or more channels, allowing you to group related signals together.
