@@ -31,9 +31,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
     def tearDown(self):
         rmtree(self.tmpdir)
 
-    def assertNWBFileStructure(
-        self, nwbfile_path: FilePath, expected_session_start_time: datetime, include_sync: bool = True
-    ):
+    def assertNWBFileStructure(self, nwbfile_path: FilePath, expected_session_start_time: datetime):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
@@ -43,9 +41,8 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
             assert "ElectricalSeriesLF" in nwbfile.acquisition
             assert "TimeSeriesNIDQ" in nwbfile.acquisition
 
-            # Sync channels are now included by default (one per probe)
-            expected_acquisition_count = 4 if include_sync else 3
-            assert len(nwbfile.acquisition) == expected_acquisition_count
+            # Sync channels are included by default (one per probe)
+            assert len(nwbfile.acquisition) == 4
 
             assert "NeuropixelsImec0" in nwbfile.devices
             assert "NIDQBoard" in nwbfile.devices
@@ -117,7 +114,6 @@ class TestMultiProbeSpikeGLXConverter:
 
     def test_multi_probe_metadata(self):
         """Test that metadata is generated correctly for multi-probe setup."""
-        # Temporarily disable sync channels for this test - metadata comparison needs updating
         converter = SpikeGLXConverterPipe(
             folder_path=self.test_folder,
         )
@@ -407,7 +403,6 @@ class TestSortedSpikeGLXConverter:
 
     def test_single_probe_with_full_streams(self, tmp_path):
         """Single probe with ap, lf and nidq streams"""
-        # Initialize converter, disable sync channels since this test focuses on sorted units
         spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
 
         # Create mock sorting with specific mappings and rename units for clarity
