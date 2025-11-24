@@ -1343,27 +1343,8 @@ def _add_time_series_segment_to_nwbfile(
         else:
             tseries_kwargs["timestamps"] = timestamps
 
-    # List of valid fields that can be passed to pynwb.base.TimeSeries
-    valid_timeseries_fields = [
-        "name",
-        "description",
-        "unit",
-        "comments",
-        "resolution",
-        "conversion",
-        "offset",
-        "data",
-        "timestamps",
-        "starting_time",
-        "rate",
-        "control",
-        "control_description",
-        "continuity",
-    ]
-
-    # Filter user metadata to only valid fields and update tseries_kwargs
-    filtered_user_metadata = {k: v for k, v in user_metadata.items() if k in valid_timeseries_fields}
-    tseries_kwargs.update(filtered_user_metadata)
+    # Update with user-provided metadata
+    tseries_kwargs.update(user_metadata)
 
     # Handle multi-segment naming
     if recording.get_num_segments() > 1 and "name" in tseries_kwargs:
