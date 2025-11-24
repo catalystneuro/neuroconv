@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 
 from pydantic import DirectoryPath, FilePath, validate_call
@@ -205,11 +206,12 @@ class MiniscopeConverter(ConverterPipe):
 
             data_directory_path_in_config = self._user_config.get("dataDirectory", "")
             data_directory_name_in_json = data_directory_path_in_config.split("/")[-1]
-            if data_directory_name_in_json != self._folder_path.name and verbose:
-                # TODO make a
-                print(
+            if data_directory_name_in_json != self._folder_path.name:
+                warnings.warn(
                     f"Ignoring 'dataDirectory' field in User Config ('{data_directory_path_in_config}'). "
-                    f"Using provided folder_path: '{self._folder_path}'."
+                    f"Using provided folder_path: '{self._folder_path}'.",
+                    UserWarning,
+                    stacklevel=2,
                 )
 
             directory_structure = self._user_config.get("directoryStructure", [])
@@ -217,10 +219,18 @@ class MiniscopeConverter(ConverterPipe):
             fixed_path_entries = [key for key in directory_structure if key in config_fields]
             fixed_folders = [self._user_config[key] for key in fixed_path_entries]
             fixed_data_path = self._folder_path / "/".join(fixed_folders)
-            # TODO: improve this error
-            assert (
-                fixed_data_path.exists()
-            ), f"The fixed portion of the directory structure '{fixed_data_path}' does not exist under '{self._folder_path}'."
+
+            if not fixed_data_path.exists():
+                raise FileNotFoundError(
+                    f"Expected directory structure not found: '{fixed_data_path}'\n"
+                    f"Base folder: '{self._folder_path}'\n"
+                    f"Directory structure from config: {directory_structure}\n"
+                    f"Fixed path components: {fixed_folders}\n"
+                    f"Please verify that:\n"
+                    f"  1. The 'directoryStructure' in your User Config matches your actual folder structure\n"
+                    f"  2. The fixed fields ({', '.join(fixed_path_entries)}) are correctly set\n"
+                    f"  3. The folder '{fixed_data_path.name}' exists under '{fixed_data_path.parent}'"
+                )
 
             miniscope_devices = self._user_config.get("devices", {}).get("miniscopes", {})
             if not miniscope_devices:
