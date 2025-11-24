@@ -220,10 +220,7 @@ class TestMultiProbeSpikeGLXConverter:
 def test_electrode_table_writing(tmp_path):
     from spikeinterface.extractors.nwbextractors import NwbRecordingExtractor
 
-    # Exclude sync channels for this test since we're focusing on electrode table
-    all_streams = SpikeGLXConverterPipe.get_streams(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
-    non_sync_streams = [s for s in all_streams if "SYNC" not in s]
-    converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0", streams=non_sync_streams)
+    converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
     metadata = converter.get_metadata()
 
     nwbfile = mock_NWBFile()
