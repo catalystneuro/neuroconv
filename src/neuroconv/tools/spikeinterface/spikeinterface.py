@@ -118,7 +118,7 @@ def add_recording_to_nwbfile(
             write_as=write_as,
             es_key=es_key,
             iterator_type=iterator_type,
-            iterator_opts=iterator_options,
+            iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
         )
 
@@ -206,7 +206,7 @@ def _add_recording_segment_to_nwbfile(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     iterator_type: str | None = "v2",
-    iterator_opts: dict | None = None,
+    iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
 ):
     """
@@ -296,7 +296,7 @@ def _add_recording_segment_to_nwbfile(
         recording=recording,
         segment_index=segment_index,
         iterator_type=iterator_type,
-        iterator_opts=iterator_opts,
+        iterator_options=iterator_options,
     )
     eseries_kwargs.update(data=ephys_data_iterator)
 
@@ -1083,7 +1083,7 @@ def _recording_traces_to_hdmf_iterator(
     segment_index: int = None,
     return_scaled: bool = False,
     iterator_type: str | None = "v2",
-    iterator_opts: dict = None,
+    iterator_options: dict = None,
 ) -> AbstractDataChunkIterator:
     """Function to wrap traces of spikeinterface recording into an AbstractDataChunkIterator.
 
@@ -1099,7 +1099,7 @@ def _recording_traces_to_hdmf_iterator(
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
         None: write the TimeSeries with no memory chunking.
-    iterator_opts: dict, optional
+    iterator_options: dict, optional
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
@@ -1120,7 +1120,7 @@ def _recording_traces_to_hdmf_iterator(
         message = f"iterator_type '{iterator_type}' is not supported. Must be either 'v2' (recommended) or None."
         raise ValueError(message)
 
-    iterator_opts = dict() if iterator_opts is None else iterator_opts
+    iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
         _check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
@@ -1130,7 +1130,7 @@ def _recording_traces_to_hdmf_iterator(
             recording=recording,
             segment_index=segment_index,
             return_scaled=return_scaled,
-            **iterator_opts,
+            **iterator_options,
         )
     else:
         raise ValueError("iterator_type must be None or 'v2'.")
@@ -1170,6 +1170,7 @@ def add_recording_as_time_series_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
     iterator_type: str | None = "v2",
+    iterator_options: dict | None = None,
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
     time_series_name: Optional[str] = None,
@@ -1206,16 +1207,30 @@ def add_recording_as_time_series_to_nwbfile(
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
         None: write the TimeSeries with no memory chunking.
-    iterator_opts: dict, optional
+    iterator_options: dict, optional
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
+    iterator_opts: dict, optional
+        Deprecated. Use 'iterator_options' instead.
     always_write_timestamps : bool, default: False
         Set to True to always write timestamps.
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
     """
+    # Handle deprecated iterator_opts parameter
+    if iterator_opts is not None:
+        warnings.warn(
+            "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
+            "Use 'iterator_options' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        if iterator_options is not None:
+            raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
+        iterator_options = iterator_opts
+
     if time_series_name is not None:
         warnings.warn(
             "The 'time_series_name' parameter is deprecated and will be removed in or after February 2026. "
@@ -1231,7 +1246,7 @@ def add_recording_as_time_series_to_nwbfile(
             metadata=metadata,
             segment_index=segment_index,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
             time_series_name=time_series_name,
             metadata_key=metadata_key,
@@ -1244,7 +1259,7 @@ def _add_time_series_segment_to_nwbfile(
     metadata: dict | None = None,
     segment_index: int = 0,
     iterator_type: str | None = "v2",
-    iterator_opts: dict | None = None,
+    iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
     time_series_name: Optional[str] = None,
     metadata_key: str = "time_series_metadata_key",
@@ -1309,7 +1324,7 @@ def _add_time_series_segment_to_nwbfile(
         recording=recording,
         segment_index=segment_index,
         iterator_type=iterator_type,
-        iterator_opts=iterator_opts,
+        iterator_options=iterator_options,
     )
     tseries_kwargs.update(data=data_iterator)
 
@@ -1491,7 +1506,7 @@ def _add_spatial_series_segment_to_nwbfile(
         recording=recording,
         segment_index=segment_index,
         iterator_type=iterator_type,
-        iterator_opts=iterator_options,
+        iterator_options=iterator_options,
     )
     series_kwargs["data"] = data_iterator
 
@@ -1725,9 +1740,9 @@ def write_recording_to_nwbfile(
     # Handle deprecated iterator_opts parameter
     if iterator_opts is not None:
         warnings.warn(
-            "The 'iterator_opts' parameter is deprecated and will be removed in or after March 2026. "
+            "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
             "Use 'iterator_options' instead.",
-            DeprecationWarning,
+            FutureWarning,
             stacklevel=2,
         )
         if iterator_options is None:
