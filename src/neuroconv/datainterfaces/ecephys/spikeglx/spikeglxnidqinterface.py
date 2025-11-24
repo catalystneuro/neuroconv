@@ -272,6 +272,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         metadata: dict | None = None,
         stub_test: bool = False,
         iterator_type: str | None = "v2",
+        iterator_options: dict | None = None,
         iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
@@ -288,11 +289,24 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             If True, only writes a small amount of data for testing
         iterator_type : str | None, default: "v2"
             Type of iterator to use for data streaming
-        iterator_opts : dict | None, default: None
+        iterator_options : dict | None, default: None
             Additional options for the iterator
+        iterator_opts : dict | None, default: None
+            Deprecated. Use 'iterator_options' instead.
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
+        # Handle deprecated iterator_opts parameter
+        if iterator_opts is not None:
+            warnings.warn(
+                "The 'iterator_opts' parameter is deprecated and will be removed in May 2026 or after. "
+                "Use 'iterator_options' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if iterator_options is not None:
+                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
+            iterator_options = iterator_opts
 
         from ....tools.spikeinterface import _stub_recording
 
@@ -314,7 +328,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 nwbfile=nwbfile,
                 recording=recording,
                 iterator_type=iterator_type,
-                iterator_opts=iterator_opts,
+                iterator_options=iterator_options,
                 always_write_timestamps=always_write_timestamps,
                 metadata=metadata,
             )
@@ -327,7 +341,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         nwbfile: NWBFile,
         recording,
         iterator_type: str | None,
-        iterator_opts: dict | None,
+        iterator_options: dict | None,
         always_write_timestamps: bool,
         metadata: dict | None = None,
     ):
@@ -342,7 +356,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             The recording extractor containing the analog channels
         iterator_type : str | None
             Type of iterator to use for data streaming
-        iterator_opts : dict | None
+        iterator_options : dict | None
             Additional options for the iterator
         always_write_timestamps : bool
             If True, always writes timestamps instead of using sampling rate
@@ -373,7 +387,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
             metadata_key=self.metadata_key,
         )
