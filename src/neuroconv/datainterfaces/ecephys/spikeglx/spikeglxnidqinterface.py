@@ -11,6 +11,7 @@ from ....tools.signal_processing import get_rising_frames_from_ttl
 from ....utils import (
     DeepDict,
     get_json_schema_from_method_signature,
+    to_camel_case,
 )
 
 
@@ -200,11 +201,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         # Get channel names for descriptions
         channel_names_property = self.recording_extractor.get_property(key="channel_names")
 
-        def _to_camel_case(snake_str: str) -> str:
-            """Convert snake_case or lowercase to CamelCase."""
-            components = snake_str.split("_")
-            return "".join(x.capitalize() for x in components)
-
         # If user provided grouping at init, structure metadata accordingly
         if self._analog_channel_groups is not None:
             metadata = {}
@@ -218,7 +214,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                     group_channel_names = list(channels)
 
                 metadata[group_key] = {
-                    "name": _to_camel_case(group_key),
+                    "name": to_camel_case(group_key),
                     "description": f"Analog data from NIDQ board, group '{group_key}'. "
                     f"Channels are {group_channel_names} in that order.",
                 }
@@ -411,7 +407,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         """
         Add analog channels from the NIDQ board to the NWB file.
 
-
         Parameters
         ----------
         nwbfile : NWBFile
@@ -427,7 +422,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         metadata : dict | None, default: None
             Metadata dictionary with TimeSeries information
         """
-
         from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
 
         if metadata is None:

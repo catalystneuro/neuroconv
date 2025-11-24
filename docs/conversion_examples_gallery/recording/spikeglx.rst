@@ -148,10 +148,12 @@ different signal types (e.g., audio, sensors, accelerometers).
     >>> from neuroconv.datainterfaces import SpikeGLXNIDQInterface
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0"
+    >>> metadata_key = "my_custom_metadata_key"
     >>>
     >>> # Specify channel groups at initialization
     >>> interface = SpikeGLXNIDQInterface(
     ...     folder_path=folder_path,
+    ...     metadata_key=metadata_key,
     ...     analog_channel_groups={
     ...         "audio": ["nidq#XA0"],  # Single channel for audio
     ...         "accel": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],  # Group 3 channels for accelerometer
@@ -160,14 +162,18 @@ different signal types (e.g., audio, sensors, accelerometers).
     >>>
     >>> # Get metadata - groups are automatically structured with CamelCase default names
     >>> metadata = interface.get_metadata()
-    >>> # Default names would be "Audio" and "Accel"
     >>>
     >>> # Customize metadata (names, descriptions, etc.)
-    >>> metadata["TimeSeries"]["SpikeGLXNIDQ"]["audio"]["name"] = "TimeSeriesAudioSignal"
-    >>> metadata["TimeSeries"]["SpikeGLXNIDQ"]["audio"]["description"] = "Microphone audio recording"
-    >>>
-    >>> metadata["TimeSeries"]["SpikeGLXNIDQ"]["accel"]["name"] = "TimeSeriesAccelerometer"
-    >>> metadata["TimeSeries"]["SpikeGLXNIDQ"]["accel"]["description"] = "3-axis accelerometer (X, Y, Z)"
+    >>> metadata["TimeSeries"][metadata_key].update({
+    ...     "audio": {
+    ...         "name": "TimeSeriesAudioSignal",
+    ...         "description": "Microphone audio recording",
+    ...     },
+    ...     "accel": {
+    ...         "name": "TimeSeriesAccelerometer",
+    ...         "description": "3-axis accelerometer (X, Y, Z)",
+    ...     },
+    ... })
     >>>
     >>> # Run conversion - only specified channels are written
     >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom_analog.nwb"
