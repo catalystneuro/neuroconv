@@ -120,31 +120,23 @@ class SpikeGLXConverterPipe(ConverterPipe):
         for stream_id in nidq_streams:
             data_interfaces[stream_id] = SpikeGLXNIDQInterface(folder_path=folder_path)
 
-        # Add sync channel interfaces if requested (one per probe)
+        # Add sync channel interfaces if requested (one per probe, preferring AP over LF)
         if include_sync_channels:
-            # Group sync streams by probe to select only one per probe
-            # We prefer AP sync over LF sync when both are available
-            imec_sync_streams = [stream_id for stream_id in sync_streams if "imec" in stream_id]
+            # Group sync streams by probe device (e.g., "imec0", "imec1")
+            probe_sync_map = {}
+            for stream_id in sync_streams:
+                if "imec" in stream_id:
+                    # Extract probe device: "imec0.ap-SYNC" -> "imec0"
+                    probe_device = stream_id.replace("-SYNC", "").split(".")[0]
+                    if probe_device not in probe_sync_map:
+                        probe_sync_map[probe_device] = []
+                    probe_sync_map[probe_device].append(stream_id)
 
-            # Extract probe indices from sync streams
-            probe_sync_map = {}  # Maps probe_index -> list of sync streams for that probe
-            for stream_id in imec_sync_streams:
-                # Extract probe index (e.g., "imec0.ap-SYNC" -> "0")
-                base_stream = stream_id.replace("-SYNC", "")  # "imec0.ap"
-                probe_device = base_stream.split(".")[0]  # "imec0"
-                probe_index = probe_device.replace("imec", "")  # "0"
+            # For each probe, select one sync stream (prefer AP over LF via alphabetical sort)
+            for probe_device, sync_stream_list in probe_sync_map.items():
+                sync_stream_list.sort()  # "ap" < "lf" alphabetically, so AP comes first
+                selected_sync_stream = sync_stream_list[0]
 
-                if probe_index not in probe_sync_map:
-                    probe_sync_map[probe_index] = []
-                probe_sync_map[probe_index].append(stream_id)
-
-            # For each probe, select one sync stream (prefer AP over LF)
-            for probe_index, sync_stream_list in probe_sync_map.items():
-                # Sort to ensure AP comes before LF (ap < lf alphabetically)
-                sync_stream_list.sort()
-                selected_sync_stream = sync_stream_list[0]  # First one (AP if both exist)
-
-                # Use unique metadata_key for each probe to avoid naming collisions
                 data_interfaces[selected_sync_stream] = SpikeGLXSyncChannelInterface(
                     folder_path=folder_path,
                     stream_id=selected_sync_stream,
