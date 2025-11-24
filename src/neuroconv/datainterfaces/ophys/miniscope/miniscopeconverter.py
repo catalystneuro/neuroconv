@@ -249,9 +249,8 @@ class MiniscopeConverter(ConverterPipe):
                 # Iterate over all the folders found for this device
                 # And create a MiniscopeImagingInterface for each
                 for device_folder_path in device_folders_dict[device_name]:
-                    # Normalize to forward slashes for cross-platform consistency
-                    # Prevents windows error
-                    interface_name = str(device_folder_path.relative_to(fixed_data_path)).replace("\\", "/")
+                    # Use as_posix() to ensure forward slashes on all platforms and avoid windows backslashes
+                    interface_name = device_folder_path.relative_to(fixed_data_path).as_posix()
                     interface = MiniscopeImagingInterface(folder_path=device_folder_path)
                     data_interfaces[interface_name] = interface
                     self._interface_to_device_mapping[interface_name] = device_name
