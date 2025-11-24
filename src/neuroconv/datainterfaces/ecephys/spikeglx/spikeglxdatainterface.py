@@ -1,16 +1,13 @@
 """DataInterfaces for SpikeGLX."""
 
 import warnings
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 from pydantic import DirectoryPath, FilePath, validate_call
 
-from .spikeglx_utils import (
-    fetch_stream_id_for_spikelgx_file,
-    get_device_metadata,
-    get_session_start_time,
-)
+from .spikeglx_utils import fetch_stream_id_for_spikelgx_file
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
@@ -150,6 +147,15 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         contact_shapes = probe.contact_shapes
         self.recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
 
+        # Set ADC multiplexing properties if available
+        if "adc_group" in probe.contact_annotations:
+            adc_group = probe.contact_annotations["adc_group"]
+            self.recording_extractor.set_property(key="adc_group", ids=channel_ids, values=adc_group)
+
+        if "adc_sample_order" in probe.contact_annotations:
+            adc_sample_order = probe.contact_annotations["adc_sample_order"]
+            self.recording_extractor.set_property(key="adc_sample_order", ids=channel_ids, values=adc_sample_order)
+
         # Set channel_name property for multi-stream deduplication
         # For SpikeGLX, multiple streams (AP, LF) can record from the same electrodes
         # We set channel_name to show all streams for each electrode (e.g., "AP0,LF0")
@@ -183,12 +189,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
-        session_start_time = get_session_start_time(self.meta)
+        session_start_time = self._get_session_start_time()
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
         # Device metadata
-        device = get_device_metadata(self.meta)
+        device = self._get_device_metadata_from_probe()
 
         # Should follow pattern 'Imec0', 'Imec1', etc.
         probe_name = self._signals_info_dict["device"].capitalize()
@@ -220,10 +226,17 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             ),
             dict(name="contact_shapes", description="The shape of the electrode"),
             dict(
-                name="inter_sample_shift",
+                name="adc_group",
                 description=(
-                    "Array of relative phase shifts for each channel, with values ranging from 0 to 1, "
-                    "representing the fractional delay within the sampling period due to sequential ADC."
+                    "The ADC (Analog-to-Digital Converter) index to which each electrode is connected. "
+                    "This hardware configuration determines which channels are sampled simultaneously."
+                ),
+            ),
+            dict(
+                name="adc_sample_order",
+                description=(
+                    "The sampling order index (0-based) of this electrode within its ADC group. "
+                    "Combined with adc_group, this determines the precise temporal offset of each channel's samples."
                 ),
             ),
         ]
@@ -246,3 +259,75 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 new_recording.get_times(segment_index=segment_index)
                 for segment_index in range(self._number_of_segments)
             ]
+
+    def _get_session_start_time(self) -> datetime | None:
+        """
+        Fetches the session start time from the recording metadata.
+
+        Returns
+        -------
+        datetime or None
+            the session start time in datetime format.
+        """
+        session_start_time = self.meta.get("fileCreateTime", None)
+        if session_start_time.startswith("0000-00-00"):
+            # date was removed. This sometimes happens with human data to protect the
+            # anonymity of medical patients.
+            return
+        if session_start_time:
+            session_start_time = datetime.fromisoformat(session_start_time)
+        return session_start_time
+
+    def _get_device_metadata_from_probe(self) -> dict:
+        """Returns device metadata extracted from probe information.
+
+        Returns
+        -------
+        dict
+            A dict containing the metadata necessary for creating the device.
+        """
+        import json
+
+        # Get probe info from recording extractor annotation
+        probes_info = self.recording_extractor.get_annotation("probes_info")
+        probe_info = probes_info[0]  # Get first probe info
+
+        metadata_dict = dict()
+
+        # Add available fields from probe_info
+
+        # Serial number is a separate field in device metadata
+        serial_number = probe_info.get("serial_number")
+
+        if "part_number" in probe_info:
+            metadata_dict.update(part_number=probe_info["part_number"])
+
+        if "port" in probe_info:
+            metadata_dict.update(port=probe_info["port"])
+
+        if "slot" in probe_info:
+            metadata_dict.update(slot=probe_info["slot"])
+
+        if "model_name" in probe_info:
+            metadata_dict.update(model_name=probe_info["model_name"])
+
+        # Use description from probe_info if available
+        description_string = probe_info.get("description", "A Neuropixel probe of unknown subtype.")
+
+        # Get manufacturer from probe_info, default to "Imec"
+        manufacturer = probe_info.get("manufacturer", "Imec")
+
+        # Add manufacturer to metadata_dict
+        metadata_dict.update(manufacturer=manufacturer)
+
+        # Append additional metadata to description as JSON
+        if metadata_dict:
+            description_string = f"{description_string}. Additional metadata: {json.dumps(metadata_dict)}"
+
+        device_metadata = dict(name="NeuropixelImec", description=description_string)
+
+        # Add serial_number as a separate field if available
+        if serial_number:
+            device_metadata["serial_number"] = serial_number
+
+        return device_metadata

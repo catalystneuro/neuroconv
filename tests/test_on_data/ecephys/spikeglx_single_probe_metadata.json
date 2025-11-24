@@ -6,8 +6,8 @@
     "Device": [
       {
         "name": "NeuropixelsImec0",
-        "description": "{\"probe_type\": \"0\", \"probe_type_description\": \"NP1.0\", \"flex_part_number\": \"NP2_FLEX_0\", \"connected_base_station_part_number\": \"NP2_QBSC_00\"}",
-        "manufacturer": "Imec"
+        "description": "Neuropixels 1.0 probe. Additional metadata: {\"part_number\": \"PRB_1_4_0480_1\", \"port\": \"2\", \"slot\": \"2\", \"model_name\": \"PRB_1_4_0480_1\", \"manufacturer\": \"imec\"}",
+        "serial_number": "18194809281"
       }
     ],
     "ElectrodeGroup": [
@@ -37,8 +37,12 @@
         "description": "The shape of the electrode"
       },
       {
-        "name": "inter_sample_shift",
-        "description": "Array of relative phase shifts for each channel, with values ranging from 0 to 1, representing the fractional delay within the sampling period due to sequential ADC."
+        "name": "adc_group",
+        "description": "The ADC (Analog-to-Digital Converter) index to which each electrode is connected. This hardware configuration determines which channels are sampled simultaneously."
+      },
+      {
+        "name": "adc_sample_order",
+        "description": "The sampling order index (0-based) of this electrode within its ADC group. Combined with adc_group, this determines the precise temporal offset of each channel's samples."
       }
     ],
     "ElectricalSeriesLF": {
