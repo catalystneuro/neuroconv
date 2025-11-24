@@ -139,37 +139,40 @@ interfaces in the same conversion, each interface must have a unique ``metadata_
 Customizing analog channel metadata
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Analog channels (XA and MA channels) can be split into separate TimeSeries objects with custom
-metadata. This is useful when different analog channels represent different signal types (e.g.,
-audio, sensors, accelerometers).
+Analog channels (XA and MA channels) can be split into separate TimeSeries objects by specifying
+channel groups at interface initialization. This is useful when different analog channels represent
+different signal types (e.g., audio, sensors, accelerometers).
 
 .. code-block:: python
 
     >>> from neuroconv.datainterfaces import SpikeGLXNIDQInterface
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0"
-    >>> interface = SpikeGLXNIDQInterface(folder_path=folder_path)
     >>>
-    >>> # Get default metadata
-    >>> metadata = interface.get_metadata()
-    >>>
-    >>> # Customize analog channels with flat dictionary structure
-    >>> metadata["TimeSeries"]["SpikeGLXNIDQ"] = {
-    ...     "audio": {  # Arbitrary key for organization
-    ...         "channels": ["nidq#XA0"],  # Required: list of channel IDs with nidq# prefix
-    ...         "name": "TimeSeriesAudioSignal",  # Required: NWB TimeSeries name
-    ...         "description": "Microphone audio recording",
-    ...     },
-    ...     "accel": {
-    ...         "channels": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],  # Group multiple channels
-    ...         "name": "TimeSeriesAccelerometer",
-    ...         "description": "3-axis accelerometer (X, Y, Z)",
+    >>> # Specify channel groups at initialization
+    >>> interface = SpikeGLXNIDQInterface(
+    ...     folder_path=folder_path,
+    ...     analog_channel_groups={
+    ...         "audio": ["nidq#XA0"],  # Single channel for audio
+    ...         "accel": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],  # Group 3 channels for accelerometer
     ...     }
-    ... }
+    ... )
     >>>
-    >>> # Run conversion - only nidq#XA0, nidq#XA3, nidq#XA4, nidq#XA5 written
+    >>> # Get metadata - groups are automatically structured with CamelCase default names
+    >>> metadata = interface.get_metadata()
+    >>> # Default names would be "Audio" and "Accel"
+    >>>
+    >>> # Customize metadata (names, descriptions, etc.)
+    >>> metadata["TimeSeries"]["SpikeGLXNIDQ"]["audio"]["name"] = "TimeSeriesAudioSignal"
+    >>> metadata["TimeSeries"]["SpikeGLXNIDQ"]["audio"]["description"] = "Microphone audio recording"
+    >>>
+    >>> metadata["TimeSeries"]["SpikeGLXNIDQ"]["accel"]["name"] = "TimeSeriesAccelerometer"
+    >>> metadata["TimeSeries"]["SpikeGLXNIDQ"]["accel"]["description"] = "3-axis accelerometer (X, Y, Z)"
+    >>>
+    >>> # Run conversion - only specified channels are written
     >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom_analog.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-Note: Channels not listed in the configuration will not be written to the NWB file.
-Each TimeSeries can contain one or more channels, allowing you to group related signals together.
+Note: If ``analog_channel_groups`` is not specified (default), all analog channels are written
+to a single TimeSeries. Each group creates a separate TimeSeries in the NWB file, allowing you
+to organize related signals together and customize their metadata independently.

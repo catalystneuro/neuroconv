@@ -41,14 +41,14 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         es_key: str = "ElectricalSeriesNIDQ",
         folder_path: DirectoryPath | None = None,
         metadata_key: str = "SpikeGLXNIDQ",
+        analog_channel_groups: dict[str, list[str]] | None = None,
     ):
         """
         Read analog and digital channel data from the NIDQ board for the SpikeGLX recording.
 
         The NIDQ stream records both analog and digital (usually non-neural) signals.
         XD channels are converted to events directly.
-        XA, MA and MD channels are all written together to a single TimeSeries at the moment.
-        Note that the multiplexed channels MA and MD are written multiplexed at the moment.
+        XA and MA channels can be organized into separate TimeSeries using analog_channel_groups.
 
         Parameters
         ----------
@@ -63,6 +63,17 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Key used to organize metadata in the metadata dictionary. This is especially useful
             when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used
             to organize TimeSeries and Events metadata.
+        analog_channel_groups : dict[str, list[str]], optional
+            Dictionary mapping group names to lists of analog channel IDs.
+            Each group will be written as a separate TimeSeries in the NWB file.
+            If None (default), all analog channels are written as a single TimeSeries.
+
+            Example:
+                {
+                    "audio": ["nidq#XA0"],
+                    "accel": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],
+                    "temp": ["nidq#XA6", "nidq#XA7"]
+                }
         """
 
         if file_path is not None:
@@ -108,6 +119,19 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             self.event_extractor = SpikeGLXEventExtractor(folder_path=self.folder_path)
 
         self.metadata_key = metadata_key
+
+        # Store and validate analog channel groups
+        self._analog_channel_groups = analog_channel_groups
+        if analog_channel_groups is not None:
+            # Validate all specified channels exist in recording
+            all_analog_ids_set = set(self.analog_channel_ids)
+            for group_key, channels in analog_channel_groups.items():
+                invalid_channels = set(channels) - all_analog_ids_set
+                if invalid_channels:
+                    raise ValueError(
+                        f"Invalid channels in group '{group_key}': {invalid_channels}. "
+                        f"Available analog channels: {self.analog_channel_ids}"
+                    )
 
         super().__init__(
             verbose=verbose,
@@ -161,28 +185,53 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         """
         Returns default metadata for analog channel TimeSeries.
 
-        Single source of truth for default analog channel metadata.
-        Uses NEW format with nested configuration structure.
+        Structure depends on whether analog_channel_groups was provided at init.
+        If grouping specified, creates metadata for each group.
+        Otherwise, returns single TimeSeries configuration for all channels.
 
         Returns
         -------
         dict
-            Dictionary with default analog channel configuration in NEW format.
+            Dictionary with analog channel TimeSeries metadata.
         """
         if not self.has_analog_channels:
             return {}
 
-        # Try to get channel names, fall back to channel IDs if not available
+        # Get channel names for descriptions
         channel_names_property = self.recording_extractor.get_property(key="channel_names")
+
+        def _to_camel_case(snake_str: str) -> str:
+            """Convert snake_case or lowercase to CamelCase."""
+            components = snake_str.split("_")
+            return "".join(x.capitalize() for x in components)
+
+        # If user provided grouping at init, structure metadata accordingly
+        if self._analog_channel_groups is not None:
+            metadata = {}
+            for group_key, channels in self._analog_channel_groups.items():
+                # Get names for these specific channels
+                if channel_names_property is not None:
+                    # Find indices for these channel IDs
+                    indices = [i for i, ch_id in enumerate(self.analog_channel_ids) if ch_id in channels]
+                    group_channel_names = [channel_names_property[i] for i in indices]
+                else:
+                    group_channel_names = list(channels)
+
+                metadata[group_key] = {
+                    "name": _to_camel_case(group_key),
+                    "description": f"Analog data from NIDQ board, group '{group_key}'. "
+                    f"Channels are {group_channel_names} in that order.",
+                }
+            return metadata
+
+        # Default: single TimeSeries with all channels (backward compatible)
         if channel_names_property is not None:
             channel_names = [channel_names_property[i] for i in range(len(self.analog_channel_ids))]
         else:
             channel_names = list(self.analog_channel_ids)
 
-        # NEW FORMAT - single configuration with all channels
         return {
             "nidq_analog": {
-                "channels": list(self.analog_channel_ids),
                 "name": "TimeSeriesNIDQ",
                 "description": f"Analog data from the NIDQ board. Channels are {channel_names} in that order.",
             }
@@ -378,7 +427,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         metadata : dict | None, default: None
             Metadata dictionary with TimeSeries information
         """
-        import warnings
 
         from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
 
@@ -392,50 +440,35 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             # No configuration = no analog channels written
             return
 
-        # Detect OLD format (backward compatibility)
-        # OLD format has "name" at top level and no "channels" field
-        if "name" in time_series_metadata and "channels" not in time_series_metadata:
-            # OLD FORMAT - single TimeSeries for all channels
-            warnings.warn(
-                "The old metadata format for NIDQ analog channels is deprecated and will be removed on or after May 2026. "
-                "Please update to the new format where metadata is organized as a dictionary with channel configurations. "
-                "New format example: "
-                'metadata["TimeSeries"]["SpikeGLXNIDQ"] = {"audio": {"channels": ["nidq#XA0"], "name": "AudioSignal", "description": "..."}}'
-                ". See the documentation for more examples.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            # Write using OLD format - single TimeSeries with all analog channels
-            # Note: Must select only analog channels (the recording may include digital channels)
-            analog_recording = recording.select_channels(channel_ids=self.analog_channel_ids)
-            ts_metadata = {"TimeSeries": {self.metadata_key: time_series_metadata}}
+        # Create sliced recording extractors upfront based on init-time grouping
+        recordings_by_group = {}
+        if self._analog_channel_groups is not None:
+            # Init-time grouping: create one recording per group
+            for group_key, channels in self._analog_channel_groups.items():
+                recordings_by_group[group_key] = recording.select_channels(channel_ids=channels)
+        else:
+            # No grouping: single recording with all analog channels (backward compatible)
+            recordings_by_group["nidq_analog"] = recording.select_channels(channel_ids=self.analog_channel_ids)
+
+        # Write each recording as a TimeSeries
+        for group_key, channel_recording in recordings_by_group.items():
+            # Check if this group has metadata
+            if group_key not in time_series_metadata:
+                # Skip groups not in metadata (shouldn't happen with get_metadata, but be safe)
+                continue
+
+            # Get metadata for this group
+            ts_metadata = {"TimeSeries": {group_key: time_series_metadata[group_key]}}
+
+            # Write TimeSeries
             add_recording_as_time_series_to_nwbfile(
-                recording=analog_recording,
+                recording=channel_recording,
                 nwbfile=nwbfile,
                 metadata=ts_metadata,
                 iterator_type=iterator_type,
                 iterator_opts=iterator_opts,
                 always_write_timestamps=always_write_timestamps,
-                metadata_key=self.metadata_key,
-            )
-            return
-
-        # NEW FORMAT - Create a TimeSeries for each configuration
-        # Each config_key maps to a dictionary with "channels", "name", "description", etc.
-        for config_key, ts_config in time_series_metadata.items():
-            # Build metadata structure for this specific TimeSeries
-            # The "channels" field will be handled by add_recording_as_time_series_to_nwbfile
-            ts_metadata = {"TimeSeries": {config_key: ts_config}}
-
-            # Write this group as a TimeSeries - channel selection happens internally
-            add_recording_as_time_series_to_nwbfile(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=ts_metadata,
-                iterator_type=iterator_type,
-                iterator_opts=iterator_opts,
-                always_write_timestamps=always_write_timestamps,
-                metadata_key=config_key,
+                metadata_key=group_key,
             )
 
     def _add_digital_channels(self, nwbfile: NWBFile, metadata: dict | None = None):

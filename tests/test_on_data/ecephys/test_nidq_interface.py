@@ -148,7 +148,7 @@ def test_nidq_partial_labels_map(tmp_path):
 
 
 def test_nidq_analog_data(tmp_path):
-    """Test analog channels with default metadata_key."""
+    """Test analog channels with default behavior (no grouping)."""
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
     interface = SpikeGLXNIDQInterface(folder_path=folder_path)
 
@@ -157,20 +157,10 @@ def test_nidq_analog_data(tmp_path):
     metadata = interface.get_metadata()
     time_series_metadata = metadata.get("TimeSeries", {})
 
-    # Expected TimeSeries metadata structure (NEW format with nidq_analog config)
+    # Expected TimeSeries metadata structure (default: single TimeSeries with all channels)
     expected_time_series_metadata = {
         "SpikeGLXNIDQ": {
             "nidq_analog": {
-                "channels": [
-                    "nidq#XA0",
-                    "nidq#XA1",
-                    "nidq#XA2",
-                    "nidq#XA3",
-                    "nidq#XA4",
-                    "nidq#XA5",
-                    "nidq#XA6",
-                    "nidq#XA7",
-                ],
                 "name": "TimeSeriesNIDQ",
                 "description": "Analog data from the NIDQ board. Channels are ['XA0', 'XA1', 'XA2', 'XA3', 'XA4', 'XA5', 'XA6', 'XA7'] in that order.",
             }
@@ -199,62 +189,44 @@ def test_nidq_analog_data(tmp_path):
     assert len(nwbfile.devices) == 1
 
 
-def test_nidq_analog_old_metadata_format(tmp_path):
-    """Test that old metadata format still works but raises FutureWarning."""
-    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
-    interface = SpikeGLXNIDQInterface(folder_path=folder_path)
-
-    # Get default metadata and use OLD format (single "name" at top level)
-    metadata = interface.get_metadata()
-
-    # OLD FORMAT - has "name" at top level, no "channels" field
-    metadata["TimeSeries"]["SpikeGLXNIDQ"] = {
-        "name": "TimeSeriesNIDQOldFormat",
-        "description": "Old format with all analog channels",
-    }
-
-    # Write to NWB - should work but emit FutureWarning
-    nwbfile_path = tmp_path / "nidq_test_old_format.nwb"
-    with pytest.warns(
-        FutureWarning,
-        match="The old metadata format for NIDQ analog channels is deprecated and will be removed on or after May 2026",
-    ):
-        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
-    # Verify the data was written correctly
-    nwbfile = read_nwb(nwbfile_path)
-    assert len(nwbfile.acquisition) == 1
-    time_series = nwbfile.acquisition["TimeSeriesNIDQOldFormat"]
-    assert time_series.name == "TimeSeriesNIDQOldFormat"
-    assert time_series.data.shape[1] == 8  # All 8 analog channels
-
-
 def test_nidq_analog_metadata_customization(tmp_path):
-    """Test dividing analog channels into multiple TimeSeries with custom configurations."""
+    """Test dividing analog channels into multiple TimeSeries with init-time grouping."""
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
-    interface = SpikeGLXNIDQInterface(folder_path=folder_path)
 
-    # Get default metadata and customize to split channels into multiple TimeSeries
+    # Divide the 8 analog channels (XA0-XA7) into 3 separate groups at init time
+    interface = SpikeGLXNIDQInterface(
+        folder_path=folder_path,
+        analog_channel_groups={
+            "audio": ["nidq#XA0", "nidq#XA1"],
+            "accelerometer": ["nidq#XA2", "nidq#XA3", "nidq#XA4"],
+            "temperature": ["nidq#XA5", "nidq#XA6", "nidq#XA7"],
+        },
+    )
+
+    # Get metadata - should have 3 group entries with CamelCase names
     metadata = interface.get_metadata()
+    time_series_metadata = metadata["TimeSeries"]["SpikeGLXNIDQ"]
 
-    # Divide the 8 analog channels (XA0-XA7) into 3 separate TimeSeries
-    metadata["TimeSeries"]["SpikeGLXNIDQ"] = {
-        "audio": {
-            "channels": ["nidq#XA0", "nidq#XA1"],
-            "name": "TimeSeriesAudioSignals",
-            "description": "Audio signals from microphones",
-        },
-        "accelerometer": {
-            "channels": ["nidq#XA2", "nidq#XA3", "nidq#XA4"],
-            "name": "TimeSeriesAccelerometer",
-            "description": "3-axis accelerometer data",
-        },
-        "temperature": {
-            "channels": ["nidq#XA5", "nidq#XA6", "nidq#XA7"],
-            "name": "TimeSeriesTemperature",
-            "description": "Temperature sensor readings",
-        },
-    }
+    # Check that metadata has correct structure with default CamelCase names
+    assert "audio" in time_series_metadata
+    assert time_series_metadata["audio"]["name"] == "Audio"
+    assert "group 'audio'" in time_series_metadata["audio"]["description"]
+
+    assert "accelerometer" in time_series_metadata
+    assert time_series_metadata["accelerometer"]["name"] == "Accelerometer"
+
+    assert "temperature" in time_series_metadata
+    assert time_series_metadata["temperature"]["name"] == "Temperature"
+
+    # Customize metadata (names and descriptions)
+    metadata["TimeSeries"]["SpikeGLXNIDQ"]["audio"]["name"] = "TimeSeriesAudioSignals"
+    metadata["TimeSeries"]["SpikeGLXNIDQ"]["audio"]["description"] = "Audio signals from microphones"
+
+    metadata["TimeSeries"]["SpikeGLXNIDQ"]["accelerometer"]["name"] = "TimeSeriesAccelerometer"
+    metadata["TimeSeries"]["SpikeGLXNIDQ"]["accelerometer"]["description"] = "3-axis accelerometer data"
+
+    metadata["TimeSeries"]["SpikeGLXNIDQ"]["temperature"]["name"] = "TimeSeriesTemperature"
+    metadata["TimeSeries"]["SpikeGLXNIDQ"]["temperature"]["description"] = "Temperature sensor readings"
 
     # Write to NWB and verify multiple TimeSeries were created
     nwbfile_path = tmp_path / "nidq_test_multiple_timeseries.nwb"
@@ -282,3 +254,71 @@ def test_nidq_analog_metadata_customization(tmp_path):
     temp_ts = nwbfile.acquisition["TimeSeriesTemperature"]
     assert temp_ts.data.shape[1] == 3  # 3 channels
     assert "Temperature sensor readings" in temp_ts.description
+
+
+def test_nidq_analog_invalid_channels_at_init(tmp_path):
+    """Test that invalid channel IDs raise ValueError at interface initialization."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+
+    # Try to create interface with invalid channel IDs
+    with pytest.raises(ValueError, match="Invalid channels in group 'audio'"):
+        SpikeGLXNIDQInterface(
+            folder_path=folder_path,
+            analog_channel_groups={
+                "audio": ["nidq#XA0", "nidq#XA99"],  # XA99 doesn't exist
+            },
+        )
+
+
+def test_nidq_analog_groups_with_default_metadata(tmp_path):
+    """Test that groups work with default metadata (no customization)."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+
+    # Create interface with grouping
+    interface = SpikeGLXNIDQInterface(
+        folder_path=folder_path,
+        analog_channel_groups={
+            "audio": ["nidq#XA0", "nidq#XA1"],
+            "sensors": ["nidq#XA2", "nidq#XA3"],
+        },
+    )
+
+    # Write with default metadata (no customization)
+    nwbfile_path = tmp_path / "nidq_test_default_groups.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+
+    nwbfile = read_nwb(nwbfile_path)
+
+    # Should have 2 TimeSeries with CamelCase default names
+    assert len(nwbfile.acquisition) == 2
+    assert "Audio" in nwbfile.acquisition
+    assert "Sensors" in nwbfile.acquisition
+
+    # Verify channel counts
+    assert nwbfile.acquisition["Audio"].data.shape[1] == 2
+    assert nwbfile.acquisition["Sensors"].data.shape[1] == 2
+
+
+def test_nidq_analog_backward_compatibility(tmp_path):
+    """Test that analog_channel_groups=None maintains backward compatibility."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+
+    # Create interface without grouping (None is default)
+    interface = SpikeGLXNIDQInterface(folder_path=folder_path, analog_channel_groups=None)
+
+    # Should behave exactly like main branch - single TimeSeries with all channels
+    metadata = interface.get_metadata()
+    time_series_metadata = metadata["TimeSeries"]["SpikeGLXNIDQ"]
+
+    # Should have single "nidq_analog" entry
+    assert "nidq_analog" in time_series_metadata
+    assert time_series_metadata["nidq_analog"]["name"] == "TimeSeriesNIDQ"
+
+    # Write and verify
+    nwbfile_path = tmp_path / "nidq_test_backward_compat.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+
+    nwbfile = read_nwb(nwbfile_path)
+    assert len(nwbfile.acquisition) == 1
+    assert "TimeSeriesNIDQ" in nwbfile.acquisition
+    assert nwbfile.acquisition["TimeSeriesNIDQ"].data.shape[1] == 8  # All 8 channels

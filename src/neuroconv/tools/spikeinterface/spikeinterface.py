@@ -1217,20 +1217,6 @@ def add_recording_as_time_series_to_nwbfile(
                 }
             }
         Where the metadata_key is used to look up metadata in the metadata dictionary.
-
-        The metadata may optionally include a 'channels' field to select a subset of channels:
-
-            metadata['TimeSeries'] = {
-                'metadata_key': {
-                    "channels": ["channel_id1", "channel_id2", ...],
-                    "name": "my_name",
-                    ...
-                }
-            }
-
-        If 'channels' is provided, the recording will be filtered to include only those channels
-        before creating the TimeSeries. The 'channels' field will be removed from the metadata
-        before creating the TimeSeries object.
     metadata_key: str
         The entry in TimeSeries metadata to use.
     iterator_type: {"v2",  None}, default: 'v2'
@@ -1257,15 +1243,6 @@ def add_recording_as_time_series_to_nwbfile(
             stacklevel=2,
         )
         metadata_key = time_series_name
-
-    # Handle channel selection if 'channels' field is present in metadata
-    if metadata is not None and "TimeSeries" in metadata and metadata_key in metadata["TimeSeries"]:
-        time_series_metadata = metadata["TimeSeries"][metadata_key]
-
-        # Select channels if 'channels' field is present
-        if "channels" in time_series_metadata:
-            channels = time_series_metadata["channels"]
-            recording = recording.select_channels(channel_ids=channels)
 
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):
