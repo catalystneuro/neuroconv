@@ -34,7 +34,8 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
     -----------
     Use this interface when you need explicit control over which sync channel to convert. For most
     use cases, the :py:class:`~neuroconv.converters.SpikeGLXConverterPipe` is recommended, which
-    automatically includes sync channels (one per probe, preferring AP over LF) by default.
+    automatically includes all the neural streams plus the sync channels (one per probe, preferring AP over LF)
+    by default.
 
     Use this interface directly when you need to:
     - Convert only a specific sync channel stream
