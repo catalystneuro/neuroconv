@@ -86,14 +86,14 @@ class TestMiniscopeConverter:
         assert series_acc_session2.imaging_plane.name == "ImagingPlaneACCMiniscope2"
         assert series_hpc_session2.imaging_plane.name == "ImagingPlaneHPCMiniscope1"
 
-        # 7. Verify stub test worked (only 2 frames per series)
+        # 7. Verify stub test worked (only 2 samples per series)
         assert series_acc_session1.data.shape == (2, 15, 15)
         assert series_hpc_session1.data.shape == (2, 15, 15)
         assert series_acc_session2.data.shape == (2, 15, 15)
         assert series_hpc_session2.data.shape == (2, 15, 15)
 
 
-class TestMiniscopeConverterTyeLabLegacy:
+class TestMiniscopeConverterLegacyTyeLabFormat:
     """Test MiniscopeConverter with Tye Lab legacy folder structure."""
 
     @pytest.fixture(autouse=True)

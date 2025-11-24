@@ -286,49 +286,33 @@ class MiniscopeConverter(ConverterPipe):
 
         This ensures that sessions recorded at different times maintain their temporal relationship.
         """
-        # Get ophys interface names (exclude behavior camera)
+        from neuroconv.datainterfaces.ophys.miniscope.miniscopeimagingdatainterface import (
+            _MiniscopeMultiRecordingInterface,
+        )
+
         ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
 
-        # Calculate session_start_time for each interface
         session_start_times = {}
         for interface_name in ophys_interface_names:
             interface = self.data_interface_objects[interface_name]
 
-            # Handle different interface types
-            if hasattr(interface, "_device_folder_path"):
-                # MiniscopeImagingInterface (config file mode)
-                device_folder_path = interface._device_folder_path
-                # The parent folder contains the session-level metaData.json with session_start_time
-                session_start_time = interface._get_session_start_time(folder_path=device_folder_path.parent)
-            elif hasattr(interface, "_recording_start_times"):
-                # _MiniscopeMultiRecordingInterface (legacy mode)
-                # This interface manages multiple recordings, use the first start time
-                session_start_time = interface._recording_start_times[0] if interface._recording_start_times else None
+            # MiniscopeImagingInterface (config file mode) has _device_folder_path
+            # _MiniscopeMultiRecordingInterface (legacy mode) has _recording_start_times
+            if isinstance(interface, _MiniscopeMultiRecordingInterface):
+                session_start_time = interface._recording_start_times[0]
             else:
-                session_start_time = None
-
-            if session_start_time is not None:
-                session_start_times[interface_name] = session_start_time
-
-        if not session_start_times:
-            # No session start times found, nothing to align
-            self._converter_session_start_time = None
-            return
+                device_folder_path = interface._device_folder_path
+                session_start_time = interface._get_session_start_time(folder_path=device_folder_path.parent)
+            session_start_times[interface_name] = session_start_time
 
         # Find the minimum session_start_time (this becomes the reference)
         min_session_start_time = min(session_start_times.values())
-
-        # Store the minimum session start time for use in get_metadata()
         self._converter_session_start_time = min_session_start_time
 
         # Align each interface's timestamps
         for interface_name, session_start_time in session_start_times.items():
             interface = self.data_interface_objects[interface_name]
-
-            # Calculate the time offset in seconds
             time_offset = (session_start_time - min_session_start_time).total_seconds()
-
-            # Shift the interface timestamps
             interface.set_aligned_starting_time(aligned_starting_time=time_offset)
 
     def get_metadata(self):
