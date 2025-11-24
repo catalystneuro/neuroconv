@@ -13,6 +13,7 @@ from .miniscopeimagingdatainterface import (
 from ... import MiniscopeBehaviorInterface
 from ....nwbconverter import ConverterPipe
 from ....utils import get_json_schema_from_method_signature
+from ....utils.str_utils import to_camel_case
 
 
 class MiniscopeConverter(ConverterPipe):
@@ -225,6 +226,8 @@ class MiniscopeConverter(ConverterPipe):
             if not miniscope_devices:
                 raise ValueError("'devices[miniscopes]' is missing from the provided User Config file.")
             self._device_names = list(miniscope_devices.keys())
+            # Create CamelCase mapping for device names
+            self._device_names_camel_case = {name: to_camel_case(name) for name in self._device_names}
 
             all_paths = [p for p in fixed_data_path.glob("**") if p.is_dir()]
             device_folders_dict = {}
@@ -255,6 +258,8 @@ class MiniscopeConverter(ConverterPipe):
             data_interfaces[interface_name] = default_interface
             self._interface_to_device_mapping = {interface_name: device_name}
             self._device_names = [device_name]
+            # Create CamelCase mapping for device names
+            self._device_names_camel_case = {device_name: to_camel_case(device_name)}
 
         super().__init__(data_interfaces=data_interfaces)
 
@@ -337,27 +342,41 @@ class MiniscopeConverter(ConverterPipe):
         # Use the minimum session start time if it was calculated during alignment
         metadata["NWBFile"]["session_start_time"] = self._converter_session_start_time
 
+        # Update Device metadata to use CamelCase names
+        if "Ophys" in metadata and "Device" in metadata["Ophys"]:
+            for device_metadata in metadata["Ophys"]["Device"]:
+                original_name = device_metadata["name"]
+                if original_name in self._device_names_camel_case:
+                    device_metadata["name"] = self._device_names_camel_case[original_name]
+
         ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
 
         imaging_plane_metadata = []
         # Required by the schema
         default_optical_channel = default_ophys_metadata["Ophys"]["ImagingPlane"][0]["optical_channel"]
         for device_name in self._device_names:
+            device_name_camel = self._device_names_camel_case[device_name]
             metadata_entry = {
-                "name": f"ImagingPlane{device_name}",
+                "name": f"ImagingPlane{device_name_camel}",
                 "description": f"Imaging plane for {device_name} Miniscope device.",
                 "optical_channel": default_optical_channel,
-                "device": device_name,
+                "device": device_name_camel,
             }
             imaging_plane_metadata.append(metadata_entry)
 
         series_metadata = []
         for interface_name in ophys_interface_names:
             device_name = self._interface_to_device_mapping[interface_name]
-            interface_name = interface_name.replace("/", "")
-            imaging_plane_name = f"ImagingPlane{device_name}"
+            device_name_camel = self._device_names_camel_case[device_name]
+            # Remove slashes and strip device folder name from the end of interface path
+            # E.g., "2025_06_12/15_15_04/ACC_miniscope2" -> "2025_06_1215_15_04"
+            interface_relative_path = interface_name.replace("/", "")
+            # Remove the device name from the end if present
+            if interface_relative_path.endswith(device_name):
+                interface_relative_path = interface_relative_path[: -len(device_name)]
+            imaging_plane_name = f"ImagingPlane{device_name_camel}"
             metadata_entry = {
-                "name": f"OnePhotonSeries{interface_name}",
+                "name": f"OnePhotonSeries{device_name_camel}{interface_relative_path}",
                 "imaging_plane": imaging_plane_name,
             }
             series_metadata.append(metadata_entry)

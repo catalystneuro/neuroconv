@@ -41,27 +41,31 @@ class TestMiniscopeConverter:
         assert nwbfile.session_start_time.replace(tzinfo=None) == expected_min_start_time
 
         # 2. Check that all 4 expected OnePhotonSeries exist
-        # 2 devices (ACC_miniscope2, HPC_miniscope1) x 2 sessions (15_15_04, 15_26_31)
-        assert "OnePhotonSeries2025_06_1215_15_04ACC_miniscope2" in nwbfile.acquisition
-        assert "OnePhotonSeries2025_06_1215_15_04HPC_miniscope1" in nwbfile.acquisition
-        assert "OnePhotonSeries2025_06_1215_26_31ACC_miniscope2" in nwbfile.acquisition
-        assert "OnePhotonSeries2025_06_1215_26_31HPC_miniscope1" in nwbfile.acquisition
+        # 2 devices (ACCMiniscope2, HPCMiniscope1) x 2 sessions (15_15_04, 15_26_31)
+        assert "OnePhotonSeriesACCMiniscope22025_06_1215_15_04" in nwbfile.acquisition
+        assert "OnePhotonSeriesHPCMiniscope12025_06_1215_15_04" in nwbfile.acquisition
+        assert "OnePhotonSeriesACCMiniscope22025_06_1215_26_31" in nwbfile.acquisition
+        assert "OnePhotonSeriesHPCMiniscope12025_06_1215_26_31" in nwbfile.acquisition
 
         assert len(nwbfile.acquisition) == 4
 
         # 3. Check that both devices exist
-        assert "ACC_miniscope2" in nwbfile.devices
-        assert "HPC_miniscope1" in nwbfile.devices
+        assert "ACCMiniscope2" in nwbfile.devices
+        assert "HPCMiniscope1" in nwbfile.devices
+
+        assert len(nwbfile.devices) == 2
 
         # 4. Check that both imaging planes exist (one per device, not per session)
-        assert "ImagingPlaneACC_miniscope2" in nwbfile.imaging_planes
-        assert "ImagingPlaneHPC_miniscope1" in nwbfile.imaging_planes
+        assert "ImagingPlaneACCMiniscope2" in nwbfile.imaging_planes
+        assert "ImagingPlaneHPCMiniscope1" in nwbfile.imaging_planes
+
+        assert len(nwbfile.imaging_planes) == 2
 
         # 5. Verify time alignment - timestamps of later sessions should be shifted
 
         # Session 1 (15_15_04) - both devices should start at t=0
-        series_acc_session1 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_15_04ACC_miniscope2"]
-        series_hpc_session1 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_15_04HPC_miniscope1"]
+        series_acc_session1 = nwbfile.acquisition["OnePhotonSeriesACCMiniscope22025_06_1215_15_04"]
+        series_hpc_session1 = nwbfile.acquisition["OnePhotonSeriesHPCMiniscope12025_06_1215_15_04"]
         assert series_acc_session1.starting_time == 0.0
         assert series_hpc_session1.starting_time == 0.0
 
@@ -71,22 +75,22 @@ class TestMiniscopeConverter:
             datetime(2025, 6, 12, 15, 26, 31, 176000) - datetime(2025, 6, 12, 15, 15, 4, 724000)
         ).total_seconds()
 
-        series_acc_session2 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_26_31ACC_miniscope2"]
-        series_hpc_session2 = nwbfile.acquisition["OnePhotonSeries2025_06_1215_26_31HPC_miniscope1"]
+        series_acc_session2 = nwbfile.acquisition["OnePhotonSeriesACCMiniscope22025_06_1215_26_31"]
+        series_hpc_session2 = nwbfile.acquisition["OnePhotonSeriesHPCMiniscope12025_06_1215_26_31"]
         assert series_acc_session2.starting_time == expected_offset
         assert series_hpc_session2.starting_time == expected_offset
 
         # 6. Verify each series has correct imaging plane link
-        assert series_acc_session1.imaging_plane.name == "ImagingPlaneACC_miniscope2"
-        assert series_hpc_session1.imaging_plane.name == "ImagingPlaneHPC_miniscope1"
-        assert series_acc_session2.imaging_plane.name == "ImagingPlaneACC_miniscope2"
-        assert series_hpc_session2.imaging_plane.name == "ImagingPlaneHPC_miniscope1"
+        assert series_acc_session1.imaging_plane.name == "ImagingPlaneACCMiniscope2"
+        assert series_hpc_session1.imaging_plane.name == "ImagingPlaneHPCMiniscope1"
+        assert series_acc_session2.imaging_plane.name == "ImagingPlaneACCMiniscope2"
+        assert series_hpc_session2.imaging_plane.name == "ImagingPlaneHPCMiniscope1"
 
         # 7. Verify stub test worked (only 2 frames per series)
-        assert series_acc_session1.data.shape[0] == 2
-        assert series_hpc_session1.data.shape[0] == 2
-        assert series_acc_session2.data.shape[0] == 2
-        assert series_hpc_session2.data.shape[0] == 2
+        assert series_acc_session1.data.shape == (2, 15, 15)
+        assert series_hpc_session1.data.shape == (2, 15, 15)
+        assert series_acc_session2.data.shape == (2, 15, 15)
+        assert series_hpc_session2.data.shape == (2, 15, 15)
 
 
 class TestMiniscopeConverterTyeLabLegacy:
