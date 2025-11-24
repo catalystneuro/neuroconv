@@ -22,6 +22,8 @@ Convert AlphaOmega data to NWB using :py:class:`~neuroconv.datainterfaces.ecephy
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
