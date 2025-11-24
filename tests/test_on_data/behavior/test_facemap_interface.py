@@ -1,20 +1,22 @@
-from hdmf.testing import TestCase
+import unittest
+
+import h5py
+from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries
+from numpy.testing import assert_array_equal
+from pynwb import NWBHDF5IO
+from pynwb.behavior import EyeTracking, PupilTracking
+
 from neuroconv.datainterfaces import FacemapInterface
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
     TemporalAlignmentMixin,
 )
-import h5py
-from pynwb import NWBHDF5IO
-from pynwb.behavior import EyeTracking, PupilTracking
-from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries
-from numpy.testing import assert_array_equal
-import unittest
 
 try:
     from ..setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
+
 
 class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
 
