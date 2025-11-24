@@ -29,6 +29,8 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = output_folder / "my_spikeglx_converter_session.nwb"
@@ -60,6 +62,8 @@ Defining a 'stream' as a single band on a single NeuroPixels probe, we can conve
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = output_folder / "my_spikeglx_session.nwb"
@@ -89,6 +93,8 @@ can be used to convert these streams to NWB.
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = output_folder / "my_spikeglx_nidq_session.nwb"
@@ -130,6 +136,8 @@ interfaces in the same conversion, each interface must have a unique ``metadata_
     ...     "description": "TTL pulses triggering stimulation events",
     ...     "labels_map": {0: "stim_off", 1: "stim_on"}
     ... }
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Run conversion with custom metadata
     >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom.nwb"
