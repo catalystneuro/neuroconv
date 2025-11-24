@@ -69,7 +69,6 @@ class SpikeGLXConverterPipe(ConverterPipe):
         self,
         folder_path: DirectoryPath,
         streams: list[str] | None = None,
-        include_sync_channels: bool = True,
         verbose: bool = False,
     ):
         """
@@ -79,7 +78,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
             (a) single-probe but multi-band such as AP+LF streams
             (b) multi-probe with multi-band
             (c) with or without the associated NIDQ channels
-            (d) with or without synchronization channels from Neuropixel probes
+            (d) synchronization channels from Neuropixel probes (one per probe, preferring AP over LF)
 
         Parameters
         ----------
@@ -88,13 +87,8 @@ class SpikeGLXConverterPipe(ConverterPipe):
         streams : list of strings, optional
             A specific list of streams you wish to load.
             To see which streams are available, run `SpikeGLXConverter.get_streams(folder_path="path/to/spikeglx")`.
-            By default, all available streams are loaded.
-        include_sync_channels : bool, default: True
-            Whether to include synchronization channels from Neuropixel probes.
-            If True, sync channels (e.g., 'imec0.ap-SYNC', 'imec1.lf-SYNC') will be loaded
-            as separate TimeSeries in the NWB file. These channels contain a 16-bit status
-            word where bit 6 is a 1 Hz square wave used for timing alignment across multiple
-            acquisition devices and data streams.
+            By default, all available streams are loaded, including sync channels (one per probe).
+            To exclude sync channels, explicitly pass a list of streams without the '-SYNC' streams.
         verbose : bool, default: False
             Whether to output verbose text.
         """
@@ -120,28 +114,27 @@ class SpikeGLXConverterPipe(ConverterPipe):
         for stream_id in nidq_streams:
             data_interfaces[stream_id] = SpikeGLXNIDQInterface(folder_path=folder_path)
 
-        # Add sync channel interfaces if requested (one per probe, preferring AP over LF)
-        if include_sync_channels:
-            # Group sync streams by probe device (e.g., "imec0", "imec1")
-            probe_sync_map = {}
-            for stream_id in sync_streams:
-                if "imec" in stream_id:
-                    # Extract probe device: "imec0.ap-SYNC" -> "imec0"
-                    probe_device = stream_id.replace("-SYNC", "").split(".")[0]
-                    if probe_device not in probe_sync_map:
-                        probe_sync_map[probe_device] = []
-                    probe_sync_map[probe_device].append(stream_id)
+        # Add sync channel interfaces (one per probe, preferring AP over LF)
+        # Group sync streams by probe device (e.g., "imec0", "imec1")
+        probe_sync_map = {}
+        for stream_id in sync_streams:
+            if "imec" in stream_id:
+                # Extract probe device: "imec0.ap-SYNC" -> "imec0"
+                probe_device = stream_id.replace("-SYNC", "").split(".")[0]
+                if probe_device not in probe_sync_map:
+                    probe_sync_map[probe_device] = []
+                probe_sync_map[probe_device].append(stream_id)
 
-            # For each probe, select one sync stream (prefer AP over LF via alphabetical sort)
-            for probe_device, sync_stream_list in probe_sync_map.items():
-                sync_stream_list.sort()  # "ap" < "lf" alphabetically, so AP comes first
-                selected_sync_stream = sync_stream_list[0]
+        # For each probe, select one sync stream (prefer AP over LF via alphabetical sort)
+        for probe_device, sync_stream_list in probe_sync_map.items():
+            sync_stream_list.sort()  # "ap" < "lf" alphabetically, so AP comes first
+            selected_sync_stream = sync_stream_list[0]
 
-                data_interfaces[selected_sync_stream] = SpikeGLXSyncChannelInterface(
-                    folder_path=folder_path,
-                    stream_id=selected_sync_stream,
-                    metadata_key=f"SpikeGLXSync{selected_sync_stream}",
-                )
+            data_interfaces[selected_sync_stream] = SpikeGLXSyncChannelInterface(
+                folder_path=folder_path,
+                stream_id=selected_sync_stream,
+                metadata_key=f"SpikeGLXSync{selected_sync_stream}",
+            )
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 

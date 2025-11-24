@@ -120,7 +120,6 @@ class TestMultiProbeSpikeGLXConverter:
         # Temporarily disable sync channels for this test - metadata comparison needs updating
         converter = SpikeGLXConverterPipe(
             folder_path=self.test_folder,
-            include_sync_channels=False,
         )
         metadata = converter.get_metadata()
 
@@ -154,7 +153,6 @@ class TestMultiProbeSpikeGLXConverter:
         """Test that multi-probe data with sync channels is written to NWB file correctly."""
         converter = SpikeGLXConverterPipe(
             folder_path=self.test_folder,
-            include_sync_channels=True,
         )
 
         nwbfile_path = tmp_path / "test_multi_probe_spikeglx_converter.nwb"
@@ -218,28 +216,14 @@ class TestMultiProbeSpikeGLXConverter:
         assert "NeuropixelsImec1" in nwbfile.electrode_groups
         assert len(nwbfile.electrode_groups) == 2
 
-    def test_multi_probe_run_conversion_without_sync(self):
-        """Test that multi-probe data without sync channels excludes sync TimeSeries."""
-        converter = SpikeGLXConverterPipe(
-            folder_path=self.test_folder,
-            include_sync_channels=False,
-        )
-
-        nwbfile = converter.create_nwbfile()
-
-        # Verify sync channels are NOT present
-        assert "TimeSeriesImec0Sync" not in nwbfile.acquisition
-        assert "TimeSeriesImec1Sync" not in nwbfile.acquisition
-
-        # Total: 16 electrical series only (no sync channels)
-        assert len(nwbfile.acquisition) == 16
-
 
 def test_electrode_table_writing(tmp_path):
     from spikeinterface.extractors.nwbextractors import NwbRecordingExtractor
 
-    # Disable sync channels for this test since we're focusing on electrode table
-    converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0", include_sync_channels=False)
+    # Exclude sync channels for this test since we're focusing on electrode table
+    all_streams = SpikeGLXConverterPipe.get_streams(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
+    non_sync_streams = [s for s in all_streams if "SYNC" not in s]
+    converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0", streams=non_sync_streams)
     metadata = converter.get_metadata()
 
     nwbfile = mock_NWBFile()
@@ -309,7 +293,7 @@ class TestSortedSpikeGLXConverter:
         # Disable sync channels since this test focuses on sorted units
         spikeglx_converter = SpikeGLXConverterPipe(
             folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0",
-            include_sync_channels=False,
+            # include_sync_channels removed - use streams parameter to exclude
         )
 
         # Create sorting configuration with unique unit IDs for each sorter (hard-coded, no conflicts)
@@ -427,9 +411,7 @@ class TestSortedSpikeGLXConverter:
     def test_single_probe_with_full_streams(self, tmp_path):
         """Single probe with ap, lf and nidq streams"""
         # Initialize converter, disable sync channels since this test focuses on sorted units
-        spikeglx_converter = SpikeGLXConverterPipe(
-            folder_path=SPIKEGLX_PATH / "Noise4Sam_g0", include_sync_channels=False
-        )
+        spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
 
         # Create mock sorting with specific mappings and rename units for clarity
         num_units = 4
@@ -527,9 +509,7 @@ class TestSortedSpikeGLXConverter:
 
     def test_non_ap_interface_error(self):
         """Test that non-AP interfaces cannot have sorting data."""
-        spikeglx_converter = SpikeGLXConverterPipe(
-            folder_path=SPIKEGLX_PATH / "Noise4Sam_g0", include_sync_channels=False
-        )
+        spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
         sorting_interface = MockSortingInterface(num_units=2)
 
         # Test with LF interface (should fail)
