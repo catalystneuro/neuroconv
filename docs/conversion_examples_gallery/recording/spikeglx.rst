@@ -34,8 +34,8 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
     >>> nwbfile_path = output_folder / "my_spikeglx_converter_session.nwb"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-Note that by default, the converter includes synchronization channels from Neuropixel probes (one per probe).
-This can be controlled with the ``include_sync_channels`` argument of the :py:class:`~neuroconv.converters.SpikeGLXConverterPipe`.
+Note that by default, the converter includes synchronization channels from Neuropixel probes (one per probe, preferring AP over LF).
+To exclude sync channels, explicitly pass a ``streams`` argument with a list of streams without the '-SYNC' streams.
 
 Single-stream
 ~~~~~~~~~~~~~
