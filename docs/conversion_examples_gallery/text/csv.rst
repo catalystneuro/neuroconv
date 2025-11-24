@@ -70,6 +70,8 @@ The following example demonstrates basic conversion of a CSV file containing int
     >>> # Add the required time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Run the conversion to create an NWB file
     >>> nwbfile_path = path_to_save_nwbfile  # This should be something like: "./saved_file.nwb"
@@ -152,6 +154,8 @@ CSVs with non-standard column names (e.g., ``start`` instead of ``start_time``):
     >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Rename columns during conversion (e.g., 'condition' to 'trial_type')
     >>> nwbfile_path = path_to_save_nwbfile

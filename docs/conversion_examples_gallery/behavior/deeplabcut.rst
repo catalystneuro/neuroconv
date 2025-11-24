@@ -26,6 +26,8 @@ This interface supports both .h5 and .csv output files from DeepLabCut.
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
 
@@ -104,6 +106,8 @@ use the following structure:
 
     >>> # Add skeleton metadata to the main metadata
     >>> metadata["PoseEstimation"]["Skeletons"] = skeletons_metadata
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"

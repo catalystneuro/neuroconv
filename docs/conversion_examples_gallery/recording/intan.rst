@@ -31,6 +31,8 @@ This interface handles the primary neural recordings from the RHD2000 or RHS2000
     >>> # automatically from the source files you must supply one.
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
@@ -73,6 +75,8 @@ USB board ADC input channels
     >>> # session_start_time is required but not available on intan
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
@@ -105,6 +109,8 @@ You can also convert auxiliary input channels (e.g., accelerometer data):
     >>> # session_start_time is required but not available on intan
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata_aux["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata_aux["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_aux = output_folder / "intan_auxiliary_conversion.nwb"
@@ -137,6 +143,8 @@ For RHS systems, you can also convert DC amplifier channels:
     >>> # session_start_time is required but not available on intan
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata_dc["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata_dc["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_dc = output_folder / "intan_dc_amplifier_conversion.nwb"
@@ -170,6 +178,8 @@ For RHS systems, you can also convert ADC output channels:
     >>> # automatically from the source files you must supply one.
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata_output["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata_output["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_output = output_folder / "intan_adc_output_conversion.nwb"

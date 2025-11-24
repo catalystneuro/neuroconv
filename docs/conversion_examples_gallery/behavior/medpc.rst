@@ -80,6 +80,8 @@ Convert MedPC output data to NWB using
     ...         "duration_name": "duration_of_port_entry",
     ...     },
     ... ]
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
