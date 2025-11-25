@@ -36,6 +36,8 @@ streams into a single NWB conversion. Behavioral video is handled automatically 
     >>> metadata = converter.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=ZoneInfo("US/Pacific")))
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
@@ -85,6 +87,8 @@ The interface expects a folder with the following structure:
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> # For data provenance we can add the time zone information to the conversion
     >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Convert to NWB
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
@@ -164,6 +168,8 @@ we need to use ``set_aligned_starting_time()`` to shift the timestamps of the se
     >>> metadata = converter.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Add a second OnePhotonSeries entry to metadata with a unique name
     >>> acquisition2_metadata = metadata["Ophys"]["OnePhotonSeries"][0].copy()
