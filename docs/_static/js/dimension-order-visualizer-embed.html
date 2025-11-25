@@ -10,6 +10,8 @@
     const [dimensionOrder, setDimensionOrder] = React.useState('ZCT');
     const [sequence, setSequence] = React.useState([]);
 
+    // We fix these values here as they are all different among themselves
+    // and small enough to visualize easily
     const zSize = 3;
     const cSize = 2;
     const tSize = 4;
@@ -57,12 +59,12 @@
 
     const getDescription = (order) => {
       const descriptions = {
-        'ZTC': 'This pattern completes all Z-planes for one timepoint, then moves to the next timepoint, and finally switches to the next channel. This minimizes channel switching during a complete time series.',
-        'ZCT': 'This pattern completes all Z-planes for one channel, then switches to the next channel, and finally moves to the next timepoint. This minimizes timepoint switching for each volume.',
-        'TZC': 'This pattern completes all timepoints for one Z-plane, then moves to the next Z-plane, and finally switches to the next channel. This optimizes for time series at each depth.',
-        'TCZ': 'This pattern completes all timepoints for one channel, then switches to the next channel, and finally changes Z-planes. This prioritizes temporal resolution over volumetric data.',
-        'CZT': 'This pattern completes all channels for one Z-plane, then moves to the next Z-plane, and finally advances to the next timepoint. This minimizes channel switching at each depth.',
-        'CTZ': 'This pattern completes all channels for one timepoint, then moves to the next timepoint, and finally changes Z-planes. This optimizes for multichannel acquisition at each timepoint.'
+        'ZTC': 'This pattern completes all Z-planes for one timepoint, then moves to the next timepoint, and finally switches to the next channel.',
+        'ZCT': 'This pattern completes all Z-planes for one channel, then switches to the next channel, and finally moves to the next timepoint.',
+        'TZC': 'This pattern completes all timepoints for one Z-plane, then moves to the next Z-plane, and finally switches to the next channel.',
+        'TCZ': 'This pattern completes all timepoints for one channel, then switches to the next channel, and finally changes Z-planes.',
+        'CZT': 'This pattern completes all channels for one Z-plane, then moves to the next Z-plane, and finally advances to the next timepoint.',
+        'CTZ': 'This pattern completes all channels for one timepoint, then moves to the next timepoint, and finally changes Z-planes.'
       };
       return descriptions[order] || '';
     };
