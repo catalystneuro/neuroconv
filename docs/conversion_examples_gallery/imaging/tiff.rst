@@ -85,8 +85,8 @@ When using multiple files, frames are assumed to continue **contiguously** acros
 if the first file ends at frame 23, the first frame of the second file is treated as frame 24. This is
 common when microscope software splits large acquisitions across multiple files to avoid file size limits.
 
-Understanding frame layout (dimension order)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Specifying frame layout on disk
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If your data is laid out differently on disk, you can specify the frame layout using the ``dimension_order``
 parameter. This uses the concept of dimension order from the
@@ -100,30 +100,19 @@ The dimension order uses three letters:
 
 The order indicates which dimension varies **fastest** (leftmost) to **slowest** (rightmost) when
 reading frames sequentially from the TIFF file. The key principle is that the leftmost dimension
-changes most frequently between consecutive frames.
+changes most frequently between consecutive frames. The following interactive visualizer illustrates
+the dimension order concept visually:
 
-For example, to specify that channels vary fastest, then Z-planes, then time:
-
-.. code-block:: python
-
-    >>> interface = TiffImagingInterface(
-    ...     file_paths=file_paths,
-    ...     sampling_frequency=30.0,
-    ...     dimension_order="CZT",  # Channels vary fastest, then Z-planes, then time
-    ...     num_channels=2,
-    ...     channel_name="0",
-    ...     num_planes=5,
-    ...     verbose=False,
-    ... )
-
-For detailed explanations of all six dimension orders (ZCT, CZT, ZTC, CTZ, TCZ, TZC) with example
-sequences and use cases, see the
-:py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` documentation.
 
 .. raw:: html
     :file: ../../_static/js/dimension-order-visualizer-embed.html
 
 |
+
+For detailed explanations of all six dimension orders (ZCT, CZT, ZTC, CTZ, TCZ, TZC) with example
+sequences and use cases, see the
+:py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` documentation.
+
 
 .. note::
    The dimension order describes how frames (IFDs) are laid out on disk, which does not necessarily
