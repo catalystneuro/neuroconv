@@ -38,42 +38,12 @@ Single File, Planar and Single-Channel TIFF conversion
 By default, the :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`
 assumes that the data is single-channel and planar (i.e., non-volumetric). In terms of data layout,
 this means each acquired image is stored as a separate **frame** (also called a page or IFD in TIFF
-terminology), representing successive timepoints for a single channel.
+terminology), representing successive samples for a single channel.
 
-For multi-channel and/or volumetric data, you can specify the number of channels and number of planes.
-However, this introduces a question about the data layout: how do the sequential frames correspond to channels,
-planes, and timepoints? To specify this information, the interface relies on the concept of dimension
-order from the `OME-TIFF specification <https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/specification.html#dimensionorder>`_.
+Multi-channel, volumetric, and multi-file TIFF conversion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The dimension order uses three letters:
-
-* **Z**: Depth plane (z-axis position in volumetric imaging)
-* **C**: Channel (e.g., different fluorophores or wavelengths)
-* **T**: Time (or acquisition cycles)
-
-The order indicates which dimension varies **fastest** (leftmost) to **slowest** (rightmost) when
-reading frames sequentially from the TIFF file. The key principle is that the leftmost dimension
-changes most frequently between consecutive frames.
-
-For detailed explanations of all six dimension orders (ZCT, CZT, ZTC, CTZ, TCZ, TZC) with example
-sequences and use cases, see the
-:py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` documentation.
-
-.. note::
-   The dimension order describes how frames (IFDs) are laid out on disk, which does not necessarily
-   match the order in which they were acquired. For example, some acquisition software may reorganize
-   frames during saving, or post-processing tools may reorder them. The ``dimension_order`` parameter
-   tells NeuroConv how to interpret the file as it exists, regardless of acquisition history.
-
-.. raw:: html
-   :file: ../../_static/js/dimension-order-visualizer-embed.html
-
-|
-
-Multi-channel multi-file TIFF conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-For multi-channel and/or multi-plane data split across multiple files, you specify the dimension order,
+For multi-channel and/or volumetric data (optionally split across multiple files), you specify the
 number of channels, which channel to extract, and number of planes:
 
 .. code-block:: python
@@ -92,7 +62,6 @@ number of channels, which channel to extract, and number of planes:
     >>> interface = TiffImagingInterface(
     ...     file_paths=file_paths,
     ...     sampling_frequency=30.0,
-    ...     dimension_order="CZT",  # Channels vary fastest, then Z-planes, then time
     ...     num_channels=2,
     ...     channel_name="0",       # Extract channel 0
     ...     num_planes=5,           # 5 z-planes per volume
@@ -108,10 +77,59 @@ number of channels, which channel to extract, and number of planes:
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-**Important**: When using multiple files, frames are assumed to continue **contiguously** across files
-following the same dimension order. For example, if your dimension order is "CZT" and the first file ends
-at frame 23, the first frame of the second file is treated as frame 24 in the same acquisition sequence.
-This is common when microscope software splits large acquisitions across multiple files to avoid file size limits.
+The example above assumes that frames are laid out on disk with channels varying fastest, then Z-planes,
+then time (``dimension_order="CZT"``). This is the default and matches the layout used by ScanImage.
+See the next section if your data uses a different frame layout.
+
+When using multiple files, frames are assumed to continue **contiguously** across files. For example,
+if the first file ends at frame 23, the first frame of the second file is treated as frame 24. This is
+common when microscope software splits large acquisitions across multiple files to avoid file size limits.
+
+Understanding frame layout (dimension order)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If your data is laid out differently on disk, you can specify the frame layout using the ``dimension_order``
+parameter. This uses the concept of dimension order from the
+`OME-TIFF specification <https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/specification.html#dimensionorder>`_.
+
+The dimension order uses three letters:
+
+* **Z**: Depth plane (z-axis position in volumetric imaging)
+* **C**: Channel (e.g., different fluorophores or wavelengths)
+* **T**: Time (or acquisition cycles)
+
+The order indicates which dimension varies **fastest** (leftmost) to **slowest** (rightmost) when
+reading frames sequentially from the TIFF file. The key principle is that the leftmost dimension
+changes most frequently between consecutive frames.
+
+For example, to specify that channels vary fastest, then Z-planes, then time:
+
+.. code-block:: python
+
+    >>> interface = TiffImagingInterface(
+    ...     file_paths=file_paths,
+    ...     sampling_frequency=30.0,
+    ...     dimension_order="CZT",  # Channels vary fastest, then Z-planes, then time
+    ...     num_channels=2,
+    ...     channel_name="0",
+    ...     num_planes=5,
+    ...     verbose=False,
+    ... )
+
+For detailed explanations of all six dimension orders (ZCT, CZT, ZTC, CTZ, TCZ, TZC) with example
+sequences and use cases, see the
+:py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` documentation.
+
+.. raw:: html
+    :file: ../../_static/js/dimension-order-visualizer-embed.html
+
+|
+
+.. note::
+   The dimension order describes how frames (IFDs) are laid out on disk, which does not necessarily
+   match the order in which they were acquired. For example, some acquisition software may reorganize
+   frames during saving, or post-processing tools may reorder them. The ``dimension_order`` parameter
+   tells NeuroConv how to interpret the file as it exists, regardless of acquisition history.
 
 .. note::
    **Terminology**: In this documentation, we use "frame" to refer to each acquired image in the TIFF file.
