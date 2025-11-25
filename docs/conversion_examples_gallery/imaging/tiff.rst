@@ -63,6 +63,7 @@ number of channels, which channel to extract, and number of planes:
     ...     file_paths=file_paths,
     ...     sampling_frequency=30.0,
     ...     num_channels=2,
+    ...     dimension_order="CZT", # Channels vary fastest, then Z-planes, then time
     ...     channel_name="0",       # Extract channel 0
     ...     num_planes=5,           # 5 z-planes per volume
     ...     verbose=False,
