@@ -7,70 +7,111 @@
 <div id="dimension-order-visualizer-root"></div>
 
 <script type="text/babel">
+  /**
+   * Generate the sequence of frames based on dimension order.
+   *
+   * This is a pure function (no React dependencies) that computes how frames
+   * are laid out on disk given a dimension order string like "ZCT".
+   *
+   * The dimension order follows the OME-TIFF convention where:
+   * - The leftmost dimension varies fastest (changes most frequently between consecutive frames)
+   * - The rightmost dimension varies slowest
+   *
+   * For example, with dimensionOrder="ZCT", zSize=3, cSize=2, tSize=4:
+   * - Frame 1: Z0-C0-T0
+   * - Frame 2: Z1-C0-T0
+   * - Frame 3: Z2-C0-T0  (Z exhausted, increment C)
+   * - Frame 4: Z0-C1-T0
+   * - ...and so on
+   *
+   * @param {string} dimensionOrder - Three-letter string like "ZCT", "CZT", etc.
+   * @param {number} zSize - Number of Z-planes (depth levels)
+   * @param {number} cSize - Number of channels
+   * @param {number} tSize - Number of timepoints
+   * @returns {Array<{z: number, c: number, t: number, index: number}>} Array of frame objects
+   */
+  const generateSequence = (dimensionOrder, zSize, cSize, tSize) => {
+    let result = [];
+
+    // Split "ZCT" into ['Z', 'C', 'T']
+    const order = dimensionOrder.split('');
+
+    // Reverse to get loop nesting order: leftmost dimension = innermost loop
+    // For "ZCT" -> ['T', 'C', 'Z'], so Z varies fastest
+    const loopOrder = [...order].reverse();
+
+    let index = 0;
+
+    // Recursive function to generate all combinations
+    // level 0 = outermost loop (slowest varying dimension)
+    // level 2 = innermost loop (fastest varying dimension)
+    const generateFrames = (indices = {}, level = 0) => {
+      // Base case: all dimensions assigned, emit a frame
+      if (level === order.length) {
+        result.push({
+          z: indices.Z,
+          c: indices.C,
+          t: indices.T,
+          index: index++
+        });
+        return;
+      }
+
+      // Get the dimension for this nesting level and its size
+      const dimension = loopOrder[level];
+      const size = dimension === 'Z' ? zSize : dimension === 'C' ? cSize : tSize;
+
+      // Iterate through all values of this dimension
+      for (let i = 0; i < size; i++) {
+        const newIndices = { ...indices };
+        newIndices[dimension] = i;
+        generateFrames(newIndices, level + 1);
+      }
+    };
+
+    generateFrames();
+    return result;
+  };
+
+  /*
+   * Explains how frames are organized on disk for each ordering.
+   */
+  const DIMENSION_ORDER_DESCRIPTIONS = {
+    'ZTC': 'Frames are stored with all Z-planes for one timepoint first, then the next timepoint, and finally switching to the next channel.',
+    'ZCT': 'Frames are stored with all Z-planes for one channel first, then switching channels, and finally moving to the next timepoint.',
+    'TZC': 'Frames are stored with all timepoints for one Z-plane first, then the next Z-plane, and finally switching to the next channel.',
+    'TCZ': 'Frames are stored with all timepoints for one channel first, then switching channels, and finally changing Z-planes.',
+    'CZT': 'Frames are stored with all channels for one Z-plane first, then the next Z-plane, and finally advancing to the next timepoint.',
+    'CTZ': 'Frames are stored with all channels for one timepoint first, then the next timepoint, and finally changing Z-planes.'
+  };
+
+  /*
+   * React component that visualizes TIFF frame layouts for different dimension orders.
+   */
   const DimensionOrderVisualizer = () => {
+    // The only piece of state: which dimension order is currently selected
     const [dimensionOrder, setDimensionOrder] = React.useState('ZCT');
-    const [sequence, setSequence] = React.useState([]);
 
-    // We fix these values here as they are all different among themselves
-    // and small enough to visualize easily
-    const zSize = 3;
-    const cSize = 2;
-    const tSize = 4;
+    // Fixed dimension sizes for the visualization
+    // Chosen to be small enough to visualize but different from each other
+    const zSize = 3;  // 3 depth planes
+    const cSize = 2;  // 2 channels
+    const tSize = 4;  // 4 timepoints
+    // Total: 3 * 2 * 4 = 24 frames
 
-    // Channel color palette used for visualization:
-    // - Blue (#4A90B8): Primary channel color
-    // - Orange (#D4845C): Secondary channel color
-    const channelColors = ['#4A90B8', '#D4845C'];
-    const channelNames = ['0', '1'];
+    // Channel color palette for visualization
+    const channelColors = ['#4A90B8', '#D4845C'];  // Blue, Orange
 
-    React.useEffect(() => {
-      const generateSequence = () => {
-        let result = [];
-        const order = dimensionOrder.split('');
-        const loopOrder = [...order].reverse();
-        let index = 0;
+    // Compute the frame sequence (derived from dimensionOrder, not independent state)
+    const sequence = generateSequence(dimensionOrder, zSize, cSize, tSize);
 
-        const generateFrames = (indices = {}, level = 0) => {
-          if (level === order.length) {
-            result.push({
-              z: indices.Z,
-              c: indices.C,
-              t: indices.T,
-              index: index++
-            });
-            return;
-          }
-
-          const dimension = loopOrder[level];
-          const size = dimension === 'Z' ? zSize : dimension === 'C' ? cSize : tSize;
-
-          for (let i = 0; i < size; i++) {
-            const newIndices = { ...indices };
-            newIndices[dimension] = i;
-            generateFrames(newIndices, level + 1);
-          }
-        };
-
-        generateFrames();
-        return result;
-      };
-
-      setSequence(generateSequence());
-    }, [dimensionOrder]);
-
+    // empirically tested until they looked fine
+    // tested on some monitors with different pixel densities
     const frameSize = 60;
     const xSpacing = 70;
 
     const getDescription = (order) => {
-      const descriptions = {
-        'ZTC': 'Frames are stored with all Z-planes for one timepoint first, then the next timepoint, and finally switching to the next channel.',
-        'ZCT': 'Frames are stored with all Z-planes for one channel first, then switching channels, and finally moving to the next timepoint.',
-        'TZC': 'Frames are stored with all timepoints for one Z-plane first, then the next Z-plane, and finally switching to the next channel.',
-        'TCZ': 'Frames are stored with all timepoints for one channel first, then switching channels, and finally changing Z-planes.',
-        'CZT': 'Frames are stored with all channels for one Z-plane first, then the next Z-plane, and finally advancing to the next timepoint.',
-        'CTZ': 'Frames are stored with all channels for one timepoint first, then the next timepoint, and finally changing Z-planes.'
-      };
-      return descriptions[order] || '';
+      return DIMENSION_ORDER_DESCRIPTIONS[order] || '';
     };
 
     return (
@@ -92,6 +133,7 @@
           </div>
         </div>
 
+        {/* Top level description */}
         <div className="viz-section">
           <h3>Frame Layout: {dimensionOrder}</h3>
 

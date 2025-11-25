@@ -59,6 +59,12 @@ For detailed explanations of all six dimension orders (ZCT, CZT, ZTC, CTZ, TCZ, 
 sequences and use cases, see the
 :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` documentation.
 
+.. note::
+   The dimension order describes how frames (IFDs) are laid out on disk, which does not necessarily
+   match the order in which they were acquired. For example, some acquisition software may reorganize
+   frames during saving, or post-processing tools may reorder them. The ``dimension_order`` parameter
+   tells NeuroConv how to interpret the file as it exists, regardless of acquisition history.
+
 .. raw:: html
    :file: ../../_static/js/dimension-order-visualizer-embed.html
 
