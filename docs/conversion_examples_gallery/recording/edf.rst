@@ -41,6 +41,8 @@ Other auxiliary signal channels should be excluded using the ``channels_to_skip`
     # For data provenance we add the time zone information to the conversion
     session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     metadata["NWBFile"].update(session_start_time=session_start_time)
+    # Add subject information (required for DANDI upload)
+    metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
     # Choose a path for saving the nwb file and run the conversion
     nwbfile_path = f"{path_to_save_nwbfile}"
@@ -79,6 +81,8 @@ you'll need to create separate EDFAnalogInterface instances for each unit type:
     # For data provenance we add the time zone information to the conversion
     session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     metadata["NWBFile"].update(session_start_time=session_start_time)
+    # Add subject information (required for DANDI upload)
+    metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
     # Choose a path for saving the nwb file and run the conversion
     nwbfile_path = f"{path_to_save_nwbfile}"
@@ -137,6 +141,8 @@ Remember to group auxiliary channels by their unit types:
     # For data provenance we add the time zone information to the conversion
     session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     metadata["NWBFile"].update(session_start_time=session_start_time)
+    # Add subject information (required for DANDI upload)
+    metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
     # REQUIRED: Customize TimeSeries names when using multiple analog interfaces
     user_edited_metadata = {
