@@ -209,7 +209,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 if channel_names_property is not None:
                     # Find indices for these channel IDs
                     indices = [i for i, ch_id in enumerate(self.analog_channel_ids) if ch_id in channels]
-                    group_channel_names = [channel_names_property[i] for i in indices]
+                    group_channel_names = [str(channel_names_property[i]) for i in indices]
                 else:
                     group_channel_names = list(channels)
 
@@ -222,7 +222,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         # Default: single TimeSeries with all channels (backward compatible)
         if channel_names_property is not None:
-            channel_names = [channel_names_property[i] for i in range(len(self.analog_channel_ids))]
+            channel_names = [str(channel_names_property[i]) for i in range(len(self.analog_channel_ids))]
         else:
             channel_names = list(self.analog_channel_ids)
 
