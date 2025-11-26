@@ -60,7 +60,6 @@ class IntanAnalogInterface(BaseDataInterface):
 
         self._file_path = Path(file_path)
         self._stream_name = stream_name
-        self.metadata_key = metadata_key
 
         # Stream type descriptions and time series name mapping
         self.stream_info = {
@@ -93,8 +92,9 @@ class IntanAnalogInterface(BaseDataInterface):
                 f"Valid analog stream names are: {list(self.stream_info.keys())}"
             )
 
-        # Generate time series name
+        # Set time_series_name from stream info and metadata_key from parameter
         self._time_series_name = self.stream_info[self._stream_name]["time_series_name"]
+        self.metadata_key = metadata_key
 
         # Load the recording extractor using stream_name
         self.recording_extractor = read_intan(
@@ -203,13 +203,6 @@ class IntanAnalogInterface(BaseDataInterface):
         if stub_test:
             recording = _stub_recording(recording=recording)
 
-        # Update metadata with description
-        channel_names = self.get_channel_names()
-        description = (
-            f"{self.stream_info[self._stream_name]['description']}. " f"Channels are {channel_names} in that order."
-        )
-        metadata["TimeSeries"][self._time_series_name] = dict(description=description)
-
         add_recording_as_time_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
@@ -217,5 +210,5 @@ class IntanAnalogInterface(BaseDataInterface):
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            time_series_name=self._time_series_name,
+            metadata_key=self.metadata_key,
         )
