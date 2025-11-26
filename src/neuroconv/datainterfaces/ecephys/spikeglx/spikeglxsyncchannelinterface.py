@@ -225,6 +225,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *,
         stub_test: bool = False,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
