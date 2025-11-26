@@ -1,14 +1,10 @@
 import numpy as np
-import pytest
 from pynwb import read_nwb
 
 from neuroconv.datainterfaces import MiniscopeHeadOrientationInterface
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
 
-HAVE_TEST_DATA = (OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config").exists()
 
-
-@pytest.mark.skipif(not HAVE_TEST_DATA, reason="Test data not available")
 class TestMiniscopeHeadOrientationInterface:
     """Test MiniscopeHeadOrientationInterface."""
 
