@@ -198,6 +198,7 @@ compression, and buffering for each dataset.
     dataset_config = backend_configuration.dataset_configurations[
         "acquisition/LargeTimeSeries/data"
     ]
+    # Note: Check AVAILABLE_HDF5_COMPRESSION_METHODS for available options
     dataset_config.compression_method = "Blosc"
     dataset_config.compression_options = {"cname": "zstd", "clevel": 5}
     dataset_config.chunk_shape = (1000, 10)  # Custom chunk shape
