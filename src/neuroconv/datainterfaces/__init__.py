@@ -70,6 +70,7 @@ from .ecephys.spikegadgets.spikegadgetsdatainterface import (
 )
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
+from .ecephys.spikeglx.spikeglxsyncchannelinterface import SpikeGLXSyncChannelInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 from .ecephys.whitematter.whitematterdatainterface import WhiteMatterRecordingInterface
 
@@ -121,6 +122,7 @@ interface_list = [
     Spike2RecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXNIDQInterface,
+    SpikeGLXSyncChannelInterface,
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
     IntanAnalogInterface,
@@ -220,6 +222,7 @@ interfaces_by_category = dict(
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
+        SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
     ),
     icephys=dict(Abf=AbfInterface),
