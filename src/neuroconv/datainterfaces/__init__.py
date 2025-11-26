@@ -7,6 +7,7 @@ from .behavior.lightningpose.lightningposedatainterface import (
 )
 from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
+from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.externalvideointerface import ExternalVideoInterface
@@ -184,6 +185,7 @@ interface_list = [
     DeepLabCutInterface,
     SLEAPInterface,
     MiniscopeBehaviorInterface,
+    MiniscopeHeadOrientationInterface,
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
