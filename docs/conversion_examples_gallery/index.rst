@@ -22,7 +22,7 @@ Recording
     Blackrock <recording/blackrock>
     European Data Format (EDF) <recording/edf>
     Intan <recording/intan>
-    MaxOne <recording/maxone>
+    MaxOne <recording/maxwell>
     MCSRaw <recording/mcsraw>
     MEArec <recording/mearec>
     Neuralynx <recording/neuralynx>
