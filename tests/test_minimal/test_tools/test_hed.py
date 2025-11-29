@@ -7,7 +7,6 @@ import pytest
 
 from neuroconv.tools.importing import is_package_installed
 
-
 # Skip all tests in this module if hedtools is not installed
 pytestmark = pytest.mark.skipif(not is_package_installed("hed"), reason="hedtools not installed")
 
@@ -97,7 +96,6 @@ class TestValidateHedString:
 
     def test_def_tag_with_definitions_returns_no_error(self):
         """Test that a Def/ tag with matching definition returns no errors."""
-        import hed
         from hed.models import DefinitionDict
         from hed.schema import load_schema_version
 

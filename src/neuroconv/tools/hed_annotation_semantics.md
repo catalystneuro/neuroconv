@@ -25,7 +25,7 @@ The reversibility principle provides a practical test for whether your HED annot
 
 HED String:
 ```
-Experimental-stimulus, Sensory-event, Visual-presentation, 
+Experimental-stimulus, Sensory-event, Visual-presentation,
 ((Green, Triangle, Target), (Center-of, Computer-screen))
 ```
 
@@ -225,7 +225,7 @@ Meaning: All aspects describe one unified event. If at the top level, the outer 
 
 Pattern 3: Multiple events with different roles
 ```
-(Sensory-event, Cue, Auditory-presentation, Tone), 
+(Sensory-event, Cue, Auditory-presentation, Tone),
 (Sensory-event, Experimental-stimulus, Visual-presentation, (Red, Circle))
 ```
 Meaning: Two distinct events - an auditory cue and a visual experimental stimulus.
@@ -298,7 +298,7 @@ Structure:
 
 Example 3: Complex spatial context in event
 ```
-Experimental-stimulus, Sensory-event, Visual-presentation, 
+Experimental-stimulus, Sensory-event, Visual-presentation,
 ((Red, Circle), (To-right-of, (Blue, Square)))
 ```
 Full interpretation: "An experimental stimulus sensory event with visual presentation where a red circle is to-right-of a blue square"
@@ -814,7 +814,7 @@ Scenario: A red circle target appears
 
 Annotation:
 ```
-Sensory-event, Experimental-stimulus, Visual-presentation, 
+Sensory-event, Experimental-stimulus, Visual-presentation,
 (Red, Circle, Target)
 ```
 
@@ -835,7 +835,7 @@ Scenario: A red circle target appears on the left of the computer screen
 
 Annotation:
 ```
-Sensory-event, Experimental-stimulus, Visual-presentation, 
+Sensory-event, Experimental-stimulus, Visual-presentation,
 ((Red, Circle, Target), (Left-side-of, Computer-screen))
 ```
 
@@ -857,7 +857,7 @@ Scenario: A red circle target appears on the left and stays visible for 2 second
 
 Annotation:
 ```
-(Duration/2 s, (Experimental-stimulus, Sensory-event, Visual-presentation, 
+(Duration/2 s, (Experimental-stimulus, Sensory-event, Visual-presentation,
 ((Red, Circle, Target), (Left-side-of, Computer-screen))))
 ```
 

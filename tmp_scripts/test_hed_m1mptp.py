@@ -1,13 +1,13 @@
 # %%
 """Test generate_hed_tags_for_trials with M1MPTP trials interface columns."""
 
-import os
 import json
-
-from neuroconv.tools.hed import generate_hed_tags_for_trials
+import os
 
 # Load API key from .env file or environment
 from pathlib import Path
+
+from neuroconv.tools.hed import generate_hed_tags_for_trials
 
 env_path = Path(__file__).parent.parent / ".env"
 if env_path.exists():
