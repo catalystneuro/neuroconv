@@ -14,7 +14,7 @@ Find out more about memory buffering of large source files in the `advanced NWB 
 Default configuration
 ---------------------
 
-To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the :py:method:`~neuroconv.tools.nwb_helpers.get_default_backend_configuration` function:
+To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the :py:meth:`~neuroconv.tools.nwb_helpers.get_default_backend_configuration` function:
 
 .. code-block:: python
 
@@ -142,7 +142,7 @@ Then we can use this configuration to write the NWB file:
 Existing configuration
 ----------------------
 
-If you have already written a file and want to get the configuration that was used, you can use the :py:method:`~neuroconv.tools.nwb_helpers.get_existing_backend_configuration` function:
+If you have already written a file and want to get the configuration that was used, you can use the :py:meth:`~neuroconv.tools.nwb_helpers.get_existing_backend_configuration` function:
 
 .. code-block:: python
 
@@ -289,7 +289,7 @@ Repacking
 ---------
 
 If you simply want to update the backend configuration of an existing NWB file to conform with our recommended settings,
-you can use the :py:method:`~neuroconv.tools.nwb_helpers.repack_nwbfile` function.
+you can use the :py:meth:`~neuroconv.tools.nwb_helpers.repack_nwbfile` function.
 For example, this function can be used to apply recommended chunking and compression settings to an NWB file that was created without them.
 
 .. code-block:: python
