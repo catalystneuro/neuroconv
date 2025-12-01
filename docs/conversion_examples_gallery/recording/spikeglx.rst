@@ -141,13 +141,56 @@ interfaces in the same conversion, each interface must have a unique ``metadata_
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Run conversion with custom metadata
-    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom.nwb"
+    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom_digital.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
+Customizing analog channel metadata
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Synchronization Channels
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Analog channels (XA and MA channels) can be split into separate TimeSeries objects by specifying
+channel groups at interface initialization. This is useful when different analog channels represent
+different signal types (e.g., audio, sensors, accelerometers).
+
+.. code-block:: python
+
+    >>> from neuroconv.datainterfaces import SpikeGLXNIDQInterface
+    >>>
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0"
+    >>> metadata_key = "my_custom_metadata_key"
+    >>>
+    >>> # Specify channel groups at initialization
+    >>> interface = SpikeGLXNIDQInterface(
+    ...     folder_path=folder_path,
+    ...     metadata_key=metadata_key,
+    ...     analog_channel_groups={
+    ...         "audio": ["nidq#XA0"],  # Single channel for audio
+    ...         "accel": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],  # Group 3 channels for accelerometer
+    ...     }
+    ... )
+    >>>
+    >>> # Get metadata - groups are automatically structured with CamelCase default names
+    >>> metadata = interface.get_metadata()
+    >>>
+    >>> # Customize metadata (names, descriptions, etc.)
+    >>> metadata["TimeSeries"][metadata_key].update({
+    ...     "audio": {
+    ...         "name": "TimeSeriesAudioSignal",
+    ...         "description": "Microphone audio recording",
+    ...     },
+    ...     "accel": {
+    ...         "name": "TimeSeriesAccelerometer",
+    ...         "description": "3-axis accelerometer (X, Y, Z)",
+    ...     },
+    ... })
+    >>>
+    >>> # Run conversion - only specified channels are written
+    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom_analog.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+
+Synchronization Channel
+~~~~~~~~~~~~~~~~~~~~~~~
 
 By default, the :py:class:`~neuroconv.converters.SpikeGLXConverterPipe` includes sync channels (one per probe,
 preferring AP over LF when both are available). For more control over the addition of the sync channels, you can use
@@ -174,3 +217,7 @@ preferring AP over LF when both are available). For more control over the additi
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = output_folder / "my_spikeglx_sync.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+Note: If ``analog_channel_groups`` is not specified (default), all analog channels are written
+to a single TimeSeries. Each group creates a separate TimeSeries in the NWB file, allowing you
+to organize related signals together and customize their metadata independently.
