@@ -106,6 +106,36 @@ configuration file or timestamps are in another directory), you can specify the 
 For more information see the
 :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` docstring.
 
+Miniscope Head Orientation Interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :py:class:`~neuroconv.datainterfaces.behavior.miniscope.miniscopeheadorientationinterface.MiniscopeHeadOrientationInterface`
+converts head orientation quaternion data from the BNO055 IMU sensor recorded in a ``headOrientation.csv`` file to NWB.
+
+The quaternion data (qw, qx, qy, qz) represents the rotation from a fixed reference frame to the head-mounted sensor
+frame using Hamilton convention (scalar-first).
+
+.. code-block:: python
+
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import MiniscopeHeadOrientationInterface
+
+    >>> # Path to the headOrientation.csv file in the device folder
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config" / "researcher_name" / "experiment_name" / "animal_name" / "2025_06_12" / "15_26_31" / "HPC_miniscope1" / "headOrientation.csv"
+
+    >>> interface = MiniscopeHeadOrientationInterface(file_path=file_path, verbose=False)
+
+    >>> # Extract metadata from the source files
+    >>> # This automatically includes session_start_time from the session-level metaData.json
+    >>> # and device information (deviceName, deviceType) from the device-level metaData.json
+    >>> metadata = interface.get_metadata()
+
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P90D")
+
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
+
 Combining Multiple Acquisitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
