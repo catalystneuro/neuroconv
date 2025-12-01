@@ -1,14 +1,9 @@
-import datetime
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from shutil import rmtree
-from tempfile import mkdtemp
-from unittest import TestCase
 
 import numpy as np
 import pytest
-from pydantic import FilePath
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -22,36 +17,32 @@ from ..setup_paths import ECEPHY_DATA_PATH
 SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 
 
-class TestSingleProbeSpikeGLXConverter(TestCase):
-    maxDiff = None
+def assert_single_probe_nwb_structure(nwbfile_path: Path, expected_session_start_time: datetime):
+    """Helper function to verify NWB file structure for single probe SpikeGLX data."""
+    with NWBHDF5IO(path=nwbfile_path) as io:
+        nwbfile = io.read()
 
-    def setUp(self):
-        self.tmpdir = Path(mkdtemp())
+        assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
 
-    def tearDown(self):
-        rmtree(self.tmpdir)
+        assert "ElectricalSeriesAP" in nwbfile.acquisition
+        assert "ElectricalSeriesLF" in nwbfile.acquisition
+        assert "TimeSeriesNIDQ" in nwbfile.acquisition
 
-    def assertNWBFileStructure(self, nwbfile_path: FilePath, expected_session_start_time: datetime):
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        # Sync channels are included by default (one per probe)
+        assert len(nwbfile.acquisition) == 4
 
-            assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
+        assert "NeuropixelsImec0" in nwbfile.devices
+        assert "NIDQBoard" in nwbfile.devices
+        assert len(nwbfile.devices) == 2
 
-            assert "ElectricalSeriesAP" in nwbfile.acquisition
-            assert "ElectricalSeriesLF" in nwbfile.acquisition
-            assert "TimeSeriesNIDQ" in nwbfile.acquisition
+        assert "NeuropixelsImec0" in nwbfile.electrode_groups
+        assert len(nwbfile.electrode_groups) == 1
 
-            # Sync channels are included by default (one per probe)
-            assert len(nwbfile.acquisition) == 4
 
-            assert "NeuropixelsImec0" in nwbfile.devices
-            assert "NIDQBoard" in nwbfile.devices
-            assert len(nwbfile.devices) == 2
+class TestSingleProbeSpikeGLXConverter:
+    """Tests for single-probe SpikeGLX converter."""
 
-            assert "NeuropixelsImec0" in nwbfile.electrode_groups
-            assert len(nwbfile.electrode_groups) == 1
-
-    def test_single_probe_spikeglx_converter(self):
+    def test_single_probe_spikeglx_converter(self, tmp_path):
         converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
         metadata = converter.get_metadata()
 
@@ -73,23 +64,27 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
         assert device_metadata == expected_device_metadata
 
-        nwbfile_path = self.tmpdir / "test_single_probe_spikeglx_converter.nwb"
+        nwbfile_path = tmp_path / "test_single_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
-        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
+        assert_single_probe_nwb_structure(
+            nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time
+        )
 
-    def test_in_converter_pipe(self):
+    def test_in_converter_pipe(self, tmp_path):
         spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
         converter_pipe = ConverterPipe(data_interfaces=[spikeglx_converter])
 
-        nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_converter_pipe.nwb"
+        nwbfile_path = tmp_path / "test_spikeglx_converter_in_converter_pipe.nwb"
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path)
 
         expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
-        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
+        assert_single_probe_nwb_structure(
+            nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time
+        )
 
-    def test_in_nwbconverter(self):
+    def test_in_nwbconverter(self, tmp_path):
         class TestConverter(NWBConverter):
             data_interface_classes = dict(SpikeGLX=SpikeGLXConverterPipe)
 
@@ -100,11 +95,13 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         conversion_options_schema = converter.get_conversion_options_schema()
         assert len(conversion_options_schema["properties"]["SpikeGLX"]["properties"]) != 0
 
-        nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_nwbconverter.nwb"
+        nwbfile_path = tmp_path / "test_spikeglx_converter_in_nwbconverter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path)
 
         expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
-        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
+        assert_single_probe_nwb_structure(
+            nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time
+        )
 
 
 class TestMultiProbeSpikeGLXConverter:
