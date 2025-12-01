@@ -286,7 +286,6 @@ class TestSortedSpikeGLXConverter:
         # Disable sync channels since this test focuses on sorted units
         spikeglx_converter = SpikeGLXConverterPipe(
             folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0",
-            # include_sync_channels removed - use streams parameter to exclude
         )
 
         # Create sorting configuration with unique unit IDs for each sorter (hard-coded, no conflicts)
