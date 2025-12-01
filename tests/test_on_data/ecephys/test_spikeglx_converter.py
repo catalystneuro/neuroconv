@@ -209,6 +209,44 @@ class TestMultiProbeSpikeGLXConverter:
         assert "NeuropixelsImec1" in nwbfile.electrode_groups
         assert len(nwbfile.electrode_groups) == 2
 
+    def test_streams_argument_filters_data(self):
+        """Test that the streams argument correctly filters which data is added to NWB."""
+        # Get all available streams first
+        all_streams = SpikeGLXConverterPipe.get_streams(folder_path=self.test_folder)
+
+        # Filter to only AP streams (exclude LF and sync)
+        ap_only_streams = [s for s in all_streams if ".ap" in s and "SYNC" not in s]
+
+        converter = SpikeGLXConverterPipe(
+            folder_path=self.test_folder,
+            streams=ap_only_streams,
+        )
+
+        nwbfile = converter.create_nwbfile()
+
+        # Verify AP streams ARE present (4 segments each for 2 probes = 8 total)
+        assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec02" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec03" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec12" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec13" in nwbfile.acquisition
+
+        # Verify LF streams are NOT present
+        assert "ElectricalSeriesLFImec00" not in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec01" not in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec10" not in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec11" not in nwbfile.acquisition
+
+        # Verify sync channels are NOT present
+        assert "TimeSeriesImec0Sync0" not in nwbfile.acquisition
+        assert "TimeSeriesImec1Sync0" not in nwbfile.acquisition
+
+        # Total should be 8 (only AP streams: 2 probes × 4 segments)
+        assert len(nwbfile.acquisition) == 8
+
 
 def test_electrode_table_writing(tmp_path):
     from spikeinterface.extractors.nwbextractors import NwbRecordingExtractor
