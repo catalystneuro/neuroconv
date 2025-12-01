@@ -82,7 +82,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         if stream_id is not None and "SYNC" in stream_id:
             raise ValueError(
-                "SpikeGLXRecordingInterface is not designed to handle the SYNC stream. Open an issue if you need this functionality."
+                "SpikeGLXRecordingInterface is not designed to handle the SYNC stream. "
+                "Use SpikeGLXSyncChannelInterface instead to read synchronization channels."
             )
 
         if file_path is not None:
