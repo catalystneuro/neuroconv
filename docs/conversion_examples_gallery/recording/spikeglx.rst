@@ -102,49 +102,6 @@ can be used to convert these streams to NWB.
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
-Customizing digital channel metadata
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Digital channels (XD channels) can be customized with semantic labels and descriptions. This is useful when you
-know what each digital channel represents (e.g., camera frames, TTL pulses, etc.). When using multiple NIDQ
-interfaces in the same conversion, each interface must have a unique ``metadata_key`` to avoid metadata collisions.
-
-.. code-block:: python
-
-    >>> from neuroconv.datainterfaces import SpikeGLXNIDQInterface
-    >>>
-    >>> # The metadata_key organizes metadata when using multiple NIDQ interfaces
-    >>> # It must be unique for each interface to avoid metadata collisions
-    >>> metadata_key = "SpikeGLXNIDQ"
-    >>>
-    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/DigitalChannelTest_g0"
-    >>> interface = SpikeGLXNIDQInterface(folder_path=folder_path, metadata_key=metadata_key)
-    >>>
-    >>> # Get default metadata - digital channels are populated with extractor labels
-    >>> metadata = interface.get_metadata()
-    >>>
-    >>> # Customize multiple digital channels with semantic labels
-    >>> # Channel XD0 represents camera frame events
-    >>> metadata["Events"][metadata_key]["nidq#XD0"] = {
-    ...     "name": "CameraEvents",
-    ...     "description": "Camera frame events with exposure timing",
-    ...     "labels_map": {0: "exposure_end", 1: "frame_start"}
-    ... }
-    >>>
-    >>> # Channel XD1 represents TTL pulses from stimulation device
-    >>> metadata["Events"][metadata_key]["nidq#XD1"] = {
-    ...     "name": "StimulationTTL",
-    ...     "description": "TTL pulses triggering stimulation events",
-    ...     "labels_map": {0: "stim_off", 1: "stim_on"}
-    ... }
-    >>> # Add subject information (required for DANDI upload)
-    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
-    >>>
-    >>> # Run conversion with custom metadata
-    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom_digital.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
-
 Customizing analog channel metadata
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -187,6 +144,63 @@ different signal types (e.g., audio, sensors, accelerometers).
     >>> # Run conversion - only specified channels are written
     >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom_analog.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+Customizing digital channel metadata
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Digital channels (XD channels) can be customized with semantic labels and descriptions. This is useful when you
+know what each digital channel represents (e.g., camera frames, TTL pulses, etc.). The ``digital_channel_groups``
+parameter is specified at initialization, similar to ``analog_channel_groups``.
+
+.. code-block:: python
+
+    >>> from neuroconv.datainterfaces import SpikeGLXNIDQInterface
+    >>>
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/DigitalChannelTest_g0"
+    >>> metadata_key = "SpikeGLXNIDQ"
+    >>>
+    >>> # Configure digital channels at initialization with semantic labels
+    >>> # The labels_map maps raw extractor values (0, 1, ...) to meaningful and descriptive names
+    >>> digital_channel_groups = {
+    ...     "camera": {
+    ...         "channels": {
+    ...             "nidq#XD0": {"labels_map": {0: "exposure_end", 1: "frame_start"}},
+    ...         },
+    ...     },
+    ... }
+    >>> interface = SpikeGLXNIDQInterface(
+    ...     folder_path=folder_path,
+    ...     metadata_key=metadata_key,
+    ...     digital_channel_groups=digital_channel_groups,
+    ... )
+    >>>
+    >>> # Get metadata and customize NWB properties (name, description, meanings)
+    >>> metadata = interface.get_metadata()
+    >>>
+    >>> # Customize the NWB properties for the camera group
+    >>>
+    >>> metadata["Events"][metadata_key] = {
+    ...     "camera": {
+    ...         "name": "CameraFrameEvents",
+    ...         "description": "Camera frame timing events",
+    ...         "meanings": {
+    ...             "exposure_end": "Camera exposure period ended, frame readout complete",
+    ...             "frame_start": "New camera frame acquisition started",
+    ...         },
+    ...     },
+    ... }
+    >>>
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> # Run conversion - only configured channels are written
+    >>> nwbfile_path = output_folder / "my_spikeglx_nidq_custom_digital.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+Note: If ``digital_channel_groups`` is ``None`` (default), all digital channels with events
+are written using auto-generated labels from the extractor. Use an empty dict ``{}`` to exclude
+all digital channels from the conversion.
+
 
 
 Synchronization Channel

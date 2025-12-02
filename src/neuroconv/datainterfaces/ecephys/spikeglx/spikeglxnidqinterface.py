@@ -37,12 +37,14 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(
         self,
+        *,
         file_path: FilePath | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeriesNIDQ",
         folder_path: DirectoryPath | None = None,
         metadata_key: str = "SpikeGLXNIDQ",
         analog_channel_groups: dict[str, list[str]] | None = None,
+        digital_channel_groups: dict[str, dict] | None = None,
     ):
         """
         Read analog and digital channel data from the NIDQ board for the SpikeGLX recording.
@@ -75,6 +77,38 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                     "accel": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],
                     "temp": ["nidq#XA6", "nidq#XA7"]
                 }
+        digital_channel_groups : dict[str, dict], optional
+            Dictionary mapping group names to digital channel configurations.
+            Each group specifies which channels to include and their label mappings.
+            If None (default), all digital channels are written with auto-generated defaults.
+
+            Currently, only single-channel groups are supported (each group maps to one
+            LabeledEvents object). Multi-channel groups will be supported in future versions
+            when ndx-events EventsTable is integrated into NWB core.
+
+            Structure:
+                {
+                    "group_key": {
+                        "channels": {
+                            "channel_id": {"labels_map": {0: "label_a", 1: "label_b"}},
+                        },
+                    },
+                }
+
+            Example:
+                {
+                    "camera": {
+                        "channels": {
+                            "nidq#XD0": {"labels_map": {0: "exposure_end", 1: "frame_start"}},
+                        },
+                    },
+                    "lick": {
+                        "channels": {
+                            "nidq#XD1": {"labels_map": {0: "no_lick", 1: "lick_detected"}},
+                        },
+                    },
+                }
+
         """
 
         if file_path is not None:
@@ -134,6 +168,80 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                         f"Available analog channels: {self.analog_channel_ids}"
                     )
 
+        # Store and validate digital channel groups
+        self._digital_channel_groups = digital_channel_groups
+        if digital_channel_groups is not None and self.has_digital_channels:
+            all_digital_ids = set(self.event_extractor.channel_ids)
+            for group_key, group_config in digital_channel_groups.items():
+                # Validate group has 'channels' key
+                if "channels" not in group_config:
+                    raise ValueError(f"Digital group '{group_key}' missing required 'channels' field.")
+
+                channels_config = group_config["channels"]
+
+                # Validate single-channel groups (temporary limitation)
+                if len(channels_config) != 1:
+                    raise ValueError(
+                        f"Digital group '{group_key}' has {len(channels_config)} channels. "
+                        f"Currently only single-channel groups are supported. "
+                        f"Multi-channel groups will be supported when ndx-events EventsTable "
+                        f"is integrated into NWB core."
+                    )
+
+                # Validate each channel in the group
+                for channel_id, channel_config in channels_config.items():
+                    if channel_id not in all_digital_ids:
+                        # Convert to plain strings for cleaner error message
+                        available_channels = sorted([str(ch) for ch in all_digital_ids])
+                        raise ValueError(
+                            f"Invalid digital channel '{channel_id}' in group '{group_key}'. "
+                            f"Available digital channels: {available_channels}"
+                        )
+                    if "labels_map" not in channel_config:
+                        raise ValueError(
+                            f"Channel '{channel_id}' in group '{group_key}' "
+                            f"missing required 'labels_map' field. "
+                            f"Example: {{'{channel_id}': {{'labels_map': {{0: 'off', 1: 'on'}}}}}}"
+                        )
+
+                    # Validate labels_map covers all unique values from extractor
+                    labels_map = channel_config["labels_map"]
+                    events_structure = self.event_extractor.get_events(channel_id=channel_id)
+                    raw_labels = events_structure["label"]
+                    if raw_labels.size > 0:
+                        num_unique_values = len(np.unique(raw_labels))
+                        expected_keys = set(range(num_unique_values))
+                        provided_keys = set(labels_map.keys())
+                        if provided_keys != expected_keys:
+                            # Build example labels_map
+                            example_labels = {i: f"label_{i}" for i in range(num_unique_values)}
+                            raise ValueError(
+                                f"Incomplete labels_map for channel '{channel_id}' in group '{group_key}'. "
+                                f"Expected keys {expected_keys}, got {provided_keys}. "
+                                f"labels_map must cover all {num_unique_values} unique values from the extractor. "
+                                f"Example: {example_labels}"
+                            )
+
+        # Auto-generate digital_channel_groups when None (backward compat)
+        if self._digital_channel_groups is None and self.has_digital_channels:
+            self._digital_channel_groups = {}
+            for channel_id in self.event_extractor.channel_ids:
+                events_structure = self.event_extractor.get_events(channel_id=channel_id)
+                raw_labels = events_structure["label"]
+
+                if raw_labels.size > 0:
+                    unique_labels = np.unique(raw_labels)
+                    labels_map = {idx: str(label) for idx, label in enumerate(unique_labels)}
+                else:
+                    labels_map = {}
+
+                # Group key = channel_id for backward compat naming
+                self._digital_channel_groups[channel_id] = {
+                    "channels": {
+                        channel_id: {"labels_map": labels_map},
+                    },
+                }
+
         super().__init__(
             verbose=verbose,
             es_key=es_key,
@@ -155,30 +263,29 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         Returns
         -------
         dict
-            Dictionary mapping channel IDs to their default metadata configurations.
+            Dictionary mapping group keys to their NWB metadata (name, description).
         """
         default_metadata = {}
 
-        if self.has_digital_channels:
-            for channel_id in self.event_extractor.channel_ids:
-                channel_name = channel_id.split("#")[-1]
+        if not self.has_digital_channels or not self._digital_channel_groups:
+            return default_metadata
 
-                # Get extractor labels for this channel
-                events_structure = self.event_extractor.get_events(channel_id=channel_id)
-                raw_labels = events_structure["label"]
+        for group_key, group_config in self._digital_channel_groups.items():
+            channels_config = group_config["channels"]
+            # Get the single channel (validated at init)
+            channel_id = next(iter(channels_config.keys()))
+            channel_name = channel_id.split("#")[-1]
 
-                # Build default labels_map from extractor (data value -> label string)
-                if raw_labels.size > 0:
-                    unique_labels = np.unique(raw_labels)
-                    labels_map = {idx: str(label) for idx, label in enumerate(unique_labels)}
-                else:
-                    labels_map = {}
+            # For auto-generated groups (key = channel_id), use legacy naming
+            if group_key.startswith("nidq#"):
+                default_name = f"EventsNIDQDigitalChannel{channel_name}"
+            else:
+                default_name = to_camel_case(group_key)
 
-                default_metadata[channel_id] = {
-                    "name": f"EventsNIDQDigitalChannel{channel_name}",
-                    "description": f"On and Off Events from channel {channel_name}",
-                    "labels_map": labels_map,
-                }
+            default_metadata[group_key] = {
+                "name": default_name,
+                "description": f"On and Off Events from channel {channel_name}",
+            }
 
         return default_metadata
 
@@ -264,23 +371,16 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         device = dict(
             name="NIDQBoard",
             description="A NIDQ board used in conjunction with SpikeGLX.",
-            manufacturer="National Instruments",
         )
 
         metadata["Devices"] = [device]
 
         # TimeSeries metadata for analog channels
         if self.has_analog_channels:
-            if "TimeSeries" not in metadata:
-                metadata["TimeSeries"] = {}
-
             metadata["TimeSeries"][self.metadata_key] = self._get_default_analog_metadata()
 
         # Events metadata for digital channels
         if self.has_digital_channels:
-            if "Events" not in metadata:
-                metadata["Events"] = {}
-
             metadata["Events"][self.metadata_key] = self._get_default_events_metadata()
 
         return metadata
@@ -296,53 +396,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         """
         return list(self.recording_extractor.get_channel_ids())
 
-    def _get_digital_channel_config(self, channel_id: str, metadata: dict | None = None) -> dict:
-        """
-        Get configuration for a digital channel from metadata or use defaults.
-
-        This method can be overridden in subclasses to provide custom channel configurations.
-
-        Parameters
-        ----------
-        channel_id : str
-            The channel ID (e.g., "nidq#XD0")
-        metadata : dict | None, default: None
-            The metadata dictionary that may contain custom channel configurations.
-            If None or missing required entries, defaults are used.
-
-        Returns
-        -------
-        dict
-            Configuration dictionary with keys:
-            - name: str, name for the LabeledEvents object
-            - description: str, description of what the channel represents
-            - labels_map: dict, maps data values (int) to semantic label strings
-        """
-        # Get default configuration
-        default_events_metadata = self._get_default_events_metadata()
-        default_config = default_events_metadata.get(channel_id, {})
-
-        # Check if custom configuration exists in metadata (don't modify it)
-        if metadata is not None:
-            events_metadata = metadata.get("Events", {})
-            interface_events = events_metadata.get(self.metadata_key, {})
-            custom_config = interface_events.get(channel_id, {})
-        else:
-            custom_config = {}
-
-        # Merge custom config with defaults (custom takes precedence)
-        config = {
-            "name": custom_config.get("name", default_config.get("name")),
-            "description": custom_config.get("description", default_config.get("description")),
-            "labels_map": custom_config.get("labels_map", default_config.get("labels_map")),
-        }
-
-        return config
-
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *,
         stub_test: bool = False,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
@@ -474,7 +532,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 nwbfile=nwbfile,
                 metadata=ts_metadata,
                 iterator_type=iterator_type,
-                iterator_opts=iterator_options,
+                iterator_options=iterator_options,
                 always_write_timestamps=always_write_timestamps,
                 metadata_key=group_key,
             )
@@ -482,6 +540,9 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     def _add_digital_channels(self, nwbfile: NWBFile, metadata: dict | None = None):
         """
         Add digital channels from the NIDQ board to the NWB file as events.
+
+        Data structure (which channels, labels_map) comes from init config (_digital_channel_groups).
+        NWB properties (name, description, meanings) come from metadata.
 
         Parameters
         ----------
@@ -493,60 +554,64 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         """
         from ndx_events import LabeledEvents
 
-        event_channels = self.event_extractor.channel_ids
-        for channel_id in event_channels:
+        # Get events metadata for NWB properties
+        if metadata is None:
+            events_metadata = self._get_default_events_metadata()
+        else:
+            events_metadata = metadata.get("Events", {}).get(self.metadata_key, {})
+
+        for group_key, group_config in self._digital_channel_groups.items():
+            channels_config = group_config["channels"]
+            # Get the single channel (validated at init to be single-channel)
+            channel_id, channel_config = next(iter(channels_config.items()))
+
+            # Get labels_map from init config (data structure)
+            labels_map = channel_config["labels_map"]
+
+            # Get NWB properties from metadata
+            group_metadata = events_metadata.get(group_key, {})
+            default_metadata = self._get_default_events_metadata().get(group_key, {})
+            name = group_metadata.get("name", default_metadata.get("name", to_camel_case(group_key)))
+            description = group_metadata.get("description", default_metadata.get("description", ""))
+
+            # Append meanings to description if provided
+            # Future: when ndx-events MeaningsTable is integrated into NWB core,
+            # these will be written to MeaningsTable instead of the description
+            meanings = group_metadata.get("meanings", {})
+            if meanings:
+                meanings_text = "\n".join(f"  - {label}: {meaning}" for label, meaning in meanings.items())
+                description = f"{description}\n\nLabel meanings:\n{meanings_text}"
+
+            # Get event data
             events_structure = self.event_extractor.get_events(channel_id=channel_id)
             timestamps = events_structure["time"]
             raw_labels = events_structure["label"]
 
-            # Some channels have no events
-            if timestamps.size > 0:
+            if timestamps.size == 0:
+                continue
 
-                # Timestamps are not ordered, the ones for off are first and then the ones for on
-                ordered_indices = np.argsort(timestamps)
-                ordered_timestamps = timestamps[ordered_indices]
-                ordered_raw_labels = raw_labels[ordered_indices]
+            # Sort by timestamp
+            ordered_indices = np.argsort(timestamps)
+            ordered_timestamps = timestamps[ordered_indices]
+            ordered_raw_labels = raw_labels[ordered_indices]
 
-                # Get configuration for this channel
-                # _get_digital_channel_config will check metadata first, then fall back to defaults
-                config = self._get_digital_channel_config(channel_id, metadata)
+            # Map raw labels to data values
+            unique_raw_labels = np.unique(raw_labels)
+            extractor_label_to_value = {str(label): index for index, label in enumerate(unique_raw_labels)}
+            data = [extractor_label_to_value[str(label)] for label in ordered_raw_labels]
 
-                # Get labels_map: {data_value: label_string}
-                labels_map = config["labels_map"]
+            # Build labels list from labels_map
+            sorted_items = sorted(labels_map.items())
+            labels_list = [label for _, label in sorted_items]
 
-                # Build reverse mapping from extractor labels to data values
-                # First, get unique extractor labels and map them to consecutive integers
-                unique_raw_labels = np.unique(raw_labels)
-                extractor_label_to_value = {str(label): idx for idx, label in enumerate(unique_raw_labels)}
-
-                # Map ordered raw labels to data values
-                data = [extractor_label_to_value[str(label)] for label in ordered_raw_labels]
-
-                # Fill missing mappings with default labels from extractor
-                # This ensures all data values have a corresponding label
-                num_unique_values = len(unique_raw_labels)
-                complete_labels_map = dict(labels_map)  # Copy user-provided mappings
-                default_events_metadata = self._get_default_events_metadata()
-                default_labels_map = default_events_metadata.get(channel_id, {}).get("labels_map", {})
-
-                for data_value in range(num_unique_values):
-                    if data_value not in complete_labels_map:
-                        # Fill with default if available, otherwise use generic label
-                        complete_labels_map[data_value] = default_labels_map.get(data_value, f"unknown_{data_value}")
-
-                # Derive labels list from complete labels_map for LabeledEvents
-                # Sort by data value to ensure correct ordering
-                sorted_items = sorted(complete_labels_map.items())
-                labels_list = [label for _, label in sorted_items]
-
-                labeled_events = LabeledEvents(
-                    name=config["name"],
-                    description=config["description"],
-                    timestamps=ordered_timestamps,
-                    data=data,
-                    labels=labels_list,
-                )
-                nwbfile.add_acquisition(labeled_events)
+            labeled_events = LabeledEvents(
+                name=name,
+                description=description,
+                timestamps=ordered_timestamps,
+                data=data,
+                labels=labels_list,
+            )
+            nwbfile.add_acquisition(labeled_events)
 
     def get_event_times_from_ttl(self, channel_name: str) -> np.ndarray:
         """
