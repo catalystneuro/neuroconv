@@ -15,3 +15,4 @@ This section contains practical guides for using NeuroConv effectively.
    convert_video_formats_with_ffmpeg
    adding_multiple_sorting_interfaces
    add_behavioral_and_sensor_data
+   repacking_nwb_files
