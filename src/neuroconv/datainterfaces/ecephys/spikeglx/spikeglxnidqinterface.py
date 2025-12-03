@@ -322,38 +322,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             }
         }
 
-    def _get_digital_channel_groups(self) -> dict:
-        """
-        Return the effective digital channel groups configuration.
-
-        Returns user-provided groups if set, otherwise returns default groups.
-        Returns empty dict if user explicitly set empty dict (no channels).
-
-        Returns
-        -------
-        dict
-            The effective digital channel groups configuration.
-        """
-        if self._digital_channel_groups is not None:
-            return self._digital_channel_groups
-        return self._get_default_digital_channel_groups()
-
-    def _get_analog_channel_groups(self) -> dict:
-        """
-        Return the effective analog channel groups configuration.
-
-        Returns user-provided groups if set, otherwise returns default groups.
-        Returns empty dict if user explicitly set empty dict (no channels).
-
-        Returns
-        -------
-        dict
-            The effective analog channel groups configuration.
-        """
-        if self._analog_channel_groups is not None:
-            return self._analog_channel_groups
-        return self._get_default_analog_channel_groups()
-
     def _get_default_events_metadata(self) -> dict:
         """
         Returns default metadata for digital channel events.
@@ -367,7 +335,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Dictionary mapping group keys to their NWB metadata (name, description).
         """
         default_metadata = {}
-        groups = self._get_digital_channel_groups()
+        groups = (
+            self._digital_channel_groups
+            if self._digital_channel_groups is not None
+            else self._get_default_digital_channel_groups()
+        )
 
         for group_key, group_config in groups.items():
             channels_config = group_config["channels"]
@@ -401,7 +373,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Dictionary with analog channel TimeSeries metadata.
         """
         metadata = {}
-        groups = self._get_analog_channel_groups()
+        groups = (
+            self._analog_channel_groups
+            if self._analog_channel_groups is not None
+            else self._get_default_analog_channel_groups()
+        )
 
         # Get channel names for descriptions
         channel_names_property = self.recording_extractor.get_property(key="channel_names")
@@ -564,11 +540,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     def _add_analog_channels(
         self,
         nwbfile: NWBFile,
-        recording,
+        recording,  # we pass the recording because it might be stubbed
         iterator_type: str | None,
         iterator_options: dict | None,
         always_write_timestamps: bool,
-        metadata: dict | None = None,
+        metadata: dict,
     ):
         """
         Add analog channels from the NIDQ board to the NWB file.
@@ -585,15 +561,16 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Additional options for the iterator
         always_write_timestamps : bool
             If True, always writes timestamps instead of using sampling rate
-        metadata : dict | None, default: None
+        metadata : dict
             Metadata dictionary with TimeSeries information
         """
         from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
 
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        groups = self._get_analog_channel_groups()
+        groups = (
+            self._analog_channel_groups
+            if self._analog_channel_groups is not None
+            else self._get_default_analog_channel_groups()
+        )
         if not groups:
             return
 
@@ -623,7 +600,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 metadata_key=group_key,
             )
 
-    def _add_digital_channels(self, nwbfile: NWBFile, metadata: dict | None = None):
+    def _add_digital_channels(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict,
+    ):
         """
         Add digital channels from the NIDQ board to the NWB file as events.
 
@@ -634,21 +615,20 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         ----------
         nwbfile : NWBFile
             The NWB file to add the digital channels to
-        metadata : dict | None, default: None
-            Metadata dictionary that may contain custom channel configurations.
-            If None or missing required entries, defaults from get_metadata() are used.
+        metadata : dict
+            Metadata dictionary containing channel configurations.
         """
         from ndx_events import LabeledEvents
 
-        groups = self._get_digital_channel_groups()
+        groups = (
+            self._digital_channel_groups
+            if self._digital_channel_groups is not None
+            else self._get_default_digital_channel_groups()
+        )
         if not groups:
             return
 
-        # Get events metadata for NWB properties
-        if metadata is None:
-            events_metadata = self._get_default_events_metadata()
-        else:
-            events_metadata = metadata.get("Events", {}).get(self.metadata_key, {})
+        events_metadata = metadata.get("Events", {}).get(self.metadata_key, {})
 
         for group_key, group_config in groups.items():
             channels_config = group_config["channels"]
