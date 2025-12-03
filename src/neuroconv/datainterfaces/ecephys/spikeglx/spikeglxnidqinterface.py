@@ -37,11 +37,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(
         self,
-        *,
         file_path: FilePath | None = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeriesNIDQ",
         folder_path: DirectoryPath | None = None,
+        *,
+        es_key: str = "ElectricalSeriesNIDQ",
         metadata_key: str = "SpikeGLXNIDQ",
         analog_channel_groups: dict[str, dict] | None = None,
         digital_channel_groups: dict[str, dict] | None = None,
@@ -62,6 +62,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         verbose : bool, default: False
             Whether to output verbose text.
         es_key : str, default: "ElectricalSeriesNIDQ"
+            Deprecated. This parameter has no effect and will be removed on or after June 2026.
         metadata_key : str, default: "SpikeGLXNIDQ"
             Key used to organize metadata in the metadata dictionary. This is especially useful
             when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used
@@ -93,10 +94,12 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Dictionary mapping group names to digital channel configurations.
             Each group specifies which channels to include and their label mappings.
             If None (default), all digital channels are written with auto-generated defaults.
+            If empty dict {}, no digital channels are written.
 
             Currently, only single-channel groups are supported (each group maps to one
             LabeledEvents object). Multi-channel groups will be supported in future versions
             when ndx-events EventsTable is integrated into NWB core.
+
 
             Structure:
                 {
@@ -129,6 +132,15 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 "The first argument of this interface will be `folder_path` afterwards. "
                 "Use folder_path and stream_id instead.",
                 DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if es_key != "ElectricalSeriesNIDQ":
+            warnings.warn(
+                "The 'es_key' parameter is deprecated and will be removed on or after June 2026. "
+                "This parameter has no effect as SpikeGLXNIDQInterface writes analog data as TimeSeries "
+                "and digital data as LabeledEvents, not ElectricalSeries.",
+                FutureWarning,
                 stacklevel=2,
             )
 
