@@ -2,7 +2,7 @@
 
 When annotating a trials table, columns that represent time end in "_time" and are in seconds. HED should tag these columns with "Time-value/# s".
 
-For example, 
+For example,
 name: center_target_appearance_time:
 description: Time when center target appeared for monkey to align cursor and initiate trial (seconds).
 

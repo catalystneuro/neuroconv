@@ -7,7 +7,6 @@ from pathlib import Path
 
 from neuroconv.tools.hed import generate_hed_tags_for_trials
 
-
 # %%
 # Extract columns from M1MPTPTrialsInterface
 columns = {

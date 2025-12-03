@@ -19,6 +19,7 @@ def _load_hed_semantics_guide() -> str:
     """Load the HED annotation semantics guide from the markdown file."""
     return _HED_SEMANTICS_FILE.read_text(encoding="utf-8")
 
+
 def _load_hed_nwb_addendum() -> str:
     """Load the HED NWB addendum from the markdown file."""
     return _HED_NWB_ADDENDUM_FILE.read_text(encoding="utf-8")
@@ -619,7 +620,9 @@ Return a JSON object with definitions and column_tags for all columns."""
         # Validate each non-null column tag (with def_dicts for Def/ tag validation)
         for col, tag in column_tags.items():
             if tag is not None:
-                errors = _validate_hed_string(tag, hed_version, def_dicts=def_dicts, definitions_allowed=definitions_allowed)
+                errors = _validate_hed_string(
+                    tag, hed_version, def_dicts=def_dicts, definitions_allowed=definitions_allowed
+                )
                 if errors:
                     all_valid = False
                     validation_errors[col] = errors
@@ -727,7 +730,9 @@ Return the complete JSON response with all definitions and column_tags (not just
 
     # Create DefinitionDict for column tag validation
     final_def_dicts = None
-    if definitions and all(final_validation_results.get(f"definition_{i}", {}).get("valid", False) for i in range(len(definitions))):
+    if definitions and all(
+        final_validation_results.get(f"definition_{i}", {}).get("valid", False) for i in range(len(definitions))
+    ):
         try:
             final_def_dicts = hed.models.DefinitionDict(definitions, schema)
         except Exception:
@@ -736,7 +741,9 @@ Return the complete JSON response with all definitions and column_tags (not just
     # Validate column tags
     for col, tag in column_tags.items():
         if tag is not None:
-            errors = _validate_hed_string(tag, hed_version, def_dicts=final_def_dicts, definitions_allowed=definitions_allowed)
+            errors = _validate_hed_string(
+                tag, hed_version, def_dicts=final_def_dicts, definitions_allowed=definitions_allowed
+            )
             final_validation_results[col] = {"valid": len(errors) == 0, "errors": errors}
             if errors:
                 final_all_valid = False
@@ -747,11 +754,7 @@ Return the complete JSON response with all definitions and column_tags (not just
     final_validation_data = {"all_valid": final_all_valid}
     if not final_all_valid:
         # Filter to only include entries that have errors
-        errors_only = {
-            key: result
-            for key, result in final_validation_results.items()
-            if result.get("errors")
-        }
+        errors_only = {key: result for key, result in final_validation_results.items() if result.get("errors")}
         final_validation_data["validation_errors"] = errors_only
 
     log("Final validation complete", final_validation_data)
