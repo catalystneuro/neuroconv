@@ -38,10 +38,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     def __init__(
         self,
         file_path: FilePath | None = None,
-        verbose: bool = False,
         folder_path: DirectoryPath | None = None,
         *,
-        es_key: str = "ElectricalSeriesNIDQ",
+        verbose: bool = False,
+        es_key: str | None = None,
         metadata_key: str = "SpikeGLXNIDQ",
         analog_channel_groups: dict[str, dict] | None = None,
         digital_channel_groups: dict[str, dict] | None = None,
@@ -61,8 +61,8 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Path to .nidq.bin file.
         verbose : bool, default: False
             Whether to output verbose text.
-        es_key : str, default: "ElectricalSeriesNIDQ"
-            Deprecated. This parameter has no effect and will be removed on or after June 2026.
+        es_key : str, optional
+            Deprecated. This parameter has no effect and will be removed on or after May 2026.
         metadata_key : str, default: "SpikeGLXNIDQ"
             Key used to organize metadata in the metadata dictionary. This is especially useful
             when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used
@@ -135,9 +135,9 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 stacklevel=2,
             )
 
-        if es_key != "ElectricalSeriesNIDQ":
+        if es_key is not None:
             warnings.warn(
-                "The 'es_key' parameter is deprecated and will be removed on or after June 2026. "
+                "The 'es_key' parameter is deprecated and will be removed on or after May 2026. "
                 "This parameter has no effect as SpikeGLXNIDQInterface writes analog data as TimeSeries "
                 "and digital data as LabeledEvents, not ElectricalSeries.",
                 FutureWarning,
