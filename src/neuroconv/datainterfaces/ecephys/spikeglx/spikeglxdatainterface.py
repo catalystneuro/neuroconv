@@ -82,7 +82,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         if stream_id is not None and "SYNC" in stream_id:
             raise ValueError(
-                "SpikeGLXRecordingInterface is not designed to handle the SYNC stream. Open an issue if you need this functionality."
+                "SpikeGLXRecordingInterface is not designed to handle the SYNC stream. "
+                "Use SpikeGLXSyncChannelInterface instead to read synchronization channels."
             )
 
         if file_path is not None:
@@ -186,6 +187,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             channel_names.append(channel_name)
 
         self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
+
+        # Remove inter_sample_shift property - internal spikeinterface property not relevant for NWB
+        if "inter_sample_shift" in self.recording_extractor.get_property_keys():
+            self.recording_extractor.delete_property(key="inter_sample_shift")
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
