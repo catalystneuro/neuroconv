@@ -455,3 +455,51 @@ def test_nidq_analog_backward_compatibility(tmp_path):
     assert len(nwbfile.acquisition) == 1
     assert "TimeSeriesNIDQ" in nwbfile.acquisition
     assert nwbfile.acquisition["TimeSeriesNIDQ"].data.shape[1] == 8  # All 8 channels
+
+
+def test_analog_empty_dict_excludes_all_channels():
+    """Test that analog_channel_groups={} excludes all analog channels."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+
+    # Create interface with empty dict for analog grouping
+    interface = SpikeGLXNIDQInterface(
+        folder_path=folder_path,
+        analog_channel_groups={},
+    )
+
+    # Verify that the interface has analog channels available
+    assert interface.has_analog_channels
+    assert len(interface.analog_channel_ids) == 8
+
+    # But no TimeSeries metadata is generated
+    metadata = interface.get_metadata()
+    time_series_metadata = metadata.get("TimeSeries", {}).get("SpikeGLXNIDQ", {})
+    assert time_series_metadata == {}
+
+    # And no acquisition is written
+    nwbfile = interface.create_nwbfile()
+    assert len(nwbfile.acquisition) == 0
+
+
+def test_digital_empty_dict_excludes_all_channels():
+    """Test that digital_channel_groups={} excludes all digital channels."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
+
+    # Create interface with empty dict for digital grouping
+    interface = SpikeGLXNIDQInterface(
+        folder_path=folder_path,
+        digital_channel_groups={},
+    )
+
+    # Verify that the interface has digital channels available
+    assert interface.has_digital_channels
+    assert len(interface.event_extractor.channel_ids) == 8
+
+    # But no Events metadata is generated
+    metadata = interface.get_metadata()
+    events_metadata = metadata.get("Events", {}).get("SpikeGLXNIDQ", {})
+    assert events_metadata == {}
+
+    # And no acquisition is written
+    nwbfile = interface.create_nwbfile()
+    assert len(nwbfile.acquisition) == 0
