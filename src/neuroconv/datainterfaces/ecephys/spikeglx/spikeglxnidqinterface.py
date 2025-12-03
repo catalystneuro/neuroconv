@@ -179,11 +179,15 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         self.metadata_key = metadata_key
 
-        # Store and validate channel groups
-        self._analog_channel_groups = analog_channel_groups
+        # Resolve to defaults if None, then validate
+        self._analog_channel_groups = (
+            analog_channel_groups if analog_channel_groups is not None else self._get_default_analog_channel_groups()
+        )
         self._validate_analog_channel_groups()
 
-        self._digital_channel_groups = digital_channel_groups
+        self._digital_channel_groups = (
+            digital_channel_groups if digital_channel_groups is not None else self._get_default_digital_channel_groups()
+        )
         self._validate_digital_channel_groups()
 
         super().__init__(
@@ -199,9 +203,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
     def _validate_analog_channel_groups(self) -> None:
         """Validate analog_channel_groups structure and channel IDs."""
-        if self._analog_channel_groups is None:
-            return
-
         all_analog_ids_set = set(self.analog_channel_ids)
         for group_key, group_config in self._analog_channel_groups.items():
             if "channels" not in group_config:
@@ -217,7 +218,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
     def _validate_digital_channel_groups(self) -> None:
         """Validate digital_channel_groups structure, channel IDs, and labels_map."""
-        if self._digital_channel_groups is None or not self.has_digital_channels:
+        if not self.has_digital_channels:
             return
 
         all_digital_ids = set(self.event_extractor.channel_ids)
@@ -335,13 +336,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Dictionary mapping group keys to their NWB metadata (name, description).
         """
         default_metadata = {}
-        groups = (
-            self._digital_channel_groups
-            if self._digital_channel_groups is not None
-            else self._get_default_digital_channel_groups()
-        )
-
-        for group_key, group_config in groups.items():
+        for group_key, group_config in self._digital_channel_groups.items():
             channels_config = group_config["channels"]
             channel_id = next(iter(channels_config.keys()))
             channel_name = channel_id.split("#")[-1]
@@ -373,16 +368,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Dictionary with analog channel TimeSeries metadata.
         """
         metadata = {}
-        groups = (
-            self._analog_channel_groups
-            if self._analog_channel_groups is not None
-            else self._get_default_analog_channel_groups()
-        )
 
         # Get channel names for descriptions
         channel_names_property = self.recording_extractor.get_property(key="channel_names")
 
-        for group_key, group_config in groups.items():
+        for group_key, group_config in self._analog_channel_groups.items():
             channels = group_config["channels"]
 
             # Get names for these specific channels
@@ -566,19 +556,14 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         """
         from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
 
-        groups = (
-            self._analog_channel_groups
-            if self._analog_channel_groups is not None
-            else self._get_default_analog_channel_groups()
-        )
-        if not groups:
+        if not self._analog_channel_groups:
             return
 
         # Get TimeSeries configurations from metadata
         time_series_metadata = metadata.get("TimeSeries", {}).get(self.metadata_key, {})
 
         # Write each group as a TimeSeries
-        for group_key, group_config in groups.items():
+        for group_key, group_config in self._analog_channel_groups.items():
             # Check if this group has metadata
             if group_key not in time_series_metadata:
                 continue
@@ -620,17 +605,12 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         """
         from ndx_events import LabeledEvents
 
-        groups = (
-            self._digital_channel_groups
-            if self._digital_channel_groups is not None
-            else self._get_default_digital_channel_groups()
-        )
-        if not groups:
+        if not self._digital_channel_groups:
             return
 
         events_metadata = metadata.get("Events", {}).get(self.metadata_key, {})
 
-        for group_key, group_config in groups.items():
+        for group_key, group_config in self._digital_channel_groups.items():
             channels_config = group_config["channels"]
             # Get the single channel (validated at init to be single-channel for user groups)
             channel_id, channel_config = next(iter(channels_config.items()))
