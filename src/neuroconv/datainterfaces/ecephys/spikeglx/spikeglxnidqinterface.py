@@ -186,26 +186,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self._digital_channel_groups = digital_channel_groups
         self._validate_digital_channel_groups()
 
-        # Auto-generate digital_channel_groups when None (backward compat)
-        if self._digital_channel_groups is None and self.has_digital_channels:
-            self._digital_channel_groups = {}
-            for channel_id in self.event_extractor.channel_ids:
-                events_structure = self.event_extractor.get_events(channel_id=channel_id)
-                raw_labels = events_structure["label"]
-
-                if raw_labels.size > 0:
-                    unique_labels = np.unique(raw_labels)
-                    labels_map = {idx: str(label) for idx, label in enumerate(unique_labels)}
-                else:
-                    labels_map = {}
-
-                # Group key = channel_id for backward compat naming
-                self._digital_channel_groups[channel_id] = {
-                    "channels": {
-                        channel_id: {"labels_map": labels_map},
-                    },
-                }
-
         super().__init__(
             verbose=verbose,
             es_key=es_key,
@@ -302,25 +282,33 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         """
         default_metadata = {}
 
-        if not self.has_digital_channels or not self._digital_channel_groups:
+        if not self.has_digital_channels:
             return default_metadata
 
-        for group_key, group_config in self._digital_channel_groups.items():
-            channels_config = group_config["channels"]
-            # Get the single channel (validated at init)
-            channel_id = next(iter(channels_config.keys()))
-            channel_name = channel_id.split("#")[-1]
+        # Handle empty dict case (user wants no digital channels)
+        if self._digital_channel_groups is not None and len(self._digital_channel_groups) == 0:
+            return default_metadata
 
-            # For auto-generated groups (key = channel_id), use legacy naming
-            if group_key.startswith("nidq#"):
-                default_name = f"EventsNIDQDigitalChannel{channel_name}"
-            else:
+        if self._digital_channel_groups is not None:
+            # User provided groups - generate metadata for each group
+            for group_key, group_config in self._digital_channel_groups.items():
+                channels_config = group_config["channels"]
+                channel_id = next(iter(channels_config.keys()))
+                channel_name = channel_id.split("#")[-1]
+
                 default_name = to_camel_case(group_key)
-
-            default_metadata[group_key] = {
-                "name": default_name,
-                "description": f"On and Off Events from channel {channel_name}",
-            }
+                default_metadata[group_key] = {
+                    "name": default_name,
+                    "description": f"On and Off Events from channel {channel_name}",
+                }
+        else:
+            # No groups specified - generate default for each channel (backward compat)
+            for channel_id in self.event_extractor.channel_ids:
+                channel_name = channel_id.split("#")[-1]
+                default_metadata[channel_id] = {
+                    "name": f"EventsNIDQDigitalChannel{channel_name}",
+                    "description": f"On and Off Events from channel {channel_name}",
+                }
 
         return default_metadata
 
@@ -591,18 +579,45 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         """
         from ndx_events import LabeledEvents
 
+        # Handle empty dict case (user wants no digital channels)
+        if self._digital_channel_groups is not None and len(self._digital_channel_groups) == 0:
+            return
+
         # Get events metadata for NWB properties
         if metadata is None:
             events_metadata = self._get_default_events_metadata()
         else:
             events_metadata = metadata.get("Events", {}).get(self.metadata_key, {})
 
-        for group_key, group_config in self._digital_channel_groups.items():
+        # Determine which channels to write
+        if self._digital_channel_groups is not None:
+            # User provided groups - use their configuration
+            groups_to_write = self._digital_channel_groups
+        else:
+            # No groups specified - write all channels (backward compat)
+            groups_to_write = {}
+            for channel_id in self.event_extractor.channel_ids:
+                events_structure = self.event_extractor.get_events(channel_id=channel_id)
+                raw_labels = events_structure["label"]
+
+                if raw_labels.size > 0:
+                    unique_labels = np.unique(raw_labels)
+                    labels_map = {idx: str(label) for idx, label in enumerate(unique_labels)}
+                else:
+                    labels_map = {}
+
+                groups_to_write[channel_id] = {
+                    "channels": {
+                        channel_id: {"labels_map": labels_map},
+                    },
+                }
+
+        for group_key, group_config in groups_to_write.items():
             channels_config = group_config["channels"]
-            # Get the single channel (validated at init to be single-channel)
+            # Get the single channel (validated at init to be single-channel for user groups)
             channel_id, channel_config = next(iter(channels_config.items()))
 
-            # Get labels_map from init config (data structure)
+            # Get labels_map from config (data structure)
             labels_map = channel_config["labels_map"]
 
             # Get NWB properties from metadata
