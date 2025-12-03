@@ -179,78 +179,12 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         self.metadata_key = metadata_key
 
-        # Store and validate analog channel groups
+        # Store and validate channel groups
         self._analog_channel_groups = analog_channel_groups
-        if analog_channel_groups is not None:
-            all_analog_ids_set = set(self.analog_channel_ids)
-            for group_key, group_config in analog_channel_groups.items():
-                # Validate group has 'channels' key
-                if "channels" not in group_config:
-                    raise ValueError(f"Analog group '{group_key}' missing required 'channels' field.")
+        self._validate_analog_channel_groups()
 
-                channels = group_config["channels"]
-
-                # Validate all specified channels exist in recording
-                invalid_channels = set(channels) - all_analog_ids_set
-                if invalid_channels:
-                    raise ValueError(
-                        f"Invalid channels in group '{group_key}': {invalid_channels}. "
-                        f"Available analog channels: {self.analog_channel_ids}"
-                    )
-
-        # Store and validate digital channel groups
         self._digital_channel_groups = digital_channel_groups
-        if digital_channel_groups is not None and self.has_digital_channels:
-            all_digital_ids = set(self.event_extractor.channel_ids)
-            for group_key, group_config in digital_channel_groups.items():
-                # Validate group has 'channels' key
-                if "channels" not in group_config:
-                    raise ValueError(f"Digital group '{group_key}' missing required 'channels' field.")
-
-                channels_config = group_config["channels"]
-
-                # Validate single-channel groups (temporary limitation)
-                if len(channels_config) != 1:
-                    raise ValueError(
-                        f"Digital group '{group_key}' has {len(channels_config)} channels. "
-                        f"Currently only single-channel groups are supported. "
-                        f"Multi-channel groups will be supported when ndx-events EventsTable "
-                        f"is integrated into NWB core."
-                    )
-
-                # Validate each channel in the group
-                for channel_id, channel_config in channels_config.items():
-                    if channel_id not in all_digital_ids:
-                        # Convert to plain strings for cleaner error message
-                        available_channels = sorted([str(ch) for ch in all_digital_ids])
-                        raise ValueError(
-                            f"Invalid digital channel '{channel_id}' in group '{group_key}'. "
-                            f"Available digital channels: {available_channels}"
-                        )
-                    if "labels_map" not in channel_config:
-                        raise ValueError(
-                            f"Channel '{channel_id}' in group '{group_key}' "
-                            f"missing required 'labels_map' field. "
-                            f"Example: {{'{channel_id}': {{'labels_map': {{0: 'off', 1: 'on'}}}}}}"
-                        )
-
-                    # Validate labels_map covers all unique values from extractor
-                    labels_map = channel_config["labels_map"]
-                    events_structure = self.event_extractor.get_events(channel_id=channel_id)
-                    raw_labels = events_structure["label"]
-                    if raw_labels.size > 0:
-                        num_unique_values = len(np.unique(raw_labels))
-                        expected_keys = set(range(num_unique_values))
-                        provided_keys = set(labels_map.keys())
-                        if provided_keys != expected_keys:
-                            # Build example labels_map
-                            example_labels = {i: f"label_{i}" for i in range(num_unique_values)}
-                            raise ValueError(
-                                f"Incomplete labels_map for channel '{channel_id}' in group '{group_key}'. "
-                                f"Expected keys {expected_keys}, got {provided_keys}. "
-                                f"labels_map must cover all {num_unique_values} unique values from the extractor. "
-                                f"Example: {example_labels}"
-                            )
+        self._validate_digital_channel_groups()
 
         # Auto-generate digital_channel_groups when None (backward compat)
         if self._digital_channel_groups is None and self.has_digital_channels:
@@ -282,6 +216,77 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         signal_info_key = (0, "nidq")  # Key format is (segment_index, stream_id)
         self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
         self.meta = self._signals_info_dict["meta"]
+
+    def _validate_analog_channel_groups(self) -> None:
+        """Validate analog_channel_groups structure and channel IDs."""
+        if self._analog_channel_groups is None:
+            return
+
+        all_analog_ids_set = set(self.analog_channel_ids)
+        for group_key, group_config in self._analog_channel_groups.items():
+            if "channels" not in group_config:
+                raise ValueError(f"Analog group '{group_key}' missing required 'channels' field.")
+
+            channels = group_config["channels"]
+            invalid_channels = set(channels) - all_analog_ids_set
+            if invalid_channels:
+                raise ValueError(
+                    f"Invalid channels in group '{group_key}': {invalid_channels}. "
+                    f"Available analog channels: {self.analog_channel_ids}"
+                )
+
+    def _validate_digital_channel_groups(self) -> None:
+        """Validate digital_channel_groups structure, channel IDs, and labels_map."""
+        if self._digital_channel_groups is None or not self.has_digital_channels:
+            return
+
+        all_digital_ids = set(self.event_extractor.channel_ids)
+        for group_key, group_config in self._digital_channel_groups.items():
+            if "channels" not in group_config:
+                raise ValueError(f"Digital group '{group_key}' missing required 'channels' field.")
+
+            channels_config = group_config["channels"]
+
+            # Validate single-channel groups (temporary limitation)
+            if len(channels_config) != 1:
+                raise ValueError(
+                    f"Digital group '{group_key}' has {len(channels_config)} channels. "
+                    f"Currently only single-channel groups are supported. "
+                    f"Multi-channel groups will be supported when ndx-events EventsTable "
+                    f"is integrated into NWB core."
+                )
+
+            # Validate each channel in the group
+            for channel_id, channel_config in channels_config.items():
+                if channel_id not in all_digital_ids:
+                    available_channels = sorted([str(ch) for ch in all_digital_ids])
+                    raise ValueError(
+                        f"Invalid digital channel '{channel_id}' in group '{group_key}'. "
+                        f"Available digital channels: {available_channels}"
+                    )
+                if "labels_map" not in channel_config:
+                    raise ValueError(
+                        f"Channel '{channel_id}' in group '{group_key}' "
+                        f"missing required 'labels_map' field. "
+                        f"Example: {{'{channel_id}': {{'labels_map': {{0: 'off', 1: 'on'}}}}}}"
+                    )
+
+                # Validate labels_map covers all unique values from extractor
+                labels_map = channel_config["labels_map"]
+                events_structure = self.event_extractor.get_events(channel_id=channel_id)
+                raw_labels = events_structure["label"]
+                if raw_labels.size > 0:
+                    num_unique_values = len(np.unique(raw_labels))
+                    expected_keys = set(range(num_unique_values))
+                    provided_keys = set(labels_map.keys())
+                    if provided_keys != expected_keys:
+                        example_labels = {i: f"label_{i}" for i in range(num_unique_values)}
+                        raise ValueError(
+                            f"Incomplete labels_map for channel '{channel_id}' in group '{group_key}'. "
+                            f"Expected keys {expected_keys}, got {provided_keys}. "
+                            f"labels_map must cover all {num_unique_values} unique values from the extractor. "
+                            f"Example: {example_labels}"
+                        )
 
     def _get_default_events_metadata(self) -> dict:
         """
