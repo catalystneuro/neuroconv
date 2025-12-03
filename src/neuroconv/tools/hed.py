@@ -1,6 +1,7 @@
 """Tool functions for generating HED (Hierarchical Event Descriptors) tags for trials table columns."""
 
 import json
+import os
 import urllib.error
 import urllib.request
 from datetime import datetime
@@ -11,11 +12,16 @@ from .importing import get_package
 
 # Path to the HED annotation semantics markdown file
 _HED_SEMANTICS_FILE = Path(__file__).parent / "hed_annotation_semantics.md"
+_HED_NWB_ADDENDUM_FILE = Path(__file__).parent / "hed_nwb_addendum.md"
 
 
 def _load_hed_semantics_guide() -> str:
     """Load the HED annotation semantics guide from the markdown file."""
     return _HED_SEMANTICS_FILE.read_text(encoding="utf-8")
+
+def _load_hed_nwb_addendum() -> str:
+    """Load the HED NWB addendum from the markdown file."""
+    return _HED_NWB_ADDENDUM_FILE.read_text(encoding="utf-8")
 
 
 def get_flattened_hed_schema(hed_version: str | None = None) -> dict[str, str]:
@@ -123,7 +129,7 @@ def _validate_hed_string(
     hed_string: str,
     hed_version: str | None = None,
     def_dicts: Any | None = None,
-    definitions_allowed: bool = False,
+    definitions_allowed: bool = True,
 ) -> list[str]:
     """
     Validate a HED string and return list of error messages.
@@ -137,7 +143,7 @@ def _validate_hed_string(
     def_dicts : DefinitionDict or list or dict or None, default: None
         Definition dictionaries to use for validating Def/ tag references.
         Required when validating strings that contain Def/ tags.
-    definitions_allowed : bool, default: False
+    definitions_allowed : bool, default: True
         If True, allows Definition tags in the string (for validating definition strings).
         If False, flags definitions found as errors.
 
@@ -173,7 +179,7 @@ def _validate_hed_string(
             def_dicts=def_dicts,
             definitions_allowed=definitions_allowed,
         )
-        issues = validator.validate(hed_string_obj, allow_placeholders=False)
+        issues = validator.validate(hed_string_obj, allow_placeholders=True)
         return [str(issue) for issue in issues]
     except Exception as e:
         return [f"HED parsing error: {str(e)}"]
@@ -203,12 +209,15 @@ def _build_hed_system_prompt(
     """
     # Load the HED semantics guide from external markdown file
     hed_semantics_guide = _load_hed_semantics_guide()
+    hed_nwb_addendum = _load_hed_nwb_addendum()
 
     # Build the base system prompt
     system_prompt = f"""You are an expert in HED (Hierarchical Event Descriptors) for neuroscience data annotation.
 Your task is to generate appropriate HED tags for ALL columns in a trials table simultaneously.
 
 {hed_semantics_guide}
+
+{hed_nwb_addendum}
 
 ## HED Schema (tag: description format)
 {schema_text}
@@ -293,15 +302,41 @@ def _extract_json_from_response(response: str) -> str:
     return response
 
 
+def _load_api_key_from_env_file() -> str | None:
+    """
+    Load OPENROUTER_API_KEY from a .env file in the current directory or parent directories.
+
+    Returns
+    -------
+    str or None
+        The API key if found, None otherwise.
+    """
+    # Search for .env file starting from current directory and going up
+    current_dir = Path.cwd()
+    for parent in [current_dir] + list(current_dir.parents):
+        env_path = parent / ".env"
+        if env_path.exists():
+            with open(env_path) as f:
+                for line in f:
+                    if line.strip() and not line.startswith("#"):
+                        if "=" in line:
+                            key, value = line.strip().split("=", 1)
+                            if key == "OPENROUTER_API_KEY":
+                                return value
+    return None
+
+
 def generate_hed_tags_for_trials(
     columns: dict[str, str],
-    api_key: str,
+    api_key: str | None = None,
     model: str = "google/gemini-3-pro-preview",
     hed_version: str | None = None,
     max_iterations: int = 3,
     additional_context: str | None = None,
     include_comments: bool = False,
     log_file: str | Path | None = None,
+    definitions_allowed: bool = True,
+    verbose: bool = False,
 ) -> dict[str, Any]:
     """
     Generate HED tags for trials table columns using an LLM.
@@ -315,9 +350,11 @@ def generate_hed_tags_for_trials(
     columns : dict[str, str]
         Dictionary mapping column names to their descriptions.
         Example: {"stimulus_type": "Type of visual stimulus presented (grating or natural image)"}
-    api_key : str
-        OpenRouter API key for accessing the LLM.
-    model : str, default: "z-ai/glm-4.6"
+    api_key : str or None, default: None
+        OpenRouter API key for accessing the LLM. If None, the function will attempt to
+        load the key from a .env file (looking for OPENROUTER_API_KEY) or from the
+        OPENROUTER_API_KEY environment variable.
+    model : str, default: "google/gemini-3-pro-preview"
         Model identifier to use via OpenRouter.
     hed_version : str or None, default: None
         The version of the HED schema to use for validation. If None, uses the latest version.
@@ -334,6 +371,10 @@ def generate_hed_tags_for_trials(
     log_file : str or Path or None, default: None
         Path to a log file to write detailed logs of LLM outputs and validation steps
         for each iteration. If None, no logging is performed.
+    definitions_allowed : bool, default: True
+        If True, allows Definition tags in the string (for validating definition strings).
+    verbose : bool, default: False
+        If True, prints progress updates to the terminal during execution.
 
     Returns
     -------
@@ -356,7 +397,7 @@ def generate_hed_tags_for_trials(
     >>> result = generate_hed_tags_for_trials(columns, api_key="your-api-key")
     >>> print(result)
     {
-        'hed_version': '8.3.0',
+        'hed_version': '8.4.0',
         'definitions': ['(Definition/Grating, (Visual-presentation, ...))'],
         'column_tags': {
             'stimulus_type': 'Sensory-event, Visual-presentation',
@@ -378,7 +419,27 @@ def generate_hed_tags_for_trials(
 
     The function uses HED annotation semantics guidelines to ensure generated tags follow
     best practices like proper grouping, event classification, and the reversibility principle.
+
+    If no api_key is provided, the function will search for a .env file containing
+    OPENROUTER_API_KEY in the current directory and parent directories, then fall back
+    to checking the OPENROUTER_API_KEY environment variable.
     """
+    # Handle API key resolution
+    if api_key is None:
+        # Try to load from .env file first
+        api_key = _load_api_key_from_env_file()
+
+        # Fall back to environment variable
+        if api_key is None:
+            api_key = os.environ.get("OPENROUTER_API_KEY")
+
+        # Raise error if still not found
+        if api_key is None:
+            raise ValueError(
+                "No API key provided. Please either pass api_key parameter, "
+                "set OPENROUTER_API_KEY in a .env file, or set the OPENROUTER_API_KEY environment variable."
+            )
+
     hed = get_package(
         package_name="hed",
         installation_instructions="pip install hedtools",
@@ -388,7 +449,7 @@ def generate_hed_tags_for_trials(
     log_entries = []
 
     def log(message: str, data: Any = None) -> None:
-        """Add a log entry with timestamp."""
+        """Add a log entry with timestamp and optionally print to terminal."""
         entry = {
             "timestamp": datetime.now().isoformat(),
             "message": message,
@@ -396,6 +457,8 @@ def generate_hed_tags_for_trials(
         if data is not None:
             entry["data"] = data
         log_entries.append(entry)
+        if verbose:
+            print(f"[HED] {message}")
 
     def write_log() -> None:
         """Write log entries to file if log_file is specified."""
@@ -537,7 +600,7 @@ Return a JSON object with definitions and column_tags for all columns."""
 
         # First validate definitions (with definitions_allowed=True)
         for i, definition in enumerate(definitions):
-            errors = _validate_hed_string(definition, hed_version, definitions_allowed=True)
+            errors = _validate_hed_string(definition, hed_version, definitions_allowed=definitions_allowed)
             if errors:
                 all_valid = False
                 validation_errors[f"definition_{i}"] = errors
@@ -556,7 +619,7 @@ Return a JSON object with definitions and column_tags for all columns."""
         # Validate each non-null column tag (with def_dicts for Def/ tag validation)
         for col, tag in column_tags.items():
             if tag is not None:
-                errors = _validate_hed_string(tag, hed_version, def_dicts=def_dicts)
+                errors = _validate_hed_string(tag, hed_version, def_dicts=def_dicts, definitions_allowed=definitions_allowed)
                 if errors:
                     all_valid = False
                     validation_errors[col] = errors
@@ -650,6 +713,48 @@ Return the complete JSON response with all definitions and column_tags (not just
             column_tags[col] = None
             if include_comments:
                 comments[col] = "Column not processed by LLM"
+
+    # Perform final validation and log results
+    final_validation_results = {}
+    final_all_valid = True
+
+    # Validate definitions
+    for i, definition in enumerate(definitions):
+        errors = _validate_hed_string(definition, hed_version, definitions_allowed=definitions_allowed)
+        final_validation_results[f"definition_{i}"] = {"valid": len(errors) == 0, "errors": errors}
+        if errors:
+            final_all_valid = False
+
+    # Create DefinitionDict for column tag validation
+    final_def_dicts = None
+    if definitions and all(final_validation_results.get(f"definition_{i}", {}).get("valid", False) for i in range(len(definitions))):
+        try:
+            final_def_dicts = hed.models.DefinitionDict(definitions, schema)
+        except Exception:
+            pass
+
+    # Validate column tags
+    for col, tag in column_tags.items():
+        if tag is not None:
+            errors = _validate_hed_string(tag, hed_version, def_dicts=final_def_dicts, definitions_allowed=definitions_allowed)
+            final_validation_results[col] = {"valid": len(errors) == 0, "errors": errors}
+            if errors:
+                final_all_valid = False
+        else:
+            final_validation_results[col] = {"valid": True, "errors": [], "note": "null value (no validation needed)"}
+
+    # Build final validation log data - only include entries with errors
+    final_validation_data = {"all_valid": final_all_valid}
+    if not final_all_valid:
+        # Filter to only include entries that have errors
+        errors_only = {
+            key: result
+            for key, result in final_validation_results.items()
+            if result.get("errors")
+        }
+        final_validation_data["validation_errors"] = errors_only
+
+    log("Final validation complete", final_validation_data)
 
     result = {
         "hed_version": actual_hed_version,

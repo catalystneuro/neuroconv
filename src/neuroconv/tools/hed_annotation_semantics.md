@@ -339,6 +339,7 @@ The reserved tags have special grouping rules and usage patterns:
 | Tag | Example | Rules |
 |-----|---------|-------|
 | `Definition` | `(Definition/Red-triangle, (Sensory-event, Visual-presentation, (Red, Triangle)))` | Allows users to name frequently used strings; Can only be defined in sidecars or externally; Defining tags are in inner group |
+| `Definition` with `#` | `(Definition/Reward-delivery/#, (Sensory-event, Gustatory-presentation, Feedback, Reward, (Ingestible-object, Label/Juice), Time-value/# s))` | Use `#` placeholder when definition will be used with a value (e.g., time from a trials table column); the `Time-value/# s` must be inside the inner group |
 | `Def` | `Def/Red-triangle` | Must correspond to definition; Used to anchor `Onset`, `Inset`, `Offset`; Cannot appear in definitions |
 | `Def-expand` | `(Def-expand/Red-triangle, (Red, Triangle))` | Must correspond to definition; Used to anchor `Onset`, `Inset`, `Offset`; Cannot appear in definitions; DO NOT USE – Tools use during processing |
 | `Onset` | `(Def/Red-triangle, Onset)` | Marks the start of an unfolding event; Must have a definition anchor; Can include an internal tag group; Must be in a top-level tag group; Event ends when an `Offset` or `Onset` with same definition name is encountered |
@@ -908,6 +909,7 @@ Use this checklist before finalizing your annotations:
 - [ ] Each Definition name is unique
 - [ ] Def/DefName used to reference definitions
 - [ ] Definitions defined in sidecars or externally
+- [ ] Definitions for time columns include `#` placeholder with `Time-value/# s`
 
 **✓ Validation**
 - [ ] All tags exist in HED schema

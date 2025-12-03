@@ -242,8 +242,9 @@ class TestGenerateHedTagsForTrials:
             json.dumps({"definitions": [], "column_tags": {"stimulus": "InvalidTag"}}),
             json.dumps({"definitions": [], "column_tags": {"stimulus": "Event"}}),
         ]
-        # First validation fails, second succeeds
-        mock_validate.side_effect = [["Error: invalid tag"], []]
+        # First validation fails, second succeeds, final validation also succeeds
+        # (3 calls: iteration 1, iteration 2, final validation)
+        mock_validate.side_effect = [["Error: invalid tag"], [], []]
 
         columns = {"stimulus": "Stimulus type"}
 

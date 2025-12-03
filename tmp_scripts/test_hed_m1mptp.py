@@ -1,25 +1,11 @@
 # %%
 """Test generate_hed_tags_for_trials with M1MPTP trials interface columns."""
 
-import os
+import datetime
 import json
-
-from neuroconv.tools.hed import generate_hed_tags_for_trials
-
-# Load API key from .env file or environment
 from pathlib import Path
 
-env_path = Path(__file__).parent.parent / ".env"
-if env_path.exists():
-    with open(env_path) as f:
-        for line in f:
-            if line.strip() and not line.startswith("#"):
-                key, value = line.strip().split("=", 1)
-                os.environ[key] = value
-
-api_key = os.environ.get("OPENROUTER_API_KEY")
-if not api_key:
-    raise ValueError("Please set OPENROUTER_API_KEY environment variable")
+from neuroconv.tools.hed import generate_hed_tags_for_trials
 
 # %%
 # Extract columns from M1MPTPTrialsInterface
@@ -57,14 +43,16 @@ print("Generating HED tags for M1MPTP trials interface...")
 print(f"Processing {len(columns)} columns\n")
 
 # Log file path
-log_file = Path(__file__).parent / "hed_m1mptp_log.json"
+log_file = Path(__file__).parent / f"hed_m1mptp_log_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
+# api_key is now automatically loaded from .env file or environment variable
 result = generate_hed_tags_for_trials(
     columns=columns,
-    api_key=api_key,
+    hed_version="8.4.0",
     include_comments=True,
     additional_context=additional_context,
     log_file=log_file,
+    verbose=True,
 )
 
 print(f"Log file written to: {log_file}")
