@@ -43,7 +43,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         es_key: str = "ElectricalSeriesNIDQ",
         folder_path: DirectoryPath | None = None,
         metadata_key: str = "SpikeGLXNIDQ",
-        analog_channel_groups: dict[str, list[str]] | None = None,
+        analog_channel_groups: dict[str, dict] | None = None,
         digital_channel_groups: dict[str, dict] | None = None,
     ):
         """
@@ -66,16 +66,28 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Key used to organize metadata in the metadata dictionary. This is especially useful
             when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used
             to organize TimeSeries and Events metadata.
-        analog_channel_groups : dict[str, list[str]], optional
-            Dictionary mapping group names to lists of analog channel IDs.
-            Each group will be written as a separate TimeSeries in the NWB file.
+        analog_channel_groups : dict[str, dict], optional
+            Dictionary mapping group names to analog channel configurations.
+            Each group specifies which channels to include and will be written as a separate
+            TimeSeries in the NWB file.
             If None (default), all analog channels are written as a single TimeSeries.
+            If empty dict {}, no analog channels are written.
+
+            Structure:
+                {
+                    "group_key": {
+                        "channels": ["channel_id_1", "channel_id_2", ...],
+                    },
+                }
 
             Example:
                 {
-                    "audio": ["nidq#XA0"],
-                    "accel": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],
-                    "temp": ["nidq#XA6", "nidq#XA7"]
+                    "audio": {
+                        "channels": ["nidq#XA0"],
+                    },
+                    "accel": {
+                        "channels": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],
+                    },
                 }
         digital_channel_groups : dict[str, dict], optional
             Dictionary mapping group names to digital channel configurations.
@@ -158,9 +170,15 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         # Store and validate analog channel groups
         self._analog_channel_groups = analog_channel_groups
         if analog_channel_groups is not None:
-            # Validate all specified channels exist in recording
             all_analog_ids_set = set(self.analog_channel_ids)
-            for group_key, channels in analog_channel_groups.items():
+            for group_key, group_config in analog_channel_groups.items():
+                # Validate group has 'channels' key
+                if "channels" not in group_config:
+                    raise ValueError(f"Analog group '{group_key}' missing required 'channels' field.")
+
+                channels = group_config["channels"]
+
+                # Validate all specified channels exist in recording
                 invalid_channels = set(channels) - all_analog_ids_set
                 if invalid_channels:
                     raise ValueError(
@@ -311,7 +329,8 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         # If user provided grouping at init, structure metadata accordingly
         if self._analog_channel_groups is not None:
             metadata = {}
-            for group_key, channels in self._analog_channel_groups.items():
+            for group_key, group_config in self._analog_channel_groups.items():
+                channels = group_config["channels"]
                 # Get names for these specific channels
                 if channel_names_property is not None:
                     # Find indices for these channel IDs
@@ -510,7 +529,8 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         recordings_by_group = {}
         if self._analog_channel_groups is not None:
             # Init-time grouping: create one recording per group
-            for group_key, channels in self._analog_channel_groups.items():
+            for group_key, group_config in self._analog_channel_groups.items():
+                channels = group_config["channels"]
                 recordings_by_group[group_key] = recording.select_channels(channel_ids=channels)
         else:
             # No grouping: single recording with all analog channels (backward compatible)

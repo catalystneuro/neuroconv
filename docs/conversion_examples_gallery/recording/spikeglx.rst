@@ -117,13 +117,18 @@ different signal types (e.g., audio, sensors, accelerometers).
     >>> metadata_key = "my_custom_metadata_key"
     >>>
     >>> # Specify channel groups at initialization
+    >>> analog_channel_groups = {
+    ...     "audio": {
+    ...         "channels": ["nidq#XA0"],  # Single channel for audio
+    ...     },
+    ...     "accel": {
+    ...         "channels": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],  # Group 3 channels for accelerometer
+    ...     },
+    ... }
     >>> interface = SpikeGLXNIDQInterface(
     ...     folder_path=folder_path,
     ...     metadata_key=metadata_key,
-    ...     analog_channel_groups={
-    ...         "audio": ["nidq#XA0"],  # Single channel for audio
-    ...         "accel": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],  # Group 3 channels for accelerometer
-    ...     }
+    ...     analog_channel_groups=analog_channel_groups,
     ... )
     >>>
     >>> # Get metadata - groups are automatically structured with CamelCase default names

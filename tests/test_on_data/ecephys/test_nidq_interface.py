@@ -304,9 +304,15 @@ def test_nidq_analog_metadata_customization(tmp_path):
     interface = SpikeGLXNIDQInterface(
         folder_path=folder_path,
         analog_channel_groups={
-            "audio": ["nidq#XA0", "nidq#XA1"],
-            "accelerometer": ["nidq#XA2", "nidq#XA3", "nidq#XA4"],
-            "temperature": ["nidq#XA5", "nidq#XA6", "nidq#XA7"],
+            "audio": {
+                "channels": ["nidq#XA0", "nidq#XA1"],
+            },
+            "accelerometer": {
+                "channels": ["nidq#XA2", "nidq#XA3", "nidq#XA4"],
+            },
+            "temperature": {
+                "channels": ["nidq#XA5", "nidq#XA6", "nidq#XA7"],
+            },
         },
     )
 
@@ -372,7 +378,23 @@ def test_nidq_analog_invalid_channels_at_init(tmp_path):
         SpikeGLXNIDQInterface(
             folder_path=folder_path,
             analog_channel_groups={
-                "audio": ["nidq#XA0", "nidq#XA99"],  # XA99 doesn't exist
+                "audio": {
+                    "channels": ["nidq#XA0", "nidq#XA99"],  # XA99 doesn't exist
+                },
+            },
+        )
+
+
+def test_nidq_analog_groups_missing_channels_key():
+    """Test that missing 'channels' key raises ValueError at init."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+
+    expected_error = "Analog group 'audio' missing required 'channels' field."
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        SpikeGLXNIDQInterface(
+            folder_path=folder_path,
+            analog_channel_groups={
+                "audio": {},  # Missing 'channels' key
             },
         )
 
@@ -385,14 +407,18 @@ def test_nidq_analog_groups_with_default_metadata(tmp_path):
     interface = SpikeGLXNIDQInterface(
         folder_path=folder_path,
         analog_channel_groups={
-            "audio": ["nidq#XA0", "nidq#XA1"],
-            "sensors": ["nidq#XA2", "nidq#XA3"],
+            "audio": {
+                "channels": ["nidq#XA0", "nidq#XA1"],
+            },
+            "sensors": {
+                "channels": ["nidq#XA2", "nidq#XA3"],
+            },
         },
     )
 
     # Write with default metadata (no customization)
     nwbfile_path = tmp_path / "nidq_test_default_groups.nwb"
-    interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+    interface.run_conversion(nwbfile_path=nwbfile_path)
 
     nwbfile = read_nwb(nwbfile_path)
 
