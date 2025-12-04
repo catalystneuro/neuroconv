@@ -1,4 +1,4 @@
-# v0.9.0 (Upcoming)
+# v0.9.0 (December 4, 2025)
 
 ## Removals, Deprecations and Changes
 * Removed  `VideoInterface` class scheduled for removal in September 2025. The class is now private (`_VideoInterface`) and used internally by `LightningPoseConverter`. Users should use `ExternalVideoInterface` or `InternalVideoInterface` instead. [PR #1589](https://github.com/catalystneuro/neuroconv/pull/1589)
