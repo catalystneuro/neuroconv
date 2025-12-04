@@ -92,6 +92,49 @@ class TestMiniscopeConverter:
         assert series_acc_session2.data.shape == (2, 15, 15)
         assert series_hpc_session2.data.shape == (2, 15, 15)
 
+        # 8. Check that head orientation data is present in behavior module
+        assert "behavior" in nwbfile.processing
+        behavior_module = nwbfile.processing["behavior"]
+
+        # 4 head orientation TimeSeries: 2 devices x 2 sessions
+        assert "TimeSeriesMiniscopeHeadOrientationACCMiniscope22025_06_1215_15_04" in behavior_module.data_interfaces
+        assert "TimeSeriesMiniscopeHeadOrientationHPCMiniscope12025_06_1215_15_04" in behavior_module.data_interfaces
+        assert "TimeSeriesMiniscopeHeadOrientationACCMiniscope22025_06_1215_26_31" in behavior_module.data_interfaces
+        assert "TimeSeriesMiniscopeHeadOrientationHPCMiniscope12025_06_1215_26_31" in behavior_module.data_interfaces
+
+        # Verify head orientation data structure (quaternion data: qw, qx, qy, qz)
+        ho_acc_session1 = behavior_module.data_interfaces[
+            "TimeSeriesMiniscopeHeadOrientationACCMiniscope22025_06_1215_15_04"
+        ]
+        ho_hpc_session1 = behavior_module.data_interfaces[
+            "TimeSeriesMiniscopeHeadOrientationHPCMiniscope12025_06_1215_15_04"
+        ]
+        ho_acc_session2 = behavior_module.data_interfaces[
+            "TimeSeriesMiniscopeHeadOrientationACCMiniscope22025_06_1215_26_31"
+        ]
+        ho_hpc_session2 = behavior_module.data_interfaces[
+            "TimeSeriesMiniscopeHeadOrientationHPCMiniscope12025_06_1215_26_31"
+        ]
+        assert ho_acc_session1.data.shape == (50, 4)  # session 1: 50 samples, 4 quaternion components
+        assert ho_hpc_session1.data.shape == (50, 4)
+        assert ho_acc_session2.data.shape == (60, 4)  # session 2: 60 samples, 4 quaternion components
+        assert ho_hpc_session2.data.shape == (60, 4)
+
+        # 9. Verify head orientation time alignment matches imaging interfaces
+        # Session 1 (15_15_04) - should start at t=0
+        # Check starting time - either via starting_time attribute or first timestamp
+        if hasattr(ho_acc_session1, "starting_time") and ho_acc_session1.starting_time is not None:
+            assert ho_acc_session1.starting_time == 0.0
+            assert ho_hpc_session1.starting_time == 0.0
+        else:
+            assert ho_acc_session1.timestamps[0] == 0.0
+            assert ho_hpc_session1.timestamps[0] == 0.0
+
+        # Session 2 (15_26_31) - should be shifted by the same offset as imaging
+        if hasattr(ho_acc_session2, "starting_time") and ho_acc_session2.starting_time is not None:
+            assert ho_acc_session2.starting_time == expected_offset
+            assert ho_hpc_session2.starting_time == expected_offset
+
 
 class TestMiniscopeConverterLegacyTyeLabFormat:
     """Test MiniscopeConverter with Tye Lab legacy folder structure."""

@@ -28,6 +28,7 @@
 * Added ADC multiplexing properties (`adc_group` and `adc_sample_order`) to SpikeGLX recordings. These properties preserve hardware provenance information about which ADC each electrode is connected to and its sampling order, enabling downstream computation of inter-sample shifts even when channels are sliced. Requires probeinterface >= 0.3.1. [PR #1597](https://github.com/catalystneuro/neuroconv/pull/1597) [PR #1609](https://github.com/catalystneuro/neuroconv/pull/1609)
 * Added `SpikeGLXSyncChannelInterface` for converting Neuropixel synchronization channels from SpikeGLX recordings. [PR #1600](https://github.com/catalystneuro/neuroconv/pull/1600)
 * The `SpikeGLXConverterPipe` now includes sync channels. [PR #1600](https://github.com/catalystneuro/neuroconv/pull/1600)
+* Added `MiniscopeHeadOrientationInterface` for converting Miniscope head orientation data from BNO055 IMU sensor.[PR #1610](https://github.com/catalystneuro/neuroconv/pull/1610)
 
 ## Improvements
 * Improved SpikeGLX device metadata extraction to use probe information from probeinterface instead of parsing meta files. Device metadata now includes serial number as a separate field and enriched description with part number, port, slot, model name, and manufacturer from probe annotations. [PR #1599](https://github.com/catalystneuro/neuroconv/pull/1599)
