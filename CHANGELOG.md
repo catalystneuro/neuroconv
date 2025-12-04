@@ -19,7 +19,6 @@
 * Fixed DANDI live service tests to support dandi-cli 0.73.2 instance-specific API key environment variables (`DANDI_SANDBOX_API_KEY`, `EMBER_SANDBOX_API_KEY`, etc.). Updated all workflows and test files to use the appropriate API key for each DANDI instance. [PR #1588](https://github.com/catalystneuro/neuroconv/pull/1588)
 
 ## Features
-* Added `MiniscopeHeadOrientationInterface` for converting Miniscope head orientation data from BNO055 IMU sensor.[PR #1610](https://github.com/catalystneuro/neuroconv/pull/1610)
 * Miniscope converter now uses the configuration file to read general folder structures [PR #1528](https://github.com/catalystneuro/neuroconv/pull/1528) [PR #1604](https://github.com/catalystneuro/neuroconv/pull/1604)
 * Added a workflow to repack nwbfiles that have already been written to disk with desired chunking and compression settings: [PR #1003](https://github.com/catalystneuro/neuroconv/pull/1003) [PR #1592](https://github.com/catalystneuro/neuroconv/pull/1592)
 * Enhanced `TiffImagingInterface` to support multi-file TIFF datasets using `MultiTIFFMultiPageExtractor` from roiextractors. Added support for configurable dimension orders (`dimension_order`), multi-channel data (`num_channels`, `channel_name`), and volumetric imaging (`num_planes`). Both `file_path` (single file) and `file_paths` (multiple files) parameters are now supported for backward compatibility. [PR #1577](https://github.com/catalystneuro/neuroconv/pull/1577) [PR #1578](https://github.com/catalystneuro/neuroconv/pull/1578)
