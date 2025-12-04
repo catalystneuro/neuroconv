@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
-from pydantic import ConfigDict, DirectoryPath, FilePath, validate_call
+from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ....basedatainterface import BaseDataInterface
@@ -26,7 +26,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
-        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
+        source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing the .nidq.bin file."
         source_schema["properties"]["metadata_key"]["description"] = (
             "Key used to organize metadata in the metadata dictionary. This is especially useful "
             "when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used "
@@ -37,8 +37,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(
         self,
-        file_path: FilePath | None = None,
-        folder_path: DirectoryPath | None = None,
+        folder_path: DirectoryPath,
         *,
         verbose: bool = False,
         es_key: str | None = None,
@@ -57,8 +56,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         ----------
         folder_path : DirectoryPath
             Path to the folder containing the .nidq.bin file.
-        file_path : FilePath
-            Path to .nidq.bin file.
         verbose : bool, default: False
             Whether to output verbose text.
         es_key : str, optional
@@ -126,15 +123,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         """
 
-        if file_path is not None:
-            warnings.warn(
-                "file_path is deprecated and will be removed by the end of 2025. "
-                "The first argument of this interface will be `folder_path` afterwards. "
-                "Use folder_path and stream_id instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
         if es_key is not None:
             warnings.warn(
                 "The 'es_key' parameter is deprecated and will be removed on or after May 2026. "
@@ -144,15 +132,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 stacklevel=2,
             )
 
-        if file_path is None and folder_path is None:
-            raise ValueError("Either 'file_path' or 'folder_path' must be provided.")
-
-        if file_path is not None:
-            file_path = Path(file_path)
-            self.folder_path = file_path.parent
-
-        if folder_path is not None:
-            self.folder_path = Path(folder_path)
+        self.folder_path = Path(folder_path)
 
         from spikeinterface.extractors.extractor_classes import (
             SpikeGLXRecordingExtractor,
@@ -194,7 +174,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             verbose=verbose,
             es_key=es_key,
             folder_path=self.folder_path,
-            file_path=file_path,
         )
 
         signal_info_key = (0, "nidq")  # Key format is (segment_index, stream_id)

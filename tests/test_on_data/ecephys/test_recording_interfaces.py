@@ -732,14 +732,8 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
 class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
     interface_kwargs = dict(
-        file_path=str(
-            ECEPHY_DATA_PATH
-            / "spikeglx"
-            / "long_nhp_stubbed"
-            / "snippet_g0"
-            / "snippet_g0_imec0"
-            / "snippet_g0_t0.imec0.ap.bin"
-        )
+        folder_path=str(ECEPHY_DATA_PATH / "spikeglx" / "long_nhp_stubbed" / "snippet_g0" / "snippet_g0_imec0"),
+        stream_id="imec0.ap",
     )
     save_directory = OUTPUT_PATH
 
