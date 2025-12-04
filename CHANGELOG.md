@@ -14,7 +14,6 @@
 * Deprecated `iterator_opts` parameter in favor of `iterator_options` across all SpikeInterface conversion functions and data interfaces. The deprecated parameter will be removed on or after May 2026. This change improves consistency with naming conventions. [PR #1603](https://github.com/catalystneuro/neuroconv/pull/1603)
 * Deprecated `es_key` parameter in `SpikeGLXNIDQInterface` and will be removed on or after May 2026. This parameter has no effect as the interface writes analog data as TimeSeries and digital data as LabeledEvents, not ElectricalSeries. [PR #1615](https://github.com/catalystneuro/neuroconv/pull/1615)
 * Removed deprecated `file_path` parameter from `SpikeGLXRecordingInterface` and `SpikeGLXNIDQInterface`. Use `folder_path` and `stream_id` instead. [PR #1616](https://github.com/catalystneuro/neuroconv/pull/1616)
-* Removed deprecated `fetch_stream_id_for_spikelgx_file` function from `spikeglx_utils` scheduled for removal by end of 2025. [PR #1616](https://github.com/catalystneuro/neuroconv/pull/1616)
 
 ## Bug Fixes
 * Fixed bug with TDTFiberPhotometryInterface tests by swapping out test_all_conversion_checks_stub_test_invalid with test_check_run_conversion_stub_test_invalid (avoiding unittest.TestCase.subTests).  [PR #1579](https://github.com/catalystneuro/neuroconv/pull/1579)
