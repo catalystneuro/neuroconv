@@ -1,13 +1,11 @@
 """DataInterfaces for SpikeGLX."""
 
-import warnings
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
-from pydantic import DirectoryPath, FilePath, validate_call
+from pydantic import DirectoryPath, validate_call
 
-from .spikeglx_utils import fetch_stream_id_for_spikelgx_file
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
@@ -27,7 +25,9 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["x_pitch", "y_pitch"])
-        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "Path to the folder containing the .ap.bin or .lf.bin SpikeGLX file."
         return source_schema
 
     @classmethod
@@ -54,25 +54,24 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     @validate_call
     def __init__(
         self,
-        file_path: FilePath | None = None,
+        folder_path: DirectoryPath,
+        *,
+        stream_id: str,
         verbose: bool = False,
         es_key: str | None = None,
-        folder_path: DirectoryPath | None = None,
-        stream_id: str | None = None,
     ):
         """
         Parameters
         ----------
-        folder_path: DirectoryPath
+        folder_path : DirectoryPath
             Folder path containing the binary files of the SpikeGLX recording.
-        stream_id: str, optional
+        stream_id : str
             Stream ID of the SpikeGLX recording.
             Examples are 'imec0.ap', 'imec0.lf', 'imec1.ap', 'imec1.lf', etc.
-        file_path : FilePath
-            Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
         verbose : bool, default: False
             Whether to output verbose text.
-        es_key : str, the key to access the metadata of the ElectricalSeries.
+        es_key : str, optional
+            The key to access the metadata of the ElectricalSeries.
         """
 
         if stream_id == "nidq":
@@ -80,27 +79,14 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 "SpikeGLXRecordingInterface is not designed to handle nidq files. Use SpikeGLXNIDQInterface instead"
             )
 
-        if stream_id is not None and "SYNC" in stream_id:
+        if "SYNC" in stream_id:
             raise ValueError(
                 "SpikeGLXRecordingInterface is not designed to handle the SYNC stream. "
                 "Use SpikeGLXSyncChannelInterface instead to read synchronization channels."
             )
 
-        if file_path is not None:
-            warnings.warn(
-                "file_path is deprecated and will be removed by the end of 2025. "
-                "The first argument of this interface will be `folder_path` afterwards. "
-                "Use folder_path and stream_id instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        if file_path is not None and stream_id is None:
-            self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
-            self.folder_path = Path(file_path).parent
-        else:
-            self.stream_id = stream_id
-            self.folder_path = Path(folder_path)
+        self.stream_id = stream_id
+        self.folder_path = Path(folder_path)
 
         super().__init__(
             folder_path=folder_path,
