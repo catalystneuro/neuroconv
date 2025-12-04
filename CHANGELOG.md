@@ -1,4 +1,14 @@
-# v0.9.0 (Upcoming)
+# v0.9.1 (Upcoming)
+
+## Removals, Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+
+## Improvements
+
+# v0.9.0 (December 4, 2025)
 
 ## Removals, Deprecations and Changes
 * Removed  `VideoInterface` class scheduled for removal in September 2025. The class is now private (`_VideoInterface`) and used internally by `LightningPoseConverter`. Users should use `ExternalVideoInterface` or `InternalVideoInterface` instead. [PR #1589](https://github.com/catalystneuro/neuroconv/pull/1589)
@@ -13,6 +23,7 @@
 * Deprecated `get_device_metadata` function in `spikeglx_utils` and will be removed on or after May 2026. Use `SpikeGLXRecordingInterface._get_device_metadata_from_probe()` instead, which extracts device metadata directly from probe information. [PR #1599](https://github.com/catalystneuro/neuroconv/pull/1599)
 * Deprecated `iterator_opts` parameter in favor of `iterator_options` across all SpikeInterface conversion functions and data interfaces. The deprecated parameter will be removed on or after May 2026. This change improves consistency with naming conventions. [PR #1603](https://github.com/catalystneuro/neuroconv/pull/1603)
 * Deprecated `es_key` parameter in `SpikeGLXNIDQInterface` and will be removed on or after May 2026. This parameter has no effect as the interface writes analog data as TimeSeries and digital data as LabeledEvents, not ElectricalSeries. [PR #1615](https://github.com/catalystneuro/neuroconv/pull/1615)
+* Removed deprecated `file_path` parameter from `SpikeGLXRecordingInterface` and `SpikeGLXNIDQInterface`. Use `folder_path` and `stream_id` instead. [PR #1616](https://github.com/catalystneuro/neuroconv/pull/1616)
 
 ## Bug Fixes
 * Fixed bug with TDTFiberPhotometryInterface tests by swapping out test_all_conversion_checks_stub_test_invalid with test_check_run_conversion_stub_test_invalid (avoiding unittest.TestCase.subTests).  [PR #1579](https://github.com/catalystneuro/neuroconv/pull/1579)
@@ -28,6 +39,7 @@
 * Added ADC multiplexing properties (`adc_group` and `adc_sample_order`) to SpikeGLX recordings. These properties preserve hardware provenance information about which ADC each electrode is connected to and its sampling order, enabling downstream computation of inter-sample shifts even when channels are sliced. Requires probeinterface >= 0.3.1. [PR #1597](https://github.com/catalystneuro/neuroconv/pull/1597) [PR #1609](https://github.com/catalystneuro/neuroconv/pull/1609)
 * Added `SpikeGLXSyncChannelInterface` for converting Neuropixel synchronization channels from SpikeGLX recordings. [PR #1600](https://github.com/catalystneuro/neuroconv/pull/1600)
 * The `SpikeGLXConverterPipe` now includes sync channels. [PR #1600](https://github.com/catalystneuro/neuroconv/pull/1600)
+* Added `MiniscopeHeadOrientationInterface` for converting Miniscope head orientation data from BNO055 IMU sensor.[PR #1610](https://github.com/catalystneuro/neuroconv/pull/1610)
 
 ## Improvements
 * Improved metadata handling in `add_recording_as_spatial_series_to_nwbfile` to no longer modify input and copies are avoided of metadata dictionaries. Made required field defaults explicit. [PR #1605](https://github.com/catalystneuro/neuroconv/pull/1605)

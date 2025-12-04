@@ -11,7 +11,7 @@ from .miniscopeimagingdatainterface import (
     MiniscopeImagingInterface,
     _MiniscopeMultiRecordingInterface,
 )
-from ... import MiniscopeBehaviorInterface
+from ... import MiniscopeBehaviorInterface, MiniscopeHeadOrientationInterface
 from ....nwbconverter import ConverterPipe
 from ....utils import get_json_schema_from_method_signature
 from ....utils.str_utils import to_camel_case
@@ -21,8 +21,16 @@ class MiniscopeConverter(ConverterPipe):
     """Bundle Miniscope imaging and optional behavior recordings into a single NWB conversion."""
 
     display_name = "Miniscope Imaging and Video"
-    keywords = MiniscopeImagingInterface.keywords + MiniscopeBehaviorInterface.keywords
-    associated_suffixes = MiniscopeImagingInterface.associated_suffixes + MiniscopeBehaviorInterface.associated_suffixes
+    keywords = (
+        MiniscopeImagingInterface.keywords
+        + MiniscopeBehaviorInterface.keywords
+        + MiniscopeHeadOrientationInterface.keywords
+    )
+    associated_suffixes = (
+        MiniscopeImagingInterface.associated_suffixes
+        + MiniscopeBehaviorInterface.associated_suffixes
+        + MiniscopeHeadOrientationInterface.associated_suffixes
+    )
     info = "Converter for handling both imaging and video recordings from Miniscope."
 
     @classmethod
@@ -254,6 +262,23 @@ class MiniscopeConverter(ConverterPipe):
                     interface = MiniscopeImagingInterface(folder_path=device_folder_path)
                     data_interfaces[interface_name] = interface
                     self._interface_to_device_mapping[interface_name] = device_name
+
+                    # Check for head orientation data in the same device folder
+                    head_orientation_file_path = device_folder_path / "headOrientation.csv"
+                    if head_orientation_file_path.exists():
+                        head_orientation_interface_name = f"{interface_name}/HeadOrientation"
+                        # Use device name in CamelCase for unique metadata key
+                        device_name_camel = self._device_names_camel_case[device_name]
+                        # Include relative path to distinguish different sessions
+                        interface_relative_path = interface_name.replace("/", "")
+                        if interface_relative_path.endswith(device_name):
+                            interface_relative_path = interface_relative_path[: -len(device_name)]
+                        metadata_key = f"TimeSeriesMiniscopeHeadOrientation{device_name_camel}{interface_relative_path}"
+                        data_interfaces[head_orientation_interface_name] = MiniscopeHeadOrientationInterface(
+                            file_path=head_orientation_file_path,
+                            metadata_key=metadata_key,
+                        )
+                        self._interface_to_device_mapping[head_orientation_interface_name] = device_name
         else:
             # Legacy mode: use _MiniscopeMultiRecordingInterface for backwards compatibility
             default_interface = _MiniscopeMultiRecordingInterface(folder_path=folder_path)
@@ -286,6 +311,22 @@ class MiniscopeConverter(ConverterPipe):
         # Align session start times across all imaging interfaces
         self._align_session_start_times()
 
+    def _is_head_orientation_interface(self, interface_name: str) -> bool:
+        """Check if an interface name corresponds to a head orientation interface."""
+        return interface_name.endswith("/HeadOrientation")
+
+    def _get_ophys_interface_names(self) -> list[str]:
+        """Get names of ophys interfaces, excluding behavior and head orientation interfaces."""
+        return [
+            k
+            for k in self.data_interface_objects
+            if k != "MiniscopeBehavCam" and not self._is_head_orientation_interface(k)
+        ]
+
+    def _get_head_orientation_interface_names(self) -> list[str]:
+        """Get names of head orientation interfaces."""
+        return [k for k in self.data_interface_objects if self._is_head_orientation_interface(k)]
+
     def _align_session_start_times(self):
         """
         Align all Miniscope imaging interfaces to a common session start time.
@@ -301,7 +342,7 @@ class MiniscopeConverter(ConverterPipe):
             _MiniscopeMultiRecordingInterface,
         )
 
-        ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
+        ophys_interface_names = self._get_ophys_interface_names()
 
         session_start_times = {}
         for interface_name in ophys_interface_names:
@@ -320,11 +361,22 @@ class MiniscopeConverter(ConverterPipe):
         min_session_start_time = min(session_start_times.values())
         self._converter_session_start_time = min_session_start_time
 
-        # Align each interface's timestamps
+        # Align each ophys interface's timestamps
         for interface_name, session_start_time in session_start_times.items():
             interface = self.data_interface_objects[interface_name]
             time_offset = (session_start_time - min_session_start_time).total_seconds()
             interface.set_aligned_starting_time(aligned_starting_time=time_offset)
+
+        # Align head orientation interfaces with their paired imaging interfaces
+        for ho_interface_name in self._get_head_orientation_interface_names():
+            # Extract the paired imaging interface name (remove "/HeadOrientation" suffix)
+            paired_interface_name = ho_interface_name.rsplit("/HeadOrientation", 1)[0]
+            if paired_interface_name in session_start_times:
+                ho_interface = self.data_interface_objects[ho_interface_name]
+                session_start_time = session_start_times[paired_interface_name]
+                time_offset = (session_start_time - min_session_start_time).total_seconds()
+                aligned_timestamps = ho_interface.get_timestamps() + time_offset
+                ho_interface.set_aligned_timestamps(aligned_timestamps)
 
     def get_metadata(self):
         from neuroconv.tools.roiextractors.roiextractors import (
@@ -344,7 +396,7 @@ class MiniscopeConverter(ConverterPipe):
                 if original_name in self._device_names_camel_case:
                     device_metadata["name"] = self._device_names_camel_case[original_name]
 
-        ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
+        ophys_interface_names = self._get_ophys_interface_names()
 
         imaging_plane_metadata = []
         # Required by the schema
@@ -439,7 +491,7 @@ class MiniscopeConverter(ConverterPipe):
         if metadata is None:
             metadata = self.get_metadata()
 
-        ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
+        ophys_interface_names = self._get_ophys_interface_names()
         conversion_options_base = {interface_name: {} for interface_name in ophys_interface_names}
         for series_index, interface_name in enumerate(ophys_interface_names):
             conversion_options_base[interface_name]["photon_series_index"] = series_index
@@ -505,7 +557,7 @@ class MiniscopeConverter(ConverterPipe):
 
         # Apply stub_test and stub_frames to all imaging interfaces
         # Note: Using stub_frames for schema compatibility; the interface converts to stub_samples internally
-        ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
+        ophys_interface_names = self._get_ophys_interface_names()
         conversion_options_base = {interface_name: {} for interface_name in ophys_interface_names}
         for series_index, interface_name in enumerate(ophys_interface_names):
             conversion_options_base[interface_name]["photon_series_index"] = series_index
