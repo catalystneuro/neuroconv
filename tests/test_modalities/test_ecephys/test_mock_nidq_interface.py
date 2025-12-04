@@ -49,7 +49,6 @@ def test_mock_metadata():
         {
             "name": "NIDQBoard",
             "description": "A NIDQ board used in conjunction with SpikeGLX.",
-            "manufacturer": "National Instruments",
         },
     ]
 

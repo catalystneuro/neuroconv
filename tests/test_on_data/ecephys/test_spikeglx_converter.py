@@ -1,14 +1,9 @@
-import datetime
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from shutil import rmtree
-from tempfile import mkdtemp
-from unittest import TestCase
 
 import numpy as np
 import pytest
-from pydantic import FilePath
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -22,35 +17,32 @@ from ..setup_paths import ECEPHY_DATA_PATH
 SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 
 
-class TestSingleProbeSpikeGLXConverter(TestCase):
-    maxDiff = None
+def assert_single_probe_nwb_structure(nwbfile_path: Path, expected_session_start_time: datetime):
+    """Helper function to verify NWB file structure for single probe SpikeGLX data."""
+    with NWBHDF5IO(path=nwbfile_path) as io:
+        nwbfile = io.read()
 
-    def setUp(self):
-        self.tmpdir = Path(mkdtemp())
+        assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
 
-    def tearDown(self):
-        rmtree(self.tmpdir)
+        assert "ElectricalSeriesAP" in nwbfile.acquisition
+        assert "ElectricalSeriesLF" in nwbfile.acquisition
+        assert "TimeSeriesNIDQ" in nwbfile.acquisition
 
-    def assertNWBFileStructure(self, nwbfile_path: FilePath, expected_session_start_time: datetime):
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        # Sync channels are included by default (one per probe)
+        assert len(nwbfile.acquisition) == 4
 
-            assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
+        assert "NeuropixelsImec0" in nwbfile.devices
+        assert "NIDQBoard" in nwbfile.devices
+        assert len(nwbfile.devices) == 2
 
-            assert "ElectricalSeriesAP" in nwbfile.acquisition
-            assert "ElectricalSeriesLF" in nwbfile.acquisition
-            assert "TimeSeriesNIDQ" in nwbfile.acquisition
+        assert "NeuropixelsImec0" in nwbfile.electrode_groups
+        assert len(nwbfile.electrode_groups) == 1
 
-            assert len(nwbfile.acquisition) == 3
 
-            assert "NeuropixelsImec0" in nwbfile.devices
-            assert "NIDQBoard" in nwbfile.devices
-            assert len(nwbfile.devices) == 2
+class TestSingleProbeSpikeGLXConverter:
+    """Tests for single-probe SpikeGLX converter."""
 
-            assert "NeuropixelsImec0" in nwbfile.electrode_groups
-            assert len(nwbfile.electrode_groups) == 1
-
-    def test_single_probe_spikeglx_converter(self):
+    def test_single_probe_spikeglx_converter(self, tmp_path):
         converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
         metadata = converter.get_metadata()
 
@@ -72,23 +64,27 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
         assert device_metadata == expected_device_metadata
 
-        nwbfile_path = self.tmpdir / "test_single_probe_spikeglx_converter.nwb"
+        nwbfile_path = tmp_path / "test_single_probe_spikeglx_converter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
-        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
+        assert_single_probe_nwb_structure(
+            nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time
+        )
 
-    def test_in_converter_pipe(self):
+    def test_in_converter_pipe(self, tmp_path):
         spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
         converter_pipe = ConverterPipe(data_interfaces=[spikeglx_converter])
 
-        nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_converter_pipe.nwb"
+        nwbfile_path = tmp_path / "test_spikeglx_converter_in_converter_pipe.nwb"
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path)
 
         expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
-        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
+        assert_single_probe_nwb_structure(
+            nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time
+        )
 
-    def test_in_nwbconverter(self):
+    def test_in_nwbconverter(self, tmp_path):
         class TestConverter(NWBConverter):
             data_interface_classes = dict(SpikeGLX=SpikeGLXConverterPipe)
 
@@ -99,52 +95,24 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         conversion_options_schema = converter.get_conversion_options_schema()
         assert len(conversion_options_schema["properties"]["SpikeGLX"]["properties"]) != 0
 
-        nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_nwbconverter.nwb"
+        nwbfile_path = tmp_path / "test_spikeglx_converter_in_nwbconverter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path)
 
         expected_session_start_time = datetime(2020, 11, 3, 10, 35, 10)
-        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
+        assert_single_probe_nwb_structure(
+            nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time
+        )
 
 
-class TestMultiProbeSpikeGLXConverter(TestCase):
-    maxDiff = None
+class TestMultiProbeSpikeGLXConverter:
+    """Tests for multi-probe SpikeGLX converter."""
 
-    def setUp(self):
-        self.tmpdir = Path(mkdtemp())
+    test_folder = SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0"
 
-    def tearDown(self):
-        rmtree(self.tmpdir)
-
-    def assertNWBFileStructure(self, nwbfile_path: FilePath, expected_session_start_time: datetime):
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
-
-        # Do the comparison without timezone information to avoid CI timezone issues
-        # The timezone is set by pynbw automatically
-        assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
-
-        # TODO: improve name of segments using 'Segment{index}' for clarity
-        assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec00" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec01" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec10" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
-        assert len(nwbfile.acquisition) == 16
-
-        assert "NeuropixelsImec0" in nwbfile.devices
-        assert "NeuropixelsImec1" in nwbfile.devices
-        assert len(nwbfile.devices) == 2
-
-        assert "NeuropixelsImec0" in nwbfile.electrode_groups
-        assert "NeuropixelsImec1" in nwbfile.electrode_groups
-        assert len(nwbfile.electrode_groups) == 2
-
-    def test_multi_probe_spikeglx_converter(self):
+    def test_multi_probe_metadata(self):
+        """Test that metadata is generated correctly for multi-probe setup."""
         converter = SpikeGLXConverterPipe(
-            folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0"
+            folder_path=self.test_folder,
         )
         metadata = converter.get_metadata()
 
@@ -174,11 +142,110 @@ class TestMultiProbeSpikeGLXConverter(TestCase):
         # Test all the dictionary
         assert test_ecephys_metadata == expected_ecephys_metadata
 
-        nwbfile_path = self.tmpdir / "test_multi_probe_spikeglx_converter.nwb"
-        converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    def test_multi_probe_run_conversion(self, tmp_path):
+        """Test that multi-probe data with sync channels is written to NWB file correctly."""
+        converter = SpikeGLXConverterPipe(
+            folder_path=self.test_folder,
+        )
 
+        nwbfile_path = tmp_path / "test_multi_probe_spikeglx_converter.nwb"
+        converter.run_conversion(nwbfile_path=nwbfile_path)
+
+        # Verify NWB file structure
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+
+        # Check session start time
         expected_session_start_time = datetime(2022, 5, 19, 17, 37, 47)
-        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time)
+        # Do the comparison without timezone information to avoid CI timezone issues
+        # The timezone is set by pynwb automatically
+        assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
+
+        # Check electrical series acquisition objects - all 4 segments for each stream
+        # TODO: improve name of segments using 'Segment{index}' for clarity
+        # Probe 0 AP stream (4 segments)
+        assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec02" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec03" in nwbfile.acquisition
+        # Probe 1 AP stream (4 segments)
+        assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec12" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec13" in nwbfile.acquisition
+        # Probe 0 LF stream (4 segments)
+        assert "ElectricalSeriesLFImec00" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec01" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec02" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec03" in nwbfile.acquisition
+        # Probe 1 LF stream (4 segments)
+        assert "ElectricalSeriesLFImec10" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec12" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec13" in nwbfile.acquisition
+
+        # Check sync channels - multi-segment recordings get segment suffixes like electrical series
+        # This data has 4 segments, so we expect segment indices 0-3 for each probe
+        assert "TimeSeriesImec0Sync0" in nwbfile.acquisition
+        assert "TimeSeriesImec0Sync1" in nwbfile.acquisition
+        assert "TimeSeriesImec0Sync2" in nwbfile.acquisition
+        assert "TimeSeriesImec0Sync3" in nwbfile.acquisition
+        # Second probe sync channel
+        assert "TimeSeriesImec1Sync0" in nwbfile.acquisition
+        assert "TimeSeriesImec1Sync1" in nwbfile.acquisition
+        assert "TimeSeriesImec1Sync2" in nwbfile.acquisition
+        assert "TimeSeriesImec1Sync3" in nwbfile.acquisition
+
+        # Total: 16 electrical series (2 probes × 2 streams × 4 segments) + 8 sync TimeSeries (2 probes × 4 segments)
+        assert len(nwbfile.acquisition) == 24
+
+        # Check devices
+        assert "NeuropixelsImec0" in nwbfile.devices
+        assert "NeuropixelsImec1" in nwbfile.devices
+        assert len(nwbfile.devices) == 2
+
+        # Check electrode groups
+        assert "NeuropixelsImec0" in nwbfile.electrode_groups
+        assert "NeuropixelsImec1" in nwbfile.electrode_groups
+        assert len(nwbfile.electrode_groups) == 2
+
+    def test_streams_argument_filters_data(self):
+        """Test that the streams argument correctly filters which data is added to NWB."""
+        # Get all available streams first
+        all_streams = SpikeGLXConverterPipe.get_streams(folder_path=self.test_folder)
+
+        # Filter to only AP streams (exclude LF and sync)
+        ap_only_streams = [s for s in all_streams if ".ap" in s and "SYNC" not in s]
+
+        converter = SpikeGLXConverterPipe(
+            folder_path=self.test_folder,
+            streams=ap_only_streams,
+        )
+
+        nwbfile = converter.create_nwbfile()
+
+        # Verify AP streams ARE present (4 segments each for 2 probes = 8 total)
+        assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec02" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec03" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec12" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec13" in nwbfile.acquisition
+
+        # Verify LF streams are NOT present
+        assert "ElectricalSeriesLFImec00" not in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec01" not in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec10" not in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec11" not in nwbfile.acquisition
+
+        # Verify sync channels are NOT present
+        assert "TimeSeriesImec0Sync0" not in nwbfile.acquisition
+        assert "TimeSeriesImec1Sync0" not in nwbfile.acquisition
+
+        # Total should be 8 (only AP streams: 2 probes × 4 segments)
+        assert len(nwbfile.acquisition) == 8
 
 
 def test_electrode_table_writing(tmp_path):
@@ -251,8 +318,9 @@ class TestSortedSpikeGLXConverter:
     def test_multi_probe_multi_stream_example(self, tmp_path):
         """dataset with two probes and both ap and lf streams"""
         # Initialize base SpikeGLX converter (notebook example 1)
+        # Disable sync channels since this test focuses on sorted units
         spikeglx_converter = SpikeGLXConverterPipe(
-            folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0"
+            folder_path=SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0",
         )
 
         # Create sorting configuration with unique unit IDs for each sorter (hard-coded, no conflicts)
@@ -369,7 +437,6 @@ class TestSortedSpikeGLXConverter:
 
     def test_single_probe_with_full_streams(self, tmp_path):
         """Single probe with ap, lf and nidq streams"""
-        # Initialize converter
         spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
 
         # Create mock sorting with specific mappings and rename units for clarity
