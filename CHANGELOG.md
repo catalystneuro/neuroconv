@@ -1,3 +1,13 @@
+# v0.9.1 (Upcoming)
+
+## Removals, Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+
+## Improvements
+
 # v0.9.0 (December 4, 2025)
 
 ## Removals, Deprecations and Changes
