@@ -47,11 +47,6 @@ stored in a timestamp-named folder that contains ``Miniscope/`` and optional ``B
 own ``metaData.json`` and ``timeStamps.csv`` files. For other arrangements, supply ``UserConfigFile.json`` so the
 converter can follow the declared directory structure.
 
-**Important:** The converter concatenates all recordings into a single continuous data stream. Timestamps are
-preserved to maintain the actual time gaps between acquisitions. For example, if you have three acquisitions at
-different times, they will appear as one continuous ``OnePhotonSeries`` with timestamps showing large intervals (e.g.,
-180 seconds) between the last frame of one acquisition and the first frame of the next.
-
 Miniscope Imaging Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -71,7 +66,7 @@ The interface expects a folder with the following structure:
     ├── 2.avi                  # video file 3
     ├── ...                    # additional video files
     ├── metaData.json          # required configuration file
-    └── timeStamps.csv         # optional timestamps file
+    └── timeStamps.csv         # required timestamps file
 
 .. code-block:: python
 
@@ -100,8 +95,8 @@ If your data is organized differently than the format above (e.g., you have chan
 configuration file or timestamps are in another directory), you can specify the structure using the following parameters:
 
 - ``file_paths``: List of .avi file paths (must be named 0.avi, 1.avi, 2.avi, ...) from the same acquisition
-- ``configuration_file_path``: Path to the metaData.json configuration file (required)
-- ``timeStamps_file_path``: Optional path to the timeStamps.csv file. If not provided, timestamps will be generated as regular intervals based on the sampling frequency
+- ``configuration_file_path``: Path to the metaData.json configuration file
+- ``timeStamps_file_path``: Path to the timeStamps.csv file. If not provided, the interface looks for ``timeStamps.csv`` in the same directory as the video files
 
 For more information see the
 :py:class:`~neuroconv.datainterfaces.ophys.miniscope.MiniscopeImagingInterface` docstring.
