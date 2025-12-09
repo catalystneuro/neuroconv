@@ -3,10 +3,8 @@ NeuroConv
 
 .. image:: img/neuroconv_logo.png
   :width: 300
-
-..
-  :scale: 100 %
-  :align: right
+  :align: center
+  :class: no-scaled-link
 
 NeuroConv is a Python package for converting neurophysiology data in a variety
 of proprietary formats to the Neurodata Without Borders (NWB) standard.

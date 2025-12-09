@@ -61,7 +61,7 @@ version_match = os.environ.get("READTHEDOCS_VERSION_NAME", "stable")
 
 html_theme_options = {
     "use_edit_page_button": True,
-    "navbar_end": ["version-switcher", "navbar-icon-links"],  # Version switcher in navbar like NumPy/SciPy
+    "navbar_end": ["theme-switcher", "version-switcher", "navbar-icon-links"],  # Theme and version switchers in navbar
     "icon_links": [
         {
             "name": "GitHub",
