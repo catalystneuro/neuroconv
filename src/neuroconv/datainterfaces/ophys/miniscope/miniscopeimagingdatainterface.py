@@ -241,7 +241,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
                 ├── 2.avi                  # video file 3
                 ├── ...                    # additional video files
                 ├── metaData.json          # required configuration file
-                └── timeStamps.csv         # optional timestamps file
+                └── timeStamps.csv         # required timestamps file
         file_paths : list, optional
             List of .avi file paths to be processed. These files should be from the same
             recording session and must follow the naming convention (0.avi, 1.avi, 2.avi, ...).
@@ -252,10 +252,8 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             Required when using file_paths parameter.
         timeStamps_file_path : str, optional
             Path to the timeStamps.csv file containing timestamps relative to the recording start.
-            If not provided, the extractor will look for timeStamps.csv in the parent directory
-            of the configuration file. If the file is not found,
-            timestamps will be generated as regular intervals based on the sampling frequency
-            from the configuration file, starting at 0.
+            If not provided, the extractor will look for timeStamps.csv in the same directory
+            as the video files.
         verbose : bool, optional
             If True, enables verbose mode for detailed logging, by default False.
         """
