@@ -118,6 +118,9 @@ lightningpose = [
 medpc = [
     "ndx-events==0.2.1",
 ]
+facemap = [
+    "ndx-facemap-motionsvd @ git+https://github.com/catalystneuro/ndx-facemap-motionsvd.git",
+]
 behavior = [
     "neuroconv[sleap]",
     "neuroconv[audio]",
@@ -126,6 +129,7 @@ behavior = [
     "neuroconv[video]",
     "neuroconv[lightningpose]",
     "neuroconv[medpc]",
+    "neuroconv[facemap]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
 ]
 
