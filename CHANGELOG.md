@@ -8,6 +8,8 @@
 
 ## Improvements
 * Improved warning message in `get_module` to show both existing and new (ignored) descriptions when there's a mismatch, making it easier to debug processing module conflicts. [PR #1620](https://github.com/catalystneuro/neuroconv/pull/1620)
+* Corrected `MiniscopeImagingInterface` documentation and docstrings: `timeStamps.csv` is now correctly documented as required (an error is raised if missing), and removed inaccurate statement about automatic timestamp generation from sampling frequency. [PR #1621](https://github.com/catalystneuro/neuroconv/pull/1621)
+
 
 # v0.9.0 (December 4, 2025)
 
