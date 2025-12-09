@@ -7,7 +7,7 @@
 ## Features
 
 ## Improvements
-* Improved warning message in `get_module` to show both existing and new (ignored) descriptions when there's a mismatch, making it easier to debug processing module conflicts. [PR #1621](https://github.com/catalystneuro/neuroconv/pull/1621)
+* Improved warning message in `get_module` to show both existing and new (ignored) descriptions when there's a mismatch, making it easier to debug processing module conflicts. [PR #1620](https://github.com/catalystneuro/neuroconv/pull/1620)
 
 # v0.9.0 (December 4, 2025)
 
