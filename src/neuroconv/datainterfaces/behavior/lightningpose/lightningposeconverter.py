@@ -106,12 +106,14 @@ class LightningPoseConverter(NWBConverter):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        reference_frame: str | None = None,
-        confidence_definition: str | None = None,
-        external_mode: bool = True,
-        starting_frames_original_videos: list[int] | None = None,
-        starting_frames_labeled_videos: list[int] | None = None,
-        stub_test: bool = False,
+        *args,
+        **kwargs,
+        # reference_frame: str | None = None,
+        # confidence_definition: str | None = None,
+        # external_mode: bool = True,
+        # starting_frames_original_videos: list[int] | None = None,
+        # starting_frames_labeled_videos: list[int] | None = None,
+        # stub_test: bool = False,
     ):
         """
         Add behavior and pose estimation data, including original and labeled videos, to the specified NWBFile.
@@ -136,6 +138,38 @@ class LightningPoseConverter(NWBConverter):
         stub_test : bool, optional
             If True, only a subset of the data will be added for testing purposes, by default False.
         """
+        parameter_names = [
+            "reference_frame",
+            "confidence_definition",
+            "external_mode",
+            "starting_frames_original_videos",
+            "starting_frames_labeled_videos",
+            "stub_test",
+        ]
+        if args:
+            warnings.warn(
+                "Passing arguments positionally is deprecated and will be removed in May 2026. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes {len(parameter_names) + 2} positional arguments but "
+                    f"{len(args) + 2} were given."
+                )
+            # Bind positional args to their parameter names
+            for i, value in enumerate(args):
+                kwargs[parameter_names[i]] = value
+
+        # Extract the actual parameters
+        reference_frame = kwargs.get("reference_frame", None)
+        confidence_definition = kwargs.get("confidence_definition", None)
+        external_mode = kwargs.get("external_mode", True)
+        starting_frames_original_videos = kwargs.get("starting_frames_original_videos", None)
+        starting_frames_labeled_videos = kwargs.get("starting_frames_labeled_videos", None)
+        stub_test = kwargs.get("stub_test", False)
+
         # Deprecate external_mode parameter
         # TODO: Remove after May 2026 - Only external videos will be supported
         if external_mode is not True:
