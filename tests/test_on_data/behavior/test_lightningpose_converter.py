@@ -236,8 +236,7 @@ class TestLightningPoseConverter(TestCase):
         nwbfile_path = str(self.test_dir / "test_lightningpose_converter_new_metadata.nwb")
 
         # Create NWBFile manually to bypass metadata validation
-        from pynwb import NWBHDF5IO
-        from pynwb import NWBFile
+        from pynwb import NWBHDF5IO, NWBFile
 
         nwbfile = NWBFile(
             session_description=metadata["NWBFile"]["session_description"],
