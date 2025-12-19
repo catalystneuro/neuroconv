@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 
 from pydantic import DirectoryPath, FilePath, validate_call
@@ -10,17 +11,26 @@ from .miniscopeimagingdatainterface import (
     MiniscopeImagingInterface,
     _MiniscopeMultiRecordingInterface,
 )
-from ... import MiniscopeBehaviorInterface
+from ... import MiniscopeBehaviorInterface, MiniscopeHeadOrientationInterface
 from ....nwbconverter import ConverterPipe
 from ....utils import get_json_schema_from_method_signature
+from ....utils.str_utils import to_camel_case
 
 
 class MiniscopeConverter(ConverterPipe):
     """Bundle Miniscope imaging and optional behavior recordings into a single NWB conversion."""
 
     display_name = "Miniscope Imaging and Video"
-    keywords = MiniscopeImagingInterface.keywords + MiniscopeBehaviorInterface.keywords
-    associated_suffixes = MiniscopeImagingInterface.associated_suffixes + MiniscopeBehaviorInterface.associated_suffixes
+    keywords = (
+        MiniscopeImagingInterface.keywords
+        + MiniscopeBehaviorInterface.keywords
+        + MiniscopeHeadOrientationInterface.keywords
+    )
+    associated_suffixes = (
+        MiniscopeImagingInterface.associated_suffixes
+        + MiniscopeBehaviorInterface.associated_suffixes
+        + MiniscopeHeadOrientationInterface.associated_suffixes
+    )
     info = "Converter for handling both imaging and video recordings from Miniscope."
 
     @classmethod
@@ -204,11 +214,12 @@ class MiniscopeConverter(ConverterPipe):
 
             data_directory_path_in_config = self._user_config.get("dataDirectory", "")
             data_directory_name_in_json = data_directory_path_in_config.split("/")[-1]
-            if data_directory_name_in_json != self._folder_path.name and verbose:
-                # TODO make a
-                print(
+            if data_directory_name_in_json != self._folder_path.name:
+                warnings.warn(
                     f"Ignoring 'dataDirectory' field in User Config ('{data_directory_path_in_config}'). "
-                    f"Using provided folder_path: '{self._folder_path}'."
+                    f"Using provided folder_path: '{self._folder_path}'.",
+                    UserWarning,
+                    stacklevel=2,
                 )
 
             directory_structure = self._user_config.get("directoryStructure", [])
@@ -216,15 +227,25 @@ class MiniscopeConverter(ConverterPipe):
             fixed_path_entries = [key for key in directory_structure if key in config_fields]
             fixed_folders = [self._user_config[key] for key in fixed_path_entries]
             fixed_data_path = self._folder_path / "/".join(fixed_folders)
-            # TODO: improve this error
-            assert (
-                fixed_data_path.exists()
-            ), f"The fixed portion of the directory structure '{fixed_data_path}' does not exist under '{self._folder_path}'."
+
+            if not fixed_data_path.exists():
+                raise FileNotFoundError(
+                    f"Expected directory structure not found: '{fixed_data_path}'\n"
+                    f"Base folder: '{self._folder_path}'\n"
+                    f"Directory structure from config: {directory_structure}\n"
+                    f"Fixed path components: {fixed_folders}\n"
+                    f"Please verify that:\n"
+                    f"  1. The 'directoryStructure' in your User Config matches your actual folder structure\n"
+                    f"  2. The fixed fields ({', '.join(fixed_path_entries)}) are correctly set\n"
+                    f"  3. The folder '{fixed_data_path.name}' exists under '{fixed_data_path.parent}'"
+                )
 
             miniscope_devices = self._user_config.get("devices", {}).get("miniscopes", {})
             if not miniscope_devices:
                 raise ValueError("'devices[miniscopes]' is missing from the provided User Config file.")
             self._device_names = list(miniscope_devices.keys())
+            # Create CamelCase mapping for device names
+            self._device_names_camel_case = {name: to_camel_case(name) for name in self._device_names}
 
             all_paths = [p for p in fixed_data_path.glob("**") if p.is_dir()]
             device_folders_dict = {}
@@ -236,10 +257,28 @@ class MiniscopeConverter(ConverterPipe):
                 # Iterate over all the folders found for this device
                 # And create a MiniscopeImagingInterface for each
                 for device_folder_path in device_folders_dict[device_name]:
-                    interface_name = str(device_folder_path.relative_to(fixed_data_path))
+                    # Use as_posix() to ensure forward slashes on all platforms and avoid windows backslashes
+                    interface_name = device_folder_path.relative_to(fixed_data_path).as_posix()
                     interface = MiniscopeImagingInterface(folder_path=device_folder_path)
                     data_interfaces[interface_name] = interface
                     self._interface_to_device_mapping[interface_name] = device_name
+
+                    # Check for head orientation data in the same device folder
+                    head_orientation_file_path = device_folder_path / "headOrientation.csv"
+                    if head_orientation_file_path.exists():
+                        head_orientation_interface_name = f"{interface_name}/HeadOrientation"
+                        # Use device name in CamelCase for unique metadata key
+                        device_name_camel = self._device_names_camel_case[device_name]
+                        # Include relative path to distinguish different sessions
+                        interface_relative_path = interface_name.replace("/", "")
+                        if interface_relative_path.endswith(device_name):
+                            interface_relative_path = interface_relative_path[: -len(device_name)]
+                        metadata_key = f"TimeSeriesMiniscopeHeadOrientation{device_name_camel}{interface_relative_path}"
+                        data_interfaces[head_orientation_interface_name] = MiniscopeHeadOrientationInterface(
+                            file_path=head_orientation_file_path,
+                            metadata_key=metadata_key,
+                        )
+                        self._interface_to_device_mapping[head_orientation_interface_name] = device_name
         else:
             # Legacy mode: use _MiniscopeMultiRecordingInterface for backwards compatibility
             default_interface = _MiniscopeMultiRecordingInterface(folder_path=folder_path)
@@ -255,6 +294,8 @@ class MiniscopeConverter(ConverterPipe):
             data_interfaces[interface_name] = default_interface
             self._interface_to_device_mapping = {interface_name: device_name}
             self._device_names = [device_name]
+            # Create CamelCase mapping for device names
+            self._device_names_camel_case = {device_name: to_camel_case(device_name)}
 
         super().__init__(data_interfaces=data_interfaces)
 
@@ -267,6 +308,76 @@ class MiniscopeConverter(ConverterPipe):
                     "Miniscope behavior videos were not found under the provided folder and will be omitted from conversion."
                 )
 
+        # Align session start times across all imaging interfaces
+        self._align_session_start_times()
+
+    def _is_head_orientation_interface(self, interface_name: str) -> bool:
+        """Check if an interface name corresponds to a head orientation interface."""
+        return interface_name.endswith("/HeadOrientation")
+
+    def _get_ophys_interface_names(self) -> list[str]:
+        """Get names of ophys interfaces, excluding behavior and head orientation interfaces."""
+        return [
+            k
+            for k in self.data_interface_objects
+            if k != "MiniscopeBehavCam" and not self._is_head_orientation_interface(k)
+        ]
+
+    def _get_head_orientation_interface_names(self) -> list[str]:
+        """Get names of head orientation interfaces."""
+        return [k for k in self.data_interface_objects if self._is_head_orientation_interface(k)]
+
+    def _align_session_start_times(self):
+        """
+        Align all Miniscope imaging interfaces to a common session start time.
+
+        For each interface:
+        1. Extract its session_start_time from the session-level metaData.json
+        2. Find the minimum session_start_time across all interfaces
+        3. Shift each interface's timestamps by (session_start_time - min_session_start_time)
+
+        This ensures that sessions recorded at different times maintain their temporal relationship.
+        """
+        from neuroconv.datainterfaces.ophys.miniscope.miniscopeimagingdatainterface import (
+            _MiniscopeMultiRecordingInterface,
+        )
+
+        ophys_interface_names = self._get_ophys_interface_names()
+
+        session_start_times = {}
+        for interface_name in ophys_interface_names:
+            interface = self.data_interface_objects[interface_name]
+
+            # MiniscopeImagingInterface (config file mode) has _device_folder_path
+            # _MiniscopeMultiRecordingInterface (legacy mode) has _recording_start_times
+            if isinstance(interface, _MiniscopeMultiRecordingInterface):
+                session_start_time = interface._recording_start_times[0]
+            else:
+                device_folder_path = interface._device_folder_path
+                session_start_time = interface._get_session_start_time(folder_path=device_folder_path.parent)
+            session_start_times[interface_name] = session_start_time
+
+        # Find the minimum session_start_time (this becomes the reference)
+        min_session_start_time = min(session_start_times.values())
+        self._converter_session_start_time = min_session_start_time
+
+        # Align each ophys interface's timestamps
+        for interface_name, session_start_time in session_start_times.items():
+            interface = self.data_interface_objects[interface_name]
+            time_offset = (session_start_time - min_session_start_time).total_seconds()
+            interface.set_aligned_starting_time(aligned_starting_time=time_offset)
+
+        # Align head orientation interfaces with their paired imaging interfaces
+        for ho_interface_name in self._get_head_orientation_interface_names():
+            # Extract the paired imaging interface name (remove "/HeadOrientation" suffix)
+            paired_interface_name = ho_interface_name.rsplit("/HeadOrientation", 1)[0]
+            if paired_interface_name in session_start_times:
+                ho_interface = self.data_interface_objects[ho_interface_name]
+                session_start_time = session_start_times[paired_interface_name]
+                time_offset = (session_start_time - min_session_start_time).total_seconds()
+                aligned_timestamps = ho_interface.get_timestamps() + time_offset
+                ho_interface.set_aligned_timestamps(aligned_timestamps)
+
     def get_metadata(self):
         from neuroconv.tools.roiextractors.roiextractors import (
             _get_default_ophys_metadata,
@@ -275,27 +386,44 @@ class MiniscopeConverter(ConverterPipe):
         default_ophys_metadata = _get_default_ophys_metadata()
         metadata = super().get_metadata()
 
-        ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
+        # Use the minimum session start time if it was calculated during alignment
+        metadata["NWBFile"]["session_start_time"] = self._converter_session_start_time
+
+        # Update Device metadata to use CamelCase names
+        if "Ophys" in metadata and "Device" in metadata["Ophys"]:
+            for device_metadata in metadata["Ophys"]["Device"]:
+                original_name = device_metadata["name"]
+                if original_name in self._device_names_camel_case:
+                    device_metadata["name"] = self._device_names_camel_case[original_name]
+
+        ophys_interface_names = self._get_ophys_interface_names()
 
         imaging_plane_metadata = []
         # Required by the schema
         default_optical_channel = default_ophys_metadata["Ophys"]["ImagingPlane"][0]["optical_channel"]
         for device_name in self._device_names:
+            device_name_camel = self._device_names_camel_case[device_name]
             metadata_entry = {
-                "name": f"ImagingPlane{device_name}",
+                "name": f"ImagingPlane{device_name_camel}",
                 "description": f"Imaging plane for {device_name} Miniscope device.",
                 "optical_channel": default_optical_channel,
-                "device": device_name,
+                "device": device_name_camel,
             }
             imaging_plane_metadata.append(metadata_entry)
 
         series_metadata = []
         for interface_name in ophys_interface_names:
             device_name = self._interface_to_device_mapping[interface_name]
-            interface_name = interface_name.replace("/", "")
-            imaging_plane_name = f"ImagingPlane{device_name}"
+            device_name_camel = self._device_names_camel_case[device_name]
+            # Remove slashes and strip device folder name from the end of interface path
+            # E.g., "2025_06_12/15_15_04/ACC_miniscope2" -> "2025_06_1215_15_04"
+            interface_relative_path = interface_name.replace("/", "")
+            # Remove the device name from the end if present
+            if interface_relative_path.endswith(device_name):
+                interface_relative_path = interface_relative_path[: -len(device_name)]
+            imaging_plane_name = f"ImagingPlane{device_name_camel}"
             metadata_entry = {
-                "name": f"OnePhotonSeries{interface_name}",
+                "name": f"OnePhotonSeries{device_name_camel}{interface_relative_path}",
                 "imaging_plane": imaging_plane_name,
             }
             series_metadata.append(metadata_entry)
@@ -363,7 +491,7 @@ class MiniscopeConverter(ConverterPipe):
         if metadata is None:
             metadata = self.get_metadata()
 
-        ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
+        ophys_interface_names = self._get_ophys_interface_names()
         conversion_options_base = {interface_name: {} for interface_name in ophys_interface_names}
         for series_index, interface_name in enumerate(ophys_interface_names):
             conversion_options_base[interface_name]["photon_series_index"] = series_index
@@ -429,7 +557,7 @@ class MiniscopeConverter(ConverterPipe):
 
         # Apply stub_test and stub_frames to all imaging interfaces
         # Note: Using stub_frames for schema compatibility; the interface converts to stub_samples internally
-        ophys_interface_names = [key for key in self.data_interface_objects if key != "MiniscopeBehavCam"]
+        ophys_interface_names = self._get_ophys_interface_names()
         conversion_options_base = {interface_name: {} for interface_name in ophys_interface_names}
         for series_index, interface_name in enumerate(ophys_interface_names):
             conversion_options_base[interface_name]["photon_series_index"] = series_index

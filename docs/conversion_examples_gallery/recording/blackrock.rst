@@ -28,6 +28,8 @@ Convert Blackrock data to NWB using
     >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
     >>> session_start_time = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"

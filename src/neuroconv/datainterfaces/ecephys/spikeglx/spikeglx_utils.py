@@ -1,6 +1,7 @@
 """Utilities used by the SpikeGLX interfaces."""
 
 import json
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from pydantic import FilePath
 def get_session_start_time(recording_metadata: dict) -> datetime:
     """
     Fetches the session start time from the recording_metadata dictionary.
+
 
     Parameters
     ----------
@@ -21,6 +23,13 @@ def get_session_start_time(recording_metadata: dict) -> datetime:
     datetime or None
         the session start time in datetime format.
     """
+
+    warnings.warn(
+        "get_session_start_time is deprecated and will be removed in May 2026 or later.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
     session_start_time = recording_metadata.get("fileCreateTime", None)
     if session_start_time.startswith("0000-00-00"):
         # date was removed. This sometimes happens with human data to protect the
@@ -55,6 +64,16 @@ def fetch_stream_id_for_spikelgx_file(file_path: FilePath) -> str:
     str
         the stream_id
     """
+    import warnings
+
+    warnings.warn(
+        "fetch_stream_id_for_spikelgx_file is deprecated and deprecated and will be removed by the end of 2025. "
+        "This function was used to dtermine the stream_id for a filename to initialize the stream from a file_path. "
+        "But after file_path is removed from the SpikeGLXRecordingInterface init, this function is no longer needed.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
     suffixes = Path(file_path).suffixes
     device = next(suffix for suffix in suffixes if "imec" in suffix or "nidq" in suffix)
     signal_kind = ""
@@ -70,6 +89,10 @@ def get_device_metadata(meta) -> dict:
     """Returns a device with description including the metadata as described here
     # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
 
+    This function is deprecated and will be removed in May 2026 or later.
+    Use SpikeGLXRecordingInterface._get_device_metadata_from_probe() instead,
+    which extracts device metadata directly from probe information.
+
     Parameters
     ----------
     meta : dict
@@ -80,7 +103,14 @@ def get_device_metadata(meta) -> dict:
     dict
         a dict containing the metadata necessary for creating the device
     """
-    # TODO, get probe metadata from spikeinterface
+    import warnings
+
+    warnings.warn(
+        "get_device_metadata is deprecated and will be removed in May 2026 or later. "
+        "Use SpikeGLXRecordingInterface._get_device_metadata_from_probe() instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
     metadata_dict = dict()
     if "imDatPrb_type" in meta:
         probe_type_to_probe_description = {

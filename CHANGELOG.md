@@ -1,4 +1,17 @@
-# v0.9.0 (Upcoming)
+# v0.9.1 (Upcoming)
+
+## Removals, Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+
+## Improvements
+* Improved warning message in `get_module` to show both existing and new (ignored) descriptions when there's a mismatch, making it easier to debug processing module conflicts. [PR #1620](https://github.com/catalystneuro/neuroconv/pull/1620)
+* Corrected `MiniscopeImagingInterface` documentation and docstrings: `timeStamps.csv` is now correctly documented as required (an error is raised if missing), and removed inaccurate statement about automatic timestamp generation from sampling frequency. [PR #1621](https://github.com/catalystneuro/neuroconv/pull/1621)
+
+
+# v0.9.0 (December 4, 2025)
 
 ## Removals, Deprecations and Changes
 * Removed  `VideoInterface` class scheduled for removal in September 2025. The class is now private (`_VideoInterface`) and used internally by `LightningPoseConverter`. Users should use `ExternalVideoInterface` or `InternalVideoInterface` instead. [PR #1589](https://github.com/catalystneuro/neuroconv/pull/1589)
@@ -10,23 +23,33 @@
 * Removed deprecated `num_frames` parameter from `MockImagingInterface` and `MockSegmentationInterface` scheduled for removal in February 2025. Use `num_samples` instead. [PR #1583](https://github.com/catalystneuro/neuroconv/pull/1583)
 * Removed deprecated `output_filepath` parameter from `configure_and_write_nwbfile`. Use `nwbfile_path` instead. [PR #1582](https://github.com/catalystneuro/neuroconv/pull/1582)
 * Deprecated `configuration_file_path` parameter in `MiniscopeImagingInterface` and will be removed on or after May 2026. Use `folder_path` instead for standard folder structures. [PR #1593](https://github.com/catalystneuro/neuroconv/pull/1593)
+* Deprecated `get_device_metadata` function in `spikeglx_utils` and will be removed on or after May 2026. Use `SpikeGLXRecordingInterface._get_device_metadata_from_probe()` instead, which extracts device metadata directly from probe information. [PR #1599](https://github.com/catalystneuro/neuroconv/pull/1599)
+* Deprecated `iterator_opts` parameter in favor of `iterator_options` across all SpikeInterface conversion functions and data interfaces. The deprecated parameter will be removed on or after May 2026. This change improves consistency with naming conventions. [PR #1603](https://github.com/catalystneuro/neuroconv/pull/1603)
+* Deprecated `es_key` parameter in `SpikeGLXNIDQInterface` and will be removed on or after May 2026. This parameter has no effect as the interface writes analog data as TimeSeries and digital data as LabeledEvents, not ElectricalSeries. [PR #1615](https://github.com/catalystneuro/neuroconv/pull/1615)
+* Removed deprecated `file_path` parameter from `SpikeGLXRecordingInterface` and `SpikeGLXNIDQInterface`. Use `folder_path` and `stream_id` instead. [PR #1616](https://github.com/catalystneuro/neuroconv/pull/1616)
 
 ## Bug Fixes
 * Fixed bug with TDTFiberPhotometryInterface tests by swapping out test_all_conversion_checks_stub_test_invalid with test_check_run_conversion_stub_test_invalid (avoiding unittest.TestCase.subTests).  [PR #1579](https://github.com/catalystneuro/neuroconv/pull/1579)
 * Fixed DANDI live service tests to support dandi-cli 0.73.2 instance-specific API key environment variables (`DANDI_SANDBOX_API_KEY`, `EMBER_SANDBOX_API_KEY`, etc.). Updated all workflows and test files to use the appropriate API key for each DANDI instance. [PR #1588](https://github.com/catalystneuro/neuroconv/pull/1588)
 
 ## Features
+* Miniscope converter now uses the configuration file to read general folder structures [PR #1528](https://github.com/catalystneuro/neuroconv/pull/1528) [PR #1604](https://github.com/catalystneuro/neuroconv/pull/1604)
 * Added a workflow to repack nwbfiles that have already been written to disk with desired chunking and compression settings: [PR #1003](https://github.com/catalystneuro/neuroconv/pull/1003) [PR #1592](https://github.com/catalystneuro/neuroconv/pull/1592)
-* Enhanced `TiffImagingInterface` to support multi-file TIFF datasets using `MultiTIFFMultiPageExtractor` from roiextractors. Added support for configurable dimension orders (`dimension_order`), multi-channel data (`num_channels`, `channel_name`), and volumetric imaging (`num_planes`). Both `file_path` (single file) and `file_paths` (multiple files) parameters are now supported for backward compatibility. [PR #1577](https://github.com/catalystneuro/neuroconv/pull/1577)
-* Added a workflow to repack nwbfiles that have already been written to disk with desired chunking and compression settings: [PR #1003](https://github.com/catalystneuro/neuroconv/pull/1003)
+* Enhanced `TiffImagingInterface` to support multi-file TIFF datasets using `MultiTIFFMultiPageExtractor` from roiextractors. Added support for configurable dimension orders (`dimension_order`), multi-channel data (`num_channels`, `channel_name`), and volumetric imaging (`num_planes`). Both `file_path` (single file) and `file_paths` (multiple files) parameters are now supported for backward compatibility. [PR #1577](https://github.com/catalystneuro/neuroconv/pull/1577) [PR #1578](https://github.com/catalystneuro/neuroconv/pull/1578)
 * Added `add_recording_as_spatial_series_to_nwbfile` function to write SpikeInterface recordings as `SpatialSeries` for behavioral tracking data (e.g., position, head direction, gaze tracking). [PR #1574](https://github.com/catalystneuro/neuroconv/pull/1574)
-* Enhanced `SpikeGLXNIDQInterface` to support custom metadata for digital channels, enabling users to specify semantic labels, descriptions, and names for NIDQ digital events. Added `metadata_key` parameter to support multiple NIDQ interfaces in the same conversion. [PR #1580](https://github.com/catalystneuro/neuroconv/pull/1580)
-* Miniscope converter now uses the configuration file to read general folder structures [PR #1528](https://github.com/catalystneuro/neuroconv/pull/1528)
+* Enhanced `SpikeGLXNIDQInterface` to support custom metadata for digital channels, enabling users to specify semantic labels, descriptions, and names for NIDQ digital events. Added `metadata_key` parameter to support multiple NIDQ interfaces in the same conversion. Added `digital_channel_groups` parameter for init-time configuration of digital channels, matching the pattern used by `analog_channel_groups`. [PR #1580](https://github.com/catalystneuro/neuroconv/pull/1580) [PR #1615](https://github.com/catalystneuro/neuroconv/pull/1615)
+* Enhanced `SpikeGLXNIDQInterface` to support custom metadata for analog channels, enabling users to split NIDQ analog channels into multiple TimeSeries objects with custom groupings via the new `analog_channel_groups` parameter. Users can now organize analog channels semantically (e.g., audio, accelerometer, temperature sensors). The default behavior (single TimeSeries for all analog channels) remains unchanged. [PR #1601](https://github.com/catalystneuro/neuroconv/pull/1601) [PR #1615](https://github.com/catalystneuro/neuroconv/pull/1615)
+* Added ADC multiplexing properties (`adc_group` and `adc_sample_order`) to SpikeGLX recordings. These properties preserve hardware provenance information about which ADC each electrode is connected to and its sampling order, enabling downstream computation of inter-sample shifts even when channels are sliced. Requires probeinterface >= 0.3.1. [PR #1597](https://github.com/catalystneuro/neuroconv/pull/1597) [PR #1609](https://github.com/catalystneuro/neuroconv/pull/1609)
+* Added `SpikeGLXSyncChannelInterface` for converting Neuropixel synchronization channels from SpikeGLX recordings. [PR #1600](https://github.com/catalystneuro/neuroconv/pull/1600)
+* The `SpikeGLXConverterPipe` now includes sync channels. [PR #1600](https://github.com/catalystneuro/neuroconv/pull/1600)
+* Added `MiniscopeHeadOrientationInterface` for converting Miniscope head orientation data from BNO055 IMU sensor.[PR #1610](https://github.com/catalystneuro/neuroconv/pull/1610)
 
 ## Improvements
+* Improved metadata handling in `add_recording_as_spatial_series_to_nwbfile` to no longer modify input and copies are avoided of metadata dictionaries. Made required field defaults explicit. [PR #1605](https://github.com/catalystneuro/neuroconv/pull/1605)
+* Improved SpikeGLX device metadata extraction to use probe information from probeinterface instead of parsing meta files. Device metadata now includes serial number as a separate field and enriched description with part number, port, slot, model name, and manufacturer from probe annotations. [PR #1599](https://github.com/catalystneuro/neuroconv/pull/1599)
 * Added comprehensive how-to guide "How to Add Behavioral and Sensor Data from Acquisition Systems" documenting usage of `add_recording_as_time_series_to_nwbfile` and `add_recording_as_spatial_series_to_nwbfile` for adding behavioral data from any SpikeInterface-supported format. [PR #1575](https://github.com/catalystneuro/neuroconv/pull/1575)
 * Enhanced CSV interface documentation with comprehensive tutorial-style examples showing CSV format requirements, basic usage with column descriptions, customization options for storage location (trials/epochs/custom intervals), and advanced reading options. Fixed in-memory access to `nwbfile.trials` and `nwbfile.epochs`. Improved docstrings across `TimeIntervalsInterface` and `convert_df_to_time_intervals`. [PR #1572](https://github.com/catalystneuro/neuroconv/pull/1572)
-* Enhanced live service testing CI to fail explicitly with clear error messages when repository secrets are unavailable for external contributors. Added validation step in workflow to check required credentials and updated documentation to explain the workflow for external contributors (maintainers fork PRs to run live tests). [PR #1590](https://github.com/catalystneuro/neuroconv/pull/1590)
+* Enhanced live service testing CI to fail explicitly with clear error messages when repository secrets are unavailable for external contributors. Added validation step in workflow to check required credentials and updated documentation to explain the workflow for external contributors (maintainers fork PRs to run live tests). [PR #1590](https://github.com/catalystneuro/neuroconv/pull/1590) [PR #1598](https://github.com/catalystneuro/neuroconv/pull/1598)
 
 # v0.8.3 (November 6, 2025)
 

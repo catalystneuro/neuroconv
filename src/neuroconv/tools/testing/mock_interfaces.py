@@ -311,6 +311,12 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         self.verbose = None
         self.es_key = "ElectricalSeriesNIDQ"
         self.metadata_key = "SpikeGLXNIDQ"
+        self._analog_channel_groups = {
+            "nidq_analog": {
+                "channels": list(channel_ids),
+            }
+        }
+        self._digital_channel_groups = {}
 
 
 class MockRecordingInterface(BaseRecordingExtractorInterface):

@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Literal
 
@@ -415,8 +416,21 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         compression: str | None = "gzip",
         compression_opts: int | None = None,
         iterator_type: str = "v2",
+        iterator_options: dict | None = None,
         iterator_opts: dict | None = None,
     ):
+        # Handle deprecated iterator_opts parameter
+        if iterator_opts is not None:
+            warnings.warn(
+                "The 'iterator_opts' parameter is deprecated and will be removed in May 2026 or after. "
+                "Use 'iterator_options' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if iterator_options is not None:
+                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
+            iterator_options = iterator_opts
+
         super().add_to_nwbfile(
             nwbfile,
             metadata,
@@ -427,7 +441,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
             compression,
             compression_opts,
             iterator_type,
-            iterator_opts,
+            iterator_options,
         )
 
 

@@ -1,6 +1,5 @@
 import warnings
 from collections import defaultdict
-from copy import deepcopy
 from typing import Any, Literal, Optional
 
 import numpy as np
@@ -38,6 +37,7 @@ def add_recording_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
+    *,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str | None = None,
     iterator_type: str = "v2",
@@ -103,9 +103,6 @@ def add_recording_to_nwbfile(
             raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
         iterator_options = iterator_opts
 
-    if metadata is None:
-        metadata = _get_default_ecephys_metadata()
-
     add_recording_metadata_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     number_of_segments = recording.get_num_segments()
@@ -118,7 +115,7 @@ def add_recording_to_nwbfile(
             write_as=write_as,
             es_key=es_key,
             iterator_type=iterator_type,
-            iterator_opts=iterator_options,
+            iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
         )
 
@@ -206,7 +203,7 @@ def _add_recording_segment_to_nwbfile(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     iterator_type: str | None = "v2",
-    iterator_opts: dict | None = None,
+    iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
 ):
     """
@@ -237,17 +234,6 @@ def _add_recording_segment_to_nwbfile(
         if write_as == "processed" and "Processed" not in ecephys_mod.data_interfaces:
             ecephys_mod.add(pynwb.ecephys.FilteredEphys(name="Processed"))
 
-    if metadata is not None and "Ecephys" in metadata and es_key is not None:
-        assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
-        eseries_kwargs.update(metadata["Ecephys"][es_key])
-
-    # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique.
-    # 0-pad these names based on the number of segments.
-    # If there are 10 segments use 2 digits, if there are 100 segments use 3 digits, etc.
-    if recording.get_num_segments() > 1:
-        width = int(np.ceil(np.log10((recording.get_num_segments()))))
-        eseries_kwargs["name"] += f"{segment_index:0{width}}"
-
     # The add_electrodes adds a column with channel name to the electrode table.
     add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
@@ -259,7 +245,7 @@ def _add_recording_segment_to_nwbfile(
         region=electrode_table_indices,
         description="electrode_table_region",
     )
-    eseries_kwargs.update(electrodes=electrode_table_region)
+    eseries_kwargs["electrodes"] = electrode_table_region
 
     if recording.has_scaleable_traces():
         # Spikeinterface gains and offsets are gains and offsets to micro volts.
@@ -271,9 +257,9 @@ def _add_recording_segment_to_nwbfile(
         unique_gains = set(channel_gains_to_volts)
         if len(unique_gains) == 1:
             conversion_to_volts = channel_gains_to_volts[0]
-            eseries_kwargs.update(conversion=conversion_to_volts)
+            eseries_kwargs["conversion"] = conversion_to_volts
         else:
-            eseries_kwargs.update(channel_conversion=channel_gains_to_volts)
+            eseries_kwargs["channel_conversion"] = channel_gains_to_volts
 
         unique_offset = set(channel_offsets_to_volts)
         if len(unique_offset) > 1:
@@ -282,7 +268,7 @@ def _add_recording_segment_to_nwbfile(
             _report_variable_offset(recording=recording)
 
         unique_offset = channel_offsets_to_volts[0]
-        eseries_kwargs.update(offset=unique_offset)
+        eseries_kwargs["offset"] = unique_offset
     else:
         warning_message = (
             "The recording extractor does not have gains and offsets to convert to volts. "
@@ -296,13 +282,13 @@ def _add_recording_segment_to_nwbfile(
         recording=recording,
         segment_index=segment_index,
         iterator_type=iterator_type,
-        iterator_opts=iterator_opts,
+        iterator_options=iterator_options,
     )
-    eseries_kwargs.update(data=ephys_data_iterator)
+    eseries_kwargs["data"] = ephys_data_iterator
 
     if always_write_timestamps:
         timestamps = recording.get_times(segment_index=segment_index)
-        eseries_kwargs.update(timestamps=timestamps)
+        eseries_kwargs["timestamps"] = timestamps
     else:
         # By default we write the rate if the timestamps are regular
         recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
@@ -320,7 +306,19 @@ def _add_recording_segment_to_nwbfile(
             # sampling frequency of the recording extractor by some epsilon.
             eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
         else:
-            eseries_kwargs.update(timestamps=timestamps)
+            eseries_kwargs["timestamps"] = timestamps
+
+    # Update with user metadata - allows override of all fields including name, description, data, timestamps, etc.
+    if metadata is not None and "Ecephys" in metadata and es_key is not None:
+        assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
+        eseries_kwargs.update(metadata["Ecephys"][es_key])
+
+    # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique.
+    # 0-pad these names based on the number of segments.
+    # If there are 10 segments use 2 digits, if there are 100 segments use 3 digits, etc.
+    if recording.get_num_segments() > 1 and "name" in eseries_kwargs:
+        width = int(np.ceil(np.log10((recording.get_num_segments()))))
+        eseries_kwargs["name"] += f"{segment_index:0{width}}"
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -1083,7 +1081,7 @@ def _recording_traces_to_hdmf_iterator(
     segment_index: int = None,
     return_scaled: bool = False,
     iterator_type: str | None = "v2",
-    iterator_opts: dict = None,
+    iterator_options: dict = None,
 ) -> AbstractDataChunkIterator:
     """Function to wrap traces of spikeinterface recording into an AbstractDataChunkIterator.
 
@@ -1099,7 +1097,7 @@ def _recording_traces_to_hdmf_iterator(
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
         None: write the TimeSeries with no memory chunking.
-    iterator_opts: dict, optional
+    iterator_options: dict, optional
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
@@ -1120,7 +1118,7 @@ def _recording_traces_to_hdmf_iterator(
         message = f"iterator_type '{iterator_type}' is not supported. Must be either 'v2' (recommended) or None."
         raise ValueError(message)
 
-    iterator_opts = dict() if iterator_opts is None else iterator_opts
+    iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
         _check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
@@ -1130,7 +1128,7 @@ def _recording_traces_to_hdmf_iterator(
             recording=recording,
             segment_index=segment_index,
             return_scaled=return_scaled,
-            **iterator_opts,
+            **iterator_options,
         )
     else:
         raise ValueError("iterator_type must be None or 'v2'.")
@@ -1165,11 +1163,31 @@ def _report_variable_offset(recording: BaseRecording) -> None:
     raise ValueError(message)
 
 
+def _get_default_time_series_metadata() -> dict:
+    """
+    Returns the default values for required TimeSeries fields.
+
+    These are fallback values used when metadata doesn't specify required fields.
+
+    Returns
+    -------
+    dict
+        Dictionary with default values for required TimeSeries fields only.
+    """
+    return {
+        "name": "TimeSeries",
+        "description": "no description",
+        "unit": "n.a.",
+    }
+
+
 def add_recording_as_time_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
+    *,
     iterator_type: str | None = "v2",
+    iterator_options: dict | None = None,
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
     time_series_name: Optional[str] = None,
@@ -1206,16 +1224,32 @@ def add_recording_as_time_series_to_nwbfile(
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
         None: write the TimeSeries with no memory chunking.
-    iterator_opts: dict, optional
+    iterator_options: dict, optional
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
+    iterator_opts: dict, optional
+        Deprecated. Use 'iterator_options' instead.
     always_write_timestamps : bool, default: False
         Set to True to always write timestamps.
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
     """
+
+    # Handle deprecated iterator_opts parameter
+    if iterator_opts is not None:
+        warnings.warn(
+            "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
+            "Use 'iterator_options' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        if iterator_options is not None:
+            raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
+        iterator_options = iterator_opts
+
+    # Handle backward compatibility for time_series_name
     if time_series_name is not None:
         warnings.warn(
             "The 'time_series_name' parameter is deprecated and will be removed in or after February 2026. "
@@ -1223,6 +1257,8 @@ def add_recording_as_time_series_to_nwbfile(
             DeprecationWarning,
             stacklevel=2,
         )
+        metadata_key = time_series_name
+
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):
         _add_time_series_segment_to_nwbfile(
@@ -1231,9 +1267,8 @@ def add_recording_as_time_series_to_nwbfile(
             metadata=metadata,
             segment_index=segment_index,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            time_series_name=time_series_name,
             metadata_key=metadata_key,
         )
 
@@ -1244,40 +1279,29 @@ def _add_time_series_segment_to_nwbfile(
     metadata: dict | None = None,
     segment_index: int = 0,
     iterator_type: str | None = "v2",
-    iterator_opts: dict | None = None,
+    iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
-    time_series_name: Optional[str] = None,
     metadata_key: str = "time_series_metadata_key",
 ):
     """
-    See `add_recording_as_time_series_to_nwbfile` for details.
+    Internal function to add a single recording segment as a TimeSeries to an NWBFile.
+
+    See `add_recording_as_time_series_to_nwbfile` for public API details.
+    All backward compatibility handling and metadata filtering should be done
+    in the public function before calling this.
     """
 
-    # For backwards compatibility
-    metadata_key = time_series_name or metadata_key
     metadata = DeepDict() if metadata is None else metadata
 
-    time_series_name = time_series_name or metadata["TimeSeries"][metadata_key].get("name", "TimeSeries")
-    tseries_kwargs = dict(name=time_series_name)
-    metadata = deepcopy(metadata)
+    # Build TimeSeries kwargs from recording properties
+    tseries_kwargs = {}
 
-    # Apply metadata if available
-    if "TimeSeries" in metadata and metadata_key in metadata["TimeSeries"]:
-        time_series_metadata = metadata["TimeSeries"][metadata_key]
-        tseries_kwargs.update(time_series_metadata)
+    # Get user-provided metadata
+    user_metadata = metadata.get("TimeSeries", {}).get(metadata_key, {})
 
-    # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique.
-    # 0-pad these names based on the number of segments.
-    # If there are 10 segments use 2 digits, if there are 100 segments use 3 digits, etc.
-    if recording.get_num_segments() > 1:
-        width = int(np.ceil(np.log10((recording.get_num_segments()))))
-        tseries_kwargs["name"] += f"{segment_index:0{width}}"
-
-    # metadata "unit" has priority over recording properties
-    if "unit" not in tseries_kwargs:
-        # Get physical units from recording properties
+    # Extract unit, conversion, offset from recording properties if not in metadata
+    if "unit" not in user_metadata:
         units = recording.get_property("physical_unit")
-        # Get gain and offset from recording properties
         gain_to_unit = recording.get_property("gain_to_physical_unit")
         offset_to_unit = recording.get_property("offset_to_physical_unit")
 
@@ -1304,37 +1328,50 @@ def _add_time_series_segment_to_nwbfile(
             warnings.warn(warning_msg, UserWarning, stacklevel=2)
             tseries_kwargs.update(unit="n.a.")
 
-    # Iterator
+    # Add data iterator
     data_iterator = _recording_traces_to_hdmf_iterator(
         recording=recording,
         segment_index=segment_index,
         iterator_type=iterator_type,
-        iterator_opts=iterator_opts,
+        iterator_options=iterator_options,
     )
-    tseries_kwargs.update(data=data_iterator)
+    tseries_kwargs["data"] = data_iterator
 
+    # Add timestamps or rate
     if always_write_timestamps:
         timestamps = recording.get_times(segment_index=segment_index)
-        tseries_kwargs.update(timestamps=timestamps)
+        tseries_kwargs["timestamps"] = timestamps
     else:
-        # By default we write the rate if the timestamps are regular
         recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
         if recording_has_timestamps:
             timestamps = recording.get_times(segment_index=segment_index)
-            rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
+            rate = calculate_regular_series_rate(series=timestamps)
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
             recording_t_start = recording._recording_segments[segment_index].t_start or 0
 
-        # Set starting time and rate or timestamps
         if rate:
             starting_time = float(recording_t_start)
-            # Note that we call the sampling frequency again because the estimated rate might be different from the
-            # sampling frequency of the recording extractor by some epsilon.
-            tseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
+            tseries_kwargs["starting_time"] = starting_time
+            tseries_kwargs["rate"] = recording.get_sampling_frequency()
         else:
-            tseries_kwargs.update(timestamps=timestamps)
+            tseries_kwargs["timestamps"] = timestamps
+
+    # Update with user-provided metadata
+    tseries_kwargs.update(user_metadata)
+
+    # Handle multi-segment naming
+    if recording.get_num_segments() > 1 and "name" in tseries_kwargs:
+        width = int(np.ceil(np.log10((recording.get_num_segments()))))
+        tseries_kwargs["name"] += f"{segment_index:0{width}}"
+
+    # Fill in required fields with defaults if missing
+    required_fields = ["name", "description", "unit"]
+    default_metadata = _get_default_time_series_metadata()
+    for field in required_fields:
+        if field not in tseries_kwargs:
+            tseries_kwargs[field] = default_metadata[field]
 
     # Create TimeSeries object and add it to nwbfile
     time_series = pynwb.base.TimeSeries(**tseries_kwargs)
@@ -1357,7 +1394,7 @@ def _get_default_spatial_series_metadata():
     metadata["SpatialSeries"] = {
         "name": "SpatialSeries",
         "description": "Spatial or directional data",
-        "unit": "meters",
+        "unit": "n.a.",
     }
 
     return metadata
@@ -1463,35 +1500,20 @@ def _add_spatial_series_segment_to_nwbfile(
             f"or verify you loaded the correct stream if working with multi-stream data."
         )
 
-    # Get default metadata from single source of truth
-    default_metadata = _get_default_spatial_series_metadata()
-    default_spatial_series = default_metadata["SpatialSeries"]
-
     metadata = metadata if metadata is not None else {}
 
-    # Get spatial series metadata or empty dict
-    spatial_series_metadata = metadata.get("SpatialSeries", {}).get(metadata_key, {})
+    # Get user-provided metadata
+    user_metadata = metadata.get("SpatialSeries", {}).get(metadata_key, {})
 
-    # Copy user metadata to avoid mutation
-    series_kwargs = spatial_series_metadata.copy()
-
-    # Fill in missing required fields with defaults
-    required_fields = ["name", "description", "unit"]
-    for field in required_fields:
-        if field not in series_kwargs:
-            series_kwargs[field] = default_spatial_series[field]
-
-    # If multiple segments, append index to name
-    if recording.get_num_segments() > 1:
-        width = int(np.ceil(np.log10(recording.get_num_segments())))
-        series_kwargs["name"] += f"{segment_index:0{width}}"
+    # Build series_kwargs from recording properties
+    series_kwargs = {}
 
     # Add data iterator
     data_iterator = _recording_traces_to_hdmf_iterator(
         recording=recording,
         segment_index=segment_index,
         iterator_type=iterator_type,
-        iterator_opts=iterator_options,
+        iterator_options=iterator_options,
     )
     series_kwargs["data"] = data_iterator
 
@@ -1516,6 +1538,20 @@ def _add_spatial_series_segment_to_nwbfile(
             series_kwargs["rate"] = recording.get_sampling_frequency()
         else:
             series_kwargs["timestamps"] = timestamps
+
+    # Update with user-provided metadata
+    series_kwargs.update(user_metadata)
+
+    # Handle multi-segment naming
+    if recording.get_num_segments() > 1 and "name" in series_kwargs:
+        width = int(np.ceil(np.log10(recording.get_num_segments())))
+        series_kwargs["name"] += f"{segment_index:0{width}}"
+
+    # Fill in missing required fields with defaults
+    # Note: 'description' has default='no description' and 'unit' has default='meters' in the schema
+    if "name" not in series_kwargs:
+        default_metadata = _get_default_spatial_series_metadata()
+        series_kwargs["name"] = default_metadata["SpatialSeries"]["name"]
 
     # Create the SpatialSeries instance
     spatial_series = pynwb.behavior.SpatialSeries(**series_kwargs)
@@ -1725,9 +1761,9 @@ def write_recording_to_nwbfile(
     # Handle deprecated iterator_opts parameter
     if iterator_opts is not None:
         warnings.warn(
-            "The 'iterator_opts' parameter is deprecated and will be removed in or after March 2026. "
+            "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
             "Use 'iterator_options' instead.",
-            DeprecationWarning,
+            FutureWarning,
             stacklevel=2,
         )
         if iterator_options is None:

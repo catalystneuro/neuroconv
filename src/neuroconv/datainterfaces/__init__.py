@@ -7,6 +7,7 @@ from .behavior.lightningpose.lightningposedatainterface import (
 )
 from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
+from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.externalvideointerface import ExternalVideoInterface
@@ -70,6 +71,7 @@ from .ecephys.spikegadgets.spikegadgetsdatainterface import (
 )
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
+from .ecephys.spikeglx.spikeglxsyncchannelinterface import SpikeGLXSyncChannelInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 from .ecephys.whitematter.whitematterdatainterface import WhiteMatterRecordingInterface
 
@@ -121,6 +123,7 @@ interface_list = [
     Spike2RecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXNIDQInterface,
+    SpikeGLXSyncChannelInterface,
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
     IntanAnalogInterface,
@@ -184,6 +187,7 @@ interface_list = [
     DeepLabCutInterface,
     SLEAPInterface,
     MiniscopeBehaviorInterface,
+    MiniscopeHeadOrientationInterface,
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
@@ -220,6 +224,7 @@ interfaces_by_category = dict(
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
+        SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
     ),
     icephys=dict(Abf=AbfInterface),

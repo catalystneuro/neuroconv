@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 from pydantic import FilePath
@@ -59,7 +60,6 @@ class IntanAnalogInterface(BaseDataInterface):
 
         self._file_path = Path(file_path)
         self._stream_name = stream_name
-        self.metadata_key = metadata_key
 
         # Stream type descriptions and time series name mapping
         self.stream_info = {
@@ -92,8 +92,9 @@ class IntanAnalogInterface(BaseDataInterface):
                 f"Valid analog stream names are: {list(self.stream_info.keys())}"
             )
 
-        # Generate time series name
+        # Set time_series_name from stream info and metadata_key from parameter
         self._time_series_name = self.stream_info[self._stream_name]["time_series_name"]
+        self.metadata_key = metadata_key
 
         # Load the recording extractor using stream_name
         self.recording_extractor = read_intan(
@@ -154,6 +155,7 @@ class IntanAnalogInterface(BaseDataInterface):
         metadata: dict | None = None,
         stub_test: bool = False,
         iterator_type: str | None = "v2",
+        iterator_options: dict | None = None,
         iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
@@ -170,8 +172,10 @@ class IntanAnalogInterface(BaseDataInterface):
             If True, only writes a small amount of data for testing
         iterator_type : str, optional, default: "v2"
             Type of iterator to use for data streaming
-        iterator_opts : dict, optional
+        iterator_options : dict, optional
             Additional options for the iterator
+        iterator_opts : dict, optional
+            Deprecated. Use 'iterator_options' instead.
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
@@ -180,6 +184,18 @@ class IntanAnalogInterface(BaseDataInterface):
             add_recording_as_time_series_to_nwbfile,
         )
 
+        # Handle deprecated iterator_opts parameter
+        if iterator_opts is not None:
+            warnings.warn(
+                "The 'iterator_opts' parameter is deprecated and will be removed in May 2026 or after. "
+                "Use 'iterator_options' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if iterator_options is not None:
+                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
+            iterator_options = iterator_opts
+
         if metadata is None:
             metadata = self.get_metadata()
 
@@ -187,19 +203,12 @@ class IntanAnalogInterface(BaseDataInterface):
         if stub_test:
             recording = _stub_recording(recording=recording)
 
-        # Update metadata with description
-        channel_names = self.get_channel_names()
-        description = (
-            f"{self.stream_info[self._stream_name]['description']}. " f"Channels are {channel_names} in that order."
-        )
-        metadata["TimeSeries"][self._time_series_name] = dict(description=description)
-
         add_recording_as_time_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            time_series_name=self._time_series_name,
+            metadata_key=self.metadata_key,
         )
