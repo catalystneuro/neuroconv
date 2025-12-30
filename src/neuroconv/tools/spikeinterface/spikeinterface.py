@@ -108,7 +108,10 @@ def add_recording_to_nwbfile(
         iterator_options = iterator_opts
 
     add_recording_metadata_to_nwbfile(
-        recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        null_values_for_properties=null_values_for_properties
     )
 
     number_of_segments = recording.get_num_segments()
@@ -205,10 +208,10 @@ def add_sorting_to_nwbfile(
 def _add_recording_segment_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
-    metadata: dict = None,
+    metadata: dict | None = None,
     segment_index: int = 0,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
-    es_key: str = None,
+    es_key: str | None = None,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
@@ -244,7 +247,10 @@ def _add_recording_segment_to_nwbfile(
 
     # The add_electrodes adds a column with channel name to the electrode table.
     add_electrodes_to_nwbfile(
-        recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        null_values_for_properties=null_values_for_properties
     )
 
     # Create a region for the electrodes table by matching recording channels to table rows
@@ -1582,7 +1588,7 @@ def _add_spatial_series_segment_to_nwbfile(
 def add_recording_metadata_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
-    metadata: dict = None,
+    metadata: dict | None = None,
     null_values_for_properties: dict | None = None,
 ):
     """
@@ -1623,7 +1629,10 @@ def add_recording_metadata_to_nwbfile(
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
     _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
     add_electrodes_to_nwbfile(
-        recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        null_values_for_properties=null_values_for_properties
     )
 
 
@@ -2480,7 +2489,10 @@ def add_sorting_analyzer_to_nwbfile(
         recording = sorting_analyzer.recording
 
     add_recording_metadata_to_nwbfile(
-        recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+        recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        null_values_for_properties=null_values_for_properties
     )
     electrode_group_indices = _get_electrode_group_indices(recording, nwbfile=nwbfile)
     unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
