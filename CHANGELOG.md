@@ -4,6 +4,7 @@
 
 ## Bug Fixes
 * Added cap on NumPy version for all ecephys formats. [#1626](https://github.com/catalystneuro/neuroconv/pull/1626)
+* Added Numba as a dependency of the sorting_analyzer environment. [#1627](https://github.com/catalystneuro/neuroconv/pull/1627)
 
 ## Features
 
