@@ -81,9 +81,9 @@ jobs:
           python -m pip install -U pip
           python -m pip install ".[ecephys_minimal,sorting_analyzer]"  # we test the sorting analyzer here so we need its dependencies
           # Install numba only on non-macOS-Intel runners
-                if [ "${{ runner.os }}" != "macOS" ] || [ "${{ runner.arch }}" != "X64" ]; then
-                python -m pip install numba
-                fi
+          if [ "${{ runner.os }}" != "macOS" ] || [ "${{ runner.arch }}" != "X64" ]; then
+          python -m pip install numba
+          fi
           python -m pip install --group test
           python -m pytest tests/test_modalities/test_ecephys -vv -rsx -n auto --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
