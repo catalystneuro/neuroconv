@@ -2051,6 +2051,98 @@ class TestAddUnitsTable(TestCase):
         assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
 
 
+class TestWaveformParametersAdditionToUnitsTable:
+    """Tests for waveform_data_dict parameter and related metadata propagation."""
+
+    def test_waveform_data_dict_sets_metadata(self):
+        """Test that waveform_data_dict properly sets waveform metadata on Units table."""
+        sorting = generate_sorting(num_units=3, sampling_frequency=30000.0)
+        nwbfile = mock_NWBFile()
+
+        # Create mock waveform data
+        waveform_means = np.random.randn(3, 82, 32).astype(np.float32)
+
+        add_sorting_to_nwbfile(
+            sorting,
+            nwbfile=nwbfile,
+            waveform_data_dict={
+                "means": waveform_means,
+                "sds": None,
+                "sampling_rate": 30000.0,
+                "unit": "microvolts",
+            },
+        )
+
+        # Verify metadata is set
+        assert nwbfile.units.waveform_rate == 30000.0
+        assert nwbfile.units.waveform_unit == "microvolts"
+        assert nwbfile.units.resolution == 1.0 / 30000.0
+
+        # Verify waveform data
+        assert "waveform_mean" in nwbfile.units.colnames
+        np.testing.assert_array_equal(nwbfile.units["waveform_mean"][0], waveform_means[0])
+
+    def test_waveform_data_dict_with_sds(self):
+        """Test waveform_data_dict with both means and standard deviations."""
+        sorting = generate_sorting(num_units=2, sampling_frequency=30000.0)
+        nwbfile = mock_NWBFile()
+
+        waveform_means = np.random.randn(2, 82, 32).astype(np.float32)
+        waveform_sds = np.random.randn(2, 82, 32).astype(np.float32)
+
+        add_sorting_to_nwbfile(
+            sorting,
+            nwbfile=nwbfile,
+            waveform_data_dict={
+                "means": waveform_means,
+                "sds": waveform_sds,
+                "sampling_rate": 30000.0,
+                "unit": "volts",
+            },
+        )
+
+        assert "waveform_mean" in nwbfile.units.colnames
+        assert "waveform_sd" in nwbfile.units.colnames
+        np.testing.assert_array_equal(nwbfile.units["waveform_sd"][0], waveform_sds[0])
+
+    def test_resolution_from_sampling_frequency(self):
+        """Test that resolution is automatically set from sorting sampling frequency."""
+        sorting = generate_sorting(num_units=2, sampling_frequency=40000.0)
+        nwbfile = mock_NWBFile()
+
+        add_sorting_to_nwbfile(sorting, nwbfile=nwbfile)
+
+        # Resolution should be 1/sampling_frequency
+        assert nwbfile.units.resolution == 1.0 / 40000.0
+
+    def test_deprecated_waveform_params_warning(self):
+        """Test that using old waveform_means param emits FutureWarning."""
+        sorting = generate_sorting(num_units=2, sampling_frequency=30000.0)
+        nwbfile = mock_NWBFile()
+        waveform_means = np.random.randn(2, 82, 32).astype(np.float32)
+
+        with pytest.warns(FutureWarning, match="waveform_means.*deprecated"):
+            add_sorting_to_nwbfile(sorting, nwbfile=nwbfile, waveform_means=waveform_means)
+
+    def test_waveform_unit_default_is_volts(self):
+        """Test that waveform_unit defaults to 'volts' when not specified."""
+        sorting = generate_sorting(num_units=2, sampling_frequency=30000.0)
+        nwbfile = mock_NWBFile()
+        waveform_means = np.random.randn(2, 82, 32).astype(np.float32)
+
+        add_sorting_to_nwbfile(
+            sorting,
+            nwbfile=nwbfile,
+            waveform_data_dict={
+                "means": waveform_means,
+                "sampling_rate": 30000.0,
+                # "unit" not specified - should default to "volts"
+            },
+        )
+
+        assert nwbfile.units.waveform_unit == "volts"
+
+
 class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):

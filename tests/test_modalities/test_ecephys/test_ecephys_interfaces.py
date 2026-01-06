@@ -157,6 +157,47 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         with pytest.raises(ValueError, match="Unit IDs \\['nonexistent'\\] not found in sorting extractor"):
             interface.rename_unit_ids(unit_ids_map)
 
+    def test_waveform_data_dict_propagation(self, setup_interface):
+        """Test that waveform_data_dict is properly passed through add_to_nwbfile."""
+        interface = self.interface
+        nwbfile = interface.create_nwbfile(metadata=interface.get_metadata())
+
+        # Get number of units from the interface
+        num_units = len(interface.sorting_extractor.get_unit_ids())
+        waveform_means = np.random.randn(num_units, 82, 32).astype(np.float32)
+        waveform_sds = np.random.randn(num_units, 82, 32).astype(np.float32)
+
+        # Create a fresh nwbfile to test with waveform_data_dict
+        from pynwb import NWBFile
+        from datetime import datetime
+
+        nwbfile = NWBFile(
+            session_description="test session",
+            identifier="test_identifier",
+            session_start_time=datetime.now(),
+        )
+
+        interface.add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=interface.get_metadata(),
+            waveform_data_dict={
+                "means": waveform_means,
+                "sds": waveform_sds,
+                "sampling_rate": 30000.0,
+                "unit": "microvolts",
+            },
+        )
+
+        # Verify waveform metadata is set on units table
+        assert nwbfile.units.waveform_rate == 30000.0
+        assert nwbfile.units.waveform_unit == "microvolts"
+        assert "waveform_mean" in nwbfile.units.colnames
+        assert "waveform_sd" in nwbfile.units.colnames
+
+        # Verify waveform data
+        np.testing.assert_array_equal(nwbfile.units["waveform_mean"][0], waveform_means[0])
+        np.testing.assert_array_equal(nwbfile.units["waveform_sd"][0], waveform_sds[0])
+
 
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface

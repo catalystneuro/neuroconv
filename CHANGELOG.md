@@ -1,10 +1,12 @@
 # v0.9.1 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Deprecated `waveform_means` and `waveform_sds` parameters in `add_sorting_to_nwbfile`. Use the new `waveform_data_dict` parameter instead, which bundles waveform data with associated metadata. Will be removed on or after July 2026. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
 
 ## Bug Fixes
 
 ## Features
+* Added `waveform_data_dict` keyword-only parameter to `add_sorting_to_nwbfile` and `BaseSortingExtractorInterface.add_to_nwbfile` for passing waveform data with associated metadata (`means`, `sds`, `sampling_rate`, `unit`). The Units table now properly sets `waveform_rate`, `waveform_unit`, and `resolution` attributes, enabling proper HDF5 attribute propagation for downstream tools like MatNWB. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
 
 ## Improvements
 * Improved warning message in `get_module` to show both existing and new (ignored) descriptions when there's a mismatch, making it easier to debug processing module conflicts. [PR #1620](https://github.com/catalystneuro/neuroconv/pull/1620)
