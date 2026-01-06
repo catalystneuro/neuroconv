@@ -4,6 +4,7 @@
 
 ## Bug Fixes
 * Added cap on NumPy version for all ecephys formats. [#1626](https://github.com/catalystneuro/neuroconv/pull/1626)
+* Updated DANDI instance names to fix Ember DANDI upload. [#1631](https://github.com/catalystneuro/neuroconv/pull/1631)
 
 ## Features
 
