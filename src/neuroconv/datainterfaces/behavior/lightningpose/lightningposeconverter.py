@@ -1,5 +1,6 @@
 import warnings
 from copy import deepcopy
+from typing import Any
 
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
@@ -106,8 +107,8 @@ class LightningPoseConverter(NWBConverter):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
         # reference_frame: str | None = None,
         # confidence_definition: str | None = None,
         # external_mode: bool = True,
