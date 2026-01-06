@@ -168,8 +168,9 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         waveform_sds = np.random.randn(num_units, 82, 32).astype(np.float32)
 
         # Create a fresh nwbfile to test with waveform_data_dict
-        from pynwb import NWBFile
         from datetime import datetime
+
+        from pynwb import NWBFile
 
         nwbfile = NWBFile(
             session_description="test session",
