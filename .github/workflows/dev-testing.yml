@@ -56,10 +56,6 @@ jobs:
         run: |
           pip install --no-cache-dir .[full]
           pip install --group test
-          # Install numba only on non-macOS-Intel runners
-          if [ "${{ runner.os }}" != "macOS" ] || [ "${{ runner.arch }}" != "X64" ]; then
-          python -m pip install numba
-          fi
 
       - name: Dev gallery - ROIExtractors
         run: pip install --no-cache-dir git+https://github.com/CatalystNeuro/roiextractors@main
