@@ -141,7 +141,6 @@ def add_sorting_to_nwbfile(
     unit_electrode_indices: list[list[int]] | None = None,
     *,
     null_values_for_properties: dict | None = None,
-    *,
     waveform_data_dict: dict | None = None,
 ):
     """Add sorting data (units and their properties) to an NWBFile.
