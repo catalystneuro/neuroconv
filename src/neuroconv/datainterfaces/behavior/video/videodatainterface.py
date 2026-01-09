@@ -70,8 +70,8 @@ class _VideoInterface(BaseDataInterface):
                 ...
             ]
         """
-        # Note: This is a private interface, deprecation warning removed
-        # External users should use ExternalVideoInterface or InternalVideoInterface
+        # TODO: Remove after May 2026 - Replace with ExternalVideoInterface
+
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         self._number_of_files = len(file_paths)

@@ -1,6 +1,7 @@
 # v0.9.1 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Deprecated _VideoInterface in LightningPoseConverter with migration to ExternalVideoInterface [#1596](https://github.com/catalystneuro/neuroconv/pull/1596)
 
 ## Bug Fixes
 * Added cap on NumPy version for all ecephys formats. [#1626](https://github.com/catalystneuro/neuroconv/pull/1626)
