@@ -249,6 +249,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
 abf = [
     "ndx-dandi-icephys>=0.4.0",
     "neo>=0.13.2",
+    "numpy<2.4", # TODO: remove cap on NumPy when the following issue is resolved: https://github.com/python-quantities/python-quantities/issues/265
 ]
 icephys = [
     "neuroconv[abf]",
