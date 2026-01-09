@@ -12,7 +12,7 @@ authors = [
     { name = "Cody Baker" },
     { name = "Szonja Weigl" },
     { name = "Heberto Mayorquin" },
-    { name = "Paul Adkisson" },
+    { name = "Paul Adkisson-Floro" },
     { name = "Luiz Tauffer" },
     { name=  "Alessandra Trapani" },
     { name = "Ben Dichter", email = "ben.dichter@catalystneuro.com" },
@@ -133,7 +133,8 @@ behavior = [
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
     "spikeinterface>=0.103.0",
-    "neo>=0.14.3"
+    "neo>=0.14.3",
+    "numpy<2.4", # TODO: remove cap on NumPy when the following issue is resolved: https://github.com/python-quantities/python-quantities/issues/265
 ]
 alphaomega = [
     "neuroconv[ecephys_minimal]",
@@ -248,6 +249,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
 abf = [
     "ndx-dandi-icephys>=0.4.0",
     "neo>=0.13.2",
+    "numpy<2.4", # TODO: remove cap on NumPy when the following issue is resolved: https://github.com/python-quantities/python-quantities/issues/265
 ]
 icephys = [
     "neuroconv[abf]",

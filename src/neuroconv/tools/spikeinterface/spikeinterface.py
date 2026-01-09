@@ -44,6 +44,7 @@ def add_recording_to_nwbfile(
     iterator_options: dict | None = None,
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
+    null_values_for_properties: dict | None = None,
 ):
     """
     Adds traces from recording object as ElectricalSeries to an NWBFile object.
@@ -84,6 +85,9 @@ def add_recording_to_nwbfile(
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
+    null_values_for_properties : dict of str to Any, optional
+        A dictionary mapping properties to their respective default values. If a property is not found in this
+        dictionary, a sensible default value based on the type of `sample_data` will be used.
 
     Notes
     -----
@@ -103,7 +107,9 @@ def add_recording_to_nwbfile(
             raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
         iterator_options = iterator_opts
 
-    add_recording_metadata_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_recording_metadata_to_nwbfile(
+        recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+    )
 
     number_of_segments = recording.get_num_segments()
     for segment_index in range(number_of_segments):
@@ -117,6 +123,7 @@ def add_recording_to_nwbfile(
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
+            null_values_for_properties=null_values_for_properties,
         )
 
 
@@ -132,6 +139,7 @@ def add_sorting_to_nwbfile(
     waveform_means: np.ndarray | None = None,
     waveform_sds: np.ndarray | None = None,
     unit_electrode_indices: list[list[int]] | None = None,
+    *,
     null_values_for_properties: dict | None = None,
     *,
     waveform_data_dict: dict | None = None,
@@ -171,7 +179,7 @@ def add_sorting_to_nwbfile(
     unit_electrode_indices : list of lists of int, optional
         A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
         The length of the list must match the number of units in the sorting extractor.
-    null_values_for_properties : dict of str to Any
+    null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     waveform_data_dict : dict, optional
@@ -237,13 +245,15 @@ def add_sorting_to_nwbfile(
 def _add_recording_segment_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
-    metadata: dict = None,
+    metadata: dict | None = None,
     segment_index: int = 0,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
-    es_key: str = None,
+    es_key: str | None = None,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
+    *,
+    null_values_for_properties: dict | None = None,
 ):
     """
     See add_recording_to_nwbfile for details.
@@ -274,7 +284,9 @@ def _add_recording_segment_to_nwbfile(
             ecephys_mod.add(pynwb.ecephys.FilteredEphys(name="Processed"))
 
     # The add_electrodes adds a column with channel name to the electrode table.
-    add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrodes_to_nwbfile(
+        recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+    )
 
     # Create a region for the electrodes table by matching recording channels to table rows
     channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
@@ -771,7 +783,7 @@ def _get_null_value_for_property(property: str, sample_data: Any, null_values_fo
     ----------
     sample_data : Any
         The sample data for which the default value is being determined. This can be of any data type.
-    null_values_for_properties : dict of str to Any
+    null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
 
@@ -823,6 +835,7 @@ def add_electrodes_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
     exclude: tuple = (),
+    *,
     null_values_for_properties: dict | None = None,
 ):
     """
@@ -859,7 +872,7 @@ def add_electrodes_to_nwbfile(
     exclude: tuple
         An iterable containing the string names of channel properties in the RecordingExtractor
         object to ignore when writing to the NWBFile.
-    null_values_for_properties : dict of str to Any
+    null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     """
@@ -1608,7 +1621,13 @@ def _add_spatial_series_segment_to_nwbfile(
         behavior_module.add(spatial_series)
 
 
-def add_recording_metadata_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
+def add_recording_metadata_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict | None = None,
+    *,
+    null_values_for_properties: dict | None = None,
+):
     """
     Add device, electrode_groups, and electrodes info to the nwbfile.
 
@@ -1640,10 +1659,15 @@ def add_recording_metadata_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.N
         ``nwbfile.electrode_groups`` is handled automatically; please specify the string ``'group_name'`` in this case.
         If no group information is passed via metadata, automatic linking to existing electrode groups,
         possibly including the default, will occur.
+    null_values_for_properties : dict of str to Any, optional
+        A dictionary mapping properties to their respective default values. If a property is not found in this
+        dictionary, a sensible default value based on the type of `sample_data` will be used.
     """
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
     _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrodes_to_nwbfile(
+        recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+    )
 
 
 def write_recording_to_nwbfile(
@@ -1662,6 +1686,7 @@ def write_recording_to_nwbfile(
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     append_on_disk_nwbfile: bool = False,
+    null_values_for_properties: dict | None = None,
 ) -> pynwb.NWBFile | None:
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -1763,6 +1788,9 @@ def write_recording_to_nwbfile(
     append_on_disk_nwbfile : bool, default: False
         Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
         This is useful for appending data to an existing file without overwriting it.
+    null_values_for_properties : dict of str to Any, optional
+        A dictionary mapping properties to their respective default values. If a property is not found in this
+        dictionary, a sensible default value based on the type of `sample_data` will be used.
 
     Returns
     -------
@@ -1794,6 +1822,7 @@ def write_recording_to_nwbfile(
             es_key=es_key,
             iterator_type=iterator_type,
             iterator_options=iterator_options if iterator_options is not None else iterator_opts,
+            null_values_for_properties=null_values_for_properties,
         )
         return nwbfile
 
@@ -1854,6 +1883,7 @@ def write_recording_to_nwbfile(
             es_key=es_key,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
+            null_values_for_properties=null_values_for_properties,
         )
 
         if backend_configuration is None:
@@ -1893,6 +1923,7 @@ def write_recording_to_nwbfile(
                 es_key=es_key,
                 iterator_type=iterator_type,
                 iterator_options=iterator_options,
+                null_values_for_properties=null_values_for_properties,
             )
 
             if backend_configuration is None:
@@ -1920,11 +1951,11 @@ def _add_units_table_to_nwbfile(
     waveform_means: np.ndarray | None = None,
     waveform_sds: np.ndarray | None = None,
     unit_electrode_indices: list[list[int]] | None = None,
-    null_values_for_properties: dict | None = None,
     *,
     waveform_rate: float | None = None,
     waveform_unit: str = "volts",
     resolution: float | None = None,
+    null_values_for_properties: dict | None = None,
 ):
     """
     Add sorting data to a NWBFile object as a Units table.
@@ -1968,6 +1999,9 @@ def _add_units_table_to_nwbfile(
     resolution : float, optional
         The smallest possible difference between two spike times in seconds.
         Sets Units.resolution attribute.
+    null_values_for_properties : dict of str to Any, optional
+        A dictionary mapping properties to their respective default values. If a property is not found in this
+        dictionary, a sensible default value based on the type of `sample_data` will be used.
     """
     unit_table_description = unit_table_description or "Autogenerated by neuroconv."
 
@@ -2213,6 +2247,7 @@ def write_sorting_to_nwbfile(
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     append_on_disk_nwbfile: bool = False,
+    null_values_for_properties: dict | None = None,
 ) -> pynwb.NWBFile | None:
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
@@ -2273,6 +2308,9 @@ def write_sorting_to_nwbfile(
     append_on_disk_nwbfile : bool, default: False
         Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
         This is useful for appending data to an existing file without overwriting it.
+    null_values_for_properties : dict of str to Any, optional
+        A dictionary mapping properties to their respective default values. If a property is not found in this
+        dictionary, a sensible default value based on the type of `sample_data` will be used.
 
     Returns
     -------
@@ -2308,6 +2346,7 @@ def write_sorting_to_nwbfile(
             waveform_means=waveform_means,
             waveform_sds=waveform_sds,
             unit_electrode_indices=unit_electrode_indices,
+            null_values_for_properties=null_values_for_properties,
         )
         return nwbfile
 
@@ -2356,6 +2395,7 @@ def write_sorting_to_nwbfile(
             waveform_means=waveform_means,
             waveform_sds=waveform_sds,
             unit_electrode_indices=unit_electrode_indices,
+            null_values_for_properties=null_values_for_properties,
         )
 
         if backend_configuration is None:
@@ -2425,6 +2465,8 @@ def add_sorting_analyzer_to_nwbfile(
     write_as: Literal["units", "processing"] = "units",
     units_name: str = "units",
     units_description: str = "Autogenerated by neuroconv.",
+    *,
+    null_values_for_properties: dict | None = None,
 ):
     """
     Convenience function to write directly a sorting analyzer object to an nwbfile.
@@ -2469,6 +2511,9 @@ def add_sorting_analyzer_to_nwbfile(
     units_name : str, optional, default: 'units'
         The name of the units table. If write_as=='units', then units_name must also be 'units'.
     units_description : str, default: 'Autogenerated by neuroconv.'
+    null_values_for_properties : dict of str to Any, optional
+        A dictionary mapping properties to their respective default values. If a property is not found in this
+        dictionary, a sensible default value based on the type of `sample_data` will be used.
     """
 
     # TODO: move into add_units
@@ -2513,7 +2558,9 @@ def add_sorting_analyzer_to_nwbfile(
         )
         recording = sorting_analyzer.recording
 
-    add_recording_metadata_to_nwbfile(recording, nwbfile=nwbfile, metadata=metadata)
+    add_recording_metadata_to_nwbfile(
+        recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+    )
     electrode_group_indices = _get_electrode_group_indices(recording, nwbfile=nwbfile)
     unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
 
@@ -2529,6 +2576,7 @@ def add_sorting_analyzer_to_nwbfile(
         waveform_means=template_means,
         waveform_sds=template_stds,
         unit_electrode_indices=unit_electrode_indices,
+        null_values_for_properties=null_values_for_properties,
     )
 
 
@@ -2552,6 +2600,7 @@ def write_sorting_analyzer_to_nwbfile(
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     append_on_disk_nwbfile: bool = False,
+    null_values_for_properties: dict | None = None,
 ) -> pynwb.NWBFile | None:
     """
     Convenience function to write directly a sorting analyzer object to an nwbfile.
@@ -2618,6 +2667,9 @@ def write_sorting_analyzer_to_nwbfile(
     append_on_disk_nwbfile : bool, default: False
         Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
         This is useful for appending data to an existing file without overwriting it.
+    null_values_for_properties : dict of str to Any, optional
+        A dictionary mapping properties to their respective default values. If a property is not found in this
+        dictionary, a sensible default value based on the type of `sample_data` will be used.
 
     Returns
     -------
@@ -2654,7 +2706,11 @@ def write_sorting_analyzer_to_nwbfile(
         if write_electrical_series:
             add_electrical_series_kwargs = add_electrical_series_kwargs or dict()
             add_recording_to_nwbfile(
-                recording=recording, nwbfile=nwbfile, metadata=metadata, **add_electrical_series_kwargs
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                null_values_for_properties=null_values_for_properties,
+                **add_electrical_series_kwargs,
             )
 
         add_sorting_analyzer_to_nwbfile(
@@ -2668,6 +2724,7 @@ def write_sorting_analyzer_to_nwbfile(
             write_as=write_as,
             units_name=units_name,
             units_description=units_description,
+            null_values_for_properties=null_values_for_properties,
         )
         return nwbfile
 
@@ -2719,7 +2776,11 @@ def write_sorting_analyzer_to_nwbfile(
         if write_electrical_series:
             add_electrical_series_kwargs = add_electrical_series_kwargs or dict()
             add_recording_to_nwbfile(
-                recording=recording, nwbfile=nwbfile, metadata=metadata, **add_electrical_series_kwargs
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                null_values_for_properties=null_values_for_properties,
+                **add_electrical_series_kwargs,
             )
 
         add_sorting_analyzer_to_nwbfile(
@@ -2733,6 +2794,7 @@ def write_sorting_analyzer_to_nwbfile(
             write_as=write_as,
             units_name=units_name,
             units_description=units_description,
+            null_values_for_properties=null_values_for_properties,
         )
 
         if backend_configuration is None:
@@ -2766,7 +2828,11 @@ def write_sorting_analyzer_to_nwbfile(
             if write_electrical_series:
                 add_electrical_series_kwargs = add_electrical_series_kwargs or dict()
                 add_recording_to_nwbfile(
-                    recording=recording, nwbfile=nwbfile, metadata=metadata, **add_electrical_series_kwargs
+                    recording=recording,
+                    nwbfile=nwbfile,
+                    metadata=metadata,
+                    null_values_for_properties=null_values_for_properties,
+                    **add_electrical_series_kwargs,
                 )
 
             add_sorting_analyzer_to_nwbfile(
@@ -2780,6 +2846,7 @@ def write_sorting_analyzer_to_nwbfile(
                 write_as=write_as,
                 units_name=units_name,
                 units_description=units_description,
+                null_values_for_properties=null_values_for_properties,
             )
 
             if backend_configuration is None:
