@@ -2095,6 +2095,16 @@ class TestWaveformParametersAdditionToUnitsTable:
         assert nwbfile.units.resolution == 1.0 / 40000.0
 
 
+def is_macos_intel():
+    import platform
+
+    return platform.system() == "Darwin" and platform.machine() != "arm64"
+
+
+@pytest.mark.skipif(
+    is_macos_intel(),
+    reason="Test skipped on macOS with Intel processors because of installation conflicts with Numba.",
+)
 class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):
