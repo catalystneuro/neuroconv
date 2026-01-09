@@ -2051,6 +2051,16 @@ class TestAddUnitsTable(TestCase):
         assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
 
 
+def is_macos_intel():
+    import platform
+
+    return platform.system() == "Darwin" and platform.machine() != "arm64"
+
+
+@pytest.mark.skipif(
+    is_macos_intel(),
+    reason="Test skipped on macOS with Intel processors because of installation conflicts with Numba.",
+)
 class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):
