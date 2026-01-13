@@ -79,8 +79,8 @@ jobs:
             source env_ecephys/bin/activate
           fi
           python -m pip install -U pip
-          python -m pip install ".[ecephys_minimal,sorting_analyzer]"  # we test the sorting analyzer here so we need its dependencies
-          python -m pip install --group test
+          python -m pip install ".[ecephys_minimal]"
+          python -m pip install --group test --group sorting_analyzer # we test the sorting analyzer here so we need its dependencies
           python -m pytest tests/test_modalities/test_ecephys -vv -rsx -n auto --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
@@ -159,7 +159,9 @@ jobs:
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
 
       - name: Install full requirements in base environment
-        run: python -m pip install ".[full]"
+        run: |
+          python -m pip install ".[full]"
+          python -m pip install --group sorting_analyzer
 
       - name: Install Wine (For Plexon2 Data Tests)
         uses: ./.github/actions/install-wine

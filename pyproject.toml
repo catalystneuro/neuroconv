@@ -67,11 +67,6 @@ dependencies = [
 neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
 
 [project.optional-dependencies]
-sorting_analyzer = [   # These dependencies are for testing the sorting analyzer tool
-    "scipy",
-    "numba; sys_platform != 'darwin' and platform_machine != 'x86_64'"
-]
-
 dandi = ["dandi>=0.70.0"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
@@ -458,6 +453,10 @@ test = [
     "pytest-cov",
     "parameterized>=0.8.1",
     "pytest-xdist"  # Runs tests on parallel
+]
+sorting_analyzer = [   # These dependencies are for testing the sorting analyzer tool
+    "scipy",
+    "numba; sys_platform != 'darwin' or platform_machine != 'x86_64'"
 ]
 
 docs = [
