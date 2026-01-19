@@ -261,6 +261,11 @@ fiber_photometry = [
     "ndx-fiber-photometry>=0.2.2",
 ]
 
+## HED
+hed = [
+    "hedtools>=0.5.0",
+]
+
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
