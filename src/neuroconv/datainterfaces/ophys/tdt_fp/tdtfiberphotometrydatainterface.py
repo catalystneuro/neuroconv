@@ -471,7 +471,6 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             "optical_fiber",
             "excitation_source",
             "photodetector",
-            "dichroic_mirror",
         ]
         device_fields = [
             "optical_fiber",
