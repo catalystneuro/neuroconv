@@ -16,6 +16,7 @@
 * Improved warning message in `get_module` to show both existing and new (ignored) descriptions when there's a mismatch, making it easier to debug processing module conflicts. [PR #1620](https://github.com/catalystneuro/neuroconv/pull/1620)
 * Corrected `MiniscopeImagingInterface` documentation and docstrings: `timeStamps.csv` is now correctly documented as required (an error is raised if missing), and removed inaccurate statement about automatic timestamp generation from sampling frequency. [PR #1621](https://github.com/catalystneuro/neuroconv/pull/1621)
 * `null_values_for_properties` is exposed to more functions in `spikeinterface` tools allowing user to manually specify the default properties. This is especially helpful when there exists properties which it has no default value when using any adding function related to `add_electrodes_to_nwbfile`. [PR #1624](https://github.com/catalystneuro/neuroconv/pull/1624)
+* Made `dichroic_mirror` optional in `TDTFiberPhotometryInterface` to match latest version of `ndx-fiber-photometry` where this field is not required. [PR #1636](https://github.com/catalystneuro/neuroconv/pull/1636)
 
 # v0.9.0 (December 4, 2025)
 
