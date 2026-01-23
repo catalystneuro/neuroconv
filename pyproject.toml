@@ -258,7 +258,7 @@ image = [
 
 ## Fiber Photometry
 fiber_photometry = [
-    "ndx-fiber-photometry @ git+https://github.com/catalystneuro/ndx-fiber-photometry.git@optional_dichroic",
+    "ndx-fiber-photometry>=0.2.3",
 ]
 
 
