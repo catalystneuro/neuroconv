@@ -141,6 +141,7 @@ def add_sorting_to_nwbfile(
     unit_electrode_indices: list[list[int]] | None = None,
     *,
     null_values_for_properties: dict | None = None,
+    waveform_data_dict: dict | None = None,
 ):
     """Add sorting data (units and their properties) to an NWBFile.
 
@@ -160,7 +161,6 @@ def add_sorting_to_nwbfile(
         and values will be used as descriptions in the Units table.
     skip_properties : list of str, optional
         Unit properties to exclude from writing.
-
     write_as : {'units', 'processing'}, default: 'units'
         Where to write the unit data:
             - 'units': Write to the primary NWBFile.units table.
@@ -170,8 +170,10 @@ def add_sorting_to_nwbfile(
     units_description : str, optional
         Description for the Units table (e.g., sorting method, curation details).
     waveform_means : np.ndarray, optional
+        Deprecated. Use `waveform_data_dict` instead.
         Waveform mean (template) for each unit. Shape: (num_units, num_samples, num_channels).
     waveform_sds : np.ndarray, optional
+        Deprecated. Use `waveform_data_dict` instead.
         Waveform standard deviation for each unit. Shape: (num_units, num_samples, num_channels).
     unit_electrode_indices : list of lists of int, optional
         A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
@@ -179,7 +181,40 @@ def add_sorting_to_nwbfile(
     null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
+    waveform_data_dict : dict, optional
+        Dictionary containing waveform data and metadata. Keys:
+            - "means": np.ndarray of shape (num_units, num_samples, num_channels)
+            - "sds": np.ndarray of shape (num_units, num_samples, num_channels), optional
+            - "sampling_rate": float, the sampling rate of the waveforms in Hz
+            - "unit": str, the unit of measurement (default: "volts")
     """
+
+    # Handle backwards compatibility for waveform parameters
+    if waveform_data_dict is not None:
+        _waveform_means = waveform_data_dict.get("means")
+        _waveform_sds = waveform_data_dict.get("sds")
+        _waveform_rate = waveform_data_dict.get("sampling_rate")
+        _waveform_unit = waveform_data_dict.get("unit", "volts")
+    elif waveform_means is not None:
+        # Deprecated path - emit FutureWarning for gradual migration
+        warnings.warn(
+            "waveform_means and waveform_sds parameters are deprecated and will be removed in a future release. "
+            "Use waveform_data_dict instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        _waveform_means = waveform_means
+        _waveform_sds = waveform_sds
+        _waveform_rate = None
+        _waveform_unit = "volts"
+    else:
+        _waveform_means = None
+        _waveform_sds = None
+        _waveform_rate = None
+        _waveform_unit = "volts"
+
+    # Resolution from sorting's sampling frequency
+    _resolution = 1.0 / sorting.get_sampling_frequency()
 
     assert write_as in [
         "units",
@@ -196,10 +231,13 @@ def add_sorting_to_nwbfile(
         write_in_processing_module=write_in_processing_module,
         units_table_name=units_name,
         unit_table_description=units_description,
-        waveform_means=waveform_means,
-        waveform_sds=waveform_sds,
+        waveform_means=_waveform_means,
+        waveform_sds=_waveform_sds,
         unit_electrode_indices=unit_electrode_indices,
         null_values_for_properties=null_values_for_properties,
+        waveform_rate=_waveform_rate,
+        waveform_unit=_waveform_unit,
+        resolution=_resolution,
     )
 
 
@@ -1914,6 +1952,9 @@ def _add_units_table_to_nwbfile(
     waveform_sds: np.ndarray | None = None,
     unit_electrode_indices: list[list[int]] | None = None,
     *,
+    waveform_rate: float | None = None,
+    waveform_unit: str = "volts",
+    resolution: float | None = None,
     null_values_for_properties: dict | None = None,
 ):
     """
@@ -1951,6 +1992,13 @@ def _add_units_table_to_nwbfile(
     unit_electrode_indices : list of lists of int, optional
         A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
         The length of the list must match the number of units in the sorting extractor.
+    waveform_rate : float, optional
+        Sampling rate of the waveform data in Hz. Sets Units.waveform_rate attribute.
+    waveform_unit : str, default: "volts"
+        Unit of measurement for waveform data. Sets Units.waveform_unit attribute.
+    resolution : float, optional
+        The smallest possible difference between two spike times in seconds.
+        Sets Units.resolution attribute.
     null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
@@ -1973,6 +2021,14 @@ def _add_units_table_to_nwbfile(
     if not write_in_processing_module and units_table_name != "units":
         raise ValueError("When writing to the nwbfile.units table, the name of the table must be 'units'!")
 
+    # Build Units table constructor kwargs for waveform and spike time metadata
+    units_table_kwargs = dict(
+        description=unit_table_description,
+        waveform_rate=waveform_rate,
+        waveform_unit=waveform_unit,
+        resolution=resolution,
+    )
+
     if write_in_processing_module:
         ecephys_mod = get_module(
             nwbfile=nwbfile,
@@ -1981,14 +2037,14 @@ def _add_units_table_to_nwbfile(
         )
         write_table_first_time = units_table_name not in ecephys_mod.data_interfaces
         if write_table_first_time:
-            units_table = pynwb.misc.Units(name=units_table_name, description=unit_table_description)
+            units_table = pynwb.misc.Units(name=units_table_name, **units_table_kwargs)
             ecephys_mod.add(units_table)
 
         units_table = ecephys_mod[units_table_name]
     else:
         write_table_first_time = nwbfile.units is None
         if write_table_first_time:
-            nwbfile.units = pynwb.misc.Units(name="units", description=unit_table_description)
+            nwbfile.units = pynwb.misc.Units(name="units", **units_table_kwargs)
         units_table = nwbfile.units
 
     default_descriptions = dict(
