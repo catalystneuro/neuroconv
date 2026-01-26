@@ -2051,6 +2051,60 @@ class TestAddUnitsTable(TestCase):
         assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
 
 
+class TestWaveformParametersAdditionToUnitsTable:
+    """Tests for waveform_data_dict parameter and related metadata propagation."""
+
+    def test_waveform_data_dict_sets_metadata_and_data(self):
+        """Test that waveform_data_dict properly sets waveform metadata and data on Units table."""
+        sorting = generate_sorting(num_units=2, sampling_frequency=30000.0)
+        nwbfile = mock_NWBFile()
+
+        waveform_means = np.random.randn(2, 82, 32).astype(np.float32)
+        waveform_sds = np.random.randn(2, 82, 32).astype(np.float32)
+
+        add_sorting_to_nwbfile(
+            sorting,
+            nwbfile=nwbfile,
+            waveform_data_dict={
+                "means": waveform_means,
+                "sds": waveform_sds,
+                "sampling_rate": 30000.0,
+                "unit": "microvolts",
+            },
+        )
+
+        # Verify metadata is set
+        assert nwbfile.units.waveform_rate == 30000.0
+        assert nwbfile.units.waveform_unit == "microvolts"
+        assert nwbfile.units.resolution == 1.0 / 30000.0
+
+        # Verify waveform data
+        assert "waveform_mean" in nwbfile.units.colnames
+        assert "waveform_sd" in nwbfile.units.colnames
+        np.testing.assert_array_equal(nwbfile.units["waveform_mean"][0], waveform_means[0])
+        np.testing.assert_array_equal(nwbfile.units["waveform_sd"][0], waveform_sds[0])
+
+    def test_resolution_from_sampling_frequency(self):
+        """Test that resolution is automatically set from sorting sampling frequency."""
+        sorting = generate_sorting(num_units=2, sampling_frequency=40000.0)
+        nwbfile = mock_NWBFile()
+
+        add_sorting_to_nwbfile(sorting, nwbfile=nwbfile)
+
+        # Resolution should be 1/sampling_frequency
+        assert nwbfile.units.resolution == 1.0 / 40000.0
+
+
+def is_macos_intel():
+    import platform
+
+    return platform.system() == "Darwin" and platform.machine() != "arm64"
+
+
+@pytest.mark.skipif(
+    is_macos_intel(),
+    reason="Test skipped on macOS with Intel processors because of installation conflicts with Numba.",
+)
 class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):

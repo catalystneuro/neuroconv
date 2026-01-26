@@ -12,7 +12,7 @@ authors = [
     { name = "Cody Baker" },
     { name = "Szonja Weigl" },
     { name = "Heberto Mayorquin" },
-    { name = "Paul Adkisson" },
+    { name = "Paul Adkisson-Floro" },
     { name = "Luiz Tauffer" },
     { name=  "Alessandra Trapani" },
     { name = "Ben Dichter", email = "ben.dichter@catalystneuro.com" },
@@ -67,10 +67,6 @@ dependencies = [
 neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
 
 [project.optional-dependencies]
-sorting_analyzer = [   # These dependencies are for testing the sorting analyzer tool
-    "scipy",
-]
-
 dandi = ["dandi>=0.70.0"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
@@ -109,7 +105,9 @@ deeplabcut = [
 fictrac = [
 ]
 video = [
-    "opencv-python-headless>=4.8.1.78",
+    # Remove this pin when the following issue is resolved: https://github.com/opencv/opencv-python/issues/1192
+    "opencv-python-headless>=4.8.1.78,<4.13; platform_system == 'Darwin' and platform_machine == 'x86_64'",
+    "opencv-python-headless>=4.8.1.78; platform_system != 'Darwin' or platform_machine != 'x86_64'",
 ]
 lightningpose = [
     "ndx-pose>=0.2",
@@ -249,6 +247,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
 abf = [
     "ndx-dandi-icephys>=0.4.0",
     "neo>=0.13.2",
+    "numpy<2.4", # TODO: remove cap on NumPy when the following issue is resolved: https://github.com/python-quantities/python-quantities/issues/265
 ]
 icephys = [
     "neuroconv[abf]",
@@ -456,6 +455,10 @@ test = [
     "pytest-cov",
     "parameterized>=0.8.1",
     "pytest-xdist"  # Runs tests on parallel
+]
+sorting_analyzer = [   # These dependencies are for testing the sorting analyzer tool
+    "scipy",
+    "numba; sys_platform != 'darwin' or platform_machine != 'x86_64'"
 ]
 
 docs = [

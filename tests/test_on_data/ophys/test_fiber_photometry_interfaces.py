@@ -1,12 +1,11 @@
 import re
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
-from pytz import utc
 
 from neuroconv.datainterfaces import TDTFiberPhotometryInterface
 from neuroconv.tools.testing.data_interface_mixins import (
@@ -30,7 +29,7 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
     )
     conversion_options = dict(t2=1.0)
     save_directory = OUTPUT_PATH
-    expected_session_start_time = datetime(2020, 7, 21, 17, 2, 24, 999999, tzinfo=utc).isoformat()
+    expected_session_start_time = datetime(2020, 7, 21, 17, 2, 24, 999999, tzinfo=timezone.utc).isoformat()
     expected_devices = [
         {
             "name": "optical_fiber",
