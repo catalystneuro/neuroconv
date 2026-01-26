@@ -8,6 +8,7 @@
 * Added Numba as a dependency of the sorting_analyzer environment. [#1627](https://github.com/catalystneuro/neuroconv/pull/1627), [#1635](https://github.com/catalystneuro/neuroconv/pull/1635)
 * Added cap on NumPy version for all icephys formats. [#1634](https://github.com/catalystneuro/neuroconv/pull/1634)
 * Updated DANDI instance names to fix Ember DANDI upload. [#1631](https://github.com/catalystneuro/neuroconv/pull/1631)
+* Replaced pytz with zoneinfo [#1638](https://github.com/catalystneuro/neuroconv/pull/1638)
 
 ## Features
 * Added `waveform_data_dict` keyword-only parameter to `add_sorting_to_nwbfile` and `BaseSortingExtractorInterface.add_to_nwbfile` for passing waveform data with associated metadata (`means`, `sds`, `sampling_rate`, `unit`). The Units table now properly sets `waveform_rate`, `waveform_unit`, and `resolution` attributes, enabling proper HDF5 attribute propagation for downstream tools like MatNWB. [PR #1628](https://github.com/catalystneuro/neuroconv/pull/1628)

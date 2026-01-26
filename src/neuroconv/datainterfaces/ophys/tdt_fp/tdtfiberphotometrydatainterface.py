@@ -1,12 +1,11 @@
 import os
 from contextlib import redirect_stdout
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
 import numpy as np
-import pytz
 from pydantic import DirectoryPath, validate_call
 from pynwb.file import NWBFile
 
@@ -60,7 +59,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         metadata = super().get_metadata()
         tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
         start_timestamp = tdt_photometry.info.start_date.timestamp()
-        session_start_datetime = datetime.fromtimestamp(start_timestamp, tz=pytz.utc)
+        session_start_datetime = datetime.fromtimestamp(start_timestamp, tz=timezone.utc)
         metadata["NWBFile"]["session_start_time"] = session_start_datetime.isoformat()
         return metadata
 
