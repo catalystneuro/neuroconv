@@ -988,18 +988,6 @@ def add_electrodes_to_nwbfile(
     properties_to_add_by_rows = schema_properties.union(electrode_table_previous_properties)
     properties_to_add_by_columns = properties_to_add.difference(properties_to_add_by_rows)
 
-    # Properties that were added before require null values to add by rows if data is missing
-    properties_requiring_null_values = electrode_table_previous_properties.difference(properties_to_add)
-    nul_values_for_rows = dict()
-    for property in properties_requiring_null_values:
-        sample_data = nwbfile.electrodes[property][:][0]
-        null_value = _get_null_value_for_property(
-            property=property,
-            sample_data=sample_data,
-            null_values_for_properties=null_values_for_properties,
-        )
-        nul_values_for_rows[property] = null_value
-
     # We only add new electrodes to the table
     # Use the mapping function to determine which channels are already in the table
     channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
@@ -1010,6 +998,19 @@ def add_electrodes_to_nwbfile(
     # Create mapping from channel_id to channel_index for data array access
     channel_ids = recording.get_channel_ids()
     channel_id_to_index = {channel_id: index for index, channel_id in enumerate(channel_ids)}
+
+    # Properties that were added before require null values to add by rows if data is missing
+    properties_requiring_null_values = electrode_table_previous_properties.difference(properties_to_add)
+    nul_values_for_rows = dict()
+    if len(channel_ids_to_add) > 0:
+        for property in properties_requiring_null_values:
+            sample_data = nwbfile.electrodes[property][:][0]
+            null_value = _get_null_value_for_property(
+                property=property,
+                sample_data=sample_data,
+                null_values_for_properties=null_values_for_properties,
+            )
+            nul_values_for_rows[property] = null_value
 
     properties_with_data = properties_to_add_by_rows.intersection(data_to_add)
     for channel_id in channel_ids_to_add:
@@ -2103,28 +2104,12 @@ def _add_units_table_to_nwbfile(
     properties_to_add_by_rows = units_table_previous_properties.union({"id"})
     properties_to_add_by_columns = properties_to_add - properties_to_add_by_rows
 
-    # Properties that were added before require null values to add by rows if data is missing
-    properties_requiring_null_values = units_table_previous_properties.difference(properties_to_add)
-    null_values_for_row = {}
-    for property in properties_requiring_null_values - {"electrodes"}:  # TODO, fix electrodes
-        sample_data = units_table[property][:][0]
-        null_value = _get_null_value_for_property(
-            property=property,
-            sample_data=sample_data,
-            null_values_for_properties=null_values_for_properties,
-        )
-        null_values_for_row[property] = null_value
-
-    # Special case
-    null_values_for_row["id"] = None
-
     # Add data by rows excluding the rows with previously added unit names
     unit_names_used_previously = []
     if "unit_name" in units_table_previous_properties:
         unit_names_used_previously = units_table["unit_name"].data
     has_electrodes_column = "electrodes" in units_table.colnames
 
-    properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
     rows_in_data = [index for index in range(sorting.get_num_units())]
     if not has_electrodes_column:
         rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
@@ -2138,6 +2123,24 @@ def _add_units_table_to_nwbfile(
                 previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]].electrodes
                 if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
                     rows_to_add.append(index)
+
+    # Properties that were added before require null values to add by rows if data is missing
+    properties_requiring_null_values = units_table_previous_properties.difference(properties_to_add)
+    null_values_for_row = {}
+    if len(rows_to_add) > 0:
+        for property in properties_requiring_null_values - {"electrodes"}:  # TODO, fix electrodes
+            sample_data = units_table[property][:][0]
+            null_value = _get_null_value_for_property(
+                property=property,
+                sample_data=sample_data,
+                null_values_for_properties=null_values_for_properties,
+            )
+            null_values_for_row[property] = null_value
+
+    # Special case
+    null_values_for_row["id"] = None
+
+    properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
 
     for row in rows_to_add:
         unit_kwargs = null_values_for_row
