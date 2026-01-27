@@ -764,17 +764,19 @@ class TestAddElectrodes(TestCase):
 
         This is a regression test for https://github.com/catalystneuro/neuroconv/issues/1629
         """
-        # Add necessary columns including channel_name and a custom column with complex type
+        # Add channel_name column and an integer property
+        # We use an integer property because integers do not have a clear default value,
+        # so if we were adding new rows, we would need to specify a null value for this property
         self.nwbfile.add_electrode_column("channel_name", description="channel name")
-        self.nwbfile.add_electrode_column("custom_object", description="custom property")
+        self.nwbfile.add_electrode_column("custom_int_property", description="integer property without default")
 
         # Add all electrodes from recording_1
         values_dic = self.defaults
         for i, channel_id in enumerate(self.recording_1.channel_ids):
-            values_dic.update(id=i, channel_name=channel_id, custom_object={"data": f"value_{i}"})
+            values_dic.update(id=i, channel_name=channel_id, custom_int_property=i * 10)
             self.nwbfile.add_electrode(**values_dic)
 
-        # This should not raise an error even though custom_object has no default
+        # This should not raise an error even though custom_int_property has no clear default
         # because no new rows need to be added
         add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
@@ -1870,17 +1872,19 @@ class TestAddUnitsTable(TestCase):
 
         This is a regression test for https://github.com/catalystneuro/neuroconv/issues/1629
         """
-        # Add a custom column with a complex type
-        self.nwbfile.add_unit_column("custom_object", description="custom property")
+        # Add unit_name column and an integer property
+        # We use an integer property because integers do not have a clear default value,
+        # so if we were adding new rows, we would need to specify a null value for this property
         self.nwbfile.add_unit_column("unit_name", description="unit name")
+        self.nwbfile.add_unit_column("custom_int_property", description="integer property without default")
 
         # Add all units from sorting_1 manually
         values_dic = self.defaults
         for i, unit_id in enumerate(self.sorting_1.unit_ids):
-            values_dic.update(id=i, unit_name=unit_id, custom_object={"data": f"value_{i}"})
+            values_dic.update(id=i, unit_name=unit_id, custom_int_property=i * 100)
             self.nwbfile.add_unit(**values_dic)
 
-        # This should not raise an error even though custom_object has no default
+        # This should not raise an error even though custom_int_property has no clear default
         # because no new rows need to be added
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
