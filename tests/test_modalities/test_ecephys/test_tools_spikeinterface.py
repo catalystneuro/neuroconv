@@ -762,7 +762,7 @@ class TestAddElectrodes(TestCase):
         - All channels from the recording already exist in the table
         - No null values should be computed since no new rows are added
 
-        This is a regression test for issue #1629
+        This is a regression test for https://github.com/catalystneuro/neuroconv/issues/1629
         """
         # Add necessary columns including channel_name and a custom column with complex type
         self.nwbfile.add_electrode_column("channel_name", description="channel name")
@@ -1868,7 +1868,7 @@ class TestAddUnitsTable(TestCase):
         - All units from the sorting already exist in the table
         - No null values should be computed since no new rows are added
 
-        This is a regression test for issue #1629
+        This is a regression test for https://github.com/catalystneuro/neuroconv/issues/1629
         """
         # Add a custom column with a complex type
         self.nwbfile.add_unit_column("custom_object", description="custom property")

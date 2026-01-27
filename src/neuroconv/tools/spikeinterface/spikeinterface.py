@@ -1002,6 +1002,8 @@ def add_electrodes_to_nwbfile(
     # Properties that were added before require null values to add by rows if data is missing
     properties_requiring_null_values = electrode_table_previous_properties.difference(properties_to_add)
     nul_values_for_rows = dict()
+    # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
+    # See https://github.com/catalystneuro/neuroconv/issues/1629
     if len(channel_ids_to_add) > 0:
         for property in properties_requiring_null_values:
             sample_data = nwbfile.electrodes[property][:][0]
@@ -2127,6 +2129,8 @@ def _add_units_table_to_nwbfile(
     # Properties that were added before require null values to add by rows if data is missing
     properties_requiring_null_values = units_table_previous_properties.difference(properties_to_add)
     null_values_for_row = {}
+    # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
+    # See https://github.com/catalystneuro/neuroconv/issues/1629
     if len(rows_to_add) > 0:
         for property in properties_requiring_null_values - {"electrodes"}:  # TODO, fix electrodes
             sample_data = units_table[property][:][0]
