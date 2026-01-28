@@ -474,4 +474,5 @@ docs = [
 
 dev = [
     "pre-commit",
+    {include-group = "test"},
 ]
