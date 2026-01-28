@@ -57,7 +57,9 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
 
         # Read quaternion data once during initialization
         df = pd.read_csv(file_path)
-        self._quaternion_data = df[["qw", "qx", "qy", "qz"]].values
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        self._quaternion_data = df[["qw", "qx", "qy", "qz"]].to_numpy(dtype="float64")
 
     @staticmethod
     def _get_session_start_time(folder_path):
@@ -83,8 +85,9 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
         import pandas as pd
 
         df = pd.read_csv(self.source_data["file_path"])
-        # Read timestamps (in milliseconds) and convert to seconds
-        return df["Time Stamp (ms)"].values / 1000.0
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return df["Time Stamp (ms)"].to_numpy(dtype="float64") / 1000.0
 
     def get_timestamps(self) -> np.ndarray:
         """Return the current timestamps (possibly aligned)."""
