@@ -755,6 +755,34 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes["y"].data), expected_y)
         self.assertListEqual(list(self.nwbfile.electrodes["z"].data), expected_z)
 
+    def test_no_new_electrodes_with_custom_property_without_default(self):
+        """
+        Test that add_electrodes_to_nwbfile doesn't fail when:
+        - Electrode table has a custom property without a sensible default
+        - All channels from the recording already exist in the table
+        - No null values should be computed since no new rows are added
+
+        This is a regression test for https://github.com/catalystneuro/neuroconv/issues/1629
+        """
+        # Add channel_name column and an integer property
+        # We use an integer property because integers do not have a clear default value,
+        # so if we were adding new rows, we would need to specify a null value for this property
+        self.nwbfile.add_electrode_column("channel_name", description="channel name")
+        self.nwbfile.add_electrode_column("custom_int_property", description="integer property without default")
+
+        # Add all electrodes from recording_1
+        values_dic = self.defaults
+        for i, channel_id in enumerate(self.recording_1.channel_ids):
+            values_dic.update(id=i, channel_name=channel_id, custom_int_property=i * 10)
+            self.nwbfile.add_electrode(**values_dic)
+
+        # This should not raise an error even though custom_int_property has no clear default
+        # because no new rows need to be added
+        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        # Verify no additional electrodes were added
+        self.assertEqual(len(self.nwbfile.electrodes), len(self.recording_1.channel_ids))
+
     def test_row_matching_by_channel_name_with_existing_property(self):
         """
         Adding new electrodes to an already existing electrode table should match
@@ -1834,6 +1862,34 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(list(self.nwbfile.units.id.data), expected_units_ids)
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
         self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
+
+    def test_no_new_units_with_custom_property_without_default(self):
+        """
+        Test that add_sorting_to_nwbfile doesn't fail when:
+        - Units table has a custom property without a sensible default
+        - All units from the sorting already exist in the table
+        - No null values should be computed since no new rows are added
+
+        This is a regression test for https://github.com/catalystneuro/neuroconv/issues/1629
+        """
+        # Add unit_name column and an integer property
+        # We use an integer property because integers do not have a clear default value,
+        # so if we were adding new rows, we would need to specify a null value for this property
+        self.nwbfile.add_unit_column("unit_name", description="unit name")
+        self.nwbfile.add_unit_column("custom_int_property", description="integer property without default")
+
+        # Add all units from sorting_1 manually
+        values_dic = self.defaults
+        for i, unit_id in enumerate(self.sorting_1.unit_ids):
+            values_dic.update(id=i, unit_name=unit_id, custom_int_property=i * 100)
+            self.nwbfile.add_unit(**values_dic)
+
+        # This should not raise an error even though custom_int_property has no clear default
+        # because no new rows need to be added
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        # Verify no additional units were added
+        self.assertEqual(len(self.nwbfile.units), len(self.sorting_1.unit_ids))
 
     def test_write_units_table_in_processing_module(self):
         """ """

@@ -4,6 +4,7 @@
 * Deprecated `waveform_means` and `waveform_sds` parameters in `add_sorting_to_nwbfile`. Use the new `waveform_data_dict` parameter instead, which bundles waveform data with associated metadata. Will be removed on or after July 2026. [PR #1628](https://github.com/catalystneuro/neuroconv/pull/1628)
 
 ## Bug Fixes
+* Fixed `add_electrodes_to_nwbfile` and `add_sorting_to_nwbfile` functions to only compute null values for existing table properties when new rows will actually be added. Previously, null values were computed preemptively even when no new electrodes/units needed to be added, causing errors when properties lacked sensible defaults. [#1633](https://github.com/catalystneuro/neuroconv/pull/1633), [#1640](https://github.com/catalystneuro/neuroconv/pull/1640)
 * Added cap on NumPy version for all ecephys formats. [#1626](https://github.com/catalystneuro/neuroconv/pull/1626)
 * Added Numba as a dependency of the sorting_analyzer environment. [#1627](https://github.com/catalystneuro/neuroconv/pull/1627), [#1635](https://github.com/catalystneuro/neuroconv/pull/1635)
 * Added cap on NumPy version for all icephys formats. [#1634](https://github.com/catalystneuro/neuroconv/pull/1634)
