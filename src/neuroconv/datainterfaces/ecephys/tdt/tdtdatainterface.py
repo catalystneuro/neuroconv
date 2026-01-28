@@ -33,6 +33,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         stream_id: str = "0",
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        stream_name: str | None = None,
     ):
         """
         Initialize reading of a TDT recording.
@@ -48,15 +49,21 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
             Allows verbose.
         es_key : str, optional
+        stream_name : str or None, optional
+            Name of the stream to select. If None, stream_id is used.
 
 
         Notes
         -----
         Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
+        Either stream_id or stream_name can be used to select the desired stream, but not both.
         """
+        if stream_name is not None:
+            stream_id = None
         super().__init__(
             folder_path=folder_path,
             stream_id=stream_id,
+            stream_name=stream_name,
             verbose=verbose,
             es_key=es_key,
             gain=gain,
