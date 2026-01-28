@@ -73,9 +73,23 @@ class LightningPoseConverter(NWBConverter):
             self.labeled_video_name = image_series_labeled_video_name or "ImageSeriesLabeledVideo"
             self.data_interface_objects.update(dict(LabeledVideo=_VideoInterface(file_paths=[labeled_video_file_path])))
 
+    def _deprecated_add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict,
+        reference_frame: str | None = None,
+        confidence_definition: str | None = None,
+        external_mode: bool = True,
+        starting_frames_original_videos: list[int] | None = None,
+        starting_frames_labeled_videos: list[int] | None = None,
+        stub_test: bool = False,
+    ):
+        pass  # Placeholder method to get the appropriate signature for get_conversion_options_schema
+        # TODO: Remove this method after deprecation period is over
+
     def get_conversion_options_schema(self) -> dict:
         conversion_options_schema = get_json_schema_from_method_signature(
-            method=self.add_to_nwbfile, exclude=["nwbfile", "metadata"]
+            method=self._deprecated_add_to_nwbfile, exclude=["nwbfile", "metadata"]
         )
 
         return conversion_options_schema
