@@ -35,7 +35,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         **kwargs: Any,
         # folder_path: DirectoryPath,
         # gain: float,
-        # stream_id: str = "0",
+        # stream_id: str = "0", # Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
         # verbose: bool = False,
         # es_key: str = "ElectricalSeries",
         # stream_name: str | None = None,
@@ -60,8 +60,9 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
 
         Notes
         -----
-        Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
-        Either stream_id or stream_name can be used to select the desired stream, but not both.
+        Either stream_id or stream_name can be used to select the desired stream.
+        If neither are specified, this interface defaults to the first stream, with stream_id "0".
+        If both are specified, stream_name takes precedence.
         """
         parameter_names = [
             "folder_path",
