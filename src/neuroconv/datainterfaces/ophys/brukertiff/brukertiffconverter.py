@@ -9,7 +9,7 @@ from ... import (
     BrukerTiffSinglePlaneImagingInterface,
 )
 from ....nwbconverter import NWBConverter
-from ....tools.nwb_helpers import make_or_load_nwbfile
+from ....tools.nwb_helpers import HDF5BackendConfiguration, ZarrBackendConfiguration
 from ....utils import get_json_schema_from_method_signature
 
 
@@ -38,10 +38,11 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         Returns
         -------
         dict
-            The schema dictionary containing conversion options for the Bruker TIFF interface.
+            The schema dictionary containing conversion options for the Bruker TIFF converter.
         """
-        interface_name = list(self.data_interface_objects.keys())[0]
-        return self.data_interface_objects[interface_name].get_conversion_options_schema()
+        return get_json_schema_from_method_signature(
+            self.add_to_nwbfile, exclude=["nwbfile", "metadata", "conversion_options"]
+        )
 
     def __init__(
         self,
@@ -100,6 +101,7 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int | None = None,
         stub_samples: int = 100,
+        conversion_options: dict | None = None,
     ):
         """
         Add data from multiple data interfaces to the specified NWBFile.
@@ -117,7 +119,15 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
                 Use `stub_samples` instead.
         stub_samples : int, default: 100
             The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+        conversion_options : dict, optional
+            Dictionary of conversion options. If provided, these values will override the direct parameters.
         """
+        # Handle conversion_options if provided (from parent's run_conversion)
+        if conversion_options:
+            stub_test = conversion_options.get("stub_test", stub_test)
+            stub_frames = conversion_options.get("stub_frames", stub_frames)
+            stub_samples = conversion_options.get("stub_samples", stub_samples)
+
         # Handle deprecation of stub_frames in favor of stub_samples
         if stub_frames is not None and stub_samples != 100:
             raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
@@ -144,67 +154,56 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
     def run_conversion(
         self,
-        nwbfile_path: FilePath | None = None,
+        nwbfile_path: FilePath,
         nwbfile: NWBFile | None = None,
         metadata: dict | None = None,
         overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int | None = None,
         stub_samples: int = 100,
+        *,
+        backend: Literal["hdf5", "zarr"] | None = None,
+        backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     ) -> None:
         """
         Run the conversion process for the instantiated data interfaces and add data to the NWB file.
 
         Parameters
         ----------
-        nwbfile_path : FilePath, optional
-            Path where the NWB file will be written. If None, the file will be handled in-memory.
+        nwbfile_path : FilePath
+            Path where the NWB file will be written.
         nwbfile : NWBFile, optional
             An in-memory NWBFile object. If None, a new NWBFile object will be created.
         metadata : dict, optional
-            Metadata dictionary for describing the NWB file. If None, it will be auto-generated using the `get_metadata()` method.
+            Metadata dictionary for describing the NWB file. If None, it will be auto-generated.
         overwrite : bool, optional
-            If True, overwrites the existing NWB file at `nwbfile_path`. If False, appends to the file (default is False).
+            If True, overwrites the existing NWB file at `nwbfile_path`. Default is False.
         stub_test : bool, optional
-            If True, only a subset of the data (up to `stub_samples`) will be added for testing purposes, by default False.
+            If True, only a subset of the data will be added for testing purposes. Default is False.
         stub_frames : int, optional
             .. deprecated:: February 2026
                 Use `stub_samples` instead.
         stub_samples : int, default: 100
-            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+            The number of samples (frames) to use for testing.
+        backend : {"hdf5", "zarr"}, optional
+            The type of backend to use when writing the file.
+        backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration, optional
+            The configuration model to use when configuring the datasets for this backend.
         """
-        # Handle deprecation of stub_frames in favor of stub_samples
-        if stub_frames is not None and stub_samples != 100:
-            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
-
+        # Pack the direct kwargs into conversion_options and delegate to parent
+        conversion_options = {"stub_test": stub_test, "stub_samples": stub_samples}
         if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            effective_stub_samples = stub_frames
-        else:
-            effective_stub_samples = stub_samples
+            conversion_options["stub_frames"] = stub_frames
 
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        self.validate_metadata(metadata=metadata)
-
-        self.temporally_align_data_interfaces()
-
-        with make_or_load_nwbfile(
+        super().run_conversion(
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
             overwrite=overwrite,
-            verbose=self.verbose,
-        ) as nwbfile_out:
-            self.add_to_nwbfile(
-                nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_samples=effective_stub_samples
-            )
+            backend=backend,
+            backend_configuration=backend_configuration,
+            conversion_options=conversion_options,
+        )
 
 
 class BrukerTiffSinglePlaneConverter(NWBConverter):
@@ -228,10 +227,11 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         Returns
         -------
         dict
-            The schema dictionary containing conversion options for the Bruker TIFF interface.
+            The schema dictionary containing conversion options for the Bruker TIFF converter.
         """
-        interface_name = list(self.data_interface_objects.keys())[0]
-        return self.data_interface_objects[interface_name].get_conversion_options_schema()
+        return get_json_schema_from_method_signature(
+            self.add_to_nwbfile, exclude=["nwbfile", "metadata", "conversion_options"]
+        )
 
     def __init__(
         self,
@@ -276,6 +276,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         stub_test: bool = False,
         stub_frames: int | None = None,
         stub_samples: int = 100,
+        conversion_options: dict | None = None,
     ):
         """
         Add data from all instantiated data interfaces to the provided NWBFile.
@@ -294,7 +295,15 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
                 Use `stub_samples` instead.
         stub_samples : int, default: 100
             The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+        conversion_options : dict, optional
+            Dictionary of conversion options. If provided, these values will override the direct parameters.
         """
+        # Handle conversion_options if provided (from parent's run_conversion)
+        if conversion_options:
+            stub_test = conversion_options.get("stub_test", stub_test)
+            stub_frames = conversion_options.get("stub_frames", stub_frames)
+            stub_samples = conversion_options.get("stub_samples", stub_samples)
+
         # Handle deprecation of stub_frames in favor of stub_samples
         if stub_frames is not None and stub_samples != 100:
             raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
@@ -321,64 +330,53 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
 
     def run_conversion(
         self,
-        nwbfile_path: FilePath | None = None,
+        nwbfile_path: FilePath,
         nwbfile: NWBFile | None = None,
         metadata: dict | None = None,
         overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int | None = None,
         stub_samples: int = 100,
+        *,
+        backend: Literal["hdf5", "zarr"] | None = None,
+        backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     ) -> None:
         """
         Run the NWB conversion process for all instantiated data interfaces.
 
         Parameters
         ----------
-        nwbfile_path : FilePath, optional
-            The file path where the NWB file will be written. If None, the file is handled in-memory.
+        nwbfile_path : FilePath
+            The file path where the NWB file will be written.
         nwbfile : NWBFile, optional
             An existing in-memory NWBFile object. If None, a new NWBFile object will be created.
         metadata : dict, optional
-            Metadata dictionary used to create or validate the NWBFile. If None, metadata is automatically generated.
+            Metadata dictionary. If None, metadata is automatically generated.
         overwrite : bool, optional
-            If True, the NWBFile at `nwbfile_path` is overwritten if it exists. If False (default), data is appended.
+            If True, the NWBFile at `nwbfile_path` is overwritten if it exists. Default is False.
         stub_test : bool, optional
-            If True, only a subset of the data (up to `stub_samples`) is used for testing purposes. By default False.
+            If True, only a subset of the data is used for testing purposes. Default is False.
         stub_frames : int, optional
             .. deprecated:: February 2026
                 Use `stub_samples` instead.
         stub_samples : int, default: 100
-            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+            The number of samples (frames) to use for testing.
+        backend : {"hdf5", "zarr"}, optional
+            The type of backend to use when writing the file.
+        backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration, optional
+            The configuration model to use when configuring the datasets for this backend.
         """
-        # Handle deprecation of stub_frames in favor of stub_samples
-        if stub_frames is not None and stub_samples != 100:
-            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
-
+        # Pack the direct kwargs into conversion_options and delegate to parent
+        conversion_options = {"stub_test": stub_test, "stub_samples": stub_samples}
         if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            effective_stub_samples = stub_frames
-        else:
-            effective_stub_samples = stub_samples
+            conversion_options["stub_frames"] = stub_frames
 
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        self.validate_metadata(metadata=metadata)
-
-        self.temporally_align_data_interfaces()
-
-        with make_or_load_nwbfile(
+        super().run_conversion(
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
             overwrite=overwrite,
-            verbose=self.verbose,
-        ) as nwbfile_out:
-            self.add_to_nwbfile(
-                nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_samples=effective_stub_samples
-            )
+            backend=backend,
+            backend_configuration=backend_configuration,
+            conversion_options=conversion_options,
+        )
