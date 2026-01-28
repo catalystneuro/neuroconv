@@ -266,7 +266,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.7.2",
+    "roiextractors>0.7.2",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
