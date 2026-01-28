@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.9.1"
+version = "0.9.2"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -474,4 +474,5 @@ docs = [
 
 dev = [
     "pre-commit",
+    {include-group = "test"},
 ]

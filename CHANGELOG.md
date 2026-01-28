@@ -1,4 +1,14 @@
-# v0.9.1 (Upcoming)
+# v0.9.2 (Upcoming)
+
+## Removals, Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+
+## Improvements
+
+# v0.9.1 (January 28, 2026)
 
 ## Removals, Deprecations and Changes
 * Deprecated `_VideoInterface` in `LightningPoseConverter` with migration to `ExternalVideoInterface` [#1596](https://github.com/catalystneuro/neuroconv/pull/1596)
