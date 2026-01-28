@@ -1,6 +1,7 @@
 # v0.9.1 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Deprecated `_VideoInterface` in `LightningPoseConverter` with migration to `ExternalVideoInterface` [#1596](https://github.com/catalystneuro/neuroconv/pull/1596)
 * Deprecated `waveform_means` and `waveform_sds` parameters in `add_sorting_to_nwbfile`. Use the new `waveform_data_dict` parameter instead, which bundles waveform data with associated metadata. Will be removed on or after July 2026. [PR #1628](https://github.com/catalystneuro/neuroconv/pull/1628)
 
 ## Bug Fixes
