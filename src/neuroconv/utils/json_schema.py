@@ -161,6 +161,9 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
             additional_properties = True
             continue
 
+        if parameter.kind == inspect.Parameter.VAR_POSITIONAL:  # Skip all *args usage
+            continue
+
         # Raise error if the type annotation is missing as a json schema cannot be generated in that case
         if parameter.annotation is inspect._empty:
             raise TypeError(
