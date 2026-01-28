@@ -1,8 +1,6 @@
 import warnings
 from typing import Any
 
-from pydantic import validate_call
-
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
@@ -28,7 +26,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
 
         return self.get_extractor_class()(**self.extractor_kwargs)
 
-    @validate_call
+    # @validate_call # Uncomment when deprecation period is over
     def __init__(
         self,
         *args: Any,
