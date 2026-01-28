@@ -1,3 +1,5 @@
+import re
+import warnings
 from platform import python_version as get_python_version
 
 import jsonschema
@@ -518,3 +520,43 @@ class TestAssertions(TestCase):
             exc_msg="\nThe package 'sonpy' is not available for Python version 3.11!",
         ):
             Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
+
+
+# This is a temporary test class to show that the migration path to kwargs only works as intended.
+# TODO: Remove this test class in June 2026 or after when positional arguments are no longer supported.
+class TestMockRecordingInterfaceArgsDeprecation:
+    """Test the *args deprecation pattern in MockRecordingInterface.__init__."""
+
+    # Tests for __init__ deprecation
+    def test_init_positional_args_trigger_future_warning(self):
+        """Test that passing positional arguments to __init__ triggers a FutureWarning."""
+        expected_warning = re.escape(
+            "Passing arguments positionally to MockRecordingInterface.__init__() is deprecated "
+            "and will be removed in June 2026 or after. "
+            "The following arguments were passed positionally: ['num_channels']. "
+            "Please use keyword arguments instead."
+        )
+        with pytest.warns(FutureWarning, match=expected_warning):
+            MockRecordingInterface(2)  # num_channels as positional
+
+    def test_init_keyword_args_no_future_warning(self):
+        """Test that passing keyword arguments to __init__ does not trigger FutureWarning."""
+        with warnings.catch_warnings(record=True) as caught_warnings:
+            warnings.simplefilter("always")
+            MockRecordingInterface(num_channels=2, durations=(0.1,))
+
+        future_warnings = [w for w in caught_warnings if issubclass(w.category, FutureWarning)]
+        assert len(future_warnings) == 0
+
+    def test_init_too_many_positional_args_raises_error(self):
+        """Test that passing too many positional arguments to __init__ raises TypeError.
+
+        Since *args allows an arbitrary number of positional arguments, we must explicitly
+        check and raise TypeError when too many are passed.
+        """
+        expected_msg = re.escape(
+            "MockRecordingInterface.__init__() takes at most 8 positional arguments but 9 were given. "
+            "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
+        )
+        with pytest.raises(TypeError, match=expected_msg):
+            MockRecordingInterface(4, 30_000.0, (1.0,), 0, False, "ElectricalSeries", False, "extra")
