@@ -1,6 +1,5 @@
 from .spikeinterface import (
     add_devices_to_nwbfile,
-    add_electrode_groups_to_nwbfile,
     _add_electrode_groups_to_nwbfile,
     add_electrodes_to_nwbfile,
     add_recording_to_nwbfile,
