@@ -939,13 +939,13 @@ def write_imaging_to_nwbfile(
     NWBFile or None
         The NWBFile object when writing a new file or using an in-memory nwbfile.
         Returns None when appending to an existing file on disk (append_on_disk_nwbfile=True).
-        **Deprecated**: Returning NWBFile in append mode is deprecated and will return None in or after March 2026.
+        **Deprecated**: Returning NWBFile in append mode is deprecated and will return None on or after June 2026.
     """
     # Handle deprecated usage without nwbfile_path
     if nwbfile_path is None:
         warnings.warn(
             "Using 'write_imaging_to_nwbfile' without 'nwbfile_path' to only add data to an in-memory nwbfile "
-            "is deprecated and will be removed in or after March 2026. Use 'add_imaging_to_nwbfile' instead.",
+            "is deprecated and will be removed on or after June 2026. Use 'add_imaging_to_nwbfile' instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1027,7 +1027,7 @@ def write_imaging_to_nwbfile(
         # Append mode: read existing file, add data, write back
         warnings.warn(
             "Returning an NWBFile object when using append_on_disk_nwbfile=True is deprecated "
-            "and will return None in or after March 2026.",
+            "and will return None on or after June 2026.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -2226,7 +2226,7 @@ def write_segmentation_to_nwbfile(
     NWBFile or None
         The NWBFile object when writing a new file or using an in-memory nwbfile.
         Returns None when appending to an existing file on disk (append_on_disk_nwbfile=True).
-        **Deprecated**: Returning NWBFile in append mode is deprecated and will return None in or after March 2026.
+        **Deprecated**: Returning NWBFile in append mode is deprecated and will return None on or after June 2026.
     """
     iterator_options = iterator_options or dict()
 
@@ -2259,7 +2259,7 @@ def write_segmentation_to_nwbfile(
     if nwbfile_path is None:
         warnings.warn(
             "Using 'write_segmentation_to_nwbfile' without 'nwbfile_path' to only add data to an in-memory nwbfile "
-            "is deprecated and will be removed in or after March 2026. Use 'add_segmentation_to_nwbfile' instead.",
+            "is deprecated and will be removed on or after June 2026. Use 'add_segmentation_to_nwbfile' instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -2342,7 +2342,7 @@ def write_segmentation_to_nwbfile(
         # Append mode: read existing file, add data, write back
         warnings.warn(
             "Returning an NWBFile object when using append_on_disk_nwbfile=True is deprecated "
-            "and will return None in or after March 2026.",
+            "and will return None on or after June 2026.",
             DeprecationWarning,
             stacklevel=2,
         )
