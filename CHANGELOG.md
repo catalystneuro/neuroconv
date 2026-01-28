@@ -11,6 +11,7 @@
 * Updated DANDI instance names to fix Ember DANDI upload. [#1631](https://github.com/catalystneuro/neuroconv/pull/1631)
 * Added cap on OpenCV version for Mac OS Intel. [#1637](https://github.com/catalystneuro/neuroconv/pull/1637)
 * Replaced pytz with zoneinfo [#1638](https://github.com/catalystneuro/neuroconv/pull/1638)
+* Removed deprecated `exclude_channel_comparison` parameter from `check_imaging_equal` call in imaging interface tests to fix compatibility with updated roiextractors. [#1642](https://github.com/catalystneuro/neuroconv/pull/1642)
 
 ## Features
 * Added `waveform_data_dict` keyword-only parameter to `add_sorting_to_nwbfile` and `BaseSortingExtractorInterface.add_to_nwbfile` for passing waveform data with associated metadata (`means`, `sds`, `sampling_rate`, `unit`). The Units table now properly sets `waveform_rate`, `waveform_unit`, and `resolution` attributes, enabling proper HDF5 attribute propagation for downstream tools like MatNWB. [PR #1628](https://github.com/catalystneuro/neuroconv/pull/1628)
