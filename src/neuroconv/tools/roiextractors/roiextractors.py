@@ -32,7 +32,20 @@ from roiextractors import (
 
 from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..hdmf import SliceableDataChunkIterator
-from ..nwb_helpers import get_default_nwbfile_metadata, get_module, make_or_load_nwbfile
+from ..nwb_helpers import (
+    BACKEND_NWB_IO,
+    HDF5BackendConfiguration,
+    ZarrBackendConfiguration,
+    configure_backend,
+    get_default_backend_configuration,
+    get_default_nwbfile_metadata,
+    get_module,
+    make_nwbfile_from_metadata,
+)
+from ..nwb_helpers._metadata_and_file_helpers import (
+    _resolve_backend,
+    configure_and_write_nwbfile,
+)
 from ...utils import (
     DeepDict,
     calculate_regular_series_rate,
@@ -868,38 +881,42 @@ def write_imaging_to_nwbfile(
     metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
-    iterator_type: str = "v2",
-    iterator_options: dict | None = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
-):
+    *,
+    iterator_type: str | None = "v2",
+    iterator_options: dict | None = None,
+    backend: Literal["hdf5", "zarr"] | None = None,
+    backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
+    append_on_disk_nwbfile: bool = False,
+) -> NWBFile | None:
     """
     Primary method for writing an ImagingExtractor object to an NWBFile.
 
     Parameters
     ----------
-    imaging: ImagingExtractor
-        The imaging extractor object to be written to nwb
-    nwbfile_path: FilePath
-        Path for where to write or load (if overwrite=False) the NWBFile.
-        If specified, the context will always write to this location.
-    nwbfile: NWBFile, optional
+    imaging : ImagingExtractor
+        The imaging extractor object to be written to nwb.
+    nwbfile_path : FilePath, optional
+        Path for where to write the NWBFile.
+        If not provided, only adds data to the in-memory nwbfile without writing to disk.
+        **Deprecated**: Using this function without nwbfile_path is deprecated.
+        Use ``add_imaging_to_nwbfile`` instead.
+    nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling::
 
-            write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+            write_imaging_to_nwbfile(imaging=my_imaging_extractor, nwbfile=my_nwbfile)
 
         will result in the appropriate changes to the my_nwbfile object.
-        If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
-        and returned by the function.
-    metadata: dict, optional
+    metadata : dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-    overwrite: bool, optional
+    overwrite : bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
-        The default is False (append mode).
-    verbose: bool, optional
+    verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-        The default is True.
-    iterator_type: {"v2", None}, default: 'v2'
+    photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, default: "TwoPhotonSeries"
+        The type of photon series to add.
+    iterator_type : {"v2", None}, default: "v2"
         The type of iterator for chunked data writing.
         'v2': Uses iterative write with control over chunking and progress bars.
         None: Loads all data into memory before writing (not recommended for large datasets).
@@ -908,23 +925,35 @@ def write_imaging_to_nwbfile(
         Options for controlling the iterative write process. See the
         `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
         for more information on chunked data writing.
+    backend : {"hdf5", "zarr"}, optional
+        The type of backend to use when writing the file.
+        If a ``backend_configuration`` is not specified, the default type will be "hdf5".
+        If a ``backend_configuration`` is specified, then the type will be auto-detected.
+    backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration, optional
+        The configuration model to use when configuring the datasets for this backend.
+    append_on_disk_nwbfile : bool, default: False
+        Whether to append to an existing NWBFile on disk. If True, the ``nwbfile`` parameter must be None.
+
+    Returns
+    -------
+    NWBFile or None
+        The NWBFile object when writing a new file or using an in-memory nwbfile.
+        Returns None when appending to an existing file on disk (append_on_disk_nwbfile=True).
+        **Deprecated**: Returning NWBFile in append mode is deprecated and will return None in or after March 2026.
     """
-    assert (
-        nwbfile_path is None or nwbfile is None
-    ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
-    if nwbfile is not None:
-        assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-
-    iterator_options = iterator_options or dict()
-
-    if metadata is None:
-        metadata = dict()
-    if hasattr(imaging, "nwb_metadata"):
-        metadata = dict_deep_update(imaging.nwb_metadata, metadata, append_list=False)
-
-    with make_or_load_nwbfile(
-        nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
-    ) as nwbfile_out:
+    # Handle deprecated usage without nwbfile_path
+    if nwbfile_path is None:
+        warnings.warn(
+            "Using 'write_imaging_to_nwbfile' without 'nwbfile_path' to only add data to an in-memory nwbfile "
+            "is deprecated and will be removed in or after March 2026. Use 'add_imaging_to_nwbfile' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if nwbfile is None:
+            raise ValueError(
+                "Either 'nwbfile_path' or 'nwbfile' must be provided. "
+                "To add data to an in-memory nwbfile, use 'add_imaging_to_nwbfile' instead."
+            )
         add_imaging_to_nwbfile(
             imaging=imaging,
             nwbfile=nwbfile,
@@ -933,7 +962,101 @@ def write_imaging_to_nwbfile(
             iterator_type=iterator_type,
             iterator_options=iterator_options,
         )
-    return nwbfile_out
+        return nwbfile
+
+    iterator_options = iterator_options or dict()
+
+    if metadata is None:
+        metadata = dict()
+    if hasattr(imaging, "nwb_metadata"):
+        metadata = dict_deep_update(imaging.nwb_metadata, metadata, append_list=False)
+
+    appending_to_in_memory_nwbfile = nwbfile is not None
+    file_initially_exists = nwbfile_path.exists()
+    allowed_to_modify_existing = overwrite or append_on_disk_nwbfile
+
+    if file_initially_exists and not allowed_to_modify_existing:
+        raise FileExistsError(
+            f"The file at '{nwbfile_path}' already exists. Set overwrite=True to overwrite the existing file "
+            "or append_on_disk_nwbfile=True to append to the existing file."
+        )
+
+    if append_on_disk_nwbfile and appending_to_in_memory_nwbfile:
+        raise ValueError(
+            "Cannot append to an existing file on disk while also providing an in-memory NWBFile. "
+            "Either set append_on_disk_nwbfile=False to write the in-memory NWBFile to disk, "
+            "or remove the nwbfile parameter to append to the existing file on disk."
+        )
+
+    # Resolve backend
+    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+
+    # Determine if we're writing a new file or appending
+    writing_new_file = not append_on_disk_nwbfile
+
+    if writing_new_file:
+        # Writing mode: create or use provided nwbfile and write
+        if nwbfile is None:
+            nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+
+        add_imaging_to_nwbfile(
+            imaging=imaging,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            photon_series_type=photon_series_type,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
+        )
+
+        if backend_configuration is None:
+            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+
+        configure_and_write_nwbfile(
+            nwbfile=nwbfile,
+            nwbfile_path=nwbfile_path,
+            backend=backend,
+            backend_configuration=backend_configuration,
+        )
+
+        if verbose:
+            print(f"NWB file saved at {nwbfile_path}!")
+
+        return nwbfile
+
+    else:
+        # Append mode: read existing file, add data, write back
+        warnings.warn(
+            "Returning an NWBFile object when using append_on_disk_nwbfile=True is deprecated "
+            "and will return None in or after March 2026.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        IO = BACKEND_NWB_IO[backend]
+
+        with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
+            nwbfile = io.read()
+
+            add_imaging_to_nwbfile(
+                imaging=imaging,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                photon_series_type=photon_series_type,
+                iterator_type=iterator_type,
+                iterator_options=iterator_options,
+            )
+
+            if backend_configuration is None:
+                backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+
+            configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+            io.write(nwbfile)
+
+        if verbose:
+            print(f"NWB file saved at {nwbfile_path}!")
+
+        return nwbfile
 
 
 def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
@@ -2034,32 +2157,36 @@ def write_segmentation_to_nwbfile(
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
+    *,
     iterator_options: dict | None = None,
-) -> NWBFile:
+    backend: Literal["hdf5", "zarr"] | None = None,
+    backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
+    append_on_disk_nwbfile: bool = False,
+) -> NWBFile | None:
     """
-    Primary method for writing an SegmentationExtractor object to an NWBFile.
+    Primary method for writing a SegmentationExtractor object to an NWBFile.
 
     Parameters
     ----------
-    segmentation_extractor: SegmentationExtractor
-        The segmentation extractor object to be written to nwb
-    nwbfile_path: FilePath
-        Path for where to write or load (if overwrite=False) the NWBFile.
-        If specified, the context will always write to this location.
-    nwbfile: NWBFile, optional
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor object to be written to nwb.
+    nwbfile_path : FilePath, optional
+        Path for where to write the NWBFile.
+        If not provided, only adds data to the in-memory nwbfile without writing to disk.
+        **Deprecated**: Using this function without nwbfile_path is deprecated.
+        Use ``add_segmentation_to_nwbfile`` instead.
+    nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling::
 
             write_segmentation_to_nwbfile(segmentation_extractor=my_segmentation_extractor, nwbfile=my_nwbfile)
 
         will result in the appropriate changes to the my_nwbfile object.
-        If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
-        and returned by the function.
-    metadata: dict, optional
+    metadata : dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-    overwrite: bool, default: False
+    overwrite : bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
-    verbose: bool, default: True
+    verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     include_background_segmentation : bool, default: False
         Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
@@ -2072,7 +2199,7 @@ def write_segmentation_to_nwbfile(
         Whether to include if the detected ROI was 'accepted' or 'rejected'.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
         faster write speeds.
-    mask_type : str, default: 'image'
+    mask_type : {"image", "pixel", "voxel"}, default: "image"
         There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
 
         * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
@@ -2083,22 +2210,33 @@ def write_segmentation_to_nwbfile(
           of voxels in each ROI.
 
         Specify your choice between these two as mask_type='image', 'pixel', 'voxel'
-    iterator_options: dict, optional
+    iterator_options : dict, optional
         A dictionary with options for the internal iterators that process the data.
-    """
-    assert (
-        nwbfile_path is None or nwbfile is None
-    ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
+    backend : {"hdf5", "zarr"}, optional
+        The type of backend to use when writing the file.
+        If a ``backend_configuration`` is not specified, the default type will be "hdf5".
+        If a ``backend_configuration`` is specified, then the type will be auto-detected.
+    backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration, optional
+        The configuration model to use when configuring the datasets for this backend.
+    append_on_disk_nwbfile : bool, default: False
+        Whether to append to an existing NWBFile on disk. If True, the ``nwbfile`` parameter must be None.
 
+    Returns
+    -------
+    NWBFile or None
+        The NWBFile object when writing a new file or using an in-memory nwbfile.
+        Returns None when appending to an existing file on disk (append_on_disk_nwbfile=True).
+        **Deprecated**: Returning NWBFile in append mode is deprecated and will return None in or after March 2026.
+    """
     iterator_options = iterator_options or dict()
 
     # Parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segmentation_extractor, MultiSegmentationExtractor):
         segmentation_extractors = segmentation_extractor.segmentations
         if metadata is not None:
-            assert isinstance(metadata, list), (
-                "For MultiSegmentationExtractor enter 'metadata' as a list of " "SegmentationExtractor metadata"
-            )
+            assert isinstance(
+                metadata, list
+            ), "For MultiSegmentationExtractor enter 'metadata' as a list of SegmentationExtractor metadata"
             assert len(metadata) == len(segmentation_extractor), (
                 "The 'metadata' argument should be a list with the same "
                 "number of elements as the segmentations in the "
@@ -2108,9 +2246,8 @@ def write_segmentation_to_nwbfile(
         segmentation_extractors = [segmentation_extractor]
         if metadata is not None and not isinstance(metadata, list):
             metadata = [metadata]
-    metadata_base_list = [
-        get_nwb_segmentation_metadata(segmentation_extractor) for segmentation_extractor in segmentation_extractors
-    ]
+
+    metadata_base_list = [get_nwb_segmentation_metadata(seg_extractor) for seg_extractor in segmentation_extractors]
 
     # Updating base metadata with new:
     for num, data in enumerate(metadata_base_list):
@@ -2118,18 +2255,67 @@ def write_segmentation_to_nwbfile(
         metadata_base_list[num] = dict_deep_update(metadata_base_list[num], metadata_input, append_list=False)
     metadata_base_common = metadata_base_list[0]
 
-    with make_or_load_nwbfile(
-        nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata_base_common, overwrite=overwrite, verbose=verbose
-    ) as nwbfile_out:
-        _ = get_module(nwbfile=nwbfile_out, name="ophys", description="contains optical physiology processed data")
-        for plane_no_loop, (segmentation_extractor, metadata) in enumerate(
-            zip(segmentation_extractors, metadata_base_list)
-        ):
+    # Handle deprecated usage without nwbfile_path
+    if nwbfile_path is None:
+        warnings.warn(
+            "Using 'write_segmentation_to_nwbfile' without 'nwbfile_path' to only add data to an in-memory nwbfile "
+            "is deprecated and will be removed in or after March 2026. Use 'add_segmentation_to_nwbfile' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if nwbfile is None:
+            raise ValueError(
+                "Either 'nwbfile_path' or 'nwbfile' must be provided. "
+                "To add data to an in-memory nwbfile, use 'add_segmentation_to_nwbfile' instead."
+            )
+        _ = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
+        for seg_extractor, seg_metadata in zip(segmentation_extractors, metadata_base_list):
             add_segmentation_to_nwbfile(
-                segmentation_extractor=segmentation_extractor,
-                nwbfile=nwbfile_out,
-                metadata=metadata,
-                plane_num=plane_no_loop,
+                segmentation_extractor=seg_extractor,
+                nwbfile=nwbfile,
+                metadata=seg_metadata,
+                include_background_segmentation=include_background_segmentation,
+                include_roi_centroids=include_roi_centroids,
+                include_roi_acceptance=include_roi_acceptance,
+                mask_type=mask_type,
+                iterator_options=iterator_options,
+            )
+        return nwbfile
+
+    appending_to_in_memory_nwbfile = nwbfile is not None
+    file_initially_exists = nwbfile_path.exists()
+    allowed_to_modify_existing = overwrite or append_on_disk_nwbfile
+
+    if file_initially_exists and not allowed_to_modify_existing:
+        raise FileExistsError(
+            f"The file at '{nwbfile_path}' already exists. Set overwrite=True to overwrite the existing file "
+            "or append_on_disk_nwbfile=True to append to the existing file."
+        )
+
+    if append_on_disk_nwbfile and appending_to_in_memory_nwbfile:
+        raise ValueError(
+            "Cannot append to an existing file on disk while also providing an in-memory NWBFile. "
+            "Either set append_on_disk_nwbfile=False to write the in-memory NWBFile to disk, "
+            "or remove the nwbfile parameter to append to the existing file on disk."
+        )
+
+    # Resolve backend
+    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+
+    # Determine if we're writing a new file or appending
+    writing_new_file = not append_on_disk_nwbfile
+
+    if writing_new_file:
+        # Writing mode: create or use provided nwbfile and write
+        if nwbfile is None:
+            nwbfile = make_nwbfile_from_metadata(metadata=metadata_base_common)
+
+        _ = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
+        for seg_extractor, seg_metadata in zip(segmentation_extractors, metadata_base_list):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=seg_extractor,
+                nwbfile=nwbfile,
+                metadata=seg_metadata,
                 include_background_segmentation=include_background_segmentation,
                 include_roi_centroids=include_roi_centroids,
                 include_roi_acceptance=include_roi_acceptance,
@@ -2137,4 +2323,56 @@ def write_segmentation_to_nwbfile(
                 iterator_options=iterator_options,
             )
 
-    return nwbfile_out
+        if backend_configuration is None:
+            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+
+        configure_and_write_nwbfile(
+            nwbfile=nwbfile,
+            nwbfile_path=nwbfile_path,
+            backend=backend,
+            backend_configuration=backend_configuration,
+        )
+
+        if verbose:
+            print(f"NWB file saved at {nwbfile_path}!")
+
+        return nwbfile
+
+    else:
+        # Append mode: read existing file, add data, write back
+        warnings.warn(
+            "Returning an NWBFile object when using append_on_disk_nwbfile=True is deprecated "
+            "and will return None in or after March 2026.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        IO = BACKEND_NWB_IO[backend]
+
+        with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
+            nwbfile = io.read()
+
+            _ = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
+            for seg_extractor, seg_metadata in zip(segmentation_extractors, metadata_base_list):
+                add_segmentation_to_nwbfile(
+                    segmentation_extractor=seg_extractor,
+                    nwbfile=nwbfile,
+                    metadata=seg_metadata,
+                    include_background_segmentation=include_background_segmentation,
+                    include_roi_centroids=include_roi_centroids,
+                    include_roi_acceptance=include_roi_acceptance,
+                    mask_type=mask_type,
+                    iterator_options=iterator_options,
+                )
+
+            if backend_configuration is None:
+                backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+
+            configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+            io.write(nwbfile)
+
+        if verbose:
+            print(f"NWB file saved at {nwbfile_path}!")
+
+        return nwbfile
