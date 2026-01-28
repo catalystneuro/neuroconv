@@ -360,9 +360,8 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
                 "es_key",
                 "set_probe",
             ]
-            num_positional_args_before_args = (
-                1  # self (not counted in Python error messages, but we add 1 for consistency)
-            )
+            # Number of positional parameters before *args in the signature (self is counted by Python in error messages)
+            num_positional_args_before_args = 1  # self
             if len(args) > len(parameter_names):
                 raise TypeError(
                     f"MockRecordingInterface.__init__() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments "
