@@ -1,3 +1,4 @@
+import re
 import warnings
 from platform import python_version as get_python_version
 
@@ -529,10 +530,10 @@ class TestMockRecordingInterfaceArgsDeprecation:
     # Tests for __init__ deprecation
     def test_init_positional_args_trigger_future_warning(self):
         """Test that passing positional arguments to __init__ triggers a FutureWarning."""
-        expected_warning = (
-            r"Passing arguments positionally to MockRecordingInterface.__init__\(\) is deprecated "
-            r"and will be removed in June 2026. "
-            r"The following arguments were passed positionally: \['num_channels'\]. "
+        expected_warning = re.escape(
+            "Passing arguments positionally to MockRecordingInterface.__init__() is deprecated "
+            "and will be removed in June 2026 or after. "
+            "The following arguments were passed positionally: ['num_channels']. "
             "Please use keyword arguments instead."
         )
         with pytest.warns(FutureWarning, match=expected_warning):
@@ -548,8 +549,16 @@ class TestMockRecordingInterfaceArgsDeprecation:
         assert len(future_warnings) == 0
 
     def test_init_too_many_positional_args_raises_error(self):
-        """Test that passing too many positional arguments to __init__ raises TypeError."""
-        with pytest.raises(TypeError, match="takes at most 8 positional arguments but 9 were given"):
+        """Test that passing too many positional arguments to __init__ raises TypeError.
+
+        Since *args allows an arbitrary number of positional arguments, we must explicitly
+        check and raise TypeError when too many are passed.
+        """
+        expected_msg = re.escape(
+            "MockRecordingInterface.__init__() takes at most 8 positional arguments but 9 were given. "
+            "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
+        )
+        with pytest.raises(TypeError, match=expected_msg):
             MockRecordingInterface(4, 30_000.0, (1.0,), 0, False, "ElectricalSeries", False, "extra")
 
     # Tests for add_to_nwbfile deprecation
@@ -559,10 +568,10 @@ class TestMockRecordingInterfaceArgsDeprecation:
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
 
-        expected_warning = (
+        expected_warning = re.escape(
             "Passing arguments positionally to add_to_nwbfile is deprecated "
-            "and will be removed in June 2026. "
-            r"The following arguments were passed positionally: \['stub_test'\]. "
+            "and will be removed in June 2026 or after. "
+            "The following arguments were passed positionally: ['stub_test']. "
             "Please use keyword arguments instead."
         )
         with pytest.warns(FutureWarning, match=expected_warning):
@@ -582,12 +591,20 @@ class TestMockRecordingInterfaceArgsDeprecation:
         assert len(future_warnings) == 0
 
     def test_add_to_nwbfile_too_many_positional_args_raises_error(self):
-        """Test that passing too many positional arguments to add_to_nwbfile raises TypeError."""
+        """Test that passing too many positional arguments to add_to_nwbfile raises TypeError.
+
+        Since *args allows an arbitrary number of positional arguments, we must explicitly
+        check and raise TypeError when too many are passed.
+        """
         interface = MockRecordingInterface(num_channels=2, durations=(0.1,))
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
 
-        with pytest.raises(TypeError, match="takes at most 7 positional arguments but 8 were given"):
+        expected_msg = re.escape(
+            "add_to_nwbfile() takes at most 7 positional arguments but 8 were given. "
+            "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
+        )
+        with pytest.raises(TypeError, match=expected_msg):
             interface.add_to_nwbfile(nwbfile, metadata, True, "raw", True, "v2", None, "extra")
 
     # Tests for create_nwbfile (uses add_to_nwbfile internally with keyword arguments)

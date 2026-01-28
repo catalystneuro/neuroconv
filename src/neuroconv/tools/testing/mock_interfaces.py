@@ -365,14 +365,15 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             if len(args) > len(parameter_names):
                 raise TypeError(
                     f"MockRecordingInterface.__init__() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments "
-                    f"but {len(args) + num_positional_args_before_args} were given."
+                    f"but {len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
                 )
             # Map positional args to keyword args, positional args take precedence
             positional_values = dict(zip(parameter_names, args))
             passed_as_positional = list(positional_values.keys())
             warnings.warn(
                 f"Passing arguments positionally to MockRecordingInterface.__init__() is deprecated "
-                f"and will be removed in June 2026. "
+                f"and will be removed in June 2026 or after. "
                 f"The following arguments were passed positionally: {passed_as_positional}. "
                 "Please use keyword arguments instead.",
                 FutureWarning,
@@ -467,14 +468,15 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             if len(args) > len(parameter_names):
                 raise TypeError(
                     f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given."
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
                 )
             # Map positional args to keyword args, positional args take precedence
             positional_values = dict(zip(parameter_names, args))
             passed_as_positional = list(positional_values.keys())
             warnings.warn(
                 f"Passing arguments positionally to add_to_nwbfile is deprecated "
-                f"and will be removed in June 2026. "
+                f"and will be removed in June 2026 or after. "
                 f"The following arguments were passed positionally: {passed_as_positional}. "
                 "Please use keyword arguments instead.",
                 FutureWarning,

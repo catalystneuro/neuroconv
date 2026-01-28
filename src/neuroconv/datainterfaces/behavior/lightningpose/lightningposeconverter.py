@@ -152,7 +152,8 @@ class LightningPoseConverter(NWBConverter):
             if len(args) > len(parameter_names):
                 raise TypeError(
                     f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given."
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in May 2026. Please use keyword arguments."
                 )
             # Map positional args to keyword args, positional args take precedence
             positional_values = dict(zip(parameter_names, args))
