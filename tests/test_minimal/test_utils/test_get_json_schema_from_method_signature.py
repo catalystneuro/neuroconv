@@ -523,46 +523,57 @@ def test_get_json_schema_from_method_signature_with_args_and_kwargs():
     assert test_json_schema == expected_json_schema
 
 
-def test_mock_recording_interface_schema_with_args_pattern():
-    """Test that MockRecordingInterface with *args pattern generates correct schema.
+def test_mock_imaging_interface_schema_with_args_pattern():
+    """Test that MockImagingInterface with *args pattern generates correct schema.
 
     TODO: Remove this test in June 2026 or after when positional arguments are no longer supported
-    and the *args pattern is removed from MockRecordingInterface.
+    and the *args pattern is removed from MockImagingInterface.
     """
-    from neuroconv.tools.testing import MockRecordingInterface
+    from neuroconv.tools.testing import MockImagingInterface
 
     test_json_schema = get_json_schema_from_method_signature(
-        method=MockRecordingInterface.add_to_nwbfile,
+        method=MockImagingInterface.add_to_nwbfile,
         exclude=["nwbfile", "metadata"],
     )
 
     expected_json_schema = {
         "additionalProperties": False,
         "properties": {
+            "always_write_timestamps": {
+                "default": False,
+                "description": "Whether to always write timestamps, by default False.",
+                "type": "boolean",
+            },
             "iterator_options": {
                 "anyOf": [{"additionalProperties": True, "type": "object"}, {"type": "null"}],
                 "default": None,
-                "description": "Additional options for the iterator.",
+                "description": "Options for controlling the iterative write process.",
             },
             "iterator_type": {
                 "anyOf": [{"type": "string"}, {"type": "null"}],
                 "default": "v2",
-                "description": 'The type of iterator to use, by default "v2".',
+                "description": "The type of iterator for chunked data writing.",
+            },
+            "parent_container": {
+                "default": "acquisition",
+                "description": "Specifies the parent container to which the photon series should be added.",
+                "enum": ["acquisition", "processing/ophys"],
+                "type": "string",
+            },
+            "photon_series_index": {
+                "default": 0,
+                "description": "The index of the photon series in the provided imaging data, by default 0.",
+                "type": "integer",
+            },
+            "photon_series_type": {
+                "default": "TwoPhotonSeries",
+                "description": 'The type of photon series to be added, by default "TwoPhotonSeries".',
+                "enum": ["TwoPhotonSeries", "OnePhotonSeries"],
+                "type": "string",
             },
             "stub_test": {
                 "default": False,
-                "description": "If True, will truncate the data to run the conversion faster and take up less memory.",
-                "type": "boolean",
-            },
-            "write_as": {
-                "default": "raw",
-                "description": "Specifies how to save the trace data in the NWB file.",
-                "enum": ["raw", "lfp", "processed"],
-                "type": "string",
-            },
-            "write_electrical_series": {
-                "default": True,
-                "description": "Whether to write the electrical series data.",
+                "description": "If True, only writes a small subset of frames for testing purposes, by default False.",
                 "type": "boolean",
             },
         },

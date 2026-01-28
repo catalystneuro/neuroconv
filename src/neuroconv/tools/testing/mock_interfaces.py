@@ -421,84 +421,6 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict | None = None,
-        *args,
-        stub_test: bool = False,
-        write_as: Literal["raw", "lfp", "processed"] = "raw",
-        write_electrical_series: bool = True,
-        iterator_type: str | None = "v2",
-        iterator_options: dict | None = None,
-    ):
-        """
-        Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
-
-        This method demonstrates the *args pattern for deprecating positional arguments
-        while maintaining schema validation for keyword-only arguments.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            NWBFile to which the recording information is to be added.
-        metadata : dict, optional
-            Metadata info for constructing the NWB file.
-        stub_test : bool, default: False
-            If True, will truncate the data to run the conversion faster and take up less memory.
-        write_as : {'raw', 'processed', 'lfp'}, default: 'raw'
-            Specifies how to save the trace data in the NWB file.
-        write_electrical_series : bool, default: True
-            Whether to write the electrical series data.
-        iterator_type : str, optional
-            The type of iterator to use, by default "v2".
-        iterator_options : dict, optional
-            Additional options for the iterator.
-        """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stub_test",
-                "write_as",
-                "write_electrical_series",
-                "iterator_type",
-                "iterator_options",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
-                )
-            # Map positional args to keyword args, positional args take precedence
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to add_to_nwbfile is deprecated "
-                f"and will be removed in June 2026 or after. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stub_test = positional_values.get("stub_test", stub_test)
-            write_as = positional_values.get("write_as", write_as)
-            write_electrical_series = positional_values.get("write_electrical_series", write_electrical_series)
-            iterator_type = positional_values.get("iterator_type", iterator_type)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
-
-        # Call parent implementation with keyword arguments
-        super().add_to_nwbfile(
-            nwbfile=nwbfile,
-            metadata=metadata,
-            stub_test=stub_test,
-            write_as=write_as,
-            write_electrical_series=write_electrical_series,
-            iterator_type=iterator_type,
-            iterator_options=iterator_options,
-        )
-
 
 class MockSortingInterface(BaseSortingExtractorInterface):
     """A mock sorting extractor interface for generating synthetic sorting data."""
@@ -636,6 +558,96 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict | None = None,
+        *args,
+        photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
+        photon_series_index: int = 0,
+        parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
+        stub_test: bool = False,
+        always_write_timestamps: bool = False,
+        iterator_type: str | None = "v2",
+        iterator_options: dict | None = None,
+    ):
+        """
+        Add imaging data to the NWB file.
+
+        This method demonstrates the *args pattern for deprecating positional arguments
+        while maintaining schema validation for keyword-only arguments.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file where the imaging data will be added.
+        metadata : dict, optional
+            Metadata for the NWBFile, by default None.
+        photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
+            The type of photon series to be added, by default "TwoPhotonSeries".
+        photon_series_index : int, optional
+            The index of the photon series in the provided imaging data, by default 0.
+        parent_container : {"acquisition", "processing/ophys"}, optional
+            Specifies the parent container to which the photon series should be added.
+        stub_test : bool, optional
+            If True, only writes a small subset of frames for testing purposes, by default False.
+        always_write_timestamps : bool, optional
+            Whether to always write timestamps, by default False.
+        iterator_type : {"v2", None}, default: "v2"
+            The type of iterator for chunked data writing.
+        iterator_options : dict, optional
+            Options for controlling the iterative write process.
+        """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "photon_series_type",
+                "photon_series_index",
+                "parent_container",
+                "stub_test",
+                "always_write_timestamps",
+                "iterator_type",
+                "iterator_options",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
+                )
+            # Map positional args to keyword args, positional args take precedence
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to add_to_nwbfile is deprecated "
+                f"and will be removed in June 2026 or after. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
+            photon_series_index = positional_values.get("photon_series_index", photon_series_index)
+            parent_container = positional_values.get("parent_container", parent_container)
+            stub_test = positional_values.get("stub_test", stub_test)
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
+            iterator_type = positional_values.get("iterator_type", iterator_type)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+
+        # Call parent implementation with keyword arguments
+        super().add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            photon_series_type=photon_series_type,
+            photon_series_index=photon_series_index,
+            parent_container=parent_container,
+            stub_test=stub_test,
+            always_write_timestamps=always_write_timestamps,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
+        )
 
 
 class MockSegmentationInterface(BaseSegmentationExtractorInterface):
