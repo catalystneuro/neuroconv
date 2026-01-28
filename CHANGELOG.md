@@ -7,6 +7,7 @@
 ## Features
 
 ## Improvements
+* Removed `run_conversion` override from `LightningPoseConverter` - now uses parent `NWBConverter.run_conversion` which already supports `backend` and `backend_configuration` parameters. [PR #1650](https://github.com/catalystneuro/neuroconv/pull/1650)
 
 # v0.9.1 (January 28, 2026)
 

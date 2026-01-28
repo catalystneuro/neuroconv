@@ -8,7 +8,6 @@ from pynwb import NWBFile
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import LightningPoseDataInterface
 from neuroconv.datainterfaces.behavior.video.videodatainterface import _VideoInterface
-from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from neuroconv.utils import (
     DeepDict,
     dict_deep_update,
@@ -266,80 +265,3 @@ class LightningPoseConverter(NWBConverter):
             del metadata["Behavior"]["ExternalVideos"]
 
         return metadata
-
-    def run_conversion(
-        self,
-        nwbfile_path: FilePath | None = None,
-        nwbfile: NWBFile | None = None,
-        metadata: dict | None = None,
-        overwrite: bool = False,
-        reference_frame: str | None = None,
-        confidence_definition: str | None = None,
-        external_mode: bool = True,
-        starting_frames_original_videos: list | None = None,
-        starting_frames_labeled_videos: list | None = None,
-        stub_test: bool = False,
-    ) -> None:
-        """
-        Run the full conversion process, adding behavior, video, and pose estimation data to an NWB file.
-
-        Parameters
-        ----------
-        nwbfile_path : FilePath, optional
-            The file path where the NWB file will be saved. If None, the file is handled in memory.
-        nwbfile : NWBFile, optional
-            An in-memory NWBFile object. If None, a new NWBFile object will be created.
-        metadata : dict, optional
-            Metadata dictionary for describing the NWB file contents. If None, it is auto-generated.
-        overwrite : bool, optional
-            If True, overwrites the NWB file at `nwbfile_path` if it exists. If False, appends to the file, by default False.
-        reference_frame : str, optional
-            Description of the reference frame for pose estimation, by default None.
-        confidence_definition : str, optional
-            Definition for confidence levels in pose estimation, by default None.
-        external_mode : bool, optional
-            DEPRECATED. This parameter will be removed in May 2026.
-            After May 2026, only external videos will be supported.
-            If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
-        starting_frames_original_videos : list of int, optional
-            List of starting frames for the original videos, by default None.
-        starting_frames_labeled_videos : list of int, optional
-            List of starting frames for the labeled videos, by default None.
-        stub_test : bool, optional
-            If True, only a subset of the data will be added for testing purposes, by default False.
-
-        """
-        # Deprecate external_mode parameter
-        # TODO: Remove after May 2026 - Only external videos will be supported
-        if external_mode is not True:
-            warnings.warn(
-                "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
-                "After May 2026, only external videos will be supported by LightningPoseConverter.",
-                FutureWarning,
-                stacklevel=2,
-            )
-
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        self.validate_metadata(metadata=metadata)
-
-        self.temporally_align_data_interfaces()
-
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
-        ) as nwbfile_out:
-            self.add_to_nwbfile(
-                nwbfile=nwbfile_out,
-                metadata=metadata,
-                reference_frame=reference_frame,
-                confidence_definition=confidence_definition,
-                external_mode=external_mode,
-                starting_frames_original_videos=starting_frames_original_videos,
-                starting_frames_labeled_videos=starting_frames_labeled_videos,
-                stub_test=stub_test,
-            )
