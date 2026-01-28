@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime
 from typing import Literal
 
@@ -339,6 +340,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
+        *args,
         num_channels: int = 4,
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
@@ -347,6 +349,44 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str = "ElectricalSeries",
         set_probe: bool = False,
     ):
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "num_channels",
+                "sampling_frequency",
+                "durations",
+                "seed",
+                "verbose",
+                "es_key",
+                "set_probe",
+            ]
+            num_positional_args_before_args = (
+                1  # self (not counted in Python error messages, but we add 1 for consistency)
+            )
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"MockRecordingInterface.__init__() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments "
+                    f"but {len(args) + num_positional_args_before_args} were given."
+                )
+            # Map positional args to keyword args, positional args take precedence
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to MockRecordingInterface.__init__() is deprecated "
+                f"and will be removed in June 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            num_channels = positional_values.get("num_channels", num_channels)
+            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
+            durations = positional_values.get("durations", durations)
+            seed = positional_values.get("seed", seed)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+            set_probe = positional_values.get("set_probe", set_probe)
+
         super().__init__(
             num_channels=num_channels,
             sampling_frequency=sampling_frequency,
@@ -380,6 +420,83 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict | None = None,
+        *args,
+        stub_test: bool = False,
+        write_as: Literal["raw", "lfp", "processed"] = "raw",
+        write_electrical_series: bool = True,
+        iterator_type: str | None = "v2",
+        iterator_options: dict | None = None,
+    ):
+        """
+        Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
+
+        This method demonstrates the *args pattern for deprecating positional arguments
+        while maintaining schema validation for keyword-only arguments.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            NWBFile to which the recording information is to be added.
+        metadata : dict, optional
+            Metadata info for constructing the NWB file.
+        stub_test : bool, default: False
+            If True, will truncate the data to run the conversion faster and take up less memory.
+        write_as : {'raw', 'processed', 'lfp'}, default: 'raw'
+            Specifies how to save the trace data in the NWB file.
+        write_electrical_series : bool, default: True
+            Whether to write the electrical series data.
+        iterator_type : str, optional
+            The type of iterator to use, by default "v2".
+        iterator_options : dict, optional
+            Additional options for the iterator.
+        """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "write_as",
+                "write_electrical_series",
+                "iterator_type",
+                "iterator_options",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given."
+                )
+            # Map positional args to keyword args, positional args take precedence
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to add_to_nwbfile is deprecated "
+                f"and will be removed in June 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            write_as = positional_values.get("write_as", write_as)
+            write_electrical_series = positional_values.get("write_electrical_series", write_electrical_series)
+            iterator_type = positional_values.get("iterator_type", iterator_type)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+
+        # Call parent implementation with keyword arguments
+        super().add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            stub_test=stub_test,
+            write_as=write_as,
+            write_electrical_series=write_electrical_series,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
+        )
 
 
 class MockSortingInterface(BaseSortingExtractorInterface):

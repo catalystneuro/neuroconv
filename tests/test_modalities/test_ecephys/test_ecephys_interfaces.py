@@ -1,3 +1,4 @@
+import warnings
 from platform import python_version as get_python_version
 
 import jsonschema
@@ -6,6 +7,7 @@ import pytest
 from hdmf.testing import TestCase
 from packaging.version import Version
 from probeinterface import Probe, ProbeGroup
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import Spike2RecordingInterface
@@ -518,3 +520,100 @@ class TestAssertions(TestCase):
             exc_msg="\nThe package 'sonpy' is not available for Python version 3.11!",
         ):
             Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
+
+
+# This is a temporary test class to show that the migration path to kwargs only works as intended.
+class TestMockRecordingInterfaceArgsDeprecation:
+    """Test the *args deprecation pattern in MockRecordingInterface.__init__ and add_to_nwbfile."""
+
+    # Tests for __init__ deprecation
+    def test_init_positional_args_trigger_future_warning(self):
+        """Test that passing positional arguments to __init__ triggers a FutureWarning."""
+        expected_warning = (
+            r"Passing arguments positionally to MockRecordingInterface.__init__\(\) is deprecated "
+            r"and will be removed in June 2026. "
+            r"The following arguments were passed positionally: \['num_channels'\]. "
+            "Please use keyword arguments instead."
+        )
+        with pytest.warns(FutureWarning, match=expected_warning):
+            MockRecordingInterface(2)  # num_channels as positional
+
+    def test_init_keyword_args_no_future_warning(self):
+        """Test that passing keyword arguments to __init__ does not trigger FutureWarning."""
+        with warnings.catch_warnings(record=True) as caught_warnings:
+            warnings.simplefilter("always")
+            MockRecordingInterface(num_channels=2, durations=(0.1,))
+
+        future_warnings = [w for w in caught_warnings if issubclass(w.category, FutureWarning)]
+        assert len(future_warnings) == 0
+
+    def test_init_too_many_positional_args_raises_error(self):
+        """Test that passing too many positional arguments to __init__ raises TypeError."""
+        with pytest.raises(TypeError, match="takes at most 8 positional arguments but 9 were given"):
+            MockRecordingInterface(4, 30_000.0, (1.0,), 0, False, "ElectricalSeries", False, "extra")
+
+    # Tests for add_to_nwbfile deprecation
+    def test_add_to_nwbfile_positional_args_trigger_future_warning(self):
+        """Test that passing positional arguments to add_to_nwbfile triggers a FutureWarning."""
+        interface = MockRecordingInterface(num_channels=2, durations=(0.1,))
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+
+        expected_warning = (
+            "Passing arguments positionally to add_to_nwbfile is deprecated "
+            "and will be removed in June 2026. "
+            r"The following arguments were passed positionally: \['stub_test'\]. "
+            "Please use keyword arguments instead."
+        )
+        with pytest.warns(FutureWarning, match=expected_warning):
+            interface.add_to_nwbfile(nwbfile, metadata, True)
+
+    def test_add_to_nwbfile_keyword_args_no_future_warning(self):
+        """Test that passing keyword arguments to add_to_nwbfile does not trigger FutureWarning."""
+        interface = MockRecordingInterface(num_channels=2, durations=(0.1,))
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+
+        with warnings.catch_warnings(record=True) as caught_warnings:
+            warnings.simplefilter("always")
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
+
+        future_warnings = [w for w in caught_warnings if issubclass(w.category, FutureWarning)]
+        assert len(future_warnings) == 0
+
+    def test_add_to_nwbfile_too_many_positional_args_raises_error(self):
+        """Test that passing too many positional arguments to add_to_nwbfile raises TypeError."""
+        interface = MockRecordingInterface(num_channels=2, durations=(0.1,))
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+
+        with pytest.raises(TypeError, match="takes at most 7 positional arguments but 8 were given"):
+            interface.add_to_nwbfile(nwbfile, metadata, True, "raw", True, "v2", None, "extra")
+
+    # Tests for create_nwbfile (uses add_to_nwbfile internally with keyword arguments)
+    def test_create_nwbfile_keyword_args_no_future_warning(self):
+        """Test that create_nwbfile with keyword arguments does not trigger FutureWarning."""
+        interface = MockRecordingInterface(num_channels=2, durations=(0.1,))
+
+        with warnings.catch_warnings(record=True) as caught_warnings:
+            warnings.simplefilter("always")
+            nwbfile = interface.create_nwbfile(stub_test=True)
+
+        future_warnings = [w for w in caught_warnings if issubclass(w.category, FutureWarning)]
+        assert len(future_warnings) == 0
+        assert "ElectricalSeries" in nwbfile.acquisition
+
+    def test_create_nwbfile_passes_conversion_options_as_keywords(self):
+        """Test that create_nwbfile passes conversion options as keywords to add_to_nwbfile."""
+        interface = MockRecordingInterface(num_channels=2, durations=(0.1,))
+
+        # Test with multiple conversion options to verify they are passed correctly
+        with warnings.catch_warnings(record=True) as caught_warnings:
+            warnings.simplefilter("always")
+            nwbfile = interface.create_nwbfile(stub_test=True, write_as="lfp")
+
+        future_warnings = [w for w in caught_warnings if issubclass(w.category, FutureWarning)]
+        assert len(future_warnings) == 0
+        # Verify data was written as LFP (in ecephys processing module)
+        assert "ecephys" in nwbfile.processing
+        assert "LFP" in nwbfile.processing["ecephys"].data_interfaces
