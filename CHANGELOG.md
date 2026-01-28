@@ -7,6 +7,7 @@
 ## Features
 
 ## Improvements
+* Removed cap on NumPy version for ecephys and icephys formats now that python-quantities v0.16.4 supports NumPy 2.4. [#1648](https://github.com/catalystneuro/neuroconv/pull/1648)
 
 # v0.9.1 (January 28, 2026)
 
