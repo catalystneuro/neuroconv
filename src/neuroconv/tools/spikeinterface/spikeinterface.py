@@ -447,15 +447,6 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = N
             nwbfile.create_device(**device_kwargs)
 
 
-def add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict | None = None):
-    """
-    Deprecated. This will become a private method.
-    """
-    warnings.warn("This function is deprecated and will be removed in future versions.", DeprecationWarning)
-
-    _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
-
-
 def _add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict | None = None):
     """
     Add electrode group information to nwbfile object.
