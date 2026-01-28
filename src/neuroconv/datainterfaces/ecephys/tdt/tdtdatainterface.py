@@ -1,4 +1,7 @@
-from pydantic import DirectoryPath, validate_call
+import warnings
+from typing import Any
+
+from pydantic import validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
@@ -28,12 +31,14 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     @validate_call
     def __init__(
         self,
-        folder_path: DirectoryPath,
-        gain: float,
-        stream_id: str = "0",
-        verbose: bool = False,
-        es_key: str = "ElectricalSeries",
-        stream_name: str | None = None,
+        *args: Any,
+        **kwargs: Any,
+        # folder_path: DirectoryPath,
+        # gain: float,
+        # stream_id: str = "0",
+        # verbose: bool = False,
+        # es_key: str = "ElectricalSeries",
+        # stream_name: str | None = None,
     ):
         """
         Initialize reading of a TDT recording.
@@ -58,6 +63,38 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
         Either stream_id or stream_name can be used to select the desired stream, but not both.
         """
+        parameter_names = [
+            "folder_path",
+            "gain",
+            "stream_id",
+            "verbose",
+            "es_key",
+            "stream_name",
+        ]
+        if args:
+            warnings.warn(
+                "Passing arguments positionally is deprecated and will be removed in June 2026. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes {len(parameter_names)} positional arguments but "
+                    f"{len(args)} were given."
+                )
+            # Bind positional args to their parameter names
+            for i, value in enumerate(args):
+                kwargs[parameter_names[i]] = value
+
+        # Extract the actual parameters
+        folder_path = kwargs.get("folder_path", None)
+        gain = kwargs.get("gain", None)
+        stream_id = kwargs.get("stream_id", "0")
+        verbose = kwargs.get("verbose", False)
+        es_key = kwargs.get("es_key", "ElectricalSeries")
+        stream_name = kwargs.get("stream_name", None)
+
         if stream_name is not None:
             stream_id = None
         super().__init__(
