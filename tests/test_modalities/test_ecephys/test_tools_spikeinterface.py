@@ -1720,8 +1720,13 @@ class TestAddUnitsTable(TestCase):
 
     def test_units_table_extension_after_manual_unit_addition(self):
         """Add some rows to the units tables before using the add_sorting_to_nwbfile function"""
-        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=123, spike_times=[0, 1, 2])
-        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=124, spike_times=[2, 3, 4])
+        unit_row_kwargs = self.common_unit_row_kwargs.copy()
+
+        unit_row_kwargs.update(id=123, spike_times=[0, 1, 2])
+        self.nwbfile.add_unit(**unit_row_kwargs)
+
+        unit_row_kwargs.update(id=124, spike_times=[2, 3, 4])
+        self.nwbfile.add_unit(**unit_row_kwargs)
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
