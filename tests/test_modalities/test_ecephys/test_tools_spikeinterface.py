@@ -575,7 +575,7 @@ class TestAddElectrodes(TestCase):
         self.electrode_group = self.nwbfile.create_electrode_group(
             name="0", description="description", location="location", device=self.device
         )
-        self.electrode_row_kwargs = dict(
+        self.common_electrode_row_kwargs = dict(
             group=self.electrode_group,
             group_name="0",
             location="unknown",
@@ -673,13 +673,9 @@ class TestAddElectrodes(TestCase):
         Keep the old logic of not allowing integer channel_ids to match electrodes.table.ids
         """
         self.nwbfile.add_electrode_column("channel_name", description="channel_name")
-        electrode_row_kwargs = self.electrode_row_kwargs
 
-        electrode_row_kwargs.update(id=0, channel_name="0")
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
-
-        electrode_row_kwargs.update(id=1, channel_name="1")
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=0, channel_name="0")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=1, channel_name="1")
         # The self.base_recording channel_ids are [0, 1, 2, 3], so only '3' and '4' should be added
         add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
         self.assertEqual(len(self.nwbfile.electrodes), len(self.base_recording.channel_ids))
@@ -697,13 +693,8 @@ class TestAddElectrodes(TestCase):
 
     def test_manual_row_adition_before_add_electrodes_function_to_nwbfile(self):
         """Add some rows to the electrode tables before using the add_electrodes_to_nwbfile function"""
-        electrode_row_kwargs = self.electrode_row_kwargs
-
-        electrode_row_kwargs.update(id=123)
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
-
-        electrode_row_kwargs.update(id=124)
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=123)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=124)
 
         add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
@@ -716,17 +707,10 @@ class TestAddElectrodes(TestCase):
         """Add some rows to the electrode table after using the add_electrodes_to_nwbfile function"""
         add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
-        electrode_row_kwargs = self.electrode_row_kwargs
-
         # Since we're not using a probe, rel_x and rel_y columns won't exist
-        electrode_row_kwargs.update(id=123, channel_name=str(123))
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
-
-        electrode_row_kwargs.update(id=124, channel_name=str(124))
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
-
-        electrode_row_kwargs.update(id=None, channel_name="6")  # automatic ID set
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=123, channel_name="123")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=124, channel_name="124")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=None, channel_name="6")  # automatic ID set
 
         expected_ids = [0, 1, 2, 3, 123, 124, 6]
         expected_names = ["a", "b", "c", "d", "123", "124", "6"]
@@ -735,13 +719,8 @@ class TestAddElectrodes(TestCase):
 
     def test_manual_row_adition_before_add_electrodes_function_optional_columns_to_nwbfile(self):
         """Add some rows including optional columns to the electrode tables before using the add_electrodes_to_nwbfile function."""
-        electrode_row_kwargs = self.electrode_row_kwargs
-
-        electrode_row_kwargs.update(id=123)
-        self.nwbfile.add_electrode(**electrode_row_kwargs, x=0.0, y=1.0, z=2.0)
-
-        electrode_row_kwargs.update(id=124)
-        self.nwbfile.add_electrode(**electrode_row_kwargs, x=1.0, y=2.0, z=3.0)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=123, x=0.0, y=1.0, z=2.0)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=124, x=1.0, y=2.0, z=3.0)
 
         # recording_1 does not have x, y, z positions
         add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
@@ -771,10 +750,10 @@ class TestAddElectrodes(TestCase):
         self.nwbfile.add_electrode_column("custom_int_property", description="integer property without default")
 
         # Add all electrodes from recording_1
-        electrode_row_kwargs = self.electrode_row_kwargs
         for i, channel_id in enumerate(self.recording_1.channel_ids):
-            electrode_row_kwargs.update(id=i, channel_name=channel_id, custom_int_property=i * 10)
-            self.nwbfile.add_electrode(**electrode_row_kwargs)
+            self.nwbfile.add_electrode(
+                **self.common_electrode_row_kwargs, id=i, channel_name=channel_id, custom_int_property=i * 10
+            )
 
         # This should not raise an error even though custom_int_property has no clear default
         # because no new rows need to be added
@@ -788,18 +767,12 @@ class TestAddElectrodes(TestCase):
         Adding new electrodes to an already existing electrode table should match
         properties and information by channel name.
         """
-        electrode_row_kwargs = self.electrode_row_kwargs
         self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
         self.nwbfile.add_electrode_column(name="property", description="existing property")
 
-        electrode_row_kwargs.update(id=20, channel_name="c", property="value_c")
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
-
-        electrode_row_kwargs.update(id=21, channel_name="d", property="value_d")
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
-
-        electrode_row_kwargs.update(id=22, channel_name="f", property="value_f")
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=20, channel_name="c", property="value_c")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=21, channel_name="d", property="value_d")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=22, channel_name="f", property="value_f")
 
         property_values = ["value_a", "value_b", "x", "y"]
         self.recording_1.set_property(key="property", values=property_values)
@@ -840,17 +813,11 @@ class TestAddElectrodes(TestCase):
         Adding new electrodes to an already existing electrode table should match
         properties and information by channel name.
         """
-        electrode_row_kwargs = self.electrode_row_kwargs
         self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
 
-        electrode_row_kwargs.update(id=20, channel_name="c")
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
-
-        electrode_row_kwargs.update(id=21, channel_name="d")
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
-
-        electrode_row_kwargs.update(id=22, channel_name="f")
-        self.nwbfile.add_electrode(**electrode_row_kwargs)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=20, channel_name="c")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=21, channel_name="d")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=22, channel_name="f")
 
         property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.recording_1.set_property(key="property", values=property_values)
@@ -1678,7 +1645,7 @@ class TestAddUnitsTable(TestCase):
         self.sorting_1 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["a", "b", "c", "d"])
         self.sorting_2 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["c", "d", "e", "f"])
 
-        self.unit_row_kwargs = dict(spike_times=[1, 1, 1])
+        self.common_unit_row_kwargs = dict(spike_times=[1, 1, 1])
 
     def test_integer_unit_names(self):
         """Ensure add units_table gets the right units name for integer units ids."""
@@ -1753,13 +1720,8 @@ class TestAddUnitsTable(TestCase):
 
     def test_units_table_extension_after_manual_unit_addition(self):
         """Add some rows to the units tables before using the add_sorting_to_nwbfile function"""
-        unit_row_kwargs = self.unit_row_kwargs
-
-        unit_row_kwargs.update(id=123, spike_times=[0, 1, 2])
-        self.nwbfile.add_unit(**unit_row_kwargs)
-
-        unit_row_kwargs.update(id=124, spike_times=[2, 3, 4])
-        self.nwbfile.add_unit(**unit_row_kwargs)
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=123, spike_times=[0, 1, 2])
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=124, spike_times=[2, 3, 4])
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
@@ -1773,17 +1735,10 @@ class TestAddUnitsTable(TestCase):
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
-        unit_row_kwargs = self.unit_row_kwargs
-
         # Previous properties
-        unit_row_kwargs.update(id=123, unit_name=str(123))
-        self.nwbfile.units.add_unit(**unit_row_kwargs)
-
-        unit_row_kwargs.update(id=124, unit_name=str(124))
-        self.nwbfile.units.add_unit(**unit_row_kwargs)
-
-        unit_row_kwargs.update(id=None, unit_name="6")  # automatic ID set
-        self.nwbfile.units.add_unit(**unit_row_kwargs)
+        self.nwbfile.units.add_unit(**self.common_unit_row_kwargs, id=123, unit_name="123")
+        self.nwbfile.units.add_unit(**self.common_unit_row_kwargs, id=124, unit_name="124")
+        self.nwbfile.units.add_unit(**self.common_unit_row_kwargs, id=None, unit_name="6")  # automatic ID set
 
         expected_unit_ids = [0, 1, 2, 3, 123, 124, 6]
         expected_unit_names = ["a", "b", "c", "d", "123", "124", "6"]
@@ -1795,20 +1750,12 @@ class TestAddUnitsTable(TestCase):
         Add some units to the units tables before using the add_sorting_to_nwbfile function.
         Previous properties that are also available in the sorting are matched with unit_name
         """
-
-        unit_row_kwargs = self.unit_row_kwargs
-
         self.nwbfile.add_unit_column(name="unit_name", description="a string reference for the unit")
         self.nwbfile.add_unit_column(name="property", description="property_added_before")
 
-        unit_row_kwargs.update(id=20, unit_name="c", property="value_c")
-        self.nwbfile.add_unit(**unit_row_kwargs)
-
-        unit_row_kwargs.update(id=21, unit_name="d", property="value_d")
-        self.nwbfile.add_unit(**unit_row_kwargs)
-
-        unit_row_kwargs.update(id=22, unit_name="f", property="value_f")
-        self.nwbfile.add_unit(**unit_row_kwargs)
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=20, unit_name="c", property="value_c")
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=21, unit_name="d", property="value_d")
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=22, unit_name="f", property="value_f")
 
         property_values = ["value_a", "value_b", "x", "y"]
         self.sorting_1.set_property(key="property", values=property_values)
@@ -1835,19 +1782,11 @@ class TestAddUnitsTable(TestCase):
         Add some units to the units tables before using the add_sorting_to_nwbfile function.
         New properties in the sorter are matched by unit name
         """
-
-        unit_row_kwargs = self.unit_row_kwargs
-
         self.nwbfile.add_unit_column(name="unit_name", description="a string reference for the unit")
 
-        unit_row_kwargs.update(id=20, unit_name="c")
-        self.nwbfile.add_unit(**unit_row_kwargs)
-
-        unit_row_kwargs.update(id=21, unit_name="d")
-        self.nwbfile.add_unit(**unit_row_kwargs)
-
-        unit_row_kwargs.update(id=22, unit_name="f")
-        self.nwbfile.add_unit(**unit_row_kwargs)
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=20, unit_name="c")
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=21, unit_name="d")
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=22, unit_name="f")
 
         property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.sorting_1.set_property(key="property", values=property_values)
@@ -1879,10 +1818,8 @@ class TestAddUnitsTable(TestCase):
         self.nwbfile.add_unit_column("custom_int_property", description="integer property without default")
 
         # Add all units from sorting_1 manually
-        unit_row_kwargs = self.unit_row_kwargs
         for i, unit_id in enumerate(self.sorting_1.unit_ids):
-            unit_row_kwargs.update(id=i, unit_name=unit_id, custom_int_property=i * 100)
-            self.nwbfile.add_unit(**unit_row_kwargs)
+            self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=i, unit_name=unit_id, custom_int_property=i * 100)
 
         # This should not raise an error even though custom_int_property has no clear default
         # because no new rows need to be added
