@@ -209,3 +209,52 @@ class TestLightningPoseConverter(TestCase):
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.conversion_options)
+
+    def test_new_external_videos_metadata_structure(self):
+        """Test that new ExternalVideos metadata structure works correctly.
+        TODO: After May 2026, this should be the primary metadata structure and test_expected_metadata should be removed.
+        """
+        # Get full metadata and then replace Videos with ExternalVideos
+        metadata = self.converter.get_metadata()
+
+        # Convert old Videos to new ExternalVideos structure
+        videos_list = metadata["Behavior"]["Videos"]
+        external_videos_dict = {}
+        for video_dict in videos_list:
+            video_name = video_dict.pop("name")
+            # Add device metadata
+            video_dict["device"] = dict(
+                name=f"{video_name} Camera Device",
+                description="Video camera used for recording.",
+            )
+            external_videos_dict[video_name] = video_dict
+
+        # Replace with new structure
+        metadata["Behavior"]["ExternalVideos"] = external_videos_dict
+        del metadata["Behavior"]["Videos"]
+
+        nwbfile_path = str(self.test_dir / "test_lightningpose_converter_new_metadata.nwb")
+
+        # Create NWBFile manually to bypass metadata validation
+        from pynwb import NWBHDF5IO, NWBFile
+
+        nwbfile = NWBFile(
+            session_description=metadata["NWBFile"]["session_description"],
+            identifier=metadata["NWBFile"]["identifier"],
+            session_start_time=metadata["NWBFile"]["session_start_time"],
+        )
+
+        # Add to NWBFile with new metadata structure
+        # This should convert ExternalVideos to Videos internally
+        self.converter.add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            stub_test=True,
+        )
+
+        # Write to file
+        with NWBHDF5IO(nwbfile_path, mode="w") as io:
+            io.write(nwbfile)
+
+        # Verify the file was created and has the correct structure
+        self.assertNWBFileStructure(nwbfile_path, stub_test=True)

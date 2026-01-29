@@ -1,3 +1,6 @@
+import warnings
+from typing import Any
+
 from pydantic import DirectoryPath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -28,11 +31,13 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     @validate_call
     def __init__(
         self,
+        *args: Any,
         folder_path: DirectoryPath,
         gain: float,
-        stream_id: str = "0",
+        stream_id: str = "0",  # Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        stream_name: str | None = None,
     ):
         """
         Initialize reading of a TDT recording.
@@ -48,15 +53,65 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
             Allows verbose.
         es_key : str, optional
+        stream_name : str or None, optional
+            Name of the stream to select. If None, stream_id is used.
 
 
         Notes
         -----
-        Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
+        Either stream_id or stream_name can be used to select the desired stream.
+        If neither are specified, this interface defaults to the first stream, with stream_id "0".
+        If both are specified, stream_name takes precedence.
         """
+        if args:
+            parameter_names = [
+                "folder_path",
+                "gain",
+                "stream_id",
+                "verbose",
+                "es_key",
+                "stream_name",
+            ]
+            num_positional_args_before_args = 0
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in June 2026. Please use keyword arguments."
+                )
+            # Map positional args to keyword args, positional args take precedence
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally is deprecated and will be removed in June 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            folder_path = positional_values.get("folder_path", folder_path)
+            gain = positional_values.get("gain", gain)
+            stream_id = positional_values.get("stream_id", stream_id)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+            stream_name = positional_values.get("stream_name", stream_name)
+
+        # Deprecate stream_id parameter
+        # TODO: Remove after June 2026 - Only external videos will be supported
+        if stream_id is not None:
+            warnings.warn(
+                "The 'stream_id' parameter is deprecated and will be removed in June 2026. "
+                "Use 'stream_name' parameter instead to select the desired stream.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        if stream_name is not None:
+            stream_id = None
         super().__init__(
             folder_path=folder_path,
             stream_id=stream_id,
+            stream_name=stream_name,
             verbose=verbose,
             es_key=es_key,
             gain=gain,

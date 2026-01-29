@@ -1,3 +1,4 @@
+import warnings
 from copy import deepcopy
 
 from pydantic import FilePath, validate_call
@@ -56,6 +57,7 @@ class LightningPoseConverter(NWBConverter):
             controls verbosity. ``True`` by default.
         """
         self.verbose = verbose
+
         self.data_interface_objects = dict(
             OriginalVideo=_VideoInterface(file_paths=[original_video_file_path]),
             PoseEstimation=LightningPoseDataInterface(
@@ -104,6 +106,7 @@ class LightningPoseConverter(NWBConverter):
         self,
         nwbfile: NWBFile,
         metadata: dict,
+        *args,
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
         external_mode: bool = True,
@@ -125,6 +128,7 @@ class LightningPoseConverter(NWBConverter):
         confidence_definition : str, optional
             Definition for the confidence levels in pose estimation, by default None.
         external_mode : bool, optional
+            DEPRECATED. This parameter will be removed in May 2026.
             If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
@@ -133,6 +137,68 @@ class LightningPoseConverter(NWBConverter):
         stub_test : bool, optional
             If True, only a subset of the data will be added for testing purposes, by default False.
         """
+        # Handle deprecated positional arguments
+        # TODO: Remove after May 2026 - only keyword arguments will be supported
+        if args:
+            parameter_names = [
+                "reference_frame",
+                "confidence_definition",
+                "external_mode",
+                "starting_frames_original_videos",
+                "starting_frames_labeled_videos",
+                "stub_test",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in May 2026. Please use keyword arguments."
+                )
+            # Map positional args to keyword args, positional args take precedence
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally is deprecated and will be removed in May 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            reference_frame = positional_values.get("reference_frame", reference_frame)
+            confidence_definition = positional_values.get("confidence_definition", confidence_definition)
+            external_mode = positional_values.get("external_mode", external_mode)
+            starting_frames_original_videos = positional_values.get(
+                "starting_frames_original_videos", starting_frames_original_videos
+            )
+            starting_frames_labeled_videos = positional_values.get(
+                "starting_frames_labeled_videos", starting_frames_labeled_videos
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+
+        # Deprecate external_mode parameter
+        # TODO: Remove after May 2026 - Only external videos will be supported
+        if external_mode is not True:
+            warnings.warn(
+                "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
+                "After May 2026, only external videos will be supported by LightningPoseConverter.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        # Detect old metadata structure and warn user to migrate
+        if "Videos" in metadata.get("Behavior", {}):
+            warnings.warn(
+                "The 'Videos' metadata structure is deprecated and will be removed in May 2026. "
+                "Please use 'ExternalVideos' metadata structure instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        # Convert new metadata structure to old structure for _VideoInterface compatibility
+        # TODO: Remove after May 2026 when _VideoInterface is replaced
+        metadata = self._convert_new_metadata_to_old(metadata)
+
         original_video_interface = self.data_interface_objects["OriginalVideo"]
 
         original_video_metadata = next(
@@ -181,6 +247,31 @@ class LightningPoseConverter(NWBConverter):
             stub_test=stub_test,
         )
 
+    def _convert_new_metadata_to_old(self, metadata: dict) -> dict:
+        """
+        Convert new ExternalVideos dict metadata to old Videos list metadata.
+
+        TODO: Remove after May 2026 when _VideoInterface is replaced with ExternalVideoInterface.
+        """
+        metadata = deepcopy(metadata)
+
+        # Check if new metadata structure is being used
+        if "ExternalVideos" in metadata.get("Behavior", {}):
+            # Convert ExternalVideos dict to Videos list
+            videos_dict = metadata["Behavior"]["ExternalVideos"]
+            videos_list = []
+            for video_name, video_metadata in videos_dict.items():
+                video_dict = {"name": video_name}
+                # Copy all metadata except device (not in old structure)
+                video_dict.update({k: v for k, v in video_metadata.items() if k != "device"})
+                videos_list.append(video_dict)
+
+            metadata["Behavior"]["Videos"] = videos_list
+            # Remove new structure key
+            del metadata["Behavior"]["ExternalVideos"]
+
+        return metadata
+
     def run_conversion(
         self,
         nwbfile_path: FilePath | None = None,
@@ -212,6 +303,8 @@ class LightningPoseConverter(NWBConverter):
         confidence_definition : str, optional
             Definition for confidence levels in pose estimation, by default None.
         external_mode : bool, optional
+            DEPRECATED. This parameter will be removed in May 2026.
+            After May 2026, only external videos will be supported.
             If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
@@ -221,6 +314,16 @@ class LightningPoseConverter(NWBConverter):
             If True, only a subset of the data will be added for testing purposes, by default False.
 
         """
+        # Deprecate external_mode parameter
+        # TODO: Remove after May 2026 - Only external videos will be supported
+        if external_mode is not True:
+            warnings.warn(
+                "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
+                "After May 2026, only external videos will be supported by LightningPoseConverter.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
         if metadata is None:
             metadata = self.get_metadata()
 
