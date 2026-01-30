@@ -6,15 +6,15 @@ How to Annotate Optical Physiology Data
 This guide provides instructions for annotating optical physiology (ophys) data using NeuroConv.
 
 Optical physiology metadata in NWB files includes information about the imaging device (microscope),
-imaging planes (where and how the imaging was performed), photon series (the actual imaging data),
-and segmentation results (ROIs and fluorescence traces).
+imaging planes (where and how the imaging was performed), microscopy series (the actual imaging data),
+and segmentation results (ROIs and response traces).
 
 
 How to Annotate a Single Data Interface
 ---------------------------------------
 
 Each imaging interface uses a ``metadata_key`` parameter that organizes all related metadata components.
-The same key is used to access the ImagingPlane, PhotonSeries, and Device - keeping them linked together.
+The same key is used to access the ImagingPlane, MicroscopySeries, and Device - keeping them linked together.
 
 .. code-block:: python
 
@@ -35,7 +35,7 @@ The same key is used to access the ImagingPlane, PhotonSeries, and Device - keep
     # The same metadata_key is used to access all related components:
     # - metadata["Devices"][metadata_key] -> the imaging device
     # - metadata["Ophys"]["ImagingPlanes"][metadata_key] -> the imaging plane
-    # - metadata["Ophys"]["TwoPhotonSeries"][metadata_key] -> the photon series
+    # - metadata["Ophys"]["MicroscopySeries"][metadata_key] -> the microscopy series
 
     # Annotate the imaging plane
     imaging_plane = metadata["Ophys"]["ImagingPlanes"][metadata_key]
@@ -46,10 +46,10 @@ The same key is used to access the ImagingPlane, PhotonSeries, and Device - keep
     imaging_plane["excitation_lambda"] = 920.0
     imaging_plane["optical_channel"][0]["emission_lambda"] = 510.0
 
-    # Annotate the photon series
-    photon_series = metadata["Ophys"]["TwoPhotonSeries"][metadata_key]
-    photon_series["name"] = "TwoPhotonSeriesVisualCortex"
-    photon_series["description"] = "Calcium imaging during visual stimulation"
+    # Annotate the microscopy series
+    microscopy_series = metadata["Ophys"]["MicroscopySeries"][metadata_key]
+    microscopy_series["name"] = "TwoPhotonSeriesVisualCortex"
+    microscopy_series["description"] = "Calcium imaging during visual stimulation"
 
     # Annotate the device
     device = metadata["Devices"][metadata_key]
@@ -57,7 +57,11 @@ The same key is used to access the ImagingPlane, PhotonSeries, and Device - keep
     device["description"] = "Custom two-photon microscope, data acquired with ScanImage (VIDRIO)"
     device["manufacturer"] = "DIY"
 
-    nwbfile = interface.create_nwbfile(metadata=metadata)
+    # Convert to NWB - specify the series type (TwoPhotonSeries or OnePhotonSeries)
+    nwbfile = interface.create_nwbfile(
+        metadata=metadata,
+        photon_series_type="TwoPhotonSeries",  # Choose the NWB neurodata type
+    )
 
 
 How to Annotate Multi-Plane Imaging Data
@@ -115,9 +119,15 @@ When you have imaging data from multiple planes (e.g., imaging different cortica
         metadata["Ophys"]["ImagingPlanes"][layer_key]["location"] = "Primary visual cortex"
         metadata["Ophys"]["ImagingPlanes"][layer_key]["excitation_lambda"] = 920.0
 
+    # Specify photon_series_type in conversion_options for each interface
     converter.run_conversion(
         nwbfile_path="multiplane_imaging.nwb",
         metadata=metadata,
+        conversion_options={
+            "layer2_3": {"photon_series_type": "TwoPhotonSeries"},
+            "layer4": {"photon_series_type": "TwoPhotonSeries"},
+            "layer5": {"photon_series_type": "TwoPhotonSeries"},
+        }
     )
 
 
@@ -168,14 +178,14 @@ use a different ``metadata_key`` for each pipeline. Link them to the same imagin
     }
 
     # Annotate each pipeline's segmentation
-    metadata["Ophys"]["ImageSegmentation"][suite2p_metadata_key]["name"] = "PlaneSegmentationSuite2p"
-    metadata["Ophys"]["ImageSegmentation"][suite2p_metadata_key]["description"] = "Suite2p ROI detection"
-    metadata["Ophys"]["ImageSegmentation"][caiman_metadata_key]["name"] = "PlaneSegmentationCaImAn"
-    metadata["Ophys"]["ImageSegmentation"][caiman_metadata_key]["description"] = "CaImAn CNMF-E ROI detection"
+    metadata["Ophys"]["PlaneSegmentations"][suite2p_metadata_key]["name"] = "PlaneSegmentationSuite2p"
+    metadata["Ophys"]["PlaneSegmentations"][suite2p_metadata_key]["description"] = "Suite2p ROI detection"
+    metadata["Ophys"]["PlaneSegmentations"][caiman_metadata_key]["name"] = "PlaneSegmentationCaImAn"
+    metadata["Ophys"]["PlaneSegmentations"][caiman_metadata_key]["description"] = "CaImAn CNMF-E ROI detection"
 
     # Link both segmentations to the same imaging plane
-    metadata["Ophys"]["ImageSegmentation"][suite2p_metadata_key]["imaging_plane_metadata_key"] = imaging_plane_metadata_key
-    metadata["Ophys"]["ImageSegmentation"][caiman_metadata_key]["imaging_plane_metadata_key"] = imaging_plane_metadata_key
+    metadata["Ophys"]["PlaneSegmentations"][suite2p_metadata_key]["imaging_plane_metadata_key"] = imaging_plane_metadata_key
+    metadata["Ophys"]["PlaneSegmentations"][caiman_metadata_key]["imaging_plane_metadata_key"] = imaging_plane_metadata_key
 
     converter.run_conversion(
         nwbfile_path="multi_pipeline_segmentation.nwb",

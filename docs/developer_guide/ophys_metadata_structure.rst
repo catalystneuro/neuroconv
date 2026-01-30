@@ -92,27 +92,24 @@ The complete ophys metadata structure:
                 }
             },
 
-            "TwoPhotonSeries": {
+            "MicroscopySeries": {
                 "visual_cortex": {
                     "name": "TwoPhotonSeriesVisualCortex",
                     "description": "Two-photon calcium imaging",
                     "imaging_plane_metadata_key": "visual_cortex",  # Reference to imaging plane
                     "unit": "n.a.",
                     "dimension": [512, 512]
-                }
-            },
-
-            "OnePhotonSeries": {
+                },
                 "hippocampus": {
                     "name": "OnePhotonSeriesHippocampus",
+                    "description": "Miniscope calcium imaging",
                     "imaging_plane_metadata_key": "hippocampus",
                     "unit": "n.a.",
                     "dimension": [480, 752]
                 }
             },
 
-            "ImageSegmentation": {
-                "name": "ImageSegmentation",
+            "PlaneSegmentations": {
                 "suite2p_analysis": {
                     "name": "PlaneSegmentation",
                     "description": "ROIs detected by Suite2p",
@@ -120,8 +117,7 @@ The complete ophys metadata structure:
                 }
             },
 
-            "Fluorescence": {
-                "name": "Fluorescence",
+            "RoiResponses": {
                 "suite2p_analysis": {
                     "raw": {
                         "name": "RoiResponseSeries",
@@ -137,13 +133,7 @@ The complete ophys metadata structure:
                         "name": "Deconvolved",
                         "description": "Deconvolved activity",
                         "unit": "n.a."
-                    }
-                }
-            },
-
-            "DfOverF": {
-                "name": "DfOverF",
-                "suite2p_analysis": {
+                    },
                     "dff": {
                         "name": "DfOverF",
                         "description": "Delta F over F",
@@ -183,7 +173,6 @@ All imaging and segmentation interfaces accept a ``metadata_key`` parameter. Thi
             self,
             *,  # Force keyword-only
             verbose: bool = False,
-            photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
             metadata_key: str = "default",
             **source_data,
         ):
@@ -197,15 +186,85 @@ The ``metadata_key`` propagates to all components created by an interface:
 
 - ``metadata["Devices"][metadata_key]`` - The imaging device
 - ``metadata["Ophys"]["ImagingPlanes"][metadata_key]`` - The imaging plane
-- ``metadata["Ophys"]["TwoPhotonSeries"][metadata_key]`` - The photon series (if TwoPhotonSeries)
-- ``metadata["Ophys"]["OnePhotonSeries"][metadata_key]`` - The photon series (if OnePhotonSeries)
+- ``metadata["Ophys"]["MicroscopySeries"][metadata_key]`` - The microscopy series
 
 For segmentation interfaces:
 
-- ``metadata["Ophys"]["ImageSegmentation"][metadata_key]`` - The plane segmentation
-- ``metadata["Ophys"]["Fluorescence"][metadata_key]`` - The fluorescence traces
-- ``metadata["Ophys"]["DfOverF"][metadata_key]`` - The DfOverF traces
+- ``metadata["Ophys"]["PlaneSegmentations"][metadata_key]`` - The plane segmentation
+- ``metadata["Ophys"]["RoiResponses"][metadata_key]`` - The ROI response traces (raw, neuropil, dff, etc.)
 - ``metadata["Ophys"]["SegmentationImages"][metadata_key]`` - Summary images
+
+
+Single ImageSegmentation Container
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+While having multiple PlaneSegmentations makes sense (different segmentation algorithms like Suite2p
+vs CaImAn, or multiple runs of the same algorithm), there is no clear use case for multiple
+ImageSegmentation containers in an NWB file.
+
+PyNWB and the NWB schema allow multiple ImageSegmentation containers, but NeuroConv does not support
+this. Instead, NeuroConv uses a single, non-editable ImageSegmentation container where all
+PlaneSegmentations are stored. This is handled internally and users cannot configure the
+ImageSegmentation container. Users work directly with ``PlaneSegmentations`` in metadata, and
+NeuroConv places them in the single ImageSegmentation container when creating the NWB file.
+
+This simplifies both the metadata specification (no need to manage container names) and the
+organization of the resulting NWB file.
+
+
+Unified MicroscopySeries
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Metadata uses a unified ``MicroscopySeries`` key for all imaging data, regardless of whether
+it will be written as ``TwoPhotonSeries`` or ``OnePhotonSeries`` in the NWB file.
+
+The choice of NWB neurodata type (``TwoPhotonSeries`` vs ``OnePhotonSeries``) is specified as a
+**conversion option**, not in metadata. This follows the provenance principle: metadata describes
+the data, while conversion options determine how to write it to NWB.
+
+For format-specific interfaces (e.g., ScanImageImagingInterface), the series type is extracted
+from the source data. For generic interfaces (e.g., TiffImagingInterface), users must specify
+the series type at conversion time:
+
+.. code-block:: python
+
+    # Format-specific interface - series type extracted from source
+    interface = ScanImageImagingInterface(file_path="data.tif", metadata_key="visual_cortex")
+    interface.add_to_nwbfile(nwbfile, metadata)  # Uses extracted type (TwoPhotonSeries)
+
+    # Generic interface - series type must be specified
+    interface = TiffImagingInterface(file_path="data.tif", metadata_key="visual_cortex")
+    interface.add_to_nwbfile(nwbfile, metadata, photon_series_type="TwoPhotonSeries")
+
+    # Override is always possible
+    interface.add_to_nwbfile(nwbfile, metadata, photon_series_type="OnePhotonSeries")
+
+
+Unified RoiResponses
+~~~~~~~~~~~~~~~~~~~~
+
+All ROI trace types (raw fluorescence, neuropil, deconvolved, df/f) are stored under a single
+``RoiResponses`` key in metadata. This consolidates what NWB core splits into separate
+``Fluorescence`` and ``DfOverF`` containers.
+
+NeuroConv internally maps traces to the appropriate NWB containers based on trace type when
+writing the NWB file.
+
+
+Alignment with ndx-microscopy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The metadata structure is designed to align with the `ndx-microscopy <https://github.com/catalystneuro/ndx-microscopy>`_
+extension, which represents the future direction of optical physiology in NWB.
+
+ndx-microscopy uses:
+
+- ``MicroscopySeries`` for all imaging data (instead of separate ``TwoPhotonSeries``/``OnePhotonSeries``)
+- ``MicroscopyResponseSeries`` for all ROI traces (instead of separate ``Fluorescence``/``DfOverF``)
+
+By adopting similar patterns (``MicroscopySeries``, ``RoiResponses``), NeuroConv's metadata
+structure will require minimal changes when ndx-microscopy is integrated into NWB core.
+This makes the eventual transition smoother for users.
 
 
 Linking Imaging Planes and Devices in Ophys
