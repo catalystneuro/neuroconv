@@ -136,6 +136,40 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     return NWBFile(**nwbfile_kwargs)
 
 
+def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> None:
+    """
+    Add devices from the top-level Devices metadata to NWBFile.
+
+    This function uses the new dictionary-based Devices structure where devices
+    are stored at the top level of metadata, keyed by their metadata_key.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to add devices to.
+    metadata : dict
+        Metadata dictionary with top-level 'Devices' key:
+        metadata["Devices"] = {
+            "device_key": {"name": "MyDevice", "description": "..."},
+            ...
+        }
+
+    Notes
+    -----
+    This is a modality-agnostic function that can be used by ophys, ecephys,
+    and behavior modalities. Devices are only added if they don't already exist
+    in the NWBFile (checked by device name).
+    """
+    devices_metadata = metadata.get("Devices", {})
+
+    for device_key, device_info in devices_metadata.items():
+        device_kwargs = dict(device_info)
+        device_name = device_kwargs.get("name", device_key)
+
+        if device_name not in nwbfile.devices:
+            nwbfile.create_device(**device_kwargs)
+
+
 def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: dict | None = None):
     """
     Add device information from metadata to NWBFile object.

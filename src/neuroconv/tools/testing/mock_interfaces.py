@@ -500,7 +500,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
     def _initialize_extractor(self, interface_kwargs: dict):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
-        self.extractor_kwargs.pop("photon_series_type", None)
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
@@ -515,7 +515,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         dtype: str = "uint16",
         verbose: bool = False,
         seed: int = 0,
-        photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str = "default",
     ):
         """
         Parameters
@@ -532,11 +532,10 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             The data type of the generated imaging data (e.g., 'uint16'), by default 'uint16'.
         seed : int, optional
             Random seed for reproducibility, by default 0.
-        photon_series_type : Literal["OnePhotonSeries", "TwoPhotonSeries"], optional
-            The type of photon series for the mock imaging data, either "OnePhotonSeries" or
-            "TwoPhotonSeries", by default "TwoPhotonSeries".
         verbose : bool, default False
             controls verbosity
+        metadata_key : str, default: "default"
+            The key to use for this imaging data in the metadata dictionaries.
         """
 
         self.seed = seed
@@ -548,10 +547,10 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             dtype=dtype,
             verbose=verbose,
             seed=seed,
+            metadata_key=metadata_key,
         )
 
         self.verbose = verbose
-        self.photon_series_type = photon_series_type
 
     def get_metadata(self) -> DeepDict:
         session_start_time = datetime.now().astimezone()
@@ -563,20 +562,16 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
-        photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
         always_write_timestamps: bool = False,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
+        stub_samples: int = 100,
     ):
         """
         Add imaging data to the NWB file.
-
-        This method demonstrates the *args pattern for deprecating positional arguments
-        while maintaining schema validation for keyword-only arguments.
 
         Parameters
         ----------
@@ -586,8 +581,6 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             Metadata for the NWBFile, by default None.
         photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
             The type of photon series to be added, by default "TwoPhotonSeries".
-        photon_series_index : int, optional
-            The index of the photon series in the provided imaging data, by default 0.
         parent_container : {"acquisition", "processing/ophys"}, optional
             Specifies the parent container to which the photon series should be added.
         stub_test : bool, optional
@@ -598,55 +591,20 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             The type of iterator for chunked data writing.
         iterator_options : dict, optional
             Options for controlling the iterative write process.
+        stub_samples : int, default: 100
+            The number of samples (frames) to use for testing.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "photon_series_type",
-                "photon_series_index",
-                "parent_container",
-                "stub_test",
-                "always_write_timestamps",
-                "iterator_type",
-                "iterator_options",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
-                )
-            # Map positional args to keyword args, positional args take precedence
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to add_to_nwbfile is deprecated "
-                f"and will be removed in June 2026 or after. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
-            photon_series_index = positional_values.get("photon_series_index", photon_series_index)
-            parent_container = positional_values.get("parent_container", parent_container)
-            stub_test = positional_values.get("stub_test", stub_test)
-            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
-            iterator_type = positional_values.get("iterator_type", iterator_type)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
-
         # Call parent implementation with keyword arguments
         super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type=photon_series_type,
-            photon_series_index=photon_series_index,
             parent_container=parent_container,
             stub_test=stub_test,
             always_write_timestamps=always_write_timestamps,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
+            stub_samples=stub_samples,
         )
 
 
@@ -681,6 +639,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         has_neuropil_signal: bool = True,
         seed: int = 0,
         verbose: bool = False,
+        metadata_key: str = "default",
     ):
         """
         Parameters
@@ -709,6 +668,8 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             seed for the random number generator, by default 0
         verbose : bool, optional
             controls verbosity, by default False.
+        metadata_key : str, default: "default"
+            The key to use for this segmentation data in the metadata dictionaries.
         """
 
         super().__init__(
@@ -724,6 +685,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             has_neuropil_signal=has_neuropil_signal,
             verbose=verbose,
             seed=seed,
+            metadata_key=metadata_key,
         )
 
     def get_metadata(self) -> DeepDict:

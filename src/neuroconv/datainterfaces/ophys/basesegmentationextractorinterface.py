@@ -4,11 +4,12 @@ from typing import Literal
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
-from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
+from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, PlaneSegmentation
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     DeepDict,
+    dict_deep_update,
     fill_defaults,
     get_base_schema,
     get_schema_from_hdmf_class,
@@ -20,115 +21,184 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     keywords = ("segmentation", "roi", "cells")
 
-    def __init__(self, verbose: bool = False, **source_data):
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """
+        Initialize and return the extractor instance for segmentation interfaces.
+
+        Extends the base implementation to also remove interface-specific parameters
+        which are not needed by the extractor.
+
+        Parameters
+        ----------
+        interface_kwargs : dict
+            The source data parameters passed to the interface constructor.
+
+        Returns
+        -------
+        extractor_instance
+            An initialized segmentation extractor instance.
+        """
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("metadata_key", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
+
+    def __init__(
+        self,
+        *,  # Force keyword-only arguments
+        verbose: bool = False,
+        metadata_key: str = "default",
+        **source_data,
+    ):
+        """
+        Initialize the segmentation interface.
+
+        Parameters
+        ----------
+        verbose : bool, default: False
+            Whether to print verbose output.
+        metadata_key : str, default: "default"
+            The key to use for this segmentation data in the metadata dictionaries.
+            This key is used to identify this interface's metadata in:
+            - metadata["Devices"]
+            - metadata["Ophys"]["ImagingPlanes"]
+            - metadata["Ophys"]["PlaneSegmentations"]
+            - metadata["Ophys"]["RoiResponses"]
+        **source_data
+            Source data parameters passed to the extractor.
+        """
         super().__init__(**source_data)
         self.verbose = verbose
+        self.metadata_key = metadata_key
         self.segmentation_extractor = self._extractor_instance
 
     def get_metadata_schema(self) -> dict:
         """
-        Generate the metadata schema for Ophys data, updating required fields and properties.
-
-        This method builds upon the base schema and customizes it for Ophys-specific metadata, including required
-        components such as devices, fluorescence data, imaging planes, and two-photon series. It also applies
-        temporary schema adjustments to handle certain use cases until a centralized metadata schema definition
-        is available.
+        Generate the metadata schema for Ophys segmentation data using the new dictionary-based structure.
 
         Returns
         -------
         dict
-            A dictionary representing the updated Ophys metadata schema.
-
-        Notes
-        -----
-        - Ensures that `Device` and `ImageSegmentation` are marked as required.
-        - Updates various properties, including ensuring arrays for `ImagingPlane` and `TwoPhotonSeries`.
-        - Adjusts the schema for `Fluorescence`, including required fields and pattern properties.
-        - Adds schema definitions for `DfOverF`, segmentation images, and summary images.
-        - Applies temporary fixes, such as setting additional properties for `ImageSegmentation` to True.
+            A dictionary representing the updated Ophys metadata schema with dictionary-based
+            structures for Devices, ImagingPlanes, PlaneSegmentations, and RoiResponses.
         """
         metadata_schema = super().get_metadata_schema()
         metadata_schema["required"] = ["Ophys"]
-        metadata_schema["properties"]["Ophys"] = get_base_schema()
-        metadata_schema["properties"]["Ophys"]["properties"] = dict(
-            Device=dict(type="array", minItems=1, items=get_schema_from_hdmf_class(Device)),
-        )
-        metadata_schema["properties"]["Ophys"]["properties"].update(
-            Fluorescence=get_schema_from_hdmf_class(Fluorescence),
-            ImageSegmentation=get_schema_from_hdmf_class(ImageSegmentation),
-            ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
-            TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
-        )
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImageSegmentation"]
 
-        # Temporary fixes until centralized definition of metadata schemas
-        metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
-        metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"].update(type="array")
+        # Top-level Devices schema
+        device_schema = get_schema_from_hdmf_class(Device)
+        metadata_schema["properties"]["Devices"] = {
+            "type": "object",
+            "patternProperties": {"^[a-zA-Z0-9_]+$": device_schema},
+        }
 
-        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(required=["name"])
-        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].pop("additionalProperties")
+        # Ophys schema
+        metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
+        metadata_schema["properties"]["Ophys"]["required"] = ["ImagingPlanes", "PlaneSegmentations"]
 
-        roi_response_series_schema = metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"][
-            "properties"
-        ].pop("roi_response_series")
+        # ImagingPlanes schema (dictionary-based)
+        imaging_plane_schema = get_schema_from_hdmf_class(ImagingPlane)
+        imaging_plane_schema["properties"]["optical_channel"].pop("maxItems", None)
+        imaging_plane_schema["properties"]["device_metadata_key"] = {"type": "string"}
+        imaging_plane_schema["additionalProperties"] = True  # Allow partial metadata
+        imaging_plane_schema["required"] = []  # No required fields - defaults applied at conversion
+        # Also make optical_channel items permissive
+        if "items" in imaging_plane_schema["properties"]["optical_channel"]:
+            imaging_plane_schema["properties"]["optical_channel"]["items"]["required"] = []
+            imaging_plane_schema["properties"]["optical_channel"]["items"]["additionalProperties"] = True
 
-        roi_response_series_schema.pop("maxItems")
-        roi_response_series_schema["items"].update(required=list())
+        # PlaneSegmentations schema (dictionary-based)
+        plane_segmentation_schema = get_schema_from_hdmf_class(PlaneSegmentation)
+        plane_segmentation_schema["properties"]["imaging_plane_metadata_key"] = {"type": "string"}
+        plane_segmentation_schema["additionalProperties"] = True  # Allow partial metadata
+        plane_segmentation_schema["required"] = []  # No required fields - defaults applied at conversion
 
-        roi_response_series_per_plane_schema = dict(
-            type="object", patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_schema["items"]}
-        )
-
-        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(
-            patternProperties={"^(?!name$)[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
-        )
-
-        metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]["additionalProperties"] = True
-
-        metadata_schema["properties"]["Ophys"]["properties"]["DfOverF"] = metadata_schema["properties"]["Ophys"][
-            "properties"
-        ]["Fluorescence"]
-
-        # NOTE: Would prefer to remove in favor of simply using the up-to-date metadata_schema.json
-        images_inner_schema = dict(
-            type="object",
-            properties=dict(name=dict(type="string"), description=dict(type="string")),
-        )
-
-        summary_images_per_plane_schema = dict(type="object", patternProperties={"^[a-zA-Z0-9]+$": images_inner_schema})
-
-        metadata_schema["properties"]["Ophys"]["properties"]["SegmentationImages"] = dict(
-            type="object",
-            required=["name"],
-            properties=dict(
-                name=dict(type="string", default="SegmentationImages"),
-                description=dict(type="string"),
-            ),
-            patternProperties={
-                "^(?!(name|description)$)[a-zA-Z0-9]+$": summary_images_per_plane_schema,
+        # RoiResponses schema (dictionary-based)
+        roi_response_trace_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "unit": {"type": "string"},
             },
-        )
+        }
+        roi_responses_per_plane_schema = {
+            "type": "object",
+            "patternProperties": {"^[a-zA-Z0-9_]+$": roi_response_trace_schema},
+        }
+
+        # SegmentationImages schema
+        images_inner_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+            },
+        }
+        segmentation_images_per_plane_schema = {
+            "type": "object",
+            "patternProperties": {"^[a-zA-Z0-9_]+$": images_inner_schema},
+        }
+
+        metadata_schema["properties"]["Ophys"]["properties"] = {
+            "ImagingPlanes": {
+                "type": "object",
+                "patternProperties": {"^[a-zA-Z0-9_]+$": imaging_plane_schema},
+            },
+            "PlaneSegmentations": {
+                "type": "object",
+                "patternProperties": {"^[a-zA-Z0-9_]+$": plane_segmentation_schema},
+            },
+            "RoiResponses": {
+                "type": "object",
+                "patternProperties": {"^[a-zA-Z0-9_]+$": roi_responses_per_plane_schema},
+            },
+            "SegmentationImages": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "default": "SegmentationImages"},
+                    "description": {"type": "string"},
+                },
+                "patternProperties": {
+                    "^(?!(name|description)$)[a-zA-Z0-9_]+$": segmentation_images_per_plane_schema,
+                },
+            },
+        }
+
+        # Definitions for reference
+        metadata_schema["properties"]["Ophys"]["definitions"] = {
+            "Device": device_schema,
+            "ImagingPlane": imaging_plane_schema,
+            "PlaneSegmentation": plane_segmentation_schema,
+            "Fluorescence": get_schema_from_hdmf_class(Fluorescence),
+            "ImageSegmentation": get_schema_from_hdmf_class(ImageSegmentation),
+        }
 
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        from ...tools.roiextractors.roiextractors import _get_default_ophys_metadata
+        """
+        Retrieve the metadata for the segmentation data.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing metadata including device information, imaging plane details,
+            plane segmentation configuration, and ROI response metadata using the new
+            dictionary-based structure.
+        """
+        from ...tools.roiextractors import get_nwb_segmentation_metadata
 
         metadata = super().get_metadata()
-
-        # Get the default ophys metadata (single source of truth)
-        ophys_defaults = _get_default_ophys_metadata()
-
-        # Only include the fields relevant to segmentation (not imaging series)
-        metadata["Ophys"] = {
-            "Device": ophys_defaults["Ophys"]["Device"],
-            "ImagingPlane": ophys_defaults["Ophys"]["ImagingPlane"],
-            "Fluorescence": ophys_defaults["Ophys"]["Fluorescence"],
-            "DfOverF": ophys_defaults["Ophys"]["DfOverF"],
-            "ImageSegmentation": ophys_defaults["Ophys"]["ImageSegmentation"],
-            "SegmentationImages": ophys_defaults["Ophys"]["SegmentationImages"],
-        }
+        default_metadata = get_nwb_segmentation_metadata(
+            self.segmentation_extractor,
+            metadata_key=self.metadata_key,
+        )
+        metadata = dict_deep_update(default_metadata, metadata)
 
         return metadata
 
@@ -152,7 +222,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
         mask_type: Literal["image", "pixel", "voxel"] = "image",
-        plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
         stub_samples: int = 100,
     ):
@@ -191,8 +260,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
               of voxels in each ROI.
 
             Specify your choice between these two as mask_type='image', 'pixel', 'voxel'
-        plane_segmentation_name : str, optional
-            The name of the plane segmentation to be added.
         iterator_options : dict, optional
             Options for controlling the iterative write process (buffer size, progress bars) when
             writing image masks and traces.
@@ -234,6 +301,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
         metadata = metadata or self.get_metadata()
 
+        # Use the interface's metadata_key directly
         add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
@@ -242,6 +310,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
-            plane_segmentation_name=plane_segmentation_name,
+            plane_segmentation_metadata_key=self.metadata_key,
             iterator_options=iterator_options,
         )
