@@ -12,6 +12,7 @@ The most common contribution is for a user/developer to help us integrate a new 
 
     Contributing <contributing>
     Build a Data Interface <build_data_interface>
+    Ophys Metadata Structure <ophys_metadata_structure>
     Schemas <schemas>
     Project Structure <project_structure>
     Testing Suite <testing_suite>
