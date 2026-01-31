@@ -90,7 +90,9 @@ class TimeIntervalsInterface(BaseDataInterface):
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
-        return self._read_file(**self.source_data, **self._read_kwargs)[column].values
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return self._read_file(**self.source_data, **self._read_kwargs)[column].to_numpy(dtype="float64")
 
     def get_timestamps(self, column: str) -> np.ndarray:
         """
@@ -114,7 +116,9 @@ class TimeIntervalsInterface(BaseDataInterface):
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
-        return self.dataframe[column].values
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return self.dataframe[column].to_numpy(dtype="float64")
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
         """
