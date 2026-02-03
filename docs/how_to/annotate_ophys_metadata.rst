@@ -75,48 +75,55 @@ When you have imaging data from multiple planes (e.g., imaging different cortica
     from neuroconv.datainterfaces import TiffImagingInterface
     from neuroconv import NWBConverter
 
+    # Define a metadata_key for each cortical layer
+    layer2_3_metadata_key = "layer2_3"
+    layer4_metadata_key = "layer4"
+    layer5_metadata_key = "layer5"
+
     # Create an interface for each cortical layer with its own metadata_key
-    layer2_3 = TiffImagingInterface(
+    layer2_3_interface = TiffImagingInterface(
         file_path="path/to/layer2_3.tif",
         sampling_frequency=30.0,
-        metadata_key="layer2_3",
+        metadata_key=layer2_3_metadata_key,
     )
 
-    layer4 = TiffImagingInterface(
+    layer4_interface = TiffImagingInterface(
         file_path="path/to/layer4.tif",
         sampling_frequency=30.0,
-        metadata_key="layer4",
+        metadata_key=layer4_metadata_key,
     )
 
-    layer5 = TiffImagingInterface(
+    layer5_interface = TiffImagingInterface(
         file_path="path/to/layer5.tif",
         sampling_frequency=30.0,
-        metadata_key="layer5",
+        metadata_key=layer5_metadata_key,
     )
 
     # Combine all planes in a converter
     converter = NWBConverter(
         data_interfaces={
-            "layer2_3": layer2_3,
-            "layer4": layer4,
-            "layer5": layer5,
+            "layer2_3_interface": layer2_3_interface,
+            "layer4_interface": layer4_interface,
+            "layer5_interface": layer5_interface,
         }
     )
 
     metadata = converter.get_metadata()
 
     # Annotate each plane with its cortical layer information
-    metadata["Ophys"]["ImagingPlanes"]["layer2_3"]["name"] = "ImagingPlaneLayer2_3"
-    metadata["Ophys"]["ImagingPlanes"]["layer2_3"]["description"] = "V1 layer 2/3 at 150um depth"
-    metadata["Ophys"]["ImagingPlanes"]["layer4"]["name"] = "ImagingPlaneLayer4"
-    metadata["Ophys"]["ImagingPlanes"]["layer4"]["description"] = "V1 layer 4 at 350um depth"
-    metadata["Ophys"]["ImagingPlanes"]["layer5"]["name"] = "ImagingPlaneLayer5"
-    metadata["Ophys"]["ImagingPlanes"]["layer5"]["description"] = "V1 layer 5 at 500um depth"
+    metadata["Ophys"]["ImagingPlanes"][layer2_3_metadata_key]["name"] = "ImagingPlaneLayer2_3"
+    metadata["Ophys"]["ImagingPlanes"][layer2_3_metadata_key]["description"] = "V1 layer 2/3 at 150um depth"
+    metadata["Ophys"]["ImagingPlanes"][layer2_3_metadata_key]["location"] = "V1 layer 2/3"
+    metadata["Ophys"]["ImagingPlanes"][layer4_metadata_key]["name"] = "ImagingPlaneLayer4"
+    metadata["Ophys"]["ImagingPlanes"][layer4_metadata_key]["description"] = "V1 layer 4 at 350um depth"
+    metadata["Ophys"]["ImagingPlanes"][layer4_metadata_key]["location"] = "V1 layer 4"
+    metadata["Ophys"]["ImagingPlanes"][layer5_metadata_key]["name"] = "ImagingPlaneLayer5"
+    metadata["Ophys"]["ImagingPlanes"][layer5_metadata_key]["description"] = "V1 layer 5 at 500um depth"
+    metadata["Ophys"]["ImagingPlanes"][layer5_metadata_key]["location"] = "V1 layer 5"
 
     # Set common metadata across all planes
-    for layer_key in ["layer2_3", "layer4", "layer5"]:
+    for layer_key in [layer2_3_metadata_key, layer4_metadata_key, layer5_metadata_key]:
         metadata["Ophys"]["ImagingPlanes"][layer_key]["indicator"] = "GCaMP6s"
-        metadata["Ophys"]["ImagingPlanes"][layer_key]["location"] = "Primary visual cortex"
         metadata["Ophys"]["ImagingPlanes"][layer_key]["excitation_lambda"] = 920.0
 
     # Specify photon_series_type in conversion_options for each interface
@@ -124,9 +131,9 @@ When you have imaging data from multiple planes (e.g., imaging different cortica
         nwbfile_path="multiplane_imaging.nwb",
         metadata=metadata,
         conversion_options={
-            "layer2_3": {"photon_series_type": "TwoPhotonSeries"},
-            "layer4": {"photon_series_type": "TwoPhotonSeries"},
-            "layer5": {"photon_series_type": "TwoPhotonSeries"},
+            "layer2_3_interface": {"photon_series_type": "TwoPhotonSeries"},
+            "layer4_interface": {"photon_series_type": "TwoPhotonSeries"},
+            "layer5_interface": {"photon_series_type": "TwoPhotonSeries"},
         }
     )
 
@@ -144,8 +151,8 @@ use a different ``metadata_key`` for each pipeline. Link them to the same imagin
     from neuroconv import NWBConverter
 
     # Each segmentation pipeline gets its own metadata_key
-    suite2p_metadata_key = "suite2p"
-    caiman_metadata_key = "caiman"
+    suite2p_metadata_key = "suite2p_metadata_key"
+    caiman_metadata_key = "caiman_metadata_key"
 
     suite2p_segmentation = Suite2pSegmentationInterface(
         folder_path="path/to/suite2p/plane0",
