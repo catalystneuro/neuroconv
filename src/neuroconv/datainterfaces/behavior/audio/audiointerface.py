@@ -73,7 +73,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         time_series_metadata_schema_path = (
             Path(__file__).parent.parent.parent.parent / "schemas" / "time_series_schema.json"
         )
-        with open(file=time_series_metadata_schema_path) as fp:
+        with open(file=time_series_metadata_schema_path, encoding="utf-8") as fp:
             time_series_metadata_schema = json.load(fp=fp)
         time_series_metadata_schema.update(required=["name"])
 
