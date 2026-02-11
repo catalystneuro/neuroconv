@@ -5,6 +5,7 @@
 * Deprecated returning NWBFile when using `append_on_disk_nwbfile=True` in `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile`. Will return None on or after June 2026. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 
 ## Bug Fixes
+* Fixed `UnicodeDecodeError` on Windows when reading YAML and JSON files containing UTF-8 characters by adding explicit `encoding='utf-8'` parameter to all text file operations. This ensures cross-platform compatibility per PEP 597 recommendations. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
 * Fixed bug in `write_imaging_to_nwbfile` where `nwbfile` was incorrectly passed to `add_imaging_to_nwbfile` instead of the created/loaded nwbfile. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 * Fixed bug in `write_segmentation_to_nwbfile` where invalid `plane_num` parameter was passed to `add_segmentation_to_nwbfile`. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 * Fixed `get_json_schema_from_method_signature` to skip `*args` (VAR_POSITIONAL) parameters, which was causing schema validation errors when methods used the `*args` pattern for deprecating positional arguments. [PR #1647](https://github.com/catalystneuro/neuroconv/pull/1647)
