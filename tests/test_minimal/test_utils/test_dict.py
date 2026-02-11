@@ -1,82 +1,68 @@
 import json
-import tempfile
 import unittest
 from copy import deepcopy
-from pathlib import Path
 
 import yaml
 
 from neuroconv.utils.dict import DeepDict, load_dict_from_file
 
 
-class TestLoadDictFromFile(unittest.TestCase):
-    """Test load_dict_from_file function with UTF-8 encoding support."""
-
-    def setUp(self):
-        """Create a temporary directory for test files."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.temp_path = Path(self.temp_dir)
-
-    def tearDown(self):
-        """Clean up temporary files."""
-        import shutil
-
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
-
-    def test_load_yaml_with_utf8_characters(self):
-        """Test loading YAML file with UTF-8 characters."""
-        test_data = {
-            "metadata": {
-                "subject": "Test Subject",
-                "description": "Testing UTF-8: é ñ ü ™ ©",
-                "special_chars": "€ £ ¥ • ✓",
-                "emoji": "🎉 🔬 🧠",
-            }
+def test_load_yaml_with_utf8_characters(tmp_path):
+    """Test loading YAML file with UTF-8 characters."""
+    test_data = {
+        "metadata": {
+            "subject": "Test Subject",
+            "description": "Testing UTF-8: é ñ ü ™ ©",
+            "special_chars": "€ £ ¥ • ✓",
+            "emoji": "🎉 🔬 🧠",
         }
+    }
 
-        # Write YAML file with UTF-8 encoding
-        yaml_file = self.temp_path / "test_utf8.yaml"
-        with open(yaml_file, "w", encoding="utf-8") as f:
-            yaml.dump(test_data, f, allow_unicode=True)
+    # Write YAML file with UTF-8 encoding
+    yaml_file = tmp_path / "test_utf8.yaml"
+    with open(yaml_file, "w", encoding="utf-8") as f:
+        yaml.dump(test_data, f, allow_unicode=True)
 
-        # Load and verify
-        loaded_data = load_dict_from_file(yaml_file)
-        self.assertEqual(loaded_data, test_data)
-        self.assertEqual(loaded_data["metadata"]["description"], "Testing UTF-8: é ñ ü ™ ©")
-        self.assertEqual(loaded_data["metadata"]["emoji"], "🎉 🔬 🧠")
+    # Load and verify
+    loaded_data = load_dict_from_file(yaml_file)
+    assert loaded_data == test_data
+    assert loaded_data["metadata"]["description"] == "Testing UTF-8: é ñ ü ™ ©"
+    assert loaded_data["metadata"]["emoji"] == "🎉 🔬 🧠"
 
-    def test_load_json_with_utf8_characters(self):
-        """Test loading JSON file with UTF-8 characters."""
-        test_data = {
-            "metadata": {
-                "subject": "Test Subject",
-                "description": "Testing UTF-8: é ñ ü ™ ©",
-                "special_chars": "€ £ ¥ • ✓",
-                "emoji": "🎉 🔬 🧠",
-            }
+
+def test_load_json_with_utf8_characters(tmp_path):
+    """Test loading JSON file with UTF-8 characters."""
+    test_data = {
+        "metadata": {
+            "subject": "Test Subject",
+            "description": "Testing UTF-8: é ñ ü ™ ©",
+            "special_chars": "€ £ ¥ • ✓",
+            "emoji": "🎉 🔬 🧠",
         }
+    }
 
-        # Write JSON file with UTF-8 encoding
-        json_file = self.temp_path / "test_utf8.json"
-        with open(json_file, "w", encoding="utf-8") as f:
-            json.dump(test_data, f, ensure_ascii=False)
+    # Write JSON file with UTF-8 encoding
+    json_file = tmp_path / "test_utf8.json"
+    with open(json_file, "w", encoding="utf-8") as f:
+        json.dump(test_data, f, ensure_ascii=False)
 
-        # Load and verify
-        loaded_data = load_dict_from_file(json_file)
-        self.assertEqual(loaded_data, test_data)
-        self.assertEqual(loaded_data["metadata"]["description"], "Testing UTF-8: é ñ ü ™ ©")
-        self.assertEqual(loaded_data["metadata"]["emoji"], "🎉 🔬 🧠")
+    # Load and verify
+    loaded_data = load_dict_from_file(json_file)
+    assert loaded_data == test_data
+    assert loaded_data["metadata"]["description"] == "Testing UTF-8: é ñ ü ™ ©"
+    assert loaded_data["metadata"]["emoji"] == "🎉 🔬 🧠"
 
-    def test_load_yml_extension(self):
-        """Test loading .yml file (alternative YAML extension)."""
-        test_data = {"key": "value with UTF-8: café"}
 
-        yml_file = self.temp_path / "test.yml"
-        with open(yml_file, "w", encoding="utf-8") as f:
-            yaml.dump(test_data, f, allow_unicode=True)
+def test_load_yml_extension(tmp_path):
+    """Test loading .yml file (alternative YAML extension)."""
+    test_data = {"key": "value with UTF-8: café"}
 
-        loaded_data = load_dict_from_file(yml_file)
-        self.assertEqual(loaded_data, test_data)
+    yml_file = tmp_path / "test.yml"
+    with open(yml_file, "w", encoding="utf-8") as f:
+        yaml.dump(test_data, f, allow_unicode=True)
+
+    loaded_data = load_dict_from_file(yml_file)
+    assert loaded_data == test_data
 
 
 class TestDeepDict(unittest.TestCase):
