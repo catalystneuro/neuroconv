@@ -10,6 +10,7 @@
 * Fixed `get_json_schema_from_method_signature` to skip `*args` (VAR_POSITIONAL) parameters, which was causing schema validation errors when methods used the `*args` pattern for deprecating positional arguments. [PR #1647](https://github.com/catalystneuro/neuroconv/pull/1647)
 
 ## Features
+* Added `roi_ids_to_add` parameter to `BaseSegmentationExtractorInterface.add_to_nwbfile()` to select a subset of ROIs during conversion, reducing file size by excluding rejected or unwanted ROIs. Also added `roi_ids` property to inspect available ROI IDs. Requires roiextractors >= 0.8.0. [PR #1658](https://github.com/catalystneuro/neuroconv/pull/1658)
 * Added `backend`, `backend_configuration`, and `append_on_disk_nwbfile` parameters to `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile` for better control over file writing, matching the pattern from spikeinterface write functions. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 * Added support for stream_name to TDT recording interface [#1645](https://github.com/catalystneuro/neuroconv/pull/1645)
 * Added `backend`, `backend_configuration`, and `append_on_disk_nwbfile` parameters to `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile` for better control over file writing, matching the pattern from spikeinterface write functions. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)

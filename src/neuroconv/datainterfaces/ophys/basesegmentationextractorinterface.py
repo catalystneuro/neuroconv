@@ -25,6 +25,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         self.verbose = verbose
         self.segmentation_extractor = self._extractor_instance
 
+    @property
+    def roi_ids(self):
+        """Get all ROI IDs (cell and background) of the segmentation data."""
+        return self.segmentation_extractor.get_roi_ids() + self.segmentation_extractor.get_background_ids()
+
     def get_metadata_schema(self) -> dict:
         """
         Generate the metadata schema for Ophys data, updating required fields and properties.
@@ -155,6 +160,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
         stub_samples: int = 100,
+        *,
+        roi_ids_to_add: list[str | int] | None = None,
     ):
         """
         Add segmentation data to the NWB file.
@@ -202,6 +209,17 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             this method. See the backend configuration documentation for details.
         stub_samples : int, default: 100
             The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+        roi_ids_to_add : list of str or int, optional
+            The ROI IDs to include in the NWB file. If ``None`` (default), all ROIs are included.
+            Use this to filter out rejected or unwanted ROIs and reduce file size.
+            Can include both cell ROI IDs and background ROI IDs. Cell ROI IDs are written
+            to the main PlaneSegmentation, while background ROI IDs are written to the
+            background PlaneSegmentation (when ``include_background_segmentation=True``).
+            Neuropil traces (e.g., from Suite2p) share the same IDs as their corresponding cells
+            and are automatically included when those cell IDs are selected.
+            The IDs must be a subset of the IDs returned by
+            ``self.segmentation_extractor.get_roi_ids()`` and/or
+            ``self.segmentation_extractor.get_background_ids()``.
 
         Returns
         -------
@@ -224,13 +242,16 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         else:
             effective_stub_samples = stub_samples
 
+        segmentation_extractor = self.segmentation_extractor
+
+        if roi_ids_to_add is not None:
+            segmentation_extractor = segmentation_extractor.select_rois(roi_ids=roi_ids_to_add)
+
         if stub_test:
-            effective_stub_samples = min([effective_stub_samples, self.segmentation_extractor.get_num_samples()])
-            segmentation_extractor = self.segmentation_extractor.slice_samples(
+            effective_stub_samples = min([effective_stub_samples, segmentation_extractor.get_num_samples()])
+            segmentation_extractor = segmentation_extractor.slice_samples(
                 start_sample=0, end_sample=effective_stub_samples
             )
-        else:
-            segmentation_extractor = self.segmentation_extractor
 
         metadata = metadata or self.get_metadata()
 
