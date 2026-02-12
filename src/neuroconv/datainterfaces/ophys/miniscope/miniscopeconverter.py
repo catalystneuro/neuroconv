@@ -209,7 +209,7 @@ class MiniscopeConverter(ConverterPipe):
         if self._user_configuration_file_path is not None:
             # Load user configuration
             config_path = Path(self._user_configuration_file_path)
-            with config_path.open() as f:
+            with config_path.open(encoding="utf-8") as f:
                 self._user_config = json.load(f)
 
             data_directory_path_in_config = self._user_config.get("dataDirectory", "")

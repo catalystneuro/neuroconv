@@ -93,7 +93,7 @@ def transfer_globus_content(
             # ':' replacement for Windows drives
             source_folder = Path(batched_source_files[0]).parent.as_posix().replace(":", "")
             destination_folder_name = destination_folder_path.as_posix().replace(":", "")
-            with open(file=paths_file, mode="w") as f:
+            with open(file=paths_file, mode="w", encoding="utf-8") as f:
                 for source_file in batched_source_files:
                     file_name = Path(source_file).name
                     f.write(f"{file_name} {file_name}\n")
