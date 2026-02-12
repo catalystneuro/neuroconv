@@ -253,11 +253,13 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             pose_estimation_series_data = pose_estimation_data[keypoint_name]
             keypoint_name_without_spaces = keypoint_name.replace(" ", "")
 
+            # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+            # See https://github.com/hdmf-dev/hdmf/issues/1384
             pose_estimation_series_kwargs.update(
                 name=pose_estimation_metadata[keypoint_name_without_spaces]["name"],
                 description=pose_estimation_metadata[keypoint_name_without_spaces]["description"],
-                data=pose_estimation_series_data[["x", "y"]].values,
-                confidence=pose_estimation_series_data["likelihood"].values,
+                data=pose_estimation_series_data[["x", "y"]].to_numpy(dtype="float64"),
+                confidence=pose_estimation_series_data["likelihood"].to_numpy(dtype="float64"),
                 reference_frame=reference_frame or "(0,0) is unknown.",
                 unit="px",
             )

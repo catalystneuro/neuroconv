@@ -313,7 +313,9 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, usecols=[self.timestamps_column])
 
-        timestamps = fictrac_data_df[self.timestamps_column].values / 1000.0  # Transform to seconds
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        timestamps = fictrac_data_df[self.timestamps_column].to_numpy(dtype="float64") / 1000.0  # Transform to seconds
 
         # Correct for the case when only the first timestamp was replaced by system time
         first_difference = timestamps[1] - timestamps[0]
