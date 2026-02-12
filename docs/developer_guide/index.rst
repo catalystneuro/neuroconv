@@ -15,6 +15,7 @@ The most common contribution is for a user/developer to help us integrate a new 
     Schemas <schemas>
     Project Structure <project_structure>
     Testing Suite <testing_suite>
+    CI/CD Workflows <ci_workflows>
     Coding Style <style_guide>
     Building the Documentation <building_documentation>
     Building the Docker Image <docker_images>
