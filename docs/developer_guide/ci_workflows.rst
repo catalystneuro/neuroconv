@@ -3,92 +3,139 @@
 CI/CD Workflows
 ===============
 
-NeuroConv uses GitHub Actions for continuous integration and delivery. The workflows are organized as a
-two-tier hierarchy: **entry-point workflows** (triggered by GitHub events like pull requests or cron schedules)
-delegate to **reusable workflows** (called via ``workflow_call``). All workflow definitions live in
-``.github/workflows/``.
+NeuroConv uses `GitHub Actions <https://docs.github.com/en/actions/about-github-actions/understanding-github-actions>`_
+for continuous integration and delivery. The workflows are organized as a two-tier hierarchy:
+**entry-point workflows** (triggered by GitHub events like pull requests or cron schedules) delegate to
+`reusable workflows <https://docs.github.com/en/actions/sharing-automations/reusing-workflows>`_
+(called via ``workflow_call``). All workflow definitions live in ``.github/workflows/``.
 
 Workflow Architecture
 ---------------------
 
-.. code-block:: text
+The CI system has two layers:
 
-                       ENTRY-POINT WORKFLOWS
-                       (triggered by events)
-    ================================================================
+- **Entry-point workflows** are triggered by GitHub events (pull requests, cron schedules, releases).
+  They contain no test logic themselves; instead, they delegate to reusable workflows based on
+  what changed and when.
+- **Reusable workflows** contain the actual test and build steps. They accept parameters
+  (Python versions, OS matrix) and can be called by multiple entry-points.
 
-     PR / Merge Group         Daily (4AM UTC)        Weekly (Sun 2AM UTC)
-    +-----------------+    +------------------+    +------------------+
-    | deploy-tests    |    | dailies          |    | weeklies         |
-    +--------+--------+    +--------+---------+    +--------+---------+
-             |                      |                       |
-             v                      |                       v
-    +------------------+            |            build_and_upload_docker_
-    | assess-file-     |            |            image_rclone_with_config
-    | changes          |            |
-    +--------+---------+            |
-             |                      |          Daily Dev (4AM UTC)
-             |                      |         +------------------+
-             v                      |         | dev-dailies      |
-      SOURCE    GALLERY             |         +--------+---------+
-      CHANGED?  ONLY?               |                  |
-        |          |                |         +--------+----------+
-        v          v                |         |        |          |
-                                    |         |        v          |
-        REUSABLE WORKFLOWS          |         |   build_docker_   |
-        (called by above)           |         |   image_dev       |
-    ==========================      |         |                   |
-                                    |         |                   |
-    +----------------+  <-----------)---------)-------------------+
-    | testing        |  <-----------+         |
-    +----------------+                        |
-    | - imports      |            +-----------+-+
-    | - minimal      |            | dev-testing |  <--------------+
-    | - ecephys venv |            +-------------+
-    | - ophys venv   |
-    | - fiber venv   |
-    | - behavior venv|
-    | - full + cover |
-    +----------------+
+There are four entry-point workflows:
 
-    +----------------+            +---------------------+
-    | doctests       |            | formatwise-         |
-    +----------------+  <-- PR   | installation-testing |  <-- dailies
-                        gallery   +---------------------+
-    +----------------+  only
-    | live-service-  |            +---------------------+
-    | testing        |  <-- PR   | neuroconv_docker_   |
-    +----------------+  & dev-   | testing             |  <-- dailies
-    | max-parallel: 1|  daily    +---------------------+
-    +----------------+
-                                  +---------------------+
-                                  | rclone_docker_      |
-                                  | testing             |  <-- dev-dailies
-                                  +---------------------+
+- ``deploy-tests.yml``: runs on every pull request and merge group.
+- ``dailies.yml``: runs daily at 4AM UTC. Sends email on failure.
+- ``dev-dailies.yml``: runs daily at 4AM UTC. Tests against development branches of upstream dependencies. Sends email on failure.
+- ``weeklies.yml``: runs weekly on Sunday at 2AM UTC.
 
-    STANDALONE SCHEDULED WORKFLOWS
-    ================================
-    Mon:  generic_aws_tests
-    Tue:  rclone_aws_tests
-    Wed:  neuroconv_deployment_aws_tests
+These delegate to the following reusable workflows:
 
-    RELEASE PIPELINE (chained)
-    ================================
-    GitHub Release --> auto-publish (PyPI)
-                       --> build_docker_latest_release (GHCR)
-                            --> build_docker_yaml_variable (GHCR)
+- ``testing.yml``: main test suite (imports, minimal, modality isolation, full with coverage).
+- ``dev-testing.yml``: same tests but against dev branches of upstream dependencies, ubuntu-only.
+- ``doctests.yml``: executes code examples in the documentation gallery.
+- ``live-service-testing.yml``: DANDI, EMBER, and Globus integration tests.
+- ``formatwise-installation-testing.yml``: per-format isolated installation and doctest.
+- ``neuroconv_docker_testing.yml``: Docker container CLI tests.
+- ``rclone_docker_testing.yml``: Rclone Docker container tests.
+- ``assess-file-changes.yml``: determines which files changed to route PR tests.
+- ``build_docker_image_dev.yml``: builds and pushes a dev Docker image to GHCR.
+- ``build_docker_rclone_with_config.yml``: rebuilds the Rclone Docker image.
+- ``test-external-links.yml``: Sphinx linkcheck on documentation.
+
+The following table shows which entry-point calls which reusable workflow:
+
+.. list-table::
+   :header-rows: 1
+   :stub-columns: 1
+   :widths: 35 15 15 15 15
+
+   * - Reusable workflow
+     - deploy-tests (PR)
+     - dailies
+     - dev-dailies
+     - weeklies
+   * - assess-file-changes
+     - x
+     -
+     -
+     -
+   * - testing
+     - x
+     - x
+     -
+     -
+   * - doctests
+     - x :sup:`1`
+     -
+     -
+     -
+   * - live-service-testing
+     - x
+     -
+     - x
+     -
+   * - formatwise-installation-testing
+     -
+     - x
+     -
+     -
+   * - neuroconv_docker_testing
+     -
+     - x
+     -
+     -
+   * - dev-testing
+     -
+     -
+     - x
+     -
+   * - build_docker_image_dev
+     -
+     -
+     - x
+     -
+   * - rclone_docker_testing
+     -
+     -
+     - x
+     -
+   * - test-external-links
+     -
+     -
+     - x
+     -
+   * - build_docker_rclone_with_config
+     -
+     -
+     -
+     - x
+
+:sup:`1` Doctests run only when conversion gallery changed and source did not.
+
 
 Configuration
-~~~~~~~~~~~~~
+-------------
+
+Test Matrix
+~~~~~~~~~~~
 
 The test matrix is parameterized by two files that entry-point workflows load at runtime and pass as
 JSON strings to reusable workflows:
 
-- ``.github/workflows/all_python_versions.txt`` -- currently ``["3.10", "3.13"]``
-- ``.github/workflows/all_os_versions.txt`` -- currently ``["ubuntu-latest", "macos-latest", "windows-latest", "macos-15-intel"]``
+- ``.github/workflows/all_python_versions.txt``: currently ``["3.10", "3.13"]``
+- ``.github/workflows/all_os_versions.txt``: currently ``["ubuntu-latest", "macos-latest", "windows-latest", "macos-15-intel"]``
 
 To add or remove a Python version or OS from the matrix, edit the corresponding file. All entry-point
 workflows pick up the change automatically.
+
+Test Data
+~~~~~~~~~
+
+Test data flows through three layers:
+
+1. **GIN repositories**: canonical source (ephy_testing_data, ophys_testing_data, behavior_testing_data).
+2. **S3 mirror**: maintained by ``update-s3-testing-data.yml`` (manual dispatch) for faster CI downloads.
+3. **GitHub Actions cache**: the ``load-data`` composite action (in ``.github/actions/load-data/``)
+   caches data keyed by the GIN repository HEAD hash for cross-OS reuse within CI runs.
 
 
 Entry-Point Workflows
@@ -102,8 +149,8 @@ and ``workflow_dispatch``. Uses ``cancel-in-progress`` concurrency per branch.
 
 Flow:
 
-1. **load_python_and_os_versions** -- reads the matrix config files.
-2. **assess-file-changes** -- calls the reusable ``assess-file-changes.yml`` workflow to determine what changed.
+1. **load_python_and_os_versions**: reads the matrix config files.
+2. **assess-file-changes**: calls the reusable ``assess-file-changes.yml`` workflow to determine what changed.
 3. **Conditional routing:**
 
    - If ``SOURCE_CHANGED``: runs ``testing.yml`` and ``live-service-testing.yml``.
@@ -113,7 +160,7 @@ Flow:
 4. **Draft PR optimization:** when the PR is a draft, the matrix is reduced to Python 3.10 +
    ubuntu-latest only for faster feedback. When the PR is marked ready for review, the full matrix
    runs automatically (via the ``ready_for_review`` trigger type).
-5. **check-final-status** -- uses ``re-actors/alls-green`` to produce a single aggregated status check.
+5. **check-final-status**: uses ``re-actors/alls-green`` to produce a single aggregated status check.
    This allows individual jobs to be skipped (e.g., doctests when source changed) without blocking merge.
 
 dailies.yml (Daily Schedule)
@@ -121,14 +168,9 @@ dailies.yml (Daily Schedule)
 
 Triggered daily at ``0 4 * * *`` UTC (8PM PST / 5AM CET) and via ``workflow_dispatch``.
 
-Calls:
-
-- ``testing.yml`` -- full Python x OS matrix.
-- ``neuroconv_docker_testing.yml`` -- Docker CLI tests.
-- ``formatwise-installation-testing.yml`` -- per-format isolated installation + doctest.
-
-Each sub-workflow has a corresponding email notification job that fires on failure, sending to
-``DAILY_FAILURE_EMAIL_LIST`` via the ``dawidd6/action-send-mail`` action.
+Calls ``testing.yml`` (full matrix), ``neuroconv_docker_testing.yml``, and
+``formatwise-installation-testing.yml``. Each sub-workflow has a corresponding email notification
+job that fires on failure, sending to ``DAILY_FAILURE_EMAIL_LIST`` via ``dawidd6/action-send-mail``.
 
 dev-dailies.yml (Daily Dev Schedule)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -136,16 +178,9 @@ dev-dailies.yml (Daily Dev Schedule)
 Same cron schedule as ``dailies.yml``. Purpose: detect upstream breakage early by testing against
 development branches of key dependencies.
 
-Calls:
-
-- ``build_and_upload_docker_image_dev.yml`` -- builds and pushes a dev Docker image to GHCR.
-- ``dev-testing.yml`` -- runs the full test suite against dev/main branches of PyNWB, SpikeInterface,
-  HDMF, HDMF-Zarr, NEO, ROIExtractors, ProbeInterface, and DANDI CLI.
-- ``live-service-testing.yml`` -- DANDI, EMBER, and Globus integration tests.
-- ``rclone_docker_testing.yml`` -- Rclone Docker container tests.
-- ``test-external-links.yml`` -- Sphinx linkcheck on documentation.
-
-Each sub-workflow has an email notification job on failure.
+Calls ``build_and_upload_docker_image_dev.yml``, ``dev-testing.yml``, ``live-service-testing.yml``,
+``rclone_docker_testing.yml``, and ``test-external-links.yml``. Each sub-workflow has an email
+notification job on failure.
 
 weeklies.yml (Weekly Schedule)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -160,20 +195,20 @@ Standalone Scheduled Workflows
 
 These run on their own weekly cron schedules and are not called by other workflows:
 
-- **generic_aws_tests.yml** -- Monday at noon EST. Runs ``tests/remote_transfer_services/aws_tools_tests.py``.
-- **rclone_aws_tests.yml** -- Tuesday at noon EST. Runs ``tests/remote_transfer_services/yaml_aws_tools_tests.py``.
-- **neuroconv_deployment_aws_tests.yml** -- Wednesday at noon EST. Runs ``tests/remote_transfer_services/neuroconv_deployment_aws_tools_tests.py``.
+- **generic_aws_tests.yml**: Monday at noon EST. Runs ``tests/remote_transfer_services/aws_tools_tests.py``.
+- **rclone_aws_tests.yml**: Tuesday at noon EST. Runs ``tests/remote_transfer_services/yaml_aws_tools_tests.py``.
+- **neuroconv_deployment_aws_tests.yml**: Wednesday at noon EST. Runs ``tests/remote_transfer_services/neuroconv_deployment_aws_tools_tests.py``.
 
 Release Pipeline
 ~~~~~~~~~~~~~~~~
 
 The release pipeline is a chain of workflows triggered sequentially:
 
-1. **auto-publish.yml** -- triggered by a GitHub Release with a tag starting with ``v``. Builds sdist
+1. **auto-publish.yml**: triggered by a GitHub Release with a tag starting with ``v``. Builds sdist
    and wheel via ``python -m build`` and publishes to PyPI using Trusted Publishing (OIDC, no API token).
-2. **build_and_upload_docker_image_latest_release.yml** -- triggered by completion of ``auto-publish.yml``.
+2. **build_and_upload_docker_image_latest_release.yml**: triggered by completion of ``auto-publish.yml``.
    Builds and pushes ``ghcr.io/catalystneuro/neuroconv:latest`` and version-tagged images to GHCR.
-3. **build_and_upload_docker_image_yaml_variable.yml** -- triggered by completion of step 2. Builds
+3. **build_and_upload_docker_image_yaml_variable.yml**: triggered by completion of step 2. Builds
    the YAML variable variant image on top of the latest release.
 
 
@@ -186,10 +221,10 @@ assess-file-changes.yml
 Called by ``deploy-tests.yml``. Uses ``tj-actions/changed-files`` to inspect the diff and outputs
 three boolean flags:
 
-- ``SOURCE_CHANGED`` -- true if files under ``src/``, ``tests/``, ``pyproject.toml``, ``setup.py``,
+- ``SOURCE_CHANGED``: true if files under ``src/``, ``tests/``, ``pyproject.toml``, ``setup.py``,
   or ``.github/`` changed.
-- ``CONVERSION_GALLERY_CHANGED`` -- true if files under ``docs/conversion_examples_gallery/`` changed.
-- ``CHANGELOG_UPDATED`` -- true if ``CHANGELOG.md`` was modified.
+- ``CONVERSION_GALLERY_CHANGED``: true if files under ``docs/conversion_examples_gallery/`` changed.
+- ``CHANGELOG_UPDATED``: true if ``CHANGELOG.md`` was modified.
 
 testing.yml
 ~~~~~~~~~~~
@@ -255,57 +290,14 @@ Produces a GitHub Job Summary table with per-format pass/fail status.
 Docker Testing Workflows
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-- **neuroconv_docker_testing.yml** -- called by ``dailies.yml``. Pulls the latest release and YAML
+- **neuroconv_docker_testing.yml**: called by ``dailies.yml``. Pulls the latest release and YAML
   variable Docker images from GHCR, then runs ``tests/remote_transfer_services/docker_yaml_conversion_specification_cli.py``.
-- **rclone_docker_testing.yml** -- called by ``dev-dailies.yml``. Pulls the rclone_with_config Docker
+- **rclone_docker_testing.yml**: called by ``dev-dailies.yml``. Pulls the rclone_with_config Docker
   image and runs tests with Rclone credentials for Google Drive integration.
 
 
-Key Design Patterns
--------------------
-
-Smart Test Routing
-~~~~~~~~~~~~~~~~~~
-
-The ``deploy-tests.yml`` workflow avoids running unnecessary tests by using ``assess-file-changes``
-to detect what changed. If only documentation gallery files changed, only doctests run. If source or
-tests changed, the full suite runs. This keeps PR feedback fast for documentation-only changes.
-
-Draft PR Optimization
-~~~~~~~~~~~~~~~~~~~~~
-
-Draft PRs use a reduced matrix (Python 3.10, ubuntu-latest only) for fast iteration. When the PR is
-marked ready for review, the full matrix runs automatically. This is implemented via a ternary expression
-in the ``with:`` block of each reusable workflow call.
-
-Modality Isolation
-~~~~~~~~~~~~~~~~~~
-
-Each modality (ecephys, ophys, fiber_photometry, behavior) is tested in a dedicated virtual environment
-within ``testing.yml``. This catches dependency conflicts that would be hidden by a single full
-installation. The ``formatwise-installation-testing.yml`` workflow in dailies takes this further by
-testing each individual format's installation extras in isolation.
-
-Test Data Management
-~~~~~~~~~~~~~~~~~~~~
-
-Test data flows through three layers:
-
-1. **GIN repositories** -- canonical source (ephy_testing_data, ophys_testing_data, behavior_testing_data).
-2. **S3 mirror** -- maintained by ``update-s3-testing-data.yml`` (manual dispatch) for faster CI downloads.
-3. **GitHub Actions cache** -- the ``load-data`` composite action (in ``.github/actions/load-data/``)
-   caches data keyed by the GIN repository HEAD hash for cross-OS reuse within CI runs.
-
-Email Notifications
-~~~~~~~~~~~~~~~~~~~
-
-All scheduled workflows (dailies, dev-dailies, weeklies) include per-job email notification on failure.
-Notifications are sent to the ``DAILY_FAILURE_EMAIL_LIST`` secret via ``dawidd6/action-send-mail``.
-This ensures failures in nightly and weekly runs are not silently missed.
-
-
 Required Secrets
-~~~~~~~~~~~~~~~~
+----------------
 
 .. list-table::
    :header-rows: 1
