@@ -111,7 +111,7 @@ class AbfInterface(BaseIcephysInterface):
         if self.source_data["icephys_metadata"]:
             icephys_metadata = self.source_data["icephys_metadata"]
         elif self.source_data["icephys_metadata_file_path"]:
-            with open(self.source_data["icephys_metadata_file_path"]) as json_file:
+            with open(self.source_data["icephys_metadata_file_path"], encoding="utf-8") as json_file:
                 icephys_metadata = json.load(json_file)
         else:
             icephys_metadata = dict()

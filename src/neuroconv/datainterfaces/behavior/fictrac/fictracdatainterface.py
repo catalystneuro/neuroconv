@@ -313,7 +313,9 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, usecols=[self.timestamps_column])
 
-        timestamps = fictrac_data_df[self.timestamps_column].values / 1000.0  # Transform to seconds
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        timestamps = fictrac_data_df[self.timestamps_column].to_numpy(dtype="float64") / 1000.0  # Transform to seconds
 
         # Correct for the case when only the first timestamp was replaced by system time
         first_difference = timestamps[1] - timestamps[0]
@@ -377,7 +379,7 @@ def extract_session_start_time(
         The session start time of in UTC as a datetime object. `None` if the session start time cannot be extracted.
 
     """
-    with open(file_path, "r") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         first_line = file.readline()
 
     timestamps_column = FicTracDataInterface.timestamps_column
@@ -464,7 +466,7 @@ def parse_fictrac_config(file_path: FilePath) -> dict:
     }
 
     # Open and read the file
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         file_lines = f.readlines()
 
     parsed_config = {}

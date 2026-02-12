@@ -132,7 +132,6 @@ behavior = [
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
     "spikeinterface>=0.103.0",
     "neo>=0.14.3",
-    "numpy<2.4", # TODO: remove cap on NumPy when the following issue is resolved: https://github.com/python-quantities/python-quantities/issues/265
 ]
 alphaomega = [
     "neuroconv[ecephys_minimal]",
@@ -247,7 +246,6 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
 abf = [
     "ndx-dandi-icephys>=0.4.0",
     "neo>=0.13.2",
-    "numpy<2.4", # TODO: remove cap on NumPy when the following issue is resolved: https://github.com/python-quantities/python-quantities/issues/265
 ]
 icephys = [
     "neuroconv[abf]",
@@ -266,7 +264,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>0.7.2",
+    "roiextractors>=0.8.0",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
