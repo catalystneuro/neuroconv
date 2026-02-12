@@ -5,6 +5,7 @@
 * Deprecated returning NWBFile when using `append_on_disk_nwbfile=True` in `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile`. Will return None on or after June 2026. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 
 ## Bug Fixes
+* Fixed timestamp writing logic in `_add_photon_series_to_nwbfile`, `add_photon_series_to_nwbfile`, and `_add_fluorescence_traces_to_nwbfile` to check `get_native_timestamps()` when `has_time_vector()` is False. Previously, native hardware timestamps from source formats (e.g. Minian, ScanImage) were silently dropped, falling back to sampling rate only. [PR #1662](https://github.com/catalystneuro/neuroconv/pull/1662)
 * Fixed `UnicodeDecodeError` on Windows when reading YAML and JSON files containing UTF-8 characters by adding explicit `encoding='utf-8'` parameter to all text file operations. This ensures cross-platform compatibility per PEP 597 recommendations. [PR #1657](https://github.com/catalystneuro/neuroconv/pull/1657)
 * Fixed bug in `write_imaging_to_nwbfile` where `nwbfile` was incorrectly passed to `add_imaging_to_nwbfile` instead of the created/loaded nwbfile. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 * Fixed bug in `write_segmentation_to_nwbfile` where invalid `plane_num` parameter was passed to `add_segmentation_to_nwbfile`. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
