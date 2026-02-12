@@ -42,10 +42,10 @@ def load_dict_from_file(file_path: FilePath) -> dict[str, Any]:
     assert file_path.suffix in (".json", ".yml", ".yaml"), f"{file_path} is not a valid yaml or .json file."
 
     if file_path.suffix in (".yml", ".yaml"):
-        with open(file=file_path, mode="r") as stream:
+        with open(file=file_path, mode="r", encoding="utf-8") as stream:
             dictionary = yaml.load(stream=stream, Loader=_NoDatesSafeLoader)
     elif file_path.suffix == ".json":
-        with open(file=file_path, mode="r") as fp:
+        with open(file=file_path, mode="r", encoding="utf-8") as fp:
             dictionary = json.load(fp=fp)
     return dictionary
 

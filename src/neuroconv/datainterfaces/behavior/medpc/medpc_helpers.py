@@ -18,7 +18,7 @@ def get_medpc_variables(file_path: FilePath, variable_names: list) -> dict:
     dict
         A dictionary with the variable names as keys and a list of variable values as values.
     """
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     medpc_variables = {name: [] for name in variable_names}
     for line in lines:
@@ -116,7 +116,7 @@ def read_medpc_file(
     ValueError
         If the session with the given conditions could not be found.
     """
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     session_lines = _get_session_lines(lines, session_conditions=session_conditions, start_variable=start_variable)
 

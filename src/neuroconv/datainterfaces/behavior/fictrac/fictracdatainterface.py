@@ -377,7 +377,7 @@ def extract_session_start_time(
         The session start time of in UTC as a datetime object. `None` if the session start time cannot be extracted.
 
     """
-    with open(file_path, "r") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         first_line = file.readline()
 
     timestamps_column = FicTracDataInterface.timestamps_column
@@ -464,7 +464,7 @@ def parse_fictrac_config(file_path: FilePath) -> dict:
     }
 
     # Open and read the file
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         file_lines = f.readlines()
 
     parsed_config = {}
