@@ -12,8 +12,7 @@ Inspecting Available ROI IDs
 -----------------------------
 
 Before filtering, you can inspect the available ROI IDs using the ``roi_ids``
-property on any segmentation interface. This property returns all ROI IDs in the
-source data, including both cell and background ROIs:
+property on any segmentation interface:
 
 .. code-block:: python
 
@@ -21,7 +20,7 @@ source data, including both cell and background ROIs:
 
     interface = MockSegmentationInterface(num_rois=20)
 
-    # Inspect all available ROI IDs (cell + background)
+    # Inspect all available ROI IDs
     print("All ROI IDs:", interface.roi_ids)
 
 

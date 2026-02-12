@@ -40,14 +40,12 @@ class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     interface_kwargs = dict()
 
     def test_roi_ids_property(self):
-        """Test that roi_ids property returns all ROI IDs (cell + background)."""
+        """Test that roi_ids property returns cell ROI IDs."""
         interface = MockSegmentationInterface(num_rois=10)
         roi_ids = interface.roi_ids
 
         expected_cell_ids = interface.segmentation_extractor.get_roi_ids()
-        expected_background_ids = interface.segmentation_extractor.get_background_ids()
-        expected_all_ids = expected_cell_ids + expected_background_ids
-        assert roi_ids == expected_all_ids
+        assert roi_ids == expected_cell_ids
 
     def test_add_to_nwbfile_with_roi_ids_to_add(self):
         """Test that passing roi_ids_to_add filters the ROIs in the output."""
