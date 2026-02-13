@@ -1,5 +1,6 @@
 """Interface for Thor TIFF files with OME metadata."""
 
+import warnings
 from datetime import datetime, timezone
 
 import numpy as np
@@ -42,7 +43,9 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, file_path: FilePath, channel_name: str | None = None, verbose: bool = False):
+    def __init__(
+        self, file_path: FilePath, *args, channel_name: str | None = None, verbose: bool = False
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Initialize reading of a TIFF file.
 
@@ -55,6 +58,32 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
             If True, print verbose output
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "channel_name",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to ThorImagingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            channel_name = positional_values.get("channel_name", channel_name)
+            verbose = positional_values.get("verbose", verbose)
 
         super().__init__(file_path=file_path, channel_name=channel_name, verbose=verbose)
         self.channel_name = channel_name

@@ -1,6 +1,7 @@
 # v0.9.2 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Enforced keyword-only arguments across all data interfaces: `__init__` methods now only accept `file_path`/`folder_path`/`file_paths` as positional arguments, and `add_to_nwbfile` methods only accept `nwbfile` and `metadata` as positional arguments. Existing positional usage in `add_to_nwbfile` will emit a `FutureWarning` and will be removed on or after August 2026. [PR #1663](https://github.com/catalystneuro/neuroconv/pull/1663)
 * Deprecated using `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile` without `nwbfile_path`. Use `add_imaging_to_nwbfile` and `add_segmentation_to_nwbfile` instead for adding data to in-memory NWBFile objects. Will be removed on or after June 2026. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 * Deprecated returning NWBFile when using `append_on_disk_nwbfile=True` in `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile`. Will return None on or after June 2026. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 

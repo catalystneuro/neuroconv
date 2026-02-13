@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb.behavior import BehavioralEpochs, IntervalSeries
@@ -43,6 +45,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         session_conditions: dict,
         start_variable: str,
         metadata_medpc_name_to_info_dict: dict,
@@ -71,6 +74,41 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         verbose : bool, optional
             Whether to print verbose output, by default True
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "session_conditions",
+                "start_variable",
+                "metadata_medpc_name_to_info_dict",
+                "aligned_timestamp_names",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to MedPCInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            session_conditions = positional_values.get("session_conditions", session_conditions)
+            start_variable = positional_values.get("start_variable", start_variable)
+            metadata_medpc_name_to_info_dict = positional_values.get(
+                "metadata_medpc_name_to_info_dict", metadata_medpc_name_to_info_dict
+            )
+            aligned_timestamp_names = positional_values.get("aligned_timestamp_names", aligned_timestamp_names)
+            verbose = positional_values.get("verbose", verbose)
+
         # This import is to assure that the ndx_events is in the global namespace when an pynwb.io object is created
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_events  # noqa: F401
