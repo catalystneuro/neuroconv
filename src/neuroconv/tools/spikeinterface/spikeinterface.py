@@ -1045,10 +1045,10 @@ def add_electrodes_to_nwbfile(
     channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
 
     # Get indices where this recording's data goes (all should be found now)
-    all_indices = np.arange(electrode_table_size)
     channel_ids = recording.get_channel_ids()
     indices_for_new_data = [channel_map[channel_id] for channel_id in channel_ids]
-    indices_for_null_values = [index for index in all_indices if index not in indices_for_new_data]
+    new_indices_set = set(indices_for_new_data)
+    indices_for_null_values = [index for index in range(electrode_table_size) if index not in new_indices_set]
     extending_column = len(indices_for_null_values) > 0
 
     # Add properties as columns (exclude channel_name and electrode_name as they were handled above)
@@ -2173,14 +2173,17 @@ def _add_units_table_to_nwbfile(
         cols_args["data"] = extended_data
         units_table.add_column("unit_name", **cols_args)
 
-    # Build  a channel name to electrode table index map
-    table_df = units_table.to_dataframe().reset_index()
-    unit_name_to_electrode_index = {
-        unit_name: table_df.query(f"unit_name=='{unit_name}'").index[0] for unit_name in unit_name_array
-    }
+    # Build a unit_name to units table row index map directly from the table column.
+    # This avoids materializing a pandas DataFrame and query parsing/casting pitfalls.
+    unit_names_in_table = units_table["unit_name"][:]
+    unit_name_to_electrode_index = {}
+    for index, unit_name in enumerate(unit_names_in_table):
+        if unit_name not in unit_name_to_electrode_index:
+            unit_name_to_electrode_index[unit_name] = index
 
     indices_for_new_data = [unit_name_to_electrode_index[unit_name] for unit_name in unit_name_array]
-    indices_for_null_values = table_df.index.difference(indices_for_new_data).values
+    new_indices_set = set(indices_for_new_data)
+    indices_for_null_values = [index for index in range(unit_table_size) if index not in new_indices_set]
     extending_column = len(indices_for_null_values) > 0
 
     # Add properties as columns
@@ -2871,8 +2874,11 @@ def _get_electrode_group_indices(recording, nwbfile):
     if group_names is None:
         electrode_group_indices = None
     else:
-        group_names = [str(group_name) for group_name in group_names]
-        electrode_group_indices = nwbfile.electrodes.to_dataframe().query(f"group_name in {group_names}").index.values
+        group_names_set = {str(group_name) for group_name in group_names}
+        table_group_names = nwbfile.electrodes["group_name"][:]
+        electrode_group_indices = np.array(
+            [index for index, group_name in enumerate(table_group_names) if str(group_name) in group_names_set]
+        )
     return electrode_group_indices
 
 
