@@ -393,7 +393,11 @@ filterwarnings = [
     "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
     "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
     "error:Importing classes at __init__ has been deprecated in favor of only importing function-size wrappers and will be removed in 0.105.0.*:UserWarning:spikeinterface.extractors",  # TODO: remove when spikeinterface>=0.105.0
+    "error::EncodingWarning:neuroconv",  # Require explicit encoding= in all open() calls per PEP 597
 ]
+
+[tool.pytest_env]
+PYTHONWARNDEFAULTENCODING = "1"  # Emit EncodingWarning when open() lacks explicit encoding (PEP 597)
 
 [tool.black]
 line-length = 120
@@ -451,6 +455,7 @@ ignore-words-list = 'assertin,sortings,Tye'
 test = [
     "pytest",
     "pytest-cov",
+    "pytest-env",  # Set environment variables in pyproject.toml for pytest
     "parameterized>=0.8.1",
     "pytest-xdist"  # Runs tests on parallel
 ]
