@@ -1,3 +1,4 @@
+import warnings
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal
@@ -266,6 +267,7 @@ class _VideoInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         external_mode: bool = True,
         starting_frames: list[int] | None = None,
@@ -327,6 +329,41 @@ class _VideoInterface(BaseDataInterface):
             If the processing module specified by module_name does not exist, it will be created with this description.
             The default description is the same as used by the conversion_tools.get_module function.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "external_mode",
+                "starting_frames",
+                "chunk_data",
+                "module_name",
+                "module_description",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to VideoInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            external_mode = positional_values.get("external_mode", external_mode)
+            starting_frames = positional_values.get("starting_frames", starting_frames)
+            chunk_data = positional_values.get("chunk_data", chunk_data)
+            module_name = positional_values.get("module_name", module_name)
+            module_description = positional_values.get("module_description", module_description)
+
         metadata = metadata or dict()
         file_paths = self.source_data["file_paths"]
 
