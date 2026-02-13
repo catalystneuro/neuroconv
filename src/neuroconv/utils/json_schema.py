@@ -60,6 +60,17 @@ class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
     Custom JSON encoder for conversion options of the data interfaces and converters (i.e. kwargs).
     """
 
+    def default(self, obj):
+        # Serialize classes to their qualified name (e.g. progress_bar_class in iterator_options)
+        if isinstance(obj, type):
+            return f"{obj.__module__}.{obj.__qualname__}"
+
+        # Serialize callable objects (e.g. callback functions in progress_bar_options)
+        if callable(obj):
+            return f"{obj.__module__}.{obj.__qualname__}"
+
+        return super().default(obj)
+
 
 # This is used in the Guide so we will keep it public.
 NWBMetaDataEncoder = _NWBMetaDataEncoder
