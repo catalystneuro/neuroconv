@@ -151,7 +151,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         stub_frames: int | None = None,
         include_background_segmentation: bool = False,
