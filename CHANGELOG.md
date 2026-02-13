@@ -9,7 +9,7 @@
 
 ## Improvements
 
-# v0.9.2 (February 13,  2026)
+# v0.9.2 (February 13, 2026)
 
 ## Removals, Deprecations and Changes
 * Enforced keyword-only arguments across all data interfaces: `__init__` methods now only accept `file_path`/`folder_path`/`file_paths` as positional arguments, and `add_to_nwbfile` methods only accept `nwbfile` and `metadata` as positional arguments. Existing positional usage in `add_to_nwbfile` will emit a `FutureWarning` and will be removed on or after August 2026. [PR #1663](https://github.com/catalystneuro/neuroconv/pull/1663)
