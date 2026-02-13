@@ -433,6 +433,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "OnePhotonSeries",
         **kwargs,
     ):
@@ -441,6 +442,33 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         This method adds the Miniscope device and then delegates to the parent class.
         """
+        # Handle deprecated positional arguments
+        if args:
+            import warnings
+
+            parameter_names = [
+                "photon_series_type",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                "Passing arguments positionally to MiniscopeImagingInterface.add_to_nwbfile() is deprecated "
+                "and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
+
         from ndx_miniscope.utils import add_miniscope_device
 
         # Add Miniscope device - required for proper ndx_miniscope.Miniscope device type
