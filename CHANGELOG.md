@@ -3,6 +3,7 @@
 ## Removals, Deprecations and Changes
 
 ## Bug Fixes
+* Fixed timestamp writing logic in `_add_photon_series_to_nwbfile`, `add_photon_series_to_nwbfile`, and `_add_fluorescence_traces_to_nwbfile` to check `get_native_timestamps()` when `has_time_vector()` is False. Previously, native hardware timestamps from source formats (e.g. Minian, ScanImage) were silently dropped, falling back to sampling rate only. [PR #1662](https://github.com/catalystneuro/neuroconv/pull/1662)
 
 ## Features
 
