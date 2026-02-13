@@ -1673,6 +1673,30 @@ class TestAddUnitsTable(TestCase):
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
 
+    def test_property_matching_by_unit_name_with_quotes(self):
+        """Ensure matching by unit_name works when names contain apostrophes.
+
+        This test was added in PR #1666, which removed pandas DataFrame/query matching
+        (`to_dataframe().query(...)`) from units-table extension logic. It protects
+        against regressions to query-string based matching (e.g., `pandas.query`),
+        which can fail or mis-parse when unit_name contains quotes.
+        """
+        quoted_unit_names = ["unit'a", "unit'b", "unit'c", "unit'd"]
+        self.sorting_1.set_property(key="unit_name", values=quoted_unit_names)
+        self.sorting_1.set_property(key="property", values=["value_a", "value_b", "value_c", "value_d"])
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        self.sorting_2.set_property(key="unit_name", values=["unit'c", "unit'd", "unit'e", "unit'f"])
+        self.sorting_2.set_property(key="property", values=["value_c2", "value_d2", "value_e", "value_f"])
+
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        expected_unit_names = ["unit'a", "unit'b", "unit'c", "unit'd", "unit'e", "unit'f"]
+        expected_property_values = ["value_a", "value_b", "value_c", "value_d", "value_e", "value_f"]
+        self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
+        self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
+
     def test_integer_unit_names_overwrite(self):
         """Ensure unit names merge correctly after appending when unit names are integers."""
         unit_ids = self.base_sorting.get_unit_ids()
