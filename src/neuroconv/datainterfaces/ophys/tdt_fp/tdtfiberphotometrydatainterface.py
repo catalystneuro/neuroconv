@@ -130,7 +130,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 f"evtype must be a list containing some combination of 'all', 'epocs', 'snips', 'streams', or 'scalars', "
                 f"but got {evtype_string}."
             )
-        with open(os.devnull, "w") as f, redirect_stdout(f):
+        with open(os.devnull, "w", encoding="utf-8") as f, redirect_stdout(f):
             tdt_photometry = tdt.read_block(str(folder_path), t1=t1, t2=t2, evtype=evtype)
         return tdt_photometry
 
