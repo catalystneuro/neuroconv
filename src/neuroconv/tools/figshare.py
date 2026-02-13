@@ -58,7 +58,7 @@ def download_article(article_record: dict, destination: str) -> None:
     # write metadata file
     metadata_filepath = os.path.join(destination, "metadata.json")
     if not os.path.exists(metadata_filepath):
-        with open(metadata_filepath, "w") as metadata_file:
+        with open(metadata_filepath, "w", encoding="utf-8") as metadata_file:
             json.dump(
                 dict(NWBFile=dict(experiment_description=article_metadata["description"])),
                 metadata_file,

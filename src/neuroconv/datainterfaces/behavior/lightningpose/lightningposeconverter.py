@@ -93,7 +93,7 @@ class LightningPoseConverter(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        *args,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
         external_mode: bool = True,

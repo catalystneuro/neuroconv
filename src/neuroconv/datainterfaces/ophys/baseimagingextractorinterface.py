@@ -169,6 +169,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
@@ -220,6 +221,46 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         """
 
         from ...tools.roiextractors import add_imaging_to_nwbfile
+
+        # TODO: Remove this block in August 2026 or after when positional arguments are no longer supported.
+        if args:
+            parameter_names = [
+                "photon_series_type",
+                "photon_series_index",
+                "parent_container",
+                "stub_test",
+                "stub_frames",
+                "always_write_timestamps",
+                "iterator_type",
+                "iterator_options",
+                "stub_samples",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in August 2026 or after. Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to add_to_nwbfile is deprecated "
+                f"and will be removed in August 2026 or after. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
+            photon_series_index = positional_values.get("photon_series_index", photon_series_index)
+            parent_container = positional_values.get("parent_container", parent_container)
+            stub_test = positional_values.get("stub_test", stub_test)
+            stub_frames = positional_values.get("stub_frames", stub_frames)
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
+            iterator_type = positional_values.get("iterator_type", iterator_type)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+            stub_samples = positional_values.get("stub_samples", stub_samples)
 
         # Handle deprecation of stub_frames in favor of stub_samples
         if stub_frames is not None and stub_samples != 100:

@@ -25,6 +25,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         self.verbose = verbose
         self.segmentation_extractor = self._extractor_instance
 
+    @property
+    def roi_ids(self):
+        """Get all ROI IDs of the segmentation data."""
+        return self.segmentation_extractor.get_roi_ids()
+
     def get_metadata_schema(self) -> dict:
         """
         Generate the metadata schema for Ophys data, updating required fields and properties.
@@ -146,6 +151,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         stub_frames: int | None = None,
         include_background_segmentation: bool = False,
@@ -155,6 +161,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
         stub_samples: int = 100,
+        roi_ids_to_add: list[str | int] | None = None,
     ):
         """
         Add segmentation data to the NWB file.
@@ -202,12 +209,62 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             this method. See the backend configuration documentation for details.
         stub_samples : int, default: 100
             The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+        roi_ids_to_add : list of str or int, optional
+            The ROI IDs to include in the NWB file. If ``None`` (default), all ROIs are included.
+            Use this to filter out rejected or unwanted ROIs and reduce file size.
+            Neuropil traces (e.g., from Suite2p) share the same IDs as their corresponding cells
+            and are automatically included when those cell IDs are selected.
+            The IDs must be a subset of the IDs returned by ``self.roi_ids``.
 
         Returns
         -------
 
         """
         from ...tools.roiextractors import add_segmentation_to_nwbfile
+
+        # TODO: Remove this block in August 2026 or after when positional arguments are no longer supported.
+        if args:
+            parameter_names = [
+                "stub_test",
+                "stub_frames",
+                "include_background_segmentation",
+                "include_roi_centroids",
+                "include_roi_acceptance",
+                "mask_type",
+                "plane_segmentation_name",
+                "iterator_options",
+                "stub_samples",
+                "roi_ids_to_add",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in August 2026 or after. Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to add_to_nwbfile is deprecated "
+                f"and will be removed in August 2026 or after. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            stub_frames = positional_values.get("stub_frames", stub_frames)
+            include_background_segmentation = positional_values.get(
+                "include_background_segmentation", include_background_segmentation
+            )
+            include_roi_centroids = positional_values.get("include_roi_centroids", include_roi_centroids)
+            include_roi_acceptance = positional_values.get("include_roi_acceptance", include_roi_acceptance)
+            mask_type = positional_values.get("mask_type", mask_type)
+            plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+            stub_samples = positional_values.get("stub_samples", stub_samples)
+            roi_ids_to_add = positional_values.get("roi_ids_to_add", roi_ids_to_add)
 
         # Handle deprecation of stub_frames in favor of stub_samples
         if stub_frames is not None and stub_samples != 100:
@@ -224,13 +281,16 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         else:
             effective_stub_samples = stub_samples
 
+        segmentation_extractor = self.segmentation_extractor
+
+        if roi_ids_to_add is not None:
+            segmentation_extractor = segmentation_extractor.select_rois(roi_ids=roi_ids_to_add)
+
         if stub_test:
-            effective_stub_samples = min([effective_stub_samples, self.segmentation_extractor.get_num_samples()])
-            segmentation_extractor = self.segmentation_extractor.slice_samples(
+            effective_stub_samples = min([effective_stub_samples, segmentation_extractor.get_num_samples()])
+            segmentation_extractor = segmentation_extractor.slice_samples(
                 start_sample=0, end_sample=effective_stub_samples
             )
-        else:
-            segmentation_extractor = self.segmentation_extractor
 
         metadata = metadata or self.get_metadata()
 
