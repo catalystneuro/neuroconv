@@ -1,3 +1,5 @@
+import warnings
+
 from pydantic import DirectoryPath
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -28,6 +30,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         keep_good_only: bool = False,
         verbose: bool = False,
     ):
@@ -42,6 +45,33 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
             If True, only Kilosort-labeled 'good' units are returned
         verbose: bool, default: True
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "keep_good_only",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to KiloSortSortingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            keep_good_only = positional_values.get("keep_good_only", keep_good_only)
+            verbose = positional_values.get("verbose", verbose)
+
         super().__init__(folder_path=folder_path, keep_good_only=keep_good_only, verbose=verbose)
 
     def get_metadata(self) -> DeepDict:

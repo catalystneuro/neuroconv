@@ -1,3 +1,5 @@
+import warnings
+
 from pydantic import DirectoryPath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -79,6 +81,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stream_name: str | None = None,
         block_index: int | None = None,
         stub_test: bool = False,
@@ -101,6 +104,39 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stream_name",
+                "block_index",
+                "stub_test",
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to OpenEphysBinaryRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stream_name = positional_values.get("stream_name", stream_name)
+            block_index = positional_values.get("block_index", block_index)
+            stub_test = positional_values.get("stub_test", stub_test)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+
         from ._openephys_utils import _read_settings_xml
 
         self._xml_root = _read_settings_xml(folder_path)

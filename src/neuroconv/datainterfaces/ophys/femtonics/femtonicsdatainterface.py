@@ -1,5 +1,6 @@
 """Femtonics imaging interface for NeuroConv."""
 
+import warnings
 from typing import Optional
 
 from pydantic import FilePath
@@ -24,6 +25,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         session_name: Optional[str] = None,
         munit_name: Optional[str] = None,
         channel_name: Optional[str] = None,
@@ -60,6 +62,36 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, optional
             Whether to print verbose output. Default is False.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "session_name",
+                "munit_name",
+                "channel_name",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to FemtonicsImagingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            session_name = positional_values.get("session_name", session_name)
+            munit_name = positional_values.get("munit_name", munit_name)
+            channel_name = positional_values.get("channel_name", channel_name)
+            verbose = positional_values.get("verbose", verbose)
 
         # Store parameters for later use
         self._file_path = file_path
