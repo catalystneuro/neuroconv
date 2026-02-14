@@ -1,4 +1,14 @@
-# v0.9.2 (Upcoming)
+# v0.9.3 (Upcoming)
+
+## Removals, Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+
+## Improvements
+
+# v0.9.2 (February 13,  2026)
 
 ## Removals, Deprecations and Changes
 * Enforced keyword-only arguments across all data interfaces: `__init__` methods now only accept `file_path`/`folder_path`/`file_paths` as positional arguments, and `add_to_nwbfile` methods only accept `nwbfile` and `metadata` as positional arguments. Existing positional usage in `add_to_nwbfile` will emit a `FutureWarning` and will be removed on or after August 2026. [PR #1663](https://github.com/catalystneuro/neuroconv/pull/1663)
@@ -10,6 +20,7 @@
 * Fixed bug in `write_imaging_to_nwbfile` where `nwbfile` was incorrectly passed to `add_imaging_to_nwbfile` instead of the created/loaded nwbfile. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 * Fixed bug in `write_segmentation_to_nwbfile` where invalid `plane_num` parameter was passed to `add_segmentation_to_nwbfile`. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 * Fixed `get_json_schema_from_method_signature` to skip `*args` (VAR_POSITIONAL) parameters, which was causing schema validation errors when methods used the `*args` pattern for deprecating positional arguments. [PR #1647](https://github.com/catalystneuro/neuroconv/pull/1647)
+* Fixed a bug in unit table addition to nwbfile where `unit_name` values containing apostrophes could fail matching due to pandas `to_dataframe().query(...)` parsing. Replaced query-based matching with direct `unit_name` column mapping, with improved memory efficiency as a side effect. Added regression coverage for quoted unit names. [PR #1666](https://github.com/catalystneuro/neuroconv/pull/1666)
 
 ## Features
 * Added `roi_ids_to_add` parameter to `BaseSegmentationExtractorInterface.add_to_nwbfile()` to select a subset of ROIs during conversion, reducing file size by excluding rejected or unwanted ROIs. Also added `roi_ids` property to inspect available ROI IDs. Requires roiextractors >= 0.8.0. [PR #1658](https://github.com/catalystneuro/neuroconv/pull/1658)
@@ -17,10 +28,10 @@
 * Added support for stream_name to TDT recording interface [#1645](https://github.com/catalystneuro/neuroconv/pull/1645)
 * Added `backend`, `backend_configuration`, and `append_on_disk_nwbfile` parameters to `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile` for better control over file writing, matching the pattern from spikeinterface write functions. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 * Added `backend`, `backend_configuration`, and `append_on_disk_nwbfile` support to `LightningPoseConverter`. [PR #1652](https://github.com/catalystneuro/neuroconv/pull/1652)
+* Added `backend`, `backend_configuration`, and `append_on_disk_nwbfile` parameters to `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile` for better control over file writing, matching the pattern from spikeinterface write functions. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 
 ## Improvements
 * Added explicit numpy conversion for pandas data to ensure HDMF compatibility with pandas 3.0+. Changed `.values` to `.to_numpy()` in interfaces that read CSV data (TimeIntervalsInterface, FicTracDataInterface, MiniscopeHeadOrientationInterface, LightningPoseDataInterface) and added `.item()` conversion for row iteration in `convert_df_to_time_intervals`. [PR #1646](https://github.com/catalystneuro/neuroconv/pull/1646)
-* Added `backend`, `backend_configuration`, and `append_on_disk_nwbfile` parameters to `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile` for better control over file writing, matching the pattern from spikeinterface write functions. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
 * Renamed test variables `values_dic` to `electrode_row_kwargs` and `unit_row_kwargs` in SpikeInterface tests for improved clarity. [PR #1651](https://github.com/catalystneuro/neuroconv/pull/1651)
 * Removed cap on NumPy version for ecephys and icephys formats now that python-quantities v0.16.4 supports NumPy 2.4. [#1648](https://github.com/catalystneuro/neuroconv/pull/1648)
 * Added `EncodingWarning` enforcement via `pytest-env` to catch missing `encoding=` in `open()` calls during tests (PEP 597). [PR #1660](https://github.com/catalystneuro/neuroconv/pull/1660)
