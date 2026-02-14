@@ -478,17 +478,26 @@ def _add_photon_series_to_nwbfile(
         timestamps = imaging.get_timestamps()
         photon_series_kwargs.update(timestamps=timestamps)
     else:
-        imaging_has_timestamps = imaging.has_time_vector()
-        if imaging_has_timestamps:
+        # Resolve timestamps: user-set > native hardware > none
+        timestamps_were_set = imaging.has_time_vector()
+        if timestamps_were_set:
             timestamps = imaging.get_timestamps()
-            estimated_rate = calculate_regular_series_rate(series=timestamps)
+        else:
+            timestamps = imaging.get_native_timestamps()
+
+        timestamps_are_available = timestamps is not None
+
+        if timestamps_are_available:
+            rate = calculate_regular_series_rate(series=timestamps)
+            timestamps_are_regular = rate is not None
             starting_time = timestamps[0]
         else:
-            estimated_rate = float(imaging.get_sampling_frequency())
+            rate = float(imaging.get_sampling_frequency())
+            timestamps_are_regular = True
             starting_time = 0.0
 
-        if estimated_rate:
-            photon_series_kwargs.update(rate=estimated_rate, starting_time=starting_time)
+        if timestamps_are_regular:
+            photon_series_kwargs.update(rate=rate, starting_time=starting_time)
         else:
             photon_series_kwargs.update(timestamps=timestamps)
 
@@ -1308,24 +1317,31 @@ def _add_fluorescence_traces_to_nwbfile(
                 stacklevel=2,
             )
 
-        segmentation_has_timestamps = segmentation_extractor.has_time_vector()
-        if segmentation_has_timestamps:
+        # Resolve timestamps: user-set > native hardware > none
+        timestamps_were_set = segmentation_extractor.has_time_vector()
+        if timestamps_were_set:
             timestamps = segmentation_extractor.get_timestamps()
-            estimated_rate = calculate_regular_series_rate(series=timestamps)
+        else:
+            timestamps = segmentation_extractor.get_native_timestamps()
+
+        timestamps_are_available = timestamps is not None
+
+        if timestamps_are_available:
+            rate = calculate_regular_series_rate(series=timestamps)
+            timestamps_are_regular = rate is not None
             starting_time = timestamps[0]
         else:
-            estimated_rate = float(segmentation_extractor.get_sampling_frequency())
+            rate = float(segmentation_extractor.get_sampling_frequency())
+            timestamps_are_regular = True
             starting_time = 0.0
 
-        if estimated_rate:
-            # Regular timestamps or no timestamps - use rate
+        if timestamps_are_regular:
             roi_response_series_kwargs["starting_time"] = starting_time
             # Use metadata rate if provided, otherwise use estimated/sampled rate
             if "rate" not in roi_response_series_kwargs:
-                roi_response_series_kwargs["rate"] = estimated_rate
+                roi_response_series_kwargs["rate"] = rate
         else:
-            # Irregular timestamps - use explicit timestamps
-            # Remove rate from metadata if present (can't specify both rate and timestamps)
+            # Irregular timestamps - remove rate from metadata if present (can't specify both)
             roi_response_series_kwargs.pop("rate", None)
             roi_response_series_kwargs["timestamps"] = timestamps
 
