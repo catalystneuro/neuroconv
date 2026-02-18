@@ -61,7 +61,6 @@ class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
     """
 
     def default(self, obj):
-        # Serialize classes to their qualified name (e.g. progress_bar_class in iterator_options)
 
         # Serialize callable objects (e.g. callback functions in progress_bar_options)
         if callable(obj):
