@@ -2092,74 +2092,134 @@ def _add_units_table_to_nwbfile(
         unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
 
-    units_table_previous_properties = set(units_table.colnames).difference({"spike_times"})
-    properties_to_add = set(data_to_add)
-    properties_to_add_by_rows = units_table_previous_properties.union({"id"})
-    properties_to_add_by_columns = properties_to_add - properties_to_add_by_rows
+    # Add rows: two strategies depending on whether the table is new or existing.
+    # Both branches populate the table with rows (ids + spike_times + waveforms + electrodes).
+    # Properties from data_to_add are added as columns afterwards in shared code below.
+    if write_table_first_time:
+        # Fast path: column-first bulk write for brand-new tables.
+        # Skip all append/merge logic (row filtering, null backfilling, electrode mismatch checks)
+        # and add rows via id.extend() + add_column() instead of per-row add_unit() calls.
+        num_units = sorting.get_num_units()
+        num_segments = sorting.get_num_segments()
 
-    # Add data by rows excluding the rows with previously added unit names
-    unit_names_used_previously = []
-    if "unit_name" in units_table_previous_properties:
-        unit_names_used_previously = units_table["unit_name"].data
-    has_electrodes_column = "electrodes" in units_table.colnames
+        units_table.id.extend(list(range(num_units)))
 
-    rows_in_data = [index for index in range(sorting.get_num_units())]
-    if not has_electrodes_column:
-        rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
-    else:
-        rows_to_add = []
-        for index in rows_in_data:
-            if unit_name_array[index] not in unit_names_used_previously:
-                rows_to_add.append(index)
-            else:
-                unit_name = unit_name_array[index]
-                previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]].electrodes
-                if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
-                    rows_to_add.append(index)
-
-    # Properties that were added before require null values to add by rows if data is missing
-    properties_requiring_null_values = units_table_previous_properties.difference(properties_to_add)
-    null_values_for_row = {}
-    # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
-    # See https://github.com/catalystneuro/neuroconv/issues/1629
-    if len(rows_to_add) > 0:
-        for property in properties_requiring_null_values - {"electrodes"}:  # TODO, fix electrodes
-            sample_data = units_table[property][:][0]
-            null_value = _get_null_value_for_property(
-                property=property,
-                sample_data=sample_data,
-                null_values_for_properties=null_values_for_properties,
+        all_spike_times = []
+        for row_index in range(num_units):
+            spike_times = np.concatenate(
+                [
+                    sorting.get_unit_spike_train(
+                        unit_id=unit_ids[row_index],
+                        segment_index=segment_index,
+                        return_times=True,
+                    )
+                    for segment_index in range(num_segments)
+                ]
             )
-            null_values_for_row[property] = null_value
+            all_spike_times.append(spike_times)
 
-    # Special case
-    null_values_for_row["id"] = None
+        units_table.add_column(
+            name="spike_times",
+            description="the spike times for each unit in seconds",
+            data=all_spike_times,
+            index=True,
+        )
 
-    properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
-
-    for row in rows_to_add:
-        unit_kwargs = null_values_for_row
-        for property in properties_with_data:
-            unit_kwargs[property] = data_to_add[property]["data"][row]
-        spike_times = []
-
-        # Extract and concatenate the spike times from multiple segments
-        for segment_index in range(sorting.get_num_segments()):
-            segment_spike_times = sorting.get_unit_spike_train(
-                unit_id=unit_ids[row], segment_index=segment_index, return_times=True
-            )
-            spike_times.append(segment_spike_times)
-        spike_times = np.concatenate(spike_times)
         if waveform_means is not None:
-            unit_kwargs["waveform_mean"] = waveform_means[row]
+            units_table.add_column(
+                name="waveform_mean",
+                description="the spike waveform mean for each spike unit",
+                data=waveform_means,
+            )
             if waveform_sds is not None:
-                unit_kwargs["waveform_sd"] = waveform_sds[row]
+                units_table.add_column(
+                    name="waveform_sd",
+                    description="the spike waveform standard deviation for each spike unit",
+                    data=waveform_sds,
+                )
+
         if unit_electrode_indices is not None:
-            unit_kwargs["electrodes"] = unit_electrode_indices[row]
+            units_table.add_column(
+                name="electrodes",
+                description="the electrodes that each spike unit came from",
+                data=unit_electrode_indices,
+                index=True,
+                table=nwbfile.electrodes,
+            )
+    else:
+        # General path: row-first append/merge for existing tables.
+        units_table_previous_properties = set(units_table.colnames).difference({"spike_times"})
+        properties_to_add = set(data_to_add)
+        properties_to_add_by_rows = units_table_previous_properties.union({"id"})
 
-        units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
+        # Add data by rows excluding the rows with previously added unit names
+        unit_names_used_previously = []
+        if "unit_name" in units_table_previous_properties:
+            unit_names_used_previously = units_table["unit_name"].data
+        has_electrodes_column = "electrodes" in units_table.colnames
 
-    # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
+        rows_in_data = [index for index in range(sorting.get_num_units())]
+        if not has_electrodes_column:
+            rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
+        else:
+            rows_to_add = []
+            for index in rows_in_data:
+                if unit_name_array[index] not in unit_names_used_previously:
+                    rows_to_add.append(index)
+                else:
+                    unit_name = unit_name_array[index]
+                    previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]].electrodes
+                    if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
+                        rows_to_add.append(index)
+
+        # Properties that were added before require null values to add by rows if data is missing
+        properties_requiring_null_values = units_table_previous_properties.difference(properties_to_add)
+        null_values_for_row = {}
+        # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
+        # See https://github.com/catalystneuro/neuroconv/issues/1629
+        if len(rows_to_add) > 0:
+            for property in properties_requiring_null_values - {"electrodes"}:  # TODO, fix electrodes
+                sample_data = units_table[property][:][0]
+                null_value = _get_null_value_for_property(
+                    property=property,
+                    sample_data=sample_data,
+                    null_values_for_properties=null_values_for_properties,
+                )
+                null_values_for_row[property] = null_value
+
+        # Special case
+        null_values_for_row["id"] = None
+
+        properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
+
+        for row in rows_to_add:
+            unit_kwargs = null_values_for_row
+            for property in properties_with_data:
+                unit_kwargs[property] = data_to_add[property]["data"][row]
+            spike_times = []
+
+            # Extract and concatenate the spike times from multiple segments
+            for segment_index in range(sorting.get_num_segments()):
+                segment_spike_times = sorting.get_unit_spike_train(
+                    unit_id=unit_ids[row], segment_index=segment_index, return_times=True
+                )
+                spike_times.append(segment_spike_times)
+            spike_times = np.concatenate(spike_times)
+            if waveform_means is not None:
+                unit_kwargs["waveform_mean"] = waveform_means[row]
+                if waveform_sds is not None:
+                    unit_kwargs["waveform_sd"] = waveform_sds[row]
+            if unit_electrode_indices is not None:
+                unit_kwargs["electrodes"] = unit_electrode_indices[row]
+
+            units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
+
+    # Add remaining properties as columns (shared by both fast and general paths).
+    # Determine which properties from data_to_add still need to be added as new columns.
+    existing_columns = set(units_table.colnames)
+    properties_with_extracted_data = {key for key, value in data_to_add.items() if "data" in value}
+    properties_to_add_by_columns = properties_with_extracted_data - existing_columns
+
     unit_table_size = len(units_table.id[:])
     previous_table_size = len(units_table.id[:]) - len(unit_name_array)
     if "unit_name" in properties_to_add_by_columns:
