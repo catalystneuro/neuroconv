@@ -1,6 +1,7 @@
 import collections.abc
 import inspect
 import json
+import typing
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -159,6 +160,15 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
     parameters = signature.parameters
     additional_properties = False
     arguments_to_annotations = {}
+
+    # Resolve string annotations from PEP 563 (from __future__ import annotations)
+    # When a class is passed, inspect.signature uses __init__, so we must too
+    hints_target = method.__init__ if inspect.isclass(method) else method
+    try:
+        type_hints = typing.get_type_hints(hints_target)
+    except NameError:
+        type_hints = {}
+
     for argument_name in parameters:
         if argument_name in exclude:
             continue
@@ -181,7 +191,11 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
 
         # Pydantic uses ellipsis for required
         pydantic_default = ... if parameter.default is inspect._empty else parameter.default
-        arguments_to_annotations.update({argument_name: (parameter.annotation, pydantic_default)})
+        # Only use resolved type hints for string annotations (PEP 563)
+        annotation = parameter.annotation
+        if isinstance(annotation, str):
+            annotation = type_hints.get(argument_name, annotation)
+        arguments_to_annotations.update({argument_name: (annotation, pydantic_default)})
 
     # The ConfigDict is required to support custom types like NumPy arrays
     model = pydantic.create_model(
