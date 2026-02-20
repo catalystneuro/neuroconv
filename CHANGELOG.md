@@ -1,4 +1,4 @@
-# v0.9.3 (Upcoming)
+# v0.9.3 (February 19, 2026)
 
 ## Removals, Deprecations and Changes
 
