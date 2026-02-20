@@ -101,10 +101,10 @@ def automatic_dandi_upload(
         dandi_instance = "dandi"
     elif instance == "ember" and sandbox:
         url_base = "https://dandi-sandbox.emberarchive.org"
-        dandi_instance = "ember-sandbox"
+        dandi_instance = "ember-dandi-sandbox"
     elif instance == "ember" and not sandbox:
         url_base = "https://dandi.emberarchive.org"
-        dandi_instance = "ember"
+        dandi_instance = "ember-dandi"
     else:
         url_base = instance.removesuffix("/")
         dandi_instance = instance
@@ -114,8 +114,8 @@ def automatic_dandi_upload(
     api_key_map = {
         "dandi": "DANDI_API_KEY",
         "dandi-sandbox": "DANDI_SANDBOX_API_KEY",
-        "ember": "EMBER_API_KEY",
-        "ember-sandbox": "EMBER_SANDBOX_API_KEY",
+        "ember-dandi": "EMBER_API_KEY",
+        "ember-dandi-sandbox": "EMBER_SANDBOX_API_KEY",
     }
 
     # Only check for known instances; custom URLs don't have a predefined env var

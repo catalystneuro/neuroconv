@@ -43,9 +43,14 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
     """
     if name in nwbfile.processing:
         if description is not None and nwbfile.processing[name].description != description:
+            existing_description = nwbfile.processing[name].description
             warnings.warn(
-                "Custom description given to get_module does not match existing module description! "
-                "Ignoring custom description."
+                f"Processing module '{name}' already exists with a different description. "
+                f"The new description will be ignored.\n"
+                f"  Existing: '{existing_description}'\n"
+                f"  Provided: '{description}'\n"
+                f"To fix this, ensure all calls to get_module() for '{name}' use the same description, "
+                f"or omit the description parameter to use the existing one."
             )
         return nwbfile.processing[name]
     else:

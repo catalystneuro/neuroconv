@@ -75,6 +75,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         config_file_path: FilePath | None = None,
         subject_name: str = "ind1",
         pose_estimation_metadata_key: str = "PoseEstimationDeepLabCut",
@@ -171,6 +172,39 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         - When the subject_name matches a subject_id in the NWBFile, the skeleton will be automatically
         linked to that subject.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "config_file_path",
+                "subject_name",
+                "pose_estimation_metadata_key",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to DeepLabCutInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            config_file_path = positional_values.get("config_file_path", config_file_path)
+            subject_name = positional_values.get("subject_name", subject_name)
+            pose_estimation_metadata_key = positional_values.get(
+                "pose_estimation_metadata_key", pose_estimation_metadata_key
+            )
+            verbose = positional_values.get("verbose", verbose)
+
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         from importlib.metadata import version
 
@@ -525,6 +559,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         container_name: str | None = None,
     ):
         """
@@ -543,6 +578,30 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             the content of the metadata.
 
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "container_name",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to DeepLabCutInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            container_name = positional_values.get("container_name", container_name)
         from ._dlc_utils import (
             _add_pose_estimation_to_nwbfile,
             _ensure_individuals_in_header,

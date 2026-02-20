@@ -1,30 +1,25 @@
+import warnings
 from copy import deepcopy
 
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
-from neuroconv import NWBConverter
+from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces import LightningPoseDataInterface
 from neuroconv.datainterfaces.behavior.video.videodatainterface import _VideoInterface
-from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from neuroconv.utils import (
     DeepDict,
     dict_deep_update,
-    get_json_schema_from_method_signature,
 )
 
 
-class LightningPoseConverter(NWBConverter):
+class LightningPoseConverter(BaseDataInterface):
     """Primary conversion class for handling Lightning Pose data streams."""
 
     display_name = "Lightning Pose Converter"
     keywords = ("pose estimation", "video")
     associated_suffixes = (".csv", ".mp4")
     info = "Interface for handling multiple streams of lightning pose data."
-
-    @classmethod
-    def get_source_schema(cls):
-        return get_json_schema_from_method_signature(cls)
 
     @validate_call
     def __init__(
@@ -56,6 +51,7 @@ class LightningPoseConverter(NWBConverter):
             controls verbosity. ``True`` by default.
         """
         self.verbose = verbose
+
         self.data_interface_objects = dict(
             OriginalVideo=_VideoInterface(file_paths=[original_video_file_path]),
             PoseEstimation=LightningPoseDataInterface(
@@ -69,13 +65,6 @@ class LightningPoseConverter(NWBConverter):
         if labeled_video_file_path:
             self.labeled_video_name = image_series_labeled_video_name or "ImageSeriesLabeledVideo"
             self.data_interface_objects.update(dict(LabeledVideo=_VideoInterface(file_paths=[labeled_video_file_path])))
-
-    def get_conversion_options_schema(self) -> dict:
-        conversion_options_schema = get_json_schema_from_method_signature(
-            method=self.add_to_nwbfile, exclude=["nwbfile", "metadata"]
-        )
-
-        return conversion_options_schema
 
     def get_metadata(self) -> DeepDict:
         metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
@@ -104,6 +93,7 @@ class LightningPoseConverter(NWBConverter):
         self,
         nwbfile: NWBFile,
         metadata: dict,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
         external_mode: bool = True,
@@ -125,6 +115,7 @@ class LightningPoseConverter(NWBConverter):
         confidence_definition : str, optional
             Definition for the confidence levels in pose estimation, by default None.
         external_mode : bool, optional
+            DEPRECATED. This parameter will be removed in May 2026.
             If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
         starting_frames_original_videos : list of int, optional
             List of starting frames for the original videos, by default None.
@@ -133,6 +124,68 @@ class LightningPoseConverter(NWBConverter):
         stub_test : bool, optional
             If True, only a subset of the data will be added for testing purposes, by default False.
         """
+        # Handle deprecated positional arguments
+        # TODO: Remove after May 2026 - only keyword arguments will be supported
+        if args:
+            parameter_names = [
+                "reference_frame",
+                "confidence_definition",
+                "external_mode",
+                "starting_frames_original_videos",
+                "starting_frames_labeled_videos",
+                "stub_test",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in May 2026. Please use keyword arguments."
+                )
+            # Map positional args to keyword args, positional args take precedence
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally is deprecated and will be removed in May 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            reference_frame = positional_values.get("reference_frame", reference_frame)
+            confidence_definition = positional_values.get("confidence_definition", confidence_definition)
+            external_mode = positional_values.get("external_mode", external_mode)
+            starting_frames_original_videos = positional_values.get(
+                "starting_frames_original_videos", starting_frames_original_videos
+            )
+            starting_frames_labeled_videos = positional_values.get(
+                "starting_frames_labeled_videos", starting_frames_labeled_videos
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+
+        # Deprecate external_mode parameter
+        # TODO: Remove after May 2026 - Only external videos will be supported
+        if external_mode is not True:
+            warnings.warn(
+                "The 'external_mode' parameter is deprecated and will be removed in May 2026. "
+                "After May 2026, only external videos will be supported by LightningPoseConverter.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        # Detect old metadata structure and warn user to migrate
+        if "Videos" in metadata.get("Behavior", {}):
+            warnings.warn(
+                "The 'Videos' metadata structure is deprecated and will be removed in May 2026. "
+                "Please use 'ExternalVideos' metadata structure instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        # Convert new metadata structure to old structure for _VideoInterface compatibility
+        # TODO: Remove after May 2026 when _VideoInterface is replaced
+        metadata = self._convert_new_metadata_to_old(metadata)
+
         original_video_interface = self.data_interface_objects["OriginalVideo"]
 
         original_video_metadata = next(
@@ -181,67 +234,27 @@ class LightningPoseConverter(NWBConverter):
             stub_test=stub_test,
         )
 
-    def run_conversion(
-        self,
-        nwbfile_path: FilePath | None = None,
-        nwbfile: NWBFile | None = None,
-        metadata: dict | None = None,
-        overwrite: bool = False,
-        reference_frame: str | None = None,
-        confidence_definition: str | None = None,
-        external_mode: bool = True,
-        starting_frames_original_videos: list | None = None,
-        starting_frames_labeled_videos: list | None = None,
-        stub_test: bool = False,
-    ) -> None:
+    def _convert_new_metadata_to_old(self, metadata: dict) -> dict:
         """
-        Run the full conversion process, adding behavior, video, and pose estimation data to an NWB file.
+        Convert new ExternalVideos dict metadata to old Videos list metadata.
 
-        Parameters
-        ----------
-        nwbfile_path : FilePath, optional
-            The file path where the NWB file will be saved. If None, the file is handled in memory.
-        nwbfile : NWBFile, optional
-            An in-memory NWBFile object. If None, a new NWBFile object will be created.
-        metadata : dict, optional
-            Metadata dictionary for describing the NWB file contents. If None, it is auto-generated.
-        overwrite : bool, optional
-            If True, overwrites the NWB file at `nwbfile_path` if it exists. If False, appends to the file, by default False.
-        reference_frame : str, optional
-            Description of the reference frame for pose estimation, by default None.
-        confidence_definition : str, optional
-            Definition for confidence levels in pose estimation, by default None.
-        external_mode : bool, optional
-            If True, the videos will be referenced externally rather than embedded within the NWB file, by default True.
-        starting_frames_original_videos : list of int, optional
-            List of starting frames for the original videos, by default None.
-        starting_frames_labeled_videos : list of int, optional
-            List of starting frames for the labeled videos, by default None.
-        stub_test : bool, optional
-            If True, only a subset of the data will be added for testing purposes, by default False.
-
+        TODO: Remove after May 2026 when _VideoInterface is replaced with ExternalVideoInterface.
         """
-        if metadata is None:
-            metadata = self.get_metadata()
+        metadata = deepcopy(metadata)
 
-        self.validate_metadata(metadata=metadata)
+        # Check if new metadata structure is being used
+        if "ExternalVideos" in metadata.get("Behavior", {}):
+            # Convert ExternalVideos dict to Videos list
+            videos_dict = metadata["Behavior"]["ExternalVideos"]
+            videos_list = []
+            for video_name, video_metadata in videos_dict.items():
+                video_dict = {"name": video_name}
+                # Copy all metadata except device (not in old structure)
+                video_dict.update({k: v for k, v in video_metadata.items() if k != "device"})
+                videos_list.append(video_dict)
 
-        self.temporally_align_data_interfaces()
+            metadata["Behavior"]["Videos"] = videos_list
+            # Remove new structure key
+            del metadata["Behavior"]["ExternalVideos"]
 
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
-        ) as nwbfile_out:
-            self.add_to_nwbfile(
-                nwbfile=nwbfile_out,
-                metadata=metadata,
-                reference_frame=reference_frame,
-                confidence_definition=confidence_definition,
-                external_mode=external_mode,
-                starting_frames_original_videos=starting_frames_original_videos,
-                starting_frames_labeled_videos=starting_frames_labeled_videos,
-                stub_test=stub_test,
-            )
+        return metadata

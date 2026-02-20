@@ -1,4 +1,4 @@
-# v0.9.1 (Upcoming)
+# v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
 
@@ -7,6 +7,73 @@
 ## Features
 
 ## Improvements
+
+# v0.9.3 (February 19, 2026)
+
+## Removals, Deprecations and Changes
+
+## Bug Fixes
+* Fixed timestamp writing logic in `_add_photon_series_to_nwbfile`, `add_photon_series_to_nwbfile`, and `_add_fluorescence_traces_to_nwbfile` to check `get_native_timestamps()` when `has_time_vector()` is False. Previously, native hardware timestamps from source formats (e.g. Minian, ScanImage) were silently dropped, falling back to sampling rate only. [PR #1662](https://github.com/catalystneuro/neuroconv/pull/1662)
+* Fixed `TypeError: Object of type type is not JSON serializable` when passing `type` or `callable` objects (e.g. `progress_bar_class`) in `conversion_options`. The validation step now serializes these to their qualified module path for JSON schema validation while passing the original objects through to conversion unchanged. [PR #1667](https://github.com/catalystneuro/neuroconv/pull/1667)
+
+## Features
+
+## Improvements
+
+# v0.9.2 (February 13, 2026)
+
+## Removals, Deprecations and Changes
+* Enforced keyword-only arguments across all data interfaces: `__init__` methods now only accept `file_path`/`folder_path`/`file_paths` as positional arguments, and `add_to_nwbfile` methods only accept `nwbfile` and `metadata` as positional arguments. Existing positional usage in `add_to_nwbfile` will emit a `FutureWarning` and will be removed on or after August 2026. [PR #1663](https://github.com/catalystneuro/neuroconv/pull/1663)
+* Deprecated using `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile` without `nwbfile_path`. Use `add_imaging_to_nwbfile` and `add_segmentation_to_nwbfile` instead for adding data to in-memory NWBFile objects. Will be removed on or after June 2026. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
+* Deprecated returning NWBFile when using `append_on_disk_nwbfile=True` in `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile`. Will return None on or after June 2026. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
+
+## Bug Fixes
+* Fixed `UnicodeDecodeError` on Windows when reading YAML and JSON files containing UTF-8 characters by adding explicit `encoding='utf-8'` parameter to all text file operations. This ensures cross-platform compatibility per PEP 597 recommendations. [PR #1657](https://github.com/catalystneuro/neuroconv/pull/1657)
+* Fixed bug in `write_imaging_to_nwbfile` where `nwbfile` was incorrectly passed to `add_imaging_to_nwbfile` instead of the created/loaded nwbfile. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
+* Fixed bug in `write_segmentation_to_nwbfile` where invalid `plane_num` parameter was passed to `add_segmentation_to_nwbfile`. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
+* Fixed `get_json_schema_from_method_signature` to skip `*args` (VAR_POSITIONAL) parameters, which was causing schema validation errors when methods used the `*args` pattern for deprecating positional arguments. [PR #1647](https://github.com/catalystneuro/neuroconv/pull/1647)
+* Fixed a bug in unit table addition to nwbfile where `unit_name` values containing apostrophes could fail matching due to pandas `to_dataframe().query(...)` parsing. Replaced query-based matching with direct `unit_name` column mapping, with improved memory efficiency as a side effect. Added regression coverage for quoted unit names. [PR #1666](https://github.com/catalystneuro/neuroconv/pull/1666)
+
+## Features
+* Added `roi_ids_to_add` parameter to `BaseSegmentationExtractorInterface.add_to_nwbfile()` to select a subset of ROIs during conversion, reducing file size by excluding rejected or unwanted ROIs. Also added `roi_ids` property to inspect available ROI IDs. Requires roiextractors >= 0.8.0. [PR #1658](https://github.com/catalystneuro/neuroconv/pull/1658)
+* Added `backend`, `backend_configuration`, and `append_on_disk_nwbfile` parameters to `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile` for better control over file writing, matching the pattern from spikeinterface write functions. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
+* Added support for stream_name to TDT recording interface [#1645](https://github.com/catalystneuro/neuroconv/pull/1645)
+* Added `backend`, `backend_configuration`, and `append_on_disk_nwbfile` parameters to `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile` for better control over file writing, matching the pattern from spikeinterface write functions. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
+* Added `backend`, `backend_configuration`, and `append_on_disk_nwbfile` support to `LightningPoseConverter`. [PR #1652](https://github.com/catalystneuro/neuroconv/pull/1652)
+* Added `backend`, `backend_configuration`, and `append_on_disk_nwbfile` parameters to `write_imaging_to_nwbfile` and `write_segmentation_to_nwbfile` for better control over file writing, matching the pattern from spikeinterface write functions. [PR #1649](https://github.com/catalystneuro/neuroconv/pull/1649)
+
+## Improvements
+* Added explicit numpy conversion for pandas data to ensure HDMF compatibility with pandas 3.0+. Changed `.values` to `.to_numpy()` in interfaces that read CSV data (TimeIntervalsInterface, FicTracDataInterface, MiniscopeHeadOrientationInterface, LightningPoseDataInterface) and added `.item()` conversion for row iteration in `convert_df_to_time_intervals`. [PR #1646](https://github.com/catalystneuro/neuroconv/pull/1646)
+* Renamed test variables `values_dic` to `electrode_row_kwargs` and `unit_row_kwargs` in SpikeInterface tests for improved clarity. [PR #1651](https://github.com/catalystneuro/neuroconv/pull/1651)
+* Removed cap on NumPy version for ecephys and icephys formats now that python-quantities v0.16.4 supports NumPy 2.4. [#1648](https://github.com/catalystneuro/neuroconv/pull/1648)
+* Added `EncodingWarning` enforcement via `pytest-env` to catch missing `encoding=` in `open()` calls during tests (PEP 597). [PR #1660](https://github.com/catalystneuro/neuroconv/pull/1660)
+
+
+# v0.9.1 (January 28, 2026)
+
+## Removals, Deprecations and Changes
+* Deprecated `_VideoInterface` in `LightningPoseConverter` with migration to `ExternalVideoInterface` [#1596](https://github.com/catalystneuro/neuroconv/pull/1596)
+* Deprecated `waveform_means` and `waveform_sds` parameters in `add_sorting_to_nwbfile`. Use the new `waveform_data_dict` parameter instead, which bundles waveform data with associated metadata. Will be removed on or after July 2026. [PR #1628](https://github.com/catalystneuro/neuroconv/pull/1628)
+
+## Bug Fixes
+* Fixed `add_electrodes_to_nwbfile` and `add_sorting_to_nwbfile` functions to only compute null values for existing table properties when new rows will actually be added. Previously, null values were computed preemptively even when no new electrodes/units needed to be added, causing errors when properties lacked sensible defaults. [#1633](https://github.com/catalystneuro/neuroconv/pull/1633), [#1640](https://github.com/catalystneuro/neuroconv/pull/1640)
+* Added cap on NumPy version for all ecephys formats. [#1626](https://github.com/catalystneuro/neuroconv/pull/1626)
+* Added Numba as a dependency of the sorting_analyzer environment. [#1627](https://github.com/catalystneuro/neuroconv/pull/1627), [#1635](https://github.com/catalystneuro/neuroconv/pull/1635)
+* Added cap on NumPy version for all icephys formats. [#1634](https://github.com/catalystneuro/neuroconv/pull/1634)
+* Updated DANDI instance names to fix Ember DANDI upload. [#1631](https://github.com/catalystneuro/neuroconv/pull/1631)
+* Added cap on OpenCV version for Mac OS Intel. [#1637](https://github.com/catalystneuro/neuroconv/pull/1637)
+* Replaced pytz with zoneinfo [#1638](https://github.com/catalystneuro/neuroconv/pull/1638)
+* Removed deprecated `exclude_channel_comparison` parameter from `check_imaging_equal` call in imaging interface tests to fix compatibility with updated roiextractors. [#1642](https://github.com/catalystneuro/neuroconv/pull/1642)
+
+## Features
+* Added `waveform_data_dict` keyword-only parameter to `add_sorting_to_nwbfile` and `BaseSortingExtractorInterface.add_to_nwbfile` for passing waveform data with associated metadata (`means`, `sds`, `sampling_rate`, `unit`). The Units table now properly sets `waveform_rate`, `waveform_unit`, and `resolution` attributes, enabling proper HDF5 attribute propagation for downstream tools like MatNWB. [PR #1628](https://github.com/catalystneuro/neuroconv/pull/1628)
+
+## Improvements
+* Improved warning message in `get_module` to show both existing and new (ignored) descriptions when there's a mismatch, making it easier to debug processing module conflicts. [PR #1620](https://github.com/catalystneuro/neuroconv/pull/1620)
+* Corrected `MiniscopeImagingInterface` documentation and docstrings: `timeStamps.csv` is now correctly documented as required (an error is raised if missing), and removed inaccurate statement about automatic timestamp generation from sampling frequency. [PR #1621](https://github.com/catalystneuro/neuroconv/pull/1621)
+* `null_values_for_properties` is exposed to more functions in `spikeinterface` tools allowing user to manually specify the default properties. This is especially helpful when there exists properties which it has no default value when using any adding function related to `add_electrodes_to_nwbfile`. [PR #1624](https://github.com/catalystneuro/neuroconv/pull/1624)
+* Made `dichroic_mirror` optional in `TDTFiberPhotometryInterface` to match latest version of `ndx-fiber-photometry` where this field is not required. [PR #1636](https://github.com/catalystneuro/neuroconv/pull/1636)
+* Fixed multiple errors in backend configuration documentation: removed unused imports, corrected NWBHDF5IO parameter name from `nwbfile_path` to `path`, fixed undefined `nwbfile` variable in streamlined example, corrected compression options key from `clevel` to `compression_opts`, and removed non-existent `export` parameter. Updated examples to use `read_nwb` for cleaner code. [PR #1641](https://github.com/catalystneuro/neuroconv/pull/1641)
 
 # v0.9.0 (December 4, 2025)
 

@@ -1,12 +1,12 @@
 import os
+import warnings
 from contextlib import redirect_stdout
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
 import numpy as np
-import pytz
 from pydantic import DirectoryPath, validate_call
 from pynwb.file import NWBFile
 
@@ -30,7 +30,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
+    def __init__(
+        self, folder_path: DirectoryPath, *args, verbose: bool = False
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """Initialize the TDTFiberPhotometryInterface.
 
         Parameters
@@ -40,6 +42,31 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         verbose : bool, optional
             Whether to print status messages, default = True.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to TDTFiberPhotometryInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+
         super().__init__(
             folder_path=folder_path,
             verbose=verbose,
@@ -60,7 +87,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         metadata = super().get_metadata()
         tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
         start_timestamp = tdt_photometry.info.start_date.timestamp()
-        session_start_datetime = datetime.fromtimestamp(start_timestamp, tz=pytz.utc)
+        session_start_datetime = datetime.fromtimestamp(start_timestamp, tz=timezone.utc)
         metadata["NWBFile"]["session_start_time"] = session_start_datetime.isoformat()
         return metadata
 
@@ -103,7 +130,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 f"evtype must be a list containing some combination of 'all', 'epocs', 'snips', 'streams', or 'scalars', "
                 f"but got {evtype_string}."
             )
-        with open(os.devnull, "w") as f, redirect_stdout(f):
+        with open(os.devnull, "w", encoding="utf-8") as f, redirect_stdout(f):
             tdt_photometry = tdt.read_block(str(folder_path), t1=t1, t2=t2, evtype=evtype)
         return tdt_photometry
 
@@ -275,7 +302,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        *,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         t1: float = 0.0,
         t2: float = 0.0,
@@ -304,6 +331,37 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         AssertionError
             If the timing_source is not one of "original", "aligned_timestamps", or "aligned_starting_time_and_rate".
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "t1",
+                "t2",
+                "timing_source",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to TDTFiberPhotometryInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            t1 = positional_values.get("t1", t1)
+            t2 = positional_values.get("t2", t2)
+            timing_source = positional_values.get("timing_source", timing_source)
+
         from ndx_fiber_photometry import (
             CommandedVoltageSeries,
             FiberPhotometry,
@@ -471,7 +529,6 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             "optical_fiber",
             "excitation_source",
             "photodetector",
-            "dichroic_mirror",
         ]
         device_fields = [
             "optical_fiber",

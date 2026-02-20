@@ -55,7 +55,7 @@ jobs:
       - name: Install full requirements
         run: |
           pip install --no-cache-dir .[full]
-          pip install --group test
+          pip install --group test --group sorting_analyzer
 
       - name: Dev gallery - ROIExtractors
         run: pip install --no-cache-dir git+https://github.com/CatalystNeuro/roiextractors@main

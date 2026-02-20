@@ -575,7 +575,7 @@ class TestAddElectrodes(TestCase):
         self.electrode_group = self.nwbfile.create_electrode_group(
             name="0", description="description", location="location", device=self.device
         )
-        self.defaults = dict(
+        self.common_electrode_row_kwargs = dict(
             group=self.electrode_group,
             group_name="0",
             location="unknown",
@@ -673,13 +673,9 @@ class TestAddElectrodes(TestCase):
         Keep the old logic of not allowing integer channel_ids to match electrodes.table.ids
         """
         self.nwbfile.add_electrode_column("channel_name", description="channel_name")
-        values_dic = self.defaults
 
-        values_dic.update(id=0, channel_name="0")
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=1, channel_name="1")
-        self.nwbfile.add_electrode(**values_dic)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=0, channel_name="0")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=1, channel_name="1")
         # The self.base_recording channel_ids are [0, 1, 2, 3], so only '3' and '4' should be added
         add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
         self.assertEqual(len(self.nwbfile.electrodes), len(self.base_recording.channel_ids))
@@ -697,13 +693,8 @@ class TestAddElectrodes(TestCase):
 
     def test_manual_row_adition_before_add_electrodes_function_to_nwbfile(self):
         """Add some rows to the electrode tables before using the add_electrodes_to_nwbfile function"""
-        values_dic = self.defaults
-
-        values_dic.update(id=123)
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=124)
-        self.nwbfile.add_electrode(**values_dic)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=123)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=124)
 
         add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
@@ -716,17 +707,10 @@ class TestAddElectrodes(TestCase):
         """Add some rows to the electrode table after using the add_electrodes_to_nwbfile function"""
         add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
-        values_dic = self.defaults
-
         # Since we're not using a probe, rel_x and rel_y columns won't exist
-        values_dic.update(id=123, channel_name=str(123))
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=124, channel_name=str(124))
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=None, channel_name="6")  # automatic ID set
-        self.nwbfile.add_electrode(**values_dic)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=123, channel_name="123")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=124, channel_name="124")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=None, channel_name="6")  # automatic ID set
 
         expected_ids = [0, 1, 2, 3, 123, 124, 6]
         expected_names = ["a", "b", "c", "d", "123", "124", "6"]
@@ -735,13 +719,8 @@ class TestAddElectrodes(TestCase):
 
     def test_manual_row_adition_before_add_electrodes_function_optional_columns_to_nwbfile(self):
         """Add some rows including optional columns to the electrode tables before using the add_electrodes_to_nwbfile function."""
-        values_dic = self.defaults
-
-        values_dic.update(id=123)
-        self.nwbfile.add_electrode(**values_dic, x=0.0, y=1.0, z=2.0)
-
-        values_dic.update(id=124)
-        self.nwbfile.add_electrode(**values_dic, x=1.0, y=2.0, z=3.0)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=123, x=0.0, y=1.0, z=2.0)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=124, x=1.0, y=2.0, z=3.0)
 
         # recording_1 does not have x, y, z positions
         add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
@@ -755,23 +734,45 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes["y"].data), expected_y)
         self.assertListEqual(list(self.nwbfile.electrodes["z"].data), expected_z)
 
+    def test_no_new_electrodes_with_custom_property_without_default(self):
+        """
+        Test that add_electrodes_to_nwbfile doesn't fail when:
+        - Electrode table has a custom property without a sensible default
+        - All channels from the recording already exist in the table
+        - No null values should be computed since no new rows are added
+
+        This is a regression test for https://github.com/catalystneuro/neuroconv/issues/1629
+        """
+        # Add channel_name column and an integer property
+        # We use an integer property because integers do not have a clear default value,
+        # so if we were adding new rows, we would need to specify a null value for this property
+        self.nwbfile.add_electrode_column("channel_name", description="channel name")
+        self.nwbfile.add_electrode_column("custom_int_property", description="integer property without default")
+
+        # Add all electrodes from recording_1
+        for i, channel_id in enumerate(self.recording_1.channel_ids):
+            self.nwbfile.add_electrode(
+                **self.common_electrode_row_kwargs, id=i, channel_name=channel_id, custom_int_property=i * 10
+            )
+
+        # This should not raise an error even though custom_int_property has no clear default
+        # because no new rows need to be added
+        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        # Verify no additional electrodes were added
+        self.assertEqual(len(self.nwbfile.electrodes), len(self.recording_1.channel_ids))
+
     def test_row_matching_by_channel_name_with_existing_property(self):
         """
         Adding new electrodes to an already existing electrode table should match
         properties and information by channel name.
         """
-        values_dic = self.defaults
         self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
         self.nwbfile.add_electrode_column(name="property", description="existing property")
 
-        values_dic.update(id=20, channel_name="c", property="value_c")
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=21, channel_name="d", property="value_d")
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=22, channel_name="f", property="value_f")
-        self.nwbfile.add_electrode(**values_dic)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=20, channel_name="c", property="value_c")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=21, channel_name="d", property="value_d")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=22, channel_name="f", property="value_f")
 
         property_values = ["value_a", "value_b", "x", "y"]
         self.recording_1.set_property(key="property", values=property_values)
@@ -812,17 +813,11 @@ class TestAddElectrodes(TestCase):
         Adding new electrodes to an already existing electrode table should match
         properties and information by channel name.
         """
-        values_dic = self.defaults
         self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
 
-        values_dic.update(id=20, channel_name="c")
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=21, channel_name="d")
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=22, channel_name="f")
-        self.nwbfile.add_electrode(**values_dic)
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=20, channel_name="c")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=21, channel_name="d")
+        self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=22, channel_name="f")
 
         property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.recording_1.set_property(key="property", values=property_values)
@@ -1650,7 +1645,7 @@ class TestAddUnitsTable(TestCase):
         self.sorting_1 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["a", "b", "c", "d"])
         self.sorting_2 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["c", "d", "e", "f"])
 
-        self.defaults = dict(spike_times=[1, 1, 1])
+        self.common_unit_row_kwargs = dict(spike_times=[1, 1, 1])
 
     def test_integer_unit_names(self):
         """Ensure add units_table gets the right units name for integer units ids."""
@@ -1677,6 +1672,30 @@ class TestAddUnitsTable(TestCase):
         expected_unit_names_in_units_table = unit_names
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_property_matching_by_unit_name_with_quotes(self):
+        """Ensure matching by unit_name works when names contain apostrophes.
+
+        This test was added in PR #1666, which removed pandas DataFrame/query matching
+        (`to_dataframe().query(...)`) from units-table extension logic. It protects
+        against regressions to query-string based matching (e.g., `pandas.query`),
+        which can fail or mis-parse when unit_name contains quotes.
+        """
+        quoted_unit_names = ["unit'a", "unit'b", "unit'c", "unit'd"]
+        self.sorting_1.set_property(key="unit_name", values=quoted_unit_names)
+        self.sorting_1.set_property(key="property", values=["value_a", "value_b", "value_c", "value_d"])
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        self.sorting_2.set_property(key="unit_name", values=["unit'c", "unit'd", "unit'e", "unit'f"])
+        self.sorting_2.set_property(key="property", values=["value_c2", "value_d2", "value_e", "value_f"])
+
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        expected_unit_names = ["unit'a", "unit'b", "unit'c", "unit'd", "unit'e", "unit'f"]
+        expected_property_values = ["value_a", "value_b", "value_c", "value_d", "value_e", "value_f"]
+        self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
+        self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
 
     def test_integer_unit_names_overwrite(self):
         """Ensure unit names merge correctly after appending when unit names are integers."""
@@ -1725,13 +1744,13 @@ class TestAddUnitsTable(TestCase):
 
     def test_units_table_extension_after_manual_unit_addition(self):
         """Add some rows to the units tables before using the add_sorting_to_nwbfile function"""
-        values_dic = self.defaults
+        unit_row_kwargs = self.common_unit_row_kwargs.copy()
 
-        values_dic.update(id=123, spike_times=[0, 1, 2])
-        self.nwbfile.add_unit(**values_dic)
+        unit_row_kwargs.update(id=123, spike_times=[0, 1, 2])
+        self.nwbfile.add_unit(**unit_row_kwargs)
 
-        values_dic.update(id=124, spike_times=[2, 3, 4])
-        self.nwbfile.add_unit(**values_dic)
+        unit_row_kwargs.update(id=124, spike_times=[2, 3, 4])
+        self.nwbfile.add_unit(**unit_row_kwargs)
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
@@ -1745,17 +1764,10 @@ class TestAddUnitsTable(TestCase):
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
-        values_dic = self.defaults
-
         # Previous properties
-        values_dic.update(id=123, unit_name=str(123))
-        self.nwbfile.units.add_unit(**values_dic)
-
-        values_dic.update(id=124, unit_name=str(124))
-        self.nwbfile.units.add_unit(**values_dic)
-
-        values_dic.update(id=None, unit_name="6")  # automatic ID set
-        self.nwbfile.units.add_unit(**values_dic)
+        self.nwbfile.units.add_unit(**self.common_unit_row_kwargs, id=123, unit_name="123")
+        self.nwbfile.units.add_unit(**self.common_unit_row_kwargs, id=124, unit_name="124")
+        self.nwbfile.units.add_unit(**self.common_unit_row_kwargs, id=None, unit_name="6")  # automatic ID set
 
         expected_unit_ids = [0, 1, 2, 3, 123, 124, 6]
         expected_unit_names = ["a", "b", "c", "d", "123", "124", "6"]
@@ -1767,20 +1779,12 @@ class TestAddUnitsTable(TestCase):
         Add some units to the units tables before using the add_sorting_to_nwbfile function.
         Previous properties that are also available in the sorting are matched with unit_name
         """
-
-        values_dic = self.defaults
-
         self.nwbfile.add_unit_column(name="unit_name", description="a string reference for the unit")
         self.nwbfile.add_unit_column(name="property", description="property_added_before")
 
-        values_dic.update(id=20, unit_name="c", property="value_c")
-        self.nwbfile.add_unit(**values_dic)
-
-        values_dic.update(id=21, unit_name="d", property="value_d")
-        self.nwbfile.add_unit(**values_dic)
-
-        values_dic.update(id=22, unit_name="f", property="value_f")
-        self.nwbfile.add_unit(**values_dic)
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=20, unit_name="c", property="value_c")
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=21, unit_name="d", property="value_d")
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=22, unit_name="f", property="value_f")
 
         property_values = ["value_a", "value_b", "x", "y"]
         self.sorting_1.set_property(key="property", values=property_values)
@@ -1807,19 +1811,11 @@ class TestAddUnitsTable(TestCase):
         Add some units to the units tables before using the add_sorting_to_nwbfile function.
         New properties in the sorter are matched by unit name
         """
-
-        values_dic = self.defaults
-
         self.nwbfile.add_unit_column(name="unit_name", description="a string reference for the unit")
 
-        values_dic.update(id=20, unit_name="c")
-        self.nwbfile.add_unit(**values_dic)
-
-        values_dic.update(id=21, unit_name="d")
-        self.nwbfile.add_unit(**values_dic)
-
-        values_dic.update(id=22, unit_name="f")
-        self.nwbfile.add_unit(**values_dic)
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=20, unit_name="c")
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=21, unit_name="d")
+        self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=22, unit_name="f")
 
         property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.sorting_1.set_property(key="property", values=property_values)
@@ -1834,6 +1830,32 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(list(self.nwbfile.units.id.data), expected_units_ids)
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
         self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
+
+    def test_no_new_units_with_custom_property_without_default(self):
+        """
+        Test that add_sorting_to_nwbfile doesn't fail when:
+        - Units table has a custom property without a sensible default
+        - All units from the sorting already exist in the table
+        - No null values should be computed since no new rows are added
+
+        This is a regression test for https://github.com/catalystneuro/neuroconv/issues/1629
+        """
+        # Add unit_name column and an integer property
+        # We use an integer property because integers do not have a clear default value,
+        # so if we were adding new rows, we would need to specify a null value for this property
+        self.nwbfile.add_unit_column("unit_name", description="unit name")
+        self.nwbfile.add_unit_column("custom_int_property", description="integer property without default")
+
+        # Add all units from sorting_1 manually
+        for i, unit_id in enumerate(self.sorting_1.unit_ids):
+            self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=i, unit_name=unit_id, custom_int_property=i * 100)
+
+        # This should not raise an error even though custom_int_property has no clear default
+        # because no new rows need to be added
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        # Verify no additional units were added
+        self.assertEqual(len(self.nwbfile.units), len(self.sorting_1.unit_ids))
 
     def test_write_units_table_in_processing_module(self):
         """ """
@@ -2051,6 +2073,60 @@ class TestAddUnitsTable(TestCase):
         assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
 
 
+class TestWaveformParametersAdditionToUnitsTable:
+    """Tests for waveform_data_dict parameter and related metadata propagation."""
+
+    def test_waveform_data_dict_sets_metadata_and_data(self):
+        """Test that waveform_data_dict properly sets waveform metadata and data on Units table."""
+        sorting = generate_sorting(num_units=2, sampling_frequency=30000.0)
+        nwbfile = mock_NWBFile()
+
+        waveform_means = np.random.randn(2, 82, 32).astype(np.float32)
+        waveform_sds = np.random.randn(2, 82, 32).astype(np.float32)
+
+        add_sorting_to_nwbfile(
+            sorting,
+            nwbfile=nwbfile,
+            waveform_data_dict={
+                "means": waveform_means,
+                "sds": waveform_sds,
+                "sampling_rate": 30000.0,
+                "unit": "microvolts",
+            },
+        )
+
+        # Verify metadata is set
+        assert nwbfile.units.waveform_rate == 30000.0
+        assert nwbfile.units.waveform_unit == "microvolts"
+        assert nwbfile.units.resolution == 1.0 / 30000.0
+
+        # Verify waveform data
+        assert "waveform_mean" in nwbfile.units.colnames
+        assert "waveform_sd" in nwbfile.units.colnames
+        np.testing.assert_array_equal(nwbfile.units["waveform_mean"][0], waveform_means[0])
+        np.testing.assert_array_equal(nwbfile.units["waveform_sd"][0], waveform_sds[0])
+
+    def test_resolution_from_sampling_frequency(self):
+        """Test that resolution is automatically set from sorting sampling frequency."""
+        sorting = generate_sorting(num_units=2, sampling_frequency=40000.0)
+        nwbfile = mock_NWBFile()
+
+        add_sorting_to_nwbfile(sorting, nwbfile=nwbfile)
+
+        # Resolution should be 1/sampling_frequency
+        assert nwbfile.units.resolution == 1.0 / 40000.0
+
+
+def is_macos_intel():
+    import platform
+
+    return platform.system() == "Darwin" and platform.machine() != "arm64"
+
+
+@pytest.mark.skipif(
+    is_macos_intel(),
+    reason="Test skipped on macOS with Intel processors because of installation conflicts with Numba.",
+)
 class TestWriteSortingAnalyzer(TestCase):
     @classmethod
     def setUpClass(cls):

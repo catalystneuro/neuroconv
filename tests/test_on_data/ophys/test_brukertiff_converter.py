@@ -43,8 +43,10 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
             BrukerTiffSinglePlaneConverter(folder_path=self.folder_path)
 
     def test_incorrect_plane_separation_type_raises(self):
-        exc_msg = "For volumetric imaging data the plane separation method must be one of 'disjoint' or 'contiguous'."
-        with self.assertRaisesWith(ValueError, exc_msg=exc_msg):
+        import pytest
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="Input should be 'disjoint' or 'contiguous'"):
             BrukerTiffMultiPlaneConverter(folder_path=self.folder_path, plane_separation_type="test")
 
     def test_run_conversion_add_conversion_options(self):

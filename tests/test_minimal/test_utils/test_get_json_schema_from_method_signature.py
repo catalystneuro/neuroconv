@@ -470,3 +470,114 @@ def test_json_schema_raises_error_for_missing_type_annotations():
         ),
     ):
         get_json_schema_from_method_signature(method=test_method)
+
+
+def test_get_json_schema_from_method_signature_with_args():
+    """Test that *args is skipped and keyword-only params after *args are included in schema."""
+
+    def method_with_args_and_keyword_only(
+        required_param: str,
+        *args,
+        keyword_only_param: int = 10,
+        another_keyword_only: bool = False,
+    ):
+        pass
+
+    test_json_schema = get_json_schema_from_method_signature(method=method_with_args_and_keyword_only)
+    expected_json_schema = {
+        "additionalProperties": False,
+        "properties": {
+            "required_param": {"type": "string"},
+            "keyword_only_param": {"default": 10, "type": "integer"},
+            "another_keyword_only": {"default": False, "type": "boolean"},
+        },
+        "required": ["required_param"],
+        "type": "object",
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_get_json_schema_from_method_signature_with_args_and_kwargs():
+    """Test that both *args and **kwargs are handled correctly."""
+
+    def method_with_args_and_kwargs(
+        required_param: str,
+        *args,
+        keyword_only_param: int = 10,
+        **kwargs,
+    ):
+        pass
+
+    test_json_schema = get_json_schema_from_method_signature(method=method_with_args_and_kwargs)
+    expected_json_schema = {
+        "additionalProperties": True,  # True because of **kwargs
+        "properties": {
+            "required_param": {"type": "string"},
+            "keyword_only_param": {"default": 10, "type": "integer"},
+        },
+        "required": ["required_param"],
+        "type": "object",
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_mock_imaging_interface_schema_with_args_pattern():
+    """Test that MockImagingInterface with *args pattern generates correct schema.
+
+    TODO: Remove this test in June 2026 or after when positional arguments are no longer supported
+    and the *args pattern is removed from MockImagingInterface.
+    """
+    from neuroconv.tools.testing import MockImagingInterface
+
+    test_json_schema = get_json_schema_from_method_signature(
+        method=MockImagingInterface.add_to_nwbfile,
+        exclude=["nwbfile", "metadata"],
+    )
+
+    expected_json_schema = {
+        "additionalProperties": False,
+        "properties": {
+            "always_write_timestamps": {
+                "default": False,
+                "description": "Whether to always write timestamps, by default False.",
+                "type": "boolean",
+            },
+            "iterator_options": {
+                "anyOf": [{"additionalProperties": True, "type": "object"}, {"type": "null"}],
+                "default": None,
+                "description": "Options for controlling the iterative write process.",
+            },
+            "iterator_type": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": "v2",
+                "description": "The type of iterator for chunked data writing.",
+            },
+            "parent_container": {
+                "default": "acquisition",
+                "description": "Specifies the parent container to which the photon series should be added.",
+                "enum": ["acquisition", "processing/ophys"],
+                "type": "string",
+            },
+            "photon_series_index": {
+                "default": 0,
+                "description": "The index of the photon series in the provided imaging data, by default 0.",
+                "type": "integer",
+            },
+            "photon_series_type": {
+                "default": "TwoPhotonSeries",
+                "description": 'The type of photon series to be added, by default "TwoPhotonSeries".',
+                "enum": ["TwoPhotonSeries", "OnePhotonSeries"],
+                "type": "string",
+            },
+            "stub_test": {
+                "default": False,
+                "description": "If True, only writes a small subset of frames for testing purposes, by default False.",
+                "type": "boolean",
+            },
+        },
+        "type": "object",
+    }
+
+    assert test_json_schema == expected_json_schema

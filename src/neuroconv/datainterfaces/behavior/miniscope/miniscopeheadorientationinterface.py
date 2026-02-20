@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -30,6 +31,7 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         metadata_key: str = "TimeSeriesMiniscopeHeadOrientation",
         verbose: bool = False,
     ):
@@ -45,6 +47,33 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
         verbose : bool, optional
             If True, enables verbose mode for detailed logging, by default False.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "metadata_key",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to MiniscopeHeadOrientationInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            metadata_key = positional_values.get("metadata_key", metadata_key)
+            verbose = positional_values.get("verbose", verbose)
+
         import pandas as pd
 
         super().__init__(file_path=file_path, verbose=verbose)
@@ -57,7 +86,9 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
 
         # Read quaternion data once during initialization
         df = pd.read_csv(file_path)
-        self._quaternion_data = df[["qw", "qx", "qy", "qz"]].values
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        self._quaternion_data = df[["qw", "qx", "qy", "qz"]].to_numpy(dtype="float64")
 
     @staticmethod
     def _get_session_start_time(folder_path):
@@ -83,8 +114,9 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
         import pandas as pd
 
         df = pd.read_csv(self.source_data["file_path"])
-        # Read timestamps (in milliseconds) and convert to seconds
-        return df["Time Stamp (ms)"].values / 1000.0
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return df["Time Stamp (ms)"].to_numpy(dtype="float64") / 1000.0
 
     def get_timestamps(self) -> np.ndarray:
         """Return the current timestamps (possibly aligned)."""
@@ -146,6 +178,7 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         always_write_timestamps: bool = False,
     ):
         """
@@ -175,6 +208,31 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
             using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
             explicitly, regardless of whether the sampling rate is uniform.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "always_write_timestamps",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to MiniscopeHeadOrientationInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
+
         # Initialize series_kwargs with data
         series_kwargs = {}
         series_kwargs["data"] = self._quaternion_data

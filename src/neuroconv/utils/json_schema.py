@@ -60,6 +60,14 @@ class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
     Custom JSON encoder for conversion options of the data interfaces and converters (i.e. kwargs).
     """
 
+    def default(self, obj):
+
+        # Serialize callable objects (e.g. callback functions in progress_bar_options)
+        if callable(obj):
+            return f"{obj.__module__}.{obj.__qualname__}"
+
+        return super().default(obj)
+
 
 # This is used in the Guide so we will keep it public.
 NWBMetaDataEncoder = _NWBMetaDataEncoder
@@ -159,6 +167,9 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
 
         if parameter.kind == inspect.Parameter.VAR_KEYWORD:  # Skip all **{...} usage
             additional_properties = True
+            continue
+
+        if parameter.kind == inspect.Parameter.VAR_POSITIONAL:  # Skip all *args usage
             continue
 
         # Raise error if the type annotation is missing as a json schema cannot be generated in that case

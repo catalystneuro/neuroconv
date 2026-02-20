@@ -749,8 +749,22 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = TdtRecordingInterface
     test_gain_value = 0.195  # arbitrary value to test gain
-    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value)
     save_directory = OUTPUT_PATH
+
+    @pytest.fixture(
+        params=[
+            dict(folder_path=str(ECEPHY_DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value),
+            dict(folder_path=str(ECEPHY_DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value, stream_name="LFPs"),
+        ],
+        ids=["default", "stream_name"],
+    )
+    def setup_interface(self, request):
+        test_id = request.node.callspec.id
+        self.test_name = test_id
+        self.interface_kwargs = request.param
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+        return self.interface, self.test_name
 
     def run_custom_checks(self):
         # Check that the gain is applied

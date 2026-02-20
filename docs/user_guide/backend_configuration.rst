@@ -147,11 +147,10 @@ If you have already written a file and want to get the configuration that was us
 .. code-block:: python
 
     from neuroconv.tools.nwb_helpers import get_existing_backend_configuration
-    from pynwb import NWBHDF5IO
+    from pynwb import read_nwb
 
-    with NWBHDF5IO(nwbfile_path="output.nwb", mode="r") as io:
-        nwbfile = io.read()
-        backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
+    nwbfile = read_nwb("output.nwb")
+    backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
 
     print(backend_configuration)
 
@@ -160,11 +159,10 @@ the compression level but leave all the other settings the same.
 
 .. code-block:: python
 
-    backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compression_options["clevel"] = 4
+    backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compression_options["compression_opts"] = 9
 
-    with NWBHDF5IO(nwbfile_path="output.nwb", mode="r") as io:
-        nwbfile = io.read()
-        configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output2.nwb", export=True)
+    nwbfile = read_nwb("output.nwb")
+    configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output2.nwb")
 
 
 Interfaces and Converters
@@ -184,11 +182,6 @@ The following example uses the :ref:`example data <example_data>` available from
     from zoneinfo import ZoneInfo
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import SpikeGLXRecordingInterface, PhySortingInterface
-    from neuroconv.tools.nwb_helpers import (
-        make_or_load_nwbfile,
-        get_default_backend_configuration,
-        configure_backend,
-    )
 
     # Instantiate interfaces and converter
     ap_interface = SpikeGLXRecordingInterface(
@@ -234,6 +227,7 @@ If you do not intend to make any alterations to the default configuration for th
         metadata = converter.get_metadata()
 
         # Create the in-memory NWBFile object and apply the default configuration for HDF5
+        nwbfile = converter.create_nwbfile(metadata=metadata)
         backend="hdf5"
 
         # Configure and write the NWB file

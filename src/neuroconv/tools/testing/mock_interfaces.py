@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime
 from typing import Literal
 
@@ -339,6 +340,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
+        *args,
         num_channels: int = 4,
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
@@ -347,6 +349,44 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str = "ElectricalSeries",
         set_probe: bool = False,
     ):
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "num_channels",
+                "sampling_frequency",
+                "durations",
+                "seed",
+                "verbose",
+                "es_key",
+                "set_probe",
+            ]
+            # Number of positional parameters before *args in the signature (self is counted by Python in error messages)
+            num_positional_args_before_args = 1  # self
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"MockRecordingInterface.__init__() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments "
+                    f"but {len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
+                )
+            # Map positional args to keyword args, positional args take precedence
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to MockRecordingInterface.__init__() is deprecated "
+                f"and will be removed in June 2026 or after. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            num_channels = positional_values.get("num_channels", num_channels)
+            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
+            durations = positional_values.get("durations", durations)
+            seed = positional_values.get("seed", seed)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+            set_probe = positional_values.get("set_probe", set_probe)
+
         super().__init__(
             num_channels=num_channels,
             sampling_frequency=sampling_frequency,
@@ -518,6 +558,96 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict | None = None,
+        *args,
+        photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
+        photon_series_index: int = 0,
+        parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
+        stub_test: bool = False,
+        always_write_timestamps: bool = False,
+        iterator_type: str | None = "v2",
+        iterator_options: dict | None = None,
+    ):
+        """
+        Add imaging data to the NWB file.
+
+        This method demonstrates the *args pattern for deprecating positional arguments
+        while maintaining schema validation for keyword-only arguments.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file where the imaging data will be added.
+        metadata : dict, optional
+            Metadata for the NWBFile, by default None.
+        photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
+            The type of photon series to be added, by default "TwoPhotonSeries".
+        photon_series_index : int, optional
+            The index of the photon series in the provided imaging data, by default 0.
+        parent_container : {"acquisition", "processing/ophys"}, optional
+            Specifies the parent container to which the photon series should be added.
+        stub_test : bool, optional
+            If True, only writes a small subset of frames for testing purposes, by default False.
+        always_write_timestamps : bool, optional
+            Whether to always write timestamps, by default False.
+        iterator_type : {"v2", None}, default: "v2"
+            The type of iterator for chunked data writing.
+        iterator_options : dict, optional
+            Options for controlling the iterative write process.
+        """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "photon_series_type",
+                "photon_series_index",
+                "parent_container",
+                "stub_test",
+                "always_write_timestamps",
+                "iterator_type",
+                "iterator_options",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
+                )
+            # Map positional args to keyword args, positional args take precedence
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to add_to_nwbfile is deprecated "
+                f"and will be removed in June 2026 or after. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
+            photon_series_index = positional_values.get("photon_series_index", photon_series_index)
+            parent_container = positional_values.get("parent_container", parent_container)
+            stub_test = positional_values.get("stub_test", stub_test)
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
+            iterator_type = positional_values.get("iterator_type", iterator_type)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+
+        # Call parent implementation with keyword arguments
+        super().add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            photon_series_type=photon_series_type,
+            photon_series_index=photon_series_index,
+            parent_container=parent_container,
+            stub_test=stub_test,
+            always_write_timestamps=always_write_timestamps,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
+        )
 
 
 class MockSegmentationInterface(BaseSegmentationExtractorInterface):
