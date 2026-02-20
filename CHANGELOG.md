@@ -1,9 +1,20 @@
-# v0.9.3 (Upcoming)
+# v0.9.4 (Upcoming)
+
+## Removals, Deprecations and Changes
+
+## Bug Fixes
+
+## Features
+
+## Improvements
+
+# v0.9.3 (February 19, 2026)
 
 ## Removals, Deprecations and Changes
 
 ## Bug Fixes
 * Fixed timestamp writing logic in `_add_photon_series_to_nwbfile`, `add_photon_series_to_nwbfile`, and `_add_fluorescence_traces_to_nwbfile` to check `get_native_timestamps()` when `has_time_vector()` is False. Previously, native hardware timestamps from source formats (e.g. Minian, ScanImage) were silently dropped, falling back to sampling rate only. [PR #1662](https://github.com/catalystneuro/neuroconv/pull/1662)
+* Fixed `TypeError: Object of type type is not JSON serializable` when passing `type` or `callable` objects (e.g. `progress_bar_class`) in `conversion_options`. The validation step now serializes these to their qualified module path for JSON schema validation while passing the original objects through to conversion unchanged. [PR #1667](https://github.com/catalystneuro/neuroconv/pull/1667)
 
 ## Features
 
