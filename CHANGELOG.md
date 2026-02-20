@@ -7,6 +7,7 @@
 ## Features
 
 ## Improvements
+* Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
 
 # v0.9.3 (February 19, 2026)
 
