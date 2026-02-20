@@ -2026,6 +2026,13 @@ def _add_units_table_to_nwbfile(
     mappings). See ``add_electrodes_to_nwbfile`` for how the electrode table itself
     handles deduplication via ``(group_name, electrode_name, channel_name)``.
 
+    .. note::
+
+        Avoid using ``units_table.to_dataframe()`` in this function. The DataFrame
+        conversion materializes all column data (including ragged arrays like spike_times)
+        into memory, which is prohibitively expensive for large tables. Instead, access
+        columns directly via ``units_table["column_name"][:]``.
+
     Parameters
     ----------
     sorting : spikeinterface.BaseSorting
@@ -2204,22 +2211,25 @@ def _add_units_table_to_nwbfile(
             table=nwbfile.electrodes,
         )
 
-    # Establish rows in the table. The strategy depends on whether columns already exist:
-    # - New table: no existing columns, so we only add IDs here. All data (including
-    #   spike_times, waveforms, electrodes) is added as columns afterwards.
-    # - Existing table: HDMF's add_row() requires values for all existing columns,
-    #   so existing properties must be provided per row via add_unit().
-    #   New properties that don't yet exist as columns are added as columns afterwards.
+    # For a new table, establish all rows in bulk via id.extend().
+    # All data (spike_times, waveforms, electrodes, properties) is then added as columns below.
     if write_table_first_time:
         units_table.id.extend(list(range(num_units)))
-    else:
-        units_table_previous_properties = set(units_table.colnames).difference({"spike_times"})
-        properties_to_add = set(data_to_add)
-        properties_to_add_by_rows = units_table_previous_properties.union({"id"})
 
-        # Add data by rows excluding the rows with previously added unit names
+    # Determine which properties already exist as columns and which are new.
+    # Pre-existing columns must be provided per row via add_unit(); new properties are added as columns.
+    units_table_previous_columns = set(units_table.colnames)
+    properties_to_add = set(data_to_add)
+
+    # Determine which units need per-row insertion via add_unit().
+    # This is only needed when there are pre-existing columns (since add_unit() must provide
+    # values for all existing columns). For new tables there are no pre-existing columns,
+    # so all data is added as columns and no per-row insertion is needed.
+    rows_to_add = []
+    if units_table_previous_columns:
+        # Filter out units whose unit_name already exists (deduplication).
         unit_names_used_previously = []
-        if "unit_name" in units_table_previous_properties:
+        if "unit_name" in units_table_previous_columns:
             unit_names_used_previously = units_table["unit_name"].data
         has_electrodes_column = "electrodes" in units_table.colnames
 
@@ -2237,46 +2247,35 @@ def _add_units_table_to_nwbfile(
                     if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
                         rows_to_add.append(index)
 
-        # Properties that were added before require null values to add by rows if data is missing
-        properties_requiring_null_values = units_table_previous_properties.difference(properties_to_add)
-        null_values_for_row = {}
-        # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
-        # See https://github.com/catalystneuro/neuroconv/issues/1629
-        if len(rows_to_add) > 0:
-            for property in properties_requiring_null_values - {"electrodes"}:  # TODO, fix electrodes
-                sample_data = units_table[property][:][0]
-                null_value = _get_null_value_for_property(
-                    property=property,
-                    sample_data=sample_data,
-                    null_values_for_properties=null_values_for_properties,
-                )
-                null_values_for_row[property] = null_value
+    # Add rows for pre-existing columns. Each row needs values for all existing columns;
+    # properties not present in the new data get null values.
+    properties_requiring_null_values = units_table_previous_columns.difference(properties_to_add)
+    null_values_for_row = {}
+    # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
+    # See https://github.com/catalystneuro/neuroconv/issues/1629
+    if len(rows_to_add) > 0:
+        for property in properties_requiring_null_values - {"electrodes"}:  # TODO, fix electrodes
+            sample_data = units_table[property][:][0]
+            null_value = _get_null_value_for_property(
+                property=property,
+                sample_data=sample_data,
+                null_values_for_properties=null_values_for_properties,
+            )
+            null_values_for_row[property] = null_value
 
-        # Special case
-        null_values_for_row["id"] = None
+    properties_with_data = {property for property in units_table_previous_columns if "data" in data_to_add[property]}
 
-        properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
+    for row in rows_to_add:
+        unit_kwargs = null_values_for_row
+        for property in properties_with_data:
+            unit_kwargs[property] = data_to_add[property]["data"][row]
 
-        for row in rows_to_add:
-            unit_kwargs = null_values_for_row
-            for property in properties_with_data:
-                unit_kwargs[property] = data_to_add[property]["data"][row]
-
-            unit_kwargs["spike_times"] = all_spike_times[row]
-            if waveform_means is not None:
-                unit_kwargs["waveform_mean"] = waveform_means[row]
-                if waveform_sds is not None:
-                    unit_kwargs["waveform_sd"] = waveform_sds[row]
-            if unit_electrode_indices is not None:
-                unit_kwargs["electrodes"] = unit_electrode_indices[row]
-
-            units_table.add_unit(**unit_kwargs, enforce_unique_id=True)
+        units_table.add_unit(**unit_kwargs, enforce_unique_id=True)
 
     # Add properties as columns for any data not yet in the table.
     # For new tables this is everything; for existing tables this is only new properties.
-    existing_columns = set(units_table.colnames)
     properties_with_extracted_data = {key for key, value in data_to_add.items() if "data" in value}
-    properties_to_add_by_columns = properties_with_extracted_data - existing_columns
+    properties_to_add_by_columns = properties_with_extracted_data - units_table_previous_columns
 
     unit_table_size = len(units_table.id[:])
     previous_table_size = len(units_table.id[:]) - len(unit_name_array)
