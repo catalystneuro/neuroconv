@@ -2679,7 +2679,9 @@ def add_sorting_analyzer_to_nwbfile(
         recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
     )
     electrode_group_indices = _get_electrode_group_indices(recording, nwbfile=nwbfile)
-    unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
+    unit_electrode_indices = (
+        [electrode_group_indices] * len(sorting.unit_ids) if electrode_group_indices is not None else None
+    )
 
     _add_units_table_to_nwbfile(
         sorting=sorting_copy,
