@@ -7,6 +7,7 @@
 ## Features
 
 ## Improvements
+* Added array-like protocol methods (`shape`, `ndim`, `__len__`, `__getitem__`) to all data chunk iterators (`SliceableDataChunkIterator`, `SpikeInterfaceRecordingDataChunkIterator`, `ImagingExtractorDataChunkIterator`, `VideoDataChunkIterator`), enabling downstream tools like pynapple to treat them as lazy arrays. Also added `_convert_index_to_slices` to the base `GenericDataChunkIterator` for shared index normalization. [PR #1673](https://github.com/catalystneuro/neuroconv/pull/1673)
 
 # v0.9.3 (February 19, 2026)
 
