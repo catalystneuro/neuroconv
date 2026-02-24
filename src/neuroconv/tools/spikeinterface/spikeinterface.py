@@ -1958,6 +1958,81 @@ def _add_units_table_to_nwbfile(
     module (for intermediate/historical data). It handles unit selection, property customization,
     waveform data, and electrode mapping.
 
+    Storage strategy
+    ----------------
+    Data that is not previously in the table is added as columns. Pre-existing columns
+    require rows to be appended. This means that on first write, everything is added as
+    columns. When appending to an existing table, rows are added first (for pre-existing
+    columns, using null values where data is missing), then new properties are added as
+    columns (which may require null values for previously existing rows).
+
+    **First write (new table):**
+    All data is added as columns. No row-by-row insertion needed.
+
+    ::
+
+        +-----------+-----------+-----------+
+        | col_A     | col_B     | col_C     |
+        |  (column) |  (column) |  (column) |
+        +===========+===========+===========+
+        |     .     |     .     |     .     |
+        |     .     |     .     |     .     |
+        |     .     |     .     |     .     |
+        +-----------+-----------+-----------+
+
+    **Second write (appending to existing table):**
+    Pre-existing columns need values for each new row, so rows are appended
+    via ``add_unit()``. Null values fill columns where data is missing. Then
+    new properties are added as columns, with null values backfilled for
+    previously existing rows.
+
+    ::
+
+        Existing table           data_to_add = {col_A, col_B, col_D}
+        has: col_A, col_B, col_C     col_C missing, col_D is new
+
+        Step 1: append rows for pre-existing columns
+        +-----------+-----------+-----------+
+        | col_A     | col_B     | col_C     |
+        +===========+===========+===========+
+        |  (old)    |  (old)    |  (old)    |   <- existing rows
+        |     .     |     .     |     .     |
+        +-----------+-----------+-----------+
+        |  (new)    |  (new)    |   null    |   <- new rows added
+        |     .     |     .     |   null    |      col_C has no data
+        +-----------+-----------+-----------+
+
+        Step 2: add new columns
+        +-----------+-----------+-----------+-----------+
+        | col_A     | col_B     | col_C     | col_D     |
+        +===========+===========+===========+===========+
+        |  (old)    |  (old)    |  (old)    |   null    |  <- old rows
+        |     .     |     .     |     .     |   null    |     col_D backfilled
+        +-----------+-----------+-----------+-----------+
+        |  (new)    |  (new)    |   null    |  (new)    |  <- new rows
+        |     .     |     .     |   null    |     .     |
+        +-----------+-----------+-----------+-----------+
+
+    In step 1, col_C is a pre-existing column whose data is not present in the new
+    sorting's units, so null values are used (see ``_get_null_value_for_property``
+    for how defaults are determined by data type). In step 2, col_D is a new property
+    only present in the new units, so previously existing rows are backfilled with
+    null values.
+
+    Deduplication is handled by ``unit_name``: units whose name already exists in
+    the table are skipped. When the table has an ``electrodes`` column and a unit's
+    electrode indices differ from the previously stored ones, the unit is re-added
+    as a new row (resulting in duplicate unit names with different electrode
+    mappings). See ``add_electrodes_to_nwbfile`` for how the electrode table itself
+    handles deduplication via ``(group_name, electrode_name, channel_name)``.
+
+    .. note::
+
+        Avoid using ``units_table.to_dataframe()`` in this function. The DataFrame
+        conversion materializes all column data (including ragged arrays like spike_times)
+        into memory, which is prohibitively expensive for large tables. Instead, access
+        columns directly via ``units_table["column_name"][:]``.
+
     Parameters
     ----------
     sorting : spikeinterface.BaseSorting
@@ -2092,33 +2167,89 @@ def _add_units_table_to_nwbfile(
         unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
 
-    units_table_previous_properties = set(units_table.colnames).difference({"spike_times"})
+    # Precompute spike times for all units and add to data_to_add alongside waveforms and electrodes.
+    # This lets the shared column-adding loop below handle all data uniformly.
+    num_units = sorting.get_num_units()
+    num_segments = sorting.get_num_segments()
+    all_spike_times = []
+    for row_index in range(num_units):
+        spike_times = np.concatenate(
+            [
+                sorting.get_unit_spike_train(
+                    unit_id=unit_ids[row_index],
+                    segment_index=segment_index,
+                    return_times=True,
+                )
+                for segment_index in range(num_segments)
+            ]
+        )
+        all_spike_times.append(spike_times)
+    data_to_add["spike_times"].update(
+        description="the spike times for each unit in seconds",
+        data=all_spike_times,
+        index=True,
+    )
+
+    if waveform_means is not None:
+        data_to_add["waveform_mean"].update(
+            description="the spike waveform mean for each spike unit",
+            data=waveform_means,
+            index=False,
+        )
+        if waveform_sds is not None:
+            data_to_add["waveform_sd"].update(
+                description="the spike waveform standard deviation for each spike unit",
+                data=waveform_sds,
+                index=False,
+            )
+
+    if unit_electrode_indices is not None:
+        data_to_add["electrodes"].update(
+            description="the electrodes that each spike unit came from",
+            data=unit_electrode_indices,
+            index=True,
+            table=nwbfile.electrodes,
+        )
+
+    # For a new table, establish all rows in bulk via id.extend().
+    # All data (spike_times, waveforms, electrodes, properties) is then added as columns below.
+    if write_table_first_time:
+        units_table.id.extend(list(range(num_units)))
+
+    # Determine which properties already exist as columns and which are new.
+    # Pre-existing columns must be provided per row via add_unit(); new properties are added as columns.
+    units_table_previous_columns = set(units_table.colnames)
     properties_to_add = set(data_to_add)
-    properties_to_add_by_rows = units_table_previous_properties.union({"id"})
-    properties_to_add_by_columns = properties_to_add - properties_to_add_by_rows
 
-    # Add data by rows excluding the rows with previously added unit names
-    unit_names_used_previously = []
-    if "unit_name" in units_table_previous_properties:
-        unit_names_used_previously = units_table["unit_name"].data
-    has_electrodes_column = "electrodes" in units_table.colnames
+    # Determine which units need per-row insertion via add_unit().
+    # This is only needed when there are pre-existing columns (since add_unit() must provide
+    # values for all existing columns). For new tables there are no pre-existing columns,
+    # so all data is added as columns and no per-row insertion is needed.
+    rows_to_add = []
+    if units_table_previous_columns:
+        # Filter out units whose unit_name already exists (deduplication).
+        unit_names_used_previously = []
+        if "unit_name" in units_table_previous_columns:
+            unit_names_used_previously = units_table["unit_name"].data
+        has_electrodes_column = "electrodes" in units_table.colnames
 
-    rows_in_data = [index for index in range(sorting.get_num_units())]
-    if not has_electrodes_column:
-        rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
-    else:
-        rows_to_add = []
-        for index in rows_in_data:
-            if unit_name_array[index] not in unit_names_used_previously:
-                rows_to_add.append(index)
-            else:
-                unit_name = unit_name_array[index]
-                previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]].electrodes
-                if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
+        rows_in_data = [index for index in range(num_units)]
+        if not has_electrodes_column:
+            rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
+        else:
+            rows_to_add = []
+            for index in rows_in_data:
+                if unit_name_array[index] not in unit_names_used_previously:
                     rows_to_add.append(index)
+                else:
+                    unit_name = unit_name_array[index]
+                    previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]].electrodes
+                    if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
+                        rows_to_add.append(index)
 
-    # Properties that were added before require null values to add by rows if data is missing
-    properties_requiring_null_values = units_table_previous_properties.difference(properties_to_add)
+    # Add rows for pre-existing columns. Each row needs values for all existing columns;
+    # properties not present in the new data get null values.
+    properties_requiring_null_values = units_table_previous_columns.difference(properties_to_add)
     null_values_for_row = {}
     # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
     # See https://github.com/catalystneuro/neuroconv/issues/1629
@@ -2132,34 +2263,20 @@ def _add_units_table_to_nwbfile(
             )
             null_values_for_row[property] = null_value
 
-    # Special case
-    null_values_for_row["id"] = None
-
-    properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
+    properties_with_data = {property for property in units_table_previous_columns if "data" in data_to_add[property]}
 
     for row in rows_to_add:
         unit_kwargs = null_values_for_row
         for property in properties_with_data:
             unit_kwargs[property] = data_to_add[property]["data"][row]
-        spike_times = []
 
-        # Extract and concatenate the spike times from multiple segments
-        for segment_index in range(sorting.get_num_segments()):
-            segment_spike_times = sorting.get_unit_spike_train(
-                unit_id=unit_ids[row], segment_index=segment_index, return_times=True
-            )
-            spike_times.append(segment_spike_times)
-        spike_times = np.concatenate(spike_times)
-        if waveform_means is not None:
-            unit_kwargs["waveform_mean"] = waveform_means[row]
-            if waveform_sds is not None:
-                unit_kwargs["waveform_sd"] = waveform_sds[row]
-        if unit_electrode_indices is not None:
-            unit_kwargs["electrodes"] = unit_electrode_indices[row]
+        units_table.add_unit(**unit_kwargs, enforce_unique_id=True)
 
-        units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
+    # Add properties as columns for any data not yet in the table.
+    # For new tables this is everything; for existing tables this is only new properties.
+    properties_with_extracted_data = {key for key, value in data_to_add.items() if "data" in value}
+    properties_to_add_by_columns = properties_with_extracted_data - units_table_previous_columns
 
-    # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
     unit_table_size = len(units_table.id[:])
     previous_table_size = len(units_table.id[:]) - len(unit_name_array)
     if "unit_name" in properties_to_add_by_columns:
@@ -2562,7 +2679,9 @@ def add_sorting_analyzer_to_nwbfile(
         recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
     )
     electrode_group_indices = _get_electrode_group_indices(recording, nwbfile=nwbfile)
-    unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
+    unit_electrode_indices = (
+        [electrode_group_indices] * len(sorting.unit_ids) if electrode_group_indices is not None else None
+    )
 
     _add_units_table_to_nwbfile(
         sorting=sorting_copy,
