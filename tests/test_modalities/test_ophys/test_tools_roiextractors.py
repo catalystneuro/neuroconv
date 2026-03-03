@@ -40,7 +40,7 @@ from neuroconv.tools.roiextractors.roiextractors import (
     _add_photon_series_to_nwbfile_old_list_format,
     _add_plane_segmentation_to_nwbfile,
     _add_summary_images_to_nwbfile,
-    _get_default_ophys_metadata,
+    _get_default_ophys_metadata_old_metadata_list,
 )
 from neuroconv.utils import dict_deep_update
 
@@ -1212,7 +1212,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
     def test_add_fluorescence_traces_to_nwbfile_with_plane_segmentation_name_specified(self):
         plane_segmentation_name = "plane_segmentation_name"
-        metadata = _get_default_ophys_metadata()
+        metadata = _get_default_ophys_metadata_old_metadata_list()
         metadata = dict_deep_update(metadata, self.metadata)
 
         metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(name=plane_segmentation_name)
@@ -1246,7 +1246,7 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
 
         cls.session_start_time = datetime.now().astimezone()
 
-        cls.metadata = _get_default_ophys_metadata()
+        cls.metadata = _get_default_ophys_metadata_old_metadata_list()
 
         cls.plane_segmentation_first_plane_name = "PlaneSegmentationFirstPlane"
         cls.metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(
@@ -1942,10 +1942,10 @@ class TestAddSummaryImages(TestCase):
 
 class TestNoMetadataMutation:
     def test_get_default_ophys_metadata_returns_independent_instances(self):
-        """Test that _get_default_ophys_metadata() returns independent instances that don't share mutable state."""
+        """Test that _get_default_ophys_metadata_old_metadata_list() returns independent instances that don't share mutable state."""
         # Get two instances
-        metadata1 = _get_default_ophys_metadata()
-        metadata2 = _get_default_ophys_metadata()
+        metadata1 = _get_default_ophys_metadata_old_metadata_list()
+        metadata2 = _get_default_ophys_metadata_old_metadata_list()
 
         # Store a snapshot of metadata2's Ophys section before mutating metadata1
         metadata2_ophys_before = deepcopy(metadata2["Ophys"])
@@ -1961,7 +1961,7 @@ class TestNoMetadataMutation:
         ), "Modifying metadata1 affected metadata2 - instances share mutable state"
 
         # Get a third instance after modifications to ensure fresh defaults
-        metadata3 = _get_default_ophys_metadata()
+        metadata3 = _get_default_ophys_metadata_old_metadata_list()
         assert (
             metadata3["Ophys"] == metadata2_ophys_before
         ), "New instance after mutations differs from original - not getting fresh defaults"
@@ -2275,7 +2275,7 @@ class TestAddImaging:
 
     @pytest.fixture()
     def dict_metadata(self):
-        """Minimal dict-based metadata with device, imaging plane, and photon series."""
+        """Minimal dict-based metadata with device, imaging plane, and microscopy series."""
         return {
             "Devices": {
                 "my_microscope": {
@@ -2302,7 +2302,7 @@ class TestAddImaging:
                         ],
                     },
                 },
-                "TwoPhotonSeries": {
+                "MicroscopySeries": {
                     "my_series": {
                         "name": "TwoPhotonSeries",
                         "description": "Two-photon calcium imaging",
@@ -2324,7 +2324,7 @@ class TestAddImaging:
             nwbfile=nwbfile,
             metadata=dict_metadata,
             photon_series_type="TwoPhotonSeries",
-            photon_series_metadata_key="my_series",
+            microscopy_series_metadata_key="my_series",
         )
 
         assert "Microscope" in nwbfile.devices
@@ -2369,7 +2369,7 @@ class TestAddImaging:
                         ],
                     },
                 },
-                "TwoPhotonSeries": {
+                "MicroscopySeries": {
                     "my_series": {
                         "name": "TwoPhotonSeries",
                         "description": "Imaging data",
@@ -2385,7 +2385,7 @@ class TestAddImaging:
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type="TwoPhotonSeries",
-            photon_series_metadata_key="my_series",
+            microscopy_series_metadata_key="my_series",
         )
 
         # Default device name comes from _get_default_ophys_metadata
@@ -2428,7 +2428,7 @@ class TestAddImaging:
                         "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
                     },
                 },
-                "TwoPhotonSeries": {
+                "MicroscopySeries": {
                     "series_v1": {
                         "name": "TwoPhotonSeriesV1",
                         "description": "V1 imaging",
@@ -2450,14 +2450,14 @@ class TestAddImaging:
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type="TwoPhotonSeries",
-            photon_series_metadata_key="series_v1",
+            microscopy_series_metadata_key="series_v1",
         )
         add_imaging_to_nwbfile(
             imaging=imaging,
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type="TwoPhotonSeries",
-            photon_series_metadata_key="series_v2",
+            microscopy_series_metadata_key="series_v2",
         )
 
         # One device, two planes, two series
@@ -2478,7 +2478,7 @@ class TestAddImaging:
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
         # Add a second series that references the same imaging plane
-        dict_metadata["Ophys"]["TwoPhotonSeries"]["second_series"] = {
+        dict_metadata["Ophys"]["MicroscopySeries"]["second_series"] = {
             "name": "TwoPhotonSeriesSecond",
             "description": "Second series",
             "unit": "n.a.",
@@ -2490,14 +2490,14 @@ class TestAddImaging:
             nwbfile=nwbfile,
             metadata=dict_metadata,
             photon_series_type="TwoPhotonSeries",
-            photon_series_metadata_key="my_series",
+            microscopy_series_metadata_key="my_series",
         )
         add_imaging_to_nwbfile(
             imaging=imaging,
             nwbfile=nwbfile,
             metadata=dict_metadata,
             photon_series_type="TwoPhotonSeries",
-            photon_series_metadata_key="second_series",
+            microscopy_series_metadata_key="second_series",
         )
 
         assert len(nwbfile.devices) == 1
@@ -2517,7 +2517,7 @@ class TestAddImaging:
             nwbfile=nwbfile,
             metadata=dict_metadata,
             photon_series_type="TwoPhotonSeries",
-            photon_series_metadata_key="my_series",
+            microscopy_series_metadata_key="my_series",
         )
 
         assert dict_metadata == metadata_before, "Metadata was mutated"

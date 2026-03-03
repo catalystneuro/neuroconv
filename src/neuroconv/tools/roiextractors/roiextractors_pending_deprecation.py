@@ -27,7 +27,7 @@ from .roiextractors import (
     _add_fluorescence_traces_to_nwbfile,
     _add_imaging_plane_to_nwbfile_old_list_format,
     _add_plane_segmentation,
-    _get_default_ophys_metadata,
+    _get_default_ophys_metadata_old_metadata_list,
     _get_default_segmentation_metadata,
     _imaging_frames_to_hdmf_iterator,
     add_devices_to_nwbfile,
@@ -55,7 +55,7 @@ def add_imaging_plane_to_nwbfile(
     )
 
     # Duplicated implementation - kept verbatim for backward compatibility
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_imaging_plane = default_metadata["Ophys"]["ImagingPlane"][0]
 
     # Track whether user explicitly provided a name
@@ -177,7 +177,7 @@ def add_photon_series_to_nwbfile(
     ], "'parent_container' must be either 'acquisition' or 'processing/ophys'."
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_photon_series = default_metadata["Ophys"][photon_series_type][0]
 
     # Extract photon series metadata from user or use defaults
@@ -522,7 +522,7 @@ def add_summary_images_to_nwbfile(
     metadata = metadata or dict()
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_segmentation_images = default_metadata["Ophys"]["SegmentationImages"]
 
     # Extract SegmentationImages metadata from user or use defaults

@@ -57,6 +57,52 @@ from ...utils.str_utils import human_readable_size
 
 def _get_default_ophys_metadata():
     """
+    Returns fresh ophys default metadata
+
+    """
+    metadata = get_default_nwbfile_metadata()
+
+    default_metadata_key = "default_metadata_key"
+
+    metadata["Devices"] = {
+        default_metadata_key: {
+            "name": "Microscope",
+        },
+    }
+
+    metadata["Ophys"] = {
+        "ImagingPlanes": {
+            default_metadata_key: {
+                "name": "ImagingPlane",
+                "description": "The plane or volume being imaged by the microscope.",
+                "excitation_lambda": np.nan,
+                "indicator": "unknown",
+                "location": "unknown",
+                "device_metadata_key": default_metadata_key,
+                "optical_channel": [
+                    {
+                        "name": "OpticalChannel",
+                        "emission_lambda": np.nan,
+                        "description": "An optical channel of the microscope.",
+                    }
+                ],
+            },
+        },
+        "MicroscopySeries": {
+            default_metadata_key: {
+                "name": "MicroscopySeries",
+                "description": "Imaging data from excitation microscopy.",
+                "unit": "n.a.",
+                "imaging_plane_metadata_key": default_metadata_key,
+            },
+        },
+    }
+
+    return metadata
+
+
+def _get_default_ophys_metadata_old_metadata_list():
+    """
     Returns fresh ophys default metadata dictionary.
 
     Single source of truth for all ophys default metadata.
@@ -145,14 +191,14 @@ def _get_default_ophys_metadata():
 
 
 def _get_default_segmentation_metadata() -> DeepDict:
-    """Fill default metadata for segmentation using _get_default_ophys_metadata()."""
+    """Fill default metadata for segmentation using _get_default_ophys_metadata_old_metadata_list()."""
     from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata
 
     # Start with base NWB metadata
     metadata = get_default_nwbfile_metadata()
 
     # Get fresh ophys defaults and add to metadata
-    ophys_defaults = _get_default_ophys_metadata()
+    ophys_defaults = _get_default_ophys_metadata_old_metadata_list()
     metadata["Ophys"] = {
         "Device": ophys_defaults["Ophys"]["Device"],
         "ImagingPlane": ophys_defaults["Ophys"]["ImagingPlane"],
@@ -186,7 +232,7 @@ def get_nwb_imaging_metadata(
         specific to the imaging data.
     """
     # Get fresh ophys defaults
-    metadata = _get_default_ophys_metadata()
+    metadata = _get_default_ophys_metadata_old_metadata_list()
 
     # TODO: get_num_channels is deprecated, remove
     channel_name_list = imgextractor.get_channel_names() or ["OpticalChannel"]
@@ -241,7 +287,7 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     device_metadata = metadata.get("Ophys", {}).get("Device")
 
     if device_metadata is None:
-        default_metadata = _get_default_ophys_metadata()
+        default_metadata = _get_default_ophys_metadata_old_metadata_list()
         device_metadata = default_metadata["Ophys"]["Device"]
 
     for device in device_metadata:
@@ -279,14 +325,14 @@ def _add_imaging_plane_to_nwbfile_old_list_format(
         The metadata in the old list-based format.
     imaging_plane_name : str, optional
         The name of the imaging plane to add. If None, uses the default from
-        ``_get_default_ophys_metadata()``.
+        ``_get_default_ophys_metadata_old_metadata_list()``.
 
     Returns
     -------
     NWBFile
         The nwbfile with the imaging plane added.
     """
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_imaging_plane = default_metadata["Ophys"]["ImagingPlane"][0]
 
     # Track whether user explicitly provided a name
@@ -296,6 +342,8 @@ def _add_imaging_plane_to_nwbfile_old_list_format(
 
     if imaging_plane_name in nwbfile.imaging_planes:
         return nwbfile
+
+    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
     if user_provided_a_name:
         # User explicitly requested a specific plane - search for it in metadata
@@ -322,27 +370,9 @@ def _add_imaging_plane_to_nwbfile_old_list_format(
         # User didn't provide a name, use local copy of defaults as kwargs
         imaging_plane_kwargs = default_imaging_plane
 
-    # Resolve device: use device_metadata_key if available, otherwise use old list format
-    device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
-    if device_metadata_key is not None:
-        device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, device_metadata_key=device_metadata_key)
-    else:
-        # Old list format: look up device from metadata["Ophys"]["Device"] or create a default
-        device_name = imaging_plane_kwargs.get("device", default_imaging_plane["device"])
-        if device_name not in nwbfile.devices:
-            device_list = metadata.get("Ophys", {}).get("Device", default_metadata["Ophys"]["Device"])
-            device_kwargs = next(
-                (d for d in device_list if (d["name"] if isinstance(d, dict) else d.name) == device_name),
-                {"name": device_name},
-            )
-            if isinstance(device_kwargs, dict):
-                nwbfile.create_device(**device_kwargs)
-            else:
-                nwbfile.add_device(device_kwargs)
-        device = nwbfile.devices[device_name]
-
-    imaging_plane_kwargs.pop("device", None)
-    imaging_plane_kwargs["device"] = device
+    # Replace device name string with actual device object from nwbfile
+    device_name = imaging_plane_kwargs["device"]
+    imaging_plane_kwargs["device"] = nwbfile.devices[device_name]
 
     # Convert optical channel metadata dicts to OpticalChannel objects
     imaging_plane_kwargs["optical_channel"] = [
@@ -357,35 +387,34 @@ def _add_imaging_plane_to_nwbfile_old_list_format(
 
 def _add_imaging_plane_to_nwbfile(
     nwbfile: NWBFile,
+    imaging_plane_metadata: dict,
     metadata: dict,
-    imaging_plane_metadata_key: str,
 ) -> ImagingPlane:
     """
     Add an imaging plane from the dict-based metadata format.
 
-    Looks up the imaging plane in ``metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]``
-    and creates it in the NWBFile. If an imaging plane with the same name already exists,
-    the existing one is returned.
+    Creates the imaging plane from the provided metadata dictionary.
+    If an imaging plane with the same name already exists, the existing one is returned.
 
-    The device is resolved via ``device_metadata_key`` in the imaging plane metadata.
-    If no ``device_metadata_key`` is set, a default device named ``"Microscope"`` is created.
+    The device is resolved via ``device_metadata_key`` in the imaging plane metadata,
+    which requires the full metadata to look up the device in ``metadata["Devices"]``.
+    If no ``device_metadata_key`` is set, a default device is created.
 
     Parameters
     ----------
     nwbfile : NWBFile
         The NWB file to add the imaging plane to.
+    imaging_plane_metadata : dict
+        Dictionary describing the imaging plane (already extracted by the caller).
     metadata : dict
-        The full metadata dictionary with dict-based format.
-    imaging_plane_metadata_key : str
-        The key in ``metadata["Ophys"]["ImagingPlanes"]`` identifying the imaging plane.
+        The full metadata dictionary, needed to resolve ``device_metadata_key``
+        references in ``metadata["Devices"]``.
 
     Returns
     -------
     ImagingPlane
         The ImagingPlane object (either newly created or existing).
     """
-    imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]
-
     # Copy to avoid mutation
     imaging_plane_kwargs = imaging_plane_metadata.copy()
 
@@ -397,13 +426,11 @@ def _add_imaging_plane_to_nwbfile(
     # Resolve device
     device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
     if device_metadata_key is not None:
-        device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, device_metadata_key=device_metadata_key)
+        device_metadata = metadata["Devices"][device_metadata_key]
     else:
         default_metadata = _get_default_ophys_metadata()
-        default_device_name = default_metadata["Ophys"]["Device"][0]["name"]
-        if default_device_name not in nwbfile.devices:
-            nwbfile.create_device(name=default_device_name)
-        device = nwbfile.devices[default_device_name]
+        device_metadata = default_metadata["Devices"]["default_metadata_key"]
+    device = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
 
     imaging_plane_kwargs["device"] = device
 
@@ -506,7 +533,7 @@ def _add_photon_series_to_nwbfile_old_list_format(
     ], "'parent_container' must be either 'acquisition' or 'processing/ophys'."
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_photon_series = default_metadata["Ophys"][photon_series_type][0]
 
     # Extract photon series metadata from user or use defaults
@@ -602,7 +629,7 @@ def _add_photon_series_to_nwbfile(
     nwbfile: NWBFile,
     metadata: dict,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"],
-    photon_series_metadata_key: str,
+    microscopy_series_metadata_key: str,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -611,9 +638,9 @@ def _add_photon_series_to_nwbfile(
     """
     Add a photon series using the dict-based metadata format.
 
-    Looks up the photon series in ``metadata["Ophys"][photon_series_type][photon_series_metadata_key]``
+    Looks up the microscopy series in ``metadata["Ophys"]["MicroscopySeries"][microscopy_series_metadata_key]``
     and creates it in the NWBFile. Resolves the imaging plane via ``imaging_plane_metadata_key``
-    in the photon series metadata.
+    in the series metadata.
 
     Parameters
     ----------
@@ -624,9 +651,9 @@ def _add_photon_series_to_nwbfile(
     metadata : dict
         The full metadata dictionary with dict-based format.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}
-        The type of photon series to add.
-    photon_series_metadata_key : str
-        The key in ``metadata["Ophys"][photon_series_type]`` identifying the photon series.
+        The NWB type of photon series to create.
+    microscopy_series_metadata_key : str
+        The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
     parent_container : {'acquisition', 'processing/ophys'}, optional
         The container where the photon series is added, default is nwbfile.acquisition.
     iterator_type : str, default: 'v2'
@@ -642,17 +669,18 @@ def _add_photon_series_to_nwbfile(
     """
     iterator_options = iterator_options or dict()
 
-    photon_series_metadata = metadata["Ophys"][photon_series_type][photon_series_metadata_key]
+    photon_series_metadata = metadata["Ophys"]["MicroscopySeries"][microscopy_series_metadata_key]
 
     # Copy to avoid mutation
     photon_series_kwargs = photon_series_metadata.copy()
 
     # Resolve imaging plane
     imaging_plane_metadata_key = photon_series_kwargs.pop("imaging_plane_metadata_key")
+    imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]
     imaging_plane = _add_imaging_plane_to_nwbfile(
         nwbfile=nwbfile,
+        imaging_plane_metadata=imaging_plane_metadata,
         metadata=metadata,
-        imaging_plane_metadata_key=imaging_plane_metadata_key,
     )
     photon_series_kwargs["imaging_plane"] = imaging_plane
 
@@ -796,19 +824,21 @@ def add_imaging_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
+    *args,  # TODO: change to * (keyword only) on or after September 2026
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
-    photon_series_metadata_key: str | None = None,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     always_write_timestamps: bool = False,
+    # TODO: move microscopy_series_metadata_key after metadata once positional args removed (September 2026)
+    microscopy_series_metadata_key: str | None = None,
 ) -> NWBFile:
     """
     Add imaging data from an ImagingExtractor object to an NWBFile.
 
     Supports both old list-based metadata (via ``photon_series_index``) and
-    new dict-based metadata (via ``photon_series_metadata_key``).
+    new dict-based metadata (via ``microscopy_series_metadata_key``).
 
     Parameters
     ----------
@@ -823,9 +853,6 @@ def add_imaging_to_nwbfile(
     photon_series_index : int, optional
         The index of the photon series in the provided imaging data, by default 0.
         Used with the old list-based metadata format.
-    photon_series_metadata_key : str, optional
-        The key in ``metadata["Ophys"][photon_series_type]`` identifying the photon series.
-        When provided, uses the new dict-based metadata format and ``photon_series_index`` is ignored.
     iterator_type : str, optional
         The type of iterator to use for adding the data. Commonly used to manage large datasets, by default "v2".
     iterator_options : dict, optional
@@ -838,6 +865,9 @@ def add_imaging_to_nwbfile(
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
+    microscopy_series_metadata_key : str, optional
+        The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
+        When provided, uses the new dict-based metadata format and ``photon_series_index`` is ignored.
 
     Returns
     -------
@@ -845,19 +875,54 @@ def add_imaging_to_nwbfile(
         The NWB file with the imaging data added
 
     """
-    if photon_series_metadata_key is not None:
+    # TODO: Remove this block in September 2026 or after when positional arguments are no longer supported.
+    if args:
+        parameter_names = [
+            "photon_series_type",
+            "photon_series_index",
+            "iterator_type",
+            "iterator_options",
+            "parent_container",
+            "always_write_timestamps",
+        ]
+        num_positional_args_before_args = 3  # imaging, nwbfile, metadata
+        if len(args) > len(parameter_names):
+            raise TypeError(
+                f"add_imaging_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                f"{len(args) + num_positional_args_before_args} were given. "
+                "Note: Positional arguments are deprecated and will be removed in September 2026 or after. Please use keyword arguments."
+            )
+        positional_values = dict(zip(parameter_names, args))
+        passed_as_positional = list(positional_values.keys())
+        warnings.warn(
+            f"Passing arguments positionally to add_imaging_to_nwbfile is deprecated "
+            f"and will be removed in September 2026 or after. "
+            f"The following arguments were passed positionally: {passed_as_positional}. "
+            "Please use keyword arguments instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        photon_series_type = positional_values.get("photon_series_type", photon_series_type)
+        photon_series_index = positional_values.get("photon_series_index", photon_series_index)
+        iterator_type = positional_values.get("iterator_type", iterator_type)
+        iterator_options = positional_values.get("iterator_options", iterator_options)
+        parent_container = positional_values.get("parent_container", parent_container)
+        always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
+
+    if microscopy_series_metadata_key is not None:
         nwbfile = _add_photon_series_to_nwbfile(
             imaging=imaging,
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type=photon_series_type,
-            photon_series_metadata_key=photon_series_metadata_key,
+            microscopy_series_metadata_key=microscopy_series_metadata_key,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             parent_container=parent_container,
             always_write_timestamps=always_write_timestamps,
         )
     else:
+        add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
         nwbfile = _add_photon_series_to_nwbfile_old_list_format(
             imaging=imaging,
             nwbfile=nwbfile,
@@ -1228,7 +1293,7 @@ def _add_plane_segmentation(
     iterator_options = iterator_options or dict()
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_plane_segmentation = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][
         default_plane_segmentation_index
     ]
@@ -1435,7 +1500,7 @@ def _add_fluorescence_traces_to_nwbfile(
     iterator_options = iterator_options or dict()
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][
         default_plane_segmentation_index
     ]["name"]
@@ -1591,7 +1656,7 @@ def _create_roi_table_region(
         The name of the plane segmentation that identifies which plane to add the ROI table region to.
     """
     # Get ImageSegmentation name from user metadata or use default
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
 
     _add_plane_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
@@ -1677,7 +1742,7 @@ def _add_summary_images_to_nwbfile(
     metadata = metadata or dict()
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_segmentation_images = default_metadata["Ophys"]["SegmentationImages"]
 
     # Extract SegmentationImages metadata from user or use defaults

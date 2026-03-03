@@ -191,42 +191,34 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
 
 def _add_device_to_nwbfile(
     nwbfile: NWBFile,
-    metadata: dict,
-    device_metadata_key: str,
+    device_metadata: dict,
 ):
     """
-    Add a device to an NWBFile using the new dict-based metadata format.
+    Add a device to an NWBFile.
 
-    Looks up the device in ``metadata["Devices"][device_metadata_key]`` and
-    creates it in the NWBFile. If a device with the same name already exists,
-    the existing device is returned without creating a duplicate.
+    Creates the device from the provided metadata dictionary.
+    If a device with the same name already exists, the existing device is
+    returned without creating a duplicate.
 
     Parameters
     ----------
     nwbfile : NWBFile
         The NWB file to add the device to.
-    metadata : dict
-        The full metadata dictionary. Must contain a "Devices" key with
-        device entries keyed by metadata_key.
+    device_metadata : dict
+        Dictionary describing the device. Must contain at least a ``"name"`` key.
         Example::
 
-            metadata["Devices"] = {
-                "my_microscope": {
-                    "name": "Microscope",
-                    "description": "Two-photon microscope",
-                    "manufacturer": "Thorlabs",
-                },
+            {
+                "name": "Microscope",
+                "description": "Two-photon microscope",
+                "manufacturer": "Thorlabs",
             }
-
-    device_metadata_key : str
-        The key in ``metadata["Devices"]`` identifying the device to add.
 
     Returns
     -------
     Device
         The Device object (either newly created or existing).
     """
-    device_metadata = metadata["Devices"][device_metadata_key]
     device_name = device_metadata["name"]
 
     if device_name in nwbfile.devices:
