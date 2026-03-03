@@ -548,40 +548,7 @@ def _add_photon_series_to_nwbfile_old_list_format(
     if "dimension" not in user_photon_series_metadata:
         photon_series_kwargs["dimension"] = imaging.get_sample_shape()
 
-    photon_series_kwargs = _add_data_and_timestamps_to_photon_series_kwargs(
-        photon_series_kwargs=photon_series_kwargs,
-        imaging=imaging,
-        iterator_type=iterator_type,
-        iterator_options=iterator_options,
-        always_write_timestamps=always_write_timestamps,
-    )
-
-    # Add the photon series to the nwbfile (either as OnePhotonSeries or TwoPhotonSeries)
-    photon_series_map = dict(OnePhotonSeries=OnePhotonSeries, TwoPhotonSeries=TwoPhotonSeries)
-    photon_series_class = photon_series_map[photon_series_type]
-    photon_series = photon_series_class(**photon_series_kwargs)
-
-    if parent_container == "acquisition":
-        nwbfile.add_acquisition(photon_series)
-    elif parent_container == "processing/ophys":
-        ophys_module = get_module(nwbfile, name="ophys", description="contains optical physiology processed data")
-        ophys_module.add(photon_series)
-
-    return nwbfile
-
-
-def _add_data_and_timestamps_to_photon_series_kwargs(
-    photon_series_kwargs: dict,
-    imaging: ImagingExtractor,
-    iterator_type: str | None,
-    iterator_options: dict,
-    always_write_timestamps: bool,
-) -> dict:
-    """
-    Add data iterator and timestamps/rate to photon series kwargs.
-
-    Shared between old and new format photon series functions.
-    """
+    # Add data iterator
     imaging_extractor_iterator = _imaging_frames_to_hdmf_iterator(
         imaging=imaging,
         iterator_type=iterator_type,
@@ -616,7 +583,18 @@ def _add_data_and_timestamps_to_photon_series_kwargs(
         else:
             photon_series_kwargs.update(timestamps=timestamps)
 
-    return photon_series_kwargs
+    # Add the photon series to the nwbfile (either as OnePhotonSeries or TwoPhotonSeries)
+    photon_series_map = dict(OnePhotonSeries=OnePhotonSeries, TwoPhotonSeries=TwoPhotonSeries)
+    photon_series_class = photon_series_map[photon_series_type]
+    photon_series = photon_series_class(**photon_series_kwargs)
+
+    if parent_container == "acquisition":
+        nwbfile.add_acquisition(photon_series)
+    elif parent_container == "processing/ophys":
+        ophys_module = get_module(nwbfile, name="ophys", description="contains optical physiology processed data")
+        ophys_module.add(photon_series)
+
+    return nwbfile
 
 
 def _add_photon_series_to_nwbfile(
@@ -682,13 +660,40 @@ def _add_photon_series_to_nwbfile(
     if "dimension" not in photon_series_kwargs:
         photon_series_kwargs["dimension"] = imaging.get_sample_shape()
 
-    photon_series_kwargs = _add_data_and_timestamps_to_photon_series_kwargs(
-        photon_series_kwargs=photon_series_kwargs,
+    # Add data iterator
+    imaging_extractor_iterator = _imaging_frames_to_hdmf_iterator(
         imaging=imaging,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
-        always_write_timestamps=always_write_timestamps,
     )
+    photon_series_kwargs["data"] = imaging_extractor_iterator
+
+    if always_write_timestamps:
+        timestamps = imaging.get_timestamps()
+        photon_series_kwargs.update(timestamps=timestamps)
+    else:
+        # Resolve timestamps: user-set > native hardware > none
+        timestamps_were_set = imaging.has_time_vector()
+        if timestamps_were_set:
+            timestamps = imaging.get_timestamps()
+        else:
+            timestamps = imaging.get_native_timestamps()
+
+        timestamps_are_available = timestamps is not None
+
+        if timestamps_are_available:
+            rate = calculate_regular_series_rate(series=timestamps)
+            timestamps_are_regular = rate is not None
+            starting_time = timestamps[0]
+        else:
+            rate = float(imaging.get_sampling_frequency())
+            timestamps_are_regular = True
+            starting_time = 0.0
+
+        if timestamps_are_regular:
+            photon_series_kwargs.update(rate=rate, starting_time=starting_time)
+        else:
+            photon_series_kwargs.update(timestamps=timestamps)
 
     # Add the photon series to the nwbfile
     photon_series_map = dict(OnePhotonSeries=OnePhotonSeries, TwoPhotonSeries=TwoPhotonSeries)
