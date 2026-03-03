@@ -153,7 +153,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata: dict | None = None,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
-        stub_frames: int | None = None,
         include_background_segmentation: bool = False,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
@@ -173,9 +172,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata : dict, optional
             The metadata for the interface
         stub_test : bool, default: False
-        stub_frames : int, optional
-            .. deprecated:: February 2026
-                Use `stub_samples` instead.
         include_background_segmentation : bool, default: False
             Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
             neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
@@ -208,7 +204,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
             this method. See the backend configuration documentation for details.
         stub_samples : int, default: 100
-            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+            The number of samples (frames) to use for testing.
         roi_ids_to_add : list of str or int, optional
             The ROI IDs to include in the NWB file. If ``None`` (default), all ROIs are included.
             Use this to filter out rejected or unwanted ROIs and reduce file size.
@@ -226,7 +222,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         if args:
             parameter_names = [
                 "stub_test",
-                "stub_frames",
                 "include_background_segmentation",
                 "include_roi_centroids",
                 "include_roi_acceptance",
@@ -254,7 +249,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
                 stacklevel=2,
             )
             stub_test = positional_values.get("stub_test", stub_test)
-            stub_frames = positional_values.get("stub_frames", stub_frames)
             include_background_segmentation = positional_values.get(
                 "include_background_segmentation", include_background_segmentation
             )
@@ -266,31 +260,14 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             stub_samples = positional_values.get("stub_samples", stub_samples)
             roi_ids_to_add = positional_values.get("roi_ids_to_add", roi_ids_to_add)
 
-        # Handle deprecation of stub_frames in favor of stub_samples
-        if stub_frames is not None and stub_samples != 100:
-            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
-
-        if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            effective_stub_samples = stub_frames
-        else:
-            effective_stub_samples = stub_samples
-
         segmentation_extractor = self.segmentation_extractor
 
         if roi_ids_to_add is not None:
             segmentation_extractor = segmentation_extractor.select_rois(roi_ids=roi_ids_to_add)
 
         if stub_test:
-            effective_stub_samples = min([effective_stub_samples, segmentation_extractor.get_num_samples()])
-            segmentation_extractor = segmentation_extractor.slice_samples(
-                start_sample=0, end_sample=effective_stub_samples
-            )
+            stub_samples = min([stub_samples, segmentation_extractor.get_num_samples()])
+            segmentation_extractor = segmentation_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
 
         metadata = metadata or self.get_metadata()
 

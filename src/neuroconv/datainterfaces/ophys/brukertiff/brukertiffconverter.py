@@ -1,4 +1,3 @@
-import warnings
 from typing import Literal
 
 from pydantic import DirectoryPath, validate_call
@@ -88,7 +87,6 @@ class BrukerTiffMultiPlaneConverter(BaseDataInterface):
         nwbfile: NWBFile,
         metadata,
         stub_test: bool = False,
-        stub_frames: int | None = None,
         stub_samples: int = 100,
     ):
         """
@@ -102,34 +100,16 @@ class BrukerTiffMultiPlaneConverter(BaseDataInterface):
             Metadata dictionary containing information to describe the data being added to the NWB file.
         stub_test : bool, optional
             If True, only a subset of the data (up to `stub_samples`) will be added for testing purposes. Default is False.
-        stub_frames : int, optional
-            .. deprecated:: February 2026
-                Use `stub_samples` instead.
         stub_samples : int, default: 100
-            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+            The number of samples (frames) to use for testing.
         """
-        # Handle deprecation of stub_frames in favor of stub_samples
-        if stub_frames is not None and stub_samples != 100:
-            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
-
-        if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            effective_stub_samples = stub_frames
-        else:
-            effective_stub_samples = stub_samples
-
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
                 photon_series_index=photon_series_index,
                 stub_test=stub_test,
-                stub_samples=effective_stub_samples,
+                stub_samples=stub_samples,
             )
 
 
@@ -196,7 +176,6 @@ class BrukerTiffSinglePlaneConverter(BaseDataInterface):
         nwbfile: NWBFile,
         metadata,
         stub_test: bool = False,
-        stub_frames: int | None = None,
         stub_samples: int = 100,
     ):
         """
@@ -211,32 +190,14 @@ class BrukerTiffSinglePlaneConverter(BaseDataInterface):
         stub_test : bool, optional
             If True, only a subset of the data (defined by `stub_samples`) will be added for testing purposes,
             by default False.
-        stub_frames : int, optional
-            .. deprecated:: February 2026
-                Use `stub_samples` instead.
         stub_samples : int, default: 100
-            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+            The number of samples (frames) to use for testing.
         """
-        # Handle deprecation of stub_frames in favor of stub_samples
-        if stub_frames is not None and stub_samples != 100:
-            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
-
-        if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            effective_stub_samples = stub_frames
-        else:
-            effective_stub_samples = stub_samples
-
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
                 photon_series_index=photon_series_index,
                 stub_test=stub_test,
-                stub_samples=effective_stub_samples,
+                stub_samples=stub_samples,
             )

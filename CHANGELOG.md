@@ -1,6 +1,7 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed the deprecated `stub_frames` parameter from ophys interfaces (`BaseImagingExtractorInterface`, `BaseSegmentationExtractorInterface`, `BrukerTiffMultiPlaneConverter`, `BrukerTiffSinglePlaneConverter`, `MiniscopeConverter`, `Suite2pSegmentationInterface`, `MinianSegmentationInterface`, `MiniscopeImagingDataInterface`). Use `stub_samples` instead. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
 
 ## Bug Fixes
 

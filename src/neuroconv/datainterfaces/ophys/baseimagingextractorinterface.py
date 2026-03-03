@@ -174,7 +174,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
-        stub_frames: int | None = None,
         always_write_timestamps: bool = False,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
@@ -198,9 +197,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             under the "processing/ophys" module, by default "acquisition".
         stub_test : bool, optional
             If True, only writes a small subset of frames for testing purposes, by default False.
-        stub_frames : int, optional
-            .. deprecated:: February 2026
-                Use `stub_samples` instead.
         always_write_timestamps : bool, optional
             Whether to always write timestamps, by default False.
         iterator_type : {"v2", None}, default: "v2"
@@ -217,7 +213,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
             this method. See the backend configuration documentation for details.
         stub_samples : int, default: 100
-            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+            The number of samples (frames) to use for testing.
         """
 
         from ...tools.roiextractors import add_imaging_to_nwbfile
@@ -229,7 +225,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                 "photon_series_index",
                 "parent_container",
                 "stub_test",
-                "stub_frames",
                 "always_write_timestamps",
                 "iterator_type",
                 "iterator_options",
@@ -256,30 +251,14 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             photon_series_index = positional_values.get("photon_series_index", photon_series_index)
             parent_container = positional_values.get("parent_container", parent_container)
             stub_test = positional_values.get("stub_test", stub_test)
-            stub_frames = positional_values.get("stub_frames", stub_frames)
             always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
             iterator_type = positional_values.get("iterator_type", iterator_type)
             iterator_options = positional_values.get("iterator_options", iterator_options)
             stub_samples = positional_values.get("stub_samples", stub_samples)
 
-        # Handle deprecation of stub_frames in favor of stub_samples
-        if stub_frames is not None and stub_samples != 100:
-            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
-
-        if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            effective_stub_samples = stub_frames
-        else:
-            effective_stub_samples = stub_samples
-
         if stub_test:
-            effective_stub_samples = min([effective_stub_samples, self.imaging_extractor.get_num_samples()])
-            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=effective_stub_samples)
+            stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
+            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
         else:
             imaging_extractor = self.imaging_extractor
 
