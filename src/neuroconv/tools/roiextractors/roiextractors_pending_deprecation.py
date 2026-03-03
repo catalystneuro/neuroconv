@@ -25,7 +25,7 @@ from roiextractors import (
 
 from .roiextractors import (
     _add_fluorescence_traces_to_nwbfile,
-    _add_imaging_plane_to_nwbfile,
+    _add_imaging_plane_to_nwbfile_old_list_format,
     _add_plane_segmentation,
     _get_default_ophys_metadata,
     _get_default_segmentation_metadata,
@@ -205,7 +205,7 @@ def add_photon_series_to_nwbfile(
         imaging_plane_name = None  # Will create default imaging plane
 
     # Add imaging plane (None signals to create default imaging plane)
-    _add_imaging_plane_to_nwbfile(
+    _add_imaging_plane_to_nwbfile_old_list_format(
         nwbfile=nwbfile,
         metadata=metadata,
         imaging_plane_name=imaging_plane_name,

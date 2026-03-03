@@ -322,16 +322,24 @@ def _add_imaging_plane_to_nwbfile_old_list_format(
         # User didn't provide a name, use local copy of defaults as kwargs
         imaging_plane_kwargs = default_imaging_plane
 
-    # Resolve device: use device_metadata_key if available, otherwise create a default
+    # Resolve device: use device_metadata_key if available, otherwise use old list format
     device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
     if device_metadata_key is not None:
         device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, device_metadata_key=device_metadata_key)
     else:
-        # No device_metadata_key: create a default device
-        default_device_name = imaging_plane_kwargs.get("device", default_imaging_plane["device"])
-        if default_device_name not in nwbfile.devices:
-            nwbfile.create_device(name=default_device_name)
-        device = nwbfile.devices[default_device_name]
+        # Old list format: look up device from metadata["Ophys"]["Device"] or create a default
+        device_name = imaging_plane_kwargs.get("device", default_imaging_plane["device"])
+        if device_name not in nwbfile.devices:
+            device_list = metadata.get("Ophys", {}).get("Device", default_metadata["Ophys"]["Device"])
+            device_kwargs = next(
+                (d for d in device_list if (d["name"] if isinstance(d, dict) else d.name) == device_name),
+                {"name": device_name},
+            )
+            if isinstance(device_kwargs, dict):
+                nwbfile.create_device(**device_kwargs)
+            else:
+                nwbfile.add_device(device_kwargs)
+        device = nwbfile.devices[device_name]
 
     imaging_plane_kwargs.pop("device", None)
     imaging_plane_kwargs["device"] = device
