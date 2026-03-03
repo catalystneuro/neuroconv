@@ -227,13 +227,6 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     ``metadata['Ophys']['Device']`` is deprecated and will be removed on or after March 2026.
     Please pass device definitions as dictionaries instead (e.g., ``{"name": "Microscope"}``).
     """
-    warnings.warn(
-        "add_devices_to_nwbfile is deprecated and will be removed on or after September 2026. "
-        "Use _add_device_to_nwbfile with the new dict-based metadata format (metadata['Devices']) instead.",
-        FutureWarning,
-        stacklevel=2,
-    )
-
     # Get device metadata from user or use defaults
     metadata = metadata or {}
     device_metadata = metadata.get("Ophys", {}).get("Device")
