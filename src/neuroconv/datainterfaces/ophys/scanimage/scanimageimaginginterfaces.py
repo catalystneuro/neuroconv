@@ -41,6 +41,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: Optional[FilePath] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         channel_name: Optional[str] = None,
         slice_sample: Optional[int] = None,
         plane_index: Optional[int] = None,
@@ -102,6 +103,47 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
             If True, will print detailed information about the interface initialization process.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "channel_name",
+                "slice_sample",
+                "plane_index",
+                "file_paths",
+                "interleave_slice_samples",
+                "plane_name",
+                "fallback_sampling_frequency",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to ScanImageImagingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            channel_name = positional_values.get("channel_name", channel_name)
+            slice_sample = positional_values.get("slice_sample", slice_sample)
+            plane_index = positional_values.get("plane_index", plane_index)
+            file_paths = positional_values.get("file_paths", file_paths)
+            interleave_slice_samples = positional_values.get("interleave_slice_samples", interleave_slice_samples)
+            plane_name = positional_values.get("plane_name", plane_name)
+            fallback_sampling_frequency = positional_values.get(
+                "fallback_sampling_frequency", fallback_sampling_frequency
+            )
+            verbose = positional_values.get("verbose", verbose)
+
         file_paths = [Path(file_path)] if file_path else file_paths
         header_version = self.get_scanimage_version(file_path=file_paths[0])
         if header_version not in [3, 4, 5]:
@@ -426,6 +468,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         fallback_sampling_frequency: float | None = None,
         verbose: bool = False,
     ):
@@ -441,6 +484,35 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
             The sampling frequency can usually be extracted from the scanimage metadata in
             exif:ImageDescription:state.acq.frameRate. If not, use this.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "fallback_sampling_frequency",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to ScanImageLegacyImagingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            fallback_sampling_frequency = positional_values.get(
+                "fallback_sampling_frequency", fallback_sampling_frequency
+            )
+            verbose = positional_values.get("verbose", verbose)
+
         from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
             extract_extra_metadata,
         )

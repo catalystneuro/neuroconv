@@ -39,6 +39,26 @@ class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = MockSegmentationInterface
     interface_kwargs = dict()
 
+    def test_roi_ids_property(self):
+        """Test that roi_ids property returns cell ROI IDs."""
+        interface = MockSegmentationInterface(num_rois=10)
+        roi_ids = interface.roi_ids
+
+        expected_cell_ids = interface.segmentation_extractor.get_roi_ids()
+        assert roi_ids == expected_cell_ids
+
+    def test_add_to_nwbfile_with_roi_ids_to_add(self):
+        """Test that passing roi_ids_to_add filters the ROIs in the output."""
+        interface = MockSegmentationInterface(num_rois=10)
+        selected_ids = ["roi_0", "roi_2", "roi_5"]
+
+        nwbfile = interface.create_nwbfile(roi_ids_to_add=selected_ids)
+
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentation"]
+        assert len(plane_segmentation) == 3
+        written_roi_names = list(plane_segmentation["roi_name"].data)
+        assert written_roi_names == selected_ids
+
 
 # This is a temporary test class to show that the migration path to kwargs only works as intended.
 # TODO: Remove this test class in June 2026 or after when positional arguments are no longer supported.

@@ -31,6 +31,19 @@ DataInterface conventions
 #. Use :code:`file_path` and :code:`folder_path` as arguments for the location of input files and folders/directories respectively.
 #. As an exception to convention to separate words for underscores, we use :code:`nwbfile` to refer to an instance
    of :py:class:`~pynwb.file.NWBFile`.
+#. In :code:`__init__` methods of data interfaces, only :code:`file_path`, :code:`folder_path`, or :code:`file_paths`
+   should be accepted as positional arguments. All other parameters must be keyword-only, enforced with the :code:`*`
+   separator after the path parameter. For example:
+
+   .. code-block:: python
+
+      def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str = "ElectricalSeries"):
+
+#. In :code:`add_to_nwbfile` methods of leaf interfaces (not converters), only :code:`nwbfile` and :code:`metadata`
+   should be accepted as positional arguments. All other parameters (conversion options) must be keyword-only.
+   When deprecating existing positional usage, use the :code:`*args` pattern with a :code:`FutureWarning` to maintain
+   backward compatibility during the transition period. After the deprecation date, replace :code:`*args` with
+   :code:`*` to enforce keyword-only arguments.
 
 Other conventions
 -----------------

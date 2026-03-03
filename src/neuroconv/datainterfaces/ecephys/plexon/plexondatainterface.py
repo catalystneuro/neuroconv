@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 from pydantic import FilePath, validate_call
@@ -35,6 +36,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
         stream_name: str = "WB-Wideband",
@@ -53,6 +55,34 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the wideband data.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+                "es_key",
+                "stream_name",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to PlexonRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+            stream_name = positional_values.get("stream_name", stream_name)
 
         invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
         assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
@@ -99,6 +129,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeriesLF",
         stream_name: str = "FPl-Low Pass Filtered",
@@ -117,6 +148,34 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the FPllow pass filtered data.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+                "es_key",
+                "stream_name",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to PlexonLFPInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+            stream_name = positional_values.get("stream_name", stream_name)
 
         # By default, the stream name of Plexon LFP data is "FPl-Low Pass Filter"
         # But the user might modify it. For that case, we exclude the default stream names
@@ -178,7 +237,9 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         return extractor_instance
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
+    def __init__(
+        self, file_path: FilePath, *args, verbose: bool = False, es_key: str = "ElectricalSeries"
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Load and prepare data for Plexon.
 
@@ -190,6 +251,33 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to Plexon2RecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+
         # TODO: when neo version 0.14.4 is out or higher change this to stream_name for clarify
         import neo
         from packaging.version import Version
@@ -242,7 +330,9 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         return PlexonSortingExtractor
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = False):
+    def __init__(
+        self, file_path: FilePath, *args, verbose: bool = False
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Load and prepare data for Plexon.
 
@@ -253,6 +343,31 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         verbose: bool, default: True
             Allows verbosity.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to PlexonSortingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+
         super().__init__(file_path=file_path, verbose=verbose)
 
     def get_metadata(self) -> DeepDict:
