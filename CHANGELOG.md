@@ -1,11 +1,13 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed deprecated `roiextractors_pending_deprecation.py` module. The 8 deprecated wrapper functions (`add_imaging_plane_to_nwbfile`, `add_image_segmentation_to_nwbfile`, `add_photon_series_to_nwbfile`, `add_plane_segmentation_to_nwbfile`, `add_background_plane_segmentation_to_nwbfile`, `add_fluorescence_traces_to_nwbfile`, `add_background_fluorescence_traces_to_nwbfile`, `add_summary_images_to_nwbfile`) have been removed as scheduled (March 2026 deadline). [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
+* Deprecated `add_devices_to_nwbfile` with `FutureWarning`. Will be removed on or after September 2026. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
+* Added `*args` positional argument deprecation to `add_imaging_to_nwbfile` to enforce keyword-only arguments. Will be enforced on or after September 2026. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
 
 ## Bug Fixes
 
 ## Features
-* Added dict-based metadata pipeline for imaging in `roiextractors.py`, supporting the new `MicroscopySeries`, `ImagingPlanes`, and `Devices` metadata format keyed by `metadata_key`. Old list-based functions are preserved (renamed with `_old_list_format` suffix) and dispatched automatically when `metadata_key` is not provided. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
 
 ## Improvements
 * Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
