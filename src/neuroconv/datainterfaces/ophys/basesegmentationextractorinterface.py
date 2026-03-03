@@ -118,12 +118,14 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        from ...tools.roiextractors.roiextractors import _get_default_ophys_metadata
+        from ...tools.roiextractors.roiextractors import (
+            _get_default_ophys_metadata_old_metadata_list,
+        )
 
         metadata = super().get_metadata()
 
         # Get the default ophys metadata (single source of truth)
-        ophys_defaults = _get_default_ophys_metadata()
+        ophys_defaults = _get_default_ophys_metadata_old_metadata_list()
 
         # Only include the fields relevant to segmentation (not imaging series)
         metadata["Ophys"] = {
