@@ -168,16 +168,22 @@ All imaging and segmentation interfaces accept a ``metadata_key`` parameter. Thi
 
 .. code-block:: python
 
-    class BaseImagingExtractorInterface(BaseExtractorInterface):
+    class SomeOphysInterface(BaseDataInterface):
         def __init__(
             self,
             *,  # Force keyword-only
             verbose: bool = False,
-            metadata_key: str = "default",
+            metadata_key: Optional[str] = None,
             **source_data,
         ):
             self.metadata_key = metadata_key
             ...
+
+The argument name ``metadata_key`` is the same across all interfaces ensuring a common API.
+When ``None`` (the default), the interface automatically generates a unique key from the
+parameters that make the interface unique (e.g. stream name, channel name). When the user
+passes an explicit value, they take responsibility for uniqueness and can use it to
+intentionally share or customize metadata keys.
 
 Key Propagation
 ~~~~~~~~~~~~~~~
@@ -267,8 +273,16 @@ structure will require minimal changes when ndx-microscopy is integrated into NW
 This makes the eventual transition smoother for users.
 
 
-Linking Imaging Planes and Devices in Ophys
---------------------------------------------
+Linking and Object Creation
+---------------------------
+
+Each interface's goal is to create a main NWB object. For example, an imaging interface creates
+a MicroscopySeries (e.g. TwoPhotonSeries, OnePhotonSeries). The metadata specifies attributes
+of that object (name, description, unit, etc.) but also its linked objects: an ImagingPlane for
+the series, and in turn a Device for the ImagingPlane.
+
+Contained vs Linked Components
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In NWB, some components are fully contained within their parent while others exist as separate,
 linked objects. This distinction affects how they are represented in metadata:
@@ -282,15 +296,14 @@ or referenced by multiple other objects. For example, an ImagingPlane must refer
 (microscope) that was used to acquire the data, and a TwoPhotonSeries must reference the ImagingPlane
 where the imaging occurred.
 
-At metadata time, we don't have actual NWB objects yet - we only have dictionaries describing them.
-To express these relationships between linked components, we use special ``_metadata_key`` fields
-that contain the key of the referenced component. At NWB creation time, these string references
-are resolved to actual NWB objects.
+How Linking Works
+~~~~~~~~~~~~~~~~~
 
-device_metadata_key
-~~~~~~~~~~~~~~~~~~~
+At metadata time, we don't have actual NWB objects yet, only dictionaries describing them.
+To express relationships between linked components, we use special ``_metadata_key`` fields
+that contain the key of the referenced component.
 
-Used in ImagingPlane to reference its Device:
+``device_metadata_key`` is used in ImagingPlane to reference its Device:
 
 .. code-block:: python
 
@@ -300,13 +313,8 @@ Used in ImagingPlane to reference its Device:
         ...
     }
 
-When the NWB file is created, the code looks up ``metadata["Devices"]["visual_cortex"]``,
-creates the Device object, and links it to the ImagingPlane.
-
-imaging_plane_metadata_key
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Used in PhotonSeries and PlaneSegmentation to reference their ImagingPlane:
+``imaging_plane_metadata_key`` is used in PhotonSeries and PlaneSegmentation to reference their
+ImagingPlane:
 
 .. code-block:: python
 
@@ -324,3 +332,52 @@ Used in PhotonSeries and PlaneSegmentation to reference their ImagingPlane:
 
 This allows multiple components (e.g., multiple segmentation pipelines) to reference the same
 ImagingPlane, as shown in the how-to guide for annotating multiple segmentations of the same data.
+
+When Objects Are Created
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Linked objects (Devices, ImagingPlanes, etc.) are not created when the metadata dict is assembled.
+They are created when ``add_to_nwbfile`` is called. The metadata dict defines what *could* be
+created, and the ``_metadata_key`` references determine what actually gets written to the NWB file.
+At that point, the string references are resolved to actual NWB objects.
+
+The rules are:
+
+1. Only entries that are actually referenced by other objects (via ``_metadata_key`` fields) are
+   created. Entries that exist in the metadata dict but are not referenced by anything will not be
+   written to the file. This means you can define all the devices of a conversion in a shared YAML
+   and only the ones that are actually linked will end up in the NWB file.
+
+2. If a required link is missing (e.g. an ImagingPlane has no ``device_metadata_key``) and the
+   object requires a linked object (e.g. an ImagingPlane requires a Device), a default object
+   will be created and linked automatically at writing time.
+
+3. For shared resources (e.g. two imaging planes using the same microscope), the user or the
+   converter sets the ``_metadata_key`` references explicitly. The object is created by whichever
+   interface writes first, and subsequent interfaces reuse the existing object.
+
+.. code-block:: python
+
+    # Two imaging planes sharing one device
+    metadata["Devices"]["shared_microscope"] = {
+        "name": "Microscope",
+        "description": "Two-photon microscope used for both planes",
+        "manufacturer": "Thorlabs",
+    }
+
+    metadata["Ophys"]["ImagingPlanes"]["plane_area1"] = {
+        "name": "ImagingPlaneArea1",
+        "location": "V1",
+        "device_metadata_key": "shared_microscope",
+    }
+
+    metadata["Ophys"]["ImagingPlanes"]["plane_area2"] = {
+        "name": "ImagingPlaneArea2",
+        "location": "V2",
+        "device_metadata_key": "shared_microscope",
+    }
+
+Because only referenced entries are written to the NWB file, the metadata dict can hold all
+possible components (e.g. in a shared YAML) and the ``_metadata_key`` links control which ones
+are actually used for each conversion. This way, when dealing with multiple conversions that use
+the same script, the metadata keys decide programmatically what to write.

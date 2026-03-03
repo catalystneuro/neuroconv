@@ -173,6 +173,14 @@ use a different ``metadata_key`` for each pipeline. Link them to the same imagin
 
     metadata = converter.get_metadata()
 
+    # Define the device used for imaging
+    device_metadata_key = "my_device"
+    metadata["Devices"][device_metadata_key] = {
+        "name": "Microscope",
+        "description": "Two-photon microscope",
+        "manufacturer": "Thorlabs",
+    }
+
     # Define the imaging plane that both segmentations are derived from
     imaging_plane_metadata_key = "my_imaging_plane"
     metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key] = {
@@ -181,7 +189,7 @@ use a different ``metadata_key`` for each pipeline. Link them to the same imagin
         "indicator": "GCaMP6s",
         "location": "V1 layer 2/3",
         "excitation_lambda": 920.0,
-        "device_metadata_key": "my_device",
+        "device_metadata_key": device_metadata_key,
     }
 
     # Annotate each pipeline's segmentation
