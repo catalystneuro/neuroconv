@@ -1,6 +1,9 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed the deprecated `staging` parameter from `automatic_dandi_upload`. Use `sandbox` instead. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
+* Removed the deprecated `container_name` parameter from `ImageInterface.add_to_nwbfile` and `DeepLabCutInterface.add_to_nwbfile`. Use `metadata_key` in `__init__` instead. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
+* Removed the deprecated `time_series_name` parameter from `add_recording_as_time_series_to_nwbfile`. Use `metadata_key` instead. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
 
 ## Bug Fixes
 

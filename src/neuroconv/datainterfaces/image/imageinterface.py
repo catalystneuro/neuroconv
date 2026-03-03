@@ -1,6 +1,5 @@
 """Interface for converting single or multiple images to NWB format."""
 
-import warnings
 from pathlib import Path
 from typing import Literal
 
@@ -158,7 +157,7 @@ class ImageInterface(BaseDataInterface):
         self,
         file_paths: list[str | Path] | None = None,
         folder_path: str | Path | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         images_location: Literal["acquisition", "stimulus"] = "acquisition",
         metadata_key: str = "Images",
         verbose: bool = True,
@@ -179,34 +178,6 @@ class ImageInterface(BaseDataInterface):
         verbose : bool, default: True
             Whether to print status messages
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "images_location",
-                "metadata_key",
-                "verbose",
-            ]
-            num_positional_args_before_args = 2  # file_paths, folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to ImageInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            images_location = positional_values.get("images_location", images_location)
-            metadata_key = positional_values.get("metadata_key", metadata_key)
-            verbose = positional_values.get("verbose", verbose)
 
         if file_paths is None and folder_path is None:
             raise ValueError("Either file_paths or folder_path must be provided")
@@ -332,8 +303,6 @@ class ImageInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: DeepDict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
-        container_name: str | None = None,
     ) -> None:
         """
         Add the image data to an NWB file.
@@ -344,43 +313,7 @@ class ImageInterface(BaseDataInterface):
             The NWB file to add the images to
         metadata : dict, optional
             Metadata for the images
-        container_name : str, optional, deprecated
-            Name of the Images container. This parameter is deprecated and will be removed
-            on or after February 2026. Use metadata_key in __init__ instead.
-            If provided, it overrides the name from metadata.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "container_name",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to ImageInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            container_name = positional_values.get("container_name", container_name)
-
-        if container_name is not None:
-            warnings.warn(
-                "The 'container_name' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'metadata_key' in the __init__ method instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
 
         if metadata is None:
             metadata = self.get_metadata()
@@ -389,11 +322,7 @@ class ImageInterface(BaseDataInterface):
         images_metadata = metadata.get("Images", {})
         container_metadata = images_metadata.get(self.metadata_key, {})
 
-        # Use container_name only if explicitly provided (deprecated), otherwise use metadata
-        if container_name is not None:
-            name = container_name
-        else:
-            name = container_metadata.get("name", self.metadata_key)
+        name = container_metadata.get("name", self.metadata_key)
 
         description = container_metadata.get("description", "Images loaded through ImageInterface")
 
