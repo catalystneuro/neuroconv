@@ -1,6 +1,6 @@
 import warnings
 from collections import defaultdict
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import numpy as np
 import psutil
@@ -1235,7 +1235,6 @@ def add_recording_as_time_series_to_nwbfile(
     iterator_options: dict | None = None,
     iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
-    time_series_name: Optional[str] = None,
     metadata_key: str = "TimeSeries",
 ):
     """
@@ -1293,16 +1292,6 @@ def add_recording_as_time_series_to_nwbfile(
         if iterator_options is not None:
             raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
         iterator_options = iterator_opts
-
-    # Handle backward compatibility for time_series_name
-    if time_series_name is not None:
-        warnings.warn(
-            "The 'time_series_name' parameter is deprecated and will be removed in or after February 2026. "
-            "Use 'metadata_key' to specify the metadata entry instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        metadata_key = time_series_name
 
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):
@@ -1363,7 +1352,7 @@ def _add_time_series_segment_to_nwbfile(
                 "The recording extractor has heterogeneous units or is lacking scaling factors. "
                 "The time series will be saved with unit 'n.a.' and the conversion factors will not be set. "
                 "To fix this issue, either: "
-                "1) Set the unit in the metadata['TimeSeries'][time_series_name]['unit'] field, or "
+                "1) Set the unit in the metadata['TimeSeries'][metadata_key]['unit'] field, or "
                 "2) Set the `physical_unit`, `gain_to_physical_unit`, and `offset_to_physical_unit` properties "
                 "on the recording object with consistent units across all channels. "
                 f"Channel units: {units if units is not None else 'None'}, "

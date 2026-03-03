@@ -1,6 +1,9 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed the deprecated `staging` parameter from `automatic_dandi_upload`. Use `sandbox` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
+* Removed the deprecated `container_name` parameter from `ImageInterface.add_to_nwbfile` and `DeepLabCutInterface.add_to_nwbfile`. Use `metadata_key` in `__init__` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
+* Removed the deprecated `time_series_name` parameter from `add_recording_as_time_series_to_nwbfile`. Use `metadata_key` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
 
 ## Bug Fixes
 * Fixed `get_json_schema_from_method_signature` to resolve PEP 563 string annotations (from `from __future__ import annotations`) before passing them to pydantic. This affected any interface defined in a module with deferred annotations (e.g. `MiniscopeConverter`, or external subclasses from SpikeInterface). [PR #1670](https://github.com/catalystneuro/neuroconv/pull/1670)

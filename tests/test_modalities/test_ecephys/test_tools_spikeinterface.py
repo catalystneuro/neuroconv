@@ -1158,8 +1158,8 @@ class TestAddTimeSeries:
         expected_data = recording.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_time_series_name(self):
-        """Test that time_series_name is used to look up metadata."""
+    def test_metadata_key(self):
+        """Test that metadata_key is used to look up metadata."""
         # Create a recording object for testing
         num_channels = 3
         sampling_frequency = 1.0
@@ -1185,7 +1185,7 @@ class TestAddTimeSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            time_series_name="CustomTimeSeries",
+            metadata_key="CustomTimeSeries",
             iterator_type=None,
         )
 
@@ -1194,8 +1194,8 @@ class TestAddTimeSeries:
         assert time_series.unit == "custom_unit"
         assert time_series.description == "Custom description"
 
-    def test_custom_metadata_with_time_series_name(self):
-        """Test that custom metadata is applied when time_series_name is provided."""
+    def test_custom_metadata_with_metadata_key(self):
+        """Test that custom metadata is applied when metadata_key is provided."""
         # Create a recording object for testing
         num_channels = 3
         sampling_frequency = 1.0
@@ -1223,7 +1223,7 @@ class TestAddTimeSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            time_series_name="MyCustomSeries",
+            metadata_key="MyCustomSeries",
             iterator_type=None,
         )
 
@@ -1342,7 +1342,7 @@ class TestAddTimeSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            time_series_name="TimeSeriesRaw",
+            metadata_key="TimeSeriesRaw",
         )
 
         time_series = nwbfile.acquisition["TimeSeriesRaw"]
