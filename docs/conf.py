@@ -88,6 +88,7 @@ linkcheck_ignore = [
     "https://catalystneuro.com/*/",
     "https://doi.org/10.25080/cehj4257",  # Does not seem to support multiple access
     "https://ibl.flatironinstitute.org/public",  # Fails with bot access
+    "https://www.winehq.org/about",  # Wine prevents bot access
 ]
 
 # --------------------------------------------------
