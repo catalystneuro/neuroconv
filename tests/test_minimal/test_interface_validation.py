@@ -34,17 +34,17 @@ def test_conversion_options_validation_with_type_and_callable(tmp_path):
 
     This is a regression test for https://github.com/catalystneuro/neuroconv/pull/1667.
     NWB GUIDE passes progress_bar_class (a type) and callback functions nested inside
-    iterator_opts dict in conversion_options, which caused TypeError during JSON
+    iterator_options dict in conversion_options, which caused TypeError during JSON
     serialization in the validation step.
     """
 
-    class InterfaceWithIteratorOpts(MockInterface):
+    class InterfaceWithIteratorOptions(MockInterface):
 
         def add_to_nwbfile(
             self,
             nwbfile: NWBFile,
             metadata: dict | None,
-            iterator_opts: dict | None = None,
+            iterator_options: dict | None = None,
         ):
             pass
 
@@ -54,27 +54,27 @@ def test_conversion_options_validation_with_type_and_callable(tmp_path):
     def my_callback():
         pass
 
-    iterator_opts = dict(
+    iterator_options = dict(
         display_progress=True,
         progress_bar_class=MyProgressBar,
         progress_bar_options=dict(callback=my_callback),
     )
 
-    interface = InterfaceWithIteratorOpts()
+    interface = InterfaceWithIteratorOptions()
 
     # Test with type object and callable via interface.run_conversion
     nwbfile_path = tmp_path / "interface_test.nwb"
     interface.run_conversion(
         nwbfile_path=nwbfile_path,
-        iterator_opts=iterator_opts,
+        iterator_options=iterator_options,
         overwrite=True,
     )
 
     # Test with type object and callable via ConverterPipe.run_conversion
-    data_interfaces = {"InterfaceWithIteratorOpts": interface}
+    data_interfaces = {"InterfaceWithIteratorOptions": interface}
     conversion_options = {
-        "InterfaceWithIteratorOpts": {
-            "iterator_opts": iterator_opts,
+        "InterfaceWithIteratorOptions": {
+            "iterator_options": iterator_options,
         }
     }
     converter = ConverterPipe(data_interfaces=data_interfaces)

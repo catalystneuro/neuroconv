@@ -42,7 +42,6 @@ def add_recording_to_nwbfile(
     es_key: str | None = None,
     iterator_type: str = "v2",
     iterator_options: dict | None = None,
-    iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
     null_values_for_properties: dict | None = None,
 ):
@@ -78,8 +77,6 @@ def add_recording_to_nwbfile(
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
-    iterator_opts: dict, optional
-        Deprecated. Use 'iterator_options' instead.
     always_write_timestamps : bool, default: False
         Set to True to always write timestamps.
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
@@ -94,18 +91,6 @@ def add_recording_to_nwbfile(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
-
-    # Handle deprecated iterator_opts parameter
-    if iterator_opts is not None:
-        warnings.warn(
-            "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
-            "Use 'iterator_options' instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        if iterator_options is not None:
-            raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
-        iterator_options = iterator_opts
 
     add_recording_metadata_to_nwbfile(
         recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
@@ -1233,7 +1218,6 @@ def add_recording_as_time_series_to_nwbfile(
     *,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
-    iterator_opts: dict | None = None,
     always_write_timestamps: bool = False,
     time_series_name: Optional[str] = None,
     metadata_key: str = "TimeSeries",
@@ -1273,26 +1257,12 @@ def add_recording_as_time_series_to_nwbfile(
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
-    iterator_opts: dict, optional
-        Deprecated. Use 'iterator_options' instead.
     always_write_timestamps : bool, default: False
         Set to True to always write timestamps.
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
     """
-
-    # Handle deprecated iterator_opts parameter
-    if iterator_opts is not None:
-        warnings.warn(
-            "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
-            "Use 'iterator_options' instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        if iterator_options is not None:
-            raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
-        iterator_options = iterator_opts
 
     # Handle backward compatibility for time_series_name
     if time_series_name is not None:
@@ -1675,7 +1645,6 @@ def write_recording_to_nwbfile(
     *,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
-    iterator_opts: dict | None = None,
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     append_on_disk_nwbfile: bool = False,
@@ -1814,26 +1783,10 @@ def write_recording_to_nwbfile(
             write_as=write_as,
             es_key=es_key,
             iterator_type=iterator_type,
-            iterator_options=iterator_options if iterator_options is not None else iterator_opts,
+            iterator_options=iterator_options,
             null_values_for_properties=null_values_for_properties,
         )
         return nwbfile
-
-    # Handle deprecated iterator_opts parameter
-    if iterator_opts is not None:
-        warnings.warn(
-            "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
-            "Use 'iterator_options' instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        if iterator_options is None:
-            iterator_options = iterator_opts
-        else:
-            raise ValueError(
-                "Both 'iterator_opts' and 'iterator_options' were specified. "
-                "Please use only 'iterator_options' as 'iterator_opts' is deprecated."
-            )
 
     appending_to_in_memory_nwbfile = nwbfile is not None
     file_initially_exists = nwbfile_path.exists()
