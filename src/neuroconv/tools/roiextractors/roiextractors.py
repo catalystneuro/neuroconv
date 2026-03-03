@@ -43,6 +43,7 @@ from ..nwb_helpers import (
     make_nwbfile_from_metadata,
 )
 from ..nwb_helpers._metadata_and_file_helpers import (
+    _add_device_to_nwbfile,
     _resolve_backend,
     configure_and_write_nwbfile,
 )
@@ -219,14 +220,22 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     """
     Add optical physiology devices from metadata.
 
+    .. deprecated::
+        This function is deprecated and will be removed on or after September 2026.
+        Use ``_add_device_to_nwbfile`` instead with the new dict-based metadata format
+        (``metadata["Devices"]``).
+
     Notes
     -----
     The metadata concerning the optical physiology should be stored in ``metadata['Ophys']['Device']``.
-
-    Deprecation: Passing ``pynwb.device.Device`` objects directly inside
-    ``metadata['Ophys']['Device']`` is deprecated and will be removed on or after March 2026.
-    Please pass device definitions as dictionaries instead (e.g., ``{"name": "Microscope"}``).
     """
+    warnings.warn(
+        "add_devices_to_nwbfile is deprecated and will be removed on or after September 2026. "
+        "Use _add_device_to_nwbfile with the new dict-based metadata format (metadata['Devices']) instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
     # Get device metadata from user or use defaults
     metadata = metadata or {}
     device_metadata = metadata.get("Ophys", {}).get("Device")
@@ -286,8 +295,6 @@ def _add_imaging_plane_to_nwbfile(
     if imaging_plane_name in nwbfile.imaging_planes:
         return nwbfile
 
-    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
     if user_provided_a_name:
         # User explicitly requested a specific plane - search for it in metadata
         imaging_planes_list = metadata.get("Ophys", {}).get("ImagingPlane", [])
@@ -313,9 +320,19 @@ def _add_imaging_plane_to_nwbfile(
         # User didn't provide a name, use local copy of defaults as kwargs
         imaging_plane_kwargs = default_imaging_plane
 
-    # Replace device name string with actual device object from nwbfile
-    device_name = imaging_plane_kwargs["device"]
-    imaging_plane_kwargs["device"] = nwbfile.devices[device_name]
+    # Resolve device: use device_metadata_key if available, otherwise create a default
+    device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
+    if device_metadata_key is not None:
+        device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, device_metadata_key=device_metadata_key)
+    else:
+        # No device_metadata_key: create a default device
+        default_device_name = imaging_plane_kwargs.get("device", default_imaging_plane["device"])
+        if default_device_name not in nwbfile.devices:
+            nwbfile.create_device(name=default_device_name)
+        device = nwbfile.devices[default_device_name]
+
+    imaging_plane_kwargs.pop("device", None)
+    imaging_plane_kwargs["device"] = device
 
     # Convert optical channel metadata dicts to OpticalChannel objects
     imaging_plane_kwargs["optical_channel"] = [
@@ -643,7 +660,6 @@ def add_imaging_to_nwbfile(
         The NWB file with the imaging data added
 
     """
-    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
     nwbfile = _add_photon_series_to_nwbfile(
         imaging=imaging,
         nwbfile=nwbfile,
@@ -1554,9 +1570,6 @@ def add_segmentation_to_nwbfile(
     NWBFile
         The NWBFile with the added segmentation data.
     """
-
-    # Add device:
-    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
     # Add PlaneSegmentation:
     _add_plane_segmentation_to_nwbfile(
