@@ -191,7 +191,7 @@ def _get_default_ophys_metadata_old_metadata_list():
 
 
 def _get_default_segmentation_metadata() -> DeepDict:
-    """Fill default metadata for segmentation using _get_default_ophys_metadata_old_metadata_list()."""
+    """Fill default metadata for segmentation using _get_default_ophys_metadata()."""
     from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata
 
     # Start with base NWB metadata
@@ -266,14 +266,13 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     """
     Add optical physiology devices from metadata.
 
-    .. deprecated::
-        This function is deprecated and will be removed on or after September 2026.
-        Use ``_add_device_to_nwbfile`` instead with the new dict-based metadata format
-        (``metadata["Devices"]``).
-
     Notes
     -----
     The metadata concerning the optical physiology should be stored in ``metadata['Ophys']['Device']``.
+
+    Deprecation: Passing ``pynwb.device.Device`` objects directly inside
+    ``metadata['Ophys']['Device']`` is deprecated and will be removed on or after March 2026.
+    Please pass device definitions as dictionaries instead (e.g., ``{"name": "Microscope"}``).
     """
     warnings.warn(
         "add_devices_to_nwbfile is deprecated and will be removed on or after September 2026. "
@@ -312,25 +311,23 @@ def _add_imaging_plane_to_nwbfile_old_list_format(
     imaging_plane_name: str | None = None,
 ) -> NWBFile:
     """
-    Add an imaging plane from the old list-based metadata format.
-
-    Looks up the imaging plane in ``metadata["Ophys"]["ImagingPlane"]`` (a list)
-    by matching on the ``"name"`` field.
+    Private implementation. Adds the imaging plane specified by the metadata to the nwb file.
+    The imaging plane that is added is the one located in metadata["Ophys"]["ImagingPlane"][imaging_plane_index]
 
     Parameters
     ----------
     nwbfile : NWBFile
-        The NWB file to add the imaging plane to.
+        An previously defined -in memory- NWBFile.
     metadata : dict
-        The metadata in the old list-based format.
-    imaging_plane_name : str, optional
-        The name of the imaging plane to add. If None, uses the default from
-        ``_get_default_ophys_metadata_old_metadata_list()``.
+        The metadata in the neuroconv format. See `_get_default_ophys_metadata()` for an example.
+    imaging_plane_name: str, optional
+        The name of the imaging plane to be added. If None, this function adds the default imaging plane
+        in _get_default_ophys_metadata().
 
     Returns
     -------
     NWBFile
-        The nwbfile with the imaging plane added.
+        The nwbfile passed as an input with the imaging plane added.
     """
     default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_imaging_plane = default_metadata["Ophys"]["ImagingPlane"][0]
@@ -488,10 +485,11 @@ def _add_photon_series_to_nwbfile_old_list_format(
     always_write_timestamps: bool = False,
 ) -> NWBFile:
     """
-    Add a photon series using the old list-based metadata format.
+    Private implementation. Add photon series to NWB file.
 
-    Looks up the photon series in ``metadata["Ophys"][photon_series_type]`` (a list)
-    by index.
+    Adds photon series from ImagingExtractor to NWB file object.
+    The photon series can be added to the NWB file either as a TwoPhotonSeries
+    or OnePhotonSeries object.
 
     Parameters
     ----------
@@ -499,19 +497,24 @@ def _add_photon_series_to_nwbfile_old_list_format(
         The imaging extractor to get the data from.
     nwbfile : NWBFile
         The nwbfile to add the photon series to.
-    metadata : dict
-        The metadata in the old list-based format.
-    photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+    metadata: dict
+        The metadata for the photon series.
+    photon_series_type: {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
         The type of photon series to add, default is TwoPhotonSeries.
-    photon_series_index : int, default: 0
-        Index into the photon series list in metadata.
-    parent_container : {'acquisition', 'processing/ophys'}, optional
+    photon_series_index: int, default: 0
+        The metadata for the photon series is a list of the different photon series to add.
+        Specify which element of the list with this parameter.
+    parent_container: {'acquisition', 'processing/ophys'}, optional
         The container where the photon series is added, default is nwbfile.acquisition.
-    iterator_type : str, default: 'v2'
+        When 'processing/ophys' is chosen, the photon series is added to ``nwbfile.processing['ophys']``.
+    iterator_type: str, default: 'v2'
         The type of iterator to use when adding the photon series to the NWB file.
-    iterator_options : dict, optional
+    iterator_options: dict, optional
     always_write_timestamps : bool, default: False
         Set to True to always write timestamps.
+        By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
+        using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
+        explicitly, regardless of whether the sampling rate is uniform.
 
     Returns
     -------
@@ -561,12 +564,13 @@ def _add_photon_series_to_nwbfile_old_list_format(
         photon_series_kwargs = default_photon_series
         imaging_plane_name = None  # Will create default imaging plane
 
-    # Add imaging plane (old list format)
+    # Add imaging plane (None signals to create default imaging plane)
     _add_imaging_plane_to_nwbfile_old_list_format(
         nwbfile=nwbfile,
         metadata=metadata,
         imaging_plane_name=imaging_plane_name,
     )
+
     imaging_plane_name = photon_series_kwargs["imaging_plane"]
     imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
     photon_series_kwargs["imaging_plane"] = imaging_plane
@@ -575,7 +579,7 @@ def _add_photon_series_to_nwbfile_old_list_format(
     if "dimension" not in user_photon_series_metadata:
         photon_series_kwargs["dimension"] = imaging.get_sample_shape()
 
-    # Add data iterator
+    # This adds the data in way that is memory efficient
     imaging_extractor_iterator = _imaging_frames_to_hdmf_iterator(
         imaging=imaging,
         iterator_type=iterator_type,
@@ -583,6 +587,7 @@ def _add_photon_series_to_nwbfile_old_list_format(
     )
     photon_series_kwargs["data"] = imaging_extractor_iterator
 
+    # Add timestamps or rate
     if always_write_timestamps:
         timestamps = imaging.get_timestamps()
         photon_series_kwargs.update(timestamps=timestamps)
@@ -629,7 +634,7 @@ def _add_photon_series_to_nwbfile(
     nwbfile: NWBFile,
     metadata: dict,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"],
-    microscopy_series_metadata_key: str,
+    metadata_key: str,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -638,7 +643,7 @@ def _add_photon_series_to_nwbfile(
     """
     Add a photon series using the dict-based metadata format.
 
-    Looks up the microscopy series in ``metadata["Ophys"]["MicroscopySeries"][microscopy_series_metadata_key]``
+    Looks up the microscopy series in ``metadata["Ophys"]["MicroscopySeries"][metadata_key]``
     and creates it in the NWBFile. Resolves the imaging plane via ``imaging_plane_metadata_key``
     in the series metadata.
 
@@ -652,7 +657,7 @@ def _add_photon_series_to_nwbfile(
         The full metadata dictionary with dict-based format.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}
         The NWB type of photon series to create.
-    microscopy_series_metadata_key : str
+    metadata_key : str
         The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
     parent_container : {'acquisition', 'processing/ophys'}, optional
         The container where the photon series is added, default is nwbfile.acquisition.
@@ -669,7 +674,7 @@ def _add_photon_series_to_nwbfile(
     """
     iterator_options = iterator_options or dict()
 
-    photon_series_metadata = metadata["Ophys"]["MicroscopySeries"][microscopy_series_metadata_key]
+    photon_series_metadata = metadata["Ophys"]["MicroscopySeries"][metadata_key]
 
     # Copy to avoid mutation
     photon_series_kwargs = photon_series_metadata.copy()
@@ -831,14 +836,14 @@ def add_imaging_to_nwbfile(
     iterator_options: dict | None = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     always_write_timestamps: bool = False,
-    # TODO: move microscopy_series_metadata_key after metadata once positional args removed (September 2026)
-    microscopy_series_metadata_key: str | None = None,
+    # TODO: move metadata_key after metadata once positional args removed (September 2026)
+    metadata_key: str | None = None,
 ) -> NWBFile:
     """
     Add imaging data from an ImagingExtractor object to an NWBFile.
 
     Supports both old list-based metadata (via ``photon_series_index``) and
-    new dict-based metadata (via ``microscopy_series_metadata_key``).
+    new dict-based metadata (via ``metadata_key``).
 
     Parameters
     ----------
@@ -865,7 +870,7 @@ def add_imaging_to_nwbfile(
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
-    microscopy_series_metadata_key : str, optional
+    metadata_key : str, optional
         The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
         When provided, uses the new dict-based metadata format and ``photon_series_index`` is ignored.
 
@@ -909,13 +914,13 @@ def add_imaging_to_nwbfile(
         parent_container = positional_values.get("parent_container", parent_container)
         always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
 
-    if microscopy_series_metadata_key is not None:
+    if metadata_key is not None:
         nwbfile = _add_photon_series_to_nwbfile(
             imaging=imaging,
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type=photon_series_type,
-            microscopy_series_metadata_key=microscopy_series_metadata_key,
+            metadata_key=metadata_key,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             parent_container=parent_container,
@@ -1835,6 +1840,9 @@ def add_segmentation_to_nwbfile(
     NWBFile
         The NWBFile with the added segmentation data.
     """
+
+    # Add device:
+    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
     # Add PlaneSegmentation:
     _add_plane_segmentation_to_nwbfile(

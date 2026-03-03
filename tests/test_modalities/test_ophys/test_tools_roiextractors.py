@@ -30,6 +30,7 @@ from neuroconv.tools.roiextractors import (
     _check_if_imaging_fits_into_memory,
     add_devices_to_nwbfile,
     add_fluorescence_traces_to_nwbfile,
+    add_imaging_to_nwbfile,
 )
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
@@ -2270,10 +2271,6 @@ class TestAddImaging:
     """Tests for the dict-based metadata imaging pipeline (add_imaging_to_nwbfile)."""
 
     @pytest.fixture()
-    def nwbfile(self):
-        return mock_NWBFile()
-
-    @pytest.fixture()
     def dict_metadata(self):
         """Minimal dict-based metadata with device, imaging plane, and microscopy series."""
         return {
@@ -2313,10 +2310,9 @@ class TestAddImaging:
             },
         }
 
-    def test_full_chain_device_imaging_plane_photon_series(self, nwbfile, dict_metadata):
+    def test_full_chain_device_imaging_plane_photon_series(self, dict_metadata):
         """Device, ImagingPlane, and TwoPhotonSeries are created from dict-based metadata."""
-        from neuroconv.tools.roiextractors import add_imaging_to_nwbfile
-
+        nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
         add_imaging_to_nwbfile(
@@ -2324,7 +2320,7 @@ class TestAddImaging:
             nwbfile=nwbfile,
             metadata=dict_metadata,
             photon_series_type="TwoPhotonSeries",
-            microscopy_series_metadata_key="my_series",
+            metadata_key="my_series",
         )
 
         assert "Microscope" in nwbfile.devices
@@ -2344,10 +2340,9 @@ class TestAddImaging:
         assert series.description == "Two-photon calcium imaging"
         assert series.imaging_plane is plane
 
-    def test_default_device_when_no_device_metadata_key(self, nwbfile):
+    def test_default_device_when_no_device_metadata_key(self):
         """When imaging plane has no device_metadata_key, a default device is created."""
-        from neuroconv.tools.roiextractors import add_imaging_to_nwbfile
-
+        nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
         metadata = {
@@ -2385,7 +2380,7 @@ class TestAddImaging:
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type="TwoPhotonSeries",
-            microscopy_series_metadata_key="my_series",
+            metadata_key="my_series",
         )
 
         # Default device name comes from _get_default_ophys_metadata
@@ -2393,10 +2388,9 @@ class TestAddImaging:
         plane = nwbfile.imaging_planes["ImagingPlane"]
         assert plane.device is nwbfile.devices["Microscope"]
 
-    def test_shared_device_two_imaging_planes(self, nwbfile):
+    def test_shared_device_two_imaging_planes(self):
         """Two imaging planes referencing the same device via device_metadata_key."""
-        from neuroconv.tools.roiextractors import add_imaging_to_nwbfile
-
+        nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
         metadata = {
@@ -2450,14 +2444,14 @@ class TestAddImaging:
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type="TwoPhotonSeries",
-            microscopy_series_metadata_key="series_v1",
+            metadata_key="series_v1",
         )
         add_imaging_to_nwbfile(
             imaging=imaging,
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type="TwoPhotonSeries",
-            microscopy_series_metadata_key="series_v2",
+            metadata_key="series_v2",
         )
 
         # One device, two planes, two series
@@ -2471,10 +2465,9 @@ class TestAddImaging:
         assert nwbfile.imaging_planes["ImagingPlaneV1"].device is device
         assert nwbfile.imaging_planes["ImagingPlaneV2"].device is device
 
-    def test_idempotent_imaging_plane(self, nwbfile, dict_metadata):
+    def test_idempotent_imaging_plane(self, dict_metadata):
         """Calling twice with the same imaging plane does not duplicate it."""
-        from neuroconv.tools.roiextractors import add_imaging_to_nwbfile
-
+        nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
         # Add a second series that references the same imaging plane
@@ -2490,24 +2483,23 @@ class TestAddImaging:
             nwbfile=nwbfile,
             metadata=dict_metadata,
             photon_series_type="TwoPhotonSeries",
-            microscopy_series_metadata_key="my_series",
+            metadata_key="my_series",
         )
         add_imaging_to_nwbfile(
             imaging=imaging,
             nwbfile=nwbfile,
             metadata=dict_metadata,
             photon_series_type="TwoPhotonSeries",
-            microscopy_series_metadata_key="second_series",
+            metadata_key="second_series",
         )
 
         assert len(nwbfile.devices) == 1
         assert len(nwbfile.imaging_planes) == 1
         assert len(nwbfile.acquisition) == 2
 
-    def test_metadata_not_mutated(self, nwbfile, dict_metadata):
+    def test_metadata_not_mutated(self, dict_metadata):
         """Dict-based metadata is not mutated by add_imaging_to_nwbfile."""
-        from neuroconv.tools.roiextractors import add_imaging_to_nwbfile
-
+        nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
         metadata_before = deepcopy(dict_metadata)
@@ -2517,7 +2509,7 @@ class TestAddImaging:
             nwbfile=nwbfile,
             metadata=dict_metadata,
             photon_series_type="TwoPhotonSeries",
-            microscopy_series_metadata_key="my_series",
+            metadata_key="my_series",
         )
 
         assert dict_metadata == metadata_before, "Metadata was mutated"
