@@ -299,7 +299,7 @@ where the imaging occurred.
 How Linking Works
 ~~~~~~~~~~~~~~~~~
 
-At metadata time, we don't have actual NWB objects yet, only dictionaries describing them.
+In the metadata dict, we don't have actual NWB objects yet, only dictionaries describing them.
 To express relationships between linked components, we use special ``_metadata_key`` fields
 that contain the key of the referenced component.
 
