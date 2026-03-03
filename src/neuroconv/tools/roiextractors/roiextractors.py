@@ -260,29 +260,31 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     return nwbfile
 
 
-def _add_imaging_plane_to_nwbfile(
+def _add_imaging_plane_to_nwbfile_old_list_format(
     nwbfile: NWBFile,
     metadata: dict,
     imaging_plane_name: str | None = None,
 ) -> NWBFile:
     """
-    Private implementation. Adds the imaging plane specified by the metadata to the nwb file.
-    The imaging plane that is added is the one located in metadata["Ophys"]["ImagingPlane"][imaging_plane_index]
+    Add an imaging plane from the old list-based metadata format.
+
+    Looks up the imaging plane in ``metadata["Ophys"]["ImagingPlane"]`` (a list)
+    by matching on the ``"name"`` field.
 
     Parameters
     ----------
     nwbfile : NWBFile
-        An previously defined -in memory- NWBFile.
+        The NWB file to add the imaging plane to.
     metadata : dict
-        The metadata in the neuroconv format. See `_get_default_ophys_metadata()` for an example.
-    imaging_plane_name: str, optional
-        The name of the imaging plane to be added. If None, this function adds the default imaging plane
-        in _get_default_ophys_metadata().
+        The metadata in the old list-based format.
+    imaging_plane_name : str, optional
+        The name of the imaging plane to add. If None, uses the default from
+        ``_get_default_ophys_metadata()``.
 
     Returns
     -------
     NWBFile
-        The nwbfile passed as an input with the imaging plane added.
+        The nwbfile with the imaging plane added.
     """
     default_metadata = _get_default_ophys_metadata()
     default_imaging_plane = default_metadata["Ophys"]["ImagingPlane"][0]
@@ -343,6 +345,69 @@ def _add_imaging_plane_to_nwbfile(
     nwbfile.add_imaging_plane(imaging_plane)
 
     return nwbfile
+
+
+def _add_imaging_plane_to_nwbfile(
+    nwbfile: NWBFile,
+    metadata: dict,
+    imaging_plane_metadata_key: str,
+) -> ImagingPlane:
+    """
+    Add an imaging plane from the dict-based metadata format.
+
+    Looks up the imaging plane in ``metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]``
+    and creates it in the NWBFile. If an imaging plane with the same name already exists,
+    the existing one is returned.
+
+    The device is resolved via ``device_metadata_key`` in the imaging plane metadata.
+    If no ``device_metadata_key`` is set, a default device named ``"Microscope"`` is created.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to add the imaging plane to.
+    metadata : dict
+        The full metadata dictionary with dict-based format.
+    imaging_plane_metadata_key : str
+        The key in ``metadata["Ophys"]["ImagingPlanes"]`` identifying the imaging plane.
+
+    Returns
+    -------
+    ImagingPlane
+        The ImagingPlane object (either newly created or existing).
+    """
+    imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]
+
+    # Copy to avoid mutation
+    imaging_plane_kwargs = imaging_plane_metadata.copy()
+
+    # Check if already exists
+    imaging_plane_name = imaging_plane_kwargs["name"]
+    if imaging_plane_name in nwbfile.imaging_planes:
+        return nwbfile.imaging_planes[imaging_plane_name]
+
+    # Resolve device
+    device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
+    if device_metadata_key is not None:
+        device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, device_metadata_key=device_metadata_key)
+    else:
+        default_metadata = _get_default_ophys_metadata()
+        default_device_name = default_metadata["Ophys"]["Device"][0]["name"]
+        if default_device_name not in nwbfile.devices:
+            nwbfile.create_device(name=default_device_name)
+        device = nwbfile.devices[default_device_name]
+
+    imaging_plane_kwargs["device"] = device
+
+    # Convert optical channel metadata dicts to OpticalChannel objects
+    imaging_plane_kwargs["optical_channel"] = [
+        OpticalChannel(**channel_metadata) for channel_metadata in imaging_plane_kwargs["optical_channel"]
+    ]
+
+    imaging_plane = ImagingPlane(**imaging_plane_kwargs)
+    nwbfile.add_imaging_plane(imaging_plane)
+
+    return imaging_plane
 
 
 def _add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBFile:
@@ -467,15 +532,26 @@ def _add_photon_series_to_nwbfile(
         photon_series_kwargs = default_photon_series
         imaging_plane_name = None  # Will create default imaging plane
 
-    # Add imaging plane (None signals to create default imaging plane)
-    _add_imaging_plane_to_nwbfile(
-        nwbfile=nwbfile,
-        metadata=metadata,
-        imaging_plane_name=imaging_plane_name,
-    )
+    # Add imaging plane
+    imaging_plane_metadata_key = photon_series_kwargs.get("imaging_plane_metadata_key")
+    if imaging_plane_metadata_key is not None:
+        # New dict-based format: look up in metadata["Ophys"]["ImagingPlanes"]
+        imaging_plane = _add_imaging_plane_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            imaging_plane_metadata_key=imaging_plane_metadata_key,
+        )
+    else:
+        # Old list-based format
+        _add_imaging_plane_to_nwbfile_old_list_format(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            imaging_plane_name=imaging_plane_name,
+        )
+        imaging_plane_name = photon_series_kwargs["imaging_plane"]
+        imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
 
-    imaging_plane_name = photon_series_kwargs["imaging_plane"]
-    imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
+    photon_series_kwargs.pop("imaging_plane_metadata_key", None)
     photon_series_kwargs["imaging_plane"] = imaging_plane
 
     # Add dimension: respect user-provided metadata, else derive from extractor
@@ -1081,7 +1157,9 @@ def _add_plane_segmentation(
     )
 
     imaging_plane_name_to_add = imaging_plane_name_from_plane_seg if user_has_imaging_plane else None
-    _add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name=imaging_plane_name_to_add)
+    _add_imaging_plane_to_nwbfile_old_list_format(
+        nwbfile=nwbfile, metadata=metadata, imaging_plane_name=imaging_plane_name_to_add
+    )
 
     if plane_segmentation_name in image_segmentation.plane_segmentations:
         # At the moment, we don't support extending an existing PlaneSegmentation.

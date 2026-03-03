@@ -36,7 +36,7 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
 )
 from neuroconv.tools.roiextractors.roiextractors import (
     _add_image_segmentation_to_nwbfile,
-    _add_imaging_plane_to_nwbfile,
+    _add_imaging_plane_to_nwbfile_old_list_format,
     _add_photon_series_to_nwbfile,
     _add_plane_segmentation_to_nwbfile,
     _add_summary_images_to_nwbfile,
@@ -177,8 +177,8 @@ class TestAddImagingPlane(TestCase):
 
         self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
 
-    def test_add_imaging_plane_to_nwbfile(self):
-        _add_imaging_plane_to_nwbfile(
+    def test_add_imaging_plane_to_nwbfile_old_list_format(self):
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
         )
 
@@ -190,12 +190,12 @@ class TestAddImagingPlane(TestCase):
         assert imaging_plane.description == self.imaging_plane_description
 
     def test_not_overwriting_imaging_plane_if_same_name(self):
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
         )
 
         self.imaging_plane_metadata["description"] = "modified description"
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
         )
 
@@ -209,7 +209,7 @@ class TestAddImagingPlane(TestCase):
         first_imaging_plane_description = "first_imaging_plane_description"
         self.imaging_plane_metadata["name"] = first_imaging_plane_name
         self.imaging_plane_metadata["description"] = first_imaging_plane_description
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=first_imaging_plane_name
         )
 
@@ -218,7 +218,7 @@ class TestAddImagingPlane(TestCase):
         second_imaging_plane_description = "second_imaging_plane_description"
         self.imaging_plane_metadata["name"] = second_imaging_plane_name
         self.imaging_plane_metadata["description"] = second_imaging_plane_description
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=second_imaging_plane_name
         )
 
@@ -234,14 +234,14 @@ class TestAddImagingPlane(TestCase):
         assert second_imaging_plane.name == second_imaging_plane_name
         assert second_imaging_plane.description == second_imaging_plane_description
 
-    def test_add_imaging_plane_to_nwbfile_raises_when_name_not_found_in_metadata(self):
+    def test_add_imaging_plane_to_nwbfile_old_list_format_raises_when_name_not_found_in_metadata(self):
         """Test adding an imaging plane raises an error when the name is not found in the metadata."""
         imaging_plane_name = "imaging_plane_non_existing_in_the_metadata"
         with self.assertRaisesWith(
             exc_type=ValueError,
             exc_msg=f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane'].",
         ):
-            _add_imaging_plane_to_nwbfile(
+            _add_imaging_plane_to_nwbfile_old_list_format(
                 nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=imaging_plane_name
             )
 
@@ -254,10 +254,10 @@ class TestAddImagingPlane(TestCase):
         second_imaging_plane_metadata = deepcopy(metadata["Ophys"]["ImagingPlane"][0])
         second_imaging_plane_metadata.update(name="second_imaging_plane_name")
         imaging_planes_metadata.append(second_imaging_plane_metadata)
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name=self.imaging_plane_name
         )
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name="second_imaging_plane_name"
         )
 
@@ -1983,7 +1983,7 @@ class TestNoMetadataMutation:
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_imaging_plane_no_metadata_mutation(self):
-        """Test that _add_imaging_plane_to_nwbfile does not mutate the input metadata."""
+        """Test that _add_imaging_plane_to_nwbfile_old_list_format does not mutate the input metadata."""
         nwbfile = mock_NWBFile()
 
         # Create metadata with imaging plane (all fields provided)
@@ -2014,13 +2014,15 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function
-        _add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+        _add_imaging_plane_to_nwbfile_old_list_format(
+            nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane"
+        )
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_imaging_plane_no_partial_metadata_mutation(self):
-        """Test that _add_imaging_plane_to_nwbfile does not mutate partial user metadata when complemented with defaults."""
+        """Test that _add_imaging_plane_to_nwbfile_old_list_format does not mutate partial user metadata when complemented with defaults."""
         nwbfile = mock_NWBFile()
 
         # Create metadata with minimal imaging plane (missing some fields that will be filled from defaults)
@@ -2048,7 +2050,9 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function (should fill in missing fields internally but not mutate the input)
-        _add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+        _add_imaging_plane_to_nwbfile_old_list_format(
+            nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane"
+        )
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
