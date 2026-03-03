@@ -37,7 +37,7 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
 from neuroconv.tools.roiextractors.roiextractors import (
     _add_image_segmentation_to_nwbfile,
     _add_imaging_plane_to_nwbfile_old_list_format,
-    _add_photon_series_to_nwbfile,
+    _add_photon_series_to_nwbfile_old_list_format,
     _add_plane_segmentation_to_nwbfile,
     _add_summary_images_to_nwbfile,
     _get_default_ophys_metadata,
@@ -1448,7 +1448,7 @@ class TestAddPhotonSeries(TestCase):
 
     def test_default_values(self):
         """Test adding two photon series with default values."""
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
         )
 
@@ -1481,7 +1481,7 @@ class TestAddPhotonSeries(TestCase):
             AssertionError,
             "'iterator_type' must be either 'v2' (recommended) or None.",
         ):
-            _add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile_old_list_format(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1514,7 +1514,7 @@ class TestAddPhotonSeries(TestCase):
 
     def test_non_iterative_two_photon(self):
         """Test adding two photon series without using DataChunkIterator."""
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1535,7 +1535,7 @@ class TestAddPhotonSeries(TestCase):
     def test_deprecated_v1_iterator_two_photon(self):
         """Test adding two photon series with deprecated v1 iterator type."""
         with self.assertWarns(FutureWarning):
-            _add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile_old_list_format(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1560,7 +1560,7 @@ class TestAddPhotonSeries(TestCase):
         """Test that iterator options are propagated to the data chunk iterator."""
         buffer_shape = (20, 5, 5)
         chunk_shape = (10, 5, 5)
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1577,7 +1577,7 @@ class TestAddPhotonSeries(TestCase):
     def test_iterator_options_chunk_mb_propagation(self):
         """Test that chunk_mb is propagated to the data chunk iterator and the chunk shape is correctly set to fit."""
         chunk_mb = 10.0
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1594,7 +1594,7 @@ class TestAddPhotonSeries(TestCase):
     def test_iterator_options_chunk_shape_is_at_least_one(self):
         """Test that when a small chunk_mb is selected the chunk shape is guaranteed to include at least one frame."""
         chunk_mb = 1.0
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1610,7 +1610,7 @@ class TestAddPhotonSeries(TestCase):
     def test_iterator_options_chunk_shape_does_not_exceed_maxshape(self):
         """Test that when a large chunk_mb is selected the chunk shape is guaranteed to not exceed maxshape."""
         chunk_mb = 1000.0
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1624,7 +1624,7 @@ class TestAddPhotonSeries(TestCase):
         assert_array_equal(chunk_shape, data_chunk_iterator.maxshape)
 
     def test_add_two_photon_series_roundtrip(self):
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
         )
 
@@ -1661,7 +1661,7 @@ class TestAddPhotonSeries(TestCase):
             AssertionError,
             "'photon_series_type' must be either 'OnePhotonSeries' or 'TwoPhotonSeries'.",
         ):
-            _add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile_old_list_format(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1678,7 +1678,7 @@ class TestAddPhotonSeries(TestCase):
             binning=2,
             power=500.0,
         )
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=metadata,
@@ -1693,7 +1693,7 @@ class TestAddPhotonSeries(TestCase):
         self.assertEqual(one_photon_series.unit, "n.a.")
 
     def test_add_one_photon_series_roundtrip(self):
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.one_photon_series_metadata,
@@ -1717,13 +1717,13 @@ class TestAddPhotonSeries(TestCase):
             expected_one_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
             assert one_photon_series.shape == expected_one_photon_series_shape
 
-    def test_add_photon_series_to_nwbfile_invalid_module_name_raises(self):
+    def test_add_photon_series_to_nwbfile_old_list_format_invalid_module_name_raises(self):
         """Test that adding photon series with invalid module name raises error."""
         with self.assertRaisesWith(
             exc_type=AssertionError,
             exc_msg="'parent_container' must be either 'acquisition' or 'processing/ophys'.",
         ):
-            _add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile_old_list_format(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1735,7 +1735,7 @@ class TestAddPhotonSeries(TestCase):
         metadata = self.one_photon_series_metadata
         metadata["Ophys"]["OnePhotonSeries"][0].update(name="OnePhotonSeriesProcessed")
 
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.one_photon_series_metadata,
@@ -1748,7 +1748,7 @@ class TestAddPhotonSeries(TestCase):
 
     def test_ophys_module_not_created_when_photon_series_added_to_acquisition(self):
         """Test that ophys module is not created when photon series are added to nwbfile.acquisition."""
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1764,7 +1764,7 @@ class TestAddPhotonSeries(TestCase):
         shared_photon_series_metadata["Ophys"]["ImagingPlane"][0]["name"] = shared_imaging_plane_name
         shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["imaging_plane"] = shared_imaging_plane_name
 
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=shared_photon_series_metadata,
@@ -1772,7 +1772,7 @@ class TestAddPhotonSeries(TestCase):
         )
 
         shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "second_photon_series"
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=shared_photon_series_metadata,
@@ -2058,7 +2058,7 @@ class TestNoMetadataMutation:
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_photon_series_no_metadata_mutation(self):
-        """Test that _add_photon_series_to_nwbfile does not mutate the input metadata."""
+        """Test that _add_photon_series_to_nwbfile_old_list_format does not mutate the input metadata."""
         from roiextractors.testing import generate_dummy_imaging_extractor
 
         nwbfile = mock_NWBFile()
@@ -2102,7 +2102,7 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -2264,3 +2264,250 @@ class TestNoMetadataMutation:
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
+
+
+class TestAddImaging:
+    """Tests for the dict-based metadata imaging pipeline (add_imaging_to_nwbfile)."""
+
+    @pytest.fixture()
+    def nwbfile(self):
+        return mock_NWBFile()
+
+    @pytest.fixture()
+    def dict_metadata(self):
+        """Minimal dict-based metadata with device, imaging plane, and photon series."""
+        return {
+            "Devices": {
+                "my_microscope": {
+                    "name": "Microscope",
+                    "description": "Two-photon microscope",
+                    "manufacturer": "Thorlabs",
+                },
+            },
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        "description": "Imaging plane in V1",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6s",
+                        "location": "V1",
+                        "device_metadata_key": "my_microscope",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "description": "GCaMP emission",
+                                "emission_lambda": 510.0,
+                            }
+                        ],
+                    },
+                },
+                "TwoPhotonSeries": {
+                    "my_series": {
+                        "name": "TwoPhotonSeries",
+                        "description": "Two-photon calcium imaging",
+                        "unit": "n.a.",
+                        "imaging_plane_metadata_key": "my_plane",
+                    },
+                },
+            },
+        }
+
+    def test_full_chain_device_imaging_plane_photon_series(self, imaging_extractor, nwbfile, dict_metadata):
+        """Device, ImagingPlane, and TwoPhotonSeries are created from dict-based metadata."""
+        from neuroconv.tools.roiextractors import add_imaging_to_nwbfile
+
+        add_imaging_to_nwbfile(
+            imaging=imaging_extractor,
+            nwbfile=nwbfile,
+            metadata=dict_metadata,
+            photon_series_type="TwoPhotonSeries",
+            photon_series_metadata_key="my_series",
+        )
+
+        assert "Microscope" in nwbfile.devices
+        device = nwbfile.devices["Microscope"]
+        assert device.description == "Two-photon microscope"
+        assert device.manufacturer == "Thorlabs"
+
+        assert "ImagingPlane" in nwbfile.imaging_planes
+        plane = nwbfile.imaging_planes["ImagingPlane"]
+        assert plane.description == "Imaging plane in V1"
+        assert plane.indicator == "GCaMP6s"
+        assert plane.location == "V1"
+        assert plane.device is device
+
+        assert "TwoPhotonSeries" in nwbfile.acquisition
+        series = nwbfile.acquisition["TwoPhotonSeries"]
+        assert series.description == "Two-photon calcium imaging"
+        assert series.imaging_plane is plane
+
+    def test_default_device_when_no_device_metadata_key(self, imaging_extractor, nwbfile):
+        """When imaging plane has no device_metadata_key, a default device is created."""
+        from neuroconv.tools.roiextractors import add_imaging_to_nwbfile
+
+        metadata = {
+            "Devices": {},
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        "description": "A plane",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6s",
+                        "location": "V1",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "description": "GCaMP emission",
+                                "emission_lambda": 510.0,
+                            }
+                        ],
+                    },
+                },
+                "TwoPhotonSeries": {
+                    "my_series": {
+                        "name": "TwoPhotonSeries",
+                        "description": "Imaging data",
+                        "unit": "n.a.",
+                        "imaging_plane_metadata_key": "my_plane",
+                    },
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(
+            imaging=imaging_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            photon_series_type="TwoPhotonSeries",
+            photon_series_metadata_key="my_series",
+        )
+
+        # Default device name comes from _get_default_ophys_metadata
+        assert "Microscope" in nwbfile.devices
+        plane = nwbfile.imaging_planes["ImagingPlane"]
+        assert plane.device is nwbfile.devices["Microscope"]
+
+    def test_shared_device_two_imaging_planes(self, imaging_extractor, nwbfile):
+        """Two imaging planes referencing the same device via device_metadata_key."""
+        from neuroconv.tools.roiextractors import add_imaging_to_nwbfile
+
+        metadata = {
+            "Devices": {
+                "shared_scope": {
+                    "name": "SharedMicroscope",
+                    "description": "Shared two-photon microscope",
+                    "manufacturer": "Bruker",
+                },
+            },
+            "Ophys": {
+                "ImagingPlanes": {
+                    "plane_v1": {
+                        "name": "ImagingPlaneV1",
+                        "description": "Visual cortex V1",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6s",
+                        "location": "V1",
+                        "device_metadata_key": "shared_scope",
+                        "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
+                    },
+                    "plane_v2": {
+                        "name": "ImagingPlaneV2",
+                        "description": "Visual cortex V2",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V2",
+                        "device_metadata_key": "shared_scope",
+                        "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
+                    },
+                },
+                "TwoPhotonSeries": {
+                    "series_v1": {
+                        "name": "TwoPhotonSeriesV1",
+                        "description": "V1 imaging",
+                        "unit": "n.a.",
+                        "imaging_plane_metadata_key": "plane_v1",
+                    },
+                    "series_v2": {
+                        "name": "TwoPhotonSeriesV2",
+                        "description": "V2 imaging",
+                        "unit": "n.a.",
+                        "imaging_plane_metadata_key": "plane_v2",
+                    },
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(
+            imaging=imaging_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            photon_series_type="TwoPhotonSeries",
+            photon_series_metadata_key="series_v1",
+        )
+        add_imaging_to_nwbfile(
+            imaging=imaging_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            photon_series_type="TwoPhotonSeries",
+            photon_series_metadata_key="series_v2",
+        )
+
+        # One device, two planes, two series
+        assert len(nwbfile.devices) == 1
+        assert "SharedMicroscope" in nwbfile.devices
+        assert len(nwbfile.imaging_planes) == 2
+        assert len(nwbfile.acquisition) == 2
+
+        # Both planes share the same device
+        device = nwbfile.devices["SharedMicroscope"]
+        assert nwbfile.imaging_planes["ImagingPlaneV1"].device is device
+        assert nwbfile.imaging_planes["ImagingPlaneV2"].device is device
+
+    def test_idempotent_imaging_plane(self, imaging_extractor, nwbfile, dict_metadata):
+        """Calling twice with the same imaging plane does not duplicate it."""
+        from neuroconv.tools.roiextractors import add_imaging_to_nwbfile
+
+        # Add a second series that references the same imaging plane
+        dict_metadata["Ophys"]["TwoPhotonSeries"]["second_series"] = {
+            "name": "TwoPhotonSeriesSecond",
+            "description": "Second series",
+            "unit": "n.a.",
+            "imaging_plane_metadata_key": "my_plane",
+        }
+
+        add_imaging_to_nwbfile(
+            imaging=imaging_extractor,
+            nwbfile=nwbfile,
+            metadata=dict_metadata,
+            photon_series_type="TwoPhotonSeries",
+            photon_series_metadata_key="my_series",
+        )
+        add_imaging_to_nwbfile(
+            imaging=imaging_extractor,
+            nwbfile=nwbfile,
+            metadata=dict_metadata,
+            photon_series_type="TwoPhotonSeries",
+            photon_series_metadata_key="second_series",
+        )
+
+        assert len(nwbfile.devices) == 1
+        assert len(nwbfile.imaging_planes) == 1
+        assert len(nwbfile.acquisition) == 2
+
+    def test_metadata_not_mutated(self, imaging_extractor, nwbfile, dict_metadata):
+        """Dict-based metadata is not mutated by add_imaging_to_nwbfile."""
+        from neuroconv.tools.roiextractors import add_imaging_to_nwbfile
+
+        metadata_before = deepcopy(dict_metadata)
+
+        add_imaging_to_nwbfile(
+            imaging=imaging_extractor,
+            nwbfile=nwbfile,
+            metadata=dict_metadata,
+            photon_series_type="TwoPhotonSeries",
+            photon_series_metadata_key="my_series",
+        )
+
+        assert dict_metadata == metadata_before, "Metadata was mutated"
