@@ -3,6 +3,7 @@
 ## Removals, Deprecations and Changes
 
 ## Bug Fixes
+* Fixed `NotImplementedError` when using `ndx-events>=0.2.2` with `configure_and_write_nwbfile`. The version check for ndx-events `Events` types was too restrictive (`<= 0.2.1`), causing files with `Events` objects to fail during backend configuration. [PR #1682](https://github.com/catalystneuro/neuroconv/pull/1682)
 
 ## Features
 

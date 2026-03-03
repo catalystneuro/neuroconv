@@ -84,8 +84,8 @@ def configure_backend(
                 data_chunk_iterator_class=data_chunk_iterator_class,
                 data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
             )
-        # Special ndx-events v0.2.0 types
-        elif is_ndx_events_installed and (get_package_version("ndx-events") <= version.parse("0.2.1")):
+        # Special ndx-events v0.2.x types (v0.2.0, v0.2.1, v0.2.2 — not yet integrated into NWB core)
+        elif is_ndx_events_installed and (get_package_version("ndx-events") < version.parse("0.3.0")):
             # Temporarily skipping LabeledEvents
             if isinstance(neurodata_object, ndx_events.LabeledEvents):
                 continue

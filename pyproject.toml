@@ -114,7 +114,7 @@ lightningpose = [
     "neuroconv[video]",
 ]
 medpc = [
-    "ndx-events==0.2.1",
+    "ndx-events==0.2.2",
 ]
 behavior = [
     "neuroconv[sleap]",
@@ -208,7 +208,7 @@ spikegadgets = [
 spikeglx = [
     "neuroconv[ecephys_minimal]",
     "probeinterface>=0.3.1",  # For ADC multiplexing properties (adc_group, adc_sample_order)
-    "ndx-events==0.2.1",  # For adding events from the nidq recording
+    "ndx-events==0.2.2",  # For adding events from the nidq recording
 ]
 tdt = [
     "neuroconv[ecephys_minimal]",
