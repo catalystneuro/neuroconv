@@ -1,6 +1,8 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed the deprecated `iterator_type='v1'` option from `_imaging_frames_to_hdmf_iterator`. Use `iterator_type='v2'` (default) instead. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
+* Removed support for passing `rate` in trace metadata for fluorescence traces. The rate is now always calculated automatically from the segmentation extractor's timestamps or sampling frequency. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
 
 ## Bug Fixes
 

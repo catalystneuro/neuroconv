@@ -12,7 +12,6 @@ from unittest.mock import Mock
 import numpy as np
 import psutil
 import pytest
-from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
 from numpy.typing import ArrayLike
@@ -1526,30 +1525,6 @@ class TestAddPhotonSeries(TestCase):
         assert self.two_photon_series_name in acquisition_modules
         two_photon_series_extracted = acquisition_modules[self.two_photon_series_name].data
 
-        # NWB stores images as num_columns x num_rows
-        expected_two_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
-        assert two_photon_series_extracted.shape == expected_two_photon_series_shape
-        expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
-        assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
-
-    def test_deprecated_v1_iterator_two_photon(self):
-        """Test adding two photon series with deprecated v1 iterator type."""
-        with self.assertWarns(FutureWarning):
-            _add_photon_series_to_nwbfile(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-                iterator_type="v1",
-            )
-
-        # Check data
-        acquisition_modules = self.nwbfile.acquisition
-        assert self.two_photon_series_name in acquisition_modules
-        data_chunk_iterator = acquisition_modules[self.two_photon_series_name].data
-        assert isinstance(data_chunk_iterator, DataChunkIterator)
-        self.assertEqual(data_chunk_iterator.buffer_size, 10)
-
-        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
         # NWB stores images as num_columns x num_rows
         expected_two_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
