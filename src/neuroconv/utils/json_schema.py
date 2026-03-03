@@ -162,6 +162,8 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
     arguments_to_annotations = {}
 
     # Resolve string annotations from PEP 563 (from __future__ import annotations)
+    # TODO: Remove PEP 563 handling once minimum Python version is 3.14+
+    # and external consumers no longer use `from __future__ import annotations`
     # When a class is passed, inspect.signature uses __init__, so we must too
     hints_target = method.__init__ if inspect.isclass(method) else method
     try:
