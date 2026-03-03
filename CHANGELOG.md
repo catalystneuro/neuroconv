@@ -3,6 +3,7 @@
 ## Removals, Deprecations and Changes
 
 ## Bug Fixes
+* Fixed `get_json_schema_from_method_signature` to resolve PEP 563 string annotations (from `from __future__ import annotations`) before passing them to pydantic. This affected any interface defined in a module with deferred annotations (e.g. `MiniscopeConverter`, or external subclasses from SpikeInterface). [PR #1670](https://github.com/catalystneuro/neuroconv/pull/1670)
 
 ## Features
 

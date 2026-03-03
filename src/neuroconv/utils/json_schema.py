@@ -165,7 +165,7 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
     # When a class is passed, inspect.signature uses __init__, so we must too
     hints_target = method.__init__ if inspect.isclass(method) else method
     try:
-        type_hints = typing.get_type_hints(hints_target)
+        type_hints = typing.get_type_hints(hints_target, include_extras=True)
     except NameError:
         type_hints = {}
 
