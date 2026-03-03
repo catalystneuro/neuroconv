@@ -1,6 +1,8 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed the deprecated `extractor` property and `get_extractor()` method from `BaseExtractorInterface`. Use `get_extractor_class()` instead. [PR #1681](https://github.com/catalystneuro/neuroconv/pull/1681)
+* Removed the deprecated `iterator_opts` parameter from `add_recording_to_nwbfile`, `add_recording_as_time_series_to_nwbfile`, `write_recording_to_nwbfile`, and `BaseRecordingExtractorInterface.add_to_nwbfile`. Use `iterator_options` instead. [PR #1681](https://github.com/catalystneuro/neuroconv/pull/1681)
 
 ## Bug Fixes
 * Fixed `get_json_schema_from_method_signature` to resolve PEP 563 string annotations (from `from __future__ import annotations`) before passing them to pydantic. This affected any interface defined in a module with deferred annotations (e.g. `MiniscopeConverter`, or external subclasses from SpikeInterface). [PR #1670](https://github.com/catalystneuro/neuroconv/pull/1670)
