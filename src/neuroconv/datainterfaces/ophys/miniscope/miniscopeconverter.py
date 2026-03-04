@@ -378,10 +378,10 @@ class MiniscopeConverter(ConverterPipe):
 
     def get_metadata(self):
         from neuroconv.tools.roiextractors.roiextractors import (
-            _get_default_ophys_metadata,
+            _get_default_ophys_metadata_old_metadata_list,
         )
 
-        default_ophys_metadata = _get_default_ophys_metadata()
+        default_ophys_metadata = _get_default_ophys_metadata_old_metadata_list()
         metadata = super().get_metadata()
 
         # Use the minimum session start time if it was calculated during alignment

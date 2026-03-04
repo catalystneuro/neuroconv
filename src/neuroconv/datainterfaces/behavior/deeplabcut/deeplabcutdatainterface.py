@@ -559,8 +559,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
-        container_name: str | None = None,
     ):
         """
         Conversion from DLC output files to nwb. Derived from dlc2nwb library.
@@ -571,53 +569,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             nwb file to which the recording information is to be added
         metadata: dict
             metadata info for constructing the nwb file (optional).
-        container_name: str, default: None
-            name of the PoseEstimation container in the nwb. If None, uses the container_name from the interface.
-            This parameter is deprecated and will be removed on or after October 2025.
-            Use the pose_estimation_metadata_key parameter when initializing the interface instead to specify
-            the content of the metadata.
-
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "container_name",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to DeepLabCutInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            container_name = positional_values.get("container_name", container_name)
         from ._dlc_utils import (
             _add_pose_estimation_to_nwbfile,
             _ensure_individuals_in_header,
         )
 
-        # Use the pose_estimation_metadata_key from the instance if container_name not provided
-        if container_name is not None:
-            warnings.warn(
-                "The container_name parameter in add_to_nwbfile is deprecated and will be removed on or after October 2025. "
-                "Use the pose_estimation_metadata_key parameter when initializing the interface instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            pose_estimation_metadata_key = container_name
-        else:
-            pose_estimation_metadata_key = self.pose_estimation_metadata_key
+        pose_estimation_metadata_key = self.pose_estimation_metadata_key
 
         # Get default metadata
         default_metadata = DeepDict(self.get_metadata())
@@ -625,22 +583,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         # Update with user-provided metadata if available
         if metadata is not None:
             default_metadata.deep_update(metadata)
-
-        # Set the container name in the metadata, remove this once container_name is deprecated
-        if container_name is not None:
-            if (
-                "PoseEstimation" in default_metadata
-                and "PoseEstimationContainers" in default_metadata["PoseEstimation"]
-            ):
-                if container_name in default_metadata["PoseEstimation"]["PoseEstimationContainers"]:
-                    default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name][
-                        "name"
-                    ] = container_name
-                else:
-                    # If the container doesn't exist in the metadata, create it with the name
-                    default_metadata["PoseEstimation"]["PoseEstimationContainers"][container_name] = {
-                        "name": container_name
-                    }
 
         file_path = Path(self.source_data["file_path"])
 
