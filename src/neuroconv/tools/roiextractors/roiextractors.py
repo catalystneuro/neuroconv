@@ -495,10 +495,10 @@ def _add_imaging_plane_to_nwbfile(
     imaging_plane_kwargs = imaging_plane_metadata.copy()
 
     # Validate required fields
-    default_imaging_plane = _get_ophys_metadata_placeholders()["Ophys"]["ImagingPlanes"]["default_metadata_key"]
     required_fields = ["name", "excitation_lambda", "indicator", "location", "optical_channel"]
     missing_fields = [field for field in required_fields if field not in imaging_plane_kwargs]
     if missing_fields:
+        default_imaging_plane = _get_ophys_metadata_placeholders()["Ophys"]["ImagingPlanes"]["default_metadata_key"]
         placeholder_hint = "\n".join(f"  {field}: {default_imaging_plane[field]!r}" for field in missing_fields)
         raise ValueError(
             f"Imaging plane metadata is missing required fields.\n"
@@ -512,12 +512,11 @@ def _add_imaging_plane_to_nwbfile(
         return nwbfile.imaging_planes[imaging_plane_name]
 
     # Resolve device
-    default_metadata = _get_ophys_metadata_placeholders()
     device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
     if device_metadata_key is not None:
         device_metadata = metadata["Devices"][device_metadata_key]
     else:
-        device_metadata = default_metadata["Devices"]["default_metadata_key"]
+        device_metadata = _get_ophys_metadata_placeholders()["Devices"]["default_metadata_key"]
     device = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
 
     imaging_plane_kwargs["device"] = device
@@ -771,10 +770,10 @@ def _add_photon_series_to_nwbfile(
     photon_series_kwargs = photon_series_metadata.copy()
 
     # Validate required fields
-    default_series = _get_ophys_metadata_placeholders()["Ophys"]["MicroscopySeries"]["default_metadata_key"]
     required_fields = ["name", "unit"]
     missing_fields = [field for field in required_fields if field not in photon_series_kwargs]
     if missing_fields:
+        default_series = _get_ophys_metadata_placeholders()["Ophys"]["MicroscopySeries"]["default_metadata_key"]
         placeholder_hint = "\n".join(f"  {field}: {default_series[field]!r}" for field in missing_fields)
         raise ValueError(
             f"Microscopy series metadata is missing required fields.\n"
