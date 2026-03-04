@@ -54,7 +54,7 @@ from ...utils import (
 from ...utils.str_utils import human_readable_size
 
 
-def _get_default_ophys_metadata():
+def _get_default_ophys_metadata_old_metadata_list():
     """
     Returns fresh ophys default metadata dictionary.
 
@@ -151,7 +151,7 @@ def _get_default_segmentation_metadata() -> DeepDict:
     metadata = get_default_nwbfile_metadata()
 
     # Get fresh ophys defaults and add to metadata
-    ophys_defaults = _get_default_ophys_metadata()
+    ophys_defaults = _get_default_ophys_metadata_old_metadata_list()
     metadata["Ophys"] = {
         "Device": ophys_defaults["Ophys"]["Device"],
         "ImagingPlane": ophys_defaults["Ophys"]["ImagingPlane"],
@@ -185,7 +185,7 @@ def get_nwb_imaging_metadata(
         specific to the imaging data.
     """
     # Get fresh ophys defaults
-    metadata = _get_default_ophys_metadata()
+    metadata = _get_default_ophys_metadata_old_metadata_list()
 
     # TODO: get_num_channels is deprecated, remove
     channel_name_list = imgextractor.get_channel_names() or ["OpticalChannel"]
@@ -232,7 +232,7 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     device_metadata = metadata.get("Ophys", {}).get("Device")
 
     if device_metadata is None:
-        default_metadata = _get_default_ophys_metadata()
+        default_metadata = _get_default_ophys_metadata_old_metadata_list()
         device_metadata = default_metadata["Ophys"]["Device"]
 
     for device in device_metadata:
@@ -251,7 +251,7 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     return nwbfile
 
 
-def _add_imaging_plane_to_nwbfile(
+def _add_imaging_plane_to_nwbfile_old_list_format(
     nwbfile: NWBFile,
     metadata: dict,
     imaging_plane_name: str | None = None,
@@ -275,7 +275,7 @@ def _add_imaging_plane_to_nwbfile(
     NWBFile
         The nwbfile passed as an input with the imaging plane added.
     """
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_imaging_plane = default_metadata["Ophys"]["ImagingPlane"][0]
 
     # Track whether user explicitly provided a name
@@ -359,7 +359,7 @@ def _add_image_segmentation_to_nwbfile(nwbfile: NWBFile, metadata: dict) -> NWBF
     return nwbfile
 
 
-def _add_photon_series_to_nwbfile(
+def _add_photon_series_to_nwbfile_old_list_format(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
@@ -422,7 +422,7 @@ def _add_photon_series_to_nwbfile(
     ], "'parent_container' must be either 'acquisition' or 'processing/ophys'."
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_photon_series = default_metadata["Ophys"][photon_series_type][0]
 
     # Extract photon series metadata from user or use defaults
@@ -451,7 +451,7 @@ def _add_photon_series_to_nwbfile(
         imaging_plane_name = None  # Will create default imaging plane
 
     # Add imaging plane (None signals to create default imaging plane)
-    _add_imaging_plane_to_nwbfile(
+    _add_imaging_plane_to_nwbfile_old_list_format(
         nwbfile=nwbfile,
         metadata=metadata,
         imaging_plane_name=imaging_plane_name,
@@ -602,6 +602,7 @@ def add_imaging_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
+    *args,  # TODO: change to * (keyword only) on or after September 2026
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
     iterator_type: str | None = "v2",
@@ -643,8 +644,42 @@ def add_imaging_to_nwbfile(
         The NWB file with the imaging data added
 
     """
+    # TODO: Remove this block in September 2026 or after when positional arguments are no longer supported.
+    if args:
+        parameter_names = [
+            "photon_series_type",
+            "photon_series_index",
+            "iterator_type",
+            "iterator_options",
+            "parent_container",
+            "always_write_timestamps",
+        ]
+        num_positional_args_before_args = 3  # imaging, nwbfile, metadata
+        if len(args) > len(parameter_names):
+            raise TypeError(
+                f"add_imaging_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                f"{len(args) + num_positional_args_before_args} were given. "
+                "Note: Positional arguments are deprecated and will be removed in September 2026 or after. Please use keyword arguments."
+            )
+        positional_values = dict(zip(parameter_names, args))
+        passed_as_positional = list(positional_values.keys())
+        warnings.warn(
+            f"Passing arguments positionally to add_imaging_to_nwbfile is deprecated "
+            f"and will be removed in September 2026 or after. "
+            f"The following arguments were passed positionally: {passed_as_positional}. "
+            "Please use keyword arguments instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        photon_series_type = positional_values.get("photon_series_type", photon_series_type)
+        photon_series_index = positional_values.get("photon_series_index", photon_series_index)
+        iterator_type = positional_values.get("iterator_type", iterator_type)
+        iterator_options = positional_values.get("iterator_options", iterator_options)
+        parent_container = positional_values.get("parent_container", parent_container)
+        always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
+
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-    nwbfile = _add_photon_series_to_nwbfile(
+    nwbfile = _add_photon_series_to_nwbfile_old_list_format(
         imaging=imaging,
         nwbfile=nwbfile,
         metadata=metadata,
@@ -1014,7 +1049,7 @@ def _add_plane_segmentation(
     iterator_options = iterator_options or dict()
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_plane_segmentation = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][
         default_plane_segmentation_index
     ]
@@ -1065,7 +1100,9 @@ def _add_plane_segmentation(
     )
 
     imaging_plane_name_to_add = imaging_plane_name_from_plane_seg if user_has_imaging_plane else None
-    _add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name=imaging_plane_name_to_add)
+    _add_imaging_plane_to_nwbfile_old_list_format(
+        nwbfile=nwbfile, metadata=metadata, imaging_plane_name=imaging_plane_name_to_add
+    )
 
     if plane_segmentation_name in image_segmentation.plane_segmentations:
         # At the moment, we don't support extending an existing PlaneSegmentation.
@@ -1219,7 +1256,7 @@ def _add_fluorescence_traces_to_nwbfile(
     iterator_options = iterator_options or dict()
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_plane_segmentation_name = default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][
         default_plane_segmentation_index
     ]["name"]
@@ -1375,7 +1412,7 @@ def _create_roi_table_region(
         The name of the plane segmentation that identifies which plane to add the ROI table region to.
     """
     # Get ImageSegmentation name from user metadata or use default
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
 
     _add_plane_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
@@ -1461,7 +1498,7 @@ def _add_summary_images_to_nwbfile(
     metadata = metadata or dict()
 
     # Get defaults from single source of truth
-    default_metadata = _get_default_ophys_metadata()
+    default_metadata = _get_default_ophys_metadata_old_metadata_list()
     default_segmentation_images = default_metadata["Ophys"]["SegmentationImages"]
 
     # Extract SegmentationImages metadata from user or use defaults

@@ -36,11 +36,11 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
 )
 from neuroconv.tools.roiextractors.roiextractors import (
     _add_image_segmentation_to_nwbfile,
-    _add_imaging_plane_to_nwbfile,
-    _add_photon_series_to_nwbfile,
+    _add_imaging_plane_to_nwbfile_old_list_format,
+    _add_photon_series_to_nwbfile_old_list_format,
     _add_plane_segmentation_to_nwbfile,
     _add_summary_images_to_nwbfile,
-    _get_default_ophys_metadata,
+    _get_default_ophys_metadata_old_metadata_list,
 )
 from neuroconv.utils import dict_deep_update
 
@@ -177,8 +177,8 @@ class TestAddImagingPlane(TestCase):
 
         self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
 
-    def test_add_imaging_plane_to_nwbfile(self):
-        _add_imaging_plane_to_nwbfile(
+    def test_add_imaging_plane_to_nwbfile_old_list_format(self):
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
         )
 
@@ -190,12 +190,12 @@ class TestAddImagingPlane(TestCase):
         assert imaging_plane.description == self.imaging_plane_description
 
     def test_not_overwriting_imaging_plane_if_same_name(self):
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
         )
 
         self.imaging_plane_metadata["description"] = "modified description"
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name
         )
 
@@ -209,7 +209,7 @@ class TestAddImagingPlane(TestCase):
         first_imaging_plane_description = "first_imaging_plane_description"
         self.imaging_plane_metadata["name"] = first_imaging_plane_name
         self.imaging_plane_metadata["description"] = first_imaging_plane_description
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=first_imaging_plane_name
         )
 
@@ -218,7 +218,7 @@ class TestAddImagingPlane(TestCase):
         second_imaging_plane_description = "second_imaging_plane_description"
         self.imaging_plane_metadata["name"] = second_imaging_plane_name
         self.imaging_plane_metadata["description"] = second_imaging_plane_description
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=second_imaging_plane_name
         )
 
@@ -234,14 +234,14 @@ class TestAddImagingPlane(TestCase):
         assert second_imaging_plane.name == second_imaging_plane_name
         assert second_imaging_plane.description == second_imaging_plane_description
 
-    def test_add_imaging_plane_to_nwbfile_raises_when_name_not_found_in_metadata(self):
+    def test_add_imaging_plane_to_nwbfile_old_list_format_raises_when_name_not_found_in_metadata(self):
         """Test adding an imaging plane raises an error when the name is not found in the metadata."""
         imaging_plane_name = "imaging_plane_non_existing_in_the_metadata"
         with self.assertRaisesWith(
             exc_type=ValueError,
             exc_msg=f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane'].",
         ):
-            _add_imaging_plane_to_nwbfile(
+            _add_imaging_plane_to_nwbfile_old_list_format(
                 nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=imaging_plane_name
             )
 
@@ -254,10 +254,10 @@ class TestAddImagingPlane(TestCase):
         second_imaging_plane_metadata = deepcopy(metadata["Ophys"]["ImagingPlane"][0])
         second_imaging_plane_metadata.update(name="second_imaging_plane_name")
         imaging_planes_metadata.append(second_imaging_plane_metadata)
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name=self.imaging_plane_name
         )
-        _add_imaging_plane_to_nwbfile(
+        _add_imaging_plane_to_nwbfile_old_list_format(
             nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name="second_imaging_plane_name"
         )
 
@@ -1212,7 +1212,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
     def test_add_fluorescence_traces_to_nwbfile_with_plane_segmentation_name_specified(self):
         plane_segmentation_name = "plane_segmentation_name"
-        metadata = _get_default_ophys_metadata()
+        metadata = _get_default_ophys_metadata_old_metadata_list()
         metadata = dict_deep_update(metadata, self.metadata)
 
         metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(name=plane_segmentation_name)
@@ -1246,7 +1246,7 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
 
         cls.session_start_time = datetime.now().astimezone()
 
-        cls.metadata = _get_default_ophys_metadata()
+        cls.metadata = _get_default_ophys_metadata_old_metadata_list()
 
         cls.plane_segmentation_first_plane_name = "PlaneSegmentationFirstPlane"
         cls.metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(
@@ -1448,7 +1448,7 @@ class TestAddPhotonSeries(TestCase):
 
     def test_default_values(self):
         """Test adding two photon series with default values."""
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
         )
 
@@ -1481,7 +1481,7 @@ class TestAddPhotonSeries(TestCase):
             AssertionError,
             "'iterator_type' must be either 'v2' (recommended) or None.",
         ):
-            _add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile_old_list_format(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1514,7 +1514,7 @@ class TestAddPhotonSeries(TestCase):
 
     def test_non_iterative_two_photon(self):
         """Test adding two photon series without using DataChunkIterator."""
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1535,7 +1535,7 @@ class TestAddPhotonSeries(TestCase):
     def test_deprecated_v1_iterator_two_photon(self):
         """Test adding two photon series with deprecated v1 iterator type."""
         with self.assertWarns(FutureWarning):
-            _add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile_old_list_format(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1560,7 +1560,7 @@ class TestAddPhotonSeries(TestCase):
         """Test that iterator options are propagated to the data chunk iterator."""
         buffer_shape = (20, 5, 5)
         chunk_shape = (10, 5, 5)
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1577,7 +1577,7 @@ class TestAddPhotonSeries(TestCase):
     def test_iterator_options_chunk_mb_propagation(self):
         """Test that chunk_mb is propagated to the data chunk iterator and the chunk shape is correctly set to fit."""
         chunk_mb = 10.0
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1594,7 +1594,7 @@ class TestAddPhotonSeries(TestCase):
     def test_iterator_options_chunk_shape_is_at_least_one(self):
         """Test that when a small chunk_mb is selected the chunk shape is guaranteed to include at least one frame."""
         chunk_mb = 1.0
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1610,7 +1610,7 @@ class TestAddPhotonSeries(TestCase):
     def test_iterator_options_chunk_shape_does_not_exceed_maxshape(self):
         """Test that when a large chunk_mb is selected the chunk shape is guaranteed to not exceed maxshape."""
         chunk_mb = 1000.0
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1624,7 +1624,7 @@ class TestAddPhotonSeries(TestCase):
         assert_array_equal(chunk_shape, data_chunk_iterator.maxshape)
 
     def test_add_two_photon_series_roundtrip(self):
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
         )
 
@@ -1661,7 +1661,7 @@ class TestAddPhotonSeries(TestCase):
             AssertionError,
             "'photon_series_type' must be either 'OnePhotonSeries' or 'TwoPhotonSeries'.",
         ):
-            _add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile_old_list_format(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1678,7 +1678,7 @@ class TestAddPhotonSeries(TestCase):
             binning=2,
             power=500.0,
         )
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=metadata,
@@ -1693,7 +1693,7 @@ class TestAddPhotonSeries(TestCase):
         self.assertEqual(one_photon_series.unit, "n.a.")
 
     def test_add_one_photon_series_roundtrip(self):
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.one_photon_series_metadata,
@@ -1717,13 +1717,13 @@ class TestAddPhotonSeries(TestCase):
             expected_one_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
             assert one_photon_series.shape == expected_one_photon_series_shape
 
-    def test_add_photon_series_to_nwbfile_invalid_module_name_raises(self):
+    def test_add_photon_series_to_nwbfile_old_list_format_invalid_module_name_raises(self):
         """Test that adding photon series with invalid module name raises error."""
         with self.assertRaisesWith(
             exc_type=AssertionError,
             exc_msg="'parent_container' must be either 'acquisition' or 'processing/ophys'.",
         ):
-            _add_photon_series_to_nwbfile(
+            _add_photon_series_to_nwbfile_old_list_format(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
@@ -1735,7 +1735,7 @@ class TestAddPhotonSeries(TestCase):
         metadata = self.one_photon_series_metadata
         metadata["Ophys"]["OnePhotonSeries"][0].update(name="OnePhotonSeriesProcessed")
 
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.one_photon_series_metadata,
@@ -1748,7 +1748,7 @@ class TestAddPhotonSeries(TestCase):
 
     def test_ophys_module_not_created_when_photon_series_added_to_acquisition(self):
         """Test that ophys module is not created when photon series are added to nwbfile.acquisition."""
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.two_photon_series_metadata,
@@ -1764,7 +1764,7 @@ class TestAddPhotonSeries(TestCase):
         shared_photon_series_metadata["Ophys"]["ImagingPlane"][0]["name"] = shared_imaging_plane_name
         shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["imaging_plane"] = shared_imaging_plane_name
 
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=shared_photon_series_metadata,
@@ -1772,7 +1772,7 @@ class TestAddPhotonSeries(TestCase):
         )
 
         shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "second_photon_series"
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=shared_photon_series_metadata,
@@ -1941,11 +1941,11 @@ class TestAddSummaryImages(TestCase):
 
 
 class TestNoMetadataMutation:
-    def test_get_default_ophys_metadata_returns_independent_instances(self):
-        """Test that _get_default_ophys_metadata() returns independent instances that don't share mutable state."""
+    def test_get_default_ophys_metadata_old_metadata_list_returns_independent_instances(self):
+        """Test that _get_default_ophys_metadata_old_metadata_list() returns independent instances that don't share mutable state."""
         # Get two instances
-        metadata1 = _get_default_ophys_metadata()
-        metadata2 = _get_default_ophys_metadata()
+        metadata1 = _get_default_ophys_metadata_old_metadata_list()
+        metadata2 = _get_default_ophys_metadata_old_metadata_list()
 
         # Store a snapshot of metadata2's Ophys section before mutating metadata1
         metadata2_ophys_before = deepcopy(metadata2["Ophys"])
@@ -1961,7 +1961,7 @@ class TestNoMetadataMutation:
         ), "Modifying metadata1 affected metadata2 - instances share mutable state"
 
         # Get a third instance after modifications to ensure fresh defaults
-        metadata3 = _get_default_ophys_metadata()
+        metadata3 = _get_default_ophys_metadata_old_metadata_list()
         assert (
             metadata3["Ophys"] == metadata2_ophys_before
         ), "New instance after mutations differs from original - not getting fresh defaults"
@@ -1983,7 +1983,7 @@ class TestNoMetadataMutation:
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_imaging_plane_no_metadata_mutation(self):
-        """Test that _add_imaging_plane_to_nwbfile does not mutate the input metadata."""
+        """Test that _add_imaging_plane_to_nwbfile_old_list_format does not mutate the input metadata."""
         nwbfile = mock_NWBFile()
 
         # Create metadata with imaging plane (all fields provided)
@@ -2014,13 +2014,15 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function
-        _add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+        _add_imaging_plane_to_nwbfile_old_list_format(
+            nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane"
+        )
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_imaging_plane_no_partial_metadata_mutation(self):
-        """Test that _add_imaging_plane_to_nwbfile does not mutate partial user metadata when complemented with defaults."""
+        """Test that _add_imaging_plane_to_nwbfile_old_list_format does not mutate partial user metadata when complemented with defaults."""
         nwbfile = mock_NWBFile()
 
         # Create metadata with minimal imaging plane (missing some fields that will be filled from defaults)
@@ -2048,13 +2050,15 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function (should fill in missing fields internally but not mutate the input)
-        _add_imaging_plane_to_nwbfile(nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane")
+        _add_imaging_plane_to_nwbfile_old_list_format(
+            nwbfile=nwbfile, metadata=metadata, imaging_plane_name="TestImagingPlane"
+        )
 
         # Verify metadata was not mutated - compare entire dict structure
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_add_photon_series_no_metadata_mutation(self):
-        """Test that _add_photon_series_to_nwbfile does not mutate the input metadata."""
+        """Test that _add_photon_series_to_nwbfile_old_list_format does not mutate the input metadata."""
         from roiextractors.testing import generate_dummy_imaging_extractor
 
         nwbfile = mock_NWBFile()
@@ -2098,7 +2102,7 @@ class TestNoMetadataMutation:
         metadata_before = deepcopy(metadata)
 
         # Call function
-        _add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
