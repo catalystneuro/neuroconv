@@ -13,6 +13,7 @@
 ## Features
 
 ## Improvements
+* Added array-like protocol methods (`shape`, `ndim`, `__len__`, `__getitem__`) to all data chunk iterators (`SliceableDataChunkIterator`, `SpikeInterfaceRecordingDataChunkIterator`, `ImagingExtractorDataChunkIterator`, `VideoDataChunkIterator`), enabling downstream tools like pynapple to treat them as lazy arrays. Also added `_convert_index_to_slices` to the base `GenericDataChunkIterator` for shared index normalization. [PR #1673](https://github.com/catalystneuro/neuroconv/pull/1673)
 * Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
 
 # v0.9.3 (February 19, 2026)
