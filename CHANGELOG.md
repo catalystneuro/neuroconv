@@ -13,6 +13,9 @@
 ## Features
 * Added dict-based metadata pipeline for imaging in `roiextractors.py`, supporting the new `MicroscopySeries`, `ImagingPlanes`, and `Devices` metadata format keyed by `metadata_key`. Old list-based functions are preserved (renamed with `_old_list_format` suffix) and dispatched automatically when `metadata_key` is not provided. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
 
+## Testing
+* Added tests for `OnePhotonSeries`, `processing/ophys` container, and non-iterative write to `TestAddImaging` (dict-based metadata pipeline). [PR #TBD](https://github.com/catalystneuro/neuroconv/pull/TBD)
+
 ## Improvements
 * Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
 
