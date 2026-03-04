@@ -55,7 +55,7 @@ from ...utils import (
 from ...utils.str_utils import human_readable_size
 
 
-def _get_default_ophys_metadata():
+def _get_default_ophys_metadata_old_metadata_list():
     """
     Returns fresh ophys default metadata
 

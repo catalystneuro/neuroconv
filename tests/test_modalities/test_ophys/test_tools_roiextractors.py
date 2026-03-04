@@ -1942,7 +1942,7 @@ class TestAddSummaryImages(TestCase):
 
 
 class TestNoMetadataMutation:
-    def test_get_default_ophys_metadata_returns_independent_instances(self):
+    def test_get_default_ophys_metadata_old_metadata_list_returns_independent_instances(self):
         """Test that _get_default_ophys_metadata_old_metadata_list() returns independent instances that don't share mutable state."""
         # Get two instances
         metadata1 = _get_default_ophys_metadata_old_metadata_list()

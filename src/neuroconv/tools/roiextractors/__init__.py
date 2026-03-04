@@ -9,12 +9,5 @@ from .roiextractors import (
     write_segmentation_to_nwbfile,
 )
 from .roiextractors_pending_deprecation import (
-    add_background_fluorescence_traces_to_nwbfile,
-    add_background_plane_segmentation_to_nwbfile,
     add_fluorescence_traces_to_nwbfile,
-    add_image_segmentation_to_nwbfile,
-    add_imaging_plane_to_nwbfile,
-    add_photon_series_to_nwbfile,
-    add_plane_segmentation_to_nwbfile,
-    add_summary_images_to_nwbfile,
 )
