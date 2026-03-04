@@ -340,26 +340,12 @@ def get_nwb_imaging_metadata(
     return metadata
 
 
-def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NWBFile:
+def _add_devices_to_nwbfile_old_list_format(nwbfile: NWBFile, metadata: dict | None = None) -> NWBFile:
     """
-    Add optical physiology devices from metadata.
+    Add optical physiology devices from old list-based metadata.
 
-    Notes
-    -----
-    The metadata concerning the optical physiology should be stored in ``metadata['Ophys']['Device']``.
-
-    Deprecation: Passing ``pynwb.device.Device`` objects directly inside
-    ``metadata['Ophys']['Device']`` is deprecated and will be removed on or after March 2026.
-    Please pass device definitions as dictionaries instead (e.g., ``{"name": "Microscope"}``).
+    Private implementation used internally by old list-based functions.
     """
-    warnings.warn(
-        "add_devices_to_nwbfile is deprecated and will be removed on or after September 2026. "
-        "Use _add_device_to_nwbfile with the new dict-based metadata format (metadata['Devices']) instead.",
-        FutureWarning,
-        stacklevel=2,
-    )
-
-    # Get device metadata from user or use defaults
     metadata = metadata or {}
     device_metadata = metadata.get("Ophys", {}).get("Device")
 
@@ -381,6 +367,22 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
             nwbfile.add_device(device)
 
     return nwbfile
+
+
+def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NWBFile:
+    """
+    Add optical physiology devices from metadata.
+
+    .. deprecated::
+        ``add_devices_to_nwbfile`` is deprecated and will be removed on or after September 2026.
+    """
+    warnings.warn(
+        "add_devices_to_nwbfile is deprecated and will be removed on or after September 2026. "
+        "Use _add_device_to_nwbfile with the new dict-based metadata format (metadata['Devices']) instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+    return _add_devices_to_nwbfile_old_list_format(nwbfile=nwbfile, metadata=metadata)
 
 
 def _add_imaging_plane_to_nwbfile_old_list_format(
@@ -418,7 +420,7 @@ def _add_imaging_plane_to_nwbfile_old_list_format(
     if imaging_plane_name in nwbfile.imaging_planes:
         return nwbfile
 
-    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+    _add_devices_to_nwbfile_old_list_format(nwbfile=nwbfile, metadata=metadata)
 
     if user_provided_a_name:
         # User explicitly requested a specific plane - search for it in metadata
@@ -1036,7 +1038,7 @@ def add_imaging_to_nwbfile(
             always_write_timestamps=always_write_timestamps,
         )
     else:
-        add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        _add_devices_to_nwbfile_old_list_format(nwbfile=nwbfile, metadata=metadata)
         nwbfile = _add_photon_series_to_nwbfile_old_list_format(
             imaging=imaging,
             nwbfile=nwbfile,
@@ -1951,7 +1953,7 @@ def add_segmentation_to_nwbfile(
     """
 
     # Add device:
-    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+    _add_devices_to_nwbfile_old_list_format(nwbfile=nwbfile, metadata=metadata)
 
     # Add PlaneSegmentation:
     _add_plane_segmentation_to_nwbfile(
