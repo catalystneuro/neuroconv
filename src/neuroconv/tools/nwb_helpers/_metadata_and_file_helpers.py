@@ -196,7 +196,6 @@ def _add_device_to_nwbfile(
     """
     Add a device to an NWBFile.
 
-    Creates the device from the provided metadata dictionary.
     If a device with the same name already exists, the existing device is
     returned without creating a duplicate.
 
@@ -206,13 +205,6 @@ def _add_device_to_nwbfile(
         The NWB file to add the device to.
     device_metadata : dict
         Dictionary describing the device. Must contain at least a ``"name"`` key.
-        Example::
-
-            {
-                "name": "Microscope",
-                "description": "Two-photon microscope",
-                "manufacturer": "Thorlabs",
-            }
 
     Returns
     -------

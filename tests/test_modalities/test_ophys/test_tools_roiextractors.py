@@ -41,7 +41,9 @@ from neuroconv.tools.roiextractors.roiextractors import (
     _add_photon_series_to_nwbfile_old_list_format,
     _add_plane_segmentation_to_nwbfile,
     _add_summary_images_to_nwbfile,
+    _get_default_ophys_metadata,
     _get_default_ophys_metadata_old_metadata_list,
+    get_full_ophys_metadata,
 )
 from neuroconv.utils import dict_deep_update
 
@@ -2270,77 +2272,124 @@ class TestNoMetadataMutation:
 class TestAddImaging:
     """Tests for the dict-based metadata imaging pipeline (add_imaging_to_nwbfile)."""
 
-    @pytest.fixture()
-    def dict_metadata(self):
-        """Minimal dict-based metadata with device, imaging plane, and microscopy series."""
-        return {
-            "Devices": {
-                "my_microscope": {
-                    "name": "Microscope",
-                    "description": "Two-photon microscope",
-                    "manufacturer": "Thorlabs",
-                },
-            },
+    def test_basic(self):
+        """Test expected values for no metadata specification."""
+        nwbfile = mock_NWBFile()
+        num_samples = 10
+        num_rows = 5
+        num_columns = 5
+        imaging = generate_dummy_imaging_extractor(num_samples=num_samples, num_rows=num_rows, num_columns=num_columns)
+
+        add_imaging_to_nwbfile(
+            imaging=imaging,
+            nwbfile=nwbfile,
+        )
+
+        default_metadata = _get_default_ophys_metadata()
+        default_key = "default_metadata_key"
+        default_device_metadata = default_metadata["Devices"][default_key]
+        default_plane_metadata = default_metadata["Ophys"]["ImagingPlanes"][default_key]
+        default_series_metadata = default_metadata["Ophys"]["MicroscopySeries"][default_key]
+
+        # Default device
+        assert len(nwbfile.devices) == 1
+        device = nwbfile.devices[default_device_metadata["name"]]
+        assert device.name == default_device_metadata["name"]
+
+        # Default imaging plane
+        assert len(nwbfile.imaging_planes) == 1
+        plane = nwbfile.imaging_planes[default_plane_metadata["name"]]
+        assert plane.name == default_plane_metadata["name"]
+        assert np.isnan(plane.excitation_lambda)
+        assert plane.indicator == default_plane_metadata["indicator"]
+        assert plane.location == default_plane_metadata["location"]
+        assert plane.device is device
+
+        # Default series with correct data shape
+        assert len(nwbfile.acquisition) == 1
+        series = nwbfile.acquisition[default_series_metadata["name"]]
+        assert series.name == default_series_metadata["name"]
+        assert series.unit == default_series_metadata["unit"]
+        assert series.imaging_plane is plane
+        assert isinstance(series.data, ImagingExtractorDataChunkIterator)
+        assert series.data.maxshape == (num_samples, num_rows, num_columns)
+
+    def test_full_metadata_specification(self):
+        """Full metadata specification: device, imaging plane, and series are created from user metadata."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = get_full_ophys_metadata()
+        metadata_key = "my_series"
+        add_imaging_to_nwbfile(
+            imaging=imaging,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=metadata_key,
+        )
+
+        series_metadata = metadata["Ophys"]["MicroscopySeries"][metadata_key]
+        plane_key = series_metadata["imaging_plane_metadata_key"]
+        plane_metadata = metadata["Ophys"]["ImagingPlanes"][plane_key]
+        device_key = plane_metadata["device_metadata_key"]
+        device_metadata = metadata["Devices"][device_key]
+
+        device = nwbfile.devices[device_metadata["name"]]
+        assert device.description == device_metadata["description"]
+        assert device.manufacturer == device_metadata["manufacturer"]
+
+        plane = nwbfile.imaging_planes[plane_metadata["name"]]
+        assert plane.description == plane_metadata["description"]
+        assert plane.indicator == plane_metadata["indicator"]
+        assert plane.location == plane_metadata["location"]
+        assert plane.device is device
+
+        series = nwbfile.acquisition[series_metadata["name"]]
+        assert series.description == series_metadata["description"]
+        assert series.imaging_plane is plane
+
+    def test_no_imaging_plane_metadata_key(self):
+        """When microscopy series has no imaging_plane_metadata_key, a default imaging plane is created."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "Devices": {},
             "Ophys": {
-                "ImagingPlanes": {
-                    "my_plane": {
-                        "name": "ImagingPlane",
-                        "description": "Imaging plane in V1",
-                        "excitation_lambda": 920.0,
-                        "indicator": "GCaMP6s",
-                        "location": "V1",
-                        "device_metadata_key": "my_microscope",
-                        "optical_channel": [
-                            {
-                                "name": "Green",
-                                "description": "GCaMP emission",
-                                "emission_lambda": 510.0,
-                            }
-                        ],
-                    },
-                },
+                "ImagingPlanes": {},
                 "MicroscopySeries": {
                     "my_series": {
                         "name": "TwoPhotonSeries",
-                        "description": "Two-photon calcium imaging",
+                        "description": "Imaging data",
                         "unit": "n.a.",
-                        "imaging_plane_metadata_key": "my_plane",
                     },
                 },
             },
         }
 
-    def test_full_chain_device_imaging_plane_photon_series(self, dict_metadata):
-        """Device, ImagingPlane, and TwoPhotonSeries are created from dict-based metadata."""
-        nwbfile = mock_NWBFile()
-        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
-
         add_imaging_to_nwbfile(
             imaging=imaging,
             nwbfile=nwbfile,
-            metadata=dict_metadata,
+            metadata=metadata,
             photon_series_type="TwoPhotonSeries",
             metadata_key="my_series",
         )
 
-        assert "Microscope" in nwbfile.devices
-        device = nwbfile.devices["Microscope"]
-        assert device.description == "Two-photon microscope"
-        assert device.manufacturer == "Thorlabs"
+        default_metadata = _get_default_ophys_metadata()
+        default_key = "default_metadata_key"
+        default_plane_metadata = default_metadata["Ophys"]["ImagingPlanes"][default_key]
+        default_device_metadata = default_metadata["Devices"][default_key]
 
-        assert "ImagingPlane" in nwbfile.imaging_planes
-        plane = nwbfile.imaging_planes["ImagingPlane"]
-        assert plane.description == "Imaging plane in V1"
-        assert plane.indicator == "GCaMP6s"
-        assert plane.location == "V1"
+        # Default imaging plane
+        plane = nwbfile.imaging_planes[default_plane_metadata["name"]]
+        assert plane.name == default_plane_metadata["name"]
+
+        # Default device
+        device = nwbfile.devices[default_device_metadata["name"]]
+        assert device.name == default_device_metadata["name"]
         assert plane.device is device
 
-        assert "TwoPhotonSeries" in nwbfile.acquisition
-        series = nwbfile.acquisition["TwoPhotonSeries"]
-        assert series.description == "Two-photon calcium imaging"
-        assert series.imaging_plane is plane
-
-    def test_default_device_when_no_device_metadata_key(self):
+    def test_no_device_metadata_key(self):
         """When imaging plane has no device_metadata_key, a default device is created."""
         nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
@@ -2383,10 +2432,96 @@ class TestAddImaging:
             metadata_key="my_series",
         )
 
-        # Default device name comes from _get_default_ophys_metadata
-        assert "Microscope" in nwbfile.devices
+        default_metadata = _get_default_ophys_metadata()
+        default_key = "default_metadata_key"
+        default_device_metadata = default_metadata["Devices"][default_key]
+
+        device = nwbfile.devices[default_device_metadata["name"]]
+        assert device.name == default_device_metadata["name"]
         plane = nwbfile.imaging_planes["ImagingPlane"]
-        assert plane.device is nwbfile.devices["Microscope"]
+        assert plane.device is device
+
+    def test_shared_imaging_plane_two_microscopy_series(self):
+        """Two microscopy series referencing the same imaging plane via imaging_plane_metadata_key."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        shared_plane_key = "shared_plane"
+        first_series_key = "series_a"
+        second_series_key = "series_b"
+        metadata = {
+            "Devices": {
+                "my_device": {
+                    "name": "Microscope",
+                    "description": "Two-photon microscope",
+                },
+            },
+            "Ophys": {
+                "ImagingPlanes": {
+                    shared_plane_key: {
+                        "name": "SharedImagingPlane",
+                        "description": "Shared plane",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6s",
+                        "location": "V1",
+                        "device_metadata_key": "my_device",
+                        "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
+                    },
+                },
+                "MicroscopySeries": {
+                    first_series_key: {
+                        "name": "TwoPhotonSeriesA",
+                        "description": "First series",
+                        "unit": "n.a.",
+                        "imaging_plane_metadata_key": shared_plane_key,
+                    },
+                    second_series_key: {
+                        "name": "TwoPhotonSeriesB",
+                        "description": "Second series",
+                        "unit": "n.a.",
+                        "imaging_plane_metadata_key": shared_plane_key,
+                    },
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=first_series_key)
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=second_series_key)
+
+        device_metadata = metadata["Devices"]["my_device"]
+        plane_metadata = metadata["Ophys"]["ImagingPlanes"][shared_plane_key]
+        first_series_metadata = metadata["Ophys"]["MicroscopySeries"][first_series_key]
+        second_series_metadata = metadata["Ophys"]["MicroscopySeries"][second_series_key]
+
+        # One device, one plane, two series
+        assert len(nwbfile.devices) == 1
+        assert len(nwbfile.imaging_planes) == 1
+        assert len(nwbfile.acquisition) == 2
+
+        # Device
+        device = nwbfile.devices[device_metadata["name"]]
+        assert device.name == device_metadata["name"]
+        assert device.description == device_metadata["description"]
+
+        # Imaging plane
+        plane = nwbfile.imaging_planes[plane_metadata["name"]]
+        assert plane.name == plane_metadata["name"]
+        assert plane.description == plane_metadata["description"]
+        assert plane.excitation_lambda == plane_metadata["excitation_lambda"]
+        assert plane.indicator == plane_metadata["indicator"]
+        assert plane.location == plane_metadata["location"]
+        assert plane.device is device
+
+        # Both series share the same imaging plane
+        series_a = nwbfile.acquisition[first_series_metadata["name"]]
+        assert series_a.description == first_series_metadata["description"]
+        assert series_a.unit == first_series_metadata["unit"]
+        assert series_a.imaging_plane is plane
+
+        series_b = nwbfile.acquisition[second_series_metadata["name"]]
+        assert series_b.description == second_series_metadata["description"]
+        assert series_b.unit == second_series_metadata["unit"]
+        assert series_b.imaging_plane is plane
 
     def test_shared_device_two_imaging_planes(self):
         """Two imaging planes referencing the same device via device_metadata_key."""
@@ -2395,7 +2530,7 @@ class TestAddImaging:
 
         metadata = {
             "Devices": {
-                "shared_scope": {
+                "shared_device_key": {
                     "name": "SharedMicroscope",
                     "description": "Shared two-photon microscope",
                     "manufacturer": "Bruker",
@@ -2409,7 +2544,7 @@ class TestAddImaging:
                         "excitation_lambda": 920.0,
                         "indicator": "GCaMP6s",
                         "location": "V1",
-                        "device_metadata_key": "shared_scope",
+                        "device_metadata_key": "shared_device_key",
                         "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
                     },
                     "plane_v2": {
@@ -2418,7 +2553,7 @@ class TestAddImaging:
                         "excitation_lambda": 920.0,
                         "indicator": "GCaMP6f",
                         "location": "V2",
-                        "device_metadata_key": "shared_scope",
+                        "device_metadata_key": "shared_device_key",
                         "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
                     },
                 },
@@ -2454,62 +2589,74 @@ class TestAddImaging:
             metadata_key="series_v2",
         )
 
+        device_metadata = metadata["Devices"]["shared_device_key"]
+
         # One device, two planes, two series
         assert len(nwbfile.devices) == 1
-        assert "SharedMicroscope" in nwbfile.devices
         assert len(nwbfile.imaging_planes) == 2
         assert len(nwbfile.acquisition) == 2
 
-        # Both planes share the same device
-        device = nwbfile.devices["SharedMicroscope"]
-        assert nwbfile.imaging_planes["ImagingPlaneV1"].device is device
-        assert nwbfile.imaging_planes["ImagingPlaneV2"].device is device
+        # Device matches metadata
+        unique_device = nwbfile.devices[device_metadata["name"]]
+        assert unique_device.name == device_metadata["name"]
+        assert unique_device.description == device_metadata["description"]
+        assert unique_device.manufacturer == device_metadata["manufacturer"]
 
-    def test_idempotent_imaging_plane(self, dict_metadata):
-        """Calling twice with the same imaging plane does not duplicate it."""
+        # Both planes share the same device
+        assert nwbfile.imaging_planes["ImagingPlaneV1"].device is unique_device
+        assert nwbfile.imaging_planes["ImagingPlaneV2"].device is unique_device
+
+    def test_repeated_calls_reuse_default_metadata_placeholders(self):
+        """Repeated calls reuse the same placeholder device and imaging plane.
+
+        Default metadata values are placeholders, not real data. When the user does not provide
+        metadata, neuroconv should not fabricate additional objects on each call. Instead, the
+        same placeholder device and placeholder so downstream tools might identify can
+        flag this.
+        """
         nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
-        # Add a second series that references the same imaging plane
-        dict_metadata["Ophys"]["MicroscopySeries"]["second_series"] = {
-            "name": "TwoPhotonSeriesSecond",
-            "description": "Second series",
-            "unit": "n.a.",
-            "imaging_plane_metadata_key": "my_plane",
+        first_metadata_key = "first"
+        second_metadata_key = "second"
+        metadata = {
+            "Devices": {},
+            "Ophys": {
+                "ImagingPlanes": {},
+                "MicroscopySeries": {
+                    first_metadata_key: {
+                        "name": "TwoPhotonSeriesFirst",
+                        "unit": "n.a.",
+                    },
+                    second_metadata_key: {
+                        "name": "TwoPhotonSeriesSecond",
+                        "unit": "n.a.",
+                    },
+                },
+            },
         }
 
-        add_imaging_to_nwbfile(
-            imaging=imaging,
-            nwbfile=nwbfile,
-            metadata=dict_metadata,
-            photon_series_type="TwoPhotonSeries",
-            metadata_key="my_series",
-        )
-        add_imaging_to_nwbfile(
-            imaging=imaging,
-            nwbfile=nwbfile,
-            metadata=dict_metadata,
-            photon_series_type="TwoPhotonSeries",
-            metadata_key="second_series",
-        )
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=first_metadata_key)
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=second_metadata_key)
 
+        # Placeholder device and imaging plane are reused, not duplicated
         assert len(nwbfile.devices) == 1
         assert len(nwbfile.imaging_planes) == 1
         assert len(nwbfile.acquisition) == 2
 
-    def test_metadata_not_mutated(self, dict_metadata):
+    def test_metadata_not_mutated(self):
         """Dict-based metadata is not mutated by add_imaging_to_nwbfile."""
         nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
-        metadata_before = deepcopy(dict_metadata)
+        metadata = get_full_ophys_metadata()
+        metadata_before = deepcopy(metadata)
 
         add_imaging_to_nwbfile(
             imaging=imaging,
             nwbfile=nwbfile,
-            metadata=dict_metadata,
-            photon_series_type="TwoPhotonSeries",
+            metadata=metadata,
             metadata_key="my_series",
         )
 
-        assert dict_metadata == metadata_before, "Metadata was mutated"
+        assert metadata == metadata_before, "Metadata was mutated"
