@@ -1,6 +1,11 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed deprecated wrapper functions from `roiextractors_pending_deprecation.py` (March 2026 deadline): `add_imaging_plane_to_nwbfile`, `add_image_segmentation_to_nwbfile`, `add_photon_series_to_nwbfile`, `add_plane_segmentation_to_nwbfile`, `add_background_plane_segmentation_to_nwbfile`, `add_background_fluorescence_traces_to_nwbfile`, `add_summary_images_to_nwbfile`. [PR #1680](https://github.com/catalystneuro/neuroconv/pull/1680)
+* Added `*args` positional argument deprecation to `add_imaging_to_nwbfile` to enforce keyword-only arguments. Will be enforced on or after September 2026. [PR #1680](https://github.com/catalystneuro/neuroconv/pull/1680)
+* Removed the deprecated `staging` parameter from `automatic_dandi_upload`. Use `sandbox` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
+* Removed the deprecated `container_name` parameter from `ImageInterface.add_to_nwbfile` and `DeepLabCutInterface.add_to_nwbfile`. Use `metadata_key` in `__init__` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
+* Removed the deprecated `time_series_name` parameter from `add_recording_as_time_series_to_nwbfile`. Use `metadata_key` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
 
 ## Bug Fixes
 * Fixed `NotImplementedError` when using `ndx-events>=0.2.2` with `configure_and_write_nwbfile`. The version check for ndx-events `Events` types was too restrictive (`<= 0.2.1`), causing files with `Events` objects to fail during backend configuration. [PR #1682](https://github.com/catalystneuro/neuroconv/pull/1682)
