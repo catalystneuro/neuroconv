@@ -41,8 +41,8 @@ from neuroconv.tools.roiextractors.roiextractors import (
     _add_photon_series_to_nwbfile_old_list_format,
     _add_plane_segmentation_to_nwbfile,
     _add_summary_images_to_nwbfile,
-    _get_default_ophys_metadata,
     _get_default_ophys_metadata_old_metadata_list,
+    _get_ophys_metadata_placeholders,
     get_full_ophys_metadata,
 )
 from neuroconv.utils import dict_deep_update
@@ -2285,7 +2285,7 @@ class TestAddImaging:
             nwbfile=nwbfile,
         )
 
-        default_metadata = _get_default_ophys_metadata()
+        default_metadata = _get_ophys_metadata_placeholders()
         default_key = "default_metadata_key"
         default_device_metadata = default_metadata["Devices"][default_key]
         default_plane_metadata = default_metadata["Ophys"]["ImagingPlanes"][default_key]
@@ -2375,7 +2375,7 @@ class TestAddImaging:
             metadata_key="my_series",
         )
 
-        default_metadata = _get_default_ophys_metadata()
+        default_metadata = _get_ophys_metadata_placeholders()
         default_key = "default_metadata_key"
         default_plane_metadata = default_metadata["Ophys"]["ImagingPlanes"][default_key]
         default_device_metadata = default_metadata["Devices"][default_key]
@@ -2432,7 +2432,7 @@ class TestAddImaging:
             metadata_key="my_series",
         )
 
-        default_metadata = _get_default_ophys_metadata()
+        default_metadata = _get_ophys_metadata_placeholders()
         default_key = "default_metadata_key"
         default_device_metadata = default_metadata["Devices"][default_key]
 
@@ -2643,6 +2643,70 @@ class TestAddImaging:
         assert len(nwbfile.devices) == 1
         assert len(nwbfile.imaging_planes) == 1
         assert len(nwbfile.acquisition) == 2
+
+    def test_missing_required_imaging_plane_fields_raises(self):
+        """When an imaging plane entry is missing schema-required fields, a clear error is raised."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata_key = "my_series"
+        device_key = "my_device"
+        plane_key = "my_plane"
+        metadata = {
+            "Devices": {device_key: {"name": "Microscope"}},
+            "Ophys": {
+                "ImagingPlanes": {
+                    plane_key: {
+                        "name": "ImagingPlane",
+                        "device_metadata_key": device_key,
+                    },
+                },
+                "MicroscopySeries": {
+                    metadata_key: {
+                        "name": "TwoPhotonSeries",
+                        "unit": "n.a.",
+                        "imaging_plane_metadata_key": plane_key,
+                    },
+                },
+            },
+        }
+
+        expected_error = re.escape(
+            "Imaging plane metadata is missing required fields.\n"
+            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
+            "  excitation_lambda: nan\n"
+            "  indicator: 'unknown'\n"
+            "  location: 'unknown'\n"
+            "  optical_channel: [{'name': 'OpticalChannel', 'emission_lambda': nan, 'description': 'An optical channel of the microscope.'}]"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+
+    def test_missing_required_series_fields_raises(self):
+        """When a series entry is missing schema-required fields, a clear error is raised."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata_key = "my_series"
+        metadata = {
+            "Devices": {},
+            "Ophys": {
+                "ImagingPlanes": {},
+                "MicroscopySeries": {
+                    metadata_key: {
+                        "name": "TwoPhotonSeries",
+                    },
+                },
+            },
+        }
+
+        expected_error = re.escape(
+            "Microscopy series metadata is missing required fields.\n"
+            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
+            "  unit: 'n.a.'"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
 
     def test_metadata_not_mutated(self):
         """Dict-based metadata is not mutated by add_imaging_to_nwbfile."""

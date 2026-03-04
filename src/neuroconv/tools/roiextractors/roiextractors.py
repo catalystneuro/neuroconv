@@ -79,10 +79,16 @@ def _is_dict_based_metadata(metadata: dict) -> bool:
     return True
 
 
-def _get_default_ophys_metadata():
+def _get_ophys_metadata_placeholders():
     """
-    Returns fresh ophys default metadata.
+    Returns fresh ophys metadata with centralized placeholder values.
 
+    Placeholders are kept in one place so they are easy to identify downstream and
+    we make up as little metadata as possible. All fields included here are strictly
+    required by the NWB schema. Each call returns an independent copy.
+
+    Until something like https://github.com/NeurodataWithoutBorders/nwb-schema/issues/672
+    is accepted, we will keep this approach.
     """
     metadata = get_default_nwbfile_metadata()
 
@@ -263,7 +269,7 @@ def _get_default_ophys_metadata_old_metadata_list():
 
 
 def _get_default_segmentation_metadata() -> DeepDict:
-    """Fill default metadata for segmentation using _get_default_ophys_metadata()."""
+    """Fill default metadata for segmentation using _get_ophys_metadata_placeholders()."""
     from neuroconv.tools.nwb_helpers import get_default_nwbfile_metadata
 
     # Start with base NWB metadata
@@ -391,10 +397,10 @@ def _add_imaging_plane_to_nwbfile_old_list_format(
     nwbfile : NWBFile
         An previously defined -in memory- NWBFile.
     metadata : dict
-        The metadata in the neuroconv format. See `_get_default_ophys_metadata()` for an example.
+        The metadata in the neuroconv format. See `_get_ophys_metadata_placeholders()` for an example.
     imaging_plane_name: str, optional
         The name of the imaging plane to be added. If None, this function adds the default imaging plane
-        in _get_default_ophys_metadata().
+        in _get_ophys_metadata_placeholders().
 
     Returns
     -------
@@ -486,17 +492,29 @@ def _add_imaging_plane_to_nwbfile(
     # Copy to avoid mutation
     imaging_plane_kwargs = imaging_plane_metadata.copy()
 
+    # Validate required fields
+    default_imaging_plane = _get_ophys_metadata_placeholders()["Ophys"]["ImagingPlanes"]["default_metadata_key"]
+    required_fields = ["name", "excitation_lambda", "indicator", "location", "optical_channel"]
+    missing_fields = [field for field in required_fields if field not in imaging_plane_kwargs]
+    if missing_fields:
+        placeholder_hint = "\n".join(f"  {field}: {default_imaging_plane[field]!r}" for field in missing_fields)
+        raise ValueError(
+            f"Imaging plane metadata is missing required fields.\n"
+            f"For a complete NWB file, the following fields should be provided. "
+            f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
+        )
+
     # Check if already exists
     imaging_plane_name = imaging_plane_kwargs["name"]
     if imaging_plane_name in nwbfile.imaging_planes:
         return nwbfile.imaging_planes[imaging_plane_name]
 
     # Resolve device
+    default_metadata = _get_ophys_metadata_placeholders()
     device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
     if device_metadata_key is not None:
         device_metadata = metadata["Devices"][device_metadata_key]
     else:
-        default_metadata = _get_default_ophys_metadata()
         device_metadata = default_metadata["Devices"]["default_metadata_key"]
     device = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
 
@@ -750,12 +768,24 @@ def _add_photon_series_to_nwbfile(
     # Copy to avoid mutation
     photon_series_kwargs = photon_series_metadata.copy()
 
+    # Validate required fields
+    default_series = _get_ophys_metadata_placeholders()["Ophys"]["MicroscopySeries"]["default_metadata_key"]
+    required_fields = ["name", "unit"]
+    missing_fields = [field for field in required_fields if field not in photon_series_kwargs]
+    if missing_fields:
+        placeholder_hint = "\n".join(f"  {field}: {default_series[field]!r}" for field in missing_fields)
+        raise ValueError(
+            f"Microscopy series metadata is missing required fields.\n"
+            f"For a complete NWB file, the following fields should be provided. "
+            f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
+        )
+
     # Resolve imaging plane
     imaging_plane_metadata_key = photon_series_kwargs.pop("imaging_plane_metadata_key", None)
     if imaging_plane_metadata_key is not None:
         imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]
     else:
-        default_metadata = _get_default_ophys_metadata()
+        default_metadata = _get_ophys_metadata_placeholders()
         imaging_plane_metadata = default_metadata["Ophys"]["ImagingPlanes"]["default_metadata_key"]
     imaging_plane = _add_imaging_plane_to_nwbfile(
         nwbfile=nwbfile,
@@ -990,7 +1020,7 @@ def add_imaging_to_nwbfile(
         always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
 
     if metadata is None:
-        metadata = _get_default_ophys_metadata()
+        metadata = _get_ophys_metadata_placeholders()
 
     if _is_dict_based_metadata(metadata):
         metadata_key = metadata_key or "default_metadata_key"
