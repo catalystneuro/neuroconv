@@ -8,6 +8,7 @@
 * Removed the deprecated `time_series_name` parameter from `add_recording_as_time_series_to_nwbfile`. Use `metadata_key` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
 
 ## Bug Fixes
+* Fixed `NotImplementedError` when using `ndx-events>=0.2.2` with `configure_and_write_nwbfile`. The version check for ndx-events `Events` types was too restrictive (`<= 0.2.1`), causing files with `Events` objects to fail during backend configuration. [PR #1682](https://github.com/catalystneuro/neuroconv/pull/1682)
 * Fixed `get_json_schema_from_method_signature` to resolve PEP 563 string annotations (from `from __future__ import annotations`) before passing them to pydantic. This affected any interface defined in a module with deferred annotations (e.g. `MiniscopeConverter`, or external subclasses from SpikeInterface). [PR #1670](https://github.com/catalystneuro/neuroconv/pull/1670)
 
 ## Features
