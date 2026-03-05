@@ -1,3 +1,4 @@
+import re
 import warnings
 
 from pydantic import DirectoryPath
@@ -164,6 +165,38 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         neural_channels = [id for id in channel_ids if "ADC" not in id]
         if len(neural_channels) < len(channel_ids):
             self.recording_extractor = recording.select_channels(channel_ids=neural_channels)
+
+        # Set composite channel_name for multi-stream electrode deduplication
+        # When AP and LFP streams exist for the same probe, they record from the
+        # same physical electrodes. Setting composite names (e.g. "AP0,LFP0") on
+        # both streams lets the electrode table builder match them to the same rows,
+        # avoiding duplicate entries. This follows the same approach as SpikeGLX.
+        if stream_name is not None:
+            band_suffixes = {"-AP": "-LFP", "-LFP": "-AP"}
+            current_suffix = None
+            for suffix in band_suffixes:
+                if stream_name.endswith(suffix):
+                    current_suffix = suffix
+                    break
+
+            if current_suffix is not None:
+                companion_suffix = band_suffixes[current_suffix]
+                prefix = stream_name[: -len(current_suffix)]
+                companion_stream = prefix + companion_suffix
+                has_companion = companion_stream in available_streams
+
+                if has_companion:
+                    channel_ids = self.recording_extractor.get_channel_ids()
+                    channel_names = []
+                    for channel_id in channel_ids:
+                        # Extract the numeric part from channel_id (e.g. "AP1" -> "1", "LFP3" -> "3")
+                        match = re.search(r"\d+$", str(channel_id))
+                        channel_number = match.group() if match else str(channel_id)
+                        # Composite name with both bands, alphabetically sorted
+                        channel_name = f"AP{channel_number},LFP{channel_number}"
+                        channel_names.append(channel_name)
+
+                    self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
 
     def get_metadata(self) -> DeepDict:
         from ._openephys_utils import _get_session_start_time
