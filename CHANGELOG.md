@@ -3,10 +3,17 @@
 ## Removals, Deprecations and Changes
 * Removed the deprecated `iterator_type='v1'` option from `_imaging_frames_to_hdmf_iterator`. Use `iterator_type='v2'` (default) instead. [PR #1679](https://github.com/catalystneuro/neuroconv/pull/1679)
 * Removed support for passing `rate` in trace metadata for fluorescence traces. The rate is now always calculated automatically from the segmentation extractor's timestamps or sampling frequency. [PR #1679](https://github.com/catalystneuro/neuroconv/pull/1679)
+* Removed deprecated wrapper functions from `roiextractors_pending_deprecation.py` (March 2026 deadline): `add_imaging_plane_to_nwbfile`, `add_image_segmentation_to_nwbfile`, `add_photon_series_to_nwbfile`, `add_plane_segmentation_to_nwbfile`, `add_background_plane_segmentation_to_nwbfile`, `add_background_fluorescence_traces_to_nwbfile`, `add_summary_images_to_nwbfile`. [PR #1680](https://github.com/catalystneuro/neuroconv/pull/1680)
+* Added `*args` positional argument deprecation to `add_imaging_to_nwbfile` to enforce keyword-only arguments. Will be enforced on or after September 2026. [PR #1680](https://github.com/catalystneuro/neuroconv/pull/1680)
+* Removed the deprecated `staging` parameter from `automatic_dandi_upload`. Use `sandbox` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
+* Removed the deprecated `container_name` parameter from `ImageInterface.add_to_nwbfile` and `DeepLabCutInterface.add_to_nwbfile`. Use `metadata_key` in `__init__` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
+* Removed the deprecated `time_series_name` parameter from `add_recording_as_time_series_to_nwbfile`. Use `metadata_key` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
 
 ## Bug Fixes
+* Fixed `get_json_schema_from_method_signature` to resolve PEP 563 string annotations (from `from __future__ import annotations`) before passing them to pydantic. This affected any interface defined in a module with deferred annotations (e.g. `MiniscopeConverter`, or external subclasses from SpikeInterface). [PR #1670](https://github.com/catalystneuro/neuroconv/pull/1670)
 
 ## Features
+* Added dict-based metadata pipeline for imaging in `roiextractors.py`, supporting the new `MicroscopySeries`, `ImagingPlanes`, and `Devices` metadata format keyed by `metadata_key`. Old list-based functions are preserved (renamed with `_old_list_format` suffix) and dispatched automatically when `metadata_key` is not provided. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
 
 ## Improvements
 * Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
