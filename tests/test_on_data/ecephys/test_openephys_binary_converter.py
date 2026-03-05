@@ -66,14 +66,14 @@ class TestMultiStreamWithAnalog:
         assert "TimeSeriesPXIe6341" in nwbfile.acquisition
         assert len(nwbfile.acquisition) == 5
 
-        # Both AP and LFP come from the same probe so they should share electrode rows.
-        # Currently they don't because OpenEphysBinaryRecordingInterface uses different
-        # channel names per band (AP1 vs LFP1), unlike SpikeGLX which uses composite
-        # names (AP0,LF0). This means the electrode table has 770 rows instead of 384+2.
-        # TODO: fix the underlying interfaces so AP/LFP share electrodes like SpikeGLX.
-        assert len(nwbfile.electrodes) == 770
-        assert len(nwbfile.acquisition["ElectricalSeriesProbeAAP"].electrodes.data) == 384
-        assert len(nwbfile.acquisition["ElectricalSeriesProbeALFP"].electrodes.data) == 384
+        # Both AP and LFP come from the same probe so they share electrode rows.
+        # 384 probe channels + 2 SYNC channels = 386 electrodes
+        assert len(nwbfile.electrodes) == 386
+        ap_electrode_indices = list(nwbfile.acquisition["ElectricalSeriesProbeAAP"].electrodes.data)
+        lfp_electrode_indices = list(nwbfile.acquisition["ElectricalSeriesProbeALFP"].electrodes.data)
+        assert len(ap_electrode_indices) == 384
+        assert len(lfp_electrode_indices) == 384
+        assert ap_electrode_indices == lfp_electrode_indices
 
     def test_streams_argument_filters_data(self):
         all_streams = OpenEphysBinaryConverter.get_streams(folder_path=self.folder_path)
