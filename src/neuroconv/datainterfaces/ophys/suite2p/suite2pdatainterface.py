@@ -214,7 +214,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata: dict | None = None,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_samples: int = 100,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
         mask_type: str | None = "image",  # Literal["image", "pixel", "voxel"]
@@ -231,10 +231,10 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata : dict, optional
             Metadata containing information about the segmentation. If None, default metadata is used.
         stub_test : bool, optional
-            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            If True, only a subset of the data (defined by `stub_samples`) will be added for testing purposes,
             by default False.
-        stub_frames : int, optional
-            The number of frames to include in the subset if `stub_test` is True, by default 100.
+        stub_samples : int, optional
+            The number of samples (frames) to include in the subset if `stub_test` is True, by default 100.
         include_roi_centroids : bool, optional
             Whether to include the centroids of regions of interest (ROIs) in the data, by default True.
         include_roi_acceptance : bool, optional
@@ -259,7 +259,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         if args:
             parameter_names = [
                 "stub_test",
-                "stub_frames",
+                "stub_samples",
                 "include_roi_centroids",
                 "include_roi_acceptance",
                 "mask_type",
@@ -285,7 +285,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
                 stacklevel=2,
             )
             stub_test = positional_values.get("stub_test", stub_test)
-            stub_frames = positional_values.get("stub_frames", stub_frames)
+            stub_samples = positional_values.get("stub_samples", stub_samples)
             include_roi_centroids = positional_values.get("include_roi_centroids", include_roi_centroids)
             include_roi_acceptance = positional_values.get("include_roi_acceptance", include_roi_acceptance)
             mask_type = positional_values.get("mask_type", mask_type)
@@ -296,7 +296,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
-            stub_frames=stub_frames,
+            stub_samples=stub_samples,
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,

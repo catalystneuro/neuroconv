@@ -189,6 +189,38 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
             nwbfile.create_device(**dict(defaults, **device_metadata))
 
 
+def _add_device_to_nwbfile(
+    *,
+    nwbfile: NWBFile,
+    device_metadata: dict,
+):
+    """
+    Add a device to an NWBFile.
+
+    If a device with the same name already exists, the existing device is
+    returned without creating a duplicate.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to add the device to.
+    device_metadata : dict
+        Dictionary describing the device. Must contain at least a ``"name"`` key.
+
+    Returns
+    -------
+    Device
+        The Device object (either newly created or existing).
+    """
+    device_name = device_metadata["name"]
+
+    if device_name in nwbfile.devices:
+        return nwbfile.devices[device_name]
+
+    device = nwbfile.create_device(**device_metadata)
+    return device
+
+
 def _attempt_cleanup_of_existing_nwbfile(nwbfile_path: Path) -> None:
     if not nwbfile_path.exists():
         return
