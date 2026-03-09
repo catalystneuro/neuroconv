@@ -425,17 +425,17 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_iterator_opts_propagation(self):
-        iterator_opts = dict(chunk_shape=(10, 3))
+    def test_iterator_options_propagation(self):
+        iterator_options = dict(chunk_shape=(10, 3))
         add_recording_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_opts=iterator_opts
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_options=iterator_options
         )
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
         electrical_series_data_iterator = electrical_series.data
 
-        assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
+        assert electrical_series_data_iterator.chunk_shape == iterator_options["chunk_shape"]
 
     def test_non_iterative_write(self):
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
