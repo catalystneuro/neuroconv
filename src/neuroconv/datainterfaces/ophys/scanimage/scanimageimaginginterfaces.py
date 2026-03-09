@@ -47,8 +47,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         plane_index: Optional[int] = None,
         file_paths: Optional[list[FilePath]] = None,
         interleave_slice_samples: Optional[bool] = None,
-        plane_name: str | None = None,
-        fallback_sampling_frequency: float | None = None,
         verbose: bool = False,
     ):
         """
@@ -95,11 +93,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             number of samples by frames_per_slice. This treats each slice_sample as a distinct sample.
             - If False: Requires a specific slice_sample to be provided when frames_per_slice > 1.
             - This parameter has no effect when ``frames_per_slice = 1`` or when ``slice_sample`` is provided.
-            - Default is True for backward compatibility (will change to False after November 2025).
-        plane_name : str, optional
-            Deprecated. Use plane_index instead. Will be removed in or after November 2025.
-        fallback_sampling_frequency : float, optional
-            Deprecated. Will be removed in or after November 2025.
+            - Default is False.
         verbose : bool, default: False
             If True, will print detailed information about the interface initialization process.
         """
@@ -111,8 +105,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
                 "plane_index",
                 "file_paths",
                 "interleave_slice_samples",
-                "plane_name",
-                "fallback_sampling_frequency",
                 "verbose",
             ]
             num_positional_args_before_args = 1  # file_path
@@ -138,10 +130,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             plane_index = positional_values.get("plane_index", plane_index)
             file_paths = positional_values.get("file_paths", file_paths)
             interleave_slice_samples = positional_values.get("interleave_slice_samples", interleave_slice_samples)
-            plane_name = positional_values.get("plane_name", plane_name)
-            fallback_sampling_frequency = positional_values.get(
-                "fallback_sampling_frequency", fallback_sampling_frequency
-            )
             verbose = positional_values.get("verbose", verbose)
 
         file_paths = [Path(file_path)] if file_path else file_paths
@@ -152,25 +140,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
                 f"Most likely this is a legacy version, use ScanImageLegacyImagingInterface instead."
             )
 
-        # Backward compatibility flag - will be set to False after November 2025
         if interleave_slice_samples is None:
-            interleave_slice_samples = True
-            warnings.warn(
-                "interleave_slice_samples currently set to True for backward compatibility. \n"
-                "This will be set to False by default in or after November 2025."
-            )
-
-        if plane_name is not None:
-
-            warnings.warn(
-                "The `plane_name` argument is deprecated and will be removed in or after November 2025. Use `plane_index` instead."
-            )
-            plane_index = int(plane_name)
-
-        if fallback_sampling_frequency is not None:
-            warnings.warn(
-                "The `fallback_sampling_frequency` argument is deprecated and will be removed in or after November 2025"
-            )
+            interleave_slice_samples = False
 
         self.channel_name = channel_name
         self.plane_index = plane_index

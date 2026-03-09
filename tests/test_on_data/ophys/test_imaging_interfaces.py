@@ -272,11 +272,11 @@ class TestScanImageImagingInterfacesAssertions:
         ):
             ScanImageImagingInterface(file_path=file_path, channel_name=channel_name, interleave_slice_samples=True)
 
-    def test_incorrect_plane_name(self):
-        """Test that ValueError is raised when incorrect plane name is specified."""
+    def test_incorrect_plane_index(self):
+        """Test that ValueError is raised when incorrect plane index is specified."""
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220801_volume.tif")
         with pytest.raises(ValueError, match=r"plane_index \(20\) must be between 0 and 19"):
-            ScanImageImagingInterface(file_path=file_path, plane_name="20")
+            ScanImageImagingInterface(file_path=file_path, plane_index=20, interleave_slice_samples=True)
 
 
 @pytest.mark.skipif(platform.machine() == "arm64", reason="Interface not supported on arm64 architecture")
