@@ -1,6 +1,7 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed the deprecated `stub_frames` parameter from ophys interfaces (`BaseImagingExtractorInterface`, `BaseSegmentationExtractorInterface`, `BrukerTiffMultiPlaneConverter`, `BrukerTiffSinglePlaneConverter`, `MiniscopeConverter`, `Suite2pSegmentationInterface`, `MinianSegmentationInterface`, `MiniscopeImagingDataInterface`). Use `stub_samples` instead. [PR #1676](https://github.com/catalystneuro/neuroconv/pull/1676)
 * Removed deprecated wrapper functions from `roiextractors_pending_deprecation.py` (March 2026 deadline): `add_imaging_plane_to_nwbfile`, `add_image_segmentation_to_nwbfile`, `add_photon_series_to_nwbfile`, `add_plane_segmentation_to_nwbfile`, `add_background_plane_segmentation_to_nwbfile`, `add_background_fluorescence_traces_to_nwbfile`, `add_summary_images_to_nwbfile`. [PR #1680](https://github.com/catalystneuro/neuroconv/pull/1680)
 * Added `*args` positional argument deprecation to `add_imaging_to_nwbfile` to enforce keyword-only arguments. Will be enforced on or after September 2026. [PR #1680](https://github.com/catalystneuro/neuroconv/pull/1680)
 * Added `*args` positional argument deprecation to `add_segmentation_to_nwbfile` to enforce keyword-only arguments. Will be enforced on or after September 2026. [PR #1687](https://github.com/catalystneuro/neuroconv/pull/1687)
@@ -15,6 +16,7 @@
 * Added dict-based metadata pipeline for imaging in `roiextractors.py`, supporting the new `MicroscopySeries`, `ImagingPlanes`, and `Devices` metadata format keyed by `metadata_key`. Old list-based functions are preserved (renamed with `_old_list_format` suffix) and dispatched automatically when `metadata_key` is not provided. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
 
 ## Improvements
+* Added array-like protocol methods (`shape`, `ndim`, `__len__`, `__getitem__`) to all data chunk iterators (`SliceableDataChunkIterator`, `SpikeInterfaceRecordingDataChunkIterator`, `ImagingExtractorDataChunkIterator`, `VideoDataChunkIterator`). [PR #1673](https://github.com/catalystneuro/neuroconv/pull/1673)
 * Added tests for `OnePhotonSeries`, `processing/ophys` container, and non-iterative write to `TestAddImaging` (dict-based metadata pipeline). [PR #1685](https://github.com/catalystneuro/neuroconv/pull/1685)
 * Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
 

@@ -133,7 +133,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata: Optional[dict] = None,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_samples: int = 100,
         include_background_segmentation: bool = True,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = False,
@@ -145,7 +145,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         if args:
             parameter_names = [
                 "stub_test",
-                "stub_frames",
+                "stub_samples",
                 "include_background_segmentation",
                 "include_roi_centroids",
                 "include_roi_acceptance",
@@ -172,7 +172,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
                 stacklevel=2,
             )
             stub_test = positional_values.get("stub_test", stub_test)
-            stub_frames = positional_values.get("stub_frames", stub_frames)
+            stub_samples = positional_values.get("stub_samples", stub_samples)
             include_background_segmentation = positional_values.get(
                 "include_background_segmentation", include_background_segmentation
             )
@@ -186,7 +186,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
-            stub_frames=stub_frames,
+            stub_samples=stub_samples,
             include_background_segmentation=include_background_segmentation,
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
