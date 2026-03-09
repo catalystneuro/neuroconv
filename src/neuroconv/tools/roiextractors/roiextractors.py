@@ -7,7 +7,6 @@ import numpy as np
 import psutil
 
 # from hdmf.common import VectorData
-from hdmf.data_utils import DataChunkIterator
 from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.base import Images
@@ -895,7 +894,6 @@ def _imaging_frames_to_hdmf_iterator(
         The type of iterator for chunked data writing.
         'v2': Uses iterative write with control over chunking and progress bars.
         None: Loads all data into memory before writing (not recommended for large datasets).
-        Note: 'v1' is deprecated and will be removed on or after March 2026.
     iterator_options : dict, optional
         Options for controlling the iterative write process. See the
         `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
@@ -907,28 +905,12 @@ def _imaging_frames_to_hdmf_iterator(
         The frames of the imaging extractor wrapped in an iterator for chunked writing.
     """
 
-    def data_generator(imaging):
-        num_samples = imaging.get_num_samples()
-        for i in range(num_samples):
-            yield imaging.get_series(start_sample=i, end_sample=i + 1).squeeze().T
-
-    assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v2' (recommended) or None."
+    assert iterator_type in ["v2", None], "'iterator_type' must be either 'v2' (recommended) or None."
     iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
         _check_if_imaging_fits_into_memory(imaging=imaging)
         return imaging.get_series().transpose((0, 2, 1))
-
-    if iterator_type == "v1":
-        warnings.warn(
-            "iterator_type='v1' is deprecated and will be removed on or after March 2026. "
-            "Use iterator_type='v2' for better chunking control and progress bar support.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        if "buffer_size" not in iterator_options:
-            iterator_options.update(buffer_size=10)
-        return DataChunkIterator(data=data_generator(imaging), **iterator_options)
 
     return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
@@ -1101,7 +1083,6 @@ def write_imaging_to_nwbfile(
         The type of iterator for chunked data writing.
         'v2': Uses iterative write with control over chunking and progress bars.
         None: Loads all data into memory before writing (not recommended for large datasets).
-        Note: 'v1' is deprecated and will be removed on or after March 2026.
     iterator_options : dict, optional
         Options for controlling the iterative write process. See the
         `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
@@ -1706,14 +1687,8 @@ def _add_fluorescence_traces_to_nwbfile(
         roi_response_series_kwargs["data"] = SliceableDataChunkIterator(trace, **iterator_options)
         roi_response_series_kwargs["rois"] = roi_table_region
 
-        # Deprecation warning for user-provided rate in metadata
-        if user_trace_metadata is not None and "rate" in user_trace_metadata:
-            warnings.warn(
-                f"Passing 'rate' in metadata for trace '{trace_name}' is deprecated and will be removed on or after March 2026. "
-                f"The rate will be automatically calculated from the segmentation extractor's timestamps or sampling frequency.",
-                FutureWarning,
-                stacklevel=2,
-            )
+        # Remove user-provided rate from metadata (rate is always calculated automatically)
+        roi_response_series_kwargs.pop("rate", None)
 
         # Resolve timestamps: user-set > native hardware > none
         timestamps_were_set = segmentation_extractor.has_time_vector()
@@ -1735,12 +1710,8 @@ def _add_fluorescence_traces_to_nwbfile(
 
         if timestamps_are_regular:
             roi_response_series_kwargs["starting_time"] = starting_time
-            # Use metadata rate if provided, otherwise use estimated/sampled rate
-            if "rate" not in roi_response_series_kwargs:
-                roi_response_series_kwargs["rate"] = rate
+            roi_response_series_kwargs["rate"] = rate
         else:
-            # Irregular timestamps - remove rate from metadata if present (can't specify both)
-            roi_response_series_kwargs.pop("rate", None)
             roi_response_series_kwargs["timestamps"] = timestamps
 
         # Build the roi response series
