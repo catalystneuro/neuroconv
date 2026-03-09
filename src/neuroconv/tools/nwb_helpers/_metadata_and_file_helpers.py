@@ -190,6 +190,7 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
 
 
 def _add_device_to_nwbfile(
+    *,
     nwbfile: NWBFile,
     device_metadata: dict,
 ):
