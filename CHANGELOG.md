@@ -1,6 +1,8 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed the deprecated `extractor` property and `get_extractor()` method from `BaseExtractorInterface`. Use `get_extractor_class()` instead. [PR #1681](https://github.com/catalystneuro/neuroconv/pull/1681)
+* Removed the deprecated `iterator_opts` parameter from `add_recording_to_nwbfile`, `add_recording_as_time_series_to_nwbfile`, `write_recording_to_nwbfile`, and `BaseRecordingExtractorInterface.add_to_nwbfile`. Use `iterator_options` instead. [PR #1681](https://github.com/catalystneuro/neuroconv/pull/1681)
 * Removed the deprecated `iterator_type='v1'` option from `_imaging_frames_to_hdmf_iterator`. Use `iterator_type='v2'` (default) instead. [PR #1679](https://github.com/catalystneuro/neuroconv/pull/1679)
 * Removed support for passing `rate` in trace metadata for fluorescence traces. The rate is now always calculated automatically from the segmentation extractor's timestamps or sampling frequency. [PR #1679](https://github.com/catalystneuro/neuroconv/pull/1679)
 * Removed the deprecated `stub_frames` parameter from ophys interfaces (`BaseImagingExtractorInterface`, `BaseSegmentationExtractorInterface`, `BrukerTiffMultiPlaneConverter`, `BrukerTiffSinglePlaneConverter`, `MiniscopeConverter`, `Suite2pSegmentationInterface`, `MinianSegmentationInterface`, `MiniscopeImagingDataInterface`). Use `stub_samples` instead. [PR #1676](https://github.com/catalystneuro/neuroconv/pull/1676)

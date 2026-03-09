@@ -1,4 +1,3 @@
-import warnings
 from typing import Literal
 
 import numpy as np
@@ -321,7 +320,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
-        iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -374,8 +372,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             Note: To configure chunk size and compression, use the backend configuration system
             via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
             this method. See the backend configuration documentation for details.
-        iterator_opts : dict, optional
-            Deprecated. Use 'iterator_options' instead.
         always_write_timestamps : bool, default: False
             Set to True to always write timestamps.
             By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
@@ -387,18 +383,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             add_recording_metadata_to_nwbfile,
             add_recording_to_nwbfile,
         )
-
-        # Handle deprecated iterator_opts parameter
-        if iterator_opts is not None:
-            warnings.warn(
-                "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
-                "Use 'iterator_options' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            if iterator_options is not None:
-                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
-            iterator_options = iterator_opts
 
         recording = self.recording_extractor
         if stub_test:
