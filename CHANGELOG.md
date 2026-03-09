@@ -1,6 +1,8 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed the deprecated `plane_name` and `fallback_sampling_frequency` parameters from `ScanImageImagingInterface`. Use `plane_index` instead of `plane_name`. [PR #1688](https://github.com/catalystneuro/neuroconv/pull/1688)
+* Changed the default value of `interleave_slice_samples` in `ScanImageImagingInterface` from `True` to `False`. [PR #1688](https://github.com/catalystneuro/neuroconv/pull/1688)
 * Removed the deprecated `iterator_type='v1'` option from `_imaging_frames_to_hdmf_iterator`. Use `iterator_type='v2'` (default) instead. [PR #1679](https://github.com/catalystneuro/neuroconv/pull/1679)
 * Removed support for passing `rate` in trace metadata for fluorescence traces. The rate is now always calculated automatically from the segmentation extractor's timestamps or sampling frequency. [PR #1679](https://github.com/catalystneuro/neuroconv/pull/1679)
 * Removed the deprecated `stub_frames` parameter from ophys interfaces (`BaseImagingExtractorInterface`, `BaseSegmentationExtractorInterface`, `BrukerTiffMultiPlaneConverter`, `BrukerTiffSinglePlaneConverter`, `MiniscopeConverter`, `Suite2pSegmentationInterface`, `MinianSegmentationInterface`, `MiniscopeImagingDataInterface`). Use `stub_samples` instead. [PR #1676](https://github.com/catalystneuro/neuroconv/pull/1676)
