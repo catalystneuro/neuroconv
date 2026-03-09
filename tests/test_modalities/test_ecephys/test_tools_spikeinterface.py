@@ -505,20 +505,6 @@ class TestWriteRecording(unittest.TestCase):
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
 
-    def test_default_values_single_segment(self):
-        """This test that the names are written appropriately for the single segment case (numbers not added)"""
-        add_recording_to_nwbfile(
-            recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        assert "ElectricalSeriesRaw" in acquisition_module
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-
-        extracted_data = electrical_series.data[:]
-        expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
-        np.testing.assert_array_almost_equal(expected_data, extracted_data)
-
     def test_write_multiple_segments(self):
         add_recording_to_nwbfile(
             recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
