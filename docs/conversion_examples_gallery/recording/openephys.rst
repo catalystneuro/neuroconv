@@ -69,6 +69,6 @@ table rows between them.
 
 .. note::
 
-    The ``OpenEphysBinaryConverter`` only supports the Binary format. There is currently no converter for the
-    Open Ephys format. If you need multi-stream conversion support for Open Ephys format data, please
+    The ``OpenEphysBinaryConverter`` only supports the Binary (.dat) format. There is currently no converter for the
+    Open Ephys (.continuous) format. If you need multi-stream conversion support for Open Ephys (.continuous) format data, please
     `open an issue <https://github.com/catalystneuro/neuroconv/issues>`_.
