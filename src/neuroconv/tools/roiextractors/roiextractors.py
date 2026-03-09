@@ -462,6 +462,7 @@ def _add_imaging_plane_to_nwbfile_old_list_format(
 
 
 def _add_imaging_plane_to_nwbfile(
+    *,
     nwbfile: NWBFile,
     imaging_plane_metadata: dict,
     metadata: dict,
@@ -719,6 +720,7 @@ def _add_photon_series_to_nwbfile_old_list_format(
 
 
 def _add_photon_series_to_nwbfile(
+    *,
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict,
