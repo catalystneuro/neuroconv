@@ -1,6 +1,11 @@
 OpenEphys data conversion
 -------------------------
 
+OpenEphys supports two data formats: the `Binary (.dat) format <https://open-ephys.github.io/gui-docs/User-Manual/Data-formats/Binary-format.html#binaryformat>`_
+and the `Open Ephys (.continuous) format <https://open-ephys.github.io/gui-docs/User-Manual/Data-formats/Open-Ephys-format.html>`_.
+The :py:class:`~neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface.OpenEphysRecordingInterface`
+supports both formats and auto-detects which one to use based on the files present in the folder.
+
 Install NeuroConv with the additional dependencies necessary for reading OpenEphys data.
 
 .. code-block:: bash
@@ -61,3 +66,9 @@ table rows between them.
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = output_folder / "my_openephys_binary_converter_session.nwb"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+.. note::
+
+    The ``OpenEphysBinaryConverter`` only supports the Binary format. There is currently no converter for the
+    Open Ephys format. If you need multi-stream conversion support for Open Ephys format data, please
+    `open an issue <https://github.com/catalystneuro/neuroconv/issues>`_.
