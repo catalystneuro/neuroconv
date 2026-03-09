@@ -1654,7 +1654,7 @@ def add_recording_metadata_to_nwbfile(
 
 def write_recording_to_nwbfile(
     recording: BaseRecording,
-    nwbfile_path: FilePath | None = None,
+    nwbfile_path: FilePath,
     nwbfile: pynwb.NWBFile | None = None,
     metadata: dict | None = None,
     overwrite: bool = False,
@@ -1664,7 +1664,6 @@ def write_recording_to_nwbfile(
     *,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
-    iterator_opts: dict | None = None,
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     append_on_disk_nwbfile: bool = False,
@@ -1676,10 +1675,8 @@ def write_recording_to_nwbfile(
     Parameters
     ----------
     recording : spikeinterface.BaseRecording
-    nwbfile_path : FilePath, optional
+    nwbfile_path : FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
-        If not provided, only adds data to the in-memory nwbfile without writing to disk.
-        **Deprecated**: Using this function without nwbfile_path is deprecated. Use `add_recording_to_nwbfile` instead.
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling::
@@ -1777,52 +1774,9 @@ def write_recording_to_nwbfile(
     Returns
     -------
     NWBFile or None
-        The NWBFile object when writing a new file or using an in-memory nwbfile.
+        The NWBFile object when writing a new file.
         Returns None when appending to an existing file on disk (append_on_disk_nwbfile=True).
-        **Deprecated**: Returning NWBFile in append mode is deprecated and will return None in or after March 2026.
     """
-
-    # Handle deprecated usage without nwbfile_path
-    if nwbfile_path is None:
-        warnings.warn(
-            "Using 'write_recording_to_nwbfile' without 'nwbfile_path' to only add data to an in-memory nwbfile is deprecated "
-            "and will be removed in or after March 2026. Use 'add_recording_to_nwbfile' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if nwbfile is None:
-            raise ValueError(
-                "Either 'nwbfile_path' or 'nwbfile' must be provided. "
-                "To add data to an in-memory nwbfile, use 'add_recording_to_nwbfile' instead."
-            )
-        # Call add_recording_to_nwbfile for deprecated behavior
-        add_recording_to_nwbfile(
-            recording=recording,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            write_as=write_as,
-            es_key=es_key,
-            iterator_type=iterator_type,
-            iterator_options=iterator_options if iterator_options is not None else iterator_opts,
-            null_values_for_properties=null_values_for_properties,
-        )
-        return nwbfile
-
-    # Handle deprecated iterator_opts parameter
-    if iterator_opts is not None:
-        warnings.warn(
-            "The 'iterator_opts' parameter is deprecated and will be removed on or after March 2026. "
-            "Use 'iterator_options' instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        if iterator_options is None:
-            iterator_options = iterator_opts
-        else:
-            raise ValueError(
-                "Both 'iterator_opts' and 'iterator_options' were specified. "
-                "Please use only 'iterator_options' as 'iterator_opts' is deprecated."
-            )
 
     appending_to_in_memory_nwbfile = nwbfile is not None
     file_initially_exists = nwbfile_path.exists()
@@ -1885,13 +1839,6 @@ def write_recording_to_nwbfile(
 
     else:
         # Append mode: read existing file, add data, write back
-        warnings.warn(
-            "Returning an NWBFile object when using append_on_disk_nwbfile=True is deprecated "
-            "and will return None in or after March 2026.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
         IO = BACKEND_NWB_IO[backend]
 
         with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
@@ -1918,7 +1865,7 @@ def write_recording_to_nwbfile(
         if verbose:
             print(f"NWB file saved at {nwbfile_path}!")
 
-        return nwbfile  # Will return None in March 2026
+        return None
 
 
 def _add_units_table_to_nwbfile(
@@ -2335,7 +2282,7 @@ def _add_units_table_to_nwbfile(
 
 def write_sorting_to_nwbfile(
     sorting: BaseSorting,
-    nwbfile_path: FilePath | None = None,
+    nwbfile_path: FilePath,
     nwbfile: pynwb.NWBFile | None = None,
     metadata: dict | None = None,
     overwrite: bool = False,
@@ -2361,10 +2308,8 @@ def write_sorting_to_nwbfile(
     Parameters
     ----------
     sorting : spikeinterface.BaseSorting
-    nwbfile_path : FilePath, optional
+    nwbfile_path : FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
-        If not provided, only adds data to the in-memory nwbfile without writing to disk.
-        **Deprecated**: Using this function without nwbfile_path is deprecated. Use `add_sorting_to_nwbfile` instead.
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling::
@@ -2421,40 +2366,9 @@ def write_sorting_to_nwbfile(
     Returns
     -------
     NWBFile or None
-        The NWBFile object when writing a new file or using an in-memory nwbfile.
+        The NWBFile object when writing a new file.
         Returns None when appending to an existing file on disk (append_on_disk_nwbfile=True).
-        **Deprecated**: Returning NWBFile in append mode is deprecated and will return None in or after March 2026.
     """
-
-    # Handle deprecated usage without nwbfile_path
-    if nwbfile_path is None:
-        warnings.warn(
-            "Using 'write_sorting_to_nwbfile' without 'nwbfile_path' to only add data to an in-memory nwbfile is deprecated "
-            "and will be removed in or after March 2026. Use 'add_sorting_to_nwbfile' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if nwbfile is None:
-            raise ValueError(
-                "Either 'nwbfile_path' or 'nwbfile' must be provided. "
-                "To add data to an in-memory nwbfile, use 'add_sorting_to_nwbfile' instead."
-            )
-        # Call add_sorting_to_nwbfile for deprecated behavior
-        add_sorting_to_nwbfile(
-            sorting=sorting,
-            nwbfile=nwbfile,
-            unit_ids=unit_ids,
-            property_descriptions=property_descriptions,
-            skip_properties=skip_properties,
-            write_as=write_as,
-            units_name=units_name,
-            units_description=units_description,
-            waveform_means=waveform_means,
-            waveform_sds=waveform_sds,
-            unit_electrode_indices=unit_electrode_indices,
-            null_values_for_properties=null_values_for_properties,
-        )
-        return nwbfile
 
     appending_to_in_memory_nwbfile = nwbfile is not None
     file_initially_exists = nwbfile_path.exists()
@@ -2521,13 +2435,6 @@ def write_sorting_to_nwbfile(
 
     else:
         # Append mode: read existing file, add data, write back
-        warnings.warn(
-            "Returning an NWBFile object when using append_on_disk_nwbfile=True is deprecated "
-            "and will return None in or after March 2026.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
         IO = BACKEND_NWB_IO[backend]
 
         with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
@@ -2557,7 +2464,7 @@ def write_sorting_to_nwbfile(
         if verbose:
             print(f"NWB file saved at {nwbfile_path}!")
 
-        return nwbfile  # Will return None in March 2026
+        return None
 
 
 def add_sorting_analyzer_to_nwbfile(
@@ -2690,7 +2597,7 @@ def add_sorting_analyzer_to_nwbfile(
 
 def write_sorting_analyzer_to_nwbfile(
     sorting_analyzer: SortingAnalyzer,
-    nwbfile_path: FilePath | None = None,
+    nwbfile_path: FilePath,
     nwbfile: pynwb.NWBFile | None = None,
     metadata: dict | None = None,
     overwrite: bool = False,
@@ -2722,10 +2629,8 @@ def write_sorting_analyzer_to_nwbfile(
     ----------
     sorting_analyzer : spikeinterface.SortingAnalyzer
         The sorting analyzer object to be written to the NWBFile.
-    nwbfile_path : FilePath, optional
+    nwbfile_path : FilePath
         Path for where to write or load (if overwrite=False) the NWBFile.
-        If not provided, only adds data to the in-memory nwbfile without writing to disk.
-        **Deprecated**: Using this function without nwbfile_path is deprecated. Use `add_sorting_analyzer_to_nwbfile` instead.
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling::
@@ -2782,59 +2687,9 @@ def write_sorting_analyzer_to_nwbfile(
     Returns
     -------
     nwbfile : pynwb.NWBFile or None
-        The in-memory NWBFile object. Returns None when append_on_disk_nwbfile=True (to be implemented in or after March 2026).
+        The NWBFile object when writing a new file.
+        Returns None when appending to an existing file on disk (append_on_disk_nwbfile=True).
     """
-
-    # Handle deprecated usage without nwbfile_path
-    if nwbfile_path is None:
-        warnings.warn(
-            "Using 'write_sorting_analyzer_to_nwbfile' without 'nwbfile_path' to only add data to an in-memory nwbfile is deprecated "
-            "and will be removed in or after March 2026. Use 'add_sorting_analyzer_to_nwbfile' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if nwbfile is None:
-            raise ValueError(
-                "Either 'nwbfile_path' or 'nwbfile' must be provided. "
-                "To add data to an in-memory nwbfile, use 'add_sorting_analyzer_to_nwbfile' instead."
-            )
-
-        # Ensure metadata exists
-        metadata = metadata if metadata is not None else dict()
-
-        # Get recording
-        if recording is None and sorting_analyzer.has_recording():
-            recording = sorting_analyzer.recording
-        assert recording is not None, (
-            "recording not found. To add the electrode table, the sorting_analyzer "
-            "needs to have a recording attached or the 'recording' argument needs to be used."
-        )
-
-        # Call add_sorting_analyzer_to_nwbfile for deprecated behavior
-        if write_electrical_series:
-            add_electrical_series_kwargs = add_electrical_series_kwargs or dict()
-            add_recording_to_nwbfile(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                null_values_for_properties=null_values_for_properties,
-                **add_electrical_series_kwargs,
-            )
-
-        add_sorting_analyzer_to_nwbfile(
-            sorting_analyzer=sorting_analyzer,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            recording=recording,
-            unit_ids=unit_ids,
-            skip_properties=skip_properties,
-            property_descriptions=property_descriptions,
-            write_as=write_as,
-            units_name=units_name,
-            units_description=units_description,
-            null_values_for_properties=null_values_for_properties,
-        )
-        return nwbfile
 
     # Ensure metadata exists
     if metadata is None:
@@ -2922,12 +2777,6 @@ def write_sorting_analyzer_to_nwbfile(
 
     else:
         # Append mode: read existing file, add data, write back
-        warnings.warn(
-            "Returning an NWBFile object in append mode is deprecated and will return None in or after March 2026.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
         IO = BACKEND_NWB_IO[backend]
 
         with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
@@ -2967,7 +2816,7 @@ def write_sorting_analyzer_to_nwbfile(
         if verbose:
             print(f"NWB file saved at {nwbfile_path}!")
 
-        return nwbfile  # Will return None in March 2026
+        return None
 
 
 def _get_electrode_group_indices(recording, nwbfile):
