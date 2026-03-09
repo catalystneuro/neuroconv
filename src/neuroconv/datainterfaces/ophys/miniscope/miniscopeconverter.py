@@ -377,7 +377,7 @@ class MiniscopeConverter(ConverterPipe):
                 ho_interface.set_aligned_timestamps(aligned_timestamps)
 
     def get_metadata(self):
-        from neuroconv.tools.roiextractors.roiextractors import (
+        from neuroconv.tools.roiextractors.roiextractors_pending_deprecation import (
             _get_default_ophys_metadata_old_metadata_list,
         )
 

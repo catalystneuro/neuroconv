@@ -118,7 +118,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
-        from ...tools.roiextractors.roiextractors import (
+        from ...tools.roiextractors.roiextractors_pending_deprecation import (
             _get_default_ophys_metadata_old_metadata_list,
         )
 
