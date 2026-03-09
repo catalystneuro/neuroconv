@@ -12,6 +12,7 @@
 
 ## Features
 * Added `OpenEphysBinaryConverter` for automatic multi-stream OpenEphys binary conversion, following the `SpikeGLXConverterPipe` pattern. Auto-discovers streams and routes neural data to `OpenEphysBinaryRecordingInterface` and analog (ADC/NI-DAQ) data to `OpenEphysBinaryAnalogInterface`. [PR #1686](https://github.com/catalystneuro/neuroconv/pull/1686)
+* Added dict-based metadata pipeline for imaging in `roiextractors.py`, supporting the new `MicroscopySeries`, `ImagingPlanes`, and `Devices` metadata format keyed by `metadata_key`. Old list-based functions are preserved (renamed with `_old_list_format` suffix) and dispatched automatically when `metadata_key` is not provided. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
 
 ## Improvements
 * Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
