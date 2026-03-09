@@ -12,7 +12,6 @@ from unittest.mock import Mock
 import numpy as np
 import psutil
 import pytest
-from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
 from numpy.typing import ArrayLike
@@ -1389,6 +1388,8 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
         )
 
 
+# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
+# The dict-based equivalent is TestAddImaging.
 class TestAddPhotonSeries(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1529,30 +1530,6 @@ class TestAddPhotonSeries(TestCase):
         assert self.two_photon_series_name in acquisition_modules
         two_photon_series_extracted = acquisition_modules[self.two_photon_series_name].data
 
-        # NWB stores images as num_columns x num_rows
-        expected_two_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
-        assert two_photon_series_extracted.shape == expected_two_photon_series_shape
-        expected_two_photon_series_data = self.imaging_extractor.get_series().transpose((0, 2, 1))
-        assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
-
-    def test_deprecated_v1_iterator_two_photon(self):
-        """Test adding two photon series with deprecated v1 iterator type."""
-        with self.assertWarns(FutureWarning):
-            _add_photon_series_to_nwbfile_old_list_format(
-                imaging=self.imaging_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.two_photon_series_metadata,
-                iterator_type="v1",
-            )
-
-        # Check data
-        acquisition_modules = self.nwbfile.acquisition
-        assert self.two_photon_series_name in acquisition_modules
-        data_chunk_iterator = acquisition_modules[self.two_photon_series_name].data
-        assert isinstance(data_chunk_iterator, DataChunkIterator)
-        self.assertEqual(data_chunk_iterator.buffer_size, 10)
-
-        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
         # NWB stores images as num_columns x num_rows
         expected_two_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
@@ -2314,6 +2291,9 @@ class TestAddImaging:
         assert isinstance(series.data, ImagingExtractorDataChunkIterator)
         assert series.data.maxshape == (num_samples, num_rows, num_columns)
 
+        # No ophys processing module created when series is in acquisition, no side effects
+        assert "ophys" not in nwbfile.processing
+
     def test_full_metadata_specification(self):
         """Full metadata specification: device, imaging plane, and series are created from user metadata."""
         nwbfile = mock_NWBFile()
@@ -2707,6 +2687,102 @@ class TestAddImaging:
         )
         with pytest.raises(ValueError, match=expected_error):
             add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+
+    def test_one_photon_series(self):
+        """OnePhotonSeries is created correctly with extra NWB fields."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = get_full_ophys_metadata()
+        series_key = "my_series"
+        metadata["Ophys"]["MicroscopySeries"][series_key]["pmt_gain"] = 60.0
+        metadata["Ophys"]["MicroscopySeries"][series_key]["binning"] = 2
+        metadata["Ophys"]["MicroscopySeries"][series_key]["power"] = 500.0
+
+        add_imaging_to_nwbfile(
+            imaging=imaging,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=series_key,
+            photon_series_type="OnePhotonSeries",
+        )
+
+        series_name = metadata["Ophys"]["MicroscopySeries"][series_key]["name"]
+        series = nwbfile.acquisition[series_name]
+        assert isinstance(series, OnePhotonSeries)
+        assert series.pmt_gain == 60.0
+        assert series.binning == 2
+        assert series.power == 500.0
+        assert series.unit == metadata["Ophys"]["MicroscopySeries"][series_key]["unit"]
+
+    def test_photon_series_to_processing(self):
+        """Photon series can be added to processing/ophys instead of acquisition."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = get_full_ophys_metadata()
+        series_key = "my_series"
+
+        add_imaging_to_nwbfile(
+            imaging=imaging,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=series_key,
+            parent_container="processing/ophys",
+        )
+
+        series_name = metadata["Ophys"]["MicroscopySeries"][series_key]["name"]
+        assert len(nwbfile.acquisition) == 0
+        ophys_module = nwbfile.processing["ophys"]
+        assert series_name in ophys_module.data_interfaces
+
+    def test_iterator_options_propagation(self):
+        """Iterator options are passed through to the data chunk iterator."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=30, num_rows=10, num_columns=15)
+
+        metadata = get_full_ophys_metadata()
+        series_key = "my_series"
+        buffer_shape = (20, 5, 5)
+        chunk_shape = (10, 5, 5)
+
+        add_imaging_to_nwbfile(
+            imaging=imaging,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=series_key,
+            iterator_options=dict(buffer_shape=buffer_shape, chunk_shape=chunk_shape),
+        )
+
+        series_name = metadata["Ophys"]["MicroscopySeries"][series_key]["name"]
+        data_iterator = nwbfile.acquisition[series_name].data
+        assert isinstance(data_iterator, ImagingExtractorDataChunkIterator)
+        assert data_iterator.buffer_shape == buffer_shape
+        assert data_iterator.chunk_shape == chunk_shape
+
+    def test_non_iterative_write(self):
+        """Data is written directly when iterator_type=None."""
+        nwbfile = mock_NWBFile()
+        num_samples = 10
+        num_rows = 5
+        num_columns = 5
+        imaging = generate_dummy_imaging_extractor(num_samples=num_samples, num_rows=num_rows, num_columns=num_columns)
+
+        metadata = get_full_ophys_metadata()
+        series_key = "my_series"
+
+        add_imaging_to_nwbfile(
+            imaging=imaging,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=series_key,
+            iterator_type=None,
+        )
+
+        series_name = metadata["Ophys"]["MicroscopySeries"][series_key]["name"]
+        series = nwbfile.acquisition[series_name]
+        assert not isinstance(series.data, ImagingExtractorDataChunkIterator)
+        assert series.data.shape == (num_samples, num_columns, num_rows)
 
     def test_metadata_not_mutated(self):
         """Dict-based metadata is not mutated by add_imaging_to_nwbfile."""

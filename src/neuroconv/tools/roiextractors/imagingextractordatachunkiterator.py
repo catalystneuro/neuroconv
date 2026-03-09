@@ -127,7 +127,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
 
         sample_shape = self._get_sample_shape()
-        series_shape = self._get_maxshape()
+        series_shape = self.shape
         dtype = self._get_dtype()
 
         buffer_shape = get_image_series_buffer_shape(
@@ -140,23 +140,60 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
         return buffer_shape
 
+    @property
+    def shape(self):
+        """Return (num_frames, width, height) or (num_frames, width, height, num_planes) for volumetric."""
+        num_samples = self.imaging_extractor.get_num_samples()
+        sample_shape = self._get_sample_shape()
+        return (num_samples,) + sample_shape
+
+    @property
+    def ndim(self):
+        """Return the number of dimensions (3 for 2D imaging, 4 for volumetric)."""
+        return len(self.shape)
+
+    def __len__(self):
+        """Return the number of frames in this imaging session."""
+        return self.imaging_extractor.get_num_samples()
+
+    def __getitem__(self, selection):
+        """Enable array-like slicing with proper transpose handling for imaging data.
+
+        The imaging extractor returns data in (frames, height, width) order, but NWB
+        expects (frames, width, height), so this method transposes before applying
+        spatial slices.
+
+        Note that get_series always returns full spatial frames, so spatial slicing
+        happens in memory after the fetch. This is a roiextractors API limitation.
+        """
+        resolved = self._convert_index_to_slices(selection)
+        return self._get_data(resolved)
+
     def _get_dtype(self) -> np.dtype:
         return self.imaging_extractor.get_dtype()
 
     def _get_maxshape(self) -> tuple:
-
-        num_frames = self.imaging_extractor.get_num_samples()
-        sample_shape = self._get_sample_shape()
-
-        max_shape = (num_frames,) + sample_shape
-        return max_shape
+        return self.shape
 
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
+        """Fetch frames from the imaging extractor and apply spatial slicing.
+
+        The imaging extractor returns data in (frames, height, width) order, but NWB
+        expects (frames, width, height), so we transpose after fetching.
+
+        Note that get_series always returns full spatial frames, so spatial slicing
+        happens in memory after the fetch. This is a roiextractors API limitation.
+        """
         data = self.imaging_extractor.get_series(
             start_sample=selection[0].start,
             end_sample=selection[0].stop,
         )
-        tranpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
-        sliced_selection = (slice(0, self.buffer_shape[0]),) + selection[1:]
 
-        return data.transpose(tranpose_axes)[sliced_selection]
+        # Transpose from roiextractors (frames, height, width) to NWB (frames, width, height)
+        transpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
+        data = data.transpose(transpose_axes)
+
+        # get_series returns full spatial frames, so apply spatial slicing after transpose
+        num_frames_fetched = selection[0].stop - selection[0].start
+        spatial_selection = (slice(0, num_frames_fetched),) + selection[1:]
+        return data[spatial_selection]
