@@ -378,10 +378,10 @@ class MiniscopeConverter(ConverterPipe):
 
     def get_metadata(self):
         from neuroconv.tools.roiextractors.roiextractors import (
-            _get_default_ophys_metadata,
+            _get_default_ophys_metadata_old_metadata_list,
         )
 
-        default_ophys_metadata = _get_default_ophys_metadata()
+        default_ophys_metadata = _get_default_ophys_metadata_old_metadata_list()
         metadata = super().get_metadata()
 
         # Use the minimum session start time if it was calculated during alignment
@@ -448,12 +448,6 @@ class MiniscopeConverter(ConverterPipe):
             "default": 100,
             "description": "Number of samples (frames) to include when 'stub_test' is enabled.",
         }
-        schema["properties"]["stub_frames"] = {
-            "type": "integer",
-            "minimum": 1,
-            "default": 100,
-            "description": "Deprecated. Use 'stub_samples' instead. Number of frames to include when 'stub_test' is enabled.",
-        }
 
         # Note: Individual interfaces inherit stub_samples from BaseImagingExtractorInterface
         # which automatically infers it from the add_to_nwbfile method signature
@@ -466,25 +460,12 @@ class MiniscopeConverter(ConverterPipe):
         metadata,
         conversion_options: dict | None = None,
         stub_test: bool = False,
-        stub_frames: int | None = None,
         stub_samples: int = 100,
     ):
         """Add Miniscope interfaces to the provided NWBFile."""
-        import warnings
-
-        # Handle deprecation of stub_frames
-        if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stub_samples = stub_frames
-
         conversion_options = conversion_options.copy() if conversion_options else {}
         stub_test = conversion_options.pop("stub_test", stub_test)
-        stub_samples = conversion_options.pop("stub_samples", conversion_options.pop("stub_frames", stub_samples))
+        stub_samples = conversion_options.pop("stub_samples", stub_samples)
 
         if metadata is None:
             metadata = self.get_metadata()
@@ -511,7 +492,6 @@ class MiniscopeConverter(ConverterPipe):
         metadata: dict | None = None,
         overwrite: bool = False,
         stub_test: bool = False,
-        stub_frames: int | None = None,
         stub_samples: int = 100,
         **kwargs,
     ) -> None:
@@ -531,30 +511,13 @@ class MiniscopeConverter(ConverterPipe):
         stub_test : bool, optional
             If True, only a subset of the data (up to `stub_samples`) is written for testing purposes,
             by default False.
-        stub_frames : int, optional
-            Deprecated. Use `stub_samples` instead.
         stub_samples : int, optional
             The number of samples (frames) to include in the subset if `stub_test` is True, by default 100.
         **kwargs
             Additional keyword arguments passed to the parent NWBConverter.run_conversion method.
         """
-        import warnings
-
-        # Handle deprecation of stub_frames
-        if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stub_samples = stub_frames
-
         # Get existing conversion_options or create empty dict
         conversion_options = kwargs.pop("conversion_options", {})
-
-        # Apply stub_test and stub_frames to all imaging interfaces
-        # Note: Using stub_frames for schema compatibility; the interface converts to stub_samples internally
         ophys_interface_names = self._get_ophys_interface_names()
         conversion_options_base = {interface_name: {} for interface_name in ophys_interface_names}
         for series_index, interface_name in enumerate(ophys_interface_names):

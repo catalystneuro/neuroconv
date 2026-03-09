@@ -154,10 +154,9 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         metadata: dict | None = None,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "OnePhotonSeries",
         stub_test: bool = False,
-        stub_frames: int | None = None,
         *,
         photon_series_index: int = 0,  # Ignore, here for backwards compatibility
-        stub_samples: int | None = None,  # Ignore, here for backwards compatibility
+        stub_samples: int = 100,
     ):
         """
         Add imaging data to the specified NWBFile, including device and photon series information.
@@ -173,16 +172,17 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         stub_test : bool, optional
             If True, only a subset of the data (defined by `stub_samples`) will be added for testing purposes,
             by default False.
-        stub_frames : int, optional
-            The number of frames to include if `stub_test` is True, by default 100.
+        stub_samples : int, default: 100
+            The number of samples (frames) to include if `stub_test` is True.
         """
         from ndx_miniscope.utils import add_miniscope_device
 
-        from ....tools.roiextractors import add_photon_series_to_nwbfile
+        from ....tools.roiextractors.roiextractors import (
+            _add_photon_series_to_nwbfile_old_list_format,
+        )
 
         miniscope_timestamps = self.get_original_timestamps()
         imaging_extractor = self.imaging_extractor
-        stub_samples = stub_frames if stub_frames is not None else stub_samples
         if stub_test:
             stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
             imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
@@ -193,7 +193,7 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         device_metadata = metadata["Ophys"]["Device"][0]
         add_miniscope_device(nwbfile=nwbfile, device_metadata=device_metadata)
 
-        add_photon_series_to_nwbfile(
+        _add_photon_series_to_nwbfile_old_list_format(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
