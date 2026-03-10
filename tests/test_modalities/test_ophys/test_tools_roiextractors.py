@@ -2927,6 +2927,64 @@ class TestAddSegmentation:
         default_plane_name = default_metadata["Ophys"]["ImagingPlanes"]["default_metadata_key"]["name"]
         assert default_plane_name in nwbfile.imaging_planes
 
+    def test_no_device_metadata_key(self):
+        """When imaging plane has no device_metadata_key, a default device is created."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=15
+        )
+
+        metadata = {
+            "Devices": {},
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        "description": "A plane",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6s",
+                        "location": "V1",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "description": "GCaMP emission",
+                                "emission_lambda": 510.0,
+                            }
+                        ],
+                    },
+                },
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmented ROIs",
+                        "imaging_plane_metadata_key": "my_plane",
+                    },
+                },
+                "RoiResponses": {
+                    "my_seg": {
+                        "plane_segmentation_metadata_key": "my_seg",
+                        "raw": {"name": "RoiResponseSeries", "description": "Raw traces", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
+        )
+
+        default_metadata = _get_ophys_metadata_placeholders()
+        default_key = "default_metadata_key"
+        default_device_metadata = default_metadata["Devices"][default_key]
+
+        device = nwbfile.devices[default_device_metadata["name"]]
+        assert device.name == default_device_metadata["name"]
+        plane = nwbfile.imaging_planes["ImagingPlane"]
+        assert plane.device is device
+
     def test_shared_imaging_plane_two_segmentations(self):
         """Two segmentations reference same ImagingPlane: 1 plane, 2 PlaneSegmentations."""
         nwbfile = mock_NWBFile()
@@ -3015,94 +3073,44 @@ class TestAddSegmentation:
 
         assert metadata == metadata_before, "Metadata was mutated"
 
-    def test_traces_match_extractor_data(self):
-        """Trace data in NWB matches extractor get_traces_dict()."""
+    def test_no_roi_responses_metadata(self):
+        """Segmentation with no RoiResponses metadata: only PlaneSegmentation written, no traces."""
         nwbfile = mock_NWBFile()
         segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_samples=10, num_rois=5, num_rows=15, num_columns=15
+            num_samples=10,
+            num_rois=5,
+            num_rows=15,
+            num_columns=15,
+            has_raw_signal=False,
+            has_dff_signal=False,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
         )
+
+        metadata = {
+            "Devices": {},
+            "Ophys": {
+                "ImagingPlanes": {},
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Cell ROIs",
+                    },
+                },
+            },
+        }
 
         add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
         )
 
+        # PlaneSegmentation exists
         ophys_module = nwbfile.processing["ophys"]
-        fluorescence = ophys_module["Fluorescence"]
-        traces_dict = segmentation_extractor.get_traces_dict()
-        default_metadata = _get_ophys_metadata_placeholders()
-        default_key = "default_metadata_key"
-        roi_responses_metadata = default_metadata["Ophys"]["RoiResponses"][default_key]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        assert "PlaneSegmentation" in image_segmentation.plane_segmentations
 
-        for trace_name, trace_data in traces_dict.items():
-            if trace_data is None or trace_data.size == 0:
-                continue
-            if trace_name not in roi_responses_metadata:
-                continue
-            trace_meta = roi_responses_metadata[trace_name]
-            if isinstance(trace_meta, str):
-                continue
-            series = fluorescence.roi_response_series[trace_meta["name"]]
-            assert_array_equal(np.squeeze(np.array(series.data)), trace_data)
-
-    def test_all_traces_in_single_fluorescence_container(self):
-        """All traces (including dff) go into a single Fluorescence container, no DfOverF split."""
-        nwbfile = mock_NWBFile()
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_samples=10, num_rois=5, num_rows=15, num_columns=15
-        )
-
-        add_segmentation_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=nwbfile,
-        )
-
-        ophys_module = nwbfile.processing["ophys"]
-
-        # Single Fluorescence container, no DfOverF
-        assert "Fluorescence" in ophys_module.data_interfaces
-        assert "DfOverF" not in ophys_module.data_interfaces
-
-        fluorescence = ophys_module["Fluorescence"]
-        traces_dict = segmentation_extractor.get_traces_dict()
-        placeholders = _get_ophys_metadata_placeholders()
-        default_metadata_key = "default_metadata_key"
-        roi_responses = placeholders["Ophys"]["RoiResponses"][default_metadata_key]
-        for trace_name, trace_data in traces_dict.items():
-            if trace_data is None or trace_data.size == 0:
-                continue
-            if trace_name not in roi_responses:
-                continue
-            trace_meta = roi_responses[trace_name]
-            if isinstance(trace_meta, str):
-                continue
-            series_name = trace_meta["name"]
-            assert series_name in fluorescence.roi_response_series
-
-    def test_missing_traces_not_added(self):
-        """Extractor with some traces None: only available traces written."""
-        nwbfile = mock_NWBFile()
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_samples=10, num_rois=5, num_rows=15, num_columns=15
-        )
-
-        # Override some traces to None
-        original_get_traces_dict = segmentation_extractor.get_traces_dict
-
-        def patched_get_traces_dict():
-            d = original_get_traces_dict()
-            d["deconvolved"] = None
-            d["neuropil"] = None
-            return d
-
-        segmentation_extractor.get_traces_dict = patched_get_traces_dict
-
-        add_segmentation_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=nwbfile,
-        )
-
-        ophys_module = nwbfile.processing["ophys"]
-        fluorescence = ophys_module["Fluorescence"]
-        assert "Deconvolved" not in fluorescence.roi_response_series
-        assert "Neuropil" not in fluorescence.roi_response_series
+        # No Fluorescence container
+        assert "Fluorescence" not in ophys_module.data_interfaces

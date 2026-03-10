@@ -722,13 +722,15 @@ def _add_segmentation_to_nwbfile(
         metadata_key=metadata_key,
     )
 
-    _add_roi_response_traces_to_nwbfile(
-        segmentation_extractor=segmentation_extractor,
-        nwbfile=nwbfile,
-        metadata=metadata,
-        metadata_key=metadata_key,
-        iterator_options=iterator_options,
-    )
+    roi_responses = metadata.get("Ophys", {}).get("RoiResponses", {})
+    if metadata_key in roi_responses:
+        _add_roi_response_traces_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=metadata_key,
+            iterator_options=iterator_options,
+        )
 
     return nwbfile
 
