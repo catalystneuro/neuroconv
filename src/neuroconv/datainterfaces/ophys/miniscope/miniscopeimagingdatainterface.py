@@ -177,7 +177,7 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         """
         from ndx_miniscope.utils import add_miniscope_device
 
-        from ....tools.roiextractors.roiextractors import (
+        from ....tools.roiextractors.roiextractors_pending_deprecation import (
             _add_photon_series_to_nwbfile_old_list_format,
         )
 
