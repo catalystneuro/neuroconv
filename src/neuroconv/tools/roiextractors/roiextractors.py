@@ -50,9 +50,10 @@ from ...utils.str_utils import human_readable_size
 def _is_dict_based_metadata(metadata: dict) -> bool:
     """Detect whether metadata uses the new dict-based format or old list-based format.
 
-    Dict-based format has top-level 'Devices' key and/or 'ImagingPlanes'/'MicroscopySeries'
-    (plural, dict-valued) under 'Ophys'. List-based format has 'Device' (list) and
-    'ImagingPlane' (list, singular) under 'Ophys'.
+    Dict-based format has top-level 'Devices' key and/or plural dict-valued keys under 'Ophys'
+    ('ImagingPlanes', 'MicroscopySeries', 'PlaneSegmentations', 'RoiResponses',
+    'SegmentationImages'). List-based format has 'Device' (list) and 'ImagingPlane'
+    (list, singular) under 'Ophys'.
 
     Returns True for dict-based, False for list-based.
     """
@@ -61,7 +62,8 @@ def _is_dict_based_metadata(metadata: dict) -> bool:
 
     ophys = metadata.get("Ophys", {})
 
-    if "ImagingPlanes" in ophys or "MicroscopySeries" in ophys:
+    dict_based_keys = {"ImagingPlanes", "MicroscopySeries", "PlaneSegmentations", "RoiResponses", "SegmentationImages"}
+    if dict_based_keys & ophys.keys():
         return True
 
     if "ImagingPlane" in ophys or "Device" in ophys:
@@ -115,6 +117,64 @@ def _get_ophys_metadata_placeholders():
                 "imaging_plane_metadata_key": default_metadata_key,
             },
         },
+        "PlaneSegmentations": {
+            default_metadata_key: {
+                "name": "PlaneSegmentation",
+                "description": "Segmented ROIs",
+                "imaging_plane_metadata_key": default_metadata_key,
+            },
+        },
+        "RoiResponses": {
+            default_metadata_key: {
+                "raw": {
+                    "name": "RoiResponseSeries",
+                    "description": "Array of raw fluorescence traces.",
+                    "unit": "n.a.",
+                },
+                "deconvolved": {
+                    "name": "Deconvolved",
+                    "description": "Array of deconvolved traces.",
+                    "unit": "n.a.",
+                },
+                "neuropil": {
+                    "name": "Neuropil",
+                    "description": "Array of neuropil traces.",
+                    "unit": "n.a.",
+                },
+                "denoised": {
+                    "name": "Denoised",
+                    "description": "Array of denoised traces.",
+                    "unit": "n.a.",
+                },
+                "baseline": {
+                    "name": "Baseline",
+                    "description": "Array of baseline traces.",
+                    "unit": "n.a.",
+                },
+                "background": {
+                    "name": "Background",
+                    "description": "Array of background traces.",
+                    "unit": "n.a.",
+                },
+                "dff": {
+                    "name": "DfOverF",
+                    "description": "Array of df/F traces.",
+                    "unit": "n.a.",
+                },
+            },
+        },
+        "SegmentationImages": {
+            default_metadata_key: {
+                "correlation": {
+                    "name": "correlation",
+                    "description": "The correlation image.",
+                },
+                "mean": {
+                    "name": "mean",
+                    "description": "The mean image.",
+                },
+            },
+        },
     }
 
     return metadata
@@ -127,8 +187,6 @@ def get_full_ophys_metadata():
     Users can call this to get a complete example of what the metadata structure looks like,
     edit only the fields they need, and discard the rest. Each call returns an independent
     copy so callers can modify it freely without affecting other calls.
-
-    # TODO: expand with segmentation metadata once we get to that PR
     """
     metadata = get_default_nwbfile_metadata()
 
@@ -164,6 +222,49 @@ def get_full_ophys_metadata():
                 "description": "Two-photon calcium imaging",
                 "unit": "n.a.",
                 "imaging_plane_metadata_key": "my_plane",
+            },
+        },
+        "PlaneSegmentations": {
+            "my_segmentation": {
+                "name": "PlaneSegmentation",
+                "description": "ROIs detected by Suite2p",
+                "imaging_plane_metadata_key": "my_plane",
+            },
+        },
+        "RoiResponses": {
+            "my_segmentation": {
+                "raw": {
+                    "name": "RoiResponseSeries",
+                    "description": "Raw fluorescence traces",
+                    "unit": "n.a.",
+                },
+                "neuropil": {
+                    "name": "Neuropil",
+                    "description": "Neuropil fluorescence",
+                    "unit": "n.a.",
+                },
+                "deconvolved": {
+                    "name": "Deconvolved",
+                    "description": "Deconvolved activity",
+                    "unit": "n.a.",
+                },
+                "dff": {
+                    "name": "DfOverF",
+                    "description": "Delta F over F",
+                    "unit": "n.a.",
+                },
+            },
+        },
+        "SegmentationImages": {
+            "my_segmentation": {
+                "correlation": {
+                    "name": "correlation_image",
+                    "description": "Correlation image from Suite2p",
+                },
+                "mean": {
+                    "name": "mean_image",
+                    "description": "Mean image from Suite2p",
+                },
             },
         },
     }
