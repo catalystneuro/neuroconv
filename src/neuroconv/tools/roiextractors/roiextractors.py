@@ -56,8 +56,8 @@ def _is_dict_based_metadata(metadata: dict) -> bool:
     """Detect whether metadata uses the new dict-based format or old list-based format.
 
     Dict-based format has top-level 'Devices' key and/or plural dict-valued keys under 'Ophys'
-    ('ImagingPlanes', 'MicroscopySeries', 'PlaneSegmentations', 'RoiResponses',
-    'SegmentationImages'). List-based format has 'Device' (list) and 'ImagingPlane'
+    ('ImagingPlanes', 'MicroscopySeries', 'PlaneSegmentations', 'RoiResponses').
+    List-based format has 'Device' (list) and 'ImagingPlane'
     (list, singular) under 'Ophys'.
 
     Returns True for dict-based, False for list-based.
@@ -67,7 +67,7 @@ def _is_dict_based_metadata(metadata: dict) -> bool:
 
     ophys = metadata.get("Ophys", {})
 
-    dict_based_keys = {"ImagingPlanes", "MicroscopySeries", "PlaneSegmentations", "RoiResponses", "SegmentationImages"}
+    dict_based_keys = {"ImagingPlanes", "MicroscopySeries", "PlaneSegmentations", "RoiResponses"}
     if dict_based_keys & ophys.keys():
         return True
 
