@@ -35,14 +35,16 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
 )
 from neuroconv.tools.roiextractors.roiextractors import (
+    _get_ophys_metadata_placeholders,
+    get_full_ophys_metadata,
+)
+from neuroconv.tools.roiextractors.roiextractors_pending_deprecation import (
     _add_image_segmentation_to_nwbfile,
     _add_imaging_plane_to_nwbfile_old_list_format,
     _add_photon_series_to_nwbfile_old_list_format,
     _add_plane_segmentation_to_nwbfile,
     _add_summary_images_to_nwbfile,
     _get_default_ophys_metadata_old_metadata_list,
-    _get_ophys_metadata_placeholders,
-    get_full_ophys_metadata,
 )
 from neuroconv.utils import dict_deep_update
 
