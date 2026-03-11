@@ -3517,6 +3517,40 @@ class TestAddSegmentation:
                 metadata_key="my_seg",
             )
 
+    def test_warns_when_metadata_specifies_missing_traces(self):
+        """Warning is emitted when RoiResponses metadata references traces the extractor doesn't have."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            has_neuropil_signal=False,
+            has_deconvolved_signal=False,
+        )
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmented ROIs",
+                    },
+                },
+                "RoiResponses": {
+                    "my_seg": {
+                        "raw": {"name": "RoiResponseSeries", "unit": "n.a."},
+                        "neuropil": {"name": "Neuropil", "unit": "n.a."},
+                        "deconvolved": {"name": "Deconvolved", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        with pytest.warns(UserWarning, match="RoiResponses metadata specifies traces"):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
+
     def test_image_masks_written_correctly(self):
         """Mask data values match the extractor's get_roi_image_masks()."""
         nwbfile = mock_NWBFile()
