@@ -216,7 +216,12 @@ tdt = [
 whitematter = [
     "neuroconv[ecephys_minimal]",
 ]
+xclust = [
+    "spikeinterface>=0.103.1",
+]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
+    # TODO: remove this git dependency after spikeinterface >= 0.103.1 is released
+    "spikeinterface @ git+https://github.com/h-mayorquin/spikeinterface.git@add_xclust",
     "neuroconv[alphaomega]",
     "neuroconv[axon]",
     "neuroconv[axona]",
@@ -240,6 +245,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[spikeglx]",
     "neuroconv[tdt]",
     "neuroconv[whitematter]",
+    "neuroconv[xclust]",
 ]
 
 ## Icephys
