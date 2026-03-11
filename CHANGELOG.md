@@ -26,6 +26,7 @@
 ## Improvements
 * Added array-like protocol methods (`shape`, `ndim`, `__len__`, `__getitem__`) to all data chunk iterators (`SliceableDataChunkIterator`, `SpikeInterfaceRecordingDataChunkIterator`, `ImagingExtractorDataChunkIterator`, `VideoDataChunkIterator`). [PR #1673](https://github.com/catalystneuro/neuroconv/pull/1673)
 * Added tests for `OnePhotonSeries`, `processing/ophys` container, and non-iterative write to `TestAddImaging` (dict-based metadata pipeline). [PR #1685](https://github.com/catalystneuro/neuroconv/pull/1685)
+* Added functional tests to `TestAddSegmentation` for image masks, ROI properties, timestamp handling (regular, irregular, sampling frequency fallback), trace data values, ROI table regions, and iterator options propagation. [PR #1693](https://github.com/catalystneuro/neuroconv/pull/1693)
 * Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
 
 # v0.9.3 (February 19, 2026)
