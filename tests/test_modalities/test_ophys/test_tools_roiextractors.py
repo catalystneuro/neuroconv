@@ -30,6 +30,7 @@ from neuroconv.tools.roiextractors import (
     add_devices_to_nwbfile,
     add_fluorescence_traces_to_nwbfile,
     add_imaging_to_nwbfile,
+    add_segmentation_to_nwbfile,
 )
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
@@ -2318,7 +2319,6 @@ class TestAddImaging:
 
         device = nwbfile.devices[device_metadata["name"]]
         assert device.description == device_metadata["description"]
-        assert device.manufacturer == device_metadata["manufacturer"]
 
         plane = nwbfile.imaging_planes[plane_metadata["name"]]
         assert plane.description == plane_metadata["description"]
@@ -2336,9 +2336,7 @@ class TestAddImaging:
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
         metadata = {
-            "Devices": {},
             "Ophys": {
-                "ImagingPlanes": {},
                 "MicroscopySeries": {
                     "my_series": {
                         "name": "TwoPhotonSeries",
@@ -2377,7 +2375,6 @@ class TestAddImaging:
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
         metadata = {
-            "Devices": {},
             "Ophys": {
                 "ImagingPlanes": {
                     "my_plane": {
@@ -2515,7 +2512,6 @@ class TestAddImaging:
                 "shared_device_key": {
                     "name": "SharedMicroscope",
                     "description": "Shared two-photon microscope",
-                    "manufacturer": "Bruker",
                 },
             },
             "Ophys": {
@@ -2582,7 +2578,6 @@ class TestAddImaging:
         unique_device = nwbfile.devices[device_metadata["name"]]
         assert unique_device.name == device_metadata["name"]
         assert unique_device.description == device_metadata["description"]
-        assert unique_device.manufacturer == device_metadata["manufacturer"]
 
         # Both planes share the same device
         assert nwbfile.imaging_planes["ImagingPlaneV1"].device is unique_device
@@ -2602,9 +2597,7 @@ class TestAddImaging:
         first_metadata_key = "first"
         second_metadata_key = "second"
         metadata = {
-            "Devices": {},
             "Ophys": {
-                "ImagingPlanes": {},
                 "MicroscopySeries": {
                     first_metadata_key: {
                         "name": "TwoPhotonSeriesFirst",
@@ -2671,9 +2664,7 @@ class TestAddImaging:
 
         metadata_key = "my_series"
         metadata = {
-            "Devices": {},
             "Ophys": {
-                "ImagingPlanes": {},
                 "MicroscopySeries": {
                     metadata_key: {
                         "name": "TwoPhotonSeries",
@@ -2802,3 +2793,717 @@ class TestAddImaging:
         )
 
         assert metadata == metadata_before, "Metadata was mutated"
+
+
+class TestAddSegmentation:
+    """Tests for the dict-based metadata segmentation pipeline (add_segmentation_to_nwbfile)."""
+
+    def test_basic(self):
+        """No metadata: defaults created (device, plane, PlaneSegmentation, traces)."""
+        nwbfile = mock_NWBFile()
+        num_samples = 20
+        num_rois = 10
+        num_rows = 25
+        num_columns = 20
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=num_samples, num_rois=num_rois, num_rows=num_rows, num_columns=num_columns
+        )
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        # When no metadata is passed, _get_ophys_metadata_placeholders() is used internally.
+        # The placeholders are dict-based, so _is_dict_based_metadata() returns True and the
+        # new dict-based code path is used with metadata_key="default_metadata_key".
+        placeholders = _get_ophys_metadata_placeholders()
+        default_key = "default_metadata_key"
+        default_device_metadata = placeholders["Devices"][default_key]
+        default_plane_metadata = placeholders["Ophys"]["ImagingPlanes"][default_key]
+        default_plane_seg_metadata = placeholders["Ophys"]["PlaneSegmentations"][default_key]
+
+        # Default device
+        assert len(nwbfile.devices) == 1
+        device = nwbfile.devices[default_device_metadata["name"]]
+        assert device.name == default_device_metadata["name"]
+
+        # Default imaging plane
+        assert len(nwbfile.imaging_planes) == 1
+        plane = nwbfile.imaging_planes[default_plane_metadata["name"]]
+        assert plane.name == default_plane_metadata["name"]
+        assert np.isnan(plane.excitation_lambda)
+        assert plane.indicator == default_plane_metadata["indicator"]
+        assert plane.location == default_plane_metadata["location"]
+        assert plane.device is device
+
+        # PlaneSegmentation
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        assert default_plane_seg_metadata["name"] in image_segmentation.plane_segmentations
+        plane_seg = image_segmentation.plane_segmentations[default_plane_seg_metadata["name"]]
+        assert plane_seg.name == default_plane_seg_metadata["name"]
+        assert plane_seg.description == default_plane_seg_metadata["description"]
+        assert plane_seg.imaging_plane is plane
+        assert len(plane_seg.id) == num_rois
+
+        # All traces are added to a single Fluorescence container (no DfOverF split),
+        # mirroring ndx-microscopy's single-container approach.
+        assert "Fluorescence" in ophys_module.data_interfaces
+        assert "DfOverF" not in ophys_module.data_interfaces
+
+    def test_full_metadata_specification(self):
+        """Full metadata specification: device, imaging plane, and segmentation are created from user metadata."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=15
+        )
+
+        metadata = get_full_ophys_metadata()
+        metadata_key = "my_segmentation"
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=metadata_key,
+        )
+
+        plane_seg_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key]
+        plane_key = plane_seg_metadata["imaging_plane_metadata_key"]
+        plane_metadata = metadata["Ophys"]["ImagingPlanes"][plane_key]
+        device_key = plane_metadata["device_metadata_key"]
+        device_metadata = metadata["Devices"][device_key]
+
+        device = nwbfile.devices[device_metadata["name"]]
+        assert device.description == device_metadata["description"]
+
+        plane = nwbfile.imaging_planes[plane_metadata["name"]]
+        assert plane.description == plane_metadata["description"]
+        assert plane.indicator == plane_metadata["indicator"]
+        assert plane.location == plane_metadata["location"]
+        assert plane.device is device
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        plane_seg = image_segmentation.plane_segmentations[plane_seg_metadata["name"]]
+        assert plane_seg.description == plane_seg_metadata["description"]
+        assert plane_seg.imaging_plane is plane
+
+    def test_no_imaging_plane_metadata_key(self):
+        """PlaneSegmentation without imaging_plane_metadata_key: default plane created."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=15
+        )
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmented ROIs",
+                    },
+                },
+                "RoiResponses": {
+                    "my_seg": {
+                        "raw": {"name": "RoiResponseSeries", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
+        )
+
+        default_metadata = _get_ophys_metadata_placeholders()
+        default_key = "default_metadata_key"
+        default_plane_metadata = default_metadata["Ophys"]["ImagingPlanes"][default_key]
+        default_device_metadata = default_metadata["Devices"][default_key]
+
+        # Default imaging plane
+        assert len(nwbfile.imaging_planes) == 1
+        plane = nwbfile.imaging_planes[default_plane_metadata["name"]]
+        assert plane.name == default_plane_metadata["name"]
+
+        # Default device
+        assert len(nwbfile.devices) == 1
+        device = nwbfile.devices[default_device_metadata["name"]]
+        assert device.name == default_device_metadata["name"]
+        assert plane.device is device
+
+    def test_no_device_metadata_key(self):
+        """When imaging plane has no device_metadata_key, a default device is created."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=15
+        )
+
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        "description": "A plane",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6s",
+                        "location": "V1",
+                        "optical_channel": [
+                            {
+                                "name": "Green",
+                                "description": "GCaMP emission",
+                                "emission_lambda": 510.0,
+                            }
+                        ],
+                    },
+                },
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmented ROIs",
+                        "imaging_plane_metadata_key": "my_plane",
+                    },
+                },
+                "RoiResponses": {
+                    "my_seg": {
+                        "raw": {"name": "RoiResponseSeries", "description": "Raw traces", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
+        )
+
+        default_metadata = _get_ophys_metadata_placeholders()
+        default_key = "default_metadata_key"
+        default_device_metadata = default_metadata["Devices"][default_key]
+
+        # Default device created and linked
+        assert len(nwbfile.devices) == 1
+        device = nwbfile.devices[default_device_metadata["name"]]
+        assert device.name == default_device_metadata["name"]
+
+        # User-specified imaging plane uses the default device
+        plane_metadata = metadata["Ophys"]["ImagingPlanes"]["my_plane"]
+        plane = nwbfile.imaging_planes[plane_metadata["name"]]
+        assert plane.description == plane_metadata["description"]
+        assert plane.excitation_lambda == plane_metadata["excitation_lambda"]
+        assert plane.indicator == plane_metadata["indicator"]
+        assert plane.location == plane_metadata["location"]
+        assert plane.device is device
+
+    def test_shared_imaging_plane_two_segmentations(self):
+        """Two segmentations reference same ImagingPlane: 1 plane, 2 PlaneSegmentations."""
+        nwbfile = mock_NWBFile()
+        seg_a = generate_dummy_segmentation_extractor(num_samples=10, num_rois=5, num_rows=15, num_columns=15)
+        seg_b = generate_dummy_segmentation_extractor(num_samples=10, num_rois=3, num_rows=15, num_columns=15)
+
+        shared_plane_key = "shared_plane"
+        metadata = {
+            "Devices": {
+                "dev": {"name": "MyDevice"},
+            },
+            "Ophys": {
+                "ImagingPlanes": {
+                    shared_plane_key: {
+                        "name": "SharedPlane",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device_metadata_key": "dev",
+                        "optical_channel": [
+                            {"name": "Green", "emission_lambda": 525.0, "description": "Green channel"},
+                        ],
+                    },
+                },
+                "PlaneSegmentations": {
+                    "seg_a": {
+                        "name": "PlaneSegmentationA",
+                        "description": "First segmentation",
+                        "imaging_plane_metadata_key": shared_plane_key,
+                    },
+                    "seg_b": {
+                        "name": "PlaneSegmentationB",
+                        "description": "Second segmentation",
+                        "imaging_plane_metadata_key": shared_plane_key,
+                    },
+                },
+                "RoiResponses": {
+                    "seg_a": {
+                        "raw": {"name": "RoiResponseSeriesA", "description": "Raw A", "unit": "n.a."},
+                    },
+                    "seg_b": {
+                        "raw": {"name": "RoiResponseSeriesB", "description": "Raw B", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=seg_a, nwbfile=nwbfile, metadata=metadata, metadata_key="seg_a"
+        )
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=seg_b, nwbfile=nwbfile, metadata=metadata, metadata_key="seg_b"
+        )
+
+        device_metadata = metadata["Devices"]["dev"]
+        plane_metadata = metadata["Ophys"]["ImagingPlanes"][shared_plane_key]
+        seg_a_metadata = metadata["Ophys"]["PlaneSegmentations"]["seg_a"]
+        seg_b_metadata = metadata["Ophys"]["PlaneSegmentations"]["seg_b"]
+
+        # 1 device, 1 imaging plane, 2 plane segmentations
+        assert len(nwbfile.devices) == 1
+        assert len(nwbfile.imaging_planes) == 1
+
+        device = nwbfile.devices[device_metadata["name"]]
+        assert device.name == device_metadata["name"]
+
+        plane = nwbfile.imaging_planes[plane_metadata["name"]]
+        assert plane.name == plane_metadata["name"]
+        assert plane.excitation_lambda == plane_metadata["excitation_lambda"]
+        assert plane.indicator == plane_metadata["indicator"]
+        assert plane.location == plane_metadata["location"]
+        assert plane.device is device
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        assert len(image_segmentation.plane_segmentations) == 2
+
+        ps_a = image_segmentation.plane_segmentations[seg_a_metadata["name"]]
+        assert ps_a.description == seg_a_metadata["description"]
+        assert ps_a.imaging_plane is plane
+
+        ps_b = image_segmentation.plane_segmentations[seg_b_metadata["name"]]
+        assert ps_b.description == seg_b_metadata["description"]
+        assert ps_b.imaging_plane is plane
+
+    def test_metadata_not_mutated(self):
+        """deepcopy metadata before call, assert equal after."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        metadata = get_full_ophys_metadata()
+        metadata_before = deepcopy(metadata)
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_segmentation",
+        )
+
+        assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_no_roi_responses_metadata(self):
+        """When no RoiResponses metadata is provided but extractor has traces, write with placeholder metadata."""
+        nwbfile = mock_NWBFile()
+        num_rois = 5
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10,
+            num_rois=num_rois,
+            num_rows=15,
+            num_columns=15,
+        )
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Cell ROIs",
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
+        )
+
+        # PlaneSegmentation exists with correct metadata
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        assert "PlaneSegmentation" in image_segmentation.plane_segmentations
+        plane_seg = image_segmentation.plane_segmentations["PlaneSegmentation"]
+        assert plane_seg.description == "Cell ROIs"
+        assert len(plane_seg.id) == num_rois
+
+        # Fluorescence container created with placeholder trace names
+        fluorescence = ophys_module["Fluorescence"]
+        expected_placeholder_names = {"RoiResponseSeries", "DfOverF", "Neuropil", "Deconvolved"}
+        assert set(fluorescence.roi_response_series.keys()) == expected_placeholder_names
+
+        # Verify traces are linked to the correct PlaneSegmentation
+        for series in fluorescence.roi_response_series.values():
+            roi_table_region = series.rois
+            assert roi_table_region.table is plane_seg
+
+    def test_no_roi_responses_no_traces(self):
+        """When no RoiResponses metadata and no traces, only PlaneSegmentation is written."""
+        nwbfile = mock_NWBFile()
+        num_rois = 5
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10,
+            num_rois=num_rois,
+            num_rows=15,
+            num_columns=15,
+            has_raw_signal=False,
+            has_dff_signal=False,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Cell ROIs",
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
+        )
+
+        # PlaneSegmentation exists with correct metadata
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        assert "PlaneSegmentation" in image_segmentation.plane_segmentations
+        plane_seg = image_segmentation.plane_segmentations["PlaneSegmentation"]
+        assert plane_seg.description == "Cell ROIs"
+        assert len(plane_seg.id) == num_rois
+
+        # No Fluorescence container since no traces and no RoiResponses metadata
+        assert "Fluorescence" not in ophys_module.data_interfaces
+
+    def test_roi_responses_metadata_but_no_traces_raises(self):
+        """When RoiResponses metadata is provided but extractor has no traces, raise an error."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10,
+            num_rois=5,
+            num_rows=15,
+            num_columns=15,
+            has_raw_signal=False,
+            has_dff_signal=False,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmented ROIs",
+                    },
+                },
+                "RoiResponses": {
+                    "my_seg": {
+                        "raw": {"name": "RoiResponseSeries", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        with pytest.raises(ValueError, match="no trace data"):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
+
+    def test_shared_device_two_imaging_planes(self):
+        """Two segmentations with different imaging planes that share the same device."""
+        nwbfile = mock_NWBFile()
+        seg_a = generate_dummy_segmentation_extractor(num_samples=10, num_rois=5, num_rows=15, num_columns=15)
+        seg_b = generate_dummy_segmentation_extractor(num_samples=10, num_rois=3, num_rows=15, num_columns=15)
+
+        metadata = {
+            "Devices": {
+                "shared_device_key": {
+                    "name": "SharedMicroscope",
+                    "description": "Shared two-photon microscope",
+                },
+            },
+            "Ophys": {
+                "ImagingPlanes": {
+                    "plane_v1": {
+                        "name": "ImagingPlaneV1",
+                        "description": "Visual cortex V1",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6s",
+                        "location": "V1",
+                        "device_metadata_key": "shared_device_key",
+                        "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
+                    },
+                    "plane_v2": {
+                        "name": "ImagingPlaneV2",
+                        "description": "Visual cortex V2",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V2",
+                        "device_metadata_key": "shared_device_key",
+                        "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
+                    },
+                },
+                "PlaneSegmentations": {
+                    "seg_a": {
+                        "name": "PlaneSegmentationA",
+                        "description": "First segmentation",
+                        "imaging_plane_metadata_key": "plane_v1",
+                    },
+                    "seg_b": {
+                        "name": "PlaneSegmentationB",
+                        "description": "Second segmentation",
+                        "imaging_plane_metadata_key": "plane_v2",
+                    },
+                },
+                "RoiResponses": {
+                    "seg_a": {
+                        "raw": {"name": "RoiResponseSeriesA", "description": "Raw A", "unit": "n.a."},
+                    },
+                    "seg_b": {
+                        "raw": {"name": "RoiResponseSeriesB", "description": "Raw B", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=seg_a, nwbfile=nwbfile, metadata=metadata, metadata_key="seg_a"
+        )
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=seg_b, nwbfile=nwbfile, metadata=metadata, metadata_key="seg_b"
+        )
+
+        device_metadata = metadata["Devices"]["shared_device_key"]
+        plane_v1_metadata = metadata["Ophys"]["ImagingPlanes"]["plane_v1"]
+        plane_v2_metadata = metadata["Ophys"]["ImagingPlanes"]["plane_v2"]
+
+        # One device, two planes, two segmentations
+        assert len(nwbfile.devices) == 1
+        assert len(nwbfile.imaging_planes) == 2
+
+        device = nwbfile.devices[device_metadata["name"]]
+        assert device.name == device_metadata["name"]
+        assert device.description == device_metadata["description"]
+
+        plane_v1 = nwbfile.imaging_planes[plane_v1_metadata["name"]]
+        assert plane_v1.description == plane_v1_metadata["description"]
+        assert plane_v1.indicator == plane_v1_metadata["indicator"]
+        assert plane_v1.location == plane_v1_metadata["location"]
+        assert plane_v1.device is device
+
+        plane_v2 = nwbfile.imaging_planes[plane_v2_metadata["name"]]
+        assert plane_v2.description == plane_v2_metadata["description"]
+        assert plane_v2.indicator == plane_v2_metadata["indicator"]
+        assert plane_v2.location == plane_v2_metadata["location"]
+        assert plane_v2.device is device
+
+    def test_repeated_calls_reuse_default_metadata_placeholders(self):
+        """Repeated calls without metadata reuse the same placeholder device and imaging plane."""
+        nwbfile = mock_NWBFile()
+        seg_a = generate_dummy_segmentation_extractor(num_samples=10, num_rois=5, num_rows=15, num_columns=15)
+        seg_b = generate_dummy_segmentation_extractor(num_samples=10, num_rois=3, num_rows=15, num_columns=15)
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "first": {
+                        "name": "PlaneSegmentationFirst",
+                        "description": "First segmentation",
+                    },
+                    "second": {
+                        "name": "PlaneSegmentationSecond",
+                        "description": "Second segmentation",
+                    },
+                },
+                "RoiResponses": {
+                    "first": {
+                        "raw": {"name": "RoiResponseSeriesFirst", "unit": "n.a."},
+                    },
+                    "second": {
+                        "raw": {"name": "RoiResponseSeriesSecond", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=seg_a, nwbfile=nwbfile, metadata=metadata, metadata_key="first"
+        )
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=seg_b, nwbfile=nwbfile, metadata=metadata, metadata_key="second"
+        )
+
+        default_metadata = _get_ophys_metadata_placeholders()
+        default_key = "default_metadata_key"
+        default_device_metadata = default_metadata["Devices"][default_key]
+        default_plane_metadata = default_metadata["Ophys"]["ImagingPlanes"][default_key]
+
+        # Placeholder device and imaging plane are reused, not duplicated
+        assert len(nwbfile.devices) == 1
+        device = nwbfile.devices[default_device_metadata["name"]]
+        assert device.name == default_device_metadata["name"]
+
+        assert len(nwbfile.imaging_planes) == 1
+        plane = nwbfile.imaging_planes[default_plane_metadata["name"]]
+        assert plane.name == default_plane_metadata["name"]
+        assert plane.device is device
+
+        # Both segmentations created with correct metadata
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        assert len(image_segmentation.plane_segmentations) == 2
+        assert image_segmentation.plane_segmentations["PlaneSegmentationFirst"].description == "First segmentation"
+        assert image_segmentation.plane_segmentations["PlaneSegmentationSecond"].description == "Second segmentation"
+
+    def test_traces_linked_to_correct_plane_segmentation(self):
+        """Two segmentations with different planes: each trace references the correct PlaneSegmentation."""
+        nwbfile = mock_NWBFile()
+        seg_a = generate_dummy_segmentation_extractor(num_samples=10, num_rois=5, num_rows=15, num_columns=15)
+        seg_b = generate_dummy_segmentation_extractor(num_samples=10, num_rois=3, num_rows=15, num_columns=15)
+
+        metadata = {
+            "Devices": {
+                "dev": {"name": "Microscope"},
+            },
+            "Ophys": {
+                "ImagingPlanes": {
+                    "plane_a": {
+                        "name": "ImagingPlaneA",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6s",
+                        "location": "V1",
+                        "device_metadata_key": "dev",
+                        "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
+                    },
+                    "plane_b": {
+                        "name": "ImagingPlaneB",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V2",
+                        "device_metadata_key": "dev",
+                        "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
+                    },
+                },
+                "PlaneSegmentations": {
+                    "seg_a": {
+                        "name": "PlaneSegmentationA",
+                        "description": "First segmentation",
+                        "imaging_plane_metadata_key": "plane_a",
+                    },
+                    "seg_b": {
+                        "name": "PlaneSegmentationB",
+                        "description": "Second segmentation",
+                        "imaging_plane_metadata_key": "plane_b",
+                    },
+                },
+                "RoiResponses": {
+                    "seg_a": {
+                        "raw": {"name": "RoiResponseSeriesA", "unit": "n.a."},
+                    },
+                    "seg_b": {
+                        "raw": {"name": "RoiResponseSeriesB", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=seg_a, nwbfile=nwbfile, metadata=metadata, metadata_key="seg_a"
+        )
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=seg_b, nwbfile=nwbfile, metadata=metadata, metadata_key="seg_b"
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        fluorescence = ophys_module["Fluorescence"]
+
+        series_a = fluorescence.roi_response_series["RoiResponseSeriesA"]
+        series_b = fluorescence.roi_response_series["RoiResponseSeriesB"]
+
+        assert series_a.rois.table.name == "PlaneSegmentationA"
+        assert series_b.rois.table.name == "PlaneSegmentationB"
+
+    def test_missing_required_plane_segmentation_fields_raises(self):
+        """When PlaneSegmentation metadata is missing required fields, a clear error is raised."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                    },
+                },
+            },
+        }
+
+        expected_error = re.escape(
+            "Plane segmentation metadata is missing required fields.\n"
+            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
+            "  description: 'Segmented ROIs'"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
+
+    def test_missing_required_roi_response_fields_raises(self):
+        """When ROI response series metadata is missing required fields, a clear error is raised."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmented ROIs",
+                    },
+                },
+                "RoiResponses": {
+                    "my_seg": {
+                        "raw": {"name": "RoiResponseSeries"},
+                    },
+                },
+            },
+        }
+
+        expected_error = re.escape(
+            "ROI response series 'raw' metadata is missing required fields.\n"
+            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
+            "  unit: 'n.a.'"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
