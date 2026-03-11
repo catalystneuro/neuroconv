@@ -668,6 +668,21 @@ def _add_roi_response_traces_to_nwbfile(
 
         trace_metadata = roi_responses_metadata[trace_name]
 
+        # Validate required fields
+        required_fields = ["unit"]
+        missing_fields = [field for field in required_fields if field not in trace_metadata]
+        if missing_fields:
+            default_roi_responses = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
+            default_trace = default_roi_responses.get(
+                trace_name, next(v for v in default_roi_responses.values() if isinstance(v, dict))
+            )
+            placeholder_hint = "\n".join(f"  {field}: {default_trace[field]!r}" for field in missing_fields)
+            raise ValueError(
+                f"ROI response series '{trace_name}' metadata is missing required fields.\n"
+                f"For a complete NWB file, the following fields should be provided. "
+                f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
+            )
+
         # Skip if series already exists
         series_name = trace_metadata["name"]
         if series_name in fluorescence.roi_response_series:

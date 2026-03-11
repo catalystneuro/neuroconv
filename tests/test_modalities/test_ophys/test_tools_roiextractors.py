@@ -2336,9 +2336,7 @@ class TestAddImaging:
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
         metadata = {
-            "Devices": {},
             "Ophys": {
-                "ImagingPlanes": {},
                 "MicroscopySeries": {
                     "my_series": {
                         "name": "TwoPhotonSeries",
@@ -2377,7 +2375,6 @@ class TestAddImaging:
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
         metadata = {
-            "Devices": {},
             "Ophys": {
                 "ImagingPlanes": {
                     "my_plane": {
@@ -2600,9 +2597,7 @@ class TestAddImaging:
         first_metadata_key = "first"
         second_metadata_key = "second"
         metadata = {
-            "Devices": {},
             "Ophys": {
-                "ImagingPlanes": {},
                 "MicroscopySeries": {
                     first_metadata_key: {
                         "name": "TwoPhotonSeriesFirst",
@@ -2669,9 +2664,7 @@ class TestAddImaging:
 
         metadata_key = "my_series"
         metadata = {
-            "Devices": {},
             "Ophys": {
-                "ImagingPlanes": {},
                 "MicroscopySeries": {
                     metadata_key: {
                         "name": "TwoPhotonSeries",
@@ -2952,7 +2945,6 @@ class TestAddSegmentation:
         )
 
         metadata = {
-            "Devices": {},
             "Ophys": {
                 "ImagingPlanes": {
                     "my_plane": {
@@ -3101,9 +3093,7 @@ class TestAddSegmentation:
     def test_metadata_not_mutated(self):
         """deepcopy metadata before call, assert equal after."""
         nwbfile = mock_NWBFile()
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_samples=10, num_rois=5, num_rows=15, num_columns=15
-        )
+        segmentation_extractor = generate_dummy_segmentation_extractor()
 
         metadata = get_full_ophys_metadata()
         metadata_before = deepcopy(metadata)
@@ -3384,9 +3374,7 @@ class TestAddSegmentation:
     def test_missing_required_plane_segmentation_fields_raises(self):
         """When PlaneSegmentation metadata is missing required fields, a clear error is raised."""
         nwbfile = mock_NWBFile()
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_samples=10, num_rois=5, num_rows=15, num_columns=15
-        )
+        segmentation_extractor = generate_dummy_segmentation_extractor()
 
         metadata = {
             "Ophys": {
@@ -3402,6 +3390,41 @@ class TestAddSegmentation:
             "Plane segmentation metadata is missing required fields.\n"
             "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
             "  description: 'Segmented ROIs'"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
+
+    def test_missing_required_roi_response_fields_raises(self):
+        """When ROI response series metadata is missing required fields, a clear error is raised."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmented ROIs",
+                    },
+                },
+                "RoiResponses": {
+                    "my_seg": {
+                        "plane_segmentation_metadata_key": "my_seg",
+                        "raw": {"name": "RoiResponseSeries"},
+                    },
+                },
+            },
+        }
+
+        expected_error = re.escape(
+            "ROI response series 'raw' metadata is missing required fields.\n"
+            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
+            "  unit: 'n.a.'"
         )
         with pytest.raises(ValueError, match=expected_error):
             add_segmentation_to_nwbfile(
