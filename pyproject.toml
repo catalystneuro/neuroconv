@@ -216,6 +216,9 @@ tdt = [
 whitematter = [
     "neuroconv[ecephys_minimal]",
 ]
+xclust = [  # TODO: change to "neuroconv[ecephys_minimal]" after spikeinterface >= 0.103.1 is released
+    "spikeinterface @ git+https://github.com/h-mayorquin/spikeinterface.git@add_xclust",
+]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axon]",

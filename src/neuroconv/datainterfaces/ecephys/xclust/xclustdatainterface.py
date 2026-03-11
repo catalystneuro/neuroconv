@@ -14,7 +14,7 @@ class XClustSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_extractor_class(cls):
-        from ._xclust_sorting_extractor import XClustSortingExtractor
+        from spikeinterface.extractors.xclustextractors import XClustSortingExtractor
 
         return XClustSortingExtractor
 

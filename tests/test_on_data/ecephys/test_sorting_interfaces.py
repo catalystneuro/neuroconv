@@ -342,8 +342,8 @@ class TestXClustSortingInterfaceFilePathList:
         interface = XClustSortingInterface(file_path_list=file_list, sampling_frequency=30_000.0)
         unit_ids = interface.sorting_extractor.get_unit_ids()
         assert len(unit_ids) == 2
-        assert "BL1~1" in unit_ids
-        assert "BL1~2" in unit_ids
+        assert "BL1_1" in unit_ids
+        assert "BL1_2" in unit_ids
 
     def test_both_args_raises(self):
         with pytest.raises(ValueError, match="Specify either"):
