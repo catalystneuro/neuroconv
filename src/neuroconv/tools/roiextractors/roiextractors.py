@@ -131,7 +131,6 @@ def _get_ophys_metadata_placeholders():
         },
         "RoiResponses": {
             default_metadata_key: {
-                "plane_segmentation_metadata_key": default_metadata_key,
                 "raw": {
                     "name": "RoiResponseSeries",
                     "unit": "n.a.",
@@ -215,7 +214,6 @@ def get_full_ophys_metadata():
         },
         "RoiResponses": {
             "my_segmentation": {
-                "plane_segmentation_metadata_key": "my_segmentation",
                 "raw": {
                     "name": "RoiResponseSeries",
                     "description": "Raw fluorescence traces",
@@ -579,8 +577,12 @@ def _add_roi_response_traces_to_nwbfile(
     of nwb-schema#616 and ndx-microscopy's single-container pattern
     (``MicroscopyResponseSeriesContainer``).
 
-    Resolves the PlaneSegmentation via ``plane_segmentation_metadata_key`` in the
-    RoiResponses metadata entry.
+    The same ``metadata_key`` is used to look up both the ``RoiResponses`` entry and the
+    ``PlaneSegmentations`` entry, coupling the two implicitly.
+
+    If ``metadata_key`` is not present in ``metadata["Ophys"]["RoiResponses"]``, placeholder
+    metadata is used for all available traces. If ``metadata_key`` is present but the extractor
+    has no trace data, a ``ValueError`` is raised.
 
     Parameters
     ----------
@@ -589,11 +591,10 @@ def _add_roi_response_traces_to_nwbfile(
     nwbfile : NWBFile
         The NWB file to add traces to.
     metadata : dict
-        The full metadata dictionary with dict-based format.
+        The full metadata dictionary with dict-based format. Not modified by this function.
     metadata_key : str
-        The key in ``metadata["Ophys"]["RoiResponses"]``. The entry must contain a
-        ``plane_segmentation_metadata_key`` field that references the PlaneSegmentation
-        in ``metadata["Ophys"]["PlaneSegmentations"]``.
+        The key used to look up both ``metadata["Ophys"]["RoiResponses"]`` and
+        ``metadata["Ophys"]["PlaneSegmentations"]``.
     iterator_options : dict, optional
         Options for the data chunk iterator.
 
@@ -604,20 +605,29 @@ def _add_roi_response_traces_to_nwbfile(
     """
     iterator_options = iterator_options or dict()
 
-    roi_responses_metadata = metadata["Ophys"]["RoiResponses"][metadata_key].copy()
-
     # Get traces from extractor, filter None/empty
     traces_dict = segmentation_extractor.get_traces_dict()
     traces_to_add = {
         trace_name: trace for trace_name, trace in traces_dict.items() if trace is not None and trace.size != 0
     }
 
+    roi_responses = metadata.get("Ophys", {}).get("RoiResponses", {})
+    user_provided_roi_responses = metadata_key in roi_responses
+
+    if user_provided_roi_responses and not traces_to_add:
+        raise ValueError("RoiResponses metadata was provided but the segmentation extractor has no trace data.")
+
     if not traces_to_add:
         return nwbfile
 
-    # Resolve PlaneSegmentation via explicit reference
-    plane_segmentation_metadata_key = roi_responses_metadata.pop("plane_segmentation_metadata_key")
-    plane_segmentation_name = metadata["Ophys"]["PlaneSegmentations"][plane_segmentation_metadata_key]["name"]
+    # Use user-provided metadata or fall back to placeholders
+    if user_provided_roi_responses:
+        roi_responses_metadata = roi_responses[metadata_key].copy()
+    else:
+        roi_responses_metadata = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
+
+    # Resolve PlaneSegmentation via the same metadata_key
+    plane_segmentation_name = metadata["Ophys"]["PlaneSegmentations"][metadata_key]["name"]
     ophys_module = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
     image_segmentation = ophys_module["ImageSegmentation"]
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
@@ -742,15 +752,13 @@ def _add_segmentation_to_nwbfile(
         metadata_key=metadata_key,
     )
 
-    roi_responses = metadata.get("Ophys", {}).get("RoiResponses", {})
-    if metadata_key in roi_responses:
-        _add_roi_response_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            metadata_key=metadata_key,
-            iterator_options=iterator_options,
-        )
+    _add_roi_response_traces_to_nwbfile(
+        segmentation_extractor=segmentation_extractor,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        metadata_key=metadata_key,
+        iterator_options=iterator_options,
+    )
 
     return nwbfile
 

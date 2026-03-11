@@ -2907,7 +2907,6 @@ class TestAddSegmentation:
                 },
                 "RoiResponses": {
                     "my_seg": {
-                        "plane_segmentation_metadata_key": "my_seg",
                         "raw": {"name": "RoiResponseSeries", "unit": "n.a."},
                     },
                 },
@@ -2971,7 +2970,6 @@ class TestAddSegmentation:
                 },
                 "RoiResponses": {
                     "my_seg": {
-                        "plane_segmentation_metadata_key": "my_seg",
                         "raw": {"name": "RoiResponseSeries", "description": "Raw traces", "unit": "n.a."},
                     },
                 },
@@ -3041,11 +3039,9 @@ class TestAddSegmentation:
                 },
                 "RoiResponses": {
                     "seg_a": {
-                        "plane_segmentation_metadata_key": "seg_a",
                         "raw": {"name": "RoiResponseSeriesA", "description": "Raw A", "unit": "n.a."},
                     },
                     "seg_b": {
-                        "plane_segmentation_metadata_key": "seg_b",
                         "raw": {"name": "RoiResponseSeriesB", "description": "Raw B", "unit": "n.a."},
                     },
                 },
@@ -3108,7 +3104,54 @@ class TestAddSegmentation:
         assert metadata == metadata_before, "Metadata was mutated"
 
     def test_no_roi_responses_metadata(self):
-        """Segmentation with no RoiResponses metadata: only PlaneSegmentation written, no traces."""
+        """When no RoiResponses metadata is provided but extractor has traces, write with placeholder metadata."""
+        nwbfile = mock_NWBFile()
+        num_rois = 5
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10,
+            num_rois=num_rois,
+            num_rows=15,
+            num_columns=15,
+        )
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Cell ROIs",
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
+        )
+
+        # PlaneSegmentation exists with correct metadata
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        assert "PlaneSegmentation" in image_segmentation.plane_segmentations
+        plane_seg = image_segmentation.plane_segmentations["PlaneSegmentation"]
+        assert plane_seg.description == "Cell ROIs"
+        assert len(plane_seg.id) == num_rois
+
+        # Fluorescence container created with placeholder trace names
+        fluorescence = ophys_module["Fluorescence"]
+        expected_placeholder_names = {"RoiResponseSeries", "DfOverF", "Neuropil", "Deconvolved"}
+        assert set(fluorescence.roi_response_series.keys()) == expected_placeholder_names
+
+        # Verify traces are linked to the correct PlaneSegmentation
+        for series in fluorescence.roi_response_series.values():
+            roi_table_region = series.rois
+            assert roi_table_region.table is plane_seg
+
+    def test_no_roi_responses_no_traces(self):
+        """When no RoiResponses metadata and no traces, only PlaneSegmentation is written."""
         nwbfile = mock_NWBFile()
         num_rois = 5
         segmentation_extractor = generate_dummy_segmentation_extractor(
@@ -3148,8 +3191,46 @@ class TestAddSegmentation:
         assert plane_seg.description == "Cell ROIs"
         assert len(plane_seg.id) == num_rois
 
-        # No Fluorescence container since no RoiResponses metadata
+        # No Fluorescence container since no traces and no RoiResponses metadata
         assert "Fluorescence" not in ophys_module.data_interfaces
+
+    def test_roi_responses_metadata_but_no_traces_raises(self):
+        """When RoiResponses metadata is provided but extractor has no traces, raise an error."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10,
+            num_rois=5,
+            num_rows=15,
+            num_columns=15,
+            has_raw_signal=False,
+            has_dff_signal=False,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmented ROIs",
+                    },
+                },
+                "RoiResponses": {
+                    "my_seg": {
+                        "raw": {"name": "RoiResponseSeries", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        with pytest.raises(ValueError, match="no trace data"):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
 
     def test_shared_device_two_imaging_planes(self):
         """Two segmentations with different imaging planes that share the same device."""
@@ -3199,11 +3280,9 @@ class TestAddSegmentation:
                 },
                 "RoiResponses": {
                     "seg_a": {
-                        "plane_segmentation_metadata_key": "seg_a",
                         "raw": {"name": "RoiResponseSeriesA", "description": "Raw A", "unit": "n.a."},
                     },
                     "seg_b": {
-                        "plane_segmentation_metadata_key": "seg_b",
                         "raw": {"name": "RoiResponseSeriesB", "description": "Raw B", "unit": "n.a."},
                     },
                 },
@@ -3261,11 +3340,9 @@ class TestAddSegmentation:
                 },
                 "RoiResponses": {
                     "first": {
-                        "plane_segmentation_metadata_key": "first",
                         "raw": {"name": "RoiResponseSeriesFirst", "unit": "n.a."},
                     },
                     "second": {
-                        "plane_segmentation_metadata_key": "second",
                         "raw": {"name": "RoiResponseSeriesSecond", "unit": "n.a."},
                     },
                 },
@@ -3344,11 +3421,9 @@ class TestAddSegmentation:
                 },
                 "RoiResponses": {
                     "seg_a": {
-                        "plane_segmentation_metadata_key": "seg_a",
                         "raw": {"name": "RoiResponseSeriesA", "unit": "n.a."},
                     },
                     "seg_b": {
-                        "plane_segmentation_metadata_key": "seg_b",
                         "raw": {"name": "RoiResponseSeriesB", "unit": "n.a."},
                     },
                 },
@@ -3414,7 +3489,6 @@ class TestAddSegmentation:
                 },
                 "RoiResponses": {
                     "my_seg": {
-                        "plane_segmentation_metadata_key": "my_seg",
                         "raw": {"name": "RoiResponseSeries"},
                     },
                 },
