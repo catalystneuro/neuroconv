@@ -134,32 +134,26 @@ def _get_ophys_metadata_placeholders():
                 "plane_segmentation_metadata_key": default_metadata_key,
                 "raw": {
                     "name": "RoiResponseSeries",
-                    "description": "Array of raw fluorescence traces.",
                     "unit": "n.a.",
                 },
                 "deconvolved": {
                     "name": "Deconvolved",
-                    "description": "Array of deconvolved traces.",
                     "unit": "n.a.",
                 },
                 "neuropil": {
                     "name": "Neuropil",
-                    "description": "Array of neuropil traces.",
                     "unit": "n.a.",
                 },
                 "denoised": {
                     "name": "Denoised",
-                    "description": "Array of denoised traces.",
                     "unit": "n.a.",
                 },
                 "baseline": {
                     "name": "Baseline",
-                    "description": "Array of baseline traces.",
                     "unit": "n.a.",
                 },
                 "dff": {
                     "name": "DfOverF",
-                    "description": "Array of df/F traces.",
                     "unit": "n.a.",
                 },
             },
@@ -183,7 +177,6 @@ def get_full_ophys_metadata():
         "my_microscope": {
             "name": "Microscope",
             "description": "Two-photon microscope",
-            "manufacturer": "Thorlabs",
         },
     }
 
@@ -483,6 +476,18 @@ def _add_plane_segmentation_to_nwbfile(
         The NWBFile with the added PlaneSegmentation.
     """
     plane_seg_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key].copy()
+
+    # Validate required fields
+    required_fields = ["description"]
+    missing_fields = [field for field in required_fields if field not in plane_seg_metadata]
+    if missing_fields:
+        default_plane_seg = _get_ophys_metadata_placeholders()["Ophys"]["PlaneSegmentations"]["default_metadata_key"]
+        placeholder_hint = "\n".join(f"  {field}: {default_plane_seg[field]!r}" for field in missing_fields)
+        raise ValueError(
+            f"Plane segmentation metadata is missing required fields.\n"
+            f"For a complete NWB file, the following fields should be provided. "
+            f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
+        )
 
     # Resolve imaging plane
     imaging_plane_metadata_key = plane_seg_metadata.pop("imaging_plane_metadata_key", None)
