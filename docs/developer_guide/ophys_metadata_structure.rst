@@ -134,6 +134,16 @@ The complete ophys metadata structure:
                         "description": "Deconvolved activity",
                         "unit": "n.a."
                     },
+                    "denoised": {
+                        "name": "Denoised",
+                        "description": "Denoised activity",
+                        "unit": "n.a."
+                    },
+                    "baseline": {
+                        "name": "Baseline",
+                        "description": "Baseline fluorescence",
+                        "unit": "n.a."
+                    },
                     "dff": {
                         "name": "DfOverF",
                         "description": "Delta F over F",
@@ -188,17 +198,30 @@ intentionally share or customize metadata keys.
 Key Propagation
 ~~~~~~~~~~~~~~~
 
-The ``metadata_key`` propagates to all components created by an interface:
+The ``metadata_key`` parameter determines the entry point for the interface's **primary object**.
+For imaging interfaces, this is the MicroscopySeries; for segmentation interfaces, this is the
+PlaneSegmentation and RoiResponses. Linked objects (ImagingPlane, Device) are resolved through
+their own ``_metadata_key`` references, which may point to different entries.
 
-- ``metadata["Devices"][metadata_key]`` - The imaging device
-- ``metadata["Ophys"]["ImagingPlanes"][metadata_key]`` - The imaging plane
-- ``metadata["Ophys"]["MicroscopySeries"][metadata_key]`` - The microscopy series
+For an imaging interface with ``metadata_key="visual_cortex"``:
 
-For segmentation interfaces:
+- ``metadata["Ophys"]["MicroscopySeries"]["visual_cortex"]`` - The primary object (direct lookup via ``metadata_key``)
+- ``metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]`` - Resolved via ``imaging_plane_metadata_key`` inside the MicroscopySeries entry
+- ``metadata["Devices"][device_metadata_key]`` - Resolved via ``device_metadata_key`` inside the ImagingPlane entry
 
-- ``metadata["Ophys"]["PlaneSegmentations"][metadata_key]`` - The plane segmentation
-- ``metadata["Ophys"]["RoiResponses"][metadata_key]`` - The ROI response traces (raw, neuropil, dff, etc.)
-- ``metadata["Ophys"]["SegmentationImages"][metadata_key]`` - Summary images
+For a segmentation interface with ``metadata_key="suite2p_analysis"``:
+
+- ``metadata["Ophys"]["PlaneSegmentations"]["suite2p_analysis"]`` - Direct lookup via ``metadata_key``
+- ``metadata["Ophys"]["RoiResponses"]["suite2p_analysis"]`` - Direct lookup via the same ``metadata_key``
+- ``metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]`` - Resolved via ``imaging_plane_metadata_key`` inside the PlaneSegmentation entry
+- ``metadata["Devices"][device_metadata_key]`` - Resolved via ``device_metadata_key`` inside the ImagingPlane entry
+- ``metadata["Ophys"]["SegmentationImages"]["suite2p_analysis"]`` - Summary images
+
+In the simplest case, all these keys happen to be the same value (the interface's ``metadata_key``),
+which is what ``get_metadata()`` produces by default. But the indirection through ``_metadata_key``
+fields allows different components to reference shared resources. For example, two segmentation
+pipelines can point their ``imaging_plane_metadata_key`` to the same ImagingPlane entry, and two
+imaging planes can point their ``device_metadata_key`` to the same Device entry.
 
 
 Single ImageSegmentation Container
@@ -249,12 +272,14 @@ the series type at conversion time:
 Unified RoiResponses
 ~~~~~~~~~~~~~~~~~~~~
 
-All ROI trace types (raw fluorescence, neuropil, deconvolved, df/f) are stored under a single
-``RoiResponses`` key in metadata. This consolidates what NWB core splits into separate
-``Fluorescence`` and ``DfOverF`` containers.
+All ROI trace types (raw fluorescence, neuropil, deconvolved, denoised, baseline, df/f) are
+stored under a single ``RoiResponses`` key in metadata. This consolidates what NWB core splits
+into separate ``Fluorescence`` and ``DfOverF`` containers.
 
-NeuroConv internally maps traces to the appropriate NWB containers based on trace type when
-writing the NWB file.
+At write time, all traces are written as ``RoiResponseSeries`` inside a single ``Fluorescence``
+container, without splitting into ``Fluorescence`` and ``DfOverF``. This follows the direction
+of `nwb-schema#616 <https://github.com/NeurodataWithoutBorders/nwb-schema/issues/616>`_ and
+matches ndx-microscopy's single-container pattern (``MicroscopyResponseSeriesContainer``).
 
 
 Alignment with ndx-microscopy
