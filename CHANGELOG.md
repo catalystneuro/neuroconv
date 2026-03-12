@@ -20,6 +20,7 @@
 * Fixed `get_json_schema_from_method_signature` to resolve PEP 563 string annotations (from `from __future__ import annotations`) before passing them to pydantic. This affected any interface defined in a module with deferred annotations (e.g. `MiniscopeConverter`, or external subclasses from SpikeInterface). [PR #1670](https://github.com/catalystneuro/neuroconv/pull/1670)
 
 ## Features
+* Added `metadata_key` support to imaging interfaces (`BaseImagingExtractorInterface`, `TiffImagingInterface`, `Hdf5ImagingInterface`, `SbxImagingInterface`) and `use_new_metadata_format` parameter to `get_metadata()` for dict-based metadata pipeline. [PR #1694](https://github.com/catalystneuro/neuroconv/pull/1694)
 * Added dict-based metadata pipeline for imaging in `roiextractors.py`, supporting the new `MicroscopySeries`, `ImagingPlanes`, and `Devices` metadata format keyed by `metadata_key`. Old list-based functions are preserved (renamed with `_old_list_format` suffix) and dispatched automatically when `metadata_key` is not provided. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
 * Added dict-based metadata pipeline for segmentation in `roiextractors.py` (`_add_plane_segmentation_to_nwbfile`, `_add_roi_response_traces_to_nwbfile`) with dual routing in `add_segmentation_to_nwbfile`. Masks are written in the extractor's native format and all traces go into a single `Fluorescence` container. [PR #1692](https://github.com/catalystneuro/neuroconv/pull/1692)
 
