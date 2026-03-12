@@ -74,6 +74,7 @@ from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.spikeglx.spikeglxsyncchannelinterface import SpikeGLXSyncChannelInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 from .ecephys.whitematter.whitematterdatainterface import WhiteMatterRecordingInterface
+from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -157,6 +158,7 @@ interface_list = [
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
     WhiteMatterRecordingInterface,
+    XClustSortingInterface,
     # Icephys
     AbfInterface,
     # Ophys
