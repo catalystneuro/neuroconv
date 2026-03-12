@@ -33,6 +33,27 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
     def test_all_conversion_checks(self):
         pass
 
+    def check_extracted_metadata(self, metadata: dict):
+        """MockImagingInterface does not extract ophys metadata from the source, so the Ophys section is empty.
+
+        See https://github.com/catalystneuro/neuroconv/issues/1557"""
+        assert "NWBFile" in metadata
+        assert "Ophys" not in metadata
+        assert "Devices" not in metadata
+
+    def test_metadata_key_passed_to_add_imaging(self, setup_interface):
+        from unittest.mock import patch
+
+        interface = MockImagingInterface(metadata_key="test_key")
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+
+        with patch("neuroconv.tools.roiextractors.add_imaging_to_nwbfile") as mock_add:
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+            mock_add.assert_called_once()
+            call_kwargs = mock_add.call_args[1]
+            assert call_kwargs["metadata_key"] == "test_key"
+
 
 class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
