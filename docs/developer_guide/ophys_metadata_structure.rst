@@ -402,7 +402,17 @@ The rules are:
         "device_metadata_key": "shared_microscope",
     }
 
+Note that device keys (and imaging plane keys) are independent of any interface's ``metadata_key``.
+They can be any arbitrary string, as shown by ``"shared_microscope"`` above, which does not
+correspond to any interface's key. No interface "owns" the device; it is created at write time by
+whichever interface first follows the reference chain to it.
+
 Because only referenced entries are written to the NWB file, the metadata dict can hold all
 possible components (e.g. in a shared YAML) and the ``_metadata_key`` links control which ones
-are actually used for each conversion. This way, when dealing with multiple conversions that use
-the same script, the metadata keys decide programmatically what to write.
+are actually used for each conversion. This enables a workflow where a single YAML file contains
+the full metadata for a project (all devices, imaging planes, etc.) and is shared across sessions
+in a multi-session conversion script. For each session, the conversion code sets the
+``_metadata_key`` references programmatically to select which components to write and how to link
+them. For example, different sessions might link their imaging planes to different devices, or
+different segmentation runs might reference different imaging planes, all from the same shared
+metadata file.
