@@ -69,7 +69,7 @@ def _is_dict_based_metadata(metadata: dict) -> bool:
 
     ophys = metadata.get("Ophys", {})
 
-    dict_based_keys = {"ImagingPlanes", "MicroscopySeries", "PlaneSegmentations", "RoiResponses", "SegmentationImages"}
+    dict_based_keys = {"ImagingPlanes", "MicroscopySeries", "PlaneSegmentations", "RoiResponses"}
     if dict_based_keys & ophys.keys():
         return True
 
