@@ -22,6 +22,7 @@
 ## Features
 * Added dict-based metadata pipeline for imaging in `roiextractors.py`, supporting the new `MicroscopySeries`, `ImagingPlanes`, and `Devices` metadata format keyed by `metadata_key`. Old list-based functions are preserved (renamed with `_old_list_format` suffix) and dispatched automatically when `metadata_key` is not provided. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
 * Added dict-based metadata pipeline for segmentation in `roiextractors.py` (`_add_plane_segmentation_to_nwbfile`, `_add_roi_response_traces_to_nwbfile`) with dual routing in `add_segmentation_to_nwbfile`. Masks are written in the extractor's native format and all traces go into a single `Fluorescence` container. [PR #1692](https://github.com/catalystneuro/neuroconv/pull/1692)
+* Added summary images (mean, correlation) to the dict-based segmentation pipeline via `_add_summary_images_to_nwbfile`. Images are written to a shared `SegmentationImages` container in the ophys processing module, with per-image metadata configurable through `metadata["Ophys"]["SegmentationImages"]`. [PR #1695](https://github.com/catalystneuro/neuroconv/pull/1695)
 
 ## Improvements
 * Added array-like protocol methods (`shape`, `ndim`, `__len__`, `__getitem__`) to all data chunk iterators (`SliceableDataChunkIterator`, `SpikeInterfaceRecordingDataChunkIterator`, `ImagingExtractorDataChunkIterator`, `VideoDataChunkIterator`). [PR #1673](https://github.com/catalystneuro/neuroconv/pull/1673)
