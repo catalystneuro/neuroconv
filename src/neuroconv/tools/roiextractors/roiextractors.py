@@ -621,8 +621,19 @@ def _add_roi_response_traces_to_nwbfile(
         return nwbfile
 
     # Use user-provided metadata or fall back to placeholders
+    user_provided_roi_responses_metadata = user_provided_roi_responses and metadata_key != "default_metadata_key"
     if user_provided_roi_responses:
         roi_responses_metadata = roi_responses[metadata_key].copy()
+        if user_provided_roi_responses_metadata:
+            requested_traces = set(roi_responses_metadata.keys())
+            available_traces = set(traces_to_add.keys())
+            missing_traces = requested_traces - available_traces
+            if missing_traces:
+                warnings.warn(
+                    f"RoiResponses metadata specifies traces {missing_traces} "
+                    f"but the segmentation extractor has no data for them. "
+                    f"These traces will be skipped."
+                )
     else:
         roi_responses_metadata = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
 
