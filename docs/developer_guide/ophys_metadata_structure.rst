@@ -198,7 +198,7 @@ intentionally share or customize metadata keys.
 Key Propagation
 ~~~~~~~~~~~~~~~
 
-The ``metadata_key`` parameter determines the entry point for the interface's **primary object**.
+The ``metadata_key`` parameter determines the entry point for the interface's **primary object(s)**.
 For imaging interfaces, this is the MicroscopySeries; for segmentation interfaces, this is the
 PlaneSegmentation and RoiResponses. Linked objects (ImagingPlane, Device) are resolved through
 their own ``_metadata_key`` references, which may point to different entries.
@@ -301,7 +301,7 @@ This makes the eventual transition smoother for users.
 Linking and Object Creation
 ---------------------------
 
-Each interface's goal is to create a main NWB object. For example, an imaging interface creates
+Each interface's goal is to create its **primary object(s)** in NWB. For example, an imaging interface creates
 a MicroscopySeries (e.g. TwoPhotonSeries, OnePhotonSeries). The metadata specifies attributes
 of that object (name, description, unit, etc.) but also its linked objects: an ImagingPlane for
 the series, and in turn a Device for the ImagingPlane.
