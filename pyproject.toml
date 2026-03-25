@@ -130,7 +130,7 @@ behavior = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.103.0",
+    "spikeinterface>=0.104.0",
     "neo>=0.14.3",
 ]
 alphaomega = [
@@ -455,7 +455,7 @@ known-first-party = ["neuroconv"]
 [tool.codespell]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
-ignore-words-list = 'assertin,sortings,Tye'
+ignore-words-list = 'assertin,sortings,Tye,trough'
 
 [dependency-groups]
 test = [
@@ -477,7 +477,7 @@ docs = [
     "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.102.2",  # Needed for the API documentation
+    "spikeinterface>=0.104.0",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
 ]
 

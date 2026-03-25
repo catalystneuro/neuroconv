@@ -1,6 +1,7 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Bumped minimum spikeinterface version to `>=0.104.0`. Updated template metric names in unit property descriptions (`halfwidth` to `trough_half_width`/`peak_half_width`, `peak_to_valley` to `peak_to_trough_duration`). [PR #1697](https://github.com/catalystneuro/neuroconv/pull/1697)
 * Removed the deprecated `plane_name` and `fallback_sampling_frequency` parameters from `ScanImageImagingInterface`. Use `plane_index` instead of `plane_name`. [PR #1688](https://github.com/catalystneuro/neuroconv/pull/1688)
 * Changed the default value of `interleave_slice_samples` in `ScanImageImagingInterface` from `True` to `False`. [PR #1688](https://github.com/catalystneuro/neuroconv/pull/1688)
 * Removed the deprecated `extractor` property and `get_extractor()` method from `BaseExtractorInterface`. Use `get_extractor_class()` instead. [PR #1681](https://github.com/catalystneuro/neuroconv/pull/1681)
@@ -22,10 +23,13 @@
 ## Features
 * Added `XClustSortingInterface` for converting XClust (.CEL) spike sorting data, using the `XClustSortingExtractor` from SpikeInterface. [PR #1691](https://github.com/catalystneuro/neuroconv/pull/1691)
 * Added dict-based metadata pipeline for imaging in `roiextractors.py`, supporting the new `MicroscopySeries`, `ImagingPlanes`, and `Devices` metadata format keyed by `metadata_key`. Old list-based functions are preserved (renamed with `_old_list_format` suffix) and dispatched automatically when `metadata_key` is not provided. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)
+* Added dict-based metadata pipeline for segmentation in `roiextractors.py` (`_add_plane_segmentation_to_nwbfile`, `_add_roi_response_traces_to_nwbfile`) with dual routing in `add_segmentation_to_nwbfile`. Masks are written in the extractor's native format and all traces go into a single `Fluorescence` container. [PR #1692](https://github.com/catalystneuro/neuroconv/pull/1692)
+* Added summary images (mean, correlation) to the dict-based segmentation pipeline via `_add_summary_images_to_nwbfile`. Images are written to a shared `SegmentationImages` container in the ophys processing module, with per-image metadata configurable through `metadata["Ophys"]["SegmentationImages"]`. [PR #1695](https://github.com/catalystneuro/neuroconv/pull/1695)
 
 ## Improvements
 * Added array-like protocol methods (`shape`, `ndim`, `__len__`, `__getitem__`) to all data chunk iterators (`SliceableDataChunkIterator`, `SpikeInterfaceRecordingDataChunkIterator`, `ImagingExtractorDataChunkIterator`, `VideoDataChunkIterator`). [PR #1673](https://github.com/catalystneuro/neuroconv/pull/1673)
 * Added tests for `OnePhotonSeries`, `processing/ophys` container, and non-iterative write to `TestAddImaging` (dict-based metadata pipeline). [PR #1685](https://github.com/catalystneuro/neuroconv/pull/1685)
+* Added functional tests to `TestAddSegmentation` for image masks, ROI properties, timestamp handling (regular, irregular, sampling frequency fallback), trace data values, ROI table regions, and iterator options propagation. Added a warning when user-provided `RoiResponses` metadata references traces the extractor does not have. [PR #1693](https://github.com/catalystneuro/neuroconv/pull/1693)
 * Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
 
 # v0.9.3 (February 19, 2026)

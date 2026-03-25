@@ -2199,7 +2199,7 @@ class TestWriteSortingAnalyzer(TestCase):
         self.assertIn("waveform_mean", nwbfile.units.colnames)
         self.assertIn("waveform_sd", nwbfile.units.colnames)
         if test_properties:
-            self.assertIn("peak_to_valley", nwbfile.units.colnames)
+            self.assertIn("peak_to_trough_duration", nwbfile.units.colnames)
             self.assertIn("isi_violations_ratio", nwbfile.units.colnames)
 
         # test that electrode table has been saved
