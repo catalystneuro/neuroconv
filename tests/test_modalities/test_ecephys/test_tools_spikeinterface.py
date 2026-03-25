@@ -29,9 +29,8 @@ from neuroconv.tools.spikeinterface import (
     add_recording_as_spatial_series_to_nwbfile,
     add_recording_as_time_series_to_nwbfile,
     add_recording_to_nwbfile,
+    add_sorting_analyzer_to_nwbfile,
     add_sorting_to_nwbfile,
-    write_recording_to_nwbfile,
-    write_sorting_analyzer_to_nwbfile,
 )
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
@@ -506,22 +505,8 @@ class TestWriteRecording(unittest.TestCase):
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
 
-    def test_default_values_single_segment(self):
-        """This test that the names are written appropriately for the single segment case (numbers not added)"""
-        write_recording_to_nwbfile(
-            recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        assert "ElectricalSeriesRaw" in acquisition_module
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-
-        extracted_data = electrical_series.data[:]
-        expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
-        np.testing.assert_array_almost_equal(expected_data, extracted_data)
-
     def test_write_multiple_segments(self):
-        write_recording_to_nwbfile(
+        add_recording_to_nwbfile(
             recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
         )
 
@@ -2199,7 +2184,7 @@ class TestWriteSortingAnalyzer(TestCase):
         self.assertIn("waveform_mean", nwbfile.units.colnames)
         self.assertIn("waveform_sd", nwbfile.units.colnames)
         if test_properties:
-            self.assertIn("peak_to_valley", nwbfile.units.colnames)
+            self.assertIn("peak_to_trough_duration", nwbfile.units.colnames)
             self.assertIn("isi_violations_ratio", nwbfile.units.colnames)
 
         # test that electrode table has been saved
@@ -2218,38 +2203,50 @@ class TestWriteSortingAnalyzer(TestCase):
 
     def test_analyzer_single_segment(self):
         """This tests that the analyzer is written appropriately for the single segment case"""
-        write_sorting_analyzer_to_nwbfile(
-            sorting_analyzer=self.single_segment_analyzer, nwbfile=self.nwbfile, write_electrical_series=True
+        add_recording_to_nwbfile(
+            recording=self.single_segment_analyzer.recording,
+            nwbfile=self.nwbfile,
+        )
+        add_sorting_analyzer_to_nwbfile(
+            sorting_analyzer=self.single_segment_analyzer,
+            nwbfile=self.nwbfile,
         )
         self._test_analyzer_write(self.single_segment_analyzer, self.nwbfile)
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
 
     def test_analyzer_single_segment_sparse(self):
         """This tests that the analyzer is written appropriately for the single segment case"""
-        write_sorting_analyzer_to_nwbfile(
-            sorting_analyzer=self.single_segment_analyzer_sparse, nwbfile=self.nwbfile, write_electrical_series=True
+        add_recording_to_nwbfile(
+            recording=self.single_segment_analyzer_sparse.recording,
+            nwbfile=self.nwbfile,
+        )
+        add_sorting_analyzer_to_nwbfile(
+            sorting_analyzer=self.single_segment_analyzer_sparse,
+            nwbfile=self.nwbfile,
         )
         self._test_analyzer_write(self.single_segment_analyzer_sparse, self.nwbfile)
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
 
     def test_analyzer_multiple_segments(self):
         """This tests that the analyzer is written appropriately for the multi segment case"""
-        write_sorting_analyzer_to_nwbfile(
-            sorting_analyzer=self.multi_segment_analyzer, nwbfile=self.nwbfile, write_electrical_series=False
+        add_sorting_analyzer_to_nwbfile(
+            sorting_analyzer=self.multi_segment_analyzer,
+            nwbfile=self.nwbfile,
         )
         self._test_analyzer_write(self.multi_segment_analyzer, self.nwbfile)
 
     def test_analyzer_multiple_segments_sparse(self):
         """This tests that the analyzer is written appropriately for the multi segment case"""
-        write_sorting_analyzer_to_nwbfile(
-            sorting_analyzer=self.multi_segment_analyzer_sparse, nwbfile=self.nwbfile, write_electrical_series=False
+        add_sorting_analyzer_to_nwbfile(
+            sorting_analyzer=self.multi_segment_analyzer_sparse,
+            nwbfile=self.nwbfile,
         )
         self._test_analyzer_write(self.multi_segment_analyzer_sparse, self.nwbfile)
 
     def test_write_subset_units(self):
         """This tests that the analyzer is sliced properly based on unit_ids"""
         subset_unit_ids = self.single_segment_analyzer.unit_ids[::2]
-        write_sorting_analyzer_to_nwbfile(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.single_segment_analyzer, nwbfile=self.nwbfile, unit_ids=subset_unit_ids
         )
         self._test_analyzer_write(self.analyzer_slice, self.nwbfile, test_properties=False)
@@ -2257,23 +2254,25 @@ class TestWriteSortingAnalyzer(TestCase):
         self.assertEqual(len(self.nwbfile.units), len(subset_unit_ids))
         self.assertTrue(all(str(unit_id) in self.nwbfile.units["unit_name"][:] for unit_id in subset_unit_ids))
 
-    def test_write_recordingless_to_write_recording_to_nwbfile(self):
+    def test_write_recordingless_to_add_sorting_analyzer(self):
         """This tests that the analyzer is written properly in recordingless mode"""
-        write_sorting_analyzer_to_nwbfile(
+        add_recording_to_nwbfile(
+            recording=self.analyzer_recless_recording,
+            nwbfile=self.nwbfile,
+        )
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
             recording=self.analyzer_recless_recording,
-            write_electrical_series=True,
         )
         self._test_analyzer_write(self.analyzer_recless, self.nwbfile, test_properties=False)
 
         # check that not passing the recording raises and Exception
         with self.assertRaises(Exception) as context:
-            write_sorting_analyzer_to_nwbfile(
+            add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.analyzer_recless,
                 nwbfile=self.nwbfile,
                 recording=None,
-                write_electrical_series=True,
             )
 
     def test_write_multiple_probes_without_electrical_series(self):
@@ -2281,18 +2280,16 @@ class TestWriteSortingAnalyzer(TestCase):
         # we write the first set of waveforms as belonging to group 0
         original_channel_groups = self.analyzer_recless_recording.get_channel_groups()
         self.analyzer_recless_recording.set_channel_groups([0] * len(self.analyzer_recless_recording.channel_ids))
-        write_sorting_analyzer_to_nwbfile(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
-            write_electrical_series=False,
             recording=self.analyzer_recless_recording,
         )
         # now we set new channel groups to mimic a different probe and call the function again
         self.analyzer_recless_recording.set_channel_groups([1] * len(self.analyzer_recless_recording.channel_ids))
-        write_sorting_analyzer_to_nwbfile(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
-            write_electrical_series=False,
             recording=self.analyzer_recless_recording,
         )
         # check that we have 2 groups
@@ -2322,26 +2319,32 @@ class TestWriteSortingAnalyzer(TestCase):
                 ElectricalSeriesRaw2=dict(name="ElectricalSeriesRaw2", description="lfp series"),
             )
         )
-        add_electrical_series_kwargs1b = dict(es_key="ElectricalSeriesRaw1")
-        write_sorting_analyzer_to_nwbfile(
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+            es_key="ElectricalSeriesRaw1",
+        )
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
-            write_electrical_series=True,
             metadata=metadata,
-            add_electrical_series_kwargs=add_electrical_series_kwargs1b,
         )
         self.assertEqual(len(self.nwbfile.electrodes), len(recording.channel_ids))
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
 
         # now we set new channel groups to mimic a different probe and call the function again
         self.single_segment_analyzer.recording.set_channel_groups([1] * len(recording.channel_ids))
-        add_electrical_series_kwargs2_to_add_recording_to_nwbfile = dict(es_key="ElectricalSeriesRaw2")
-        write_sorting_analyzer_to_nwbfile(
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+            es_key="ElectricalSeriesRaw2",
+        )
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
-            write_electrical_series=True,
             metadata=metadata,
-            add_electrical_series_kwargs=add_electrical_series_kwargs2_to_add_recording_to_nwbfile,
         )
         # check that we have 2 groups
         self.assertEqual(len(self.nwbfile.electrode_groups), 2)
@@ -2366,7 +2369,7 @@ class TestWriteSortingAnalyzer(TestCase):
         """This tests that analyzer is correctly written even if the 'group' property is not available"""
         groups = self.single_segment_analyzer.recording.get_channel_groups()
         self.single_segment_analyzer.recording.delete_property("group")
-        write_sorting_analyzer_to_nwbfile(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
@@ -2376,7 +2379,7 @@ class TestWriteSortingAnalyzer(TestCase):
         """This tests that the 'group_name' property is correctly used to instantiate electrode groups"""
         num_channels = len(self.single_segment_analyzer.recording.channel_ids)
         self.single_segment_analyzer.recording.set_property("group_name", ["my-fancy-group"] * num_channels)
-        write_sorting_analyzer_to_nwbfile(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
@@ -2387,7 +2390,7 @@ class TestWriteSortingAnalyzer(TestCase):
     def test_units_table_name(self):
         """This tests the units naming exception"""
         with self.assertRaises(Exception) as context:
-            write_sorting_analyzer_to_nwbfile(
+            add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
                 write_as="units",
@@ -2396,11 +2399,14 @@ class TestWriteSortingAnalyzer(TestCase):
 
     def test_analyzer_channel_sliced(self):
         """This tests that the analyzer is written appropriately when the recording has been channel-sliced"""
-        write_sorting_analyzer_to_nwbfile(
+        add_recording_to_nwbfile(
+            recording=self.analyzer_rec_sliced,
+            nwbfile=self.nwbfile,
+        )
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.analyzer_channel_sliced,
             nwbfile=self.nwbfile,
             recording=self.analyzer_rec_sliced,
-            write_electrical_series=True,
         )
         self._test_analyzer_write(self.analyzer_channel_sliced, self.nwbfile, test_properties=True)
         # check unit electrodes are all in the sliced channels

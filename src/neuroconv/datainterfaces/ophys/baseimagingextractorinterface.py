@@ -203,7 +203,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             The type of iterator for chunked data writing.
             'v2': Uses iterative write with control over chunking and progress bars.
             None: Loads all data into memory before writing (not recommended for large datasets).
-            Note: 'v1' is deprecated and will be removed on or after March 2026.
         iterator_options : dict, optional
             Options for controlling the iterative write process (buffer size, progress bars).
             See the `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
