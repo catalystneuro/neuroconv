@@ -1835,8 +1835,6 @@ def write_recording_to_nwbfile(
         if verbose:
             print(f"NWB file saved at {nwbfile_path}!")
 
-        return None
-
 
 def _add_units_table_to_nwbfile(
     sorting: BaseSorting,
@@ -2434,8 +2432,6 @@ def write_sorting_to_nwbfile(
         if verbose:
             print(f"NWB file saved at {nwbfile_path}!")
 
-        return None
-
 
 def add_sorting_analyzer_to_nwbfile(
     sorting_analyzer: SortingAnalyzer,
@@ -2785,8 +2781,6 @@ def write_sorting_analyzer_to_nwbfile(
 
         if verbose:
             print(f"NWB file saved at {nwbfile_path}!")
-
-        return None
 
 
 def _get_electrode_group_indices(recording, nwbfile):
