@@ -1,6 +1,11 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Bumped minimum spikeinterface version to `>=0.104.0`. Updated template metric names in unit property descriptions (`halfwidth` to `trough_half_width`/`peak_half_width`, `peak_to_valley` to `peak_to_trough_duration`). [PR #1697](https://github.com/catalystneuro/neuroconv/pull/1697)
+* Made `nwbfile_path` a required parameter in `write_recording_to_nwbfile`, `write_sorting_to_nwbfile`, and `write_sorting_analyzer_to_nwbfile`. To add data to an in-memory NWBFile, use `add_recording_to_nwbfile`, `add_sorting_to_nwbfile`, or `add_sorting_analyzer_to_nwbfile` instead. [PR #1689](https://github.com/catalystneuro/neuroconv/pull/1689)
+* `write_recording_to_nwbfile`, `write_sorting_to_nwbfile`, and `write_sorting_analyzer_to_nwbfile` now return `None` in append mode (`append_on_disk_nwbfile=True`) instead of the NWBFile object. [PR #1689](https://github.com/catalystneuro/neuroconv/pull/1689)
+* Removed the deprecated `iterator_opts` parameter from `write_recording_to_nwbfile`. Use `iterator_options` instead. [PR #1689](https://github.com/catalystneuro/neuroconv/pull/1689)
+* Removed stale `iterator_type='v1'` deprecation note from `BaseImagingExtractorInterface.add_to_nwbfile` docstring. [PR #1689](https://github.com/catalystneuro/neuroconv/pull/1689)
 * Removed the deprecated `plane_name` and `fallback_sampling_frequency` parameters from `ScanImageImagingInterface`. Use `plane_index` instead of `plane_name`. [PR #1688](https://github.com/catalystneuro/neuroconv/pull/1688)
 * Changed the default value of `interleave_slice_samples` in `ScanImageImagingInterface` from `True` to `False`. [PR #1688](https://github.com/catalystneuro/neuroconv/pull/1688)
 * Removed the deprecated `extractor` property and `get_extractor()` method from `BaseExtractorInterface`. Use `get_extractor_class()` instead. [PR #1681](https://github.com/catalystneuro/neuroconv/pull/1681)
@@ -16,6 +21,7 @@
 * Removed the deprecated `time_series_name` parameter from `add_recording_as_time_series_to_nwbfile`. Use `metadata_key` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
 
 ## Bug Fixes
+* Fixed compatibility with upcoming roiextractors changes ([roiextractors PR #562](https://github.com/catalystneuro/roiextractors/pull/562)) by removing calls to the deprecated `get_num_channels` and `get_channel_names` methods on imaging extractors, and making the volumetric chunking test dtype-aware. [PR #1696](https://github.com/catalystneuro/neuroconv/pull/1696)
 * Fixed `NotImplementedError` when using `ndx-events>=0.2.2` with `configure_and_write_nwbfile`. The version check for ndx-events `Events` types was too restrictive (`<= 0.2.1`), causing files with `Events` objects to fail during backend configuration. [PR #1682](https://github.com/catalystneuro/neuroconv/pull/1682)
 * Fixed `get_json_schema_from_method_signature` to resolve PEP 563 string annotations (from `from __future__ import annotations`) before passing them to pydantic. This affected any interface defined in a module with deferred annotations (e.g. `MiniscopeConverter`, or external subclasses from SpikeInterface). [PR #1670](https://github.com/catalystneuro/neuroconv/pull/1670)
 
