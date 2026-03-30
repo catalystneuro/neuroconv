@@ -24,6 +24,7 @@
 * Fixed compatibility with upcoming roiextractors changes ([roiextractors PR #562](https://github.com/catalystneuro/roiextractors/pull/562)) by removing calls to the deprecated `get_num_channels` and `get_channel_names` methods on imaging extractors, and making the volumetric chunking test dtype-aware. [PR #1696](https://github.com/catalystneuro/neuroconv/pull/1696)
 * Fixed `NotImplementedError` when using `ndx-events>=0.2.2` with `configure_and_write_nwbfile`. The version check for ndx-events `Events` types was too restrictive (`<= 0.2.1`), causing files with `Events` objects to fail during backend configuration. [PR #1682](https://github.com/catalystneuro/neuroconv/pull/1682)
 * Fixed `get_json_schema_from_method_signature` to resolve PEP 563 string annotations (from `from __future__ import annotations`) before passing them to pydantic. This affected any interface defined in a module with deferred annotations (e.g. `MiniscopeConverter`, or external subclasses from SpikeInterface). [PR #1670](https://github.com/catalystneuro/neuroconv/pull/1670)
+* Removed --no-quarantine from wine install. [PR #1699](https://github.com/catalystneuro/neuroconv/pull/1699)
 
 ## Features
 * Added `OpenEphysBinaryConverter` for automatic multi-stream OpenEphys binary conversion, following the `SpikeGLXConverterPipe` pattern. Auto-discovers streams and routes neural data to `OpenEphysBinaryRecordingInterface` and analog (ADC/NI-DAQ) data to `OpenEphysBinaryAnalogInterface`. [PR #1686](https://github.com/catalystneuro/neuroconv/pull/1686)
