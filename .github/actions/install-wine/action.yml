@@ -34,7 +34,7 @@ runs:
 
         # Use gcenx/wine tap which works better on Apple Silicon
         brew tap gcenx/wine
-        brew install --cask --no-quarantine gcenx/wine/wine-crossover
+        brew install --cask gcenx/wine/wine-crossover
       shell: bash
 
     - name: Skip installation on Windows
