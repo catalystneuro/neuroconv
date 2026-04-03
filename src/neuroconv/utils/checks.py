@@ -9,5 +9,7 @@ def calculate_regular_series_rate(series: ArrayLike | NDArray, tolerance_decimal
     diff_ts = np.diff(series)
     rounded_diff_ts = diff_ts.round(decimals=tolerance_decimals)
     uniq_diff_ts = np.unique(rounded_diff_ts)
-    rate = 1.0 / diff_ts[0] if len(uniq_diff_ts) == 1 else None
+    if len(uniq_diff_ts) != 1 or diff_ts[0] == 0:
+        return None
+    rate = 1.0 / diff_ts[0]
     return rate
