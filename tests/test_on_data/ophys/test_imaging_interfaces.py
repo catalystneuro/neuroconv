@@ -323,11 +323,12 @@ class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        """SbxImagingInterface extracts device provenance (Scanbox description) but no other ophys metadata."""
+        """SbxImagingInterface extracts device provenance and format-specific series description."""
         assert "NWBFile" in metadata
-        assert "Ophys" not in metadata
         assert "Devices" in metadata
         assert metadata["Devices"][self.interface.metadata_key]["description"] == "Scanbox imaging"
+        series_metadata = metadata["Ophys"]["MicroscopySeries"][self.interface.metadata_key]
+        assert series_metadata["description"] == "Imaging data acquired with Scanbox."
 
 
 class TestSbxImagingInterfaceSBX(ImagingExtractorInterfaceTestMixin):

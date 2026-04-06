@@ -563,6 +563,14 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         metadata["NWBFile"]["session_start_time"] = session_start_time
+        if use_new_metadata_format:
+            metadata["Ophys"] = {
+                "MicroscopySeries": {
+                    self.metadata_key: {
+                        "description": "Imaging data from mock generator.",
+                    },
+                },
+            }
         return metadata
 
     def add_to_nwbfile(

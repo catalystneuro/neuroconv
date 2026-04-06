@@ -34,12 +34,13 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
         pass
 
     def check_extracted_metadata(self, metadata: dict):
-        """MockImagingInterface does not extract ophys metadata from the source, so the Ophys section is empty.
+        """MockImagingInterface returns a mock-specific series description.
 
         See https://github.com/catalystneuro/neuroconv/issues/1557"""
         assert "NWBFile" in metadata
-        assert "Ophys" not in metadata
         assert "Devices" not in metadata
+        series_metadata = metadata["Ophys"]["MicroscopySeries"][self.interface.metadata_key]
+        assert series_metadata["description"] == "Imaging data from mock generator."
 
     def test_metadata_key_passed_to_add_imaging(self, setup_interface):
         from unittest.mock import patch
