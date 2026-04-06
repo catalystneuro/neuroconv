@@ -1315,6 +1315,17 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
             == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [  -456.221198   -456.221198 -11608.54    ], rotation: [0. 0. 0. 1.], labeling_origin: [     0.        0.   -11474.34]"
         )
 
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata["Devices"] == {
+            metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
+        }
+        assert metadata["Ophys"] == {
+            "MicroscopySeries": {
+                metadata_key: {"description": "Imaging data acquired with Femtonics MESc."},
+            },
+        }
+
 
 class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
     """Test FemtonicsImagingInterface with p30.mesc file."""
@@ -1384,6 +1395,17 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
             imaging_plane["description"]
             == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [  -456.221198   -456.221198 -11425.51    ], rotation: [0. 0. 0. 1.], labeling_origin: [     0.        0.   -11281.89]"
         )
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata["Devices"] == {
+            metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
+        }
+        assert metadata["Ophys"] == {
+            "MicroscopySeries": {
+                metadata_key: {"description": "Imaging data acquired with Femtonics MESc."},
+            },
+        }
 
 
 # class TestFemtonicsImagingInterfaceSingleChannel(ImagingExtractorInterfaceTestMixin):

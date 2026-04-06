@@ -30,6 +30,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         munit_name: Optional[str] = None,
         channel_name: Optional[str] = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Initialize the FemtonicsImagingInterface.
@@ -38,6 +39,10 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         ----------
         file_path : FilePath
             Path to the .mesc file.
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to a key derived from
+            session_name, munit_name, and channel_name.
         session_name : str, optional
             Name of the MSession to use (e.g., "MSession_0", "MSession_1").
             If None, and there is only one session, then the first available session will be selected automatically. Otherwise this to be specified with the desired session.
@@ -99,6 +104,16 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         self._munit_name = munit_name
         self._channel_name = channel_name
 
+        if metadata_key is None:
+            parts = ["femtonics_imaging"]
+            if session_name is not None:
+                parts.append(session_name)
+            if munit_name is not None:
+                parts.append(munit_name)
+            if channel_name is not None:
+                parts.append(f"channel_{channel_name}")
+            metadata_key = "_".join(parts)
+
         # Initialize the extractor directly with string parameters
         # The extractor now handles validation and selection internally
         super().__init__(
@@ -107,6 +122,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             munit_name=munit_name,
             channel_name=channel_name,
             verbose=verbose,
+            metadata_key=metadata_key,
         )
 
     @classmethod
@@ -119,14 +135,21 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("photon_series_type", None)
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Extract metadata specific to Femtonics imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata with Femtonics provenance.
 
         Returns
         -------
@@ -134,9 +157,45 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing extracted metadata including device information,
             optical channels, imaging plane details, and acquisition parameters.
         """
-        metadata = super().get_metadata()
-
         femtonics_metadata = self.imaging_extractor._get_metadata()
+
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+
+            session_start_time = femtonics_metadata.get("session_start_time")
+            if session_start_time:
+                metadata["NWBFile"]["session_start_time"] = session_start_time
+            session_uuid = femtonics_metadata.get("session_uuid")
+            if session_uuid:
+                metadata["NWBFile"]["session_id"] = session_uuid
+            experimenter_info = femtonics_metadata.get("experimenter_info", {})
+            if experimenter_info.get("username"):
+                metadata["NWBFile"]["experimenter"] = [experimenter_info["username"]]
+
+            # Device with version info
+            device_entry = {}
+            version_info = femtonics_metadata.get("mesc_version_info", {})
+            version_parts = []
+            if version_info.get("version"):
+                version_parts.append(f"version: {version_info['version']}")
+            if version_info.get("revision"):
+                version_parts.append(f"revision: {version_info['revision']}")
+            if version_parts:
+                device_entry["description"] = f"Femtonics MESc ({', '.join(version_parts)})"
+            if device_entry:
+                metadata["Devices"] = {self.metadata_key: device_entry}
+
+            metadata["Ophys"] = {
+                "MicroscopySeries": {
+                    self.metadata_key: {
+                        "description": "Imaging data acquired with Femtonics MESc.",
+                    },
+                },
+            }
+
+            return metadata
+
+        metadata = super().get_metadata()
 
         # Extract pixel size information for imaging plane
         pixel_size_info = femtonics_metadata.get("pixel_size_micrometers")
