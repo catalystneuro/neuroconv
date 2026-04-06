@@ -559,7 +559,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata(self, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         metadata["NWBFile"]["session_start_time"] = session_start_time

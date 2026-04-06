@@ -81,7 +81,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             metadata_key=metadata_key,
         )
 
-    def get_metadata(self, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Get metadata for the Scanbox imaging data.
 
