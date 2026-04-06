@@ -1065,6 +1065,16 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert ops["imaging_plane"] == "ImagingPlane"
         assert ops["dimension"] == [128, 128]
 
+    def check_extracted_metadata(self, metadata: dict):
+        """Minimal Inscopix file has no device serial/software, so no Devices entry."""
+        metadata_key = self.interface.metadata_key
+        assert "Devices" not in metadata
+        assert metadata["Ophys"] == {
+            "MicroscopySeries": {
+                metadata_key: {"description": "Imaging data acquired with Inscopix nVista."},
+            },
+        }
+
 
 @skip_on_python_313
 @skip_on_darwin_arm64
@@ -1213,6 +1223,16 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
             ops["imaging_plane"] == "ImagingPlane"
         )  # Default metadata because this was not included in the source metadata
         assert ops["dimension"] == [3, 4]
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Minimal Inscopix file has no device serial/software, so no Devices entry."""
+        metadata_key = self.interface.metadata_key
+        assert "Devices" not in metadata
+        assert metadata["Ophys"] == {
+            "MicroscopySeries": {
+                metadata_key: {"description": "Imaging data acquired with Inscopix nVista."},
+            },
+        }
 
 
 class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):

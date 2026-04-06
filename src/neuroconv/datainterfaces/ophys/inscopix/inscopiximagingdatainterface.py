@@ -45,6 +45,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FilePath,
         verbose: bool = False,
+        metadata_key: str | None = None,
         **kwargs,
     ):
         """
@@ -54,6 +55,9 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             Path to the .isxd Inscopix file.
         verbose : bool, optional
             If True, outputs additional information during processing.
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to "inscopix_imaging".
         **kwargs : dict, optional
             Additional keyword arguments passed to the parent class.
 
@@ -65,16 +69,36 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         # Check for multiplane configuration before proceeding
         is_file_multiplane(file_path)
 
+        if metadata_key is None:
+            metadata_key = "inscopix_imaging"
+
         kwargs.setdefault("photon_series_type", "OnePhotonSeries")
         super().__init__(
             file_path=file_path,
             verbose=verbose,
+            metadata_key=metadata_key,
             **kwargs,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def _get_extractor_metadata(self):
+        """Extract and organize metadata from the Inscopix extractor."""
+        extractor_metadata = self.imaging_extractor._get_metadata()
+        return dict(
+            session=extractor_metadata.get("session", {}),
+            device=extractor_metadata.get("device", {}),
+            subject=extractor_metadata.get("subject", {}),
+            session_start_time=extractor_metadata.get("session_start_time"),
+        )
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata with Inscopix provenance.
 
         Returns
         -------
@@ -82,17 +106,52 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             photon series configuration, and Inscopix-specific acquisition parameters.
         """
-        # Get metadata from parent (already configured for OnePhotonSeries)
+        source = self._get_extractor_metadata()
+        session_info = source["session"]
+        device_info = source["device"]
+        subject_info = source["subject"]
+        session_start_time = source["session_start_time"]
+
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+
+            if session_start_time:
+                metadata["NWBFile"]["session_start_time"] = session_start_time
+            if session_info.get("session_name"):
+                metadata["NWBFile"]["session_id"] = session_info["session_name"]
+            if session_info.get("experimenter_name"):
+                metadata["NWBFile"]["experimenter"] = [session_info["experimenter_name"]]
+
+            # Device
+            device_entry = {}
+            if device_info.get("device_name"):
+                device_entry["name"] = device_info["device_name"]
+            description_parts = []
+            if device_info.get("device_serial_number"):
+                description_parts.append(f"Serial: {device_info['device_serial_number']}")
+            if device_info.get("acquisition_software_version"):
+                description_parts.append(f"Software: {device_info['acquisition_software_version']}")
+            if description_parts:
+                device_entry["description"] = f"Inscopix Microscope ({', '.join(description_parts)})"
+            if device_entry:
+                metadata["Devices"] = {self.metadata_key: device_entry}
+
+            # MicroscopySeries
+            metadata["Ophys"] = {
+                "MicroscopySeries": {
+                    self.metadata_key: {
+                        "description": "Imaging data acquired with Inscopix nVista.",
+                    },
+                },
+            }
+
+            # Subject
+            self._add_subject_metadata(metadata, subject_info)
+
+            return metadata
+
+        # Old list-based path
         metadata = super().get_metadata()
-
-        extractor = self.imaging_extractor
-        extractor_metadata = extractor._get_metadata()
-
-        # Extract individual components
-        session_info = extractor_metadata.get("session", {})
-        device_info = extractor_metadata.get("device", {})
-        subject_info = extractor_metadata.get("subject", {})
-        session_start_time = extractor_metadata.get("session_start_time")
 
         # Session start time
         if session_start_time:
@@ -149,11 +208,16 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 )
                 imaging_plane_metadata["description"] = f"{current_description} ({'; '.join(acquisition_details)})"
 
-        # Subject information
+        self._add_subject_metadata(metadata, subject_info)
+
+        return metadata
+
+    @staticmethod
+    def _add_subject_metadata(metadata: DeepDict, subject_info: dict) -> None:
+        """Add subject metadata from Inscopix extractor to the metadata dict."""
         subject_metadata = {}
         has_any_subject_data = False
 
-        # Subject ID
         if subject_info and subject_info.get("animal_id"):
             subject_metadata["subject_id"] = subject_info["animal_id"]
             has_any_subject_data = True
@@ -163,8 +227,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
 
         if subject_info and subject_info.get("species"):
             species_raw = subject_info["species"]
-            # If it contains genotype info or matches NWB format, put it in species; otherwise strain
-            # e.g., "CaMKIICre"
             if " " in species_raw and species_raw[0].isupper() and species_raw.split()[1][0].islower():
                 species_value = species_raw
             else:
@@ -177,14 +239,12 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 subject_metadata["strain"] = strain_value
                 has_any_subject_data = True
 
-        # Sex mapping
         sex_mapping = {"m": "M", "male": "M", "f": "F", "female": "F", "u": "U", "unknown": "U"}
         if subject_info and subject_info.get("sex"):
             mapped_sex = sex_mapping.get(subject_info["sex"].lower(), "U")
             subject_metadata["sex"] = mapped_sex
             has_any_subject_data = True
 
-        # Additional subject fields
         if subject_info:
             if subject_info.get("description"):
                 subject_metadata["description"] = subject_info["description"]
@@ -196,7 +256,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 subject_metadata["weight"] = str(subject_info["weight"])
                 has_any_subject_data = True
 
-        # Add Subject if we have ANY subject information, filling required fields with defaults
         if has_any_subject_data:
             if "subject_id" not in subject_metadata:
                 subject_metadata["subject_id"] = "Unknown"
@@ -209,8 +268,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 metadata["Subject"].update(subject_metadata)
             else:
                 metadata["Subject"] = subject_metadata
-
-        return metadata
 
     def add_to_nwbfile(
         self,
