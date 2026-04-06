@@ -353,7 +353,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
 
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.optical_channel_metadata = dict(
-            name="Ch2",
+            name="OpticalChannel",
             emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
@@ -434,7 +434,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001"]))
         cls.optical_channel_metadata = dict(
-            name="Ch2",
+            name="OpticalChannel",
             emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
@@ -510,7 +510,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001", "Ch2_000002"]))
         cls.optical_channel_metadata = dict(
-            name="Ch2",
+            name="OpticalChannel",
             emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
@@ -601,7 +601,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.8.64.200")
         cls.available_streams = dict(channel_streams=["Ch1", "Ch2"], plane_streams=dict())
         cls.optical_channel_metadata = dict(
-            name="Ch2",
+            name="OpticalChannel",
             emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
@@ -684,7 +684,7 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         cls = request.cls
         cls.device_metadata = dict(name="Microscope")
         cls.optical_channel_metadata = dict(
-            name="OpticalChannelDefault",
+            name="OpticalChannel",
             emission_lambda=np.nan,
             description="An optical channel of the microscope.",
         )
@@ -1037,7 +1037,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         # Optical channel checks
         optical_channel = imaging_plane["optical_channel"][0]
         assert (
-            optical_channel["name"] == "channel_0"
+            optical_channel["name"] == "OpticalChannel"
         )  # Default metadata because this was not included in the source metadata
         assert (
             optical_channel["description"] == "An optical channel of the microscope."
@@ -1184,7 +1184,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         # Optical channel checks
         optical_channel = imaging_plane["optical_channel"][0]
         assert (
-            optical_channel["name"] == "channel_0"
+            optical_channel["name"] == "OpticalChannel"
         )  # Default metadata because this was not included in the source metadata
         assert (
             optical_channel["description"] == "An optical channel of the microscope."
@@ -1249,7 +1249,7 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
 
         # Check optical channel metadata
         optical_channel = imaging_plane["optical_channel"][0]
-        assert optical_channel["name"] == "UG"
+        assert optical_channel["name"] == "OpticalChannel"
         assert (
             optical_channel["description"]
             == "An optical channel of the microscope. PMT voltage: 65.0V, Warmup time: -0.2s"
@@ -1319,7 +1319,7 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 
         # Check optical channel metadata
         optical_channel = imaging_plane["optical_channel"][0]
-        assert optical_channel["name"] == "UG"
+        assert optical_channel["name"] == "OpticalChannel"
         assert (
             optical_channel["description"]
             == "An optical channel of the microscope. PMT voltage: 65.0V, Warmup time: -0.2s"

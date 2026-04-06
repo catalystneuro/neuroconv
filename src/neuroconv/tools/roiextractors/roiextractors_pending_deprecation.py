@@ -174,8 +174,7 @@ def get_nwb_imaging_metadata(
     # Get fresh ophys defaults
     metadata = _get_default_ophys_metadata_old_metadata_list()
 
-    # TODO: get_num_channels is deprecated, remove
-    channel_name_list = imgextractor.get_channel_names() or ["OpticalChannel"]
+    channel_name_list = ["OpticalChannel"]
 
     # Update optical channels based on extractor data
     optical_channels = []
@@ -529,8 +528,8 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
     """
     metadata = _get_default_segmentation_metadata()
     # Optical Channel name:
-    for i in range(sgmextractor.get_num_channels()):
-        ch_name = sgmextractor.get_channel_names()[i]
+    channel_names = sgmextractor._channel_names
+    for i, ch_name in enumerate(channel_names):
         if i == 0:
             metadata["Ophys"]["ImagingPlane"][0]["optical_channel"][i]["name"] = ch_name
         else:
