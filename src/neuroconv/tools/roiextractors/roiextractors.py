@@ -6,6 +6,8 @@ import numpy as np
 import psutil
 from pydantic import FilePath
 from pynwb import NWBFile
+from pynwb.base import Images
+from pynwb.image import GrayscaleImage
 from pynwb.ophys import (
     Fluorescence,
     ImageSegmentation,
@@ -157,6 +159,16 @@ def _get_ophys_metadata_placeholders():
                 },
             },
         },
+        "SegmentationImages": {
+            default_metadata_key: {
+                "correlation": {
+                    "name": "correlation_image",
+                },
+                "mean": {
+                    "name": "mean_image",
+                },
+            },
+        },
     }
 
     return metadata
@@ -233,6 +245,18 @@ def get_full_ophys_metadata():
                     "name": "DfOverF",
                     "description": "Delta F over F",
                     "unit": "n.a.",
+                },
+            },
+        },
+        "SegmentationImages": {
+            "my_segmentation": {
+                "correlation": {
+                    "name": "correlation_image",
+                    "description": "Correlation image.",
+                },
+                "mean": {
+                    "name": "mean_image",
+                    "description": "Mean image.",
                 },
             },
         },
@@ -621,8 +645,19 @@ def _add_roi_response_traces_to_nwbfile(
         return nwbfile
 
     # Use user-provided metadata or fall back to placeholders
+    user_provided_roi_responses_metadata = user_provided_roi_responses and metadata_key != "default_metadata_key"
     if user_provided_roi_responses:
         roi_responses_metadata = roi_responses[metadata_key].copy()
+        if user_provided_roi_responses_metadata:
+            requested_traces = set(roi_responses_metadata.keys())
+            available_traces = set(traces_to_add.keys())
+            missing_traces = requested_traces - available_traces
+            if missing_traces:
+                warnings.warn(
+                    f"RoiResponses metadata specifies traces {missing_traces} "
+                    f"but the segmentation extractor has no data for them. "
+                    f"These traces will be skipped."
+                )
     else:
         roi_responses_metadata = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
 
@@ -714,6 +749,90 @@ def _add_roi_response_traces_to_nwbfile(
     return nwbfile
 
 
+def _add_summary_images_to_nwbfile(
+    *,
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: dict,
+    metadata_key: str,
+) -> NWBFile:
+    """
+    Add summary images (e.g. mean and correlation) to an NWBFile.
+
+    Images are added to a single ``Images`` container named ``"SegmentationImages"``
+    in the ``ophys`` processing module. If the extractor has no images, this is a no-op.
+
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor containing image data.
+    nwbfile : NWBFile
+        The NWB file to add images to.
+    metadata : dict
+        The full metadata dictionary. Image metadata is looked up under
+        ``metadata["Ophys"]["SegmentationImages"][metadata_key]``.
+    metadata_key : str
+        The key identifying which segmentation's image metadata to use.
+
+    Returns
+    -------
+    NWBFile
+        The NWBFile with the added summary images.
+    """
+    images_dict = segmentation_extractor.get_images_dict()
+    images_to_add = {img_name: img for img_name, img in images_dict.items() if img is not None}
+    if not images_to_add:
+        return nwbfile
+
+    # Look up per-image metadata for this segmentation
+    segmentation_images_metadata = metadata.get("Ophys", {}).get("SegmentationImages", {})
+    user_provided_images_metadata = (
+        metadata_key in segmentation_images_metadata and metadata_key != "default_metadata_key"
+    )
+    if metadata_key in segmentation_images_metadata:
+        images_metadata = segmentation_images_metadata[metadata_key]
+        if user_provided_images_metadata:
+            requested_images = set(images_metadata.keys())
+            available_images = set(images_to_add.keys())
+            missing_images = requested_images - available_images
+            if missing_images:
+                warnings.warn(
+                    f"SegmentationImages metadata specifies images {missing_images} "
+                    f"but the segmentation extractor has no data for them. "
+                    f"These images will be skipped."
+                )
+    else:
+        placeholders = _get_ophys_metadata_placeholders()
+        images_metadata = placeholders["Ophys"]["SegmentationImages"]["default_metadata_key"]
+
+    # Get or create the single shared Images container
+    container_name = "SegmentationImages"
+    container_description = "Summary images for segmentation."
+    ophys_module = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
+
+    if container_name not in ophys_module.data_interfaces:
+        ophys_module.add(Images(name=container_name, description=container_description))
+    image_collection = ophys_module.data_interfaces[container_name]
+
+    for img_type, img_data in images_to_add.items():
+        # Skip image types not in metadata (metadata controls what gets written)
+        if img_type not in images_metadata:
+            continue
+
+        image_metadata = images_metadata[img_type]
+        image_name = image_metadata.get("name", img_type)
+        image_description = image_metadata.get("description", f"Summary image: {img_type}.")
+
+        # Skip if an image with this name already exists in the container
+        if image_name in image_collection.images:
+            continue
+
+        # NWB uses width x height (columns, rows); roiextractors uses height x width (rows, columns)
+        image_collection.add_image(GrayscaleImage(name=image_name, data=img_data.T, description=image_description))
+
+    return nwbfile
+
+
 def _add_segmentation_to_nwbfile(
     *,
     segmentation_extractor: SegmentationExtractor,
@@ -758,6 +877,13 @@ def _add_segmentation_to_nwbfile(
         metadata=metadata,
         metadata_key=metadata_key,
         iterator_options=iterator_options,
+    )
+
+    _add_summary_images_to_nwbfile(
+        segmentation_extractor=segmentation_extractor,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        metadata_key=metadata_key,
     )
 
     return nwbfile

@@ -24,6 +24,7 @@ from roiextractors.testing import (
     generate_dummy_segmentation_extractor,
 )
 
+from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.roiextractors import (
     _check_if_imaging_fits_into_memory,
@@ -277,6 +278,8 @@ class TestAddImagingPlane(TestCase):
         assert second_imaging_plane.name == second_imaging_plane_name
 
 
+# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
+# The dict-based equivalent is TestAddSegmentation.
 class TestAddImageSegmentation(unittest.TestCase):
     def setUp(self):
         self.session_start_time = datetime.now().astimezone()
@@ -332,6 +335,8 @@ def assert_masks_equal(mask: list[list[tuple[int, int, int]]], expected_mask: li
         assert_array_equal(mask[mask_ind], expected_mask[mask_ind])
 
 
+# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
+# The dict-based equivalent is TestAddSegmentation.
 class TestAddPlaneSegmentation(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -812,6 +817,8 @@ class TestAddPlaneSegmentation(TestCase):
             np.testing.assert_array_equal(plane_segmentation[prop].data, expected)
 
 
+# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
+# The dict-based equivalent is TestAddSegmentation.
 class TestAddFluorescenceTraces(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1240,6 +1247,8 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         assert plane_segmentation_name in image_segmentation.plane_segmentations
 
 
+# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
+# The dict-based equivalent is TestAddSegmentation.
 class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1767,6 +1776,7 @@ class TestAddPhotonSeries(TestCase):
         self.assertIn(shared_imaging_plane_name, self.nwbfile.imaging_planes)
 
 
+# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
 class TestAddSummaryImages(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -2852,6 +2862,20 @@ class TestAddSegmentation:
         assert "Fluorescence" in ophys_module.data_interfaces
         assert "DfOverF" not in ophys_module.data_interfaces
 
+        # Summary images
+        default_images_metadata = placeholders["Ophys"]["SegmentationImages"][default_key]
+        assert "SegmentationImages" in ophys_module.data_interfaces
+        image_collection = ophys_module.data_interfaces["SegmentationImages"]
+
+        expected_images = {k: v for k, v in segmentation_extractor.get_images_dict().items() if v is not None}
+        assert len(image_collection.images) == len(expected_images)
+
+        for img_type, img_data in expected_images.items():
+            nwb_name = default_images_metadata[img_type]["name"]
+            nwb_image = image_collection.images[nwb_name]
+            assert nwb_image.name == nwb_name
+            np.testing.assert_array_equal(nwb_image.data, img_data.T)
+
     def test_full_metadata_specification(self):
         """Full metadata specification: device, imaging plane, and segmentation are created from user metadata."""
         nwbfile = mock_NWBFile()
@@ -2889,6 +2913,20 @@ class TestAddSegmentation:
         plane_seg = image_segmentation.plane_segmentations[plane_seg_metadata["name"]]
         assert plane_seg.description == plane_seg_metadata["description"]
         assert plane_seg.imaging_plane is plane
+
+        # Summary images
+        images_metadata = metadata["Ophys"]["SegmentationImages"][metadata_key]
+        image_collection = ophys_module.data_interfaces["SegmentationImages"]
+        images_dict = segmentation_extractor.get_images_dict()
+        expected_images = {k: v for k, v in images_dict.items() if v is not None}
+        assert len(image_collection.images) == len(expected_images)
+
+        for img_type, img_data in expected_images.items():
+            img_meta = images_metadata[img_type]
+            nwb_image = image_collection.images[img_meta["name"]]
+            assert nwb_image.name == img_meta["name"]
+            assert nwb_image.description == img_meta["description"]
+            np.testing.assert_array_equal(nwb_image.data, img_data.T)
 
     def test_no_imaging_plane_metadata_key(self):
         """PlaneSegmentation without imaging_plane_metadata_key: default plane created."""
@@ -3507,3 +3545,353 @@ class TestAddSegmentation:
                 metadata=metadata,
                 metadata_key="my_seg",
             )
+
+    def test_warns_when_metadata_specifies_missing_traces(self):
+        """Warning is emitted when RoiResponses metadata references traces the extractor doesn't have."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            has_neuropil_signal=False,
+            has_deconvolved_signal=False,
+        )
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmented ROIs",
+                    },
+                },
+                "RoiResponses": {
+                    "my_seg": {
+                        "raw": {"name": "RoiResponseSeries", "unit": "n.a."},
+                        "neuropil": {"name": "Neuropil", "unit": "n.a."},
+                        "deconvolved": {"name": "Deconvolved", "unit": "n.a."},
+                    },
+                },
+            },
+        }
+
+        with pytest.warns(UserWarning, match="RoiResponses metadata specifies traces"):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
+
+    def test_warns_when_metadata_specifies_missing_images(self):
+        """Warning is emitted when SegmentationImages metadata references image types the extractor doesn't have."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=20, has_summary_images=False
+        )
+        # Add only mean, not correlation
+        segmentation_extractor._summary_images["mean"] = np.random.rand(15, 20)
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "my_seg": {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmented ROIs",
+                    },
+                },
+                "SegmentationImages": {
+                    "my_seg": {
+                        "correlation": {"name": "corr_img", "description": "Correlation"},
+                        "mean": {"name": "mean_img", "description": "Mean"},
+                    },
+                },
+            },
+        }
+
+        with pytest.warns(UserWarning, match="SegmentationImages metadata specifies images"):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_collection = ophys_module.data_interfaces["SegmentationImages"]
+        assert len(image_collection.images) == 1
+        assert "mean_img" in image_collection.images
+
+    def test_image_masks_written_correctly(self):
+        """Mask data values match the extractor's get_roi_image_masks()."""
+        nwbfile = mock_NWBFile()
+        num_rois = 4
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rois=num_rois)
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        (plane_seg,) = image_segmentation.plane_segmentations.values()
+
+        image_masks = segmentation_extractor.get_roi_image_masks().T
+        for index in range(num_rois):
+            assert_array_equal(plane_seg["image_mask"][index], image_masks[index])
+
+    def test_roi_properties_written_as_columns(self):
+        """Custom properties added via set_property() appear as PlaneSegmentation columns."""
+        nwbfile = mock_NWBFile()
+        num_rois = 5
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rois=num_rois)
+
+        roi_ids = segmentation_extractor.get_roi_ids()
+        custom_float = np.arange(num_rois, dtype=np.float32) * 0.5
+        custom_bool = np.array([True, False, True, False, True])
+        custom_label = np.array(["A", "B", "A", "C", "B"], dtype=object)
+
+        segmentation_extractor.set_property("custom_float", custom_float, ids=roi_ids)
+        segmentation_extractor.set_property("custom_bool", custom_bool, ids=roi_ids)
+        segmentation_extractor.set_property("custom_label", custom_label, ids=roi_ids)
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        (plane_seg,) = image_segmentation.plane_segmentations.values()
+
+        for prop, expected in [
+            ("custom_float", custom_float),
+            ("custom_bool", custom_bool),
+            ("custom_label", custom_label),
+        ]:
+            assert prop in plane_seg
+            np.testing.assert_array_equal(plane_seg[prop].data, expected)
+
+    def test_traces_with_regular_timestamps(self):
+        """Regular timestamps produce rate/starting_time, not timestamps."""
+        nwbfile = mock_NWBFile()
+        num_samples = 5
+        times = np.arange(0, num_samples)
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_samples=num_samples)
+        segmentation_extractor.set_times(times)
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        fluorescence = ophys_module["Fluorescence"]
+        for series in fluorescence.roi_response_series.values():
+            assert series.rate == 1.0
+            assert series.starting_time == 0.0
+            assert series.timestamps is None
+
+    def test_traces_with_irregular_timestamps(self):
+        """Irregular timestamps are stored directly on the series."""
+        nwbfile = mock_NWBFile()
+        num_samples = 5
+        times = [0.0, 0.12, 0.15, 0.19, 0.1]
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_samples=num_samples)
+        segmentation_extractor.set_times(times)
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        fluorescence = ophys_module["Fluorescence"]
+        for series in fluorescence.roi_response_series.values():
+            assert series.rate is None
+            assert series.starting_time is None
+            assert_array_equal(series.timestamps.data, times)
+
+    def test_traces_without_timestamps_uses_sampling_frequency(self):
+        """When no timestamps are set, sampling frequency from the extractor is used."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        fluorescence = ophys_module["Fluorescence"]
+        expected_rate = segmentation_extractor.get_sampling_frequency()
+        for series in fluorescence.roi_response_series.values():
+            assert series.rate == expected_rate
+            assert series.starting_time == 0.0
+            assert series.timestamps is None
+
+    def test_trace_data_values_match_extractor(self):
+        """Trace data written to NWB matches the extractor's get_traces_dict()."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        fluorescence = ophys_module["Fluorescence"]
+        traces_dict = segmentation_extractor.get_traces_dict()
+        available_traces = [data for data in traces_dict.values() if data is not None]
+
+        assert len(fluorescence.roi_response_series) == len(available_traces)
+        for series in fluorescence.roi_response_series.values():
+            written_data = series.data.data.data
+            assert any(np.array_equal(written_data, trace) for trace in available_traces)
+
+    def test_roi_table_region_covers_all_rois(self):
+        """Each RoiResponseSeries references all ROIs and the correct PlaneSegmentation."""
+        nwbfile = mock_NWBFile()
+        num_rois = 7
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rois=num_rois)
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_segmentation = ophys_module["ImageSegmentation"]
+        (plane_seg,) = image_segmentation.plane_segmentations.values()
+        fluorescence = ophys_module["Fluorescence"]
+
+        for series in fluorescence.roi_response_series.values():
+            assert len(series.rois) == num_rois
+            assert series.rois.table is plane_seg
+
+    def test_iterator_options_propagation(self):
+        """Iterator options are passed through to the SliceableDataChunkIterator."""
+        nwbfile = mock_NWBFile()
+        num_rois = 3
+        num_samples = 10
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rois=num_rois, num_samples=num_samples)
+
+        chunk_shape = (num_samples // 2, num_rois)
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            iterator_options=dict(chunk_shape=chunk_shape),
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        fluorescence = ophys_module["Fluorescence"]
+        for series in fluorescence.roi_response_series.values():
+            assert isinstance(series.data, SliceableDataChunkIterator)
+            assert series.data.chunk_shape == chunk_shape
+
+    def test_summary_images_one_suppressed(self):
+        """One image is None in extractor, only the other is written."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=20
+        )
+        segmentation_extractor._summary_images["correlation"] = None
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_collection = ophys_module.data_interfaces["SegmentationImages"]
+        assert len(image_collection.images) == 1
+
+        placeholders = _get_ophys_metadata_placeholders()
+        mean_name = placeholders["Ophys"]["SegmentationImages"]["default_metadata_key"]["mean"]["name"]
+        assert mean_name in image_collection.images
+
+    def test_summary_images_none(self):
+        """Extractor has no summary images: no Images container created."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=20, has_summary_images=False
+        )
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        assert "SegmentationImages" not in ophys_module.data_interfaces
+
+    def test_summary_images_two_segmentations_shared_container(self):
+        """Two segmentation pipelines add images to the same container."""
+        nwbfile = mock_NWBFile()
+        seg_a = generate_dummy_segmentation_extractor(num_samples=10, num_rois=5, num_rows=15, num_columns=20)
+        seg_b = generate_dummy_segmentation_extractor(num_samples=10, num_rois=3, num_rows=15, num_columns=20)
+
+        shared_plane_key = "shared_plane"
+        metadata = {
+            "Devices": {
+                "dev": {"name": "MyDevice"},
+            },
+            "Ophys": {
+                "ImagingPlanes": {
+                    shared_plane_key: {
+                        "name": "SharedPlane",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6f",
+                        "location": "V1",
+                        "device_metadata_key": "dev",
+                        "optical_channel": [
+                            {"name": "Green", "emission_lambda": 525.0, "description": "Green channel"},
+                        ],
+                    },
+                },
+                "PlaneSegmentations": {
+                    "seg_a": {
+                        "name": "PlaneSegA",
+                        "description": "First segmentation",
+                        "imaging_plane_metadata_key": shared_plane_key,
+                    },
+                    "seg_b": {
+                        "name": "PlaneSegB",
+                        "description": "Second segmentation",
+                        "imaging_plane_metadata_key": shared_plane_key,
+                    },
+                },
+                "RoiResponses": {
+                    "seg_a": {
+                        "raw": {"name": "RoiResponseSeriesA", "description": "Raw A", "unit": "n.a."},
+                    },
+                    "seg_b": {
+                        "raw": {"name": "RoiResponseSeriesB", "description": "Raw B", "unit": "n.a."},
+                    },
+                },
+                "SegmentationImages": {
+                    "seg_a": {
+                        "correlation": {"name": "corr_a", "description": "Correlation A"},
+                        "mean": {"name": "mean_a", "description": "Mean A"},
+                    },
+                    "seg_b": {
+                        "correlation": {"name": "corr_b", "description": "Correlation B"},
+                        "mean": {"name": "mean_b", "description": "Mean B"},
+                    },
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=seg_a, nwbfile=nwbfile, metadata=metadata, metadata_key="seg_a"
+        )
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=seg_b, nwbfile=nwbfile, metadata=metadata, metadata_key="seg_b"
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_collection = ophys_module.data_interfaces["SegmentationImages"]
+        assert len(image_collection.images) == 4
+        assert "corr_a" in image_collection.images
+        assert "mean_a" in image_collection.images
+        assert "corr_b" in image_collection.images
+        assert "mean_b" in image_collection.images
