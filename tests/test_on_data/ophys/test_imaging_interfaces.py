@@ -52,8 +52,8 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         """TiffImagingInterface does not extract ophys metadata from the source, so the Ophys section is empty.
 
         See https://github.com/catalystneuro/neuroconv/issues/1557"""
-        assert "NWBFile" in metadata
         assert "Ophys" not in metadata
+        assert "Devices" not in metadata
 
 
 class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
@@ -313,8 +313,8 @@ class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
         """Hdf5ImagingInterface does not extract ophys metadata from the source, so the Ophys section is empty.
 
         See https://github.com/catalystneuro/neuroconv/issues/1557"""
-        assert "NWBFile" in metadata
         assert "Ophys" not in metadata
+        assert "Devices" not in metadata
 
 
 class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
@@ -324,11 +324,13 @@ class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         """SbxImagingInterface extracts device provenance and format-specific series description."""
-        assert "NWBFile" in metadata
-        assert "Devices" in metadata
-        assert metadata["Devices"][self.interface.metadata_key]["description"] == "Scanbox imaging"
-        series_metadata = metadata["Ophys"]["MicroscopySeries"][self.interface.metadata_key]
-        assert series_metadata["description"] == "Imaging data acquired with Scanbox."
+        metadata_key = self.interface.metadata_key
+        assert metadata["Devices"] == {metadata_key: {"description": "Scanbox imaging"}}
+        assert metadata["Ophys"] == {
+            "MicroscopySeries": {
+                metadata_key: {"description": "Imaging data acquired with Scanbox."},
+            },
+        }
 
 
 class TestSbxImagingInterfaceSBX(ImagingExtractorInterfaceTestMixin):

@@ -37,10 +37,13 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
         """MockImagingInterface returns a mock-specific series description.
 
         See https://github.com/catalystneuro/neuroconv/issues/1557"""
-        assert "NWBFile" in metadata
         assert "Devices" not in metadata
-        series_metadata = metadata["Ophys"]["MicroscopySeries"][self.interface.metadata_key]
-        assert series_metadata["description"] == "Imaging data from mock generator."
+        metadata_key = self.interface.metadata_key
+        assert metadata["Ophys"] == {
+            "MicroscopySeries": {
+                metadata_key: {"description": "Imaging data from mock generator."},
+            },
+        }
 
     def test_metadata_key_passed_to_add_imaging(self, setup_interface):
         from unittest.mock import patch
