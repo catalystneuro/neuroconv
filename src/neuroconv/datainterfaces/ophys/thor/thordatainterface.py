@@ -44,7 +44,12 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
 
     @validate_call
     def __init__(
-        self, file_path: FilePath, *args, channel_name: str | None = None, verbose: bool = False
+        self,
+        file_path: FilePath,
+        *args,
+        channel_name: str | None = None,
+        verbose: bool = False,
+        metadata_key: str | None = None,
     ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Initialize reading of a TIFF file.
@@ -57,6 +62,10 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             Name of the channel to extract (must match name in Experiment.xml)
         verbose : bool, default: False
             If True, print verbose output
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to "thor_imaging"
+            or "thor_imaging_channel_{channel_name}" if channel_name is provided.
         """
         # Handle deprecated positional arguments
         if args:
@@ -85,7 +94,10 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             channel_name = positional_values.get("channel_name", channel_name)
             verbose = positional_values.get("verbose", verbose)
 
-        super().__init__(file_path=file_path, channel_name=channel_name, verbose=verbose)
+        if metadata_key is None:
+            metadata_key = f"thor_imaging_channel_{channel_name}" if channel_name is not None else "thor_imaging"
+
+        super().__init__(file_path=file_path, channel_name=channel_name, verbose=verbose, metadata_key=metadata_key)
         self.channel_name = channel_name
 
     @classmethod
@@ -98,14 +110,40 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("photon_series_type", None)
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def get_metadata(self) -> DeepDict:
+    def _get_session_start_time(self):
+        """Extract session start time from the experiment XML."""
+        xml_dict = self.imaging_extractor._experiment_xml_dict
+        thor_experiment = xml_dict["ThorImageExperiment"]
+        date_info = thor_experiment["Date"]
+        if isinstance(date_info, list):
+            first_entry_with_date = next((entry for entry in date_info if "@date" in entry), None)
+            unix_timestamps = first_entry_with_date["@uTime"]
+        else:
+            unix_timestamps = date_info["@uTime"]
+        return datetime.fromtimestamp(float(unix_timestamps), tz=timezone.utc)
+
+    def _get_device_description(self):
+        """Extract device description from the experiment XML."""
+        xml_dict = self.imaging_extractor._experiment_xml_dict
+        thor_experiment = xml_dict["ThorImageExperiment"]
+        software_version = thor_experiment["Software"]["@version"]
+        return f"ThorLabs 2P Microscope running ThorImageLS {software_version}"
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Retrieve the metadata for the Thor imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata with ThorImageLS provenance.
 
         Returns
         -------
@@ -113,27 +151,23 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             and photon series configuration.
         """
+        self.session_start_time = self._get_session_start_time()
+        device_description = self._get_device_description()
+
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+            metadata["NWBFile"]["session_start_time"] = self.session_start_time
+            metadata["Devices"] = {self.metadata_key: {"description": device_description}}
+            metadata["Ophys"] = {
+                "MicroscopySeries": {
+                    self.metadata_key: {
+                        "description": "Imaging data acquired with ThorImageLS.",
+                    },
+                },
+            }
+            return metadata
+
         metadata = super().get_metadata()
-
-        # Access the experiment XML dictionary from the extractor
-        xml_dict = self.imaging_extractor._experiment_xml_dict
-        thor_experiment = xml_dict["ThorImageExperiment"]
-
-        # Device metadata
-        software = thor_experiment["Software"]
-        software_version = software["@version"]
-        device_description = f"ThorLabs 2P Microscope running ThorImageLS {software_version}"
-
-        # Session start time
-        date_info = thor_experiment["Date"]
-        if isinstance(date_info, list):
-            # Locate the first entry that contains "date"
-            first_entry_with_date = next((entry for entry in date_info if "@date" in entry), None)
-            unix_timestamps = first_entry_with_date["@uTime"]
-        else:
-            unix_timestamps = date_info["@uTime"]
-
-        self.session_start_time = datetime.fromtimestamp(float(unix_timestamps), tz=timezone.utc)
         metadata["NWBFile"]["session_start_time"] = self.session_start_time
 
         metadata.setdefault("Ophys", {})["Device"] = [{"name": "ThorMicroscope", "description": device_description}]
