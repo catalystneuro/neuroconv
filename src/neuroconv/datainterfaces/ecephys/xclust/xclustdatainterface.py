@@ -67,9 +67,6 @@ class XClustSortingInterface(BaseSortingExtractorInterface):
         if folder_path is None and file_path_list is None:
             raise ValueError("Must specify either 'folder_path' or 'file_path_list'.")
 
-        if file_path_list is not None:
-            file_path_list = [str(p) for p in file_path_list]
-
         super().__init__(
             verbose=verbose,
             folder_path=folder_path,
