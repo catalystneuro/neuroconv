@@ -109,10 +109,6 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
         )
 
-        # Hack till roiextractors removes the get_num_channels method in check_imaging_equal.
-        # TODO: remove this once roiextractors 0.6.1
-        self.imaging_extractor.get_num_channels = lambda: 1  # Override to ensure only one channel is reported
-
     @classmethod
     def get_extractor_class(cls):
         from roiextractors import FemtonicsImagingExtractor
@@ -191,7 +187,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         if pmt_settings:
             imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
             optical_channels = imaging_plane.get("optical_channel", [])
-            channel_names = self.imaging_extractor.get_channel_names()
+            channel_names = [self._channel_name]
             for i, channel_name in enumerate(channel_names):
                 if channel_name in pmt_settings and i < len(optical_channels):
                     settings = pmt_settings[channel_name]
