@@ -31,6 +31,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         channel_names: ArrayType | None = None,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str | None = None,
     ):
         """
 
@@ -44,6 +45,9 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         metadata : dict, optional
         channel_names : list of str, optional
         verbose : bool, default: False
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to "hdf5_imaging".
         """
         # Handle deprecated positional arguments
         if args:
@@ -82,6 +86,9 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             verbose = positional_values.get("verbose", verbose)
             photon_series_type = positional_values.get("photon_series_type", photon_series_type)
 
+        if metadata_key is None:
+            metadata_key = "hdf5_imaging"
+
         super().__init__(
             file_path=file_path,
             mov_field=mov_field,
@@ -91,4 +98,5 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             channel_names=channel_names,
             verbose=verbose,
             photon_series_type=photon_series_type,
+            metadata_key=metadata_key,
         )
