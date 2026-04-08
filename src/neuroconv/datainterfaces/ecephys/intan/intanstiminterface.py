@@ -79,10 +79,23 @@ class IntanStimInterface(BaseDataInterface):
         )
         metadata["Devices"] = [intan_device]
 
-        channel_names = self.get_channel_names()
+        channel_names = [str(name) for name in self.get_channel_names()]
+
+        annotations = self.recording_extractor._annotations
+        stim_step_size = annotations.get("stim_step_size")
+        charge_recovery_mode = annotations.get("charge_recovery_mode")
+        amp_settle_mode = annotations.get("amp_settle_mode")
+        recovery_current_limit = annotations.get("recovery_current_limit")
+        recovery_target_voltage = annotations.get("recovery_target_voltage")
+
         description = (
             "Electrical stimulation current channels (RHS Stim/Recording System). "
-            f"Data are in Amperes. Channels are {channel_names} in that order."
+            f"Data are in Amperes. Channels are {channel_names} in that order. "
+            f"Stim step size: {stim_step_size} A, "
+            f"charge recovery mode: {charge_recovery_mode}, "
+            f"amplifier settle mode: {amp_settle_mode}, "
+            f"recovery current limit: {recovery_current_limit} A, "
+            f"recovery target voltage: {recovery_target_voltage} V."
         )
 
         metadata["TimeSeries"] = {
