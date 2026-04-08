@@ -340,10 +340,11 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         else:
             subject = None
 
+        edges = skeleton_metadata.get("edges")
         skeleton = Skeleton(
             name=skeleton_metadata["name"],
             nodes=skeleton_metadata["nodes"],
-            edges=np.array(skeleton_metadata["edges"]) if skeleton_metadata["edges"] else None,
+            edges=np.array(edges) if edges else None,
             subject=subject,
         )
 
