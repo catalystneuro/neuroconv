@@ -55,6 +55,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         num_planes: int = 1,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str | None = None,
     ):
         """
         Initialize reading of TIFF file(s).
@@ -85,6 +86,10 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
             Whether to print verbose output.
         photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, default: "TwoPhotonSeries"
             Type of photon series for NWB conversion.
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to "tiff_imaging",
+            or "tiff_imaging_channel_{channel_name}" if channel_name is provided.
 
         Notes
         -----
@@ -233,6 +238,9 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         if file_paths is None:
             raise ValueError("Either 'file_path' or 'file_paths' must be specified.")
 
+        if metadata_key is None:
+            metadata_key = f"tiff_imaging_channel_{channel_name}" if channel_name is not None else "tiff_imaging"
+
         super().__init__(
             file_paths=file_paths,
             sampling_frequency=sampling_frequency,
@@ -242,4 +250,5 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
             num_planes=num_planes,
             verbose=verbose,
             photon_series_type=photon_series_type,
+            metadata_key=metadata_key,
         )

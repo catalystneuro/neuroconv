@@ -36,8 +36,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         """
         Initialize and return the extractor instance for imaging interfaces.
 
-        Extends the base implementation to also remove the 'photon_series_type' parameter
-        which is specific to the imaging interface, not the extractor.
+        Extends the base implementation to also remove the 'photon_series_type' and
+        'metadata_key' parameters which are specific to the imaging interface, not the extractor.
 
         Parameters
         ----------
@@ -52,6 +52,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("photon_series_type", None)
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
@@ -61,6 +62,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str | None = None,
         **source_data,
     ):
 
@@ -71,6 +73,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.imaging_extractor: ImagingExtractor = self._extractor_instance
         self.verbose = verbose
         self.photon_series_type = photon_series_type
+        self.metadata_key = metadata_key
 
     def get_metadata_schema(
         self,
@@ -127,19 +130,29 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(
-        self,
-    ) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Retrieve the metadata for the imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns only NWBFile-level metadata (session_description, identifier,
+            etc.) without ophys keys. Ophys defaults are filled by ``add_imaging_to_nwbfile()``
+            internally.
 
         Returns
         -------
         DeepDict
-            Dictionary containing metadata including device information, imaging plane details,
-            and photon series configuration.
+            Dictionary containing metadata. When use_new_metadata_format is False, includes
+            device information, imaging plane details, and photon series configuration.
+            When True, includes only NWBFile basics.
         """
+        if use_new_metadata_format:
+            return super().get_metadata()
 
+        # Old list-based path (unchanged)
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
@@ -261,6 +274,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         else:
             imaging_extractor = self.imaging_extractor
 
+        # TODO: change to self.get_metadata(use_new_metadata_format=True) when all imaging interfaces are migrated
         metadata = metadata or self.get_metadata()
 
         add_imaging_to_nwbfile(
@@ -273,4 +287,5 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             always_write_timestamps=always_write_timestamps,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
+            metadata_key=self.metadata_key,
         )
