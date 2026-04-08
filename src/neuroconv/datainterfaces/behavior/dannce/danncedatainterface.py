@@ -17,8 +17,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".mat",)
     info = "Interface for DANNCE 3D pose estimation output data."
 
-    _timestamps = None
-
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
@@ -86,6 +84,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self.verbose = verbose
         self.pose_estimation_metadata_key = pose_estimation_metadata_key
         self._sampling_rate = sampling_rate
+        self._timestamps = None
 
         # Load data from .mat file
         self._load_dannce_data(file_path)
