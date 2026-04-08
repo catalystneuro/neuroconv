@@ -1,7 +1,6 @@
 from datetime import datetime
 
-import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import IntanStimInterface
 
@@ -11,130 +10,110 @@ except ImportError:
     from setup_paths import ECEPHY_DATA_PATH
 
 
-class TestIntanStimInterface:
-    """Test suite for IntanStimInterface."""
+class TestIntanStimInterfaceSingleFile:
+    """Single .rhs file format."""
 
-    def test_initialization_single_file_format(self):
-        """Test initialization with a single-file RHS recording containing stim channels."""
-        file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
-        interface = IntanStimInterface(file_path=file_path)
+    file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
 
-        assert interface._stream_name == "Stim channel"
-        assert interface.recording_extractor is not None
+    def test_conversion(self, tmp_path):
+        interface = IntanStimInterface(file_path=self.file_path)
 
-    def test_initialization_file_per_channel_format(self):
-        """Test initialization with a file-per-channel RHS recording."""
-        file_path = ECEPHY_DATA_PATH / "intan" / "test_fpc_stim_250327_151617" / "info.rhs"
-        interface = IntanStimInterface(file_path=file_path)
-
-        assert interface._stream_name == "Stim channel"
-        assert interface.recording_extractor is not None
-
-    def test_initialization_file_per_signal_format_multistim(self):
-        """Test initialization with a multi-stim file-per-signal RHS recording."""
-        file_path = (
-            ECEPHY_DATA_PATH / "intan" / "rhs_fpc_multistim_240514_082243" / "rhs_fpc_multistim_240514_082243.rhs"
-        )
-        interface = IntanStimInterface(file_path=file_path)
-
-        assert interface.recording_extractor is not None
-
-    def test_rhd_file_raises_error(self):
-        """Test that .rhd files raise a ValueError since stim channels are RHS-only."""
-        file_path = ECEPHY_DATA_PATH / "intan" / "intan_fps_test_231117_052500" / "info.rhd"
-
-        with pytest.raises(ValueError, match="only supports .rhs files"):
-            IntanStimInterface(file_path=file_path)
-
-    def test_channel_names_follow_stim_pattern(self):
-        """Test that channel names follow the {amplifier_channel}_STIM naming convention."""
-        file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
-        interface = IntanStimInterface(file_path=file_path)
         channel_names = interface.get_channel_names()
-
-        assert isinstance(channel_names, list)
-        assert len(channel_names) > 0
-        assert all(isinstance(name, str) for name in channel_names)
+        assert len(channel_names) == 128
         assert all(name.endswith("_STIM") for name in channel_names)
 
-    def test_channel_names_small_dataset(self):
-        """Test channel count for a small dataset with 4 stim channels."""
-        file_path = ECEPHY_DATA_PATH / "intan" / "test_fpc_stim_250327_151617" / "info.rhs"
-        interface = IntanStimInterface(file_path=file_path)
-        channel_names = interface.get_channel_names()
-
-        assert len(channel_names) == 4
-
-    def test_custom_metadata_key(self):
-        """Test that a custom metadata_key is accepted and stored."""
-        file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
-        custom_key = "MyStimTimeSeries"
-
-        interface = IntanStimInterface(file_path=file_path, metadata_key=custom_key)
-        assert interface.metadata_key == custom_key
-
-        metadata = interface.get_metadata()
-        assert "TimeSeries" in metadata
-        assert custom_key in metadata["TimeSeries"]
-
-    def test_get_metadata_structure(self):
-        """Test that get_metadata returns expected device and TimeSeries entries."""
-        file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
-        interface = IntanStimInterface(file_path=file_path)
-        metadata = interface.get_metadata()
-
-        assert "Devices" in metadata
-        assert "TimeSeries" in metadata
-
-        device = metadata["Devices"][0]
-        assert device["name"] == "Intan"
-        assert device["manufacturer"] == "Intan"
-        assert "RHS Stim/Recording System" in device["description"]
-
-        ts_meta = metadata["TimeSeries"][interface.metadata_key]
-        assert ts_meta["name"] == "TimeSeriesIntanStim"
-        assert "Amperes" in ts_meta["description"] or "amperes" in ts_meta["description"].lower()
-
-    def test_conversion_to_nwb_units_are_amperes(self, tmp_path):
-        """Test that converted NWB file stores stim data with unit='A' (Amperes)."""
-        file_path = ECEPHY_DATA_PATH / "intan" / "test_fpc_stim_250327_151617" / "info.rhs"
-        interface = IntanStimInterface(file_path=file_path)
-
         metadata = interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-
-        nwbfile_path = tmp_path / "intan_stim_test.nwb"
+        nwbfile_path = tmp_path / "stim.nwb"
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
+        ts = nwbfile.acquisition["TimeSeriesIntanStim"]
+        assert ts.unit == "A"
+        assert ts.data.shape == (18432, 128)
 
-            assert "TimeSeriesIntanStim" in nwbfile.acquisition
-            time_series = nwbfile.acquisition["TimeSeriesIntanStim"]
 
-            assert time_series.unit == "A"
-            assert len(time_series.data.shape) == 2
-            assert time_series.data.shape[0] > 0
-            assert time_series.data.shape[1] == len(interface.get_channel_names())
+class TestIntanStimInterfaceFilePerChannel:
+    """File-per-channel format."""
 
-    def test_stub_conversion(self, tmp_path):
-        """Test stub conversion writes a smaller dataset."""
-        file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
-        interface = IntanStimInterface(file_path=file_path)
+    file_path = ECEPHY_DATA_PATH / "intan" / "test_fpc_stim_250327_151617" / "info.rhs"
+
+    def test_conversion(self, tmp_path):
+        interface = IntanStimInterface(file_path=self.file_path)
+
+        channel_names = interface.get_channel_names()
+        assert channel_names == ["A-000_STIM", "A-001_STIM", "A-002_STIM", "A-003_STIM"]
 
         metadata = interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        nwbfile_path = tmp_path / "stim.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-        nwbfile_path = tmp_path / "intan_stim_stub_test.nwb"
-        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, stub_test=True)
+        nwbfile = read_nwb(nwbfile_path)
+        ts = nwbfile.acquisition["TimeSeriesIntanStim"]
+        assert ts.unit == "A"
+        assert ts.data.shape == (68352, 4)
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
 
-            assert "TimeSeriesIntanStim" in nwbfile.acquisition
-            time_series = nwbfile.acquisition["TimeSeriesIntanStim"]
+class TestIntanStimInterfaceFilePerSignal:
+    """File-per-signal format."""
 
-            assert len(time_series.data.shape) == 2
-            assert time_series.data.shape[1] == len(interface.get_channel_names())
-            # Stub should be smaller than full dataset (100 samples)
-            assert time_series.data.shape[0] <= 100
+    file_path = ECEPHY_DATA_PATH / "intan" / "rhs_fpc_multistim_240514_082243" / "rhs_fpc_multistim_240514_082243.rhs"
+
+    def test_conversion(self, tmp_path):
+        interface = IntanStimInterface(file_path=self.file_path)
+
+        channel_names = interface.get_channel_names()
+        assert len(channel_names) == 8
+        assert all(name.endswith("_STIM") for name in channel_names)
+
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        nwbfile_path = tmp_path / "stim.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        nwbfile = read_nwb(nwbfile_path)
+        ts = nwbfile.acquisition["TimeSeriesIntanStim"]
+        assert ts.unit == "A"
+        assert ts.data.shape == (92928, 8)
+
+
+def test_get_metadata():
+    """Device info, TimeSeries structure, and description content."""
+    file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
+    interface = IntanStimInterface(file_path=file_path)
+    metadata = interface.get_metadata()
+
+    device = metadata["Devices"][0]
+    assert device["name"] == "Intan"
+    assert device["manufacturer"] == "Intan"
+    assert device["description"] == "RHS Stim/Recording System"
+
+    ts_meta = metadata["TimeSeries"][interface.metadata_key]
+    assert ts_meta["name"] == "TimeSeriesIntanStim"
+    assert ts_meta["description"].startswith("Electrical stimulation current channels")
+
+
+def test_custom_metadata_key():
+    """Custom metadata_key propagates to the metadata dict."""
+    file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
+    interface = IntanStimInterface(file_path=file_path, metadata_key="MyStimTimeSeries")
+
+    assert interface.metadata_key == "MyStimTimeSeries"
+    assert "MyStimTimeSeries" in interface.get_metadata()["TimeSeries"]
+
+
+def test_stub_conversion(tmp_path):
+    """stub_test=True writes at most 100 samples."""
+    file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
+    interface = IntanStimInterface(file_path=file_path)
+
+    metadata = interface.get_metadata()
+    metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+    nwbfile_path = tmp_path / "stim_stub.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, stub_test=True)
+
+    nwbfile = read_nwb(nwbfile_path)
+    ts = nwbfile.acquisition["TimeSeriesIntanStim"]
+    assert ts.data.shape[0] <= 100
+    assert ts.data.shape[1] == 128

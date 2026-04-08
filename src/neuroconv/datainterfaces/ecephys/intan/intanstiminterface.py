@@ -45,8 +45,8 @@ class IntanStimInterface(BaseDataInterface):
         Parameters
         ----------
         file_path : FilePath
-            Path to an Intan .rhs file. Only .rhs files are supported because
-            stimulation channels are exclusive to the RHS Stim/Recording System.
+            Path to an Intan .rhs file. Stimulation channels are exclusive to the
+            RHS Stim/Recording System and are not present in .rhd files.
         verbose : bool, default: False
             Verbose output.
         metadata_key : str, default: "TimeSeriesIntanStim"
@@ -55,14 +55,6 @@ class IntanStimInterface(BaseDataInterface):
         from spikeinterface.extractors import read_intan
 
         self._file_path = Path(file_path)
-
-        if self._file_path.suffix != ".rhs":
-            raise ValueError(
-                f"IntanStimInterface only supports .rhs files (RHS Stim/Recording System). "
-                f"Got: '{self._file_path.suffix}'. "
-                "Stimulation channels are not available in .rhd files."
-            )
-
         self._stream_name = "Stim channel"
         self.metadata_key = metadata_key
 
