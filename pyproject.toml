@@ -95,6 +95,7 @@ audio = [
 dannce = [
     "ndx-pose>=0.2",
     "scipy",
+    # opencv (via neuroconv[video]) is only needed when video_file_path is provided for timestamp extraction
 ]
 sleap = [
     "av>=10.0.0",
