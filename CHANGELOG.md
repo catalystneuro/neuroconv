@@ -5,6 +5,7 @@
 ## Bug Fixes
 
 ## Features
+* Added `DANNCEInterface` for converting DANNCE 3D pose estimation `.mat` output files to NWB format using the ndx-pose extension [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
 
 ## Improvements
 

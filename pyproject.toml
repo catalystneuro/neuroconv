@@ -92,6 +92,10 @@ audio = [
     "ndx-sound>=0.2.2",
     "scipy", # for scipy.io.wavfile
 ]
+dannce = [
+    "ndx-pose>=0.2",
+    "scipy",
+]
 sleap = [
     "av>=10.0.0",
     "sleap-io>=0.5.2",
@@ -119,6 +123,7 @@ medpc = [
 behavior = [
     "neuroconv[sleap]",
     "neuroconv[audio]",
+    "neuroconv[dannce]",
     "neuroconv[deeplabcut]",
     "neuroconv[fictrac]",
     "neuroconv[video]",
