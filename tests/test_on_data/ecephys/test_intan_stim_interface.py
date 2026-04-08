@@ -28,7 +28,7 @@ class TestIntanStimInterfaceSingleFile:
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
         nwbfile = read_nwb(nwbfile_path)
-        ts = nwbfile.acquisition["TimeSeriesIntanStim"]
+        ts = nwbfile.stimulus["TimeSeriesIntanStim"]
         assert ts.unit == "A"
         assert ts.data.shape == (18432, 128)
 
@@ -50,7 +50,7 @@ class TestIntanStimInterfaceFilePerChannel:
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
         nwbfile = read_nwb(nwbfile_path)
-        ts = nwbfile.acquisition["TimeSeriesIntanStim"]
+        ts = nwbfile.stimulus["TimeSeriesIntanStim"]
         assert ts.unit == "A"
         assert ts.data.shape == (68352, 4)
 
@@ -73,7 +73,7 @@ class TestIntanStimInterfaceFilePerSignal:
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
         nwbfile = read_nwb(nwbfile_path)
-        ts = nwbfile.acquisition["TimeSeriesIntanStim"]
+        ts = nwbfile.stimulus["TimeSeriesIntanStim"]
         assert ts.unit == "A"
         assert ts.data.shape == (92928, 8)
 
@@ -114,6 +114,6 @@ def test_stub_conversion(tmp_path):
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, stub_test=True)
 
     nwbfile = read_nwb(nwbfile_path)
-    ts = nwbfile.acquisition["TimeSeriesIntanStim"]
+    ts = nwbfile.stimulus["TimeSeriesIntanStim"]
     assert ts.data.shape[0] <= 100
     assert ts.data.shape[1] == 128

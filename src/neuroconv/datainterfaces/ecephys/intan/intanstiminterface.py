@@ -160,4 +160,5 @@ class IntanStimInterface(BaseDataInterface):
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
             metadata_key=self.metadata_key,
+            parent_container="stimulus",
         )
