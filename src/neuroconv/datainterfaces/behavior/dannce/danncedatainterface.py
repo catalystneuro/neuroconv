@@ -30,6 +30,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePath,
         *,
+        video_file_path: FilePath | None = None,
         sampling_rate: float | None = None,
         landmark_names: list[str] | None = None,
         subject_name: str = "ind1",
@@ -48,10 +49,14 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat or save_data_MAX.mat).
+        video_file_path : FilePath, optional
+            Path to one of the source video files used for DANNCE prediction. Used to extract
+            per-frame timestamps, which are then indexed by the sampleID field to obtain the
+            timestamps for each prediction. Takes precedence over ``sampling_rate``.
         sampling_rate : float, optional
             The sampling rate in Hz of the pose estimation data. Used to compute timestamps from
-            the sampleID field. If not provided, timestamps must be set externally via
-            ``set_aligned_timestamps()`` before conversion.
+            the sampleID field. Ignored if ``video_file_path`` is provided. If neither is provided,
+            timestamps must be set externally via ``set_aligned_timestamps()`` before conversion.
         landmark_names : list of str, optional
             Names for each tracked landmark/body part. Must match the number of landmarks in the
             data. If not provided, defaults to ``["landmark_0", "landmark_1", ...]``.
@@ -84,6 +89,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self.verbose = verbose
         self.pose_estimation_metadata_key = pose_estimation_metadata_key
         self._sampling_rate = sampling_rate
+        self._video_file_path = Path(video_file_path) if video_file_path is not None else None
         self._timestamps = None
 
         # Load data from .mat file
@@ -101,11 +107,13 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         else:
             self._landmark_names = [f"landmark_{i}" for i in range(n_landmarks)]
 
-        # Compute timestamps from sampling rate if provided
-        if sampling_rate is not None:
+        # Compute timestamps: video_file_path takes precedence over sampling_rate
+        if video_file_path is not None:
+            self._timestamps = self._get_timestamps_from_video()
+        elif sampling_rate is not None:
             self._timestamps = self._sample_id / sampling_rate
 
-        super().__init__(file_path=file_path, verbose=verbose)
+        super().__init__(file_path=file_path, video_file_path=video_file_path, verbose=verbose)
 
     def _load_dannce_data(self, file_path: Path) -> None:
         """Load and parse the DANNCE .mat prediction file."""
@@ -118,14 +126,26 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         sample_id = mat_data["sampleID"]  # shape: (1, n_samples) or (n_samples,)
         self._sample_id = np.squeeze(sample_id).astype("float64")
 
+    def _get_timestamps_from_video(self) -> np.ndarray:
+        """Extract timestamps from the video file, indexed by sampleID."""
+        from ...video.video_utils import VideoCaptureContext
+
+        with VideoCaptureContext(file_path=str(self._video_file_path)) as video:
+            all_timestamps = video.get_video_timestamps()
+
+        frame_indices = self._sample_id.astype(int)
+        return np.asarray(all_timestamps[frame_indices], dtype="float64")
+
     def get_original_timestamps(self) -> np.ndarray:
-        if self._sampling_rate is None:
-            raise ValueError(
-                "Cannot compute original timestamps without a sampling rate. "
-                "Provide 'sampling_rate' when initializing the interface, "
-                "or use 'set_aligned_timestamps()' to set timestamps directly."
-            )
-        return self._sample_id / self._sampling_rate
+        if self._video_file_path is not None:
+            return self._get_timestamps_from_video()
+        if self._sampling_rate is not None:
+            return self._sample_id / self._sampling_rate
+        raise ValueError(
+            "Cannot compute original timestamps without a video file or sampling rate. "
+            "Provide 'video_file_path' or 'sampling_rate' when initializing the interface, "
+            "or use 'set_aligned_timestamps()' to set timestamps directly."
+        )
 
     def get_timestamps(self) -> np.ndarray:
         if self._timestamps is not None:
