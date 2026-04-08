@@ -22,6 +22,52 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):  # noqa: D101
         self._chunk_size_mb = math.prod(self.chunk_shape) * self._get_dtype().itemsize / 1e6
         self._buffer_size_gb = math.prod(self.buffer_shape) * self._get_dtype().itemsize / 1e9
 
+    def _convert_index_to_slices(self, selection) -> tuple[slice, ...]:
+        """Normalize an indexing selection into a tuple of resolved slice(start, stop) objects.
+
+        Handles integers (including negative), slices (including negative start/stop),
+        and tuples thereof. Pads missing trailing dimensions with slice(None).
+
+        Returns a tuple of slices with one entry per dimension, all with non-negative,
+        concrete start and stop values.
+        """
+        ndim = len(self.shape)
+
+        # Normalize selection to a tuple with one entry per dimension
+        if isinstance(selection, (int, np.integer)):
+            selection = (selection,) + (slice(None),) * (ndim - 1)
+        elif isinstance(selection, slice):
+            selection = (selection,) + (slice(None),) * (ndim - 1)
+        elif isinstance(selection, tuple):
+            selection = selection + (slice(None),) * (ndim - len(selection))
+        else:
+            raise TypeError(f"Unsupported selection type: {type(selection)}")
+
+        # Resolve each element to a slice(start, stop) with no step
+        resolved = []
+        for axis, sel in enumerate(selection):
+            axis_size = self.shape[axis]
+            if isinstance(sel, (int, np.integer)):
+                if sel < 0:
+                    sel = axis_size + sel
+                if sel < 0 or sel >= axis_size:
+                    raise IndexError(f"Index {sel} is out of bounds for axis {axis} with size {axis_size}")
+                resolved.append(slice(sel, sel + 1))
+            elif isinstance(sel, slice):
+                if sel.step is not None and sel.step != 1:
+                    raise NotImplementedError("Slicing with step != 1 is not supported by data chunk iterators")
+                start = sel.start if sel.start is not None else 0
+                stop = sel.stop if sel.stop is not None else axis_size
+                if start < 0:
+                    start = max(axis_size + start, 0)
+                if stop < 0:
+                    stop = max(axis_size + stop, 0)
+                resolved.append(slice(start, stop))
+            else:
+                raise TypeError(f"Unsupported selection element type: {type(sel)}")
+
+        return tuple(resolved)
+
     def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> tuple[int]:
         return self.estimate_default_buffer_shape(
             buffer_gb=buffer_gb, chunk_shape=self.chunk_shape, maxshape=self.maxshape, dtype=self.dtype
@@ -160,8 +206,27 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
     def _get_dtype(self) -> np.dtype:
         return self.data.dtype
 
-    def _get_maxshape(self) -> tuple:
+    @property
+    def shape(self):
+        """Return the shape of the wrapped data array."""
         return self.data.shape
+
+    def _get_maxshape(self) -> tuple:
+        return self.shape
+
+    @property
+    def ndim(self):
+        """Return the number of dimensions of the wrapped data array."""
+        return self.data.ndim
+
+    def __len__(self):
+        """Return the size of the first axis of the wrapped data array."""
+        return self.data.shape[0]
+
+    def __getitem__(self, selection):
+        """Enable array-like slicing, delegating to the wrapped data array."""
+        resolved = self._convert_index_to_slices(selection)
+        return self.data[resolved]
 
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         return self.data[selection]
