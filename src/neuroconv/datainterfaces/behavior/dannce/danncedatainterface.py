@@ -22,9 +22,9 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
-        source_schema["properties"]["file_path"]["description"] = (
-            "Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat)."
-        )
+        source_schema["properties"]["file_path"][
+            "description"
+        ] = "Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat)."
         return source_schema
 
     @validate_call
@@ -80,9 +80,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
 
         file_path = Path(file_path)
         if ".mat" not in file_path.suffixes:
-            raise IOError(
-                f"The file '{file_path}' is not a valid DANNCE output file. Only .mat files are supported."
-            )
+            raise IOError(f"The file '{file_path}' is not a valid DANNCE output file. Only .mat files are supported.")
 
         self.subject_name = subject_name
         self.verbose = verbose
