@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading XClust 
 
 .. code-block:: bash
 
-    pip install neuroconv
+    pip install "neuroconv[xclust]"
 
 Convert XClust sorting data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.xclust.xclustdatainterface.XClustSortingInterface`.
 

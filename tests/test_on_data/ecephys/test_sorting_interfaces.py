@@ -334,18 +334,16 @@ class TestXClustSortingInterfaceMultiUnit(SortingExtractorInterfaceTestMixin):
 class TestXClustSortingInterfaceFilePathList:
     """Test the file_path_list input mode with a subset of files."""
 
-    def test_file_path_list_mode(self, tmp_path):
+    def test_file_path_list_loads_correct_unit_ids(self):
         file_list = [
             str(DATA_PATH / "xclust" / "TT6" / "BL1~1.CEL"),
             str(DATA_PATH / "xclust" / "TT6" / "BL1~2.CEL"),
         ]
         interface = XClustSortingInterface(file_path_list=file_list, sampling_frequency=30_000.0)
-        unit_ids = interface.sorting_extractor.get_unit_ids()
-        assert len(unit_ids) == 2
-        assert "BL1_1" in unit_ids
-        assert "BL1_2" in unit_ids
+        unit_ids = interface.sorting_extractor.unit_ids
+        assert list(unit_ids) == ["BL1_1", "BL1_2"]
 
-    def test_both_args_raises(self):
+    def test_raises_when_folder_path_and_file_path_list_both_provided(self):
         with pytest.raises(ValueError, match="Specify either"):
             XClustSortingInterface(
                 folder_path=str(DATA_PATH / "xclust" / "TT2"),
@@ -353,6 +351,6 @@ class TestXClustSortingInterfaceFilePathList:
                 sampling_frequency=30_000.0,
             )
 
-    def test_neither_arg_raises(self):
+    def test_raises_when_neither_folder_path_nor_file_path_list_provided(self):
         with pytest.raises(ValueError, match="Must specify either"):
             XClustSortingInterface(sampling_frequency=30_000.0)
