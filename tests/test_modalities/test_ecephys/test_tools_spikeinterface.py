@@ -52,6 +52,14 @@ class _LegacyRecording:
         self._recording_segments = [_LegacyRecordingSegment(t_start=t_start)]
 
 
+def test_get_recording_segment_start_time_legacy_fallback():
+    recording = _LegacyRecording(t_start=1.5)
+
+    start_time = _get_recording_segment_start_time(recording=recording, segment_index=0)
+
+    assert start_time == 1.5
+
+
 class TestAddElectricalSeriesWriting(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -93,14 +101,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         electrical_series = self.nwbfile.acquisition["ElectricalSeriesRaw"]
         assert electrical_series.starting_time == 2.0
         assert electrical_series.rate == self.sampling_frequency
-
-
-def test_get_recording_segment_start_time_legacy_fallback():
-    recording = _LegacyRecording(t_start=1.5)
-
-    start_time = _get_recording_segment_start_time(recording=recording, segment_index=0)
-
-    assert start_time == 1.5
 
     def test_write_as_lfp(self):
         write_as = "lfp"

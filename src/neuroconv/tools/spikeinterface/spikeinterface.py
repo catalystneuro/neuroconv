@@ -2832,7 +2832,8 @@ def _stub_recording(recording: BaseRecording, *, stub_samples: int = 100) -> Bas
 
 def _get_recording_segment_start_time(recording: BaseRecording, segment_index: int) -> float:
     if hasattr(recording, "get_start_time"):
-        return float(recording.get_start_time(segment_index=segment_index))
+        start_time = recording.get_start_time(segment_index=segment_index)
+        return 0.0 if start_time is None else float(start_time)
 
     segments = None
     if hasattr(recording, "segments"):
@@ -2847,7 +2848,8 @@ def _get_recording_segment_start_time(recording: BaseRecording, segment_index: i
 
     segment = segments[segment_index]
     if hasattr(segment, "get_start_time"):
-        return float(segment.get_start_time())
+        start_time = segment.get_start_time()
+        return 0.0 if start_time is None else float(start_time)
     if hasattr(segment, "t_start"):
         return 0.0 if segment.t_start is None else float(segment.t_start)
     if hasattr(segment, "_t_start"):
