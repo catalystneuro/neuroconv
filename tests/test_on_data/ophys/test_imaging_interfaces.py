@@ -48,6 +48,13 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        """TiffImagingInterface does not extract ophys metadata from the source, so the Ophys section is empty.
+
+        See https://github.com/catalystneuro/neuroconv/issues/1557"""
+        assert "Ophys" not in metadata
+        assert "Devices" not in metadata
+
 
 class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
     """Test TiffImagingInterface with multi-file TIFF data using file_paths parameter."""
@@ -82,7 +89,8 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(DataInterfaceTestMixin, Te
     expected_rate = None  # This is interleaved data so the timestamps are written
     expected_starting_time = None
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -124,7 +132,8 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(DataInterfaceTestMixin, Te
     expected_rate = None  # This is interleaved data so the timestamps are written
     expected_starting_time = None
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -216,7 +225,8 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
 
         return self.interface, self.test_name
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -285,7 +295,8 @@ class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"))
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 10, 9, 16, 57, 7, 967000)
         assert (
             metadata["Ophys"]["TwoPhotonSeries"][0]["description"]
@@ -298,11 +309,28 @@ class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "hdf5" / "demoMovie.hdf5"))
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        """Hdf5ImagingInterface does not extract ophys metadata from the source, so the Ophys section is empty.
+
+        See https://github.com/catalystneuro/neuroconv/issues/1557"""
+        assert "Ophys" not in metadata
+        assert "Devices" not in metadata
+
 
 class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = SbxImagingInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.mat"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        """SbxImagingInterface extracts device provenance and format-specific series description."""
+        metadata_key = self.interface.metadata_key
+        assert metadata["Devices"] == {metadata_key: {"description": "Scanbox imaging"}}
+        assert metadata["Ophys"] == {
+            "MicroscopySeries": {
+                metadata_key: {"description": "Imaging data acquired with Scanbox."},
+            },
+        }
 
 
 class TestSbxImagingInterfaceSBX(ImagingExtractorInterfaceTestMixin):
@@ -359,7 +387,8 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             TwoPhotonSeries=[cls.two_photon_series_metadata],
         )
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 2, 20, 15, 58, 25)
         assert metadata["Ophys"] == self.ophys_metadata
 
@@ -449,7 +478,8 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
 
         assert streams == self.available_streams
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 11, 3, 11, 20, 34)
         assert metadata["Ophys"] == self.ophys_metadata
 
@@ -521,7 +551,8 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         streams = self.data_interface_cls.get_streams(folder_path=self.interface_kwargs["folder_path"])
         assert streams == self.available_streams
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 11, 3, 11, 20, 34)
         assert metadata["Ophys"] == self.ophys_metadata
 
@@ -611,7 +642,8 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         streams = self.data_interface_cls.get_streams(folder_path=self.interface_kwargs["folder_path"])
         assert streams == self.available_streams
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 7, 6, 15, 13, 58)
         assert metadata["Ophys"] == self.ophys_metadata
 
@@ -684,7 +716,8 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             TwoPhotonSeries=[cls.two_photon_series_metadata],
         )
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
 
         assert metadata["NWBFile"]["session_start_time"] == datetime(
             2022, 4, 7, 15, 6, 56, 842000, tzinfo=tzoffset(None, -18000)
@@ -735,7 +768,8 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Check that the metadata was extracted correctly."""
         # Check session start time
         assert isinstance(metadata["NWBFile"]["session_start_time"], datetime)
@@ -806,7 +840,8 @@ class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
             unit="px",
         )
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635)
         assert metadata["Ophys"]["Device"][0] == self.device_metadata
 
@@ -977,7 +1012,8 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
     )
     optical_series_name = "OnePhotonSeries"
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Test metadata extraction for file with minimal acquisition info."""
 
         # NWBFile checks
@@ -1123,7 +1159,8 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
     optical_series_name = "OnePhotonSeries"
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Test metadata extraction for uint8 file with minimal acquisition info."""
 
         # NWBFile checks
@@ -1180,7 +1217,8 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Check that the metadata was extracted correctly for p29.mesc."""
 
         # Check session start time
@@ -1249,7 +1287,8 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Check that the metadata was extracted correctly for p30.mesc."""
 
         # Check session start time - different from p29
@@ -1317,7 +1356,8 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 #     )
 #     save_directory = OUTPUT_PATH
 
-#     def check_extracted_metadata(self, metadata: dict):
+#     # TODO: remove when old list-based metadata format is removed
+#     def check_extracted_metadata_old_list_format(self, metadata: dict):
 #         """Check that the metadata was extracted correctly for single channel .mesc file."""
 
 #         # Check session start time
@@ -1383,7 +1423,8 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 #     )
 #     save_directory = OUTPUT_PATH
 
-#     def check_extracted_metadata(self, metadata: dict):
+#     # TODO: remove when old list-based metadata format is removed
+#     def check_extracted_metadata_old_list_format(self, metadata: dict):
 #         """Check that the metadata was extracted correctly for second single channel .mesc file."""
 
 #         # Check session start time
