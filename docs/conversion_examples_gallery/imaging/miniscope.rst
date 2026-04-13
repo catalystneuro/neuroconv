@@ -42,10 +42,12 @@ streams into a single NWB conversion. Behavioral video is handled automatically 
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-If the configuration file is unavailable, the converter assumes the legacy layout used by historical datasets: each recording is
-stored in a timestamp-named folder that contains ``Miniscope/`` and optional ``BehavCam_*/`` subdirectories with their
-own ``metaData.json`` and ``timeStamps.csv`` files. For other arrangements, supply ``UserConfigFile.json`` so the
-converter can follow the declared directory structure.
+.. deprecated::
+   The legacy mode (omitting ``user_configuration_file_path``) is deprecated and will be removed on or after
+   December 2026. The legacy path assumes all recordings within a session are back-to-back, which does not hold
+   in general and can produce silently incorrect results. If your DAQ version does not produce a configuration
+   file, use ``MiniscopeImagingInterface`` directly or build a custom ``ConverterPipe`` as shown in the
+   `Combining Multiple Acquisitions`_ section below.
 
 Miniscope Imaging Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -137,6 +139,8 @@ Combining Multiple Acquisitions
 
 The :py:class:`~neuroconv.nwbconverter.ConverterPipe` allows you to assemble multiple interfaces
 into a single converter for complex experimental sessions with multiple data streams and flexible folder structures.
+This is also the recommended approach when your data does not include a ``UserConfigFile.json``
+(for example, data acquired with DAQ software versions prior to 1.0).
 
 To illustrate how a workflow with :py:class:`~neuroconv.nwbconverter.ConverterPipe` works, we'll use the same folder structure that :py:class:`~neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter.MiniscopeConverter`
 expects. **Note:** This is purely for demonstration purposes. You should adapt the paths below to match
