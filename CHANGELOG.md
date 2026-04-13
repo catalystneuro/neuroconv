@@ -21,6 +21,7 @@
 * Removed the deprecated `time_series_name` parameter from `add_recording_as_time_series_to_nwbfile`. Use `metadata_key` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
 
 ## Bug Fixes
+* Updated Bruker test expectations to match spatially cropped stubs (64x64) replacing old 512x512 fixtures on gin. [PR #1707](https://github.com/catalystneuro/neuroconv/pull/1707)
 * Fixed `RuntimeWarning: divide by zero` in `calculate_regular_series_rate` when all timestamps are identical (zero time-step). The function now emits a `UserWarning` and returns `None` early instead of performing an invalid division. [PR #1701](https://github.com/catalystneuro/neuroconv/pull/1701)
 * Fixed compatibility with upcoming roiextractors changes ([roiextractors PR #562](https://github.com/catalystneuro/roiextractors/pull/562)) by removing calls to the deprecated `get_num_channels` and `get_channel_names` methods on imaging extractors, and making the volumetric chunking test dtype-aware. [PR #1696](https://github.com/catalystneuro/neuroconv/pull/1696)
 * Fixed `NotImplementedError` when using `ndx-events>=0.2.2` with `configure_and_write_nwbfile`. The version check for ndx-events `Events` types was too restrictive (`<= 0.2.1`), causing files with `Events` objects to fail during backend configuration. [PR #1682](https://github.com/catalystneuro/neuroconv/pull/1682)
