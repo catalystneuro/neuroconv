@@ -137,11 +137,25 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 metadata["Devices"] = {self.metadata_key: device_entry}
 
             # MicroscopySeries
+            microscopy_series_entry = {
+                "description": "Imaging data acquired with Inscopix nVista.",
+            }
+            if device_info.get("exposure_time_ms"):
+                microscopy_series_entry["exposure_time_ms"] = device_info["exposure_time_ms"]
+            if device_info.get("microscope_gain"):
+                microscopy_series_entry["microscope_gain"] = device_info["microscope_gain"]
+            if device_info.get("microscope_focus"):
+                microscopy_series_entry["microscope_focus"] = device_info["microscope_focus"]
+            if device_info.get("efocus"):
+                microscopy_series_entry["efocus"] = device_info["efocus"]
+            if device_info.get("led_power_ex_mw_per_mm2"):
+                microscopy_series_entry["led_power_ex_mw_per_mm2"] = device_info["led_power_ex_mw_per_mm2"]
+            if device_info.get("led_power_og_mw_per_mm2"):
+                microscopy_series_entry["led_power_og_mw_per_mm2"] = device_info["led_power_og_mw_per_mm2"]
+
             metadata["Ophys"] = {
                 "MicroscopySeries": {
-                    self.metadata_key: {
-                        "description": "Imaging data acquired with Inscopix nVista.",
-                    },
+                    self.metadata_key: microscopy_series_entry,
                 },
             }
 

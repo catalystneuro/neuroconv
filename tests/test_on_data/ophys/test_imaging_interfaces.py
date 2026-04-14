@@ -1066,14 +1066,21 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert ops["dimension"] == [128, 128]
 
     def check_extracted_metadata(self, metadata: dict):
-        """Minimal Inscopix file has no device serial/software, so no Devices entry."""
+        """Test new dict-based metadata for file with minimal acquisition info."""
         metadata_key = self.interface.metadata_key
-        assert "Devices" not in metadata
-        assert metadata["Ophys"] == {
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+
+        expected_ophys = {
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Inscopix nVista."},
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                },
             },
         }
+        assert metadata["Ophys"] == expected_ophys
+        assert "Devices" not in metadata
+        assert "Subject" not in metadata
 
 
 @skip_on_python_313
@@ -1225,14 +1232,21 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         assert ops["dimension"] == [3, 4]
 
     def check_extracted_metadata(self, metadata: dict):
-        """Minimal Inscopix file has no device serial/software, so no Devices entry."""
+        """Test new dict-based metadata for uint8 file with minimal acquisition info."""
         metadata_key = self.interface.metadata_key
-        assert "Devices" not in metadata
-        assert metadata["Ophys"] == {
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+
+        expected_ophys = {
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Inscopix nVista."},
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                },
             },
         }
+        assert metadata["Ophys"] == expected_ophys
+        assert "Devices" not in metadata
+        assert "Subject" not in metadata
 
 
 class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
