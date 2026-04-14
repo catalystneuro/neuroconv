@@ -218,6 +218,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         subject_metadata = {}
         has_any_subject_data = False
 
+        # Subject ID
         if subject_info and subject_info.get("animal_id"):
             subject_metadata["subject_id"] = subject_info["animal_id"]
             has_any_subject_data = True
@@ -227,6 +228,8 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
 
         if subject_info and subject_info.get("species"):
             species_raw = subject_info["species"]
+            # If it contains genotype info or matches NWB format, put it in species; otherwise strain
+            # e.g., "CaMKIICre"
             if " " in species_raw and species_raw[0].isupper() and species_raw.split()[1][0].islower():
                 species_value = species_raw
             else:
@@ -239,12 +242,14 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 subject_metadata["strain"] = strain_value
                 has_any_subject_data = True
 
+        # Sex mapping
         sex_mapping = {"m": "M", "male": "M", "f": "F", "female": "F", "u": "U", "unknown": "U"}
         if subject_info and subject_info.get("sex"):
             mapped_sex = sex_mapping.get(subject_info["sex"].lower(), "U")
             subject_metadata["sex"] = mapped_sex
             has_any_subject_data = True
 
+        # Additional subject fields
         if subject_info:
             if subject_info.get("description"):
                 subject_metadata["description"] = subject_info["description"]
@@ -256,6 +261,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 subject_metadata["weight"] = str(subject_info["weight"])
                 has_any_subject_data = True
 
+        # Add Subject if we have ANY subject information, filling required fields with defaults
         if has_any_subject_data:
             if "subject_id" not in subject_metadata:
                 subject_metadata["subject_id"] = "Unknown"
