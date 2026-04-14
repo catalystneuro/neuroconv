@@ -80,16 +80,6 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             **kwargs,
         )
 
-    def _get_extractor_metadata(self):
-        """Extract and organize metadata from the Inscopix extractor."""
-        extractor_metadata = self.imaging_extractor._get_metadata()
-        return dict(
-            session=extractor_metadata.get("session", {}),
-            device=extractor_metadata.get("device", {}),
-            subject=extractor_metadata.get("subject", {}),
-            session_start_time=extractor_metadata.get("session_start_time"),
-        )
-
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix imaging data.
@@ -107,11 +97,11 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             photon series configuration, and Inscopix-specific acquisition parameters.
         """
         if use_new_metadata_format:
-            source = self._get_extractor_metadata()
-            session_info = source["session"]
-            device_info = source["device"]
-            subject_info = source["subject"]
-            session_start_time = source["session_start_time"]
+            extractor_metadata = self.imaging_extractor._get_metadata()
+            session_info = extractor_metadata.get("session", {})
+            device_info = extractor_metadata.get("device", {})
+            subject_info = extractor_metadata.get("subject", {})
+            session_start_time = extractor_metadata.get("session_start_time")
 
             metadata = super().get_metadata(use_new_metadata_format=True)
 
