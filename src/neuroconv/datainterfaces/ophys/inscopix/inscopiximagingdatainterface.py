@@ -106,13 +106,13 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             photon series configuration, and Inscopix-specific acquisition parameters.
         """
-        source = self._get_extractor_metadata()
-        session_info = source["session"]
-        device_info = source["device"]
-        subject_info = source["subject"]
-        session_start_time = source["session_start_time"]
-
         if use_new_metadata_format:
+            source = self._get_extractor_metadata()
+            session_info = source["session"]
+            device_info = source["device"]
+            subject_info = source["subject"]
+            session_start_time = source["session_start_time"]
+
             metadata = super().get_metadata(use_new_metadata_format=True)
 
             if session_start_time:
@@ -150,8 +150,17 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
 
             return metadata
 
-        # Old list-based path
+        # Get metadata from parent (already configured for OnePhotonSeries)
         metadata = super().get_metadata()
+
+        extractor = self.imaging_extractor
+        extractor_metadata = extractor._get_metadata()
+
+        # Extract individual components
+        session_info = extractor_metadata.get("session", {})
+        device_info = extractor_metadata.get("device", {})
+        subject_info = extractor_metadata.get("subject", {})
+        session_start_time = extractor_metadata.get("session_start_time")
 
         # Session start time
         if session_start_time:
@@ -208,13 +217,73 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 )
                 imaging_plane_metadata["description"] = f"{current_description} ({'; '.join(acquisition_details)})"
 
-        self._add_subject_metadata(metadata, subject_info)
+        # Subject information
+        subject_metadata = {}
+        has_any_subject_data = False
+
+        # Subject ID
+        if subject_info and subject_info.get("animal_id"):
+            subject_metadata["subject_id"] = subject_info["animal_id"]
+            has_any_subject_data = True
+
+        species_value = None
+        strain_value = None
+
+        if subject_info and subject_info.get("species"):
+            species_raw = subject_info["species"]
+            # If it contains genotype info or matches NWB format, put it in species; otherwise strain
+            # e.g., "CaMKIICre"
+            if " " in species_raw and species_raw[0].isupper() and species_raw.split()[1][0].islower():
+                species_value = species_raw
+            else:
+                strain_value = species_raw
+
+            if species_value:
+                subject_metadata["species"] = species_value
+                has_any_subject_data = True
+            if strain_value:
+                subject_metadata["strain"] = strain_value
+                has_any_subject_data = True
+
+        # Sex mapping
+        sex_mapping = {"m": "M", "male": "M", "f": "F", "female": "F", "u": "U", "unknown": "U"}
+        if subject_info and subject_info.get("sex"):
+            mapped_sex = sex_mapping.get(subject_info["sex"].lower(), "U")
+            subject_metadata["sex"] = mapped_sex
+            has_any_subject_data = True
+
+        # Additional subject fields
+        if subject_info:
+            if subject_info.get("description"):
+                subject_metadata["description"] = subject_info["description"]
+                has_any_subject_data = True
+            if subject_info.get("date_of_birth"):
+                subject_metadata["date_of_birth"] = subject_info["date_of_birth"]
+                has_any_subject_data = True
+            if subject_info.get("weight") and subject_info["weight"] > 0:
+                subject_metadata["weight"] = str(subject_info["weight"])
+                has_any_subject_data = True
+
+        # Add Subject if we have ANY subject information, filling required fields with defaults
+        if has_any_subject_data:
+            if "subject_id" not in subject_metadata:
+                subject_metadata["subject_id"] = "Unknown"
+            if "species" not in subject_metadata:
+                subject_metadata["species"] = "Unknown species"
+            if "sex" not in subject_metadata:
+                subject_metadata["sex"] = "U"
+
+            if "Subject" in metadata:
+                metadata["Subject"].update(subject_metadata)
+            else:
+                metadata["Subject"] = subject_metadata
 
         return metadata
 
     @staticmethod
     def _add_subject_metadata(metadata: DeepDict, subject_info: dict) -> None:
         """Add subject metadata from Inscopix extractor to the metadata dict."""
+        # Subject information
         subject_metadata = {}
         has_any_subject_data = False
 
