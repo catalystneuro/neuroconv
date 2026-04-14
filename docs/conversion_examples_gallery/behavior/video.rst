@@ -43,6 +43,11 @@ To follow this convention use the
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
+.. note::
+    When working with multiple video files from the same camera (for example, trial-based recordings or
+    file splits), see :doc:`../../how_to/align_external_video` for how to specify temporal alignment.
+
+
 When storing videos of neural data, lossy compression should not be used and it is best to store within the NWB file
 (see `best practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>`_).
 To follow this convention use the
