@@ -45,6 +45,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FilePath,
         verbose: bool = False,
+        metadata_key: str | None = None,
         **kwargs,
     ):
         """
@@ -54,6 +55,9 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             Path to the .isxd Inscopix file.
         verbose : bool, optional
             If True, outputs additional information during processing.
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to "inscopix_imaging".
         **kwargs : dict, optional
             Additional keyword arguments passed to the parent class.
 
@@ -65,16 +69,26 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         # Check for multiplane configuration before proceeding
         is_file_multiplane(file_path)
 
+        if metadata_key is None:
+            metadata_key = "inscopix_imaging"
+
         kwargs.setdefault("photon_series_type", "OnePhotonSeries")
         super().__init__(
             file_path=file_path,
             verbose=verbose,
+            metadata_key=metadata_key,
             **kwargs,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata with Inscopix provenance.
 
         Returns
         -------
@@ -82,8 +96,12 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             photon series configuration, and Inscopix-specific acquisition parameters.
         """
-        # Get metadata from parent (already configured for OnePhotonSeries)
-        metadata = super().get_metadata()
+        # Get metadata from parent
+        metadata = (
+            super().get_metadata()
+            if not use_new_metadata_format
+            else super().get_metadata(use_new_metadata_format=True)
+        )
 
         extractor = self.imaging_extractor
         extractor_metadata = extractor._get_metadata()
@@ -105,49 +123,86 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             metadata["NWBFile"]["experimenter"] = [session_info["experimenter_name"]]
 
         # Device information
-        if device_info:
-            device_metadata = metadata["Ophys"]["Device"][0]
-
-            # Update the actual device name
+        if use_new_metadata_format:
+            device_entry = {}
             if device_info.get("device_name"):
-                device_metadata["name"] = device_info["device_name"]
-
-            # Build device description
-            microscope_info = []
+                device_entry["name"] = device_info["device_name"]
+            description_parts = []
             if device_info.get("device_serial_number"):
-                microscope_info.append(f"Serial: {device_info['device_serial_number']}")
+                description_parts.append(f"Serial: {device_info['device_serial_number']}")
             if device_info.get("acquisition_software_version"):
-                microscope_info.append(f"Software: {device_info['acquisition_software_version']}")
+                description_parts.append(f"Software: {device_info['acquisition_software_version']}")
+            if description_parts:
+                device_entry["description"] = f"Inscopix Microscope ({', '.join(description_parts)})"
+            if device_entry:
+                metadata["Devices"] = {self.metadata_key: device_entry}
 
-            if microscope_info:
-                device_metadata["description"] = f"Inscopix Microscope ({', '.join(microscope_info)})"
-
-            # Update imaging plane metadata with acquisition details
-            imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-
-            # Update imaging plane device reference to match the actual device name
-            if device_info.get("device_name"):
-                imaging_plane_metadata["device"] = device_info["device_name"]
-
-            acquisition_details = []
+            # MicroscopySeries
+            microscopy_series_entry = {
+                "description": "Imaging data acquired with Inscopix nVista.",
+            }
             if device_info.get("exposure_time_ms"):
-                acquisition_details.append(f"Exposure Time (ms): {device_info['exposure_time_ms']}")
+                microscopy_series_entry["exposure_time_ms"] = device_info["exposure_time_ms"]
             if device_info.get("microscope_gain"):
-                acquisition_details.append(f"Gain: {device_info['microscope_gain']}")
+                microscopy_series_entry["microscope_gain"] = device_info["microscope_gain"]
             if device_info.get("microscope_focus"):
-                acquisition_details.append(f"Focus: {device_info['microscope_focus']}")
+                microscopy_series_entry["microscope_focus"] = device_info["microscope_focus"]
             if device_info.get("efocus"):
-                acquisition_details.append(f"eFocus: {device_info['efocus']}")
+                microscopy_series_entry["efocus"] = device_info["efocus"]
             if device_info.get("led_power_ex_mw_per_mm2"):
-                acquisition_details.append(f"EX LED Power (mw/mm^2): {device_info['led_power_ex_mw_per_mm2']}")
+                microscopy_series_entry["led_power_ex_mw_per_mm2"] = device_info["led_power_ex_mw_per_mm2"]
             if device_info.get("led_power_og_mw_per_mm2"):
-                acquisition_details.append(f"OG LED Power (mw/mm^2): {device_info['led_power_og_mw_per_mm2']}")
+                microscopy_series_entry["led_power_og_mw_per_mm2"] = device_info["led_power_og_mw_per_mm2"]
 
-            if acquisition_details:
-                current_description = imaging_plane_metadata.get(
-                    "description", "The plane or volume being imaged by the microscope."
-                )
-                imaging_plane_metadata["description"] = f"{current_description} ({'; '.join(acquisition_details)})"
+            metadata["Ophys"] = {
+                "MicroscopySeries": {
+                    self.metadata_key: microscopy_series_entry,
+                },
+            }
+        else:
+            if device_info:
+                device_metadata = metadata["Ophys"]["Device"][0]
+
+                # Update the actual device name
+                if device_info.get("device_name"):
+                    device_metadata["name"] = device_info["device_name"]
+
+                # Build device description
+                microscope_info = []
+                if device_info.get("device_serial_number"):
+                    microscope_info.append(f"Serial: {device_info['device_serial_number']}")
+                if device_info.get("acquisition_software_version"):
+                    microscope_info.append(f"Software: {device_info['acquisition_software_version']}")
+
+                if microscope_info:
+                    device_metadata["description"] = f"Inscopix Microscope ({', '.join(microscope_info)})"
+
+                # Update imaging plane metadata with acquisition details
+                imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+
+                # Update imaging plane device reference to match the actual device name
+                if device_info.get("device_name"):
+                    imaging_plane_metadata["device"] = device_info["device_name"]
+
+                acquisition_details = []
+                if device_info.get("exposure_time_ms"):
+                    acquisition_details.append(f"Exposure Time (ms): {device_info['exposure_time_ms']}")
+                if device_info.get("microscope_gain"):
+                    acquisition_details.append(f"Gain: {device_info['microscope_gain']}")
+                if device_info.get("microscope_focus"):
+                    acquisition_details.append(f"Focus: {device_info['microscope_focus']}")
+                if device_info.get("efocus"):
+                    acquisition_details.append(f"eFocus: {device_info['efocus']}")
+                if device_info.get("led_power_ex_mw_per_mm2"):
+                    acquisition_details.append(f"EX LED Power (mw/mm^2): {device_info['led_power_ex_mw_per_mm2']}")
+                if device_info.get("led_power_og_mw_per_mm2"):
+                    acquisition_details.append(f"OG LED Power (mw/mm^2): {device_info['led_power_og_mw_per_mm2']}")
+
+                if acquisition_details:
+                    current_description = imaging_plane_metadata.get(
+                        "description", "The plane or volume being imaged by the microscope."
+                    )
+                    imaging_plane_metadata["description"] = f"{current_description} ({'; '.join(acquisition_details)})"
 
         # Subject information
         subject_metadata = {}
