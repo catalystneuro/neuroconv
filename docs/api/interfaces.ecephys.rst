@@ -49,6 +49,10 @@ Intan Analog
 ------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intananaloginterface
 
+Intan Stimulation
+-----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.intan.intanstiminterface
+
 KiloSort Sorting
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface
