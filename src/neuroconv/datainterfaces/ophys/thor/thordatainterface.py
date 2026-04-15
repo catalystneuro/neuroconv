@@ -165,21 +165,28 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         width_um = float(lsm["@widthUM"])
         height_um = float(lsm["@heightUM"])
 
+        ChannelName = _to_camel_case(self.channel_name)
+
         if use_new_metadata_format:
             metadata["Devices"] = {self.metadata_key: {"description": device_description}}
             metadata["Ophys"] = {
+                "ImagingPlanes": {
+                    self.metadata_key: {
+                        "name": f"ImagingPlane{ChannelName}",
+                        "optical_channel": [{"name": ChannelName}],
+                        "grid_spacing": [pixel_size_um * 1e-6, pixel_size_um * 1e-6],
+                        "grid_spacing_unit": "meters",
+                    },
+                },
                 "MicroscopySeries": {
                     self.metadata_key: {
-                        "description": "Imaging data acquired with ThorImageLS.",
-                        "pixel_size_um": pixel_size_um,
-                        "field_of_view_um": [width_um, height_um],
+                        "imaging_plane_metadata_key": self.metadata_key,
+                        "field_of_view": [width_um * 1e-6, height_um * 1e-6],
                     },
                 },
             }
         else:
             metadata.setdefault("Ophys", {})["Device"] = [{"name": "ThorMicroscope", "description": device_description}]
-
-            ChannelName = _to_camel_case(self.channel_name)
 
             optical_channel_dict = {"name": ChannelName, "description": "", "emission_lambda": np.nan}
             optical_channels = [optical_channel_dict]

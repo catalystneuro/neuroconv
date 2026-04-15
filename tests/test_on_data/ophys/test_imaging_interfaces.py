@@ -825,16 +825,19 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         }
         assert metadata["Devices"] == expected_devices
 
-        expected_ophys = {
-            "MicroscopySeries": {
-                metadata_key: {
-                    "description": "Imaging data acquired with ThorImageLS.",
-                    "pixel_size_um": 0.884,
-                    "field_of_view_um": [452.7, 452.7],
-                },
-            },
-        }
-        assert metadata["Ophys"] == expected_ophys
+        ophys = metadata["Ophys"]
+
+        # ImagingPlanes
+        imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["name"] == "ImagingPlaneChanA"
+        assert imaging_plane["optical_channel"] == [{"name": "ChanA"}]
+        assert imaging_plane["grid_spacing"] == pytest.approx([0.884e-6, 0.884e-6])
+        assert imaging_plane["grid_spacing_unit"] == "meters"
+
+        # MicroscopySeries
+        series = ophys["MicroscopySeries"][metadata_key]
+        assert series["imaging_plane_metadata_key"] == metadata_key
+        assert series["field_of_view"] == pytest.approx([452.7e-6, 452.7e-6])
 
 
 class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
