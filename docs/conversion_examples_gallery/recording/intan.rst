@@ -184,3 +184,39 @@ For RHS systems, you can also convert ADC output channels:
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_output = output_folder / "intan_adc_output_conversion.nwb"
     >>> interface_output.run_conversion(nwbfile_path=nwbfile_path_output, metadata=metadata_output, overwrite=True)
+
+Intan Stimulation Data Conversion (RHS systems)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Convert electrical stimulation current data from RHS2000 systems to NWB using
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intanstiminterface.IntanStimInterface`.
+
+The RHS Stim/Recording System records stimulation current alongside neural data. Each
+amplifier channel has a corresponding stimulation channel named ``{channel}_STIM``
+(e.g., ``A-000_STIM``). Data are stored as a ``TimeSeries`` with ``unit="A"`` (Amperes),
+with the conversion factor derived automatically from the ``stim_step_size`` in the file header.
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import IntanStimInterface
+    >>>
+    >>> # For this interface we need to pass the location of the .rhs file
+    >>> file_path_stim = f"{ECEPHY_DATA_PATH}/intan/rhs_stim_data_single_file_format/intanTestFile.rhs"
+    >>>
+    >>> # Convert stimulation channels (RHS system only)
+    >>> interface_stim = IntanStimInterface(file_path=file_path_stim, verbose=False)
+    >>>
+    >>> # Extract what metadata we can from the source files
+    >>> metadata_stim = interface_stim.get_metadata()
+    >>> # session_start_time is required but not available on intan
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata_stim["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata_stim["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> nwbfile_path_stim = output_folder / "intan_stim_conversion.nwb"
+    >>> interface_stim.run_conversion(nwbfile_path=nwbfile_path_stim, metadata=metadata_stim, overwrite=True)

@@ -376,10 +376,10 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             name="TwoPhotonSeries",
             description="Imaging data acquired from the Bruker Two-Photon Microscope.",
             unit="n.a.",
-            dimension=[512, 512],
+            dimension=[64, 64],
             imaging_plane=cls.imaging_plane_metadata["name"],
             scan_line_rate=15840.580398865815,
-            field_of_view=[0.0005672, 0.0005672],
+            field_of_view=[7.09e-05, 7.09e-05],
         )
         cls.ophys_metadata = dict(
             Device=[cls.device_metadata],
@@ -433,7 +433,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
 
         cls.photon_series_name = "TwoPhotonSeries"
         cls.num_samples = 5
-        cls.image_shape = (512, 512, 2)
+        cls.image_shape = (64, 64, 2)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001"]))
         cls.optical_channel_metadata = dict(
@@ -458,10 +458,10 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
             name="TwoPhotonSeries",
             description="The volumetric imaging data acquired from the Bruker Two-Photon Microscope.",
             unit="n.a.",
-            dimension=[512, 512, 2],
+            dimension=[64, 64, 2],
             imaging_plane=cls.imaging_plane_metadata["name"],
             scan_line_rate=15842.086085895791,
-            field_of_view=[0.0005672, 0.0005672, 0.00026],
+            field_of_view=[7.09e-05, 7.09e-05, 0.00026],
         )
 
         cls.ophys_metadata = dict(
@@ -509,7 +509,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
 
         cls.photon_series_name = "TwoPhotonSeriesCh2000002"
         cls.num_samples = 5
-        cls.image_shape = (512, 512)
+        cls.image_shape = (64, 64)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001", "Ch2_000002"]))
         cls.optical_channel_metadata = dict(
@@ -534,10 +534,10 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
             name=cls.photon_series_name,
             description="Imaging data acquired from the Bruker Two-Photon Microscope.",
             unit="n.a.",
-            dimension=[512, 512],
+            dimension=[64, 64],
             imaging_plane=cls.imaging_plane_metadata["name"],
             scan_line_rate=15842.086085895791,
-            field_of_view=[0.0005672, 0.0005672, 0.00013],
+            field_of_view=[7.09e-05, 7.09e-05, 0.00013],
         )
 
         cls.ophys_metadata = dict(
@@ -815,15 +815,29 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert two_photon_series["name"] == self.optical_series_name
 
     def check_extracted_metadata(self, metadata: dict):
+        """Test new dict-based metadata for Thor imaging data."""
         metadata_key = self.interface.metadata_key
-        assert metadata["Devices"] == {
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 10, 18, 17, 39, 19, tzinfo=timezone.utc)
+
+        expected_devices = {
             metadata_key: {"description": "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041"},
         }
-        assert metadata["Ophys"] == {
-            "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with ThorImageLS."},
-            },
-        }
+        assert metadata["Devices"] == expected_devices
+
+        ophys = metadata["Ophys"]
+
+        # ImagingPlanes
+        imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["name"] == "ImagingPlaneChanA"
+        assert imaging_plane["optical_channel"] == [{"name": "ChanA"}]
+        assert imaging_plane["grid_spacing"] == pytest.approx([0.884e-6, 0.884e-6])
+        assert imaging_plane["grid_spacing_unit"] == "meters"
+
+        # MicroscopySeries
+        series = ophys["MicroscopySeries"][metadata_key]
+        assert series["imaging_plane_metadata_key"] == metadata_key
+        assert series["field_of_view"] == pytest.approx([452.7e-6, 452.7e-6])
 
 
 class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
@@ -1077,14 +1091,21 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert ops["dimension"] == [128, 128]
 
     def check_extracted_metadata(self, metadata: dict):
-        """Minimal Inscopix file has no device serial/software, so no Devices entry."""
+        """Test new dict-based metadata for file with minimal acquisition info."""
         metadata_key = self.interface.metadata_key
-        assert "Devices" not in metadata
-        assert metadata["Ophys"] == {
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+
+        expected_ophys = {
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Inscopix nVista."},
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                },
             },
         }
+        assert metadata["Ophys"] == expected_ophys
+        assert "Devices" not in metadata
+        assert "Subject" not in metadata
 
 
 @skip_on_python_313
@@ -1236,14 +1257,21 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         assert ops["dimension"] == [3, 4]
 
     def check_extracted_metadata(self, metadata: dict):
-        """Minimal Inscopix file has no device serial/software, so no Devices entry."""
+        """Test new dict-based metadata for uint8 file with minimal acquisition info."""
         metadata_key = self.interface.metadata_key
-        assert "Devices" not in metadata
-        assert metadata["Ophys"] == {
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+
+        expected_ophys = {
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Inscopix nVista."},
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                },
             },
         }
+        assert metadata["Ophys"] == expected_ophys
+        assert "Devices" not in metadata
+        assert "Subject" not in metadata
 
 
 class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
@@ -1317,14 +1345,27 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 9, 29, 7, 53, 0, 903594, tzinfo=timezone.utc)
+        assert metadata["NWBFile"]["session_id"] == "66d53392-8f9a-4229-b661-1ea9b591521e"
+        assert metadata["NWBFile"]["experimenter"] == ["flaviod"]
+
         assert metadata["Devices"] == {
             metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
         }
-        assert metadata["Ophys"] == {
-            "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Femtonics MESc."},
-            },
-        }
+
+        ophys = metadata["Ophys"]
+
+        # ImagingPlanes
+        imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
+        assert imaging_plane["grid_spacing_unit"] == "meters"
+        assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
+        assert "geometric_transformations" in imaging_plane
+
+        # MicroscopySeries
+        series = ophys["MicroscopySeries"][metadata_key]
+        assert series["pmt_settings"] == {"voltage": 65.0, "warmup_time": -0.2}
 
 
 class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
@@ -1398,14 +1439,27 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 9, 30, 9, 36, 12, 98727, tzinfo=timezone.utc)
+        assert metadata["NWBFile"]["session_id"] == "071c1b91-a68a-46b3-8702-b619b1bdb49b"
+        assert metadata["NWBFile"]["experimenter"] == ["flaviod"]
+
         assert metadata["Devices"] == {
             metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
         }
-        assert metadata["Ophys"] == {
-            "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Femtonics MESc."},
-            },
-        }
+
+        ophys = metadata["Ophys"]
+
+        # ImagingPlanes
+        imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
+        assert imaging_plane["grid_spacing_unit"] == "meters"
+        assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
+        assert "geometric_transformations" in imaging_plane
+
+        # MicroscopySeries
+        series = ophys["MicroscopySeries"][metadata_key]
+        assert series["pmt_settings"] == {"voltage": 65.0, "warmup_time": -0.2}
 
 
 # class TestFemtonicsImagingInterfaceSingleChannel(ImagingExtractorInterfaceTestMixin):

@@ -116,25 +116,6 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def _get_session_start_time(self):
-        """Extract session start time from the experiment XML."""
-        xml_dict = self.imaging_extractor._experiment_xml_dict
-        thor_experiment = xml_dict["ThorImageExperiment"]
-        date_info = thor_experiment["Date"]
-        if isinstance(date_info, list):
-            first_entry_with_date = next((entry for entry in date_info if "@date" in entry), None)
-            unix_timestamps = first_entry_with_date["@uTime"]
-        else:
-            unix_timestamps = date_info["@uTime"]
-        return datetime.fromtimestamp(float(unix_timestamps), tz=timezone.utc)
-
-    def _get_device_description(self):
-        """Extract device description from the experiment XML."""
-        xml_dict = self.imaging_extractor._experiment_xml_dict
-        thor_experiment = xml_dict["ThorImageExperiment"]
-        software_version = thor_experiment["Software"]["@version"]
-        return f"ThorLabs 2P Microscope running ThorImageLS {software_version}"
-
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Retrieve the metadata for the Thor imaging data.
@@ -151,61 +132,88 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             and photon series configuration.
         """
-        self.session_start_time = self._get_session_start_time()
-        device_description = self._get_device_description()
+        metadata = (
+            super().get_metadata()
+            if not use_new_metadata_format
+            else super().get_metadata(use_new_metadata_format=True)
+        )
 
-        if use_new_metadata_format:
-            metadata = super().get_metadata(use_new_metadata_format=True)
-            metadata["NWBFile"]["session_start_time"] = self.session_start_time
-            metadata["Devices"] = {self.metadata_key: {"description": device_description}}
-            metadata["Ophys"] = {
-                "MicroscopySeries": {
-                    self.metadata_key: {
-                        "description": "Imaging data acquired with ThorImageLS.",
-                    },
-                },
-            }
-            return metadata
+        # Access the experiment XML dictionary from the extractor
+        xml_dict = self.imaging_extractor._experiment_xml_dict
+        thor_experiment = xml_dict["ThorImageExperiment"]
 
-        metadata = super().get_metadata()
+        # Device metadata
+        software = thor_experiment["Software"]
+        software_version = software["@version"]
+        device_description = f"ThorLabs 2P Microscope running ThorImageLS {software_version}"
+
+        # Session start time
+        date_info = thor_experiment["Date"]
+        if isinstance(date_info, list):
+            # Locate the first entry that contains "date"
+            first_entry_with_date = next((entry for entry in date_info if "@date" in entry), None)
+            unix_timestamps = first_entry_with_date["@uTime"]
+        else:
+            unix_timestamps = date_info["@uTime"]
+
+        self.session_start_time = datetime.fromtimestamp(float(unix_timestamps), tz=timezone.utc)
         metadata["NWBFile"]["session_start_time"] = self.session_start_time
-
-        metadata.setdefault("Ophys", {})["Device"] = [{"name": "ThorMicroscope", "description": device_description}]
 
         # LSM metadata
         lsm = thor_experiment["LSM"]
-        pixel_size = float(lsm["@pixelSizeUM"])
+        pixel_size_um = float(lsm["@pixelSizeUM"])
         width_um = float(lsm["@widthUM"])
         height_um = float(lsm["@heightUM"])
 
         ChannelName = _to_camel_case(self.channel_name)
 
-        optical_channel_dict = {"name": ChannelName, "description": "", "emission_lambda": np.nan}
-        optical_channels = [optical_channel_dict]
+        if use_new_metadata_format:
+            metadata["Devices"] = {self.metadata_key: {"description": device_description}}
+            metadata["Ophys"] = {
+                "ImagingPlanes": {
+                    self.metadata_key: {
+                        "name": f"ImagingPlane{ChannelName}",
+                        "optical_channel": [{"name": ChannelName}],
+                        "grid_spacing": [pixel_size_um * 1e-6, pixel_size_um * 1e-6],
+                        "grid_spacing_unit": "meters",
+                    },
+                },
+                "MicroscopySeries": {
+                    self.metadata_key: {
+                        "imaging_plane_metadata_key": self.metadata_key,
+                        "field_of_view": [width_um * 1e-6, height_um * 1e-6],
+                    },
+                },
+            }
+        else:
+            metadata.setdefault("Ophys", {})["Device"] = [{"name": "ThorMicroscope", "description": device_description}]
 
-        imaging_plane_name = f"ImagingPlane{ChannelName}"
-        channel_imaging_plane_metadata = {
-            "name": imaging_plane_name,
-            "optical_channel": optical_channels,
-            "description": "2P Imaging Plane",
-            "device": "ThorMicroscope",
-            "excitation_lambda": np.nan,  # Placeholder
-            "indicator": "unknown",
-            "location": "unknown",
-            "grid_spacing": [pixel_size * 1e-6, pixel_size * 1e-6],  # Convert um to meters
-            "grid_spacing_unit": "meters",
-        }
-        metadata["Ophys"]["ImagingPlane"] = [channel_imaging_plane_metadata]
+            optical_channel_dict = {"name": ChannelName, "description": "", "emission_lambda": np.nan}
+            optical_channels = [optical_channel_dict]
 
-        # TwoPhotonSeries metadata
-        two_photon_series_name = f"TwoPhotonSeries{ChannelName}"
-        two_photon_series_metadata = {
-            "name": two_photon_series_name,
-            "imaging_plane": imaging_plane_name,
-            "field_of_view": [width_um * 1e-6, height_um * 1e-6],  # Convert um to meters
-            "unit": "n.a.",
-        }
-        metadata["Ophys"]["TwoPhotonSeries"] = [two_photon_series_metadata]
+            imaging_plane_name = f"ImagingPlane{ChannelName}"
+            channel_imaging_plane_metadata = {
+                "name": imaging_plane_name,
+                "optical_channel": optical_channels,
+                "description": "2P Imaging Plane",
+                "device": "ThorMicroscope",
+                "excitation_lambda": np.nan,  # Placeholder
+                "indicator": "unknown",
+                "location": "unknown",
+                "grid_spacing": [pixel_size_um * 1e-6, pixel_size_um * 1e-6],  # Convert um to meters
+                "grid_spacing_unit": "meters",
+            }
+            metadata["Ophys"]["ImagingPlane"] = [channel_imaging_plane_metadata]
+
+            # TwoPhotonSeries metadata
+            two_photon_series_name = f"TwoPhotonSeries{ChannelName}"
+            two_photon_series_metadata = {
+                "name": two_photon_series_name,
+                "imaging_plane": imaging_plane_name,
+                "field_of_view": [width_um * 1e-6, height_um * 1e-6],  # Convert um to meters
+                "unit": "n.a.",
+            }
+            metadata["Ophys"]["TwoPhotonSeries"] = [two_photon_series_metadata]
 
         return metadata
 
