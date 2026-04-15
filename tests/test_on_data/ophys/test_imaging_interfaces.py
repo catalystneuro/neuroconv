@@ -814,6 +814,31 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
         assert two_photon_series["name"] == self.optical_series_name
 
+    def check_extracted_metadata(self, metadata: dict):
+        """Test new dict-based metadata for Thor imaging data."""
+        metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 10, 18, 17, 39, 19, tzinfo=timezone.utc)
+
+        expected_devices = {
+            metadata_key: {"description": "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041"},
+        }
+        assert metadata["Devices"] == expected_devices
+
+        ophys = metadata["Ophys"]
+
+        # ImagingPlanes
+        imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["name"] == "ImagingPlaneChanA"
+        assert imaging_plane["optical_channel"] == [{"name": "ChanA"}]
+        assert imaging_plane["grid_spacing"] == pytest.approx([0.884e-6, 0.884e-6])
+        assert imaging_plane["grid_spacing_unit"] == "meters"
+
+        # MicroscopySeries
+        series = ophys["MicroscopySeries"][metadata_key]
+        assert series["imaging_plane_metadata_key"] == metadata_key
+        assert series["field_of_view"] == pytest.approx([452.7e-6, 452.7e-6])
+
 
 class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = _MiniscopeMultiRecordingInterface
@@ -1065,6 +1090,23 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert ops["imaging_plane"] == "ImagingPlane"
         assert ops["dimension"] == [128, 128]
 
+    def check_extracted_metadata(self, metadata: dict):
+        """Test new dict-based metadata for file with minimal acquisition info."""
+        metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+
+        expected_ophys = {
+            "MicroscopySeries": {
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                },
+            },
+        }
+        assert metadata["Ophys"] == expected_ophys
+        assert "Devices" not in metadata
+        assert "Subject" not in metadata
+
 
 @skip_on_python_313
 @skip_on_darwin_arm64
@@ -1213,6 +1255,23 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
             ops["imaging_plane"] == "ImagingPlane"
         )  # Default metadata because this was not included in the source metadata
         assert ops["dimension"] == [3, 4]
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Test new dict-based metadata for uint8 file with minimal acquisition info."""
+        metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+
+        expected_ophys = {
+            "MicroscopySeries": {
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                },
+            },
+        }
+        assert metadata["Ophys"] == expected_ophys
+        assert "Devices" not in metadata
+        assert "Subject" not in metadata
 
 
 class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
