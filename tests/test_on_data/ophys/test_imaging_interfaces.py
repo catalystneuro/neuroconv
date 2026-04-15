@@ -1346,10 +1346,16 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
 
+        # NWBFile
         assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 9, 29, 7, 53, 0, 903594, tzinfo=timezone.utc)
         assert metadata["NWBFile"]["session_id"] == "66d53392-8f9a-4229-b661-1ea9b591521e"
         assert metadata["NWBFile"]["experimenter"] == ["flaviod"]
+        assert (
+            metadata["NWBFile"]["session_description"]
+            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        )
 
+        # Devices
         assert metadata["Devices"] == {
             metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
         }
@@ -1361,11 +1367,11 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
         assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
         assert imaging_plane["grid_spacing_unit"] == "meters"
         assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
-        assert "geometric_transformations" in imaging_plane
+        assert "Geometric transformations:" in imaging_plane["description"]
 
         # MicroscopySeries
         series = ophys["MicroscopySeries"][metadata_key]
-        assert series["pmt_settings"] == {"voltage": 65.0, "warmup_time": -0.2}
+        assert series["description"] == "PMT voltage: 65.0V, Warmup time: -0.2s"
 
 
 class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
@@ -1440,10 +1446,16 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
 
+        # NWBFile
         assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 9, 30, 9, 36, 12, 98727, tzinfo=timezone.utc)
         assert metadata["NWBFile"]["session_id"] == "071c1b91-a68a-46b3-8702-b619b1bdb49b"
         assert metadata["NWBFile"]["experimenter"] == ["flaviod"]
+        assert (
+            metadata["NWBFile"]["session_description"]
+            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        )
 
+        # Devices
         assert metadata["Devices"] == {
             metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
         }
@@ -1455,11 +1467,11 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
         assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
         assert imaging_plane["grid_spacing_unit"] == "meters"
         assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
-        assert "geometric_transformations" in imaging_plane
+        assert "Geometric transformations:" in imaging_plane["description"]
 
         # MicroscopySeries
         series = ophys["MicroscopySeries"][metadata_key]
-        assert series["pmt_settings"] == {"voltage": 65.0, "warmup_time": -0.2}
+        assert series["description"] == "PMT voltage: 65.0V, Warmup time: -0.2s"
 
 
 # class TestFemtonicsImagingInterfaceSingleChannel(ImagingExtractorInterfaceTestMixin):

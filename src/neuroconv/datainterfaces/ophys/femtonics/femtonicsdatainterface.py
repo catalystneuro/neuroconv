@@ -202,6 +202,41 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         # Sampling frequency
         sampling_freq = femtonics_metadata.get("sampling_frequency_hz")
 
+        # Session description (shared between both formats)
+        selected_session_name = femtonics_metadata.get("session_name")
+        selected_munit_name = femtonics_metadata.get("munit_name")
+        hostname = experimenter_info.get("hostname")
+
+        session_descr = f"Session: {selected_session_name}, MUnit: {selected_munit_name}."
+        if hostname:
+            session_descr += f" Session performed on workstation: {hostname}."
+        metadata["NWBFile"]["session_description"] = session_descr
+
+        # Build imaging plane description with geometric transformations
+        imaging_plane_description = ""
+        if geometric_transformations:
+            gt_parts = []
+            if geometric_transformations.get("translation") is not None:
+                gt_parts.append(f"translation: {geometric_transformations['translation']}")
+            if geometric_transformations.get("rotation") is not None:
+                gt_parts.append(f"rotation: {geometric_transformations['rotation']}")
+            if geometric_transformations.get("labeling_origin") is not None:
+                gt_parts.append(f"labeling_origin: {geometric_transformations['labeling_origin']}")
+            if gt_parts:
+                imaging_plane_description = "Geometric transformations: " + ", ".join(gt_parts)
+
+        # Build PMT description for selected channel
+        pmt_description = ""
+        if self._channel_name and self._channel_name in pmt_settings:
+            settings = pmt_settings[self._channel_name]
+            desc_parts = []
+            if settings.get("voltage") is not None:
+                desc_parts.append(f"PMT voltage: {settings['voltage']}V")
+            if settings.get("warmup_time") is not None:
+                desc_parts.append(f"Warmup time: {settings['warmup_time']}s")
+            if desc_parts:
+                pmt_description = ", ".join(desc_parts)
+
         if use_new_metadata_format:
             if version_parts:
                 metadata["Devices"] = {
@@ -215,13 +250,13 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 imaging_plane_entry["grid_spacing_unit"] = "meters"
             if sampling_freq is not None:
                 imaging_plane_entry["imaging_rate"] = float(sampling_freq)
-            if geometric_transformations:
-                imaging_plane_entry["geometric_transformations"] = geometric_transformations
+            if imaging_plane_description:
+                imaging_plane_entry["description"] = imaging_plane_description
 
             # MicroscopySeries
             microscopy_series_entry = {}
-            if self._channel_name and self._channel_name in pmt_settings:
-                microscopy_series_entry["pmt_settings"] = pmt_settings[self._channel_name]
+            if pmt_description:
+                microscopy_series_entry["description"] = pmt_description
 
             ophys = {}
             if imaging_plane_entry:
@@ -252,33 +287,14 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                                 )
                                 imaging_plane["grid_spacing_unit"] = "n.a."
 
-            # Session description - use session_name and munit_name from the extractor's selected values
-            selected_session_name = femtonics_metadata.get("session_name")
-            selected_munit_name = femtonics_metadata.get("munit_name")
-            hostname = experimenter_info.get("hostname")
-
-            session_descr = f"Session: {selected_session_name}, MUnit: {selected_munit_name}."
-            if hostname:
-                session_descr += f" Session performed on workstation: {hostname}."
-            metadata["NWBFile"]["session_description"] = session_descr
-
             # Add PMT settings to optical channels
-            if pmt_settings:
+            if pmt_description:
                 imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
                 optical_channels = imaging_plane.get("optical_channel", [])
-                channel_names = [self._channel_name]
-                for i, channel_name in enumerate(channel_names):
-                    if channel_name in pmt_settings and i < len(optical_channels):
-                        settings = pmt_settings[channel_name]
-                        desc_parts = []
-                        if settings.get("voltage") is not None:
-                            desc_parts.append(f"PMT voltage: {settings['voltage']}V")
-                        if settings.get("warmup_time") is not None:
-                            desc_parts.append(f"Warmup time: {settings['warmup_time']}s")
-                        if desc_parts:
-                            desc = optical_channels[i].get("description", "")
-                            desc = (desc + " " if desc else "") + ", ".join(desc_parts)
-                            optical_channels[i]["description"] = desc.strip()
+                if optical_channels:
+                    desc = optical_channels[0].get("description", "")
+                    desc = (desc + " " if desc else "") + pmt_description
+                    optical_channels[0]["description"] = desc.strip()
 
             # Add version and revision info to Ophys Device description
             if version_parts:
@@ -293,19 +309,11 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 imaging_plane["imaging_rate"] = sampling_freq
 
             # Add geometric transformations to ImagingPlane description
-            if geometric_transformations:
+            if imaging_plane_description:
                 imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
                 desc = imaging_plane.get("description", "")
-                gt_parts = []
-                if geometric_transformations.get("translation") is not None:
-                    gt_parts.append(f"translation: {geometric_transformations['translation']}")
-                if geometric_transformations.get("rotation") is not None:
-                    gt_parts.append(f"rotation: {geometric_transformations['rotation']}")
-                if geometric_transformations.get("labeling_origin") is not None:
-                    gt_parts.append(f"labeling_origin: {geometric_transformations['labeling_origin']}")
-                if gt_parts:
-                    desc = (desc + " " if desc else "") + "Geometric transformations: " + ", ".join(gt_parts)
-                    imaging_plane["description"] = desc.strip()
+                desc = (desc + " " if desc else "") + imaging_plane_description
+                imaging_plane["description"] = desc.strip()
 
         return metadata
 
