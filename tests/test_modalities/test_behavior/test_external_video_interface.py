@@ -404,11 +404,11 @@ def test_invalid_device_metadata(nwb_converter, nwbfile_path, metadata):
         )  # Run conversion with modified metadata
 
 
-def test_set_aligned_segment_starting_times_and_rate_multi_file(nwb_converter, nwbfile_path, metadata):
+def test_set_segment_starting_times_multi_file(nwb_converter, nwbfile_path, metadata):
     """Test that segment starting times and rate correctly constructs timestamps for multiple files."""
     interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_segment_starting_times_and_rate(
-        aligned_segment_starting_times=[0.0, 50.0],
+    interface.set_segment_starting_times(
+        starting_times=[0.0, 50.0],
         rate=25.0,
     )
 
@@ -432,36 +432,36 @@ def test_set_aligned_segment_starting_times_and_rate_multi_file(nwb_converter, n
         np.testing.assert_array_equal(image_series.starting_frame, [0, 30])
 
 
-def test_set_aligned_segment_starting_times_and_rate_length_mismatch(nwb_converter):
+def test_set_segment_starting_times_length_mismatch(nwb_converter):
     """Test that mismatched starting times length raises an error."""
     interface = nwb_converter.data_interface_objects["Video1"]
 
     with pytest.raises(AssertionError, match="does not match the number of video files"):
-        interface.set_aligned_segment_starting_times_and_rate(
-            aligned_segment_starting_times=[0.0],
+        interface.set_segment_starting_times(
+            starting_times=[0.0],
             rate=25.0,
         )
 
 
-def test_set_aligned_segment_starting_times_and_rate_negative_rate(nwb_converter):
+def test_set_segment_starting_times_negative_rate(nwb_converter):
     """Test that non-positive rate raises an error."""
     interface = nwb_converter.data_interface_objects["Video1"]
 
     with pytest.raises(ValueError, match="rate must be positive"):
-        interface.set_aligned_segment_starting_times_and_rate(
-            aligned_segment_starting_times=[0.0, 50.0],
+        interface.set_segment_starting_times(
+            starting_times=[0.0, 50.0],
             rate=-1.0,
         )
 
 
-def test_set_aligned_segment_starting_times_and_rate_mutually_exclusive(nwb_converter):
+def test_set_segment_starting_times_mutually_exclusive(nwb_converter):
     """Test that setting timestamps first prevents using the rate-based method."""
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0]), np.array([3.0, 4.0])])
 
     with pytest.raises(ValueError, match="Explicit timestamps have already been set"):
-        interface.set_aligned_segment_starting_times_and_rate(
-            aligned_segment_starting_times=[0.0, 50.0],
+        interface.set_segment_starting_times(
+            starting_times=[0.0, 50.0],
             rate=25.0,
         )
 
@@ -469,8 +469,8 @@ def test_set_aligned_segment_starting_times_and_rate_mutually_exclusive(nwb_conv
 def test_set_aligned_starting_time_shifts_segment_starting_times(nwb_converter, nwbfile_path, metadata):
     """Test that set_aligned_starting_time composes with segment starting times and rate."""
     interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_segment_starting_times_and_rate(
-        aligned_segment_starting_times=[0.0, 50.0],
+    interface.set_segment_starting_times(
+        starting_times=[0.0, 50.0],
         rate=25.0,
     )
     interface.set_aligned_starting_time(aligned_starting_time=10.0)
@@ -488,5 +488,29 @@ def test_set_aligned_starting_time_shifts_segment_starting_times(nwb_converter, 
         # Starting times should be shifted: [10.0, 60.0]
         expected_segment_1 = 10.0 + np.arange(30) / 25.0
         expected_segment_2 = 60.0 + np.arange(30) / 25.0
+        expected_timestamps = np.concatenate([expected_segment_1, expected_segment_2])
+        np.testing.assert_array_almost_equal(image_series.timestamps[:], expected_timestamps)
+
+
+def test_set_segment_starting_times_rate_from_video(nwb_converter, nwbfile_path, metadata):
+    """Test that rate is read from video metadata when not provided."""
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_segment_starting_times(
+        starting_times=[0.0, 50.0],
+    )
+
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        metadata=metadata,
+    )
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        image_series = nwbfile.acquisition["Video test1"]
+
+        # Test videos are 30 frames at 25 fps
+        expected_segment_1 = 0.0 + np.arange(30) / 25.0
+        expected_segment_2 = 50.0 + np.arange(30) / 25.0
         expected_timestamps = np.concatenate([expected_segment_1, expected_segment_2])
         np.testing.assert_array_almost_equal(image_series.timestamps[:], expected_timestamps)

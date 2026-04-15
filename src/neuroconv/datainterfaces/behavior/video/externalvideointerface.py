@@ -229,43 +229,75 @@ class ExternalVideoInterface(BaseDataInterface):
             ]
         )
 
-    def set_aligned_segment_starting_times_and_rate(
+    def set_starting_time(
         self,
-        aligned_segment_starting_times: list[float],
-        rate: float,
+        starting_time: float,
+        segment_index: int,
     ) -> None:
         """
-        Set the per-segment starting times and a common rate for constructing timestamps.
+        Set the starting time for a single video segment.
 
-        This method stores timing information without scanning video files for timestamps.
-        At write time, timestamps are constructed as:
-        ``starting_time[i] + np.arange(num_frames[i]) / rate`` for each segment.
+        At write time, timestamps for this segment are constructed as:
+        ``starting_time + np.arange(num_frames) / rate``.
 
         This is mutually exclusive with ``set_aligned_timestamps``. If explicit timestamps
         have already been set, this method will raise a ``ValueError``.
 
         Parameters
         ----------
-        aligned_segment_starting_times : list of float
-            The starting time of each video segment, in seconds relative to the common session start time.
-            Must have the same length as the number of video files.
-        rate : float
-            The constant frame rate (in Hz) shared by all video segments.
+        starting_time : float
+            The starting time of the video segment, in seconds relative to the common session start time.
+        segment_index : int
+            The index of the segment (video file) to set the starting time for.
         """
-        if rate <= 0:
-            raise ValueError(f"rate must be positive, received {rate}.")
-        aligned_segment_starting_times_length = len(aligned_segment_starting_times)
-        assert aligned_segment_starting_times_length == self._number_of_files, (
-            f"The length of 'aligned_segment_starting_times' ({aligned_segment_starting_times_length}) "
-            f"does not match the number of video files ({self._number_of_files})!"
-        )
         if self._timestamps is not None:
             raise ValueError(
                 "Explicit timestamps have already been set via 'set_aligned_timestamps'. "
-                "Cannot also set segment starting times and rate."
+                "Cannot also set segment starting times."
             )
-        self._segment_starting_times = list(aligned_segment_starting_times)
-        self._rate = rate
+        if segment_index < 0 or segment_index >= self._number_of_files:
+            raise IndexError(f"segment_index {segment_index} is out of range for {self._number_of_files} video files.")
+        if self._segment_starting_times is None:
+            self._segment_starting_times = [0.0] * self._number_of_files
+        self._segment_starting_times[segment_index] = starting_time
+
+        # Read rate from video metadata if not already set
+        if self._rate is None:
+            file_paths = self.source_data["file_paths"]
+            with VideoCaptureContext(file_path=str(file_paths[0])) as video:
+                self._rate = video.get_video_fps()
+
+    def set_segment_starting_times(
+        self,
+        starting_times: list[float],
+        rate: float | None = None,
+    ) -> None:
+        """
+        Set the starting times for all video segments at once.
+
+        Convenience wrapper around ``set_starting_time`` that sets the starting time
+        for every segment in a single call.
+
+        Parameters
+        ----------
+        starting_times : list of float
+            The starting time of each video segment, in seconds relative to the common session start time.
+            Must have the same length as the number of video files.
+        rate : float, optional
+            The constant frame rate (in Hz) shared by all video segments.
+            If not provided, the rate is read from the first video file's metadata.
+        """
+        if rate is not None and rate <= 0:
+            raise ValueError(f"rate must be positive, received {rate}.")
+        starting_times_length = len(starting_times)
+        assert starting_times_length == self._number_of_files, (
+            f"The length of 'starting_times' ({starting_times_length}) "
+            f"does not match the number of video files ({self._number_of_files})!"
+        )
+        if rate is not None:
+            self._rate = rate
+        for segment_index, starting_time in enumerate(starting_times):
+            self.set_starting_time(starting_time=starting_time, segment_index=segment_index)
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
