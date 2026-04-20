@@ -20,10 +20,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     keywords = ("segmentation", "roi", "cells")
 
-    def __init__(self, verbose: bool = False, **source_data):
+    def __init__(self, verbose: bool = False, metadata_key: str | None = None, **source_data):
         super().__init__(**source_data)
         self.verbose = verbose
         self.segmentation_extractor = self._extractor_instance
+        self.metadata_key = metadata_key
 
     @property
     def roi_ids(self):
@@ -117,7 +118,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        if use_new_metadata_format:
+            return super().get_metadata()
+
         from ...tools.roiextractors.roiextractors_pending_deprecation import (
             _get_default_ophys_metadata_old_metadata_list,
         )
@@ -283,4 +287,5 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
+            metadata_key=self.metadata_key,
         )
