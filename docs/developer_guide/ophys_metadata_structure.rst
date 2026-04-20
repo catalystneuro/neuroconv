@@ -195,6 +195,14 @@ parameters that make the interface unique (e.g. stream name, channel name). When
 passes an explicit value, they take responsibility for uniqueness and can use it to
 intentionally share or customize metadata keys.
 
+The default is ``None`` rather than a hardcoded string (e.g. ``"caiman_segmentation"``) for
+consistency across interfaces. Multi-stream and multi-channel interfaces (like
+``ScanImageImagingInterface``) cannot have a fixed default because the key must include
+runtime parameters such as ``channel_name`` and ``plane_index``. Using ``None`` as the sentinel
+and resolving the default in ``__init__`` lets every interface share the same pattern:
+simple interfaces pick a static string, and parametric interfaces build the key from their
+constructor arguments.
+
 Key Propagation
 ~~~~~~~~~~~~~~~
 
