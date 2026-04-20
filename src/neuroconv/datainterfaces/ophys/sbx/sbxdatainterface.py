@@ -28,6 +28,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         sampling_frequency: float | None = None,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str | None = None,
     ):
         """
         Parameters
@@ -36,6 +37,9 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             Path to .sbx file.
         sampling_frequency : float, optional
         verbose : bool, default: False
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to "sbx_imaging".
         """
         # Handle deprecated positional arguments
         if args:
@@ -66,16 +70,26 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             verbose = positional_values.get("verbose", verbose)
             photon_series_type = positional_values.get("photon_series_type", photon_series_type)
 
+        if metadata_key is None:
+            metadata_key = "sbx_imaging"
+
         super().__init__(
             file_path=file_path,
             sampling_frequency=sampling_frequency,
             verbose=verbose,
             photon_series_type=photon_series_type,
+            metadata_key=metadata_key,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Get metadata for the Scanbox imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata with Scanbox device provenance.
 
         Returns
         -------
@@ -83,6 +97,18 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information and imaging details
             specific to the Scanbox system.
         """
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+            metadata["Devices"] = {self.metadata_key: {"description": "Scanbox imaging"}}
+            metadata["Ophys"] = {
+                "MicroscopySeries": {
+                    self.metadata_key: {
+                        "description": "Imaging data acquired with Scanbox.",
+                    },
+                },
+            }
+            return metadata
+
         metadata = super().get_metadata()
         metadata["Ophys"]["Device"][0]["description"] = "Scanbox imaging"
         return metadata

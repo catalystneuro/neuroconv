@@ -33,11 +33,59 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
     def test_all_conversion_checks(self):
         pass
 
+    def check_extracted_metadata(self, metadata: dict):
+        """MockImagingInterface returns a mock-specific series description.
+
+        See https://github.com/catalystneuro/neuroconv/issues/1557"""
+        assert "Devices" not in metadata
+        metadata_key = self.interface.metadata_key
+        assert metadata["Ophys"] == {
+            "MicroscopySeries": {
+                metadata_key: {"description": "Imaging data from mock generator."},
+            },
+        }
+
+    def test_metadata_key_passed_to_add_imaging(self, setup_interface):
+        from unittest.mock import patch
+
+        interface = MockImagingInterface(metadata_key="test_key")
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+
+        with patch("neuroconv.tools.roiextractors.add_imaging_to_nwbfile") as mock_add:
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+            mock_add.assert_called_once()
+            call_kwargs = mock_add.call_args[1]
+            assert call_kwargs["metadata_key"] == "test_key"
+
 
 class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
     data_interface_cls = MockSegmentationInterface
     interface_kwargs = dict()
+
+    def check_extracted_metadata(self, metadata: dict):
+        """MockSegmentationInterface returns a mock-specific segmentation description."""
+        assert "Devices" not in metadata
+        metadata_key = self.interface.metadata_key
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data from mock generator."},
+            },
+        }
+
+    def test_metadata_key_passed_to_add_segmentation(self, setup_interface):
+        from unittest.mock import patch
+
+        interface = MockSegmentationInterface(metadata_key="test_key")
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+
+        with patch("neuroconv.tools.roiextractors.add_segmentation_to_nwbfile") as mock_add:
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+            mock_add.assert_called_once()
+            call_kwargs = mock_add.call_args[1]
+            assert call_kwargs["metadata_key"] == "test_key"
 
     def test_roi_ids_property(self):
         """Test that roi_ids property returns cell ROI IDs."""

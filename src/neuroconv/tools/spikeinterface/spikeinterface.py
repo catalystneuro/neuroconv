@@ -1220,6 +1220,7 @@ def add_recording_as_time_series_to_nwbfile(
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
     metadata_key: str = "TimeSeries",
+    parent_container: Literal["acquisition", "stimulus"] = "acquisition",
 ):
     """
     Adds traces from recording object as TimeSeries to an NWBFile object.
@@ -1261,6 +1262,9 @@ def add_recording_as_time_series_to_nwbfile(
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
+    parent_container : {"acquisition", "stimulus"}, default: "acquisition"
+        The NWB container to add the TimeSeries to. Use "stimulus" for data that was
+        applied to the system (e.g., electrical stimulation current).
     """
 
     num_segments = recording.get_num_segments()
@@ -1274,6 +1278,7 @@ def add_recording_as_time_series_to_nwbfile(
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
             metadata_key=metadata_key,
+            parent_container=parent_container,
         )
 
 
@@ -1286,6 +1291,7 @@ def _add_time_series_segment_to_nwbfile(
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
     metadata_key: str = "time_series_metadata_key",
+    parent_container: Literal["acquisition", "stimulus"] = "acquisition",
 ):
     """
     Internal function to add a single recording segment as a TimeSeries to an NWBFile.
@@ -1380,7 +1386,10 @@ def _add_time_series_segment_to_nwbfile(
     # Create TimeSeries object and add it to nwbfile
     time_series = pynwb.base.TimeSeries(**tseries_kwargs)
 
-    nwbfile.add_acquisition(time_series)
+    if parent_container == "acquisition":
+        nwbfile.add_acquisition(time_series)
+    elif parent_container == "stimulus":
+        nwbfile.add_stimulus(time_series)
 
 
 def _get_default_spatial_series_metadata():

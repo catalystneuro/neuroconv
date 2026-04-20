@@ -501,6 +501,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("photon_series_type", None)
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
@@ -516,6 +517,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         verbose: bool = False,
         seed: int = 0,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str | None = None,
     ):
         """
         Parameters
@@ -540,6 +542,9 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         """
 
         self.seed = seed
+        if metadata_key is None:
+            metadata_key = "mock_imaging"
+
         super().__init__(
             num_samples=num_samples,
             num_rows=num_rows,
@@ -548,15 +553,24 @@ class MockImagingInterface(BaseImagingExtractorInterface):
             dtype=dtype,
             verbose=verbose,
             seed=seed,
+            metadata_key=metadata_key,
         )
 
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         session_start_time = datetime.now().astimezone()
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         metadata["NWBFile"]["session_start_time"] = session_start_time
+        if use_new_metadata_format:
+            metadata["Ophys"] = {
+                "MicroscopySeries": {
+                    self.metadata_key: {
+                        "description": "Imaging data from mock generator.",
+                    },
+                },
+            }
         return metadata
 
     def add_to_nwbfile(
@@ -681,6 +695,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         has_neuropil_signal: bool = True,
         seed: int = 0,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Parameters
@@ -709,7 +724,11 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             seed for the random number generator, by default 0
         verbose : bool, optional
             controls verbosity, by default False.
+        metadata_key : str, optional
+            Metadata key for this interface. When None, defaults to "mock_segmentation".
         """
+        if metadata_key is None:
+            metadata_key = "mock_segmentation"
 
         super().__init__(
             num_rois=num_rois,
@@ -724,10 +743,22 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             has_neuropil_signal=has_neuropil_signal,
             verbose=verbose,
             seed=seed,
+            metadata_key=metadata_key,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         session_start_time = datetime.now().astimezone()
+
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+            metadata["NWBFile"]["session_start_time"] = session_start_time
+            metadata["Ophys"] = {
+                "PlaneSegmentations": {
+                    self.metadata_key: {"description": "Segmentation data from mock generator."},
+                },
+            }
+            return metadata
+
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata

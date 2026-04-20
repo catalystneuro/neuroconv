@@ -32,6 +32,15 @@ class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        assert "Devices" not in metadata
+        metadata_key = self.interface.metadata_key
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data acquired with CaImAn."},
+            },
+        }
+
     @pytest.fixture(
         params=[
             {"mask_type": "image", "include_background_segmentation": True},
@@ -302,10 +311,28 @@ class TestCnmfeSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        assert "Devices" not in metadata
+        metadata_key = self.interface.metadata_key
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data acquired with CNMF-E."},
+            },
+        }
+
 
 class TestExtractSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = ExtractSegmentationInterface
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert "Devices" not in metadata
+        metadata_key = self.interface.metadata_key
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data acquired with EXTRACT."},
+            },
+        }
 
     @pytest.fixture(
         params=[
