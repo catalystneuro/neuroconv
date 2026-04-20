@@ -43,6 +43,7 @@
 * Added tests for `OnePhotonSeries`, `processing/ophys` container, and non-iterative write to `TestAddImaging` (dict-based metadata pipeline). [PR #1685](https://github.com/catalystneuro/neuroconv/pull/1685)
 * Added functional tests to `TestAddSegmentation` for image masks, ROI properties, timestamp handling (regular, irregular, sampling frequency fallback), trace data values, ROI table regions, and iterator options propagation. Added a warning when user-provided `RoiResponses` metadata references traces the extractor does not have. [PR #1693](https://github.com/catalystneuro/neuroconv/pull/1693)
 * Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
+* Added documentation for the new ophys metadata structure: a how-to guide for annotating ophys metadata (`docs/how_to/annotate_ophys_metadata.rst`) and a developer guide describing the dict-based schema for `Devices`, `ImagingPlanes`, and `MicroscopySeries` (`docs/developer_guide/ophys_metadata_structure.rst`). [PR #1716](https://github.com/catalystneuro/neuroconv/pull/1716)
 
 # v0.9.3 (February 19, 2026)
 
