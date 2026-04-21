@@ -1851,6 +1851,7 @@ def _add_units_table_to_nwbfile(
     unit_ids: list[str | int] | None = None,
     property_descriptions: dict | None = None,
     skip_properties: list[str] | None = None,
+    extra_properties: dict | None = None,
     units_table_name: str = "units",
     unit_table_description: str | None = None,
     write_in_processing_module: bool = False,
@@ -1959,6 +1960,10 @@ def _add_units_table_to_nwbfile(
         and values will be used as descriptions in the Units table.
     skip_properties : list of str, optional
         Unit properties to exclude from writing.
+    extra_properties : dict, optional
+        Additional properties to add to the Units table that are not present in the SortingExtractor.
+        Keys are property names and values are lists of property values for each unit
+        (must match length of units being written).
     units_table_name : str, default: 'units'
         Name of the Units table. Must be 'units' if `write_in_processing_module` is False.
     unit_table_description : str, optional
@@ -2072,6 +2077,19 @@ def _add_units_table_to_nwbfile(
         data_to_add[property].update(description=description, data=data, index=index)
         if property in ["max_channel", "max_electrode"] and nwbfile.electrodes is not None:
             data_to_add[property].update(table=nwbfile.electrodes)
+
+    # Extra properties
+    extra_properties = extra_properties or {}
+    for extra_property in extra_properties:
+        if extra_property in data_to_add:
+            warnings.warn(f"Extra property '{extra_property}' already exists as a property in the sorting extractor.")
+            continue
+        data = extra_properties[extra_property]
+        description = property_descriptions.get(extra_property, "No description.")
+        index = isinstance(data[0], (list, np.ndarray, tuple))
+        if index and isinstance(data[0], np.ndarray):
+            index = data[0].ndim
+        data_to_add[extra_property].update(description=description, data=data, index=index)
 
     # Unit name logic
     if "unit_name" in data_to_add:
@@ -2525,19 +2543,29 @@ def add_sorting_analyzer_to_nwbfile(
         unit_indices = sorting.ids_to_indices(unit_ids)
         template_means = template_means[unit_indices]
         template_stds = template_stds[unit_indices]
+    else:
+        unit_ids = sorting_analyzer.unit_ids
 
     # metrics properties (quality, template) are added as properties to the sorting copy
-    sorting_copy = sorting.select_units(unit_ids=sorting.unit_ids)
+    property_descriptions = dict() if property_descriptions is None else property_descriptions
+    extra_properties = dict()
     if sorting_analyzer.has_extension("quality_metrics"):
-        qm = sorting_analyzer.get_extension("quality_metrics").get_data()
-        for prop in qm.columns:
-            if prop not in sorting_copy.get_property_keys():
-                sorting_copy.set_property(prop, qm[prop])
+        qm_ext = sorting_analyzer.get_extension("quality_metrics")
+        qm_df = qm_ext.get_data()
+        qm_descriptions = qm_ext.get_metric_column_descriptions()
+
+        for prop in qm_df.columns:
+            if prop not in sorting.get_property_keys():
+                extra_properties[prop] = qm_df.loc[unit_ids, prop].values
+                property_descriptions.update({prop: qm_descriptions.get(prop, "No description.")})
     if sorting_analyzer.has_extension("template_metrics"):
-        tm = sorting_analyzer.get_extension("template_metrics").get_data()
-        for prop in tm.columns:
-            if prop not in sorting_copy.get_property_keys():
-                sorting_copy.set_property(prop, tm[prop])
+        tm_ext = sorting_analyzer.get_extension("template_metrics")
+        tm_df = tm_ext.get_data()
+        tm_descriptions = tm_ext.get_metric_column_descriptions()
+        for prop in tm_df.columns:
+            if prop not in sorting.get_property_keys():
+                extra_properties[prop] = tm_df.loc[unit_ids, prop].values
+                property_descriptions.update({prop: tm_descriptions.get(prop, "No description.")})
 
     # if recording is given, it takes precedence over the recording in the sorting analyzer
     if recording is None:
@@ -2556,11 +2584,12 @@ def add_sorting_analyzer_to_nwbfile(
     )
 
     _add_units_table_to_nwbfile(
-        sorting=sorting_copy,
+        sorting=sorting,
         nwbfile=nwbfile,
         unit_ids=unit_ids,
         property_descriptions=property_descriptions,
         skip_properties=skip_properties,
+        extra_properties=extra_properties,
         write_in_processing_module=write_in_processing_module,
         units_table_name=units_name,
         unit_table_description=units_description,
