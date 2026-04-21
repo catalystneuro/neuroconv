@@ -1118,6 +1118,62 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(channel_names[-2:], ["probe2_ch0", "probe2_ch1"])
         self.assertListEqual(group_names[-2:], ["ProbeB", "ProbeB"])  # Different group
 
+    def test_no_new_electrode_groups_added_when_all_groups_already_present(self):
+        """When all recording group names are already in nwbfile, no new ElectrodeGroups should be created."""
+        # setUp already creates device "extra_device" and electrode group "0"
+        num_electrode_groups_before = len(self.nwbfile.electrode_groups)
+
+        # Recording whose only group ("0") is already present in the nwbfile
+        recording = generate_recording(num_channels=2, durations=[1], set_probe=False)
+        recording.set_property(key="group_name", values=["0", "0"])
+
+        metadata = dict(
+            Ecephys=dict(
+                Device=[dict(name="extra_device", description="user-supplied device")],
+                ElectrodeGroup=[
+                    dict(name="0", description="user-supplied group", location="CA1", device="extra_device")
+                ],
+            )
+        )
+
+        add_electrodes_to_nwbfile(recording=recording, nwbfile=self.nwbfile, metadata=metadata)
+
+        # No new electrode groups should have been created
+        self.assertEqual(len(self.nwbfile.electrode_groups), num_electrode_groups_before)
+
+    def test_only_missing_electrode_groups_added_with_user_metadata_preserved(self):
+        """When metadata with Device/ElectrodeGroup is passed, only missing groups are added using that metadata."""
+        # setUp already creates device "extra_device" and electrode group "0"
+        # "0" is already in the nwbfile; "new_group" is not
+        recording = generate_recording(num_channels=4, durations=[1], set_probe=False)
+        recording.set_property(key="group_name", values=["0", "0", "new_group", "new_group"])
+
+        metadata = dict(
+            Ecephys=dict(
+                Device=[dict(name="extra_device", description="user-supplied device")],
+                ElectrodeGroup=[
+                    dict(name="0", description="existing group", location="CA1", device="extra_device"),
+                    dict(
+                        name="new_group", description="new group from metadata", location="CA2", device="extra_device"
+                    ),
+                ],
+            )
+        )
+
+        add_electrodes_to_nwbfile(recording=recording, nwbfile=self.nwbfile, metadata=metadata)
+
+        # "new_group" should have been added
+        self.assertIn("new_group", self.nwbfile.electrode_groups)
+
+        # "0" should not be duplicated
+        self.assertEqual(list(self.nwbfile.electrode_groups.keys()).count("0"), 1)
+
+        # "new_group" should carry the user-supplied metadata
+        new_group = self.nwbfile.electrode_groups["new_group"]
+        self.assertEqual(new_group.description, "new group from metadata")
+        self.assertEqual(new_group.location, "CA2")
+        self.assertEqual(new_group.device.name, "extra_device")
+
 
 class TestAddTimeSeries:
     def test_default_values(self):
