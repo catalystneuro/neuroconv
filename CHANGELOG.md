@@ -1,6 +1,7 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Fix creation of ghost Device in `add_electrodes_to_nwbfile` [PR #1697](https://github.com/catalystneuro/neuroconv/pull/1718)
 * Bumped minimum spikeinterface version to `>=0.104.0`. Updated template metric names in unit property descriptions (`halfwidth` to `trough_half_width`/`peak_half_width`, `peak_to_valley` to `peak_to_trough_duration`). [PR #1697](https://github.com/catalystneuro/neuroconv/pull/1697)
 * Made `nwbfile_path` a required parameter in `write_recording_to_nwbfile`, `write_sorting_to_nwbfile`, and `write_sorting_analyzer_to_nwbfile`. To add data to an in-memory NWBFile, use `add_recording_to_nwbfile`, `add_sorting_to_nwbfile`, or `add_sorting_analyzer_to_nwbfile` instead. [PR #1689](https://github.com/catalystneuro/neuroconv/pull/1689)
 * `write_recording_to_nwbfile`, `write_sorting_to_nwbfile`, and `write_sorting_analyzer_to_nwbfile` now return `None` in append mode (`append_on_disk_nwbfile=True`) instead of the NWBFile object. [PR #1689](https://github.com/catalystneuro/neuroconv/pull/1689)
