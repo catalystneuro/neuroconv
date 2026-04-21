@@ -946,11 +946,25 @@ def add_electrodes_to_nwbfile(
         data = np.full(recording.get_num_channels(), fill_value=default_location)
         data_to_add["location"] = dict(description="location", data=data, index=False)
 
-    # Add missing groups to the nwb file
-    groupless_names = [group_name for group_name in group_names if group_name not in nwbfile.electrode_groups]
-    if len(groupless_names) > 0:
-        electrode_group_list = [dict(name=group_name) for group_name in groupless_names]
-        missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=electrode_group_list))
+    # Add missing ElectrodeGroups to nwbfile if group names from the recording are not present in the nwbfile already,
+    # and update metadata with missing groups if necessary.
+    # Keep other metadata fields (e.g., Device) if user passes metadata
+    group_names_to_add = [group_name for group_name in group_names if group_name not in nwbfile.electrode_groups]
+    if len(group_names_to_add) > 0:
+        electrode_group_list = [dict(name=group_name) for group_name in group_names_to_add]
+        if metadata is not None:
+            electrodes_group_metadata = metadata.get("Ecephys", dict()).get("ElectrodeGroup", list())
+            missing_group_metadata = metadata.copy()
+            missing_group_metadata["Ecephys"]["ElectrodeGroup"] = electrodes_group_metadata
+        else:
+            missing_group_metadata = dict()
+            electrodes_group_metadata = list()
+            missing_group_metadata["Ecephys"] = dict()
+            missing_group_metadata["Ecephys"]["ElectrodeGroup"] = electrodes_group_metadata
+        # Fill in missing groups
+        for group in electrode_group_list:
+            if group["name"] not in [g["name"] for g in electrodes_group_metadata]:
+                electrodes_group_metadata.append(group)
         _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=missing_group_metadata)
 
     group_list = [nwbfile.electrode_groups[group_name] for group_name in group_names]
