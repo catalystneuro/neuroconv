@@ -30,6 +30,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         munit_name: Optional[str] = None,
         channel_name: Optional[str] = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Initialize the FemtonicsImagingInterface.
@@ -38,6 +39,10 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         ----------
         file_path : FilePath
             Path to the .mesc file.
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to a key derived from
+            session_name, munit_name, and channel_name.
         session_name : str, optional
             Name of the MSession to use (e.g., "MSession_0", "MSession_1").
             If None, and there is only one session, then the first available session will be selected automatically. Otherwise this to be specified with the desired session.
@@ -99,6 +104,16 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         self._munit_name = munit_name
         self._channel_name = channel_name
 
+        if metadata_key is None:
+            parts = ["femtonics_imaging"]
+            if session_name is not None:
+                parts.append(session_name)
+            if munit_name is not None:
+                parts.append(munit_name)
+            if channel_name is not None:
+                parts.append(f"channel_{channel_name}")
+            metadata_key = "_".join(parts)
+
         # Initialize the extractor directly with string parameters
         # The extractor now handles validation and selection internally
         super().__init__(
@@ -107,6 +122,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             munit_name=munit_name,
             channel_name=channel_name,
             verbose=verbose,
+            metadata_key=metadata_key,
         )
 
     @classmethod
@@ -119,14 +135,21 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("photon_series_type", None)
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Extract metadata specific to Femtonics imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata with Femtonics provenance.
 
         Returns
         -------
@@ -134,47 +157,54 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing extracted metadata including device information,
             optical channels, imaging plane details, and acquisition parameters.
         """
-        metadata = super().get_metadata()
+        metadata = (
+            super().get_metadata()
+            if not use_new_metadata_format
+            else super().get_metadata(use_new_metadata_format=True)
+        )
 
         femtonics_metadata = self.imaging_extractor._get_metadata()
 
-        # Extract pixel size information for imaging plane
-        pixel_size_info = femtonics_metadata.get("pixel_size_micrometers")
-        if pixel_size_info and "x_size" in pixel_size_info and "y_size" in pixel_size_info:
-            x_size = pixel_size_info["x_size"]
-            y_size = pixel_size_info["y_size"]
-            x_units = pixel_size_info.get("x_units")
-            y_units = pixel_size_info.get("y_units")
+        # Session start time
+        session_start_time = femtonics_metadata.get("session_start_time")
+        metadata["NWBFile"]["session_start_time"] = session_start_time
 
-            # Only update if both units are the same or if units are missing
-            if x_units == y_units:
-                if "Ophys" in metadata and "ImagingPlane" in metadata["Ophys"]:
-                    for imaging_plane in metadata["Ophys"]["ImagingPlane"]:
-                        imaging_plane["grid_spacing"] = [x_size, y_size]
-                        if x_units:
-                            imaging_plane["grid_spacing_unit"] = x_units
-                        else:
-                            import warnings
-
-                            warnings.warn(
-                                "Pixel size unit is missing in Femtonics metadata; 'grid_spacing_unit' will be set to 'n.a.'."
-                            )
-                            imaging_plane["grid_spacing_unit"] = "n.a."
-
-        # Add experimenter information
-        experimenter_info = femtonics_metadata.get("experimenter_info", {})
-        if experimenter_info.get("username"):
-            metadata["NWBFile"]["experimenter"] = [experimenter_info["username"]]
-
-        # Add session information
+        # Session UUID
         session_uuid = femtonics_metadata.get("session_uuid")
         if session_uuid:
             metadata["NWBFile"]["session_id"] = session_uuid
 
-        # Session description - use session_name and munit_name from the extractor's selected values
+        # Experimenter
+        experimenter_info = femtonics_metadata.get("experimenter_info", {})
+        if experimenter_info.get("username"):
+            metadata["NWBFile"]["experimenter"] = [experimenter_info["username"]]
+
+        # Device version info
+        version_info = femtonics_metadata.get("mesc_version_info", {})
+        version_parts = []
+        if version_info.get("version"):
+            version_parts.append(f"version: {version_info['version']}")
+        if version_info.get("revision"):
+            version_parts.append(f"revision: {version_info['revision']}")
+
+        # Pixel size
+        pixel_size_info = femtonics_metadata.get("pixel_size_micrometers")
+        x_size = pixel_size_info["x_size"] if pixel_size_info else None
+        y_size = pixel_size_info["y_size"] if pixel_size_info else None
+        x_units = pixel_size_info.get("x_units") if pixel_size_info else None
+
+        # PMT settings for selected channel
+        pmt_settings = femtonics_metadata.get("pmt_settings", {})
+
+        # Geometric transformations
+        geometric_transformations = femtonics_metadata.get("geometric_transformations", {})
+
+        # Sampling frequency
+        sampling_freq = femtonics_metadata.get("sampling_frequency_hz")
+
+        # Session description (shared between both formats)
         selected_session_name = femtonics_metadata.get("session_name")
         selected_munit_name = femtonics_metadata.get("munit_name")
-        experimenter_info = femtonics_metadata.get("experimenter_info", {})
         hostname = experimenter_info.get("hostname")
 
         session_descr = f"Session: {selected_session_name}, MUnit: {selected_munit_name}."
@@ -182,52 +212,9 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             session_descr += f" Session performed on workstation: {hostname}."
         metadata["NWBFile"]["session_description"] = session_descr
 
-        # Add PMT settings to optical channels
-        pmt_settings = femtonics_metadata.get("pmt_settings", {})
-        if pmt_settings:
-            imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-            optical_channels = imaging_plane.get("optical_channel", [])
-            channel_names = [self._channel_name]
-            for i, channel_name in enumerate(channel_names):
-                if channel_name in pmt_settings and i < len(optical_channels):
-                    settings = pmt_settings[channel_name]
-                    desc_parts = []
-                    if settings.get("voltage") is not None:
-                        desc_parts.append(f"PMT voltage: {settings['voltage']}V")
-                    if settings.get("warmup_time") is not None:
-                        desc_parts.append(f"Warmup time: {settings['warmup_time']}s")
-                    if desc_parts:
-                        desc = optical_channels[i].get("description", "")
-                        desc = (desc + " " if desc else "") + ", ".join(desc_parts)
-                        optical_channels[i]["description"] = desc.strip()
-
-        # Add session start time if available
-        session_start_time = femtonics_metadata.get("session_start_time")
-        metadata["NWBFile"]["session_start_time"] = session_start_time
-
-        # Add version and revision info to Ophys Device description
-        version_info = femtonics_metadata.get("mesc_version_info", {})
-        version_strs = []
-        if version_info.get("version"):
-            version_strs.append(f"version: {version_info['version']}")
-        if version_info.get("revision"):
-            version_strs.append(f"revision: {version_info['revision']}")
-        if version_strs:
-            device = metadata["Ophys"]["Device"][0]
-            desc = device.get("description", "")
-            desc = f"{desc} {', '.join(version_strs)}"
-            device["description"] = desc.strip()
-
-        # Add imaging rate to ImagingPlane properties (Femtonics: only one imaging plane, always present)
-        sampling_freq = femtonics_metadata["sampling_frequency_hz"]
-        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-        imaging_plane["imaging_rate"] = sampling_freq
-
-        # Add geometric transformations to ImagingPlane description
-        geometric_transformations = femtonics_metadata.get("geometric_transformations", {})
+        # Build imaging plane description with geometric transformations
+        imaging_plane_description = ""
         if geometric_transformations:
-            imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
-            desc = imaging_plane.get("description", "")
             gt_parts = []
             if geometric_transformations.get("translation") is not None:
                 gt_parts.append(f"translation: {geometric_transformations['translation']}")
@@ -236,7 +223,96 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             if geometric_transformations.get("labeling_origin") is not None:
                 gt_parts.append(f"labeling_origin: {geometric_transformations['labeling_origin']}")
             if gt_parts:
-                desc = (desc + " " if desc else "") + "Geometric transformations: " + ", ".join(gt_parts)
+                imaging_plane_description = "Geometric transformations: " + ", ".join(gt_parts)
+
+        # Build PMT description for selected channel
+        pmt_description = ""
+        if self._channel_name and self._channel_name in pmt_settings:
+            settings = pmt_settings[self._channel_name]
+            desc_parts = []
+            if settings.get("voltage") is not None:
+                desc_parts.append(f"PMT voltage: {settings['voltage']}V")
+            if settings.get("warmup_time") is not None:
+                desc_parts.append(f"Warmup time: {settings['warmup_time']}s")
+            if desc_parts:
+                pmt_description = ", ".join(desc_parts)
+
+        if use_new_metadata_format:
+            if version_parts:
+                metadata["Devices"] = {
+                    self.metadata_key: {"description": f"Femtonics MESc ({', '.join(version_parts)})"},
+                }
+
+            # ImagingPlanes
+            imaging_plane_entry = {}
+            if x_size is not None and y_size is not None:
+                imaging_plane_entry["grid_spacing"] = [float(x_size) * 1e-6, float(y_size) * 1e-6]
+                imaging_plane_entry["grid_spacing_unit"] = "meters"
+            if sampling_freq is not None:
+                imaging_plane_entry["imaging_rate"] = float(sampling_freq)
+            if imaging_plane_description:
+                imaging_plane_entry["description"] = imaging_plane_description
+
+            # MicroscopySeries
+            microscopy_series_entry = {}
+            if pmt_description:
+                microscopy_series_entry["description"] = pmt_description
+
+            ophys = {}
+            if imaging_plane_entry:
+                ophys["ImagingPlanes"] = {self.metadata_key: imaging_plane_entry}
+            if microscopy_series_entry:
+                ophys["MicroscopySeries"] = {self.metadata_key: microscopy_series_entry}
+            if ophys:
+                metadata["Ophys"] = ophys
+
+        else:
+            # Extract pixel size information for imaging plane
+            if pixel_size_info and "x_size" in pixel_size_info and "y_size" in pixel_size_info:
+                x_units_old = pixel_size_info.get("x_units")
+                y_units_old = pixel_size_info.get("y_units")
+
+                # Only update if both units are the same or if units are missing
+                if x_units_old == y_units_old:
+                    if "Ophys" in metadata and "ImagingPlane" in metadata["Ophys"]:
+                        for imaging_plane in metadata["Ophys"]["ImagingPlane"]:
+                            imaging_plane["grid_spacing"] = [x_size, y_size]
+                            if x_units_old:
+                                imaging_plane["grid_spacing_unit"] = x_units_old
+                            else:
+                                import warnings
+
+                                warnings.warn(
+                                    "Pixel size unit is missing in Femtonics metadata; 'grid_spacing_unit' will be set to 'n.a.'."
+                                )
+                                imaging_plane["grid_spacing_unit"] = "n.a."
+
+            # Add PMT settings to optical channels
+            if pmt_description:
+                imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+                optical_channels = imaging_plane.get("optical_channel", [])
+                if optical_channels:
+                    desc = optical_channels[0].get("description", "")
+                    desc = (desc + " " if desc else "") + pmt_description
+                    optical_channels[0]["description"] = desc.strip()
+
+            # Add version and revision info to Ophys Device description
+            if version_parts:
+                device = metadata["Ophys"]["Device"][0]
+                desc = device.get("description", "")
+                desc = f"{desc} {', '.join(version_parts)}"
+                device["description"] = desc.strip()
+
+            # Add imaging rate to ImagingPlane properties (Femtonics: only one imaging plane, always present)
+            if sampling_freq is not None:
+                imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+                imaging_plane["imaging_rate"] = sampling_freq
+
+            # Add geometric transformations to ImagingPlane description
+            if imaging_plane_description:
+                imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+                desc = imaging_plane.get("description", "")
+                desc = (desc + " " if desc else "") + imaging_plane_description
                 imaging_plane["description"] = desc.strip()
 
         return metadata
