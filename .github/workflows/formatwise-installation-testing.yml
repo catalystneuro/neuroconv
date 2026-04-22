@@ -17,7 +17,7 @@ jobs:
       ALL_PYTHON_VERSIONS: ${{ steps.load_python_versions.outputs.python_versions }}
       ALL_OS_VERSIONS: ${{ steps.load_os_versions.outputs.os_versions }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: load_python_versions
         run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
       - id: load_os_versions
@@ -33,9 +33,9 @@ jobs:
         python-version: ${{ fromJson(needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS) }}
         os: ${{ fromJson(needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
