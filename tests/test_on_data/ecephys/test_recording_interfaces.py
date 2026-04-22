@@ -811,15 +811,9 @@ def is_macos():
     return platform.system() == "Darwin"
 
 
-def is_macos_intel():
-    import platform
-
-    return platform.system() == "Darwin" and platform.machine() != "arm64"
-
-
 @pytest.mark.skipif(
-    is_macos_intel(),
-    reason="Test skipped on macOS with Intel processors.",
+    is_macos(),
+    reason="Plexon2 requires Wine on macOS and the wine-crossover Homebrew cask was removed upstream in April 2026.",
 )
 class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Plexon2RecordingInterface

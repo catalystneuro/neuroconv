@@ -19,7 +19,7 @@ class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
         return CnmfeSegmentationExtractor
 
     def __init__(
-        self, file_path: FilePath, *args, verbose: bool = False
+        self, file_path: FilePath, *args, verbose: bool = False, metadata_key: str | None = None
     ):  # TODO: change to * (keyword only) on or after August 2026
         # Handle deprecated positional arguments
         if args:
@@ -46,5 +46,20 @@ class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
             )
             verbose = positional_values.get("verbose", verbose)
 
-        super().__init__(file_path=file_path)
+        if metadata_key is None:
+            metadata_key = "cnmfe_segmentation"
+
+        super().__init__(file_path=file_path, metadata_key=metadata_key)
         self.verbose = verbose
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False):
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+            metadata["Ophys"] = {
+                "PlaneSegmentations": {
+                    self.metadata_key: {"description": "Segmentation data acquired with CNMF-E."},
+                },
+            }
+            return metadata
+
+        return super().get_metadata()
