@@ -39,6 +39,7 @@
 * Added summary images (mean, correlation) to the dict-based segmentation pipeline via `_add_summary_images_to_nwbfile`. Images are written to a shared `SegmentationImages` container in the ophys processing module, with per-image metadata configurable through `metadata["Ophys"]["SegmentationImages"]`. [PR #1695](https://github.com/catalystneuro/neuroconv/pull/1695)
 
 ## Improvements
+* Added a conversion gallery example for aligning ScanImage imaging data with external DAQ sync pulses, demonstrating use of `get_original_frame_indices` and `slice_samples` from `ScanImageImagingExtractor`. [PR #1709](https://github.com/catalystneuro/neuroconv/pull/1709)
 * Added array-like protocol methods (`shape`, `ndim`, `__len__`, `__getitem__`) to all data chunk iterators (`SliceableDataChunkIterator`, `SpikeInterfaceRecordingDataChunkIterator`, `ImagingExtractorDataChunkIterator`, `VideoDataChunkIterator`). [PR #1673](https://github.com/catalystneuro/neuroconv/pull/1673)
 * Added tests for `OnePhotonSeries`, `processing/ophys` container, and non-iterative write to `TestAddImaging` (dict-based metadata pipeline). [PR #1685](https://github.com/catalystneuro/neuroconv/pull/1685)
 * Added functional tests to `TestAddSegmentation` for image masks, ROI properties, timestamp handling (regular, irregular, sampling frequency fallback), trace data values, ROI table regions, and iterator options propagation. Added a warning when user-provided `RoiResponses` metadata references traces the extractor does not have. [PR #1693](https://github.com/catalystneuro/neuroconv/pull/1693)
