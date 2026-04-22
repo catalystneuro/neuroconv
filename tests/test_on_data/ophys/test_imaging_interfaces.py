@@ -28,10 +28,8 @@ from neuroconv.datainterfaces.ophys.miniscope.miniscopeimagingdatainterface impo
     _MiniscopeMultiRecordingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
-    DataInterfaceTestMixin,
     ImagingExtractorInterfaceTestMixin,
     MiniscopeImagingInterfaceMixin,
-    TemporalAlignmentMixin,
 )
 
 try:
@@ -74,7 +72,7 @@ class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
 
-class TestScanImageImagingInterfaceMultiPlaneChannel1(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
         file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
@@ -84,14 +82,33 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(DataInterfaceTestMixin, Te
     save_directory = OUTPUT_PATH
 
     photon_series_name = "TwoPhotonSeriesChannel1"
+    optical_series_name = "TwoPhotonSeriesChannel1"
     imaging_plane_name = "ImagingPlaneChannel1"
     expected_two_photon_series_data_shape = (6, 256, 528, 2)
     expected_rate = None  # This is interleaved data so the timestamps are written
     expected_starting_time = None
+    expected_metadata_key = "scan_image_imaging_channel_1"
+    expected_imaging_rate = 7.28119
+    expected_scan_line_rate = 15843.868185354244
+    expected_device_description = "Microscope and acquisition data with ScanImage (version 2023.0.0)"
 
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "device_metadata_key": metadata_key,
+            "imaging_rate": self.expected_imaging_rate,
+        }
+        assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "imaging_plane_metadata_key": metadata_key,
+            "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
 
     def check_read_nwb(self, nwbfile_path: str):
         """Test reading the NWB file for multi-plane ScanImage data."""
@@ -117,7 +134,7 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(DataInterfaceTestMixin, Te
             assert len(optical_channels) == 1
 
 
-class TestScanImageImagingInterfaceMultiPlaneChannel4(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
         file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
@@ -127,14 +144,33 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(DataInterfaceTestMixin, Te
     save_directory = OUTPUT_PATH
 
     photon_series_name = "TwoPhotonSeriesChannel4"
+    optical_series_name = "TwoPhotonSeriesChannel4"
     imaging_plane_name = "ImagingPlaneChannel4"
     expected_two_photon_series_data_shape = (6, 256, 528, 2)
     expected_rate = None  # This is interleaved data so the timestamps are written
     expected_starting_time = None
+    expected_metadata_key = "scan_image_imaging_channel_4"
+    expected_imaging_rate = 7.28119
+    expected_scan_line_rate = 15843.868185354244
+    expected_device_description = "Microscope and acquisition data with ScanImage (version 2023.0.0)"
 
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "device_metadata_key": metadata_key,
+            "imaging_rate": self.expected_imaging_rate,
+        }
+        assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "imaging_plane_metadata_key": metadata_key,
+            "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
 
     def check_read_nwb(self, nwbfile_path: str):
         """Test reading the NWB file for multi-plane ScanImage data."""
@@ -160,10 +196,13 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(DataInterfaceTestMixin, Te
             assert len(optical_channels) == 1
 
 
-class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
     save_directory = OUTPUT_PATH
     expected_two_photon_series_data_shape = (6, 256, 528)
+    expected_imaging_rate = 7.28119
+    expected_scan_line_rate = 15843.868185354244
+    expected_device_description = "Microscope and acquisition data with ScanImage (version 2023.0.0)"
 
     @pytest.fixture(
         params=[
@@ -176,6 +215,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel1Plane0",
                 expected_imaging_plane_name="ImagingPlaneChannel1Plane0",
+                expected_metadata_key="scan_image_imaging_channel_1_plane_0",
             ),
             dict(
                 interface_kwargs=dict(
@@ -186,6 +226,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel1Plane1",
                 expected_imaging_plane_name="ImagingPlaneChannel1Plane1",
+                expected_metadata_key="scan_image_imaging_channel_1_plane_1",
             ),
             dict(
                 interface_kwargs=dict(
@@ -196,6 +237,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel4Plane0",
                 expected_imaging_plane_name="ImagingPlaneChannel4Plane0",
+                expected_metadata_key="scan_image_imaging_channel_4_plane_0",
             ),
             dict(
                 interface_kwargs=dict(
@@ -206,6 +248,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel4Plane1",
                 expected_imaging_plane_name="ImagingPlaneChannel4Plane1",
+                expected_metadata_key="scan_image_imaging_channel_4_plane_1",
             ),
         ],
         ids=[
@@ -220,7 +263,9 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
         self.test_name = test_id
         self.interface_kwargs = request.param["interface_kwargs"]
         self.photon_series_name = request.param["expected_photon_series_name"]
+        self.optical_series_name = self.photon_series_name
         self.imaging_plane_name = request.param["expected_imaging_plane_name"]
+        self.expected_metadata_key = request.param["expected_metadata_key"]
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
@@ -228,6 +273,20 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "device_metadata_key": metadata_key,
+            "imaging_rate": self.expected_imaging_rate,
+        }
+        assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "imaging_plane_metadata_key": metadata_key,
+            "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
 
     def check_read_nwb(self, nwbfile_path: str):
         """Test reading the NWB file for single-plane ScanImage data."""
