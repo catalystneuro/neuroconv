@@ -21,7 +21,7 @@ runs:
         echo "HASH_EPHY_DATASET=$HASH" >> $GITHUB_OUTPUT
 
     - name: Cache ephys dataset
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: cache-ephys-datasets
       with:
         path: ./ephy_testing_data
@@ -36,7 +36,7 @@ runs:
         echo "HASH_OPHYS_DATASET=$HASH" >> $GITHUB_OUTPUT
 
     - name: Cache ophys dataset
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: cache-ophys-datasets
       with:
         path: ./ophys_testing_data
@@ -51,7 +51,7 @@ runs:
         echo "HASH_BEHAVIOR_DATASET=$HASH" >> $GITHUB_OUTPUT
 
     - name: Cache behavior dataset
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: cache-behavior-datasets
       with:
         path: ./behavior_testing_data

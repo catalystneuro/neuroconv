@@ -44,6 +44,8 @@
 * Added functional tests to `TestAddSegmentation` for image masks, ROI properties, timestamp handling (regular, irregular, sampling frequency fallback), trace data values, ROI table regions, and iterator options propagation. Added a warning when user-provided `RoiResponses` metadata references traces the extractor does not have. [PR #1693](https://github.com/catalystneuro/neuroconv/pull/1693)
 * Added column-first fast path for writing Units tables when the table is new (no append/merge). Uses `id.extend()` + `add_column()` instead of per-row `add_unit()` calls, reducing Python overhead for large sortings. [PR #1669](https://github.com/catalystneuro/neuroconv/pull/1669)
 * Added documentation for the new ophys metadata structure: a how-to guide for annotating ophys metadata (`docs/how_to/annotate_ophys_metadata.rst`) and a developer guide describing the dict-based schema for `Devices`, `ImagingPlanes`, and `MicroscopySeries` (`docs/developer_guide/ophys_metadata_structure.rst`). [PR #1716](https://github.com/catalystneuro/neuroconv/pull/1716)
+* Fixed macOS CI by pinning the `wine-crossover` Homebrew cask to the last pre-deletion commit of the `gcenx/homebrew-wine` tap. The upstream tap removed the cask on 2026-04-16, which was breaking every macOS job in the test matrix. [PR #1720](https://github.com/catalystneuro/neuroconv/pull/1720)
+* Bumped GitHub Actions to Node.js 24 compatible versions across all workflows: `actions/checkout` to `v6`, `actions/setup-python` to `v6`, and `actions/cache` to `v5`. [PR #1720](https://github.com/catalystneuro/neuroconv/pull/1720)
 
 # v0.9.3 (February 19, 2026)
 

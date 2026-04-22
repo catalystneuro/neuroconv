@@ -32,9 +32,14 @@ runs:
         # Install XQuartz
         brew install --cask xquartz
 
-        # Use gcenx/wine tap which works better on Apple Silicon
-        brew tap gcenx/wine
-        brew install --cask gcenx/wine/wine-crossover
+        # Install wine-crossover from a pinned Gcenx tap commit.
+        # Gcenx deleted the wine-crossover cask from their tap on 2026-04-16
+        # (the tap now only ships game-porting-toolkit), so we fetch the last
+        # working cask definition directly. The underlying tarball is still
+        # hosted at github.com/Gcenx/winecx/releases. If that tarball ever
+        # disappears or Rosetta 2 is removed from macOS, we will likely need
+        # to drop Plexon2 testing on macOS and keep it on Linux only.
+        brew install --cask https://raw.githubusercontent.com/Gcenx/homebrew-wine/3df0f2291f39b0f43c532d754df4756495544f34/Casks/wine-crossover.rb
       shell: bash
 
     - name: Skip installation on Windows
