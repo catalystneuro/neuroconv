@@ -268,7 +268,7 @@ def _add_recording_segment_to_nwbfile(
             ecephys_mod.add(pynwb.ecephys.FilteredEphys(name="Processed"))
 
     # The add_electrodes adds a column with channel name to the electrode table.
-    add_electrodes_to_nwbfile(
+    _add_electrodes_to_nwbfile(
         recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
     )
 
@@ -805,7 +805,7 @@ def _get_null_value_for_property(property: str, sample_data: Any, null_values_fo
     return default_value
 
 
-def add_electrodes_to_nwbfile(
+def _add_electrodes_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
@@ -1074,6 +1074,41 @@ def add_electrodes_to_nwbfile(
 
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
+
+
+def add_electrodes_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict | None = None,
+    exclude: tuple = (),
+    *,
+    null_values_for_properties: dict | None = None,
+):
+    """
+    Deprecated. Use ``add_recording_metadata_to_nwbfile`` instead.
+
+    Calling this function on its own does not guarantee that the linked devices and
+    electrode groups described in ``metadata`` are written to the NWBFile, which can
+    lead to missing or spurious metadata. ``add_recording_metadata_to_nwbfile``
+    orchestrates devices, electrode groups, and electrodes together and should be
+    used to ensure all recording metadata is properly added.
+
+    This function will be removed on or after October 2026.
+    """
+    warnings.warn(
+        "add_electrodes_to_nwbfile is deprecated and will be removed on or after October 2026. "
+        "Use add_recording_metadata_to_nwbfile to ensure all recording metadata "
+        "(devices, electrode groups, and electrodes) is properly added.",
+        FutureWarning,
+        stacklevel=2,
+    )
+    _add_electrodes_to_nwbfile(
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        exclude=exclude,
+        null_values_for_properties=null_values_for_properties,
+    )
 
 
 def _check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment_index: int = 0) -> None:
@@ -1626,7 +1661,7 @@ def add_recording_metadata_to_nwbfile(
     """
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
     _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrodes_to_nwbfile(
+    _add_electrodes_to_nwbfile(
         recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
     )
 
@@ -1937,7 +1972,7 @@ def _add_units_table_to_nwbfile(
     the table are skipped. When the table has an ``electrodes`` column and a unit's
     electrode indices differ from the previously stored ones, the unit is re-added
     as a new row (resulting in duplicate unit names with different electrode
-    mappings). See ``add_electrodes_to_nwbfile`` for how the electrode table itself
+    mappings). See ``_add_electrodes_to_nwbfile`` for how the electrode table itself
     handles deduplication via ``(group_name, electrode_name, channel_name)``.
 
     .. note::
