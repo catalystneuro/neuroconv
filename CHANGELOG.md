@@ -21,6 +21,7 @@
 * Removed the deprecated `staging` parameter from `automatic_dandi_upload`. Use `sandbox` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
 * Removed the deprecated `container_name` parameter from `ImageInterface.add_to_nwbfile` and `DeepLabCutInterface.add_to_nwbfile`. Use `metadata_key` in `__init__` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
 * Removed the deprecated `time_series_name` parameter from `add_recording_as_time_series_to_nwbfile`. Use `metadata_key` instead. [PR #1678](https://github.com/catalystneuro/neuroconv/pull/1678)
+* Deprecated `add_electrodes_to_nwbfile`; the implementation is now private (`_add_electrodes_to_nwbfile`). Calling it standalone can produce missing or spurious device/electrode-group metadata, so the public wrapper emits a `FutureWarning`. Use `add_recording_metadata_to_nwbfile` to add devices, electrode groups, and electrodes together. Will be removed on or after October 2026. [PR #1719](https://github.com/catalystneuro/neuroconv/pull/1719)
 
 ## Bug Fixes
 * Updated Bruker test expectations to match spatially cropped stubs (64x64) replacing old 512x512 fixtures on gin. [PR #1707](https://github.com/catalystneuro/neuroconv/pull/1707)
@@ -41,6 +42,7 @@
 * Added summary images (mean, correlation) to the dict-based segmentation pipeline via `_add_summary_images_to_nwbfile`. Images are written to a shared `SegmentationImages` container in the ophys processing module, with per-image metadata configurable through `metadata["Ophys"]["SegmentationImages"]`. [PR #1695](https://github.com/catalystneuro/neuroconv/pull/1695)
 
 ## Improvements
+* Added a conversion gallery example for aligning ScanImage imaging data with external DAQ sync pulses, demonstrating use of `get_original_frame_indices` and `slice_samples` from `ScanImageImagingExtractor`. [PR #1709](https://github.com/catalystneuro/neuroconv/pull/1709)
 * Added array-like protocol methods (`shape`, `ndim`, `__len__`, `__getitem__`) to all data chunk iterators (`SliceableDataChunkIterator`, `SpikeInterfaceRecordingDataChunkIterator`, `ImagingExtractorDataChunkIterator`, `VideoDataChunkIterator`). [PR #1673](https://github.com/catalystneuro/neuroconv/pull/1673)
 * Added tests for `OnePhotonSeries`, `processing/ophys` container, and non-iterative write to `TestAddImaging` (dict-based metadata pipeline). [PR #1685](https://github.com/catalystneuro/neuroconv/pull/1685)
 * Added functional tests to `TestAddSegmentation` for image masks, ROI properties, timestamp handling (regular, irregular, sampling frequency fallback), trace data values, ROI table regions, and iterator options propagation. Added a warning when user-provided `RoiResponses` metadata references traces the extractor does not have. [PR #1693](https://github.com/catalystneuro/neuroconv/pull/1693)
