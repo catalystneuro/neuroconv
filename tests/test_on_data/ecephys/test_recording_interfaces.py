@@ -13,6 +13,7 @@ from pynwb.testing.mock.file import mock_NWBFile
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
     AxonaRecordingInterface,
+    AxonRecordingInterface,
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
     CellExplorerRecordingInterface,
@@ -33,6 +34,7 @@ from neuroconv.datainterfaces import (
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     TdtRecordingInterface,
+    WhiteMatterRecordingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     RecordingExtractorInterfaceTestMixin,
@@ -57,6 +59,35 @@ class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 
 class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = AxonRecordingInterface
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axon" / "File_axon_1.abf"))
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        # Check that session_start_time is extracted from ABF file
+        assert "session_start_time" in metadata["NWBFile"]
+
+        # Check device information for Axon Instruments
+        devices = metadata["Ecephys"]["Device"]
+        assert len(devices) >= 1
+        axon_device = devices[0]
+        assert axon_device["name"] == "Axon Instruments"
+        assert axon_device["description"] == "Axon Instruments data acquisition system (pCLAMP/AxoScope)"
+        assert axon_device["manufacturer"] == "Molecular Devices"
+
+        # Check electrode groups have device assigned
+        electrode_groups = metadata["Ecephys"]["ElectrodeGroup"]
+        for electrode_group in electrode_groups:
+            assert electrode_group["device"] == "Axon Instruments"
+
+        # Check ElectricalSeriesRaw metadata
+        assert "ElectricalSeriesRaw" in metadata["Ecephys"]
+        electrical_series_raw = metadata["Ecephys"]["ElectricalSeriesRaw"]
+        assert electrical_series_raw["name"] == "ElectricalSeriesRaw"
+        assert electrical_series_raw["description"] == "Raw acquisition traces from Axon Binary Format file."
+
+
+class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonaRecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axona" / "axona_raw.bin"))
     save_directory = OUTPUT_PATH
@@ -424,7 +455,7 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
     data_interface_cls = NeuralynxRecordingInterface
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v6.4.1dev" / "original_data"),
-        stream_name="Stream (rate,#packet,t0): (32000.0, 31, 1614363777985169.0)",
+        stream_name="stream0_32000Hz_2mVRange_DSPFilter2",
     )
     save_directory = OUTPUT_PATH
 
@@ -693,27 +724,16 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 3, 10, 35, 10)
         assert metadata["Ecephys"]["Device"][-1] == dict(
             name="NeuropixelsImec0",
-            description="{"
-            '"probe_type": "0", '
-            '"probe_type_description": "NP1.0", '
-            '"flex_part_number": "NP2_FLEX_0", '
-            '"connected_base_station_part_number": "NP2_QBSC_00"'
-            "}",
-            manufacturer="Imec",
+            description='Neuropixels 1.0 probe. Additional metadata: {"part_number": "PRB_1_4_0480_1", "port": "2", "slot": "2", "model_name": "PRB_1_4_0480_1", "manufacturer": "imec"}',
+            serial_number="18194809281",
         )
 
 
 class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
     interface_kwargs = dict(
-        file_path=str(
-            ECEPHY_DATA_PATH
-            / "spikeglx"
-            / "long_nhp_stubbed"
-            / "snippet_g0"
-            / "snippet_g0_imec0"
-            / "snippet_g0_t0.imec0.ap.bin"
-        )
+        folder_path=str(ECEPHY_DATA_PATH / "spikeglx" / "long_nhp_stubbed" / "snippet_g0" / "snippet_g0_imec0"),
+        stream_id="imec0.ap",
     )
     save_directory = OUTPUT_PATH
 
@@ -721,21 +741,30 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 1, 3, 11, 51, 51)
         assert metadata["Ecephys"]["Device"][-1] == dict(
             name="NeuropixelsImec0",
-            description="{"
-            '"probe_type": "1030", '
-            '"probe_type_description": "NP1.0 NHP", '
-            '"flex_part_number": "NPNH_AFLEX_00", '
-            '"connected_base_station_part_number": "NP2_QBSC_00"'
-            "}",
-            manufacturer="Imec",
+            description='Neuropixels 1.0 NHP long linear probe with cap. Additional metadata: {"part_number": "NP1032", "port": "2", "slot": "2", "model_name": "NP1032", "manufacturer": "imec"}',
+            serial_number="22327214192",
         )
 
 
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = TdtRecordingInterface
     test_gain_value = 0.195  # arbitrary value to test gain
-    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value)
     save_directory = OUTPUT_PATH
+
+    @pytest.fixture(
+        params=[
+            dict(folder_path=str(ECEPHY_DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value),
+            dict(folder_path=str(ECEPHY_DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value, stream_name="LFPs"),
+        ],
+        ids=["default", "stream_name"],
+    )
+    def setup_interface(self, request):
+        test_id = request.node.callspec.id
+        self.test_name = test_id
+        self.interface_kwargs = request.param
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+        return self.interface, self.test_name
 
     def run_custom_checks(self):
         # Check that the gain is applied
@@ -782,15 +811,9 @@ def is_macos():
     return platform.system() == "Darwin"
 
 
-def is_macos_intel():
-    import platform
-
-    return platform.system() == "Darwin" and platform.machine() != "arm64"
-
-
 @pytest.mark.skipif(
-    is_macos_intel(),
-    reason="Test skipped on macOS with Intel processors.",
+    is_macos(),
+    reason="Plexon2 requires Wine on macOS and the wine-crossover Homebrew cask was removed upstream in April 2026.",
 )
 class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Plexon2RecordingInterface
@@ -801,3 +824,15 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 20, 15, 59, 39)
+
+
+class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = WhiteMatterRecordingInterface
+    interface_kwargs = dict(
+        file_path=str(
+            ECEPHY_DATA_PATH / "whitematter" / "HSW_2024_12_12__10_28_23__70min_17sec__hsamp_64ch_25000sps_stub.bin"
+        ),
+        sampling_frequency=25_000.0,
+        num_channels=64,
+    )
+    save_directory = OUTPUT_PATH

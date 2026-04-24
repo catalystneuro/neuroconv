@@ -1,6 +1,44 @@
 import math
 
 
+def to_camel_case(name: str) -> str:
+    """Convert a string with underscores or hyphens to CamelCase.
+
+    Preserves all-uppercase acronyms and capitalizes other parts.
+
+    Parameters
+    ----------
+    name : str
+        String with underscores or hyphens to convert.
+
+    Returns
+    -------
+    str
+        CamelCase version of the input string.
+
+    Examples
+    --------
+    >>> to_camel_case("ACC_miniscope2")
+    'ACCMiniscope2'
+    >>> to_camel_case("HPC_miniscope1")
+    'HPCMiniscope1'
+    >>> to_camel_case("simple_name")
+    'SimpleName'
+    >>> to_camel_case("my-device-name")
+    'MyDeviceName'
+    """
+    parts = name.replace("-", "_").split("_")
+    camel_parts = []
+    for part in parts:
+        # If the part is all uppercase (like ACC, HPC), keep it as-is
+        # Otherwise, capitalize it
+        if part.isupper():
+            camel_parts.append(part)
+        else:
+            camel_parts.append(part.capitalize())
+    return "".join(camel_parts)
+
+
 def human_readable_size(size_bytes: int, binary: bool = False) -> str:
     """
     Convert a file size given in bytes to a human-readable format using division

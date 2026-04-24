@@ -1,5 +1,5 @@
+import warnings
 from copy import deepcopy
-from typing import Optional
 
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
@@ -107,13 +107,20 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
         return Suite2pSegmentationExtractor.get_available_channels(folder_path=folder_path)
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import Suite2pSegmentationExtractor
+
+        return Suite2pSegmentationExtractor
+
     @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,
-        channel_name: Optional[str] = None,
-        plane_name: Optional[str] = None,
-        plane_segmentation_name: Optional[str] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        channel_name: str | None = None,
+        plane_name: str | None = None,
+        plane_segmentation_name: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -132,6 +139,36 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         plane_segmentation_name: str, optional
             The name of the plane segmentation to be added.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "channel_name",
+                "plane_name",
+                "plane_segmentation_name",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to Suite2pSegmentationInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            channel_name = positional_values.get("channel_name", channel_name)
+            plane_name = positional_values.get("plane_name", plane_name)
+            plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
+            verbose = positional_values.get("verbose", verbose)
 
         super().__init__(folder_path=folder_path, channel_name=channel_name, plane_name=plane_name)
         available_planes = self.get_available_planes(folder_path=self.source_data["folder_path"])
@@ -174,14 +211,15 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_samples: int = 100,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
-        mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
-        plane_segmentation_name: Optional[str] = None,
-        iterator_options: Optional[dict] = None,
+        mask_type: str | None = "image",  # Literal["image", "pixel", "voxel"]
+        plane_segmentation_name: str | None = None,
+        iterator_options: dict | None = None,
     ):
         """
         Add segmentation data to the specified NWBFile.
@@ -193,10 +231,10 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata : dict, optional
             Metadata containing information about the segmentation. If None, default metadata is used.
         stub_test : bool, optional
-            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            If True, only a subset of the data (defined by `stub_samples`) will be added for testing purposes,
             by default False.
-        stub_frames : int, optional
-            The number of frames to include in the subset if `stub_test` is True, by default 100.
+        stub_samples : int, optional
+            The number of samples (frames) to include in the subset if `stub_test` is True, by default 100.
         include_roi_centroids : bool, optional
             Whether to include the centroids of regions of interest (ROIs) in the data, by default True.
         include_roi_acceptance : bool, optional
@@ -217,11 +255,48 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         iterator_options : dict, optional
             Additional options for iterating over the data, by default None.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "stub_samples",
+                "include_roi_centroids",
+                "include_roi_acceptance",
+                "mask_type",
+                "plane_segmentation_name",
+                "iterator_options",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to Suite2pSegmentationInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            stub_samples = positional_values.get("stub_samples", stub_samples)
+            include_roi_centroids = positional_values.get("include_roi_centroids", include_roi_centroids)
+            include_roi_acceptance = positional_values.get("include_roi_acceptance", include_roi_acceptance)
+            mask_type = positional_values.get("mask_type", mask_type)
+            plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+
         super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
-            stub_frames=stub_frames,
+            stub_samples=stub_samples,
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,

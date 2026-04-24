@@ -6,7 +6,7 @@ helper function which is called by `BackendConfiguration.from_nwbfile(...)`.
 """
 
 from pathlib import Path
-from typing import Literal, Tuple
+from typing import Literal
 
 import numcodecs
 import numpy as np
@@ -27,7 +27,7 @@ from neuroconv.tools.nwb_helpers import (
 def integer_array(
     seed: int = 0,
     dtype: np.dtype = np.dtype("int16"),
-    shape: Tuple[int, int] = (12, 34),
+    shape: tuple[int, int] = (12, 34),
 ):
     random_number_generator = np.random.default_rng(seed=seed)
 
@@ -40,7 +40,7 @@ def integer_array(
 def integer_array_with_zero_length_axis(
     seed: int = 1,
     dtype: np.dtype = np.dtype("int16"),
-    shape: Tuple[int, int] = (12, 0),  # 12 so it matches the dimension of the other column
+    shape: tuple[int, int] = (12, 0),  # 12 so it matches the dimension of the other column
 ):
     """Generate an array of integers with a zero-length axis."""
     assert 0 in shape, "The shape must contain a zero-length axis."

@@ -3,9 +3,8 @@ import json
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from ctypes import Union
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import yaml
@@ -43,10 +42,10 @@ def load_dict_from_file(file_path: FilePath) -> dict[str, Any]:
     assert file_path.suffix in (".json", ".yml", ".yaml"), f"{file_path} is not a valid yaml or .json file."
 
     if file_path.suffix in (".yml", ".yaml"):
-        with open(file=file_path, mode="r") as stream:
+        with open(file=file_path, mode="r", encoding="utf-8") as stream:
             dictionary = yaml.load(stream=stream, Loader=_NoDatesSafeLoader)
     elif file_path.suffix == ".json":
-        with open(file=file_path, mode="r") as fp:
+        with open(file=file_path, mode="r", encoding="utf-8") as fp:
             dictionary = json.load(fp=fp)
     return dictionary
 
@@ -221,7 +220,7 @@ class DeepDict(defaultdict):
             if isinstance(value, dict):
                 self[key] = DeepDict(value)
 
-    def deep_update(self, other: Optional[Union[dict[str, Any], "DeepDict"]] = None, **kwargs: Any) -> None:
+    def deep_update(self, other: "dict[str, Any] | DeepDict | None" = None, **kwargs: Any) -> None:
         """
         Recursively update the DeepDict with another dictionary or DeepDict.
 
@@ -247,7 +246,7 @@ class DeepDict(defaultdict):
     def to_dict(self) -> dict[str, Any]:
         """Turn a DeepDict into a normal dictionary"""
 
-        def _to_dict(d: Union[dict[str, Any], "DeepDict"]) -> dict[str, Any]:
+        def _to_dict(d: "dict[str, Any] | DeepDict") -> dict[str, Any]:
             return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
 
         return _to_dict(self)
@@ -256,4 +255,10 @@ class DeepDict(defaultdict):
         return DeepDict(deepcopy(self.to_dict()))
 
     def __repr__(self) -> str:
-        return "DeepDict: " + dict.__repr__(self.to_dict())
+        return f"DeepDict({repr(self.to_dict())})"
+
+    def _repr_pretty_(self, p, cycle):
+        "This is used by IPython to pretty-print the object and used here to achieve printing parity with dicts."
+        p.text("DeepDict(\n")
+        p.pretty(self.to_dict())
+        p.text("\n)")

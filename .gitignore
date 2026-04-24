@@ -134,3 +134,14 @@ venv.bak/
 
 # Spyder
 .spyproject
+
+# Cline Memory Bank files
+memory-bank/*
+
+# Testing data
+behavior_testing_data/
+ephy_testing_data/
+ophys_testing_data/
+
+# Local uv configuration
+uv.toml

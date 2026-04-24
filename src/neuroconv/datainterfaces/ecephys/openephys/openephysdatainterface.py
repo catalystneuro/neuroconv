@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from pydantic import DirectoryPath
 
@@ -15,7 +14,13 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     associated_suffixes = (".dat", ".oebin", ".npy")
     info = "Interface for converting any OpenEphys recording data."
 
-    ExtractorName = "OpenEphysBinaryRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysBinaryRecordingExtractor,
+        )
+
+        return OpenEphysBinaryRecordingExtractor
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -55,8 +60,8 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     def __new__(
         cls,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
-        block_index: Optional[int] = None,
+        stream_name: str | None = None,
+        block_index: int | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):

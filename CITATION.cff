@@ -21,6 +21,37 @@ authors:
     given-names: Benjamin
     orcid: https://orcid.org/0000-0001-5725-6910
 title: "NeuroConv"
-version: 0.3.0
-date-released: 2023-06-07
-url: "https://github.com/catalystneuro/neuroconv.git"
+version: 0.8.3
+doi: 10.25080/cehj4257
+date-released: 2025-07-10
+url: "https://github.com/catalystneuro/neuroconv"
+repository-code: "https://github.com/catalystneuro/neuroconv"
+license: BSD-3-Clause
+preferred-citation:
+  type: conference-paper
+  authors:
+    - family-names: Mayorquin
+      given-names: Heberto
+      orcid: https://orcid.org/0000-0002-5937-7537
+    - family-names: Baker
+      given-names: Cody
+      orcid: https://orcid.org/0000-0002-0829-4790
+    - family-names: Adkisson-Floro
+      given-names: Paul
+    - family-names: Weigl
+      given-names: Szonja
+      orcid: https://orcid.org/0000-0001-6615-1360
+    - family-names: Trapani
+      given-names: Alessandra
+    - family-names: Tauffer
+      given-names: Luiz
+    - family-names: Rübel
+      given-names: Oliver
+    - family-names: Dichter
+      given-names: Benjamin
+      orcid: https://orcid.org/0000-0001-5725-6910
+  title: "NeuroConv: Streamlining Neurophysiology Data Conversion to the NWB Standard"
+  collection-title: "Proceedings of the 24th Python in Science Conference"
+  year: 2025
+  month: 7
+  doi: 10.25080/cehj4257

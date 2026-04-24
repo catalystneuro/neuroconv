@@ -1,17 +1,19 @@
-from typing import Optional
+import warnings
 
 from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
+from ....utils import DeepDict
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Data interface class for converting European Data Format (EDF) data using the
-    :py:class:`~spikeinterface.extractors.EDFRecordingExtractor`.
+    Data interface class for converting European Data Format (EDF) data.
 
-    Not supported for Python 3.8 and 3.9 on M1 macs.
+    Uses the :py:func:`~spikeinterface.extractors.read_edf` reader from SpikeInterface.
+
+    Not supported on M1 macs.
     """
 
     display_name = "EDF Recording"
@@ -25,21 +27,60 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
+    @staticmethod
+    def get_available_channel_ids(file_path: FilePath) -> list:
+        """
+        Get all available channel names from an EDF file.
 
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs.pop("channels_to_skip")
-        extractor_kwargs["all_annotations"] = True
-        extractor_kwargs["use_names_as_ids"] = True
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the EDF file
 
-        return extractor_kwargs
+        Returns
+        -------
+        list
+            List of all channel names in the EDF file
+        """
+        from spikeinterface.extractors import read_edf
+
+        # Load the recording to inspect channels
+        recording = read_edf(file_path=file_path, all_annotations=True, use_names_as_ids=True)
+
+        # Get all channel IDs
+        channel_ids = recording.get_channel_ids()
+
+        # Clean up to avoid dangling references
+        del recording
+
+        return channel_ids.tolist()
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import EDFRecordingExtractor
+
+        return EDFRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add use_names_as_ids and pop channels_to_skip."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("channels_to_skip")
+        self.extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs["use_names_as_ids"] = True
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
-        channels_to_skip: Optional[list] = None,
+        channels_to_skip: list | None = None,
     ):
         """
         Load and prepare data for EDF.
@@ -50,7 +91,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : str or Path
             Path to the edf file
-        verbose : bool, default: Falseeeeee
+        verbose : bool, default: False
             Allows verbose.
         es_key : str, default: "ElectricalSeries"
             Key for the ElectricalSeries metadata
@@ -59,6 +100,35 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             channels that are present in the EDF file.
 
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+                "es_key",
+                "channels_to_skip",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to EDFRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+            channels_to_skip = positional_values.get("channels_to_skip", channels_to_skip)
+
         get_package(
             package_name="pyedflib",
             excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.9"])),
@@ -93,7 +163,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         return subject_metadata
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)

@@ -1,10 +1,12 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
 
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 import numcodecs
 import zarr
+from hdmf import Container
 from pydantic import Field, InstanceOf, model_validator
+from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 
@@ -26,6 +28,7 @@ _excluded_zarr_codecs = set(
         "fixedscaleoffset",  # enforced indirectly by HDMF/PyNWB data types
         "base64",  # unsure what this would ever be used for
         "n5_wrapper",  # different data format
+        "pcodec",  # is erroneously imported before numcodecs 0.15, see https://numcodecs.readthedocs.io/en/stable/release.html?utm_source=chatgpt.com#id9
     )
 )
 
@@ -33,10 +36,6 @@ _excluded_zarr_codecs = set(
 # (Users can always initialize and pass explicitly via code)
 _available_zarr_codecs = set(_base_zarr_codecs - _lossy_zarr_codecs - _excluded_zarr_codecs)
 
-# TODO: would like to eventually (as separate feature) add an 'auto' method to Zarr
-# to harness the wider range of potential methods that are ideal for certain dtypes or structures
-# E.g., 'packbits' for boolean (logical) VectorData columns
-# | set(("auto",))
 AVAILABLE_ZARR_COMPRESSION_METHODS = {
     codec_name: zarr.codec_registry[codec_name] for codec_name in _available_zarr_codecs
 }
@@ -45,9 +44,9 @@ AVAILABLE_ZARR_COMPRESSION_METHODS = {
 class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
-    compression_method: Union[
-        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], InstanceOf[numcodecs.abc.Codec], None
-    ] = Field(
+    compression_method: (
+        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec] | None
+    ) = Field(
         default="gzip",  # TODO: would like this to be 'auto'
         description=(
             "The specified compression method to apply to this dataset. "
@@ -58,12 +57,12 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     )
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
     # Looks like they'll have to be hand-typed however... Can try parsing the numpy docstrings - no annotation typing.
-    compression_options: Union[dict[str, Any], None] = Field(
+    compression_options: dict[str, Any] | None = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
-    filter_methods: Union[
-        list[Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], InstanceOf[numcodecs.abc.Codec]]], None
-    ] = Field(
+    filter_methods: (
+        list[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec]] | None
+    ) = Field(
         default=None,
         description=(
             "The ordered collection of filtering methods to apply to this dataset prior to compression. "
@@ -72,7 +71,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             "Set to `None` to disable filtering."
         ),
     )
-    filter_options: Union[list[dict[str, Any]], None] = Field(
+    filter_options: list[dict[str, Any]] | None = Field(
         default=None, description="The optional parameters to use for each specified filter method."
     )
 
@@ -130,3 +129,36 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             compressor = False
 
         return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
+
+    @classmethod
+    def from_neurodata_object_with_existing(
+        cls,
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+    ) -> Self:
+        """
+        Construct a ZarrDatasetIOConfiguration from existing dataset settings.
+
+        Parameters
+        ----------
+        neurodata_object : hdmf.Container
+            The neurodata object containing the field that has been read from disk.
+        dataset_name : "data" or "timestamps"
+            The name of the field that corresponds to the dataset on disk.
+
+        Returns
+        -------
+        Self
+            A ZarrDatasetIOConfiguration instance with settings matching the existing dataset.
+        """
+        kwargs = cls.get_kwargs_from_neurodata_object(
+            neurodata_object=neurodata_object,
+            dataset_name=dataset_name,
+        )
+        compression_method = getattr(neurodata_object, dataset_name).compressor
+        filter_methods = getattr(neurodata_object, dataset_name).filters
+        return cls(
+            **kwargs,
+            compression_method=compression_method,
+            filter_methods=filter_methods,
+        )

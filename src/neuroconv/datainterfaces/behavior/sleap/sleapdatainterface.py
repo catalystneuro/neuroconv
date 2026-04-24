@@ -1,5 +1,5 @@
+import warnings
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -7,7 +7,6 @@ from pynwb.file import NWBFile
 
 from .sleap_utils import extract_timestamps
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....tools import get_package
 
 
 class SLEAPInterface(BaseTemporalAlignmentInterface):
@@ -31,9 +30,10 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         file_path: FilePath,
-        video_file_path: Optional[FilePath] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        video_file_path: FilePath | None = None,
         verbose: bool = False,
-        frames_per_second: Optional[float] = None,
+        frames_per_second: float | None = None,
     ):
         """
         Interface for writing sleap .slp files to nwb using the sleap-io library.
@@ -42,33 +42,47 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the .slp file (the output of sleap)
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
             controls verbosity. ``True`` by default.
         video_file_path : FilePath, optional
             The file path of the video for extracting timestamps.
         frames_per_second : float, optional
             The frames per second (fps) or sampling rate of the video.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "video_file_path",
+                "verbose",
+                "frames_per_second",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to SLEAPInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            video_file_path = positional_values.get("video_file_path", video_file_path)
+            verbose = positional_values.get("verbose", verbose)
+            frames_per_second = positional_values.get("frames_per_second", frames_per_second)
 
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
-        from importlib.metadata import version
-
         import ndx_pose  # noqa: F401
-        from packaging import version as version_parse
-
-        ndx_pose_version = version("ndx-pose")
-
-        # TODO: remove after this is merged https://github.com/talmolab/sleap-io/pull/143 and released
-        if version_parse.parse(ndx_pose_version) != version_parse.parse("0.1.1"):
-            raise ImportError(
-                "SLEAP interface requires ndx-pose version 0.1.1. "
-                f"Found version {ndx_pose_version}. Please install the required version: "
-                "pip install 'ndx-pose==0.1.1'"
-            )
 
         self.file_path = Path(file_path)
-        self.sleap_io = get_package(package_name="sleap_io")
         self.video_file_path = video_file_path
         self.video_sample_rate = frames_per_second
         self.verbose = verbose
@@ -93,7 +107,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ):
         """
         Conversion from DLC output files to nwb. Derived from sleap-io library.
@@ -114,7 +128,8 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         if self.video_sample_rate:
             pose_estimation_metadata.update(video_sample_rate=self.video_sample_rate)
 
-        labels = self.sleap_io.load_slp(self.file_path)
-        self.sleap_io.io.nwb.append_nwb_data(
-            labels=labels, nwbfile=nwbfile, pose_estimation_metadata=pose_estimation_metadata
-        )
+        from sleap_io import load_slp
+        from sleap_io.io.nwb_predictions import append_nwb_data
+
+        labels = load_slp(self.file_path)
+        append_nwb_data(labels=labels, nwbfile=nwbfile, pose_estimation_metadata=pose_estimation_metadata)

@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Optional, Union
+from typing import Literal
 from warnings import warn
 
 from pydantic import DirectoryPath
@@ -14,24 +14,29 @@ from pynwb import NWBHDF5IO
 def automatic_dandi_upload(
     dandiset_id: str,
     nwb_folder_path: DirectoryPath,
-    dandiset_folder_path: Optional[DirectoryPath] = None,
+    dandiset_folder_path: DirectoryPath | None = None,
     version: str = "draft",
-    staging: bool = False,
+    sandbox: bool = False,
     cleanup: bool = False,
-    number_of_jobs: Union[int, None] = None,
-    number_of_threads: Union[int, None] = None,
+    number_of_jobs: int | None = None,
+    number_of_threads: int | None = None,
+    instance: Literal["dandi", "ember"] | str = "dandi",
 ) -> list[Path]:
     """
     Fully automated upload of NWB files to a Dandiset.
 
-    Requires an API token set as an environment variable named ``DANDI_API_KEY``.
+    Requires an API token set as an environment variable. The variable name depends on the instance:
+    - ``DANDI_API_KEY`` for the main DANDI instance
+    - ``DANDI_SANDBOX_API_KEY`` for the DANDI sandbox instance
+    - ``EMBER_API_KEY`` for the EMBER instance
+    - ``EMBER_SANDBOX_API_KEY`` for the EMBER sandbox instance
 
     To set this in your bash terminal in Linux or macOS, run
         export DANDI_API_KEY=...
     or in Windows
         set DANDI_API_KEY=...
 
-    DO NOT STORE THIS IN ANY PUBLICLY SHARED CODE.
+    WARNING: DO NOT STORE THIS VALUE IN ANY PUBLICLY SHARED CODE.
 
     Parameters
     ----------
@@ -42,27 +47,66 @@ def automatic_dandi_upload(
     dandiset_folder_path : folder path, optional
         A separate folder location within which to download the dandiset.
         Used in cases where you do not have write permissions for the parent of the 'nwb_folder_path' directory.
-        Default behavior downloads the DANDISet to a folder adjacent to the 'nwb_folder_path'.
+        Default behavior downloads the Dandiset to a folder adjacent to the 'nwb_folder_path'.
     version : str, default="draft"
         The version of the Dandiset to download. Even if no data has been uploaded yes, this step downloads an essential
         Dandiset metadata yaml file. Default is "draft", which is the latest state.
-    staging : bool, default: False
-        Is the Dandiset hosted on the staging server? This is mostly for testing purposes.
+    sandbox : bool, default: False
+        Is the Dandiset hosted on the sandbox server? This is mostly for testing purposes.
     cleanup : bool, default: False
         Whether to remove the Dandiset folder path and nwb_folder_path.
     number_of_jobs : int, optional
         The number of jobs to use in the DANDI upload process.
     number_of_threads : int, optional
         The number of threads to use in the DANDI upload process.
+    instance : str, default = "dandi"
+        The DANDI instance to use. Either "dandi" (default), "ember", or an explicit URL.
     """
     from dandi.download import download as dandi_download
     from dandi.organize import organize as dandi_organize
     from dandi.upload import upload as dandi_upload
 
-    assert os.getenv("DANDI_API_KEY"), (
-        "Unable to find environment variable 'DANDI_API_KEY'. "
-        "Please retrieve your token from DANDI and set this environment variable."
-    )
+    # Validate instance parameter first
+    if instance not in ["dandi", "ember"] and not instance.startswith("https://"):
+        message = "The 'instance' parameter must be either 'dandi', 'ember', or a full URL starting with 'https://'."
+        raise ValueError(message)
+
+    # Determine the actual dandi_instance name and URL based on instance and sandbox parameters
+    if instance == "dandi" and sandbox:
+        url_base = "https://sandbox.dandiarchive.org"
+        dandi_instance = "dandi-sandbox"
+    elif instance == "dandi" and not sandbox:
+        url_base = "https://dandiarchive.org"
+        dandi_instance = "dandi"
+    elif instance == "ember" and sandbox:
+        url_base = "https://dandi-sandbox.emberarchive.org"
+        dandi_instance = "ember-dandi-sandbox"
+    elif instance == "ember" and not sandbox:
+        url_base = "https://dandi.emberarchive.org"
+        dandi_instance = "ember-dandi"
+    else:
+        url_base = instance.removesuffix("/")
+        dandi_instance = instance
+
+    # Check for the appropriate API key environment variable based on the determined instance
+    # Map instance names to their expected environment variable names
+    api_key_map = {
+        "dandi": "DANDI_API_KEY",
+        "dandi-sandbox": "DANDI_SANDBOX_API_KEY",
+        "ember-dandi": "EMBER_API_KEY",
+        "ember-dandi-sandbox": "EMBER_SANDBOX_API_KEY",
+    }
+
+    # Only check for known instances; custom URLs don't have a predefined env var
+    if dandi_instance in api_key_map:
+        expected_env_var = api_key_map[dandi_instance]
+        if not os.getenv(expected_env_var):
+            message = (
+                f"Unable to find environment variable '{expected_env_var}'. "
+                f"Please retrieve your token from {dandi_instance.upper().replace('-', ' ')} "
+                f"and set this environment variable."
+            )
+            raise KeyError(message)
 
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
@@ -72,7 +116,6 @@ def automatic_dandi_upload(
     if number_of_threads is not None and number_of_threads > 1 and number_of_jobs is None:
         number_of_jobs = -1
 
-    url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
     dandi_download(urls=dandiset_url, output_dir=str(dandiset_folder_path), get_metadata=True, get_assets=False)
     assert dandiset_path.exists(), "DANDI download failed!"
@@ -100,8 +143,6 @@ def automatic_dandi_upload(
     # The above block can be removed once they add the feature
 
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
-
-    dandi_instance = "dandi-staging" if staging else "dandi"  # Test
 
     dandi_upload(
         paths=organized_nwbfiles,

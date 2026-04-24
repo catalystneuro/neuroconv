@@ -7,18 +7,20 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
-from hdmf_zarr import NWBZarrIO
 from pydantic import FilePath
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile, read_nwb
 from pynwb.file import Subject
 
-from . import BackendConfiguration, configure_backend, get_default_backend_configuration
+from . import (
+    BACKEND_NWB_IO,
+    BackendConfiguration,
+    configure_backend,
+    get_default_backend_configuration,
+)
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
-
-BACKEND_NWB_IO = dict(hdf5=NWBHDF5IO, zarr=NWBZarrIO)
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -41,9 +43,14 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
     """
     if name in nwbfile.processing:
         if description is not None and nwbfile.processing[name].description != description:
+            existing_description = nwbfile.processing[name].description
             warnings.warn(
-                "Custom description given to get_module does not match existing module description! "
-                "Ignoring custom description."
+                f"Processing module '{name}' already exists with a different description. "
+                f"The new description will be ignored.\n"
+                f"  Existing: '{existing_description}'\n"
+                f"  Provided: '{description}'\n"
+                f"To fix this, ensure all calls to get_module() for '{name}' use the same description, "
+                f"or omit the description parameter to use the existing one."
             )
         return nwbfile.processing[name]
     else:
@@ -129,7 +136,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     return NWBFile(**nwbfile_kwargs)
 
 
-def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: Optional[dict] = None):
+def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: dict | None = None):
     """
     Add device information from metadata to NWBFile object.
 
@@ -182,6 +189,38 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
             nwbfile.create_device(**dict(defaults, **device_metadata))
 
 
+def _add_device_to_nwbfile(
+    *,
+    nwbfile: NWBFile,
+    device_metadata: dict,
+):
+    """
+    Add a device to an NWBFile.
+
+    If a device with the same name already exists, the existing device is
+    returned without creating a duplicate.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to add the device to.
+    device_metadata : dict
+        Dictionary describing the device. Must contain at least a ``"name"`` key.
+
+    Returns
+    -------
+    Device
+        The Device object (either newly created or existing).
+    """
+    device_name = device_metadata["name"]
+
+    if device_name in nwbfile.devices:
+        return nwbfile.devices[device_name]
+
+    device = nwbfile.create_device(**device_metadata)
+    return device
+
+
 def _attempt_cleanup_of_existing_nwbfile(nwbfile_path: Path) -> None:
     if not nwbfile_path.exists():
         return
@@ -196,9 +235,9 @@ def _attempt_cleanup_of_existing_nwbfile(nwbfile_path: Path) -> None:
 
 @contextmanager
 def make_or_load_nwbfile(
-    nwbfile_path: Optional[FilePath] = None,
-    nwbfile: Optional[NWBFile] = None,
-    metadata: Optional[dict] = None,
+    nwbfile_path: FilePath | None = None,
+    nwbfile: NWBFile | None = None,
+    metadata: dict | None = None,
     overwrite: bool = False,
     backend: Literal["hdf5", "zarr"] = "hdf5",
     verbose: bool = False,
@@ -331,8 +370,8 @@ def make_or_load_nwbfile(
 
 
 def _resolve_backend(
-    backend: Optional[Literal["hdf5", "zarr"]] = None,
-    backend_configuration: Optional[BackendConfiguration] = None,
+    backend: Literal["hdf5", "zarr"] | None = None,
+    backend_configuration: BackendConfiguration | None = None,
 ) -> Literal["hdf5"]:
     """
     Resolve the backend to use for writing the NWBFile.
@@ -368,10 +407,9 @@ def _resolve_backend(
 
 def configure_and_write_nwbfile(
     nwbfile: NWBFile,
-    output_filepath: Optional[FilePath] = None,
-    nwbfile_path: Optional[FilePath] = None,
-    backend: Optional[Literal["hdf5", "zarr"]] = None,
-    backend_configuration: Optional[BackendConfiguration] = None,
+    nwbfile_path: FilePath | None = None,
+    backend: Literal["hdf5", "zarr"] | None = None,
+    backend_configuration: BackendConfiguration | None = None,
 ) -> None:
     """
     Write an NWB file using a specific backend or backend configuration.
@@ -383,29 +421,14 @@ def configure_and_write_nwbfile(
     Parameters
     ----------
     nwbfile: NWBFile
-    output_filepath: Optional[FilePath], optional. Deprecated
-    nwbfile_path: Optional[FilePath], optional
+    nwbfile_path: FilePath | None, optional
     backend: {"hdf5", "zarr"}, optional
         The type of backend used to create the file. This option uses the default ``backend_configuration`` for the
         specified backend. If no ``backend`` is specified, the ``backend_configuration`` is used.
     backend_configuration: BackendConfiguration, optional
         Specifies the backend type and the chunking and compression parameters of each dataset. If no
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
-
     """
-
-    if nwbfile_path is not None and output_filepath is not None:
-        raise ValueError(
-            "Both 'output_filepath' and 'nwbfile_path' were specified! " "Please specify only `nwbfile_path`."
-        )
-
-    if output_filepath is not None:
-        warnings.warn(
-            "The 'output_filepath' parameter is deprecated in or after September 2025. " "Use 'nwbfile_path' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        nwbfile_path = output_filepath
 
     if nwbfile_path is None:
         raise ValueError("The 'nwbfile_path' parameter must be specified.")
@@ -421,4 +444,50 @@ def configure_and_write_nwbfile(
     IO = BACKEND_NWB_IO[backend_configuration.backend]
 
     with IO(nwbfile_path, mode="w") as io:
-        io.write(nwbfile)
+        if nwbfile.read_io is not None:  # i.e. in the case of exporting
+            nwbfile.set_modified()
+            io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
+        else:
+            io.write(nwbfile)
+
+
+def repack_nwbfile(
+    *,
+    nwbfile_path: Path,
+    export_nwbfile_path: Path,
+    export_backend: Literal["hdf5", "zarr", None] = None,
+):
+    """
+    Repack an NWBFile with a new backend configuration.
+
+    Parameters
+    ----------
+    nwbfile_path : Path
+        Path to the NWB file to be repacked.
+    export_nwbfile_path : Path
+        Path to export the repacked NWB file.
+    export_backend : {"hdf5", "zarr", None}, default: None
+        The type of backend used to write the repacked file. If None, the same backend as the input file is used.
+    """
+    # Read the file using read_nwb (automatically detects backend)
+    nwbfile = read_nwb(nwbfile_path)
+
+    # If no export backend specified, detect from the read_io attribute
+    if export_backend is None:
+        # Determine the backend from the IO class that was used to read the file
+        io_class_name = nwbfile.read_io.__class__.__name__
+        # Map IO class names to backend names
+        if "NWBHDF5IO" in io_class_name:
+            export_backend = "hdf5"
+        elif "NWBZarrIO" in io_class_name:
+            export_backend = "zarr"
+        else:
+            raise ValueError(f"Unable to determine backend from IO class: {io_class_name}")
+
+    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=export_backend)
+    configure_and_write_nwbfile(
+        nwbfile=nwbfile,
+        backend_configuration=backend_configuration,
+        nwbfile_path=export_nwbfile_path,
+        backend=export_backend,
+    )

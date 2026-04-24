@@ -1,6 +1,6 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 
-from typing import Any, ClassVar, Literal, Type
+from typing import Any, ClassVar, Literal
 
 from hdmf.container import DataIO
 from pydantic import BaseModel, ConfigDict, Field
@@ -9,7 +9,10 @@ from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
-from .._dataset_configuration import get_default_dataset_io_configurations
+from .._dataset_configuration import (
+    get_default_dataset_io_configurations,
+    get_existing_dataset_io_configurations,
+)
 
 
 class BackendConfiguration(BaseModel):
@@ -17,7 +20,7 @@ class BackendConfiguration(BaseModel):
 
     backend: ClassVar[Literal["hdf5", "zarr"]]
     pretty_backend_name: ClassVar[Literal["HDF5", "Zarr"]]
-    data_io_class: ClassVar[Type[DataIO]]
+    data_io_class: ClassVar[type[DataIO]]
 
     model_config = ConfigDict(validate_assignment=True)  # Re-validate model on mutation
 
@@ -57,10 +60,73 @@ class BackendConfiguration(BaseModel):
 
     @classmethod
     def from_nwbfile(cls, nwbfile: NWBFile) -> Self:
+        """
+        Create a backend configuration from an NWBFile with default chunking and compression settings.
+
+        .. deprecated:: 0.8.4
+            The `from_nwbfile` method is deprecated and will be removed on or after June 2026.
+            Use `from_nwbfile_with_defaults` or `from_nwbfile_with_existing` instead.
+        """
+        import warnings
+
+        warnings.warn(
+            "The 'from_nwbfile' method is deprecated and will be removed on or after June 2026. "
+            "Use 'from_nwbfile_with_defaults' or 'from_nwbfile_with_existing' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         dataset_configurations = {
             default_dataset_configuration.location_in_file: default_dataset_configuration
             for default_dataset_configuration in default_dataset_configurations
+        }
+
+        return cls(dataset_configurations=dataset_configurations)
+
+    @classmethod
+    def from_nwbfile_with_defaults(cls, nwbfile: NWBFile) -> Self:
+        """
+        Create a backend configuration from an NWBFile with default chunking and compression settings.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The NWBFile object to extract the backend configuration from.
+
+        Returns
+        -------
+        Self
+            The backend configuration with default chunking and compression settings for each neurodata object in the NWBFile.
+        """
+        dataset_io_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
+        dataset_configurations = {
+            default_dataset_configuration.location_in_file: default_dataset_configuration
+            for default_dataset_configuration in dataset_io_configurations
+        }
+
+        return cls(dataset_configurations=dataset_configurations)
+
+    @classmethod
+    def from_nwbfile_with_existing(cls, nwbfile: NWBFile) -> Self:
+        """
+        Create a backend configuration from an NWBFile using existing dataset settings.
+
+        This method extracts existing chunking and compression settings from an NWBFile that has already been written to disk.
+
+        Parameters
+        ----------
+        nwbfile : pynwb.NWBFile
+            The NWBFile object to extract the backend configuration from.
+
+        Returns
+        -------
+        Self
+            The backend configuration with existing chunking and compression settings for each neurodata object in the NWBFile.
+        """
+        dataset_io_configurations = get_existing_dataset_io_configurations(nwbfile=nwbfile)
+        dataset_configurations = {
+            default_dataset_configuration.location_in_file: default_dataset_configuration
+            for default_dataset_configuration in dataset_io_configurations
         }
 
         return cls(dataset_configurations=dataset_configurations)
@@ -151,3 +217,56 @@ class BackendConfiguration(BaseModel):
         new_backend_configuration = self.model_copy(deep=True)
         new_backend_configuration.dataset_configurations.update(locations_to_remap)
         return new_backend_configuration
+
+    def apply_global_compression(
+        self,
+        compression_method: str,
+        compression_options: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Apply compression settings to all datasets in this backend configuration.
+
+        This method modifies the backend configuration in-place, applying the specified
+        compression method and options to ALL datasets, regardless of their current
+        compression settings.
+
+        Parameters
+        ----------
+        compression_method : str
+            The compression method to apply to all datasets (e.g., "gzip", "Blosc", "Zstd").
+        compression_options : dict, optional
+            Additional compression options to apply. The available options depend on the
+            compression method chosen.
+
+        Raises
+        ------
+        ValueError
+            If the compression method is not available for this backend type.
+
+        Examples
+        --------
+        >>> backend_config = get_default_backend_configuration(nwbfile, backend="hdf5")
+        >>> backend_config.apply_global_compression("Blosc", {"cname": "zstd", "clevel": 5})
+        """
+        # Import here to avoid circular imports
+        from ._hdf5_dataset_io import AVAILABLE_HDF5_COMPRESSION_METHODS
+        from ._zarr_dataset_io import AVAILABLE_ZARR_COMPRESSION_METHODS
+
+        # Validate compression method for the backend
+        if self.backend == "hdf5":
+            available_methods = AVAILABLE_HDF5_COMPRESSION_METHODS
+        elif self.backend == "zarr":
+            available_methods = AVAILABLE_ZARR_COMPRESSION_METHODS
+        else:
+            raise ValueError(f"Unknown backend: {self.backend}")
+
+        if compression_method not in available_methods:
+            raise ValueError(
+                f"Compression method '{compression_method}' is not available for backend "
+                f"'{self.backend}'. Available methods: {list(available_methods.keys())}"
+            )
+
+        # Apply global compression to ALL datasets
+        for dataset_configuration in self.dataset_configurations.values():
+            dataset_configuration.compression_method = compression_method
+            dataset_configuration.compression_options = compression_options

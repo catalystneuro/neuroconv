@@ -1,6 +1,7 @@
 """Author: Ben Dichter."""
 
-from typing import Literal, Optional
+import warnings
+from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -31,18 +32,48 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         "calcium imaging",
     )
 
-    ExtractorModuleName = "roiextractors"
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """
+        Initialize and return the extractor instance for imaging interfaces.
+
+        Extends the base implementation to also remove the 'photon_series_type' and
+        'metadata_key' parameters which are specific to the imaging interface, not the extractor.
+
+        Parameters
+        ----------
+        interface_kwargs : dict
+            The source data parameters passed to the interface constructor.
+
+        Returns
+        -------
+        extractor_instance
+            An initialized imaging extractor instance.
+        """
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
+        self.extractor_kwargs.pop("metadata_key", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str | None = None,
         **source_data,
     ):
+
+        from roiextractors import ImagingExtractor
+
         super().__init__(**source_data)
-        self.imaging_extractor = self._extractor_instance
+
+        self.imaging_extractor: ImagingExtractor = self._extractor_instance
         self.verbose = verbose
         self.photon_series_type = photon_series_type
+        self.metadata_key = metadata_key
 
     def get_metadata_schema(
         self,
@@ -99,19 +130,29 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(
-        self,
-    ) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Retrieve the metadata for the imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns only NWBFile-level metadata (session_description, identifier,
+            etc.) without ophys keys. Ophys defaults are filled by ``add_imaging_to_nwbfile()``
+            internally.
 
         Returns
         -------
         DeepDict
-            Dictionary containing metadata including device information, imaging plane details,
-            and photon series configuration.
+            Dictionary containing metadata. When use_new_metadata_format is False, includes
+            device information, imaging plane details, and photon series configuration.
+            When True, includes only NWBFile basics.
         """
+        if use_new_metadata_format:
+            return super().get_metadata()
 
+        # Old list-based path (unchanged)
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
@@ -128,11 +169,11 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        reinitialized_extractor = self.get_extractor()(**self.extractor_kwargs)
-        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
+        reinitialized_extractor = self._initialize_extractor(self.source_data)
+        return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
-        return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
+        return self.imaging_extractor.get_timestamps()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.imaging_extractor.set_times(times=aligned_timestamps)
@@ -140,15 +181,16 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
-        stub_frames: int = 100,
         always_write_timestamps: bool = False,
-        iterator_type: Optional[str] = "v2",
-        iterator_options: Optional[dict] = None,
+        iterator_type: str | None = "v2",
+        iterator_options: dict | None = None,
+        stub_samples: int = 100,
     ):
         """
         Add imaging data to the NWB file
@@ -168,23 +210,71 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             under the "processing/ophys" module, by default "acquisition".
         stub_test : bool, optional
             If True, only writes a small subset of frames for testing purposes, by default False.
-        stub_frames : int, optional
-            The number of frames to write when stub_test is True. Will use min(stub_frames, total_frames) to avoid
-            exceeding available frames, by default 100.
-        iterator_type : str, optional
-            The type of iterator to use for adding the data. Commonly used to manage large datasets, by default "v2".
+        always_write_timestamps : bool, optional
+            Whether to always write timestamps, by default False.
+        iterator_type : {"v2", None}, default: "v2"
+            The type of iterator for chunked data writing.
+            'v2': Uses iterative write with control over chunking and progress bars.
+            None: Loads all data into memory before writing (not recommended for large datasets).
         iterator_options : dict, optional
-            Additional options for controlling the iteration process, by default None.
+            Options for controlling the iterative write process (buffer size, progress bars).
+            See the `pynwb tutorial on iterative write <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
+            for more information on chunked data writing.
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
+        stub_samples : int, default: 100
+            The number of samples (frames) to use for testing.
         """
 
         from ...tools.roiextractors import add_imaging_to_nwbfile
 
+        # TODO: Remove this block in August 2026 or after when positional arguments are no longer supported.
+        if args:
+            parameter_names = [
+                "photon_series_type",
+                "photon_series_index",
+                "parent_container",
+                "stub_test",
+                "always_write_timestamps",
+                "iterator_type",
+                "iterator_options",
+                "stub_samples",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in August 2026 or after. Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to add_to_nwbfile is deprecated "
+                f"and will be removed in August 2026 or after. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
+            photon_series_index = positional_values.get("photon_series_index", photon_series_index)
+            parent_container = positional_values.get("parent_container", parent_container)
+            stub_test = positional_values.get("stub_test", stub_test)
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
+            iterator_type = positional_values.get("iterator_type", iterator_type)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+            stub_samples = positional_values.get("stub_samples", stub_samples)
+
         if stub_test:
-            stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])
-            imaging_extractor = self.imaging_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
+            stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
+            imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
         else:
             imaging_extractor = self.imaging_extractor
 
+        # TODO: change to self.get_metadata(use_new_metadata_format=True) when all imaging interfaces are migrated
         metadata = metadata or self.get_metadata()
 
         add_imaging_to_nwbfile(
@@ -197,4 +287,5 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             always_write_timestamps=always_write_timestamps,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
+            metadata_key=self.metadata_key,
         )

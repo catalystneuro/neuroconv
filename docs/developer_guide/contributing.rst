@@ -66,7 +66,7 @@ If you have not already, you will need to clone the repo:
 
 .. code-block:: bash
 
-    $ git checkout -b <new_branch>
+    $ git switch --create <new_branch>
 
 2) Make your changes.
 

@@ -1,12 +1,11 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Union
 from warnings import warn
 
 from pydantic import DirectoryPath
 
 
-def _get_session_start_time(element: "lxml.etree.Element") -> Union[datetime, None]:
+def _get_session_start_time(element: "lxml.etree.Element") -> datetime | None:
     """
     Get the session start time from the settings.xml file.
     Returns the session start time as a datetime object.
@@ -33,7 +32,7 @@ def _read_settings_xml(folder_path: DirectoryPath) -> "lxml.etree.Element":
 
     Parameters
     ----------
-    folder_path : FolderPathType
+    folder_path : DirectoryPath
         The path to the folder containing the settings.xml file.
     """
     folder_path = Path(folder_path)

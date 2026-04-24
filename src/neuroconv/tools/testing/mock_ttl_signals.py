@@ -1,6 +1,5 @@
 import math
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -14,7 +13,7 @@ from ...utils import ArrayType
 
 def _check_parameter_dtype_consistency(
     parameter_name: str,
-    parameter_value: Union[int, float],
+    parameter_value: int | float,
     generic_dtype: type,  # Literal[np.integer, np.floating]
 ):
     """Helper for `generate_mock_ttl_signal` to assert consistency between parameters and expected trace dtype."""
@@ -27,14 +26,14 @@ def _check_parameter_dtype_consistency(
 
 def generate_mock_ttl_signal(
     signal_duration: float = 7.0,
-    ttl_times: Optional[ArrayType] = None,
+    ttl_times: ArrayType | None = None,
     ttl_duration: float = 1.0,
     sampling_frequency_hz: float = 25_000.0,
     dtype: DTypeLike = "int16",
-    baseline_mean: Optional[Union[int, float]] = None,
-    signal_mean: Optional[Union[int, float]] = None,
-    channel_noise: Optional[Union[int, float]] = None,
-    random_seed: Optional[int] = 0,
+    baseline_mean: int | float | None = None,
+    signal_mean: int | float | None = None,
+    channel_noise: int | float | None = None,
+    random_seed: int | None = 0,
 ) -> np.ndarray:
     """
     Generate a synthetic signal of TTL pulses similar to those seen in .nidq.bin files using SpikeGLX.

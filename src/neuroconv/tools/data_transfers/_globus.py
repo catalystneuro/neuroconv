@@ -4,7 +4,6 @@ import json
 import re
 from pathlib import Path
 from time import sleep, time
-from typing import Union
 
 from pydantic import DirectoryPath
 from tqdm import tqdm
@@ -35,7 +34,7 @@ def get_globus_dataset_content_sizes(
 
 def transfer_globus_content(
     source_endpoint_id: str,
-    source_files: Union[str, list[list[str]]],
+    source_files: str | list[list[str]],
     destination_endpoint_id: str,
     destination_folder: DirectoryPath,
     display_progress: bool = True,
@@ -61,7 +60,7 @@ def transfer_globus_content(
         *i.e.*, `source_files` is recommended to have at most 3 items all of similar total byte size.
     destination_endpoint_id : str
         Destination Globus ID.
-    destination_folder : FolderPathType
+    destination_folder : DirectoryPath
         Absolute path to a local folder where all content will be transferred to.
     display_progress : bool, default: True
         Whether to display the transfer as progress bars using `tqdm`.
@@ -81,7 +80,7 @@ def transfer_globus_content(
 
     def _submit_transfer_request(
         source_endpoint_id: str,
-        source_files: Union[str, list[list[str]]],
+        source_files: str | list[list[str]],
         destination_endpoint_id: str,
         destination_folder_path: Path,
     ) -> dict[str, int]:
@@ -94,7 +93,7 @@ def transfer_globus_content(
             # ':' replacement for Windows drives
             source_folder = Path(batched_source_files[0]).parent.as_posix().replace(":", "")
             destination_folder_name = destination_folder_path.as_posix().replace(":", "")
-            with open(file=paths_file, mode="w") as f:
+            with open(file=paths_file, mode="w", encoding="utf-8") as f:
                 for source_file in batched_source_files:
                     file_name = Path(source_file).name
                     f.write(f"{file_name} {file_name}\n")

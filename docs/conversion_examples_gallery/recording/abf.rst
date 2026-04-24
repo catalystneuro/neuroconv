@@ -1,7 +1,7 @@
 ABF data conversion
 -------------------
 
-Install NeuroConv with the additional dependencies necessary for reading ABF data.
+Install NeuroConv with the additional dependencies necessary for reading Axon Binary File (ABF) data.
 
 .. code-block:: bash
 

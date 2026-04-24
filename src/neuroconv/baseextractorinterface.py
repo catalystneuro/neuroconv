@@ -1,10 +1,8 @@
 """Abstract class defining the structure of all Extractor-based Interfaces."""
 
-from abc import ABC
-from typing import Optional
+from abc import ABC, abstractmethod
 
 from .basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from .tools import get_package
 
 
 class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
@@ -12,38 +10,47 @@ class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
     Abstract class defining the structure of all Extractor-based Interfaces.
     """
 
-    # Manually override any of these attributes in a subclass if needed.
-    # Note that values set at the level of class definition are called upon import.
-    ExtractorModuleName: Optional[str] = None
-    ExtractorName: Optional[str] = None  # Defaults to __name__.replace("Interface", "Extractor").
-    Extractor = None  # Class loads dynamically on first call to .get_extractor()
+    def __init__(self, **source_data):
+        super().__init__(**source_data)
+        self._extractor_instance = self._initialize_extractor(source_data)
 
     @classmethod
-    def get_extractor(cls):
+    @abstractmethod
+    def get_extractor_class(cls):
         """
         Get the extractor class for this interface.
 
+        This classmethod must be implemented by each concrete interface to specify
+        which extractor class to use.
+
         Returns
         -------
-        type
-            The extractor class that will be used to read the data.
+        type or callable
+            The extractor class or function to use for initialization.
         """
-        if cls.Extractor is not None:
-            return cls.Extractor
-        extractor_module = get_package(package_name=cls.ExtractorModuleName)
-        extractor = getattr(
-            extractor_module,
-            cls.ExtractorName or cls.__name__.replace("Interface", "Extractor"),
-        )
-        cls.Extractor = extractor
-        return extractor
+        pass
 
-    def __init__(self, **source_data):
-        super().__init__(**source_data)
-        self.extractor = self.get_extractor()
-        self.extractor_kwargs = self._source_data_to_extractor_kwargs(source_data)
-        self._extractor_instance = self.extractor(**self.extractor_kwargs)
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """
+        Initialize and return the extractor instance for this interface.
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        """This functions maps the source_data to kwargs required to initialize the Extractor."""
-        return source_data
+        This default implementation handles common parameter filtering and
+        extractor instantiation. Override this method if custom parameter
+        remapping or special initialization logic is needed.
+
+        Parameters
+        ----------
+        interface_kwargs : dict
+            The source data parameters passed to the interface constructor.
+
+        Returns
+        -------
+        extractor_instance
+            An initialized extractor instance.
+        """
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance

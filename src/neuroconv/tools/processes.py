@@ -1,7 +1,6 @@
 """Collection of helper functions for managing processes."""
 
 import subprocess
-from typing import Optional
 
 import psutil
 
@@ -17,9 +16,9 @@ def _kill_process(proc):
         pass
 
 
-def deploy_process(command, catch_output: bool = False, timeout: Optional[float] = None):
+def deploy_process(command, catch_output: bool = False, timeout: float | None = None):
     """Private helper for efficient submission and cleanup of shell processes."""
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, text=True)
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, text=True, encoding="utf-8")
     output = proc.communicate()[0].strip() if catch_output else None
     proc.wait(timeout=timeout)
     _kill_process(proc=proc)

@@ -1,16 +1,17 @@
 import json
-import wave
+import struct
+import warnings
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
-import scipy
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools.audio import add_acoustic_waveform_series
 from ....utils import (
+    DeepDict,
     get_base_schema,
 )
 
@@ -30,7 +31,9 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     info = "Interface for writing audio recordings to an NWB file."
 
     @validate_call
-    def __init__(self, file_paths: list[FilePath], verbose: bool = False):
+    def __init__(
+        self, file_paths: list[FilePath], *args, verbose: bool = False
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Data interface for writing acoustic recordings to an NWB file.
 
@@ -47,11 +50,37 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         verbose : bool, default: False
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_paths
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to AudioInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+
         # This import is to assure that ndx_sound is in the global namespace when an pynwb.io object is created.
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_sound  # noqa: F401
 
-        suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
+        # Only check the last suffix of each file path
+        suffixes = [Path(file_path).suffix for file_path in file_paths]
         format_is_not_supported = [
             suffix for suffix in suffixes if suffix not in [".wav"]
         ]  # TODO: add support for more formats
@@ -72,7 +101,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         time_series_metadata_schema_path = (
             Path(__file__).parent.parent.parent.parent / "schemas" / "time_series_schema.json"
         )
-        with open(file=time_series_metadata_schema_path) as fp:
+        with open(file=time_series_metadata_schema_path, encoding="utf-8") as fp:
             time_series_metadata_schema = json.load(fp=fp)
         time_series_metadata_schema.update(required=["name"])
 
@@ -89,7 +118,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         )
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         default_name = "AcousticWaveformSeries"
         is_multiple_file_path = len(self.source_data["file_paths"]) > 1
         audio_metadata = [
@@ -108,7 +137,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def get_original_timestamps(self) -> np.ndarray:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def get_timestamps(self) -> Optional[np.ndarray]:
+    def get_timestamps(self) -> np.ndarray | None:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
@@ -166,11 +195,12 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         stub_frames: int = 1000,
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
-        iterator_options: Optional[dict] = None,
+        iterator_options: dict | None = None,
     ):
         """
         Parameters
@@ -190,6 +220,41 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         -------
         NWBFile
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "stub_frames",
+                "write_as",
+                "iterator_options",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to AudioInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            stub_frames = positional_values.get("stub_frames", stub_frames)
+            write_as = positional_values.get("write_as", write_as)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+
+        import scipy
+
+        metadata = metadata or self.get_metadata()
+
         file_paths = self.source_data["file_paths"]
         audio_metadata = metadata["Behavior"]["Audio"]
         _check_audio_names_are_unique(metadata=audio_metadata)
@@ -235,21 +300,23 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         return nwbfile
 
     @staticmethod
-    def _get_wav_bit_depth(file_path):
+    def _get_wav_bit_depth(file_path: FilePath) -> int:
         """
         Get the bit depth of a WAV file.
-
         Parameters
         ----------
         file_path : str or Path
             Path to the WAV file
-
         Returns
         -------
         int
             Bit depth of the WAV file (8, 16, 24, 32, etc.)
         """
-        with wave.open(str(file_path), "rb") as wav_file:
-            sample_width = wav_file.getsampwidth()
-            bit_depth = sample_width * 8
-        return bit_depth
+
+        struct_module_uint16 = "<H"  # < Is little-endian
+
+        with open(file_path, "rb") as f:
+            f.seek(34)
+            bits_per_sample = struct.unpack(struct_module_uint16, f.read(2))[0]
+
+            return bits_per_sample

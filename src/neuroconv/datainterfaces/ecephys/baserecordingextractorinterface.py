@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -18,7 +18,32 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     keywords = ("extracellular electrophysiology", "voltage", "recording")
 
-    ExtractorModuleName = "spikeinterface.extractors"
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """
+        Initialize and return the extractor instance for recording interfaces.
+
+        Extends the base implementation to also remove the 'es_key' parameter
+        which is specific to the recording interface, not the extractor.
+        Also adds 'all_annotations=True' to ensure all metadata is loaded.
+
+        Parameters
+        ----------
+        interface_kwargs : dict
+            The source data parameters passed to the interface constructor.
+
+        Returns
+        -------
+        extractor_instance
+            An initialized recording extractor instance.
+        """
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["all_annotations"] = True
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeries", **source_data):
         """
@@ -42,7 +67,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self.recording_extractor.set_property("channel_name", channel_names)
             self.recording_extractor.delete_property("channel_names")
 
-        self.subset_channels = None
         self.verbose = verbose
         self.es_key = es_key
         self._number_of_segments = self.recording_extractor.get_num_segments()
@@ -122,7 +146,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         "Gets the channel ids of the data."
         return self.recording_extractor.get_channel_ids()
 
-    def get_original_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
+    def get_original_timestamps(self) -> np.ndarray | list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 
@@ -133,13 +157,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         timestamps: numpy.ndarray or list of numpy.ndarray
             The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
         """
-        new_recording = self.get_extractor()(
-            **{
-                keyword: value
-                for keyword, value in self.extractor_kwargs.items()
-                if keyword not in ["verbose", "es_key"]
-            }
-        )
+        new_recording = self._initialize_extractor(self.source_data)
+
         if self._number_of_segments == 1:
             return new_recording.get_times()
         else:
@@ -148,7 +167,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 for segment_index in range(self._number_of_segments)
             ]
 
-    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
+    def get_timestamps(self) -> np.ndarray | list[np.ndarray]:
         """
         Retrieve the timestamps for the data in this interface.
 
@@ -234,27 +253,38 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             ]
             self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
 
-    def set_probe(self, probe, group_mode: Literal["by_shank", "by_probe"]):
+    def set_probe(self, probe: "Probe | ProbeGroup", group_mode: Literal["by_shank", "by_probe"]):
         """
         Set the probe information via a ProbeInterface object.
 
         Parameters
         ----------
-        probe : probeinterface.Probe
-            The probe object.
+        probe : probeinterface.Probe or probeinterface.ProbeGroup
+            The probe object(s). Can be a single Probe or a ProbeGroup containing multiple probes.
         group_mode : {'by_shank', 'by_probe'}
-            How to group the channels. If 'by_shank', channels are grouped by the shank_id column.
-            If 'by_probe', channels are grouped by the probe_id column.
-            This is a required parameter to avoid the pitfall of using the wrong mode.
+            How to group the channels for electrode group assignment in the NWB file:
+
+            - 'by_probe': Each probe becomes a separate electrode group. For a ProbeGroup with
+            multiple probes, each probe gets its own group (group 0, 1, 2, etc.). For a single
+            probe, all channels are assigned to group 0.
+
+            - 'by_shank': Each unique combination of probe and shank becomes a separate electrode
+            group. Requires that shank_ids are defined for all probes. Groups are assigned
+            sequentially for each unique (probe_index, shank_id) pair.
+
+            The resulting groups determine how electrode groups and electrodes are organized
+            in the NWB file, with each group corresponding to one ElectrodeGroup.
         """
         # Set the probe to the recording extractor
-        self.recording_extractor.set_probe(
+        self.recording_extractor._set_probes(
             probe,
             in_place=True,
             group_mode=group_mode,
         )
+
         # Spike interface sets the "group" property
         # But neuroconv allows "group_name" property to override spike interface "group" value
+        # So we re-set this here to avoid a conflict
         self.recording_extractor.set_property("group_name", self.recording_extractor.get_property("group").astype(str))
 
     def has_probe(self) -> bool:
@@ -280,57 +310,16 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             raise NotImplementedError("Multi-segment support for aligning by interpolation has not been added yet.")
 
-    def subset_recording(self, stub_test: bool = False):
-        """
-        Subset a recording extractor according to stub and channel subset options.
-
-        Parameters
-        ----------
-        stub_test : bool, default: False
-            If True, only a subset of frames will be included.
-
-        Returns
-        -------
-        spikeinterface.core.BaseRecording
-            The subsetted recording extractor.
-        """
-        from spikeinterface.core.segmentutils import AppendSegmentRecording
-
-        max_frames = 100
-
-        recording_extractor = self.recording_extractor
-        number_of_segments = recording_extractor.get_num_segments()
-        recording_segments = [recording_extractor.select_segments([index]) for index in range(number_of_segments)]
-        end_frame_list = [min(max_frames, segment.get_num_frames()) for segment in recording_segments]
-        recording_segments_stubbed = [
-            segment.frame_slice(start_frame=0, end_frame=end_frame)
-            for segment, end_frame in zip(recording_segments, end_frame_list)
-        ]
-        recording_extractor_stubbed = AppendSegmentRecording(recording_list=recording_segments_stubbed)
-
-        times_stubbed = [
-            recording_extractor.get_times(segment_index=segment_index)[:end_frame]
-            for segment_index, end_frame in zip(range(number_of_segments), end_frame_list)
-        ]
-        for segment_index in range(number_of_segments):
-            recording_extractor_stubbed.set_times(
-                times=times_stubbed[segment_index],
-                segment_index=segment_index,
-                with_warning=False,
-            )
-
-        return recording_extractor_stubbed
-
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
+        *,
         stub_test: bool = False,
-        starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
-        iterator_type: Optional[str] = "v2",
-        iterator_opts: Optional[dict] = None,
+        iterator_type: str | None = "v2",
+        iterator_options: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -346,8 +335,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
 
-        starting_time : float, optional
-            Sets the starting time of the ElectricalSeries to a manually set value.
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_as : {'raw', 'processed', 'lfp'}, default='raw'
@@ -359,54 +346,64 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        iterator_type : {'v2'}
-            The type of DataChunkIterator to use.
-            'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking
-        iterator_opts : dict, optional
-            Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-            Valid options are:
+        iterator_type : {'v2', None}, default: 'v2'
+            The type of iterator for chunked data writing.
+            'v2': Uses iterative write with control over chunking and progress bars.
+            None: Loads all data into memory before writing (not recommended for large datasets).
+        iterator_options : dict, optional
+            Options for controlling iterative write when iterator_type='v2'.
+            See the `pynwb tutorial on iterative write
+            <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
+            for more information on chunked data writing.
+
+            Available options:
 
             * buffer_gb : float, default: 1.0
-                In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
-                buffer shape.
+                RAM to use for buffering data chunks in GB. Recommended to be as much free RAM as available.
             * buffer_shape : tuple, optional
-                Manual specification of buffer shape to return on each iteration.
-                Must be a multiple of chunk_shape along each axis.
-                Cannot be set if `buffer_gb` is specified.
-            * chunk_mb : float. default: 1.0
-                Should be below 1 MB. Automatically calculates suitable chunk shape.
-            * chunk_shape : tuple, optional
-                Manual specification of the internal chunk shape for the HDF5 dataset.
-                Cannot be set if `chunk_mb` is also specified.
+                Manual specification of buffer shape. Must be a multiple of chunk_shape along each axis.
+                Cannot be set if buffer_gb is specified.
             * display_progress : bool, default: False
-                Display a progress bar with iteration rate and estimated completion time.
+                Enable tqdm progress bar during data write.
             * progress_bar_options : dict, optional
-                Dictionary of keyword arguments to be passed directly to tqdm.
-                See https://github.com/tqdm/tqdm#parameters for options.
+                Additional options passed to tqdm progress bar.
+                See https://github.com/tqdm/tqdm#parameters for all tqdm options.
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
         always_write_timestamps : bool, default: False
             Set to True to always write timestamps.
             By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
             using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
             explicitly, regardless of whether the sampling rate is uniform.
         """
-        from ...tools.spikeinterface import add_recording_to_nwbfile
+        from ...tools.spikeinterface import (
+            _stub_recording,
+            add_recording_metadata_to_nwbfile,
+            add_recording_to_nwbfile,
+        )
 
-        if stub_test or self.subset_channels is not None:
-            recording = self.subset_recording(stub_test=stub_test)
-        else:
-            recording = self.recording_extractor
+        recording = self.recording_extractor
+        if stub_test:
+            recording = _stub_recording(recording=recording)
 
         metadata = metadata or self.get_metadata()
 
-        add_recording_to_nwbfile(
-            recording=recording,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            starting_time=starting_time,
-            write_as=write_as,
-            write_electrical_series=write_electrical_series,
-            es_key=self.es_key,
-            iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
-            always_write_timestamps=always_write_timestamps,
-        )
+        if write_electrical_series:
+            add_recording_to_nwbfile(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                write_as=write_as,
+                es_key=self.es_key,
+                iterator_type=iterator_type,
+                iterator_options=iterator_options,
+                always_write_timestamps=always_write_timestamps,
+            )
+        else:
+            add_recording_metadata_to_nwbfile(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata,
+            )

@@ -1,10 +1,11 @@
 import collections.abc
 import inspect
 import json
+import typing
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional, Type, Union
+from typing import Any, Callable
 
 import docstring_parser
 import hdmf.data_utils
@@ -60,17 +61,25 @@ class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
     Custom JSON encoder for conversion options of the data interfaces and converters (i.e. kwargs).
     """
 
+    def default(self, obj):
+
+        # Serialize callable objects (e.g. callback functions in progress_bar_options)
+        if callable(obj):
+            return f"{obj.__module__}.{obj.__qualname__}"
+
+        return super().default(obj)
+
 
 # This is used in the Guide so we will keep it public.
 NWBMetaDataEncoder = _NWBMetaDataEncoder
 
 
 def get_base_schema(
-    tag: Optional[str] = None,
+    tag: str | None = None,
     root: bool = False,
-    id_: Optional[str] = None,
-    required: Optional[list[str]] = None,
-    properties: Optional[dict[str, Any]] = None,
+    id_: str | None = None,
+    required: list[str] | None = None,
+    properties: dict[str, Any] | None = None,
     **kwargs,
 ) -> dict[str, Any]:
     """
@@ -122,7 +131,7 @@ def get_base_schema(
     return base_schema
 
 
-def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict[str, Any]:
+def get_json_schema_from_method_signature(method: Callable, exclude: list[str] | None = None) -> dict[str, Any]:
     """
     Get the equivalent JSON schema for a signature of a method.
 
@@ -151,6 +160,17 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     parameters = signature.parameters
     additional_properties = False
     arguments_to_annotations = {}
+
+    # Resolve string annotations from PEP 563 (from __future__ import annotations)
+    # TODO: Remove PEP 563 handling once minimum Python version is 3.14+
+    # and external consumers no longer use `from __future__ import annotations`
+    # When a class is passed, inspect.signature uses __init__, so we must too
+    hints_target = method.__init__ if inspect.isclass(method) else method
+    try:
+        type_hints = typing.get_type_hints(hints_target, include_extras=True)
+    except NameError:
+        type_hints = {}
+
     for argument_name in parameters:
         if argument_name in exclude:
             continue
@@ -159,6 +179,9 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
 
         if parameter.kind == inspect.Parameter.VAR_KEYWORD:  # Skip all **{...} usage
             additional_properties = True
+            continue
+
+        if parameter.kind == inspect.Parameter.VAR_POSITIONAL:  # Skip all *args usage
             continue
 
         # Raise error if the type annotation is missing as a json schema cannot be generated in that case
@@ -170,7 +193,11 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
 
         # Pydantic uses ellipsis for required
         pydantic_default = ... if parameter.default is inspect._empty else parameter.default
-        arguments_to_annotations.update({argument_name: (parameter.annotation, pydantic_default)})
+        # Only use resolved type hints for string annotations (PEP 563)
+        annotation = parameter.annotation
+        if isinstance(annotation, str):
+            annotation = type_hints.get(argument_name, annotation)
+        arguments_to_annotations.update({argument_name: (annotation, pydantic_default)})
 
     # The ConfigDict is required to support custom types like NumPy arrays
     model = pydantic.create_model(
@@ -209,7 +236,7 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     return json_schema
 
 
-def _copy_without_title_keys(d: Any) -> Optional[dict[str, Any]]:
+def _copy_without_title_keys(d: Any) -> dict[str, Any] | None:
     if not isinstance(d, dict):
         return d
 
@@ -253,7 +280,7 @@ def unroot_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in schema.items() if k in terms}
 
 
-def _is_member(types: Union[Type, tuple[Type, ...]], target_types: Union[Type, tuple[Type, ...]]) -> bool:
+def _is_member(types: type | tuple[type, ...], target_types: type | tuple[type, ...]) -> bool:
     if not isinstance(target_types, tuple):
         target_types = (target_types,)
     if not isinstance(types, tuple):
@@ -261,7 +288,7 @@ def _is_member(types: Union[Type, tuple[Type, ...]], target_types: Union[Type, t
     return any(t in target_types for t in types)
 
 
-def get_schema_from_hdmf_class(hdmf_class: Type) -> dict[str, Any]:
+def get_schema_from_hdmf_class(hdmf_class: type) -> dict[str, Any]:
     """
     Get metadata schema from hdmf class.
 

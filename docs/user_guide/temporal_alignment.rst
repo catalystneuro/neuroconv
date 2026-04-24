@@ -119,13 +119,13 @@ that as the start time of the audio stream.
     from neuroconv.datainterfaces import (
         SpikeGLXRecordingInterface,
         AudioDataInterface,
-        SpikeGLXNIDQRecordingInterface,
+        SpikeGLXNIDQInterface,
     )
 
     class ExampleNWBConverter(NWBConverter):
         data_interface_classes = dict(
             SpikeGLXRecording=SpikeGLXRecordingInterface,
-            SpikeGLXNIDQ=SpikeGLXNIDQRecordingInterface,
+            SpikeGLXNIDQ=SpikeGLXNIDQInterface,
             Audio=AudioDataInterface,
         )
 

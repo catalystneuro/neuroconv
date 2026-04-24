@@ -1,6 +1,7 @@
+import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -13,6 +14,7 @@ from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module
 from ....utils import (
+    DeepDict,
     calculate_regular_series_rate,
     dict_deep_update,
     get_base_schema,
@@ -25,7 +27,7 @@ class ExternalVideoInterface(BaseDataInterface):
 
     display_name = "Video"
     keywords = ("video", "behavior")
-    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flx", ".mkv")
+    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flv", ".mkv")
     # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
     info = "Interface for handling standard video file formats and writing them as ImageSeries with external_files."
 
@@ -35,7 +37,7 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths: list[FilePath],
         verbose: bool = False,
         *,
-        video_name: Optional[str] = None,
+        video_name: str | None = None,
     ):
         """
         Initialize the interface.
@@ -100,7 +102,7 @@ class ExternalVideoInterface(BaseDataInterface):
         }
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {
@@ -229,10 +231,11 @@ class ExternalVideoInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
-        starting_frames: Optional[list[int]] = None,
+        metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        starting_frames: list[int] | None = None,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
-        module_description: Optional[str] = None,
+        module_description: str | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -286,6 +289,36 @@ class ExternalVideoInterface(BaseDataInterface):
             If set to True, timestamps will be written explicitly, regardless of whether they were set directly or need
             to be retrieved from the video file.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "starting_frames",
+                "parent_container",
+                "module_description",
+                "always_write_timestamps",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to ExternalVideoInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            starting_frames = positional_values.get("starting_frames", starting_frames)
+            parent_container = positional_values.get("parent_container", parent_container)
+            module_description = positional_values.get("module_description", module_description)
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
         if parent_container not in {"acquisition", "processing/behavior"}:
             raise ValueError(
                 f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."

@@ -1,22 +1,28 @@
+import warnings
 from pathlib import Path
 
 from pydantic import FilePath
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import get_schema_from_hdmf_class
+from ....utils import DeepDict, get_schema_from_hdmf_class
 
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Primary data interface class for converting Intan data using the
+    Primary data interface for converting Intan amplifier data from .rhd or .rhs files.
 
-    :py:class:`~spikeinterface.extractors.IntanRecordingExtractor`.
+    This interface is used for data that comes from the RHD2000/RHS2000 amplifier channels,
+    which are the primary neural recording channels.
+
+    If you have other data streams from your Intan system (e.g., analog inputs, auxiliary inputs, DC amplifiers),
+    you should use the :py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`.
     """
 
-    display_name = "Intan Recording"
+    display_name = "Intan Amplifier"
+    keywords = ("intan", "amplifier", "rhd", "rhs", "extracellular electrophysiology", "recording")
     associated_suffixes = (".rhd", ".rhs")
-    info = "Interface for Intan recording data."
+    info = "Interface for converting Intan amplifier data."
     stream_id = "0"  # This are the amplifier channels, corresponding to the stream_name 'RHD2000 amplifier channel'
 
     @classmethod
@@ -25,16 +31,28 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to either a .rhd or a .rhs file"
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
-        extractor_kwargs["stream_id"] = self.stream_id
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import IntanRecordingExtractor
 
-        return extractor_kwargs
+        return IntanRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add stream_id"""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["all_annotations"] = True
+        self.extractor_kwargs["stream_id"] = self.stream_id
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
         ignore_integrity_checks: bool = False,
@@ -54,6 +72,34 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             If True, data that violates integrity assumptions will be loaded. At the moment the only integrity
             check performed is that timestamps are continuous. If False, an error will be raised if the check fails.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+                "es_key",
+                "ignore_integrity_checks",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to IntanRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+            ignore_integrity_checks = positional_values.get("ignore_integrity_checks", ignore_integrity_checks)
 
         self.file_path = Path(file_path)
 
@@ -73,7 +119,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         )
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         ecephys_metadata = metadata["Ecephys"]
 

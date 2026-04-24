@@ -28,6 +28,8 @@ Convert LightningPose pose estimation data to NWB using :py:class:`~neuroconv.da
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> tzinfo = ZoneInfo("US/Pacific")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> converter.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)

@@ -13,7 +13,7 @@ on:
         required: true
         type: string
     secrets:
-      DANDI_API_KEY:
+      DANDI_SANDBOX_API_KEY:
         required: true
       AWS_ACCESS_KEY_ID:
         required: true
@@ -23,7 +23,7 @@ on:
         required: true
 
 env:
-  DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+  DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
 
 jobs:
   run:
@@ -34,10 +34,10 @@ jobs:
       matrix:
         python-version: ${{ fromJson(inputs.python-versions) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -53,7 +53,9 @@ jobs:
           os: ${{ runner.os }}
 
       - name: Install full requirements
-        run: pip install --no-cache-dir .[full,test]
+        run: |
+          pip install --no-cache-dir .[full]
+          pip install --group test --group sorting_analyzer
 
       - name: Dev gallery - ROIExtractors
         run: pip install --no-cache-dir git+https://github.com/CatalystNeuro/roiextractors@main
@@ -82,7 +84,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
-          os: ${{ matrix.os }}
 
 
       - name: Run full pytest

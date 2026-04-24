@@ -1,4 +1,4 @@
-from typing import Optional
+import warnings
 
 from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
@@ -6,6 +6,7 @@ from pynwb import NWBFile
 from ._openephys_utils import _get_session_start_time, _read_settings_xml
 from ....basedatainterface import BaseDataInterface
 from ....utils import (
+    DeepDict,
     get_json_schema_from_method_signature,
 )
 
@@ -28,8 +29,9 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
-        block_index: Optional[int] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        stream_name: str | None = None,
+        block_index: int | None = None,
         verbose: bool = False,
         time_series_name: str = "TimeSeriesOpenEphysAnalog",
     ):
@@ -51,24 +53,59 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             The name of the TimeSeries object in the NWBFile and also
             the key of the associated metadata
         """
-        from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stream_name",
+                "block_index",
+                "verbose",
+                "time_series_name",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to OpenEphysBinaryAnalogInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stream_name = positional_values.get("stream_name", stream_name)
+            block_index = positional_values.get("block_index", block_index)
+            verbose = positional_values.get("verbose", verbose)
+            time_series_name = positional_values.get("time_series_name", time_series_name)
+
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysBinaryRecordingExtractor,
+        )
 
         self.folder_path = folder_path
         self._xml_root = _read_settings_xml(folder_path)
         self.time_series_name = time_series_name
 
         available_streams = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)[0]
-        availble_adc_streams = [id for id in available_streams if "ADC" in id]
-        if len(availble_adc_streams) > 1 and stream_name is None:
+        non_neural_streams_indicators = ["ADC", "NI-DAQ"]
+        is_non_neural = lambda stream_id: any(indicator in stream_id for indicator in non_neural_streams_indicators)
+        available_non_neural_streams = [stream_id for stream_id in available_streams if is_non_neural(stream_id)]
+        if len(available_non_neural_streams) > 1 and stream_name is None:
             raise ValueError(
                 "More than one stream is detected! "
                 "Please specify which stream you wish to load with the `stream_name` argument. "
                 "To see what streams are available, call "
                 " `OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
             )
-        if stream_name is not None and stream_name not in availble_adc_streams:
+        if stream_name is not None and stream_name not in available_non_neural_streams:
             raise ValueError(
-                f"The selected stream '{stream_name}' is not in the available adc streams are '{availble_adc_streams}'!"
+                f"The selected stream '{stream_name}' is not in the available adc streams are '{available_non_neural_streams}'!"
             )
 
         self.stream_name = stream_name or available_streams[0]
@@ -83,7 +120,9 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
 
         # Filter for only analog channels (ADC)
         channel_ids = self.recording_extractor.get_channel_ids()
-        self.analog_channel_ids = [id for id in channel_ids if "ADC" in id]
+        analog_prefixes = ["ADC", "AI", "AUX"]
+        is_analog = lambda ch: any(prefix in str(ch) for prefix in analog_prefixes)
+        self.analog_channel_ids = [ch for ch in channel_ids if is_analog(ch)]
 
         if not self.analog_channel_ids:
             raise ValueError(f"No analog channels (ADC) found in the selected stream '{self.stream_name}'!")
@@ -98,7 +137,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         session_start_time = _get_session_start_time(element=self._xml_root)
@@ -121,10 +160,12 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
-        iterator_type: Optional[str] = "v2",
-        iterator_opts: Optional[dict] = None,
+        iterator_type: str | None = "v2",
+        iterator_options: dict | None = None,
+        iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -134,40 +175,87 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         ----------
         nwbfile : NWBFile
             The NWB file to which the analog data will be added
-        metadata : Optional[dict], default: None
+        metadata : dict, optional
             Metadata dictionary with device information. If None, uses default metadata
         stub_test : bool, default: False
             If True, only writes a small amount of data for testing
-        iterator_type : Optional[str], default: "v2"
+        iterator_type : str, optional, default: "v2"
             Type of iterator to use for data streaming
-        iterator_opts : Optional[dict], default: None
+        iterator_options : dict, optional
             Additional options for the iterator
+        iterator_opts : dict, optional
+            Deprecated. Use 'iterator_options' instead.
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
-        from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
+        from ....tools.spikeinterface import (
+            _stub_recording,
+            add_recording_as_time_series_to_nwbfile,
+        )
+
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "iterator_type",
+                "iterator_options",
+                "iterator_opts",
+                "always_write_timestamps",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to OpenEphysBinaryAnalogInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            iterator_type = positional_values.get("iterator_type", iterator_type)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+            iterator_opts = positional_values.get("iterator_opts", iterator_opts)
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
+
+        # Handle deprecated iterator_opts parameter
+        if iterator_opts is not None:
+            warnings.warn(
+                "The 'iterator_opts' parameter is deprecated and will be removed in May 2026 or after. "
+                "Use 'iterator_options' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if iterator_options is not None:
+                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
+            iterator_options = iterator_opts
 
         if metadata is None:
             metadata = self.get_metadata()
 
+        recording = self.recording_extractor
         if stub_test:
-            end_time = self.recording_extractor.get_end_time()
-            end_time = min(end_time, 0.100)
-            recording = self.recording_extractor.time_slice(start_time=0, end_time=end_time)
-        else:
-            recording = self.recording_extractor
+            recording = _stub_recording(recording=recording)
 
         description = (
             f"ADC data acquired with OpenEphys system. \n Channels are {self.get_channel_names()} in that order."
         )
-        metadata["TimeSeries"][self.time_series_name] = dict(description=description)
+        metadata["TimeSeries"][self.time_series_name] = dict(name=self.time_series_name, description=description)
 
         add_recording_as_time_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            time_series_name=self.time_series_name,
+            metadata_key=self.time_series_name,
         )

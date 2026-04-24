@@ -1,5 +1,5 @@
+import warnings
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from pydantic import DirectoryPath, FilePath
@@ -14,6 +14,7 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
+from ....utils import DeepDict
 
 
 def filter_non_neural_channels(recording_extractor, xml_file_path: str):
@@ -62,11 +63,11 @@ def filter_non_neural_channels(recording_extractor, xml_file_path: str):
         if len(neural_channel_ids) == len(channel_ids_in_recorder):
             return recording_extractor
 
-        sub_recording = recording_extractor.channel_slice(channel_ids=neural_channel_ids)
+        sub_recording = recording_extractor.select_channels(channel_ids=neural_channel_ids)
         return sub_recording
 
 
-def add_recording_extractor_properties(recording_extractor, gain: Optional[float] = None):
+def add_recording_extractor_properties(recording_extractor, gain: float | None = None):
     """Automatically add properties to RecordingExtractor object."""
 
     if gain:
@@ -95,11 +96,29 @@ def add_recording_extractor_properties(recording_extractor, gain: Optional[float
 
 class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting a NeuroScope data. Uses
-    :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
+    :py:func:`~spikeinterface.extractors.read_neuroscope_recording`."""
 
     display_name = "NeuroScope Recording"
     associated_suffixes = (".dat", ".xml")
     info = "Interface for converting NeuroScope recording data."
+
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuroScopeRecordingExtractor,
+        )
+
+        return NeuroScopeRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop gain and xml_file_path parameters."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("gain", None)
+        self.extractor_kwargs.pop("xml_file_path", None)
+
+        return self.get_extractor_class()(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(self) -> dict:
@@ -139,8 +158,9 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        gain: Optional[float] = None,
-        xml_file_path: Optional[FilePath] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        gain: float | None = None,
+        xml_file_path: FilePath | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
@@ -151,7 +171,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePath
             Path to .dat file.
-        gain : Optional[float], optional
+        gain : float | None, optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
@@ -161,6 +181,37 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             The default is None.
         es_key: str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "gain",
+                "xml_file_path",
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to NeuroScopeRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            gain = positional_values.get("gain", gain)
+            xml_file_path = positional_values.get("xml_file_path", xml_file_path)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+
         get_package(package_name="lxml")
 
         if xml_file_path is None:
@@ -175,7 +226,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
@@ -188,7 +239,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_original_timestamps(self) -> np.ndarray:
         # TODO: add generic method for aliasing from NeuroConv signature to SI init
-        new_recording = self.get_extractor()(file_path=self.source_data["file_path"])
+        new_recording = self._initialize_extractor({"file_path": self.source_data["file_path"]})
         if self._number_of_segments == 1:
             return new_recording.get_times()
         else:
@@ -205,7 +256,22 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     associated_suffixes = (".lfp", ".eeg", ".xml")
     info = "Interface for converting NeuroScope LFP data."
 
-    ExtractorName = "NeuroScopeRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuroScopeRecordingExtractor,
+        )
+
+        return NeuroScopeRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop gain and xml_file_path parameters."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("gain", None)
+        self.extractor_kwargs.pop("xml_file_path", None)
+
+        return self.get_extractor_class()(**self.extractor_kwargs)
 
     @classmethod
     def get_source_schema(self) -> dict:
@@ -216,9 +282,11 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        gain: Optional[float] = None,
-        xml_file_path: Optional[FilePath] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        gain: float | None = None,
+        xml_file_path: FilePath | None = None,
         verbose: bool = False,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -231,13 +299,45 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
-        xml_file_path : OptionalFilePath, optional
+        xml_file_path : FilePath | None, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
         verbose : bool, default: False
             If True, enables verbose mode for detailed logging.
+        es_key : str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "gain",
+                "xml_file_path",
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to NeuroScopeLFPInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            gain = positional_values.get("gain", gain)
+            xml_file_path = positional_values.get("xml_file_path", xml_file_path)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+
         get_package(package_name="lxml")
 
         if xml_file_path is None:
@@ -252,7 +352,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
@@ -281,12 +381,21 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         ] = "Path to .xml file containing device and electrode configuration."
         return source_schema
 
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuroScopeSortingExtractor,
+        )
+
+        return NeuroScopeSortingExtractor
+
     def __init__(
         self,
         folder_path: DirectoryPath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         keep_mua_units: bool = True,
-        exclude_shanks: Optional[list[int]] = None,
-        xml_file_path: Optional[FilePath] = None,
+        exclude_shanks: list[int] | None = None,
+        xml_file_path: FilePath | None = None,
         verbose: bool = False,
     ):
         """
@@ -294,7 +403,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
 
         Parameters
         ----------
-        folder_path : FolderPathType
+        folder_path : DirectoryPath
             Path to folder containing .clu and .res files.
         keep_mua_units : bool, default: True
             Optional. Whether to return sorted spikes from multi-unit activity.
@@ -306,6 +415,37 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "keep_mua_units",
+                "exclude_shanks",
+                "xml_file_path",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to NeuroScopeSortingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            keep_mua_units = positional_values.get("keep_mua_units", keep_mua_units)
+            exclude_shanks = positional_values.get("exclude_shanks", exclude_shanks)
+            xml_file_path = positional_values.get("xml_file_path", xml_file_path)
+            verbose = positional_values.get("verbose", verbose)
+
         get_package(package_name="lxml")
 
         super().__init__(
@@ -316,7 +456,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem

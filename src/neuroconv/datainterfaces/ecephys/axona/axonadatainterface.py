@@ -1,5 +1,7 @@
 """Collection of Axona interfaces."""
 
+import warnings
+
 from pydantic import FilePath
 from pynwb import NWBFile
 
@@ -12,12 +14,14 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import get_module
-from ....utils import get_json_schema_from_method_signature
+from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
 class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     """
-    DataInterface for converting raw Axona data using a :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`.
+    DataInterface for converting raw Axona data.
+
+    Uses the :py:func:`~spikeinterface.extractors.read_axona` reader from SpikeInterface.
     """
 
     display_name = "Axona Recording"
@@ -30,13 +34,15 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to .bin file."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import AxonaRecordingExtractor
 
-        return extractor_kwargs
+        return AxonaRecordingExtractor
 
-    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
+    def __init__(
+        self, file_path: FilePath, *args, verbose: bool = False, es_key: str = "ElectricalSeries"
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
 
         Parameters
@@ -46,9 +52,34 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool, optional, default: True
         es_key: str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to AxonaRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
-        self.source_data = dict(file_path=file_path, verbose=verbose)
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
 
         # Set the channel groups
@@ -98,7 +129,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
         return ecephys_metadata
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         nwbfile_metadata = self.extract_nwb_file_metadata()
@@ -132,7 +163,34 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
             type="object",
         )
 
-    def __init__(self, file_path: FilePath, noise_std: float = 3.5):
+    def __init__(
+        self, file_path: FilePath, *args, noise_std: float = 3.5
+    ):  # TODO: change to * (keyword only) on or after August 2026
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "noise_std",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to AxonaUnitRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            noise_std = positional_values.get("noise_std", noise_std)
+
         super().__init__(filename=file_path, noise_std=noise_std)
         self.source_data = dict(file_path=file_path, noise_std=noise_std)
 
@@ -147,7 +205,24 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
     associated_suffixes = (".bin", ".set")
     info = "Interface for Axona LFP data."
 
-    ExtractorName = "NumpyRecording"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.core import NumpyRecording
+
+        return NumpyRecording
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to use NumpyRecording with custom parameters."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("file_path")
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["traces_list"] = self.traces_list
+        self.extractor_kwargs["sampling_frequency"] = self.sampling_frequency
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -157,15 +232,6 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
             type="object",
             additionalProperties=False,
         )
-
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs.pop("file_path")
-        extractor_kwargs["traces_list"] = self.traces_list
-        extractor_kwargs["sampling_frequency"] = self.sampling_frequency
-
-        return extractor_kwargs
 
     def __init__(self, file_path: FilePath):
         data = read_all_eeg_file_lfp_data(file_path).T
@@ -208,7 +274,7 @@ class AxonaPositionDataInterface(BaseDataInterface):
         nwbfile : NWBFile
         metadata : dict
         """
-        file_path = self.source_data["file_path"]
+        file_path = self.interface_kwargs["file_path"]
 
         # Create or update processing module for behavioral data
         behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")

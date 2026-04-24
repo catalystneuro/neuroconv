@@ -12,6 +12,7 @@ from pynwb.testing.mock.ecephys import mock_ElectrodeGroup
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing.mock.ophys import mock_ImagingPlane
 
+from neuroconv.tools import get_module
 from neuroconv.tools.hdmf import (
     SliceableDataChunkIterator,
     _find_sub_builder,
@@ -199,7 +200,8 @@ def test_has_compound_dtype_True():
     )
     pixel_mask = [[0, 0, 1]]
     plane_segmentation.add_roi(pixel_mask=pixel_mask)
-    nwbfile.processing["ophys"].add(plane_segmentation)
+    ophys_module = get_module(nwbfile=nwbfile, name="ophys")
+    ophys_module.add(plane_segmentation)
 
     manager = get_manager()
     builder = manager.build(nwbfile)
@@ -248,7 +250,8 @@ def test_get_full_data_shape_compound():
     )
     pixel_mask = [[0, 0, 1]]
     plane_segmentation.add_roi(pixel_mask=pixel_mask)
-    nwbfile.processing["ophys"].add(plane_segmentation)
+    ophys_module = get_module(nwbfile=nwbfile, name="ophys")
+    ophys_module.add(plane_segmentation)
 
     manager = get_manager()
     builder = manager.build(nwbfile)

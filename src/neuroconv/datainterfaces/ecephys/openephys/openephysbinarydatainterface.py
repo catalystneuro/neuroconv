@@ -1,23 +1,41 @@
-from typing import Optional
+import re
+import warnings
 
 from pydantic import DirectoryPath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import get_json_schema_from_method_signature
+from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
 class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface for converting binary OpenEphys data (.dat files).
 
-    Uses :py:class:`~spikeinterface.extractors.OpenEphysBinaryRecordingExtractor`.
+    Uses :py:func:`~spikeinterface.extractors.read_openephys` from SpikeInterface.
     """
 
     display_name = "OpenEphys Binary Recording"
     associated_suffixes = (".dat", ".oebin", ".npy")
     info = "Interface for converting binary OpenEphys recording data."
 
-    ExtractorName = "OpenEphysBinaryRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysBinaryRecordingExtractor,
+        )
+
+        return OpenEphysBinaryRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to pop stub_test parameter."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("stub_test", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
@@ -34,7 +52,9 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         list of str
             The names of the available recording streams.
         """
-        from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import (
+            OpenEphysBinaryRecordingExtractor,
+        )
 
         stream_names, _ = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names
@@ -62,8 +82,9 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
-        block_index: Optional[int] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        stream_name: str | None = None,
+        block_index: int | None = None,
         stub_test: bool = False,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
@@ -73,7 +94,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        folder_path: FolderPathType
+        folder_path: DirectoryPath
             Path to directory containing OpenEphys binary files.
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
@@ -81,9 +102,42 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         block_index : int, optional, default: None
             The index of the block to extract from the data.
         stub_test : bool, default: False
-        verbose : bool, default: Falsee
+        verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stream_name",
+                "block_index",
+                "stub_test",
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to OpenEphysBinaryRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stream_name = positional_values.get("stream_name", stream_name)
+            block_index = positional_values.get("block_index", block_index)
+            stub_test = positional_values.get("stub_test", stub_test)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+
         from ._openephys_utils import _read_settings_xml
 
         self._xml_root = _read_settings_xml(folder_path)
@@ -105,9 +159,6 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
         )
 
-        if stub_test:
-            self.subset_channels = [0, 1]
-
         # Check if the recording has ADC channels
         recording = self.recording_extractor
         channel_ids = recording.get_channel_ids()
@@ -115,7 +166,39 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         if len(neural_channels) < len(channel_ids):
             self.recording_extractor = recording.select_channels(channel_ids=neural_channels)
 
-    def get_metadata(self) -> dict:
+        # Set composite channel_name for multi-stream electrode deduplication
+        # When AP and LFP streams exist for the same probe, they record from the
+        # same physical electrodes. Setting composite names (e.g. "AP0,LFP0") on
+        # both streams lets the electrode table builder match them to the same rows,
+        # avoiding duplicate entries. This follows the same approach as SpikeGLX.
+        if stream_name is not None:
+            band_suffixes = {"-AP": "-LFP", "-LFP": "-AP"}
+            current_suffix = None
+            for suffix in band_suffixes:
+                if stream_name.endswith(suffix):
+                    current_suffix = suffix
+                    break
+
+            if current_suffix is not None:
+                companion_suffix = band_suffixes[current_suffix]
+                prefix = stream_name[: -len(current_suffix)]
+                companion_stream = prefix + companion_suffix
+                has_companion = companion_stream in available_streams
+
+                if has_companion:
+                    channel_ids = self.recording_extractor.get_channel_ids()
+                    channel_names = []
+                    for channel_id in channel_ids:
+                        # Extract the numeric part from channel_id (e.g. "AP1" -> "1", "LFP3" -> "3")
+                        match = re.search(r"\d+$", str(channel_id))
+                        channel_number = match.group() if match else str(channel_id)
+                        # Composite name with both bands, alphabetically sorted
+                        channel_name = f"AP{channel_number},LFP{channel_number}"
+                        channel_names.append(channel_name)
+
+                    self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
+
+    def get_metadata(self) -> DeepDict:
         from ._openephys_utils import _get_session_start_time
 
         metadata = super().get_metadata()

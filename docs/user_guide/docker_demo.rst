@@ -28,7 +28,7 @@ It relies on some of the GIN data from the main testing suite, see :ref:`example
 
 2. Make a subfolder in ``demo_neuroconv_docker`` called ``demo_output``.
 
-3. Create a file in this folder named ``demo_neuroconv_docker_yaml.yml`` with the following content...
+3. Create a file in this folder named ``demo_neuroconv_docker_yaml.yml`` with the following content. For more information on creating YAML configuration files for NeuroConv, see the :doc:`yaml` user guide and the :doc:`../api/tools.yaml_to_nwb_conversion` API documentation...
 
 .. code-block:: yaml
 
@@ -74,7 +74,7 @@ It relies on some of the GIN data from the main testing suite, see :ref:`example
                 folder_path: /demo_neuroconv_docker/phy/phy_example_0/
 
 
-4. To make things easier for volume mounting, copy and paste the ``Noise4Sam_g0`` and ``phy_example_0`` folders into this Docker demo folder so that you have the following folder structure...
+4. To make things easier for volume mounting, copy and paste the ``Noise4Sam_g0`` and ``phy_example_0`` folders into this Docker demo folder so that you have the following folder structure. Note that the data organization shown below follows the typical structure expected by NeuroConv, where different data types (e.g., SpikeGLX recordings and Phy sorting results) are organized in separate subdirectories. While this structure is recommended for clarity, you can organize your data as needed and adjust the file paths in your YAML specification accordingly...
 
 .. code::
 
@@ -127,7 +127,7 @@ Voilà! If everything occurred successfully, you should see...
 RClone With Config Docker Demo
 ------------------------------
 
-NeuroConv also supports a convenient Docker image for running data transfers via `Rclone <https://rclone.org>`_.
+NeuroConv also supports a convenient Docker image (`ghcr.io/catalystneuro/rclone_with_config <https://github.com/catalystneuro/neuroconv/pkgs/container/rclone_with_config>`_) for running data transfers via `Rclone <https://rclone.org>`_.
 
 To use this image, you must first configure the remote locally by calling:
 

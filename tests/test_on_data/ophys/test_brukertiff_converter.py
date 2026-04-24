@@ -27,8 +27,8 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
 
         cls.photon_series_names = ["TwoPhotonSeriesCh2000001", "TwoPhotonSeriesCh2000002"]
         cls.imaging_plane_names = ["ImagingPlaneCh2000001", "ImagingPlaneCh2000002"]
-        cls.stub_frames = 2
-        cls.conversion_options = dict(stub_test=True, stub_frames=cls.stub_frames)
+        cls.stub_samples = 2
+        cls.conversion_options = dict(stub_test=True, stub_samples=cls.stub_samples)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -43,8 +43,10 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
             BrukerTiffSinglePlaneConverter(folder_path=self.folder_path)
 
     def test_incorrect_plane_separation_type_raises(self):
-        exc_msg = "For volumetric imaging data the plane separation method must be one of 'disjoint' or 'contiguous'."
-        with self.assertRaisesWith(ValueError, exc_msg=exc_msg):
+        import pytest
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="Input should be 'disjoint' or 'contiguous'"):
             BrukerTiffMultiPlaneConverter(folder_path=self.folder_path, plane_separation_type="test")
 
     def test_run_conversion_add_conversion_options(self):
@@ -68,8 +70,8 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
 
         self.assertEqual(len(nwbfile.imaging_planes), len(self.imaging_plane_names))
 
-        num_frames = nwbfile.acquisition[self.photon_series_names[0]].data.shape[0]
-        self.assertEqual(num_frames, self.stub_frames)
+        num_samples = nwbfile.acquisition[self.photon_series_names[0]].data.shape[0]
+        self.assertEqual(num_samples, self.stub_samples)
 
     def test_converter_conversion_options(self):
         class TestConverter(NWBConverter):
@@ -87,8 +89,8 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-        num_frames = nwbfile.acquisition[self.photon_series_names[0]].data.shape[0]
-        self.assertEqual(num_frames, self.stub_frames)
+        num_samples = nwbfile.acquisition[self.photon_series_names[0]].data.shape[0]
+        self.assertEqual(num_samples, self.stub_samples)
 
 
 class TestBrukerTiffMultiPlaneConverterContiguousPlaneCase(TestCase):
@@ -103,8 +105,8 @@ class TestBrukerTiffMultiPlaneConverterContiguousPlaneCase(TestCase):
 
         cls.photon_series_name = "TwoPhotonSeries"
         cls.imaging_plane_name = "ImagingPlane"
-        cls.stub_frames = 2
-        cls.conversion_options = dict(stub_test=True, stub_frames=cls.stub_frames)
+        cls.stub_samples = 2
+        cls.conversion_options = dict(stub_test=True, stub_samples=cls.stub_samples)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -128,8 +130,8 @@ class TestBrukerTiffMultiPlaneConverterContiguousPlaneCase(TestCase):
         self.assertEqual(len(nwbfile.imaging_planes), 1)
         self.assertIn(self.imaging_plane_name, nwbfile.imaging_planes)
 
-        num_frames = nwbfile.acquisition[self.photon_series_name].data.shape[0]
-        self.assertEqual(num_frames, self.stub_frames)
+        num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
+        self.assertEqual(num_samples, self.stub_samples)
 
     def test_converter_conversion_options(self):
         class TestConverter(NWBConverter):
@@ -149,8 +151,8 @@ class TestBrukerTiffMultiPlaneConverterContiguousPlaneCase(TestCase):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-        num_frames = nwbfile.acquisition[self.photon_series_name].data.shape[0]
-        self.assertEqual(num_frames, self.stub_frames)
+        num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
+        self.assertEqual(num_samples, self.stub_samples)
 
 
 class TestBrukerTiffSinglePlaneConverterCase(TestCase):
@@ -164,8 +166,8 @@ class TestBrukerTiffSinglePlaneConverterCase(TestCase):
 
         cls.photon_series_names = ["TwoPhotonSeriesCh1", "TwoPhotonSeriesCh2"]
         cls.imaging_plane_names = ["ImagingPlaneCh1", "ImagingPlaneCh2"]
-        cls.stub_frames = 2
-        cls.conversion_options = dict(stub_test=True, stub_frames=cls.stub_frames)
+        cls.stub_samples = 2
+        cls.conversion_options = dict(stub_test=True, stub_samples=cls.stub_samples)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -188,8 +190,8 @@ class TestBrukerTiffSinglePlaneConverterCase(TestCase):
         self.assertEqual(len(nwbfile.imaging_planes), 2)
         self.assertEqual(len(nwbfile.devices), 1)
 
-        num_frames = nwbfile.acquisition[self.photon_series_names[0]].data.shape[0]
-        self.assertEqual(num_frames, self.stub_frames)
+        num_samples = nwbfile.acquisition[self.photon_series_names[0]].data.shape[0]
+        self.assertEqual(num_samples, self.stub_samples)
 
     def test_converter_conversion_options(self):
         class TestConverter(NWBConverter):
@@ -207,5 +209,5 @@ class TestBrukerTiffSinglePlaneConverterCase(TestCase):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-        num_frames = nwbfile.acquisition[self.photon_series_names[0]].data.shape[0]
-        self.assertEqual(num_frames, self.stub_frames)
+        num_samples = nwbfile.acquisition[self.photon_series_names[0]].data.shape[0]
+        self.assertEqual(num_samples, self.stub_samples)

@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 from pydantic import FilePath, validate_call
@@ -18,14 +19,21 @@ def _test_sonpy_installation() -> None:
 class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     """
     Data interface class for converting Spike2 data from CED (Cambridge Electronic
-    Design) using the :py:class:`~spikeinterface.extractors.CedRecordingExtractor`."""
+    Design)
+
+    Uses  :py:func:`~spikeinterface.extractors.read_ced` from SpikeInterface.
+    """
 
     display_name = "Spike2 Recording"
     keywords = BaseRecordingExtractorInterface.keywords + ("CED",)
     associated_suffixes = (".smrx",)
     info = "Interface for Spike2 recording data from CED (Cambridge Electronic Design)."
 
-    ExtractorName = "CedRecordingExtractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import CedRecordingExtractor
+
+        return CedRecordingExtractor
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -50,10 +58,14 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
             Dictionary containing information about all channels in the Spike2 file.
         """
         _test_sonpy_installation()
-        return cls.get_extractor().get_all_channels_info(file_path=file_path)
+        from spikeinterface.extractors.extractor_classes import CedRecordingExtractor
+
+        return CedRecordingExtractor.get_all_channels_info(file_path=file_path)
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
+    def __init__(
+        self, file_path: FilePath, *args, verbose: bool = False, es_key: str = "ElectricalSeries"
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Initialize reading of Spike2 file.
 
@@ -64,6 +76,33 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to Spike2RecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+
         _test_sonpy_installation()
 
         stream_id = "1" if Path(file_path).suffix == ".smr" else None
@@ -72,4 +111,4 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         # Subset raw channel properties
         signal_channels = self.recording_extractor.neo_reader.header["signal_channels"]
         channel_ids_of_raw_data = [channel_info[1] for channel_info in signal_channels if channel_info[4] == "mV"]
-        self.recording_extractor = self.recording_extractor.channel_slice(channel_ids=channel_ids_of_raw_data)
+        self.recording_extractor = self.recording_extractor.select_channels(channel_ids=channel_ids_of_raw_data)

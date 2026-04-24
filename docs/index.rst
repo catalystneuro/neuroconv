@@ -3,21 +3,32 @@ NeuroConv
 
 .. image:: img/neuroconv_logo.png
   :width: 300
-
-..
-  :scale: 100 %
-  :align: right
+  :align: center
+  :class: no-scaled-link
 
 NeuroConv is a Python package for converting neurophysiology data in a variety
 of proprietary formats to the Neurodata Without Borders (NWB) standard.
 
 Features:
 
-* Reads data from 42 popular neurophysiology data formats and writes to NWB using best practices.
+* Reads data from 50 popular neurophysiology data formats and writes to NWB using best practices.
 * Extracts relevant metadata from each format.
 * Handles large data volume by reading datasets piece-wise.
 * Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
 * Supports ensembles of multiple data streams, and supports common methods for temporal alignment of streams.
+
+Installation
+------------
+
+To install the latest stable release of **neuroconv** you can use `pip <https://pip.pypa.io/>`_. To do this, run:
+
+.. code-block:: bash
+
+  pip install neuroconv
+
+Installation instructions for specific format dependencies can be found in the :ref:`Conversion Examples Gallery <conversion_gallery>` for each format.
+
+For instructions on installing the latest development version or additional installation options, see the `GitHub README <https://github.com/catalystneuro/neuroconv#installation>`_.
 
 
 
@@ -42,11 +53,6 @@ Below is an overview of the key sections to help you navigate our documentation 
   The :ref:`How To Guides <how_to>` section contains practical guides for using NeuroConv effectively and solve
   common problems.
 
-* **Catalogue of Projects**
-
-  :ref:`The Catalogue of Neuroconv Projects <catalogue>` section showcases a collection of successful conversion projects utilizing NeuroConv.
-  It serves as both inspiration and a practical reference for what can be achieved with our library.
-
 * **Developer Guide**
 
   For developers interested in contributing to NeuroConv, the :ref:`Developer Guide <developer_guide>` provides essential information such as
@@ -61,6 +67,28 @@ Below is an overview of the key sections to help you navigate our documentation 
 Do you find that some information is missing or some section lacking or unclear? Reach out with an issue or pull request on our `GitHub repository <https://github.com/catalystneuro/neuroconv>`_.
 We are happy to help and appreciate your feedback.
 
+Citing NeuroConv
+----------------
+
+If you use NeuroConv in your research, please cite our paper:
+
+  Mayorquin, H., Baker, C., Adkisson-Floro, P., Weigl, S., Trapani, A., Tauffer, L., Rübel, O., & Dichter, B. (2025).
+  NeuroConv: Streamlining Neurophysiology Data Conversion to the NWB Standard.
+  *Proceedings of the 24th Python in Science Conference* (SciPy 2025). https://doi.org/10.25080/cehj4257
+
+**BibTeX:**
+
+.. code-block:: bibtex
+
+  @inproceedings{mayorquin2025neuroconv,
+    title={NeuroConv: Streamlining Neurophysiology Data Conversion to the NWB Standard},
+    author={Mayorquin, Heberto and Baker, Cody and Adkisson-Floro, Paul and Weigl, Szonja and Trapani, Alessandra and Tauffer, Luiz and R\"ubel, Oliver and Dichter, Benjamin},
+    booktitle={Proceedings of the 24th Python in Science Conference},
+    year={2025},
+    month={July},
+    doi={10.25080/cehj4257}
+  }
+
 .. toctree::
   :maxdepth: 2
   :hidden:
@@ -68,7 +96,6 @@ We are happy to help and appreciate your feedback.
   user_guide/index
   conversion_examples_gallery/index
   how_to/index
-  catalogue/index
   developer_guide/index
   api/index
 
@@ -88,6 +115,8 @@ For a no code solution to conversion to NWB, please view:
 For more information regarding the NWB Standard, please view
 
 - The `NWB Format Specification <https://nwb-schema.readthedocs.io/en/latest/>`_
+
+For examples of conversion pipelines that use NeuroConv, check out: https://catalystneuro.com/nwb-conversions/
 
 .. seealso::
 

@@ -1,22 +1,26 @@
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import psutil
-from hdmf.data_utils import DataChunkIterator
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.image import ImageSeries
 from tqdm import tqdm
 
-from .video_utils import VideoCaptureContext
+from .video_utils import VideoCaptureContext, VideoDataChunkIterator
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module
-from ....utils import dict_deep_update, get_base_schema, get_schema_from_hdmf_class
+from ....utils import (
+    DeepDict,
+    dict_deep_update,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 from ....utils.str_utils import human_readable_size
 
 
@@ -25,7 +29,7 @@ class InternalVideoInterface(BaseDataInterface):
 
     display_name = "Video"
     keywords = ("video",)
-    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flx", ".mkv")
+    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flv", ".mkv")
     # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
     info = "Interface for handling standard video file formats and writing them as ImageSeries with internal data."
 
@@ -35,7 +39,7 @@ class InternalVideoInterface(BaseDataInterface):
         file_path: FilePath,
         verbose: bool = False,
         *,
-        video_name: Optional[str] = None,
+        video_name: str | None = None,
     ):
         """
         Initialize the interface.
@@ -98,7 +102,7 @@ class InternalVideoInterface(BaseDataInterface):
         }
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         video_metadata = {
             "Behavior": {
@@ -200,11 +204,13 @@ class InternalVideoInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         buffer_data: bool = True,
+        iterator_options: dict | None = None,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
-        module_description: Optional[str] = None,
+        module_description: str | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -250,6 +256,29 @@ class InternalVideoInterface(BaseDataInterface):
             True, even if manually set to False, whenever the video file size exceeds available system RAM by a factor
             of 70 (from compression experiments). Based on experiments for a ~30 FPS system of ~400 x ~600 color
             frames, the equivalent uncompressed RAM usage is around 2GB per minute of video. The default is True.
+        iterator_options : dict, optional
+            Options for controlling iterative write when buffer_data=True.
+            See the `pynwb tutorial on iterative write
+            <https://pynwb.readthedocs.io/en/stable/tutorials/advanced_io/plot_iterative_write.html#sphx-glr-tutorials-advanced-io-plot-iterative-write-py>`_
+            for more information on chunked data writing.
+
+            Available options:
+
+            * buffer_gb : float, default: 1.0
+                RAM to use for buffering data chunks in GB.
+            * buffer_shape : tuple, optional
+                Manual specification of buffer shape. Cannot be set with buffer_gb.
+            * display_progress : bool, default: False
+                Enable tqdm progress bar during video write.
+            * progress_bar_options : dict, optional
+                Additional options passed to tqdm progress bar.
+                See https://github.com/tqdm/tqdm#parameters for all tqdm options.
+                Common options: 'desc' (description), 'position' (for multiple bars),
+                'leave' (keep bar after completion).
+
+            Note: To configure chunk size and compression, use the backend configuration system
+            via ``get_default_backend_configuration()`` and ``configure_backend()`` after calling
+            this method. See the backend configuration documentation for details.
         parent_container: {'acquisition', 'processing/behavior'}
             The container where the ImageSeries is added, default is nwbfile.acquisition.
             When 'processing/behavior' is chosen, the ImageSeries is added to nwbfile.processing['behavior'].
@@ -263,6 +292,40 @@ class InternalVideoInterface(BaseDataInterface):
             If set to True, timestamps will be written explicitly, regardless of whether they were set directly or need
             to be retrieved from the video file.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "buffer_data",
+                "iterator_options",
+                "parent_container",
+                "module_description",
+                "always_write_timestamps",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to InternalVideoInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            buffer_data = positional_values.get("buffer_data", buffer_data)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+            parent_container = positional_values.get("parent_container", parent_container)
+            module_description = positional_values.get("module_description", module_description)
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
         if parent_container not in {"acquisition", "processing/behavior"}:
             raise ValueError(
                 f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."
@@ -288,8 +351,7 @@ class InternalVideoInterface(BaseDataInterface):
                 nwbfile.add_device(device)
             image_series_kwargs["device"] = device
 
-        stub_frames = 10
-
+        # The 70 size is an estimation of the total size of the video file in memory
         uncompressed_estimate = file_path.stat().st_size * 70
         available_memory = psutil.virtual_memory().available
         if not buffer_data and not stub_test and uncompressed_estimate >= available_memory:
@@ -298,38 +360,30 @@ class InternalVideoInterface(BaseDataInterface):
                 f"as array ({human_readable_size(available_memory)} available)! Forcing buffer_data to True."
             )
             buffer_data = True
-        with VideoCaptureContext(str(file_path)) as video_capture_ob:
-            if stub_test:
-                video_capture_ob.frame_count = stub_frames
-            total_frames = video_capture_ob.get_video_frame_count()
-            frame_shape = video_capture_ob.get_frame_shape()
-
-        maxshape = (total_frames, *frame_shape)
-        tqdm_pos, tqdm_mininterval = (0, 10)
 
         if buffer_data:
-            chunks = (1, frame_shape[0], frame_shape[1], 3)  # best_gzip_chunk
-            video_capture_ob = VideoCaptureContext(str(file_path))
-            if stub_test:
-                video_capture_ob.frame_count = stub_frames
-            iterable = DataChunkIterator(
-                data=tqdm(
-                    iterable=video_capture_ob,
-                    desc=f"Copying video data for {file_path.name}",
-                    position=tqdm_pos,
-                    total=total_frames,
-                    mininterval=tqdm_mininterval,
-                ),
-                iter_axis=0,  # nwb standard is time as zero axis
-                maxshape=maxshape,
+            iterator_options = iterator_options or dict()
+            data_iterator = VideoDataChunkIterator(
+                video_file=file_path,
+                stub_test=stub_test,
+                **iterator_options,
             )
+            image_series_kwargs.update(data=data_iterator)
 
         else:
             # Load the video
-            chunks = None
-            video = np.zeros(shape=maxshape, dtype="uint8")
-            with VideoCaptureContext(str(file_path)) as video_capture_ob:
+            with VideoCaptureContext(file_path) as video_capture_ob:
+
+                total_frames = video_capture_ob.get_video_frame_count()
+                frame_shape = video_capture_ob.get_frame_shape()
+                dtype = video_capture_ob.get_video_frame_dtype()
+
+                maxshape = (total_frames, *frame_shape)
+                tqdm_pos, tqdm_mininterval = (0, 10)
+                video_array = np.zeros(shape=maxshape, dtype=dtype)
+
                 if stub_test:
+                    stub_frames = 10
                     video_capture_ob.frame_count = stub_frames
                 with tqdm(
                     desc=f"Reading video data for {Path(file_path).name}",
@@ -338,11 +392,10 @@ class InternalVideoInterface(BaseDataInterface):
                     mininterval=tqdm_mininterval,
                 ) as pbar:
                     for n, frame in enumerate(video_capture_ob):
-                        video[n, :, :, :] = frame
+                        video_array[n, :, :, :] = frame
                         pbar.update(1)
-            iterable = video
 
-        image_series_kwargs.update(data=iterable)
+                image_series_kwargs.update(data=video_array)
 
         from ....utils import calculate_regular_series_rate
 

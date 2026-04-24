@@ -9,6 +9,10 @@ Install NeuroConv with the additional dependencies necessary for reading multime
 
 This interface can handle conversions from avi, mov, mp4, wmv, flv and most `FFmpeg <https://ffmpeg.org/>`_ supported formats to NWB.
 
+.. note::
+    If your video files are not in a DANDI-compatible format, see our guide on
+    :doc:`../../how_to/convert_video_formats_with_ffmpeg` to convert them before processing with NeuroConv.
+
 When storing videos of natural behavior, it is recommended to store this data as an external file with a link pointing
 from the ImageSeries in NWB to the external file
 (see `best practices <https://nwbinspector.readthedocs.io/en/dev/best_practices/image_series.html#storage-of-imageseries>`_).
@@ -32,6 +36,8 @@ To follow this convention use the
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
@@ -59,30 +65,9 @@ To follow this convention use the
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
-    >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
-
-
-If using an older version of neuroconv (<0.8), you can use the :py:class:`~neuroconv.datainterfaces.behavior.video.videodatainterface.VideoInterface` class.
-
-.. code-block:: python
-
-    >>> from datetime import datetime
-    >>> from zoneinfo import ZoneInfo
-    >>> from pathlib import Path
-    >>>
-    >>> from neuroconv.datainterfaces import VideoInterface
-    >>>
-    >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
-    >>> interface = VideoInterface(file_paths=[video_file_path], verbose=False)
-    >>>
-    >>> metadata = interface.get_metadata()
-    >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
@@ -129,6 +114,8 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>> metadata = dict_deep_update(metadata, video_metadata)
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
@@ -163,6 +150,8 @@ Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideod
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>> metadata = dict_deep_update(metadata, video_metadata)
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"

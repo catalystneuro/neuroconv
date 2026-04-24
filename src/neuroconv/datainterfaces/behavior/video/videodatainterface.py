@@ -1,7 +1,7 @@
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -13,15 +13,20 @@ from .internalvideointerface import InternalVideoInterface
 from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
-from ....utils import get_base_schema, get_schema_from_hdmf_class
+from ....utils import DeepDict, get_base_schema, get_schema_from_hdmf_class
 
 
-class VideoInterface(BaseDataInterface):
-    """Data interface for writing videos as ImageSeries."""
+class _VideoInterface(BaseDataInterface):
+    """
+    PRIVATE: Data interface for writing videos as ImageSeries.
+
+    This is a private interface used internally by LightningPoseConverter.
+    For external use, please use ExternalVideoInterface or InternalVideoInterface instead.
+    """
 
     display_name = "Video"
     keywords = ("movie", "natural behavior", "tracking")
-    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flx", ".mkv")
+    associated_suffixes = (".mp4", ".avi", ".wmv", ".mov", ".flv", ".mkv")
     # Other suffixes, while they can be opened by OpenCV, are not supported by DANDI so should probably not list here
     info = "Interface for handling standard video file formats."
 
@@ -66,12 +71,8 @@ class VideoInterface(BaseDataInterface):
                 ...
             ]
         """
-        warnings.warn(
-            "The VideoInterface is deprecated and will be removed on or after September 2025. "
-            "Please use the ExternalVideoInterface or InternalVideoInterface instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+        # TODO: Remove after May 2026 - Replace with ExternalVideoInterface
+
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         self._number_of_files = len(file_paths)
@@ -96,7 +97,7 @@ class VideoInterface(BaseDataInterface):
         )
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         behavior_metadata = {
             self.metadata_key_name: [
@@ -265,13 +266,14 @@ class VideoInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         external_mode: bool = True,
-        starting_frames: Optional[list[int]] = None,
+        starting_frames: list[int] | None = None,
         chunk_data: bool = True,
-        module_name: Optional[str] = None,
-        module_description: Optional[str] = None,
+        module_name: str | None = None,
+        module_description: str | None = None,
     ):
         """
         Convert the video data files to :py:class:`~pynwb.image.ImageSeries` and write them in the
@@ -327,6 +329,41 @@ class VideoInterface(BaseDataInterface):
             If the processing module specified by module_name does not exist, it will be created with this description.
             The default description is the same as used by the conversion_tools.get_module function.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "external_mode",
+                "starting_frames",
+                "chunk_data",
+                "module_name",
+                "module_description",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to VideoInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            external_mode = positional_values.get("external_mode", external_mode)
+            starting_frames = positional_values.get("starting_frames", starting_frames)
+            chunk_data = positional_values.get("chunk_data", chunk_data)
+            module_name = positional_values.get("module_name", module_name)
+            module_description = positional_values.get("module_description", module_description)
+
         metadata = metadata or dict()
         file_paths = self.source_data["file_paths"]
 

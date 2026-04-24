@@ -160,3 +160,44 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         data_interface_names = list(converter.data_interface_objects.keys())
         expected_interface_names = ["InterfaceA001", "InterfaceB", "InterfaceA002"]
         self.assertListEqual(data_interface_names, expected_interface_names)
+
+
+def test_converter_pipe_append_on_disk(tmp_path):
+    """Test that append_on_disk_nwbfile works for ConverterPipe with multiple interfaces."""
+    from pynwb import NWBHDF5IO
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    from neuroconv.tools.testing.mock_interfaces import MockTimeSeriesInterface
+
+    nwbfile_path = tmp_path / "test_append.nwb"
+
+    nwbfile = mock_NWBFile()
+    with NWBHDF5IO(nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    # Append to existing file with converter containing two TimeSeries interfaces
+    timeseries_interface1 = MockTimeSeriesInterface(num_channels=2, duration=0.1, metadata_key="TimeSeriesAnalog")
+    timeseries_interface2 = MockTimeSeriesInterface(num_channels=3, duration=0.1, metadata_key="TimeSeriesAuxiliary")
+    converter = ConverterPipe(data_interfaces=[timeseries_interface1, timeseries_interface2])
+
+    # Get metadata and modify TimeSeries names to be unique
+    metadata = converter.get_metadata()
+    metadata["TimeSeries"]["TimeSeriesAnalog"]["name"] = "MockTimeSeriesAnalog"
+    metadata["TimeSeries"]["TimeSeriesAuxiliary"]["name"] = "MockTimeSeriesAuxiliary"
+
+    converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, append_on_disk_nwbfile=True)
+
+    # Verify all interfaces' data was appended
+    with NWBHDF5IO(nwbfile_path, "r") as io:
+        nwbfile = io.read()
+        # Original mock file data still exists
+        assert nwbfile.session_description is not None
+        # First TimeSeries interface data
+        assert "MockTimeSeriesAnalog" in nwbfile.acquisition
+        assert nwbfile.acquisition["MockTimeSeriesAnalog"].data.shape[1] == 2
+        # Second TimeSeries interface data
+        assert "MockTimeSeriesAuxiliary" in nwbfile.acquisition
+        assert nwbfile.acquisition["MockTimeSeriesAuxiliary"].data.shape[1] == 3
+        # Verify we have exactly 2 TimeSeries
+        timeseries_names = list(nwbfile.acquisition.keys())
+        assert len(timeseries_names) == 2
