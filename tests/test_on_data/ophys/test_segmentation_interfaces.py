@@ -643,6 +643,16 @@ class TestMinianSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert "Devices" not in metadata
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data acquired with Minian."},
+            },
+        }
+        assert metadata["NWBFile"]["session_id"] == "Ca_EEG3-4"
+
     @pytest.fixture(
         params=[
             {"mask_type": "image", "include_background_segmentation": True},
@@ -677,3 +687,13 @@ class TestMinianSegmentationInterfaceWithStubTest(SegmentationExtractorInterface
     )
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert "Devices" not in metadata
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data acquired with Minian."},
+            },
+        }
+        assert metadata["NWBFile"]["session_id"] == "Ca_EEG3-4"
