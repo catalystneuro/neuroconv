@@ -3,6 +3,7 @@ from pathlib import Path
 from pydantic import FilePath
 from pynwb import NWBFile
 
+from ._utils import _warn_if_split_siblings_detected
 from ....basedatainterface import BaseDataInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
@@ -29,7 +30,11 @@ class IntanStimInterface(BaseDataInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__)
-        source_schema["properties"]["file_path"]["description"] = "Path to an Intan .rhs file"
+        source_schema["properties"]["file_path"]["description"] = (
+            "Path to an Intan .rhs file. "
+            "When ``saved_files_are_split=True``, the file's parent directory is treated as the session "
+            "folder and all sibling .rhs files are concatenated in filename order."
+        )
         return source_schema
 
     def __init__(
@@ -38,6 +43,7 @@ class IntanStimInterface(BaseDataInterface):
         *,
         verbose: bool = False,
         metadata_key: str = "TimeSeriesIntanStim",
+        saved_files_are_split: bool = False,
     ):
         """
         Load and prepare stimulation data from an Intan .rhs file.
@@ -46,23 +52,39 @@ class IntanStimInterface(BaseDataInterface):
         ----------
         file_path : FilePath
             Path to an Intan .rhs file. Stimulation channels are exclusive to the
-            RHS Stim/Recording System and are not present in .rhd files.
+            RHS Stim/Recording System and are not present in .rhd files. When
+            ``saved_files_are_split=True``, this is any single file in the session folder;
+            its parent directory is scanned for siblings.
         verbose : bool, default: False
             Verbose output.
         metadata_key : str, default: "TimeSeriesIntanStim"
             Key for the TimeSeries metadata in the metadata dictionary.
+        saved_files_are_split : bool, default: False
+            Set to True when the recording was saved using Intan RHX's "new save file every N minutes"
+            option, producing several rotated ``.rhs`` files in one session folder. All sibling
+            files in ``file_path.parent`` are concatenated in filename order (Intan's default
+            ``{prefix}_YYMMDD_HHMMSS`` naming makes lexicographic order match chronological order).
         """
-        from spikeinterface.extractors import read_intan
+        from spikeinterface.extractors import read_intan, read_split_intan_files
 
         self._file_path = Path(file_path)
         self._stream_name = "Stim channel"
         self.metadata_key = metadata_key
+        self.saved_files_are_split = saved_files_are_split
 
-        self.recording_extractor = read_intan(
-            file_path=self._file_path,
-            stream_name=self._stream_name,
-            all_annotations=True,
-        )
+        if saved_files_are_split:
+            self.recording_extractor = read_split_intan_files(
+                folder_path=self._file_path.parent,
+                stream_name=self._stream_name,
+                all_annotations=True,
+            )
+        else:
+            _warn_if_split_siblings_detected(self._file_path, interface_name="IntanStimInterface")
+            self.recording_extractor = read_intan(
+                file_path=self._file_path,
+                stream_name=self._stream_name,
+                all_annotations=True,
+            )
 
         super().__init__(
             file_path=self._file_path,
