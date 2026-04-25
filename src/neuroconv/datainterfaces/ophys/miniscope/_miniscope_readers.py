@@ -51,7 +51,7 @@ def _read_miniscope_config(folder_path: str) -> dict:
     ``deviceDirectory`` and ``deviceID`` are discarded.
     """
     file_path = Path(folder_path) / "metaData.json"
-    with open(file_path) as f:
+    with open(file_path, encoding="utf-8") as f:
         miniscope_config = json.load(f)
     assert "deviceName" in miniscope_config, "'deviceName' field is missing from the configuration file."
     device_name = miniscope_config.pop("deviceName").replace(" ", "")
