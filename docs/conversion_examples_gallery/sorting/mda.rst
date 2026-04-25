@@ -102,5 +102,6 @@ to it.
     nwbfile = converter.create_nwbfile()
 
 If the original recording or the ordered list of sorted channels is not
-available, leave ``mda_peak_channel`` as a raw integer hint and skip
-``SortedRecordingConverter``.
+available, leave ``mda_peak_channel`` as-is on the units table. It is
+the 1-indexed position, within the channels that were passed to
+MountainSort, of each unit's peak channel.
