@@ -38,35 +38,30 @@ instead and are not served by this interface.
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
-Linking units to electrodes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Linking units to their contact through peak channel
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``MdaSortingInterface`` surfaces the peak channel from row 0 of
-``firings.mda`` as an ``mda_peak_channel`` property on the units table.
-The value is a 1-indexed integer position into the sorter's input channel
-subset — not a channel ID, and not a row index into the NWB electrodes
-table. If MountainSort was run without peak-channel tracking (row 0 all
-zeros), the column is not added.
+When the original recording is available, NWB allows each unit in the
+units table to be linked to the electrode it fires on through a
+``DynamicTableRegion`` on ``units.electrodes`` (see
+:ref:`linking_sorted_data`). A common way to build this linkage is to assign each unit to
+the single electrode where its spikes are largest, that unit's "peak channel."
 
-When the original recording that was sorted is available through a
-``RecordingInterface``, this column can be lifted into a formal
-``DynamicTableRegion`` linkage on ``units.electrodes`` by pairing with
-:py:class:`~neuroconv.converters.SortedRecordingConverter` (see the
-:ref:`linking_sorted_data` how-to for general electrode linkage
-background). Two conditions must be met:
+When MountainSort is run with peak-channel tracking enabled,
+``firings.mda`` records this peak channel for each unit. However, the
+value is stored as a 1-indexed position into the subset of
+acquisition-system channels that were passed to the sorter, so it
+cannot be used directly to identify an electrode.
 
-- The original recording that MountainSort was run on is available through
-  a ``RecordingInterface``.
-- You know the ordered list of channel IDs that was passed to the sorter.
-  This is lab knowledge; it is not stored in ``firings.mda``. For
-  SpikeGadgets workflows it can be read from the ``.trodesconf`` file's
-  ``<SpikeNTrode>`` blocks. For manual extraction pipelines it is wherever
-  the channel selection was specified (a Python script, a config file, lab
-  notes).
+Neuroconv builds the linkage in terms of stable identifiers instead:
+the channel IDs of the recording and the unit IDs of the sorting, both
+provided through SpikeInterface. The missing piece is the bridge
+between the positional index in ``firings.mda`` and the recording's
+channel IDs, namely the ordered list of channel IDs that was passed to
+the sorter when the algorithm was run.
 
-``SortedRecordingConverter`` then maps each channel ID to its
-electrodes-table row automatically once the recording interface is given
-to it.
+When this information is available, ``SortedRecordingConverter`` can be
+used as follows:
 
 .. code-block:: python
 
@@ -87,12 +82,14 @@ to it.
     sorter_input_channel_ids = ["A-060", "A-061", "A-062", "A-063"]
 
     unit_ids = sorting_interface.sorting_extractor.get_unit_ids()
-    peak_indices = sorting_interface.sorting_extractor.get_property("mda_peak_channel")
+    peak_channel_indices = sorting_interface.sorting_extractor.get_property("mda_peak_channel")
 
-    unit_ids_to_channel_ids = {
-        str(unit_id): [sorter_input_channel_ids[int(peak_index) - 1]]
-        for unit_id, peak_index in zip(unit_ids, peak_indices)
-    }
+    unit_ids_to_channel_ids = {}
+    for unit_id, peak_channel_index in zip(unit_ids, peak_channel_indices):
+        # MountainSort stores peak channels as 1-indexed positions; subtract 1 for 0-indexed list access
+        position_in_sorter_input = int(peak_channel_index) - 1
+        peak_channel_id = sorter_input_channel_ids[position_in_sorter_input]
+        unit_ids_to_channel_ids[unit_id] = [peak_channel_id]
 
     converter = SortedRecordingConverter(
         recording_interface=recording_interface,
@@ -101,7 +98,6 @@ to it.
     )
     nwbfile = converter.create_nwbfile()
 
-If the original recording or the ordered list of sorted channels is not
-available, leave ``mda_peak_channel`` as-is on the units table. It is
-the 1-indexed position, within the channels that were passed to
-MountainSort, of each unit's peak channel.
+If either piece is missing, the peak-channel value remains on the units
+table as a plain integer column named ``mda_peak_channel`` and the
+formal electrode linkage is simply skipped.
