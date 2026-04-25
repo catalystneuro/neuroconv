@@ -77,6 +77,8 @@ class ExternalVideoInterface(BaseDataInterface):
         self._number_of_files = len(file_paths)
         self._timestamps = None
         self._starting_time = None
+        self._segment_starting_times = None
+        self._rate = None
         self.video_name = video_name if video_name else f"Video {file_paths[0].stem}"
         self._default_device_name = f"{video_name} Camera Device"
         super().__init__(file_paths=file_paths)
@@ -187,6 +189,8 @@ class ExternalVideoInterface(BaseDataInterface):
         if self._timestamps is not None:
             aligned_segment_starting_times = [aligned_starting_time] * self._number_of_files
             self.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+        elif self._segment_starting_times is not None:
+            self._segment_starting_times = [t + aligned_starting_time for t in self._segment_starting_times]
         else:
             self._starting_time = aligned_starting_time
 
@@ -224,6 +228,76 @@ class ExternalVideoInterface(BaseDataInterface):
                 )
             ]
         )
+
+    def set_starting_time(
+        self,
+        starting_time: float,
+        segment_index: int,
+    ) -> None:
+        """
+        Set the starting time for a single video segment.
+
+        At write time, timestamps for this segment are constructed as:
+        ``starting_time + np.arange(num_frames) / rate``.
+
+        This is mutually exclusive with ``set_aligned_timestamps``. If explicit timestamps
+        have already been set, this method will raise a ``ValueError``.
+
+        Parameters
+        ----------
+        starting_time : float
+            The starting time of the video segment, in seconds relative to the common session start time.
+        segment_index : int
+            The index of the segment (video file) to set the starting time for.
+        """
+        if self._timestamps is not None:
+            raise ValueError(
+                "Explicit timestamps have already been set via 'set_aligned_timestamps'. "
+                "Cannot also set segment starting times."
+            )
+        if segment_index < 0 or segment_index >= self._number_of_files:
+            raise IndexError(f"segment_index {segment_index} is out of range for {self._number_of_files} video files.")
+        if self._segment_starting_times is None:
+            self._segment_starting_times = [0.0] * self._number_of_files
+        self._segment_starting_times[segment_index] = starting_time
+
+        # Read rate from video metadata if not already set
+        if self._rate is None:
+            file_paths = self.source_data["file_paths"]
+            with VideoCaptureContext(file_path=str(file_paths[0])) as video:
+                self._rate = video.get_video_fps()
+
+    def set_segment_starting_times(
+        self,
+        starting_times: list[float],
+        rate: float | None = None,
+    ) -> None:
+        """
+        Set the starting times for all video segments at once.
+
+        Convenience wrapper around ``set_starting_time`` that sets the starting time
+        for every segment in a single call.
+
+        Parameters
+        ----------
+        starting_times : list of float
+            The starting time of each video segment, in seconds relative to the common session start time.
+            Must have the same length as the number of video files.
+        rate : float, optional
+            The constant frame rate (in Hz) shared by all video segments.
+            If not provided, the rate is read from the first video file's metadata.
+        """
+        if rate is not None and rate <= 0:
+            raise ValueError(f"rate must be positive, received {rate}.")
+        starting_times_length = len(starting_times)
+        assert starting_times_length == self._number_of_files, (
+            f"The length of 'starting_times' ({starting_times_length}) "
+            f"does not match the number of video files ({self._number_of_files})!"
+        )
+        if rate is not None:
+            self._rate = rate
+        for segment_index, starting_time in enumerate(starting_times):
+            self.set_starting_time(starting_time=starting_time, segment_index=segment_index)
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
@@ -344,9 +418,28 @@ class ExternalVideoInterface(BaseDataInterface):
                 nwbfile.add_device(device)
             image_series_kwargs["device"] = device
 
+        # Read frame counts once if needed for timestamp construction or starting_frames
+        frame_counts = None
+        if self._segment_starting_times is not None or (self._number_of_files > 1 and starting_frames is None):
+            frame_counts = []
+            for file_path in file_paths:
+                with VideoCaptureContext(file_path=str(file_path)) as video:
+                    frame_counts.append(video.get_video_frame_count())
+
         if always_write_timestamps:
             timestamps = self.get_timestamps()
             image_series_kwargs.update(timestamps=np.concatenate(timestamps))
+        elif self._segment_starting_times is not None and self._rate is not None:
+            segments = [
+                start + np.arange(n_frames) / self._rate
+                for start, n_frames in zip(self._segment_starting_times, frame_counts)
+            ]
+            timestamps = np.concatenate(segments)
+            rate = calculate_regular_series_rate(series=timestamps)
+            if rate is not None:
+                image_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+            else:
+                image_series_kwargs.update(timestamps=timestamps)
         elif self._timestamps is not None:
             # Check if timestamps are regular
             timestamps = np.concatenate(self._timestamps)
@@ -368,13 +461,13 @@ class ExternalVideoInterface(BaseDataInterface):
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
 
         if self._number_of_files > 1 and starting_frames is None:
-            raise TypeError("Multiple paths were specified for the ImageSeries, but no starting_frames were specified!")
-        elif starting_frames is not None and len(starting_frames) != self._number_of_files:
+            starting_frames = list(np.cumsum([0] + frame_counts[:-1]))
+        if starting_frames is not None and len(starting_frames) != self._number_of_files:
             raise ValueError(
                 f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
                 f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
             )
-        elif starting_frames is not None:
+        if starting_frames is not None:
             image_series_kwargs.update(starting_frame=starting_frames)
 
         image_series_kwargs.update(format="external", external_file=file_paths)

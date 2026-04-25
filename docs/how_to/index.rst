@@ -14,6 +14,7 @@ This section contains practical guides for using NeuroConv effectively.
    annotate_ophys_metadata
    linking_sorted_data
    convert_video_formats_with_ffmpeg
+   align_external_video
    adding_multiple_sorting_interfaces
    selecting_rois_for_conversion
    add_behavioral_and_sensor_data
