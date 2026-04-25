@@ -9,6 +9,30 @@ Install NeuroConv with the additional dependencies necessary for reading Intan d
 
     pip install "neuroconv[intan]"
 
+File formats and save modes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Intan RHX software can save a recording in one of three on-disk formats:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 30 70
+
+    * - Save mode
+      - What to pass as ``file_path``
+    * - Traditional Intan File Format
+      - The single ``.rhd`` or ``.rhs`` file
+    * - One File Per Signal Type
+      - The ``info.rhd`` or ``info.rhs`` header file in the session directory
+    * - One File Per Channel
+      - The ``info.rhd`` or ``info.rhs`` header file in the session directory
+
+The interface API is identical across all three modes; the layout is inferred automatically from the header.
+
+Traditional format also offers an option to "create a new save file every N minutes,"
+which splits one session across several rotated ``.rhd``/``.rhs`` files in the same
+folder. For that case, see :ref:`intan-split-files` below.
+
 Intan Amplifier Data Conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -220,3 +244,50 @@ with the conversion factor derived automatically from the ``stim_step_size`` in 
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_stim = output_folder / "intan_stim_conversion.nwb"
     >>> interface_stim.run_conversion(nwbfile_path=nwbfile_path_stim, metadata=metadata_stim, overwrite=True)
+
+.. _intan-split-files:
+
+Converting a session saved as multiple files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When a Traditional-format recording is saved with the "create a new save file
+every N minutes" option, Intan RHX writes one file per N-minute chunk into a
+single session folder, each named with a ``{prefix}_YYMMDD_HHMMSS`` timestamp.
+Set ``saved_files_are_split=True`` on any Intan interface to concatenate all
+sibling ``.rhd``/``.rhs`` files in the folder in filename order (fixed-width
+timestamps make lexicographic order match chronological order):
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import IntanRecordingInterface
+    >>>
+    >>> # Any single file in the session folder; its parent directory is scanned
+    >>> file_path_split = f"{ECEPHY_DATA_PATH}/intan/test_tetrode_240502_162925/test_tetrode_240502_162925.rhd"
+    >>>
+    >>> interface_split = IntanRecordingInterface(
+    ...     file_path=file_path_split,
+    ...     saved_files_are_split=True,
+    ...     verbose=False,
+    ... )
+    >>>
+    >>> metadata_split = interface_split.get_metadata()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata_split["NWBFile"].update(session_start_time=session_start_time)
+    >>> metadata_split["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> nwbfile_path_split = output_folder / "intan_split_conversion.nwb"
+    >>> interface_split.run_conversion(nwbfile_path=nwbfile_path_split, metadata=metadata_split, overwrite=True)
+
+The same ``saved_files_are_split=True`` flag is accepted by
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`
+and
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intanstiminterface.IntanStimInterface`,
+since all streams rotate together in Intan's Traditional format.
+
+If ``saved_files_are_split=False`` (the default) and the interface detects
+sibling ``.rhd``/``.rhs`` files next to the one you passed, it will emit a
+warning suggesting the flag; you can safely ignore it when the neighbors are
+from an unrelated session.

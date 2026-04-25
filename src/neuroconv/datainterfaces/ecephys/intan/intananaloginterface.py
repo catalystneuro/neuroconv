@@ -4,6 +4,7 @@ from pathlib import Path
 from pydantic import FilePath
 from pynwb import NWBFile
 
+from ._utils import _warn_if_split_siblings_detected
 from ....basedatainterface import BaseDataInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
@@ -27,7 +28,11 @@ class IntanAnalogInterface(BaseDataInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__)
-        source_schema["properties"]["file_path"]["description"] = "Path to either a .rhd or a .rhs file"
+        source_schema["properties"]["file_path"]["description"] = (
+            "Path to either a .rhd or a .rhs file. "
+            "When ``saved_files_are_split=True``, the file's parent directory is treated as the session "
+            "folder and all sibling .rhd/.rhs files are concatenated in filename order."
+        )
         return source_schema
 
     def __init__(
@@ -37,6 +42,7 @@ class IntanAnalogInterface(BaseDataInterface):
         stream_name: str,
         verbose: bool = False,
         metadata_key: str = "TimeSeriesAnalogIntan",
+        saved_files_are_split: bool = False,
     ):
         """
         Load and prepare analog data from Intan format (.rhd or .rhs files).
@@ -44,7 +50,8 @@ class IntanAnalogInterface(BaseDataInterface):
         Parameters
         ----------
         file_path : FilePath
-            Path to either a rhd or a rhs file
+            Path to either a rhd or a rhs file. When ``saved_files_are_split=True``, this is
+            any single file in the session folder; its parent directory is scanned for siblings.
         stream_name : str
             The stream name to load. Valid options include:
             - "RHD2000 auxiliary input channel": Auxiliary input channels (e.g., accelerometer data)
@@ -56,6 +63,11 @@ class IntanAnalogInterface(BaseDataInterface):
             Verbose output
         metadata_key : str, default: "TimeSeriesAnalogIntan"
             Key for the TimeSeries metadata in the metadata dictionary.
+        saved_files_are_split : bool, default: False
+            Set to True when the recording was saved using Intan RHX's "new save file every N minutes"
+            option, producing several rotated ``.rhd``/``.rhs`` files in one session folder. All sibling
+            files in ``file_path.parent`` are concatenated in filename order (Intan's default
+            ``{prefix}_YYMMDD_HHMMSS`` naming makes lexicographic order match chronological order).
         """
         # Handle deprecated positional arguments
         if args:
@@ -86,10 +98,11 @@ class IntanAnalogInterface(BaseDataInterface):
             verbose = positional_values.get("verbose", verbose)
             metadata_key = positional_values.get("metadata_key", metadata_key)
 
-        from spikeinterface.extractors import read_intan
+        from spikeinterface.extractors import read_intan, read_split_intan_files
 
         self._file_path = Path(file_path)
         self._stream_name = stream_name
+        self.saved_files_are_split = saved_files_are_split
 
         # Stream type descriptions and time series name mapping
         self.stream_info = {
@@ -127,11 +140,19 @@ class IntanAnalogInterface(BaseDataInterface):
         self.metadata_key = metadata_key
 
         # Load the recording extractor using stream_name
-        self.recording_extractor = read_intan(
-            file_path=self._file_path,
-            stream_name=self._stream_name,
-            all_annotations=True,
-        )
+        if saved_files_are_split:
+            self.recording_extractor = read_split_intan_files(
+                folder_path=self._file_path.parent,
+                stream_name=self._stream_name,
+                all_annotations=True,
+            )
+        else:
+            _warn_if_split_siblings_detected(self._file_path, interface_name="IntanAnalogInterface")
+            self.recording_extractor = read_intan(
+                file_path=self._file_path,
+                stream_name=self._stream_name,
+                all_annotations=True,
+            )
 
         super().__init__(
             file_path=self._file_path,
