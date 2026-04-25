@@ -42,7 +42,7 @@ Linking units to their contact through peak channel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When the original recording is available, NWB allows each unit in the
-units table to be linked to the electrode it fires on through a
+units table to be linked to the electrodes it is detected  on through a
 ``DynamicTableRegion`` on ``units.electrodes`` (see
 :ref:`linking_sorted_data`). A common way to build this linkage is to assign each unit to
 the single electrode where its spikes are largest, that unit's "peak channel."
