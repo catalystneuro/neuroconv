@@ -787,8 +787,14 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         metadata_key = self.interface.metadata_key
         assert "Devices" not in metadata
         assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {"imaging_rate": 20.0},
+            },
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Micro-Manager."},
+                metadata_key: {
+                    "description": "Imaging data acquired with Micro-Manager.",
+                    "imaging_plane_metadata_key": metadata_key,
+                },
             },
         }
 

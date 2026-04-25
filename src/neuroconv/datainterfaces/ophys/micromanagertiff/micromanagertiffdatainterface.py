@@ -109,9 +109,15 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
             metadata = super().get_metadata(use_new_metadata_format=True)
             metadata["NWBFile"]["session_start_time"] = session_start_time
             metadata["Ophys"] = {
+                "ImagingPlanes": {
+                    self.metadata_key: {
+                        "imaging_rate": self.imaging_extractor.get_sampling_frequency(),
+                    },
+                },
                 "MicroscopySeries": {
                     self.metadata_key: {
                         "description": "Imaging data acquired with Micro-Manager.",
+                        "imaging_plane_metadata_key": self.metadata_key,
                     },
                 },
             }
