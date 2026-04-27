@@ -29,6 +29,7 @@
 
 ## Features
 * Added `DANNCEInterface` for converting DANNCE 3D pose estimation `.mat` output files to NWB format using the ndx-pose extension [PR #1710](https://github.com/catalystneuro/neuroconv/pull/1710)
+* Added new `SDANNCEInterface` for social-DANNCE multi-animal output (requires `animal_index`). Default unit changed from `"mm"` to `"millimeters"` for NWB Inspector compliance. [PR #1710](https://github.com/catalystneuro/neuroconv/pull/1710)
 * Added `metadata_key` support to imaging interfaces (`BaseImagingExtractorInterface`, `TiffImagingInterface`, `Hdf5ImagingInterface`, `SbxImagingInterface`) and `use_new_metadata_format` parameter to `get_metadata()` for dict-based metadata pipeline. [PR #1694](https://github.com/catalystneuro/neuroconv/pull/1694)
 * Added `OpenEphysBinaryConverter` for automatic multi-stream OpenEphys binary conversion, following the `SpikeGLXConverterPipe` pattern. Auto-discovers streams and routes neural data to `OpenEphysBinaryRecordingInterface` and analog (ADC/NI-DAQ) data to `OpenEphysBinaryAnalogInterface`. [PR #1686](https://github.com/catalystneuro/neuroconv/pull/1686)
 * Added dict-based metadata pipeline for imaging in `roiextractors.py`, supporting the new `MicroscopySeries`, `ImagingPlanes`, and `Devices` metadata format keyed by `metadata_key`. Old list-based functions are preserved (renamed with `_old_list_format` suffix) and dispatched automatically when `metadata_key` is not provided. [PR #1677](https://github.com/catalystneuro/neuroconv/pull/1677)

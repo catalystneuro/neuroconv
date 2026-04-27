@@ -26,6 +26,20 @@ def dannce_mat_file(tmp_path):
     return file_path, n_samples, n_landmarks, pred, p_max
 
 
+@pytest.fixture
+def frametimes_npy_file(tmp_path, dannce_mat_file):
+    """Create a synthetic frametimes.npy file sized to the DANNCE fixture."""
+    _, n_samples, _, _, _ = dannce_mat_file
+    n_video_frames = n_samples + 50  # a few more frames than DANNCE predictions
+    frame_indices = np.arange(1, n_video_frames + 1, dtype="float64")
+    seconds = np.linspace(0.0, 3.0, n_video_frames, dtype="float64")
+    frametimes = np.stack([frame_indices, seconds], axis=0)  # shape (2, n_video_frames)
+
+    file_path = tmp_path / "frametimes.npy"
+    np.save(str(file_path), frametimes)
+    return file_path, seconds
+
+
 class TestDANNCEInterfaceInit:
     def test_initialization_with_sampling_rate(self, dannce_mat_file):
         file_path, n_samples, n_landmarks, _, _ = dannce_mat_file
@@ -103,6 +117,40 @@ class TestDANNCEInterfaceTimestamps:
 
         np.testing.assert_array_equal(interface.get_timestamps(), custom_timestamps)
 
+    def test_timestamps_from_frametimes_file(self, dannce_mat_file, frametimes_npy_file):
+        file_path, n_samples, _, _, _ = dannce_mat_file
+        frametimes_path, seconds = frametimes_npy_file
+
+        interface = DANNCEInterface(file_path=file_path, frametimes_file_path=frametimes_path)
+        timestamps = interface.get_timestamps()
+
+        expected = seconds[np.arange(n_samples)]
+        np.testing.assert_allclose(timestamps, expected)
+
+    def test_frametimes_takes_precedence(self, dannce_mat_file, frametimes_npy_file):
+        file_path, n_samples, _, _, _ = dannce_mat_file
+        frametimes_path, seconds = frametimes_npy_file
+
+        interface = DANNCEInterface(
+            file_path=file_path, frametimes_file_path=frametimes_path, sampling_rate=30.0
+        )
+        timestamps = interface.get_timestamps()
+
+        expected = seconds[np.arange(n_samples)]
+        np.testing.assert_allclose(timestamps, expected)
+        # Confirm sampling_rate was not used (frametimes took precedence).
+        sampling_rate_timestamps = np.arange(n_samples) / 30.0
+        assert not np.allclose(timestamps, sampling_rate_timestamps)
+
+    def test_get_original_timestamps_from_frametimes(self, dannce_mat_file, frametimes_npy_file):
+        file_path, n_samples, _, _, _ = dannce_mat_file
+        frametimes_path, seconds = frametimes_npy_file
+
+        interface = DANNCEInterface(file_path=file_path, frametimes_file_path=frametimes_path)
+        timestamps = interface.get_original_timestamps()
+
+        np.testing.assert_allclose(timestamps, seconds[np.arange(n_samples)])
+
 
 class TestDANNCEInterfaceMetadata:
     def test_metadata_structure(self, dannce_mat_file):
@@ -125,11 +173,11 @@ class TestDANNCEInterfaceMetadata:
         assert container["source_software"] == "DANNCE"
         assert container["name"] == "PoseEstimationDANNCE"
 
-        # Check series metadata has mm units
+        # Check series metadata has millimeters units
         series = container["PoseEstimationSeries"]
         assert len(series) == n_landmarks
         for landmark_meta in series.values():
-            assert landmark_meta["unit"] == "mm"
+            assert landmark_meta["unit"] == "millimeters"
 
     def test_metadata_custom_key(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
@@ -179,13 +227,16 @@ class TestDANNCEInterfaceConversion:
             assert_array_equal(series.data, pred[:, :, i])
             assert series.confidence.shape == (n_samples,)
             assert_array_equal(series.confidence, p_max[:, i])
-            assert series.unit == "mm"
+            assert series.unit == "millimeters"
 
     def test_add_to_nwbfile_with_custom_timestamps(self, dannce_mat_file, tmp_path):
         file_path, n_samples, _, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_path=file_path)
 
-        custom_timestamps = np.linspace(0.0, 10.0, n_samples)
+        # Irregular spacing so calculate_regular_series_rate returns None and
+        # timestamps are stored explicitly rather than as rate+starting_time.
+        rng = np.random.default_rng(0)
+        custom_timestamps = np.sort(rng.uniform(0.0, 10.0, n_samples))
         interface.set_aligned_timestamps(custom_timestamps)
 
         nwbfile = NWBFile(
@@ -248,3 +299,30 @@ class TestDANNCEInterfaceConversion:
 
         skeleton = nwbfile.processing["behavior"]["Skeletons"]["SkeletonPoseEstimationDANNCE_Mouse1"]
         assert skeleton.subject is None
+
+    def test_stub_test_limits_output_samples(self, tmp_path):
+        # Build a larger fixture (500 samples) so stub_test (=100) actually slices.
+        n_samples = 500
+        n_landmarks = 5
+        rng = np.random.default_rng(0)
+        pred = rng.standard_normal((n_samples, 3, n_landmarks))
+        p_max = rng.random((n_samples, n_landmarks))
+        sample_id = np.arange(n_samples, dtype="float64").reshape(1, -1)
+        file_path = tmp_path / "save_data_AVG_big.mat"
+        from scipy.io import savemat as _savemat
+
+        _savemat(str(file_path), dict(pred=pred, p_max=p_max, sampleID=sample_id))
+
+        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True)
+
+        pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
+        for series in pe.pose_estimation_series.values():
+            assert series.data.shape[0] == 100
+            assert series.confidence.shape[0] == 100
+
+        # Internal arrays must remain untouched.
+        assert interface._pred.shape[0] == n_samples
+        assert interface._p_max.shape[0] == n_samples

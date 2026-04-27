@@ -23,6 +23,10 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         source_schema["properties"]["file_path"][
             "description"
         ] = "Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat)."
+        if "frametimes_file_path" in source_schema["properties"]:
+            source_schema["properties"]["frametimes_file_path"][
+                "description"
+            ] = "Optional path to a frametimes.npy file (shape (2, n_frames); row 1 = seconds) for per-frame timestamps."
         return source_schema
 
     @validate_call
@@ -30,6 +34,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePath,
         *,
+        frametimes_file_path: FilePath | None = None,
         video_file_path: FilePath | None = None,
         sampling_rate: float | None = None,
         landmark_names: list[str] | None = None,
@@ -49,14 +54,21 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat or save_data_MAX.mat).
+        frametimes_file_path : FilePath, optional
+            Path to a ``frametimes.npy`` file (the campy / pCampi standard used by DANNCE rigs)
+            with shape ``(2, n_video_frames)`` where row 1 holds per-frame timestamps in seconds
+            from session start. Timestamps are indexed by the sampleID field to obtain the
+            timestamp for each prediction. Takes precedence over ``video_file_path`` and
+            ``sampling_rate``.
         video_file_path : FilePath, optional
             Path to one of the source video files used for DANNCE prediction. Used to extract
             per-frame timestamps, which are then indexed by the sampleID field to obtain the
             timestamps for each prediction. Takes precedence over ``sampling_rate``.
         sampling_rate : float, optional
             The sampling rate in Hz of the pose estimation data. Used to compute timestamps from
-            the sampleID field. Ignored if ``video_file_path`` is provided. If neither is provided,
-            timestamps must be set externally via ``set_aligned_timestamps()`` before conversion.
+            the sampleID field. Ignored if ``frametimes_file_path`` or ``video_file_path`` is
+            provided. If none are provided, timestamps must be set externally via
+            ``set_aligned_timestamps()`` before conversion.
         landmark_names : list of str, optional
             Names for each tracked landmark/body part. Must match the number of landmarks in the
             data. If not provided, defaults to ``["landmark_0", "landmark_1", ...]``.
@@ -90,6 +102,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self.pose_estimation_metadata_key = pose_estimation_metadata_key
         self._sampling_rate = sampling_rate
         self._video_file_path = Path(video_file_path) if video_file_path is not None else None
+        self._frametimes_file_path = Path(frametimes_file_path) if frametimes_file_path is not None else None
         self._timestamps = None
 
         # Load data from .mat file
@@ -107,8 +120,11 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         else:
             self._landmark_names = [f"landmark_{i}" for i in range(n_landmarks)]
 
-        # Compute timestamps: video_file_path takes precedence over sampling_rate
-        if video_file_path is not None:
+        # Compute timestamps:
+        # frametimes_file_path > video_file_path > sampling_rate
+        if frametimes_file_path is not None:
+            self._timestamps = self._get_timestamps_from_frametimes()
+        elif video_file_path is not None:
             self._timestamps = self._get_timestamps_from_video()
         elif sampling_rate is not None:
             self._timestamps = self._sample_id / sampling_rate
@@ -126,31 +142,44 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         sample_id = mat_data["sampleID"]  # shape: (1, n_samples) or (n_samples,)
         self._sample_id = np.squeeze(sample_id).astype("float64")
 
-    def _get_timestamps_from_video(self) -> np.ndarray:
+    def _get_timestamps_from_video(self, stub_test: bool = False) -> np.ndarray:
         """Extract timestamps from the video file, indexed by sampleID."""
         from ...video.video_utils import VideoCaptureContext
 
+        sample_id = self._sample_id[:100] if stub_test else self._sample_id
+        max_frames = int(sample_id.max()) + 1 if stub_test and sample_id.size > 0 else None
         with VideoCaptureContext(file_path=str(self._video_file_path)) as video:
-            all_timestamps = video.get_video_timestamps()
+            all_timestamps = video.get_video_timestamps(max_frames=max_frames)
 
-        frame_indices = self._sample_id.astype(int)
+        frame_indices = sample_id.astype(int)
         return np.asarray(all_timestamps[frame_indices], dtype="float64")
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def _get_timestamps_from_frametimes(self, stub_test: bool = False) -> np.ndarray:
+        """Extract timestamps from a frametimes.npy file, indexed by sampleID."""
+        frametimes = np.load(str(self._frametimes_file_path))  # shape (2, n_video_frames)
+        all_timestamps = frametimes[1]  # row 1 = elapsed seconds
+        sample_id = self._sample_id[:100] if stub_test else self._sample_id
+        frame_indices = sample_id.astype(int)
+        return np.asarray(all_timestamps[frame_indices], dtype="float64")
+
+    def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
+        if self._frametimes_file_path is not None:
+            return self._get_timestamps_from_frametimes(stub_test=stub_test)
         if self._video_file_path is not None:
-            return self._get_timestamps_from_video()
+            return self._get_timestamps_from_video(stub_test=stub_test)
         if self._sampling_rate is not None:
-            return self._sample_id / self._sampling_rate
+            sample_id = self._sample_id[:100] if stub_test else self._sample_id
+            return sample_id / self._sampling_rate
         raise ValueError(
-            "Cannot compute original timestamps without a video file or sampling rate. "
-            "Provide 'video_file_path' or 'sampling_rate' when initializing the interface, "
-            "or use 'set_aligned_timestamps()' to set timestamps directly."
+            "Cannot compute original timestamps without a frametimes file, video file, or sampling rate. "
+            "Provide 'frametimes_file_path', 'video_file_path', or 'sampling_rate' when initializing the "
+            "interface, or use 'set_aligned_timestamps()' to set timestamps directly."
         )
 
-    def get_timestamps(self) -> np.ndarray:
+    def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         if self._timestamps is not None:
-            return self._timestamps
-        return self.get_original_timestamps()
+            return self._timestamps[:100] if stub_test else self._timestamps
+        return self.get_original_timestamps(stub_test=stub_test)
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         self._timestamps = np.asarray(aligned_timestamps, dtype="float64")
@@ -222,7 +251,11 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                         "properties": {
                             "name": {"type": ["string", "null"], "description": "Name for this series"},
                             "description": {"type": ["string", "null"], "description": "Description for this series"},
-                            "unit": {"type": ["string", "null"], "description": "Unit of measurement", "default": "mm"},
+                            "unit": {
+                                "type": ["string", "null"],
+                                "description": "Unit of measurement",
+                                "default": "millimeters",
+                            },
                             "reference_frame": {
                                 "type": ["string", "null"],
                                 "description": "Description of the reference frame",
@@ -260,7 +293,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             pose_estimation_series_metadata[landmark] = {
                 "name": f"PoseEstimationSeries{landmark_capitalized}",
                 "description": f"3D position of {landmark}.",
-                "unit": "mm",
+                "unit": "millimeters",
                 "reference_frame": "3D coordinate system defined by the DANNCE calibration.",
                 "confidence_definition": "Maximum probability from the 3D probability volume.",
             }
@@ -299,6 +332,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        stub_test: bool = False,
     ) -> None:
         """
         Add DANNCE pose estimation data to an NWB file.
@@ -309,6 +343,9 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             The NWB file to add the pose estimation data to.
         metadata : dict, optional
             Metadata dictionary. If provided, overrides default metadata from ``get_metadata()``.
+        stub_test : bool, default: False
+            If True, write only the first 100 frames to the NWB file for quick smoke testing.
+            The interface's internal data arrays are not mutated.
         """
         from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
@@ -320,9 +357,10 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         pose_estimation_metadata = default_metadata["PoseEstimation"]
         container_metadata = pose_estimation_metadata["PoseEstimationContainers"][self.pose_estimation_metadata_key]
 
-        # Get timestamps
-        timestamps = self.get_timestamps()
+        # Get timestamps (sliced when stub_test=True)
+        timestamps = self.get_timestamps(stub_test=stub_test)
         timestamps = np.asarray(timestamps, dtype="float64")
+        n_samples = timestamps.shape[0]
 
         rate = calculate_regular_series_rate(timestamps)
         if rate is not None:
@@ -362,8 +400,8 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         series_metadata = container_metadata.get("PoseEstimationSeries", {})
 
         for i, landmark in enumerate(self._landmark_names):
-            data = self._pred[:, :, i]  # shape: (n_samples, 3)
-            confidence = self._p_max[:, i]  # shape: (n_samples,)
+            data = self._pred[:n_samples, :, i]  # shape: (n_samples, 3)
+            confidence = self._p_max[:n_samples, i]  # shape: (n_samples,)
 
             # Default series kwargs
             landmark_capitalized = landmark.replace("_", " ").title().replace(" ", "")
@@ -371,7 +409,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                 name=f"PoseEstimationSeries{landmark_capitalized}",
                 description=f"3D position of {landmark}.",
                 data=data,
-                unit="mm",
+                unit="millimeters",
                 reference_frame="3D coordinate system defined by the DANNCE calibration.",
                 confidence=confidence,
                 confidence_definition="Maximum probability from the 3D probability volume.",
