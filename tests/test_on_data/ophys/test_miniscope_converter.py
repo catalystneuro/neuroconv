@@ -143,7 +143,8 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
     def setup_class_fixture(self):
         """Set up test fixtures for legacy Tye Lab data."""
         self.folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
-        self.converter = MiniscopeConverter(folder_path=self.folder_path)
+        with pytest.warns(FutureWarning, match="Not passing 'user_configuration_file_path'"):
+            self.converter = MiniscopeConverter(folder_path=self.folder_path)
         self.test_dir = Path(tempfile.mkdtemp())
 
         self.stub_samples = 2

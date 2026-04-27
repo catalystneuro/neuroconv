@@ -268,7 +268,7 @@ def _add_recording_segment_to_nwbfile(
             ecephys_mod.add(pynwb.ecephys.FilteredEphys(name="Processed"))
 
     # The add_electrodes adds a column with channel name to the electrode table.
-    add_electrodes_to_nwbfile(
+    _add_electrodes_to_nwbfile(
         recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
     )
 
@@ -805,7 +805,7 @@ def _get_null_value_for_property(property: str, sample_data: Any, null_values_fo
     return default_value
 
 
-def add_electrodes_to_nwbfile(
+def _add_electrodes_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
@@ -1076,6 +1076,41 @@ def add_electrodes_to_nwbfile(
         nwbfile.add_electrode_column(property, **cols_args)
 
 
+def add_electrodes_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict | None = None,
+    exclude: tuple = (),
+    *,
+    null_values_for_properties: dict | None = None,
+):
+    """
+    Deprecated. Use ``add_recording_metadata_to_nwbfile`` instead.
+
+    Calling this function on its own does not guarantee that the linked devices and
+    electrode groups described in ``metadata`` are written to the NWBFile, which can
+    lead to missing or spurious metadata. ``add_recording_metadata_to_nwbfile``
+    orchestrates devices, electrode groups, and electrodes together and should be
+    used to ensure all recording metadata is properly added.
+
+    This function will be removed on or after October 2026.
+    """
+    warnings.warn(
+        "add_electrodes_to_nwbfile is deprecated and will be removed on or after October 2026. "
+        "Use add_recording_metadata_to_nwbfile to ensure all recording metadata "
+        "(devices, electrode groups, and electrodes) is properly added.",
+        FutureWarning,
+        stacklevel=2,
+    )
+    _add_electrodes_to_nwbfile(
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        exclude=exclude,
+        null_values_for_properties=null_values_for_properties,
+    )
+
+
 def _check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment_index: int = 0) -> None:
     """
     Raises an error if the full traces of a recording extractor are larger than psutil.virtual_memory().available.
@@ -1220,6 +1255,7 @@ def add_recording_as_time_series_to_nwbfile(
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
     metadata_key: str = "TimeSeries",
+    parent_container: Literal["acquisition", "stimulus"] = "acquisition",
 ):
     """
     Adds traces from recording object as TimeSeries to an NWBFile object.
@@ -1261,6 +1297,9 @@ def add_recording_as_time_series_to_nwbfile(
         By default (False), the function checks if the timestamps are uniformly sampled, and if so, stores the data
         using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
         explicitly, regardless of whether the sampling rate is uniform.
+    parent_container : {"acquisition", "stimulus"}, default: "acquisition"
+        The NWB container to add the TimeSeries to. Use "stimulus" for data that was
+        applied to the system (e.g., electrical stimulation current).
     """
 
     num_segments = recording.get_num_segments()
@@ -1274,6 +1313,7 @@ def add_recording_as_time_series_to_nwbfile(
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
             metadata_key=metadata_key,
+            parent_container=parent_container,
         )
 
 
@@ -1286,6 +1326,7 @@ def _add_time_series_segment_to_nwbfile(
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
     metadata_key: str = "time_series_metadata_key",
+    parent_container: Literal["acquisition", "stimulus"] = "acquisition",
 ):
     """
     Internal function to add a single recording segment as a TimeSeries to an NWBFile.
@@ -1380,7 +1421,10 @@ def _add_time_series_segment_to_nwbfile(
     # Create TimeSeries object and add it to nwbfile
     time_series = pynwb.base.TimeSeries(**tseries_kwargs)
 
-    nwbfile.add_acquisition(time_series)
+    if parent_container == "acquisition":
+        nwbfile.add_acquisition(time_series)
+    elif parent_container == "stimulus":
+        nwbfile.add_stimulus(time_series)
 
 
 def _get_default_spatial_series_metadata():
@@ -1617,7 +1661,7 @@ def add_recording_metadata_to_nwbfile(
     """
     add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
     _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrodes_to_nwbfile(
+    _add_electrodes_to_nwbfile(
         recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
     )
 
@@ -1927,7 +1971,7 @@ def _add_units_table_to_nwbfile(
     the table are skipped. When the table has an ``electrodes`` column and a unit's
     electrode indices differ from the previously stored ones, the unit is re-added
     as a new row (resulting in duplicate unit names with different electrode
-    mappings). See ``add_electrodes_to_nwbfile`` for how the electrode table itself
+    mappings). See ``_add_electrodes_to_nwbfile`` for how the electrode table itself
     handles deduplication via ``(group_name, electrode_name, channel_name)``.
 
     .. note::
