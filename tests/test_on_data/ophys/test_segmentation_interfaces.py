@@ -32,6 +32,15 @@ class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        assert "Devices" not in metadata
+        metadata_key = self.interface.metadata_key
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data acquired with CaImAn."},
+            },
+        }
+
     @pytest.fixture(
         params=[
             {"mask_type": "image", "include_background_segmentation": True},
@@ -302,10 +311,28 @@ class TestCnmfeSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        assert "Devices" not in metadata
+        metadata_key = self.interface.metadata_key
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data acquired with CNMF-E."},
+            },
+        }
+
 
 class TestExtractSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = ExtractSegmentationInterface
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert "Devices" not in metadata
+        metadata_key = self.interface.metadata_key
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data acquired with EXTRACT."},
+            },
+        }
 
     @pytest.fixture(
         params=[
@@ -389,6 +416,39 @@ class TestSuite2pSegmentationInterfaceChan1Plane0(SegmentationExtractorInterface
         deconvolved_trace_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["deconvolved"]
         assert deconvolved_trace_metadata["name"] == self.deconvolved_trace_name
 
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == "suite2p_segmentation_chan1_plane0"
+        assert "Devices" not in metadata
+        assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {
+                    "name": "ImagingPlaneChan1Plane0",
+                    "imaging_rate": 10.0,
+                },
+            },
+            "PlaneSegmentations": {
+                metadata_key: {
+                    "name": "PlaneSegmentationChan1Plane0",
+                    "description": "Segmentation data from Suite2p.",
+                    "imaging_plane_metadata_key": metadata_key,
+                },
+            },
+            "RoiResponses": {
+                metadata_key: {
+                    "raw": {"name": "RoiResponseSeriesChan1Plane0"},
+                    "neuropil": {"name": "NeuropilChan1Plane0"},
+                    "deconvolved": {"name": "DeconvolvedChan1Plane0"},
+                },
+            },
+            "SegmentationImages": {
+                metadata_key: {
+                    "correlation": {"name": "CorrelationImageChan1Plane0"},
+                    "mean": {"name": "MeanImageChan1Plane0"},
+                },
+            },
+        }
+
 
 class TestSuite2pSegmentationInterfaceChan2Plane0(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = Suite2pSegmentationInterface
@@ -434,6 +494,38 @@ class TestSuite2pSegmentationInterfaceChan2Plane0(SegmentationExtractorInterface
             deconvolved_trace_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["deconvolved"]
             assert deconvolved_trace_metadata["name"] == self.deconvolved_trace_name
 
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == "suite2p_segmentation_chan2_plane0"
+        assert "Devices" not in metadata
+        assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {
+                    "name": "ImagingPlaneChan2Plane0",
+                    "imaging_rate": 10.0,
+                },
+            },
+            "PlaneSegmentations": {
+                metadata_key: {
+                    "name": "PlaneSegmentationChan2Plane0",
+                    "description": "Segmentation data from Suite2p.",
+                    "imaging_plane_metadata_key": metadata_key,
+                },
+            },
+            "RoiResponses": {
+                metadata_key: {
+                    "raw": {"name": "RoiResponseSeriesChan2Plane0"},
+                    "neuropil": {"name": "NeuropilChan2Plane0"},
+                },
+            },
+            "SegmentationImages": {
+                metadata_key: {
+                    "correlation": {"name": "CorrelationImageChan2Plane0"},
+                    "mean": {"name": "MeanImageChan2Plane0"},
+                },
+            },
+        }
+
 
 class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = Suite2pSegmentationInterface
@@ -444,6 +536,39 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
     )
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == "suite2p_segmentation_chan1_plane0"
+        assert "Devices" not in metadata
+        assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {
+                    "name": "ImagingPlaneChan1Plane0",
+                    "imaging_rate": 10.0,
+                },
+            },
+            "PlaneSegmentations": {
+                metadata_key: {
+                    "name": "PlaneSegmentationChan1Plane0",
+                    "description": "Segmentation data from Suite2p.",
+                    "imaging_plane_metadata_key": metadata_key,
+                },
+            },
+            "RoiResponses": {
+                metadata_key: {
+                    "raw": {"name": "RoiResponseSeriesChan1Plane0"},
+                    "neuropil": {"name": "NeuropilChan1Plane0"},
+                    "deconvolved": {"name": "DeconvolvedChan1Plane0"},
+                },
+            },
+            "SegmentationImages": {
+                metadata_key: {
+                    "correlation": {"name": "CorrelationImageChan1Plane0"},
+                    "mean": {"name": "MeanImageChan1Plane0"},
+                },
+            },
+        }
 
 
 skip_on_darwin_arm64 = pytest.mark.skipif(
@@ -616,6 +741,16 @@ class TestMinianSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert "Devices" not in metadata
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data acquired with Minian."},
+            },
+        }
+        assert metadata["NWBFile"]["session_id"] == "Ca_EEG3-4"
+
     @pytest.fixture(
         params=[
             {"mask_type": "image", "include_background_segmentation": True},
@@ -650,3 +785,13 @@ class TestMinianSegmentationInterfaceWithStubTest(SegmentationExtractorInterface
     )
     save_directory = OUTPUT_PATH
     conversion_options = dict(stub_test=True)
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert "Devices" not in metadata
+        assert metadata["Ophys"] == {
+            "PlaneSegmentations": {
+                metadata_key: {"description": "Segmentation data acquired with Minian."},
+            },
+        }
+        assert metadata["NWBFile"]["session_id"] == "Ca_EEG3-4"

@@ -381,6 +381,7 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         )
 
         interface = self.data_interface_cls(**self.interface_kwargs)
+        original_first_timestamp = float(interface.get_original_timestamps()[0])
 
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
@@ -396,11 +397,40 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-            assert nwbfile.acquisition[self.optical_series_name].starting_time == aligned_starting_time
+            # The series stores timing either as (starting_time, rate) for regularly-sampled
+            # data, or as a full timestamps array for irregularly-sampled data. Verify the
+            # shift landed in whichever representation was used.
+            series = nwbfile.acquisition[self.optical_series_name]
+            expected_first_timestamp = original_first_timestamp + aligned_starting_time
+            if series.timestamps is not None:
+                assert series.timestamps[0] == expected_first_timestamp
+            else:
+                assert series.starting_time == expected_first_timestamp
 
 
 class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: BaseSegmentationExtractorInterface
+
+    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # when old list-based metadata format is removed
+    def test_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        self.check_extracted_metadata_old_list_format(metadata)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        """Override this method to make assertions about extracted metadata in old list-based format."""
+        pass
+
+    def test_get_metadata(self, setup_interface):
+        """Test get_metadata with the new dict-based format."""
+        import inspect
+
+        sig = inspect.signature(self.interface.get_metadata)
+        if "use_new_metadata_format" not in sig.parameters:
+            pytest.skip("Interface does not support use_new_metadata_format yet")
+
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        self.check_extracted_metadata(metadata)
 
     def check_read(self, nwbfile_path: str):
         from roiextractors import NwbSegmentationExtractor
