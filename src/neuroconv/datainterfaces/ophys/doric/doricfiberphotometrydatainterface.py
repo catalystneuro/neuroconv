@@ -1,4 +1,5 @@
 """Interface for Doric Neuroscience Studio fiber photometry data (.doric HDF5 files)."""
+
 from copy import deepcopy
 from datetime import datetime
 from typing import Literal
@@ -52,10 +53,9 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose)
         # Keep ndx extensions registered so pynwb IO works correctly.
+        import h5py
         import ndx_fiber_photometry  # noqa: F401
         import ndx_ophys_devices  # noqa: F401
-
-        import h5py
 
         self._streams: dict[str, dict] = {}
         self._session_start_time: datetime | None = None
@@ -117,9 +117,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     # Internal data loader
     # ------------------------------------------------------------------
 
-    def _load_stream_array(
-        self, stream_name: str, t1: float = 0.0, t2: float = 0.0
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def _load_stream_array(self, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
         """Load a single stream's data and timestamps from the HDF5 file.
 
         Parameters
@@ -232,9 +230,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             {name: ts + aligned_starting_time for name, ts in stream_name_to_timestamps.items()}
         )
 
-    def get_original_starting_time_and_rate(
-        self, t1: float = 0.0, t2: float = 0.0
-    ) -> dict[str, tuple[float, float]]:
+    def get_original_starting_time_and_rate(self, t1: float = 0.0, t2: float = 0.0) -> dict[str, tuple[float, float]]:
         """Derive starting time and sampling rate from the stored Time datasets.
 
         Parameters
@@ -258,9 +254,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             result[stream_name] = (starting_time, rate)
         return result
 
-    def get_starting_time_and_rate(
-        self, t1: float = 0.0, t2: float = 0.0
-    ) -> dict[str, tuple[float, float]]:
+    def get_starting_time_and_rate(self, t1: float = 0.0, t2: float = 0.0) -> dict[str, tuple[float, float]]:
         """Return starting time and rate (aligned if set, otherwise original).
 
         Parameters
@@ -350,9 +344,9 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         elif timing_source == "aligned_starting_time_and_rate":
             stream_name_to_starting_time_and_rate = self.get_starting_time_and_rate(t1=t1, t2=t2)
         else:
-            assert timing_source == "original", (
-                "timing_source must be one of 'original', 'aligned_timestamps', or 'aligned_starting_time_and_rate'."
-            )
+            assert (
+                timing_source == "original"
+            ), "timing_source must be one of 'original', 'aligned_timestamps', or 'aligned_starting_time_and_rate'."
 
         # ── Device models ────────────────────────────────────────────────────────
         device_model_types = [
@@ -384,9 +378,9 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             fiber_insertion = FiberInsertion(**optical_fiber_meta["fiber_insertion"])
             of_meta = deepcopy(optical_fiber_meta)
             of_meta["fiber_insertion"] = fiber_insertion
-            assert of_meta["model"] in nwbfile.device_models, (
-                f"Device model {of_meta['model']} not found in NWBFile device_models for {of_meta['name']}."
-            )
+            assert (
+                of_meta["model"] in nwbfile.device_models
+            ), f"Device model {of_meta['model']} not found in NWBFile device_models for {of_meta['name']}."
             of_meta["model"] = nwbfile.device_models[of_meta["model"]]
             nwbfile.add_device(OpticalFiber(**of_meta))
 
@@ -395,7 +389,9 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         for vv_meta in metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryViruses", []):
             vv = ViralVector(**vv_meta)
             name_to_viral_vector[vv.name] = vv
-        viruses = FiberPhotometryViruses(viral_vectors=list(name_to_viral_vector.values())) if name_to_viral_vector else None
+        viruses = (
+            FiberPhotometryViruses(viral_vectors=list(name_to_viral_vector.values())) if name_to_viral_vector else None
+        )
 
         name_to_injection: dict[str, ViralVectorInjection] = {}
         for inj_meta in metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryVirusInjections", []):
@@ -445,9 +441,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         ]
         for row_meta in table_meta["rows"]:
             for field in required_fields:
-                assert field in row_meta, (
-                    f"FiberPhotometryTable metadata row is missing required field '{field}'."
-                )
+                assert field in row_meta, f"FiberPhotometryTable metadata row is missing required field '{field}'."
             row_data = {f: nwbfile.devices[row_meta[f]] for f in device_fields if f in row_meta}
             row_data["location"] = row_meta["location"]
             row_data["excitation_wavelength_in_nm"] = row_meta["excitation_wavelength_in_nm"]

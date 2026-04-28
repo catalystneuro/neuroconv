@@ -9,7 +9,10 @@ from hdmf.testing import TestCase
 from parameterized import parameterized
 from pynwb import NWBHDF5IO
 
-from neuroconv.datainterfaces import DoricFiberPhotometryInterface, TDTFiberPhotometryInterface
+from neuroconv.datainterfaces import (
+    DoricFiberPhotometryInterface,
+    TDTFiberPhotometryInterface,
+)
 from neuroconv.tools.testing.data_interface_mixins import (
     DoricFiberPhotometryInterfaceMixin,
     TDTFiberPhotometryInterfaceMixin,
@@ -890,14 +893,20 @@ class TestDoricFiberPhotometryInterface(TestCase, DoricFiberPhotometryInterfaceM
     def test_get_original_timestamps(self):
         interface = self.data_interface_cls(**self.interface_kwargs)
         timestamps = interface.get_original_timestamps()
-        for stream_name in ("BBC300_ROISignals_Series0001_CAM1EXC1_ROI01", "BBC300_ROISignals_Series0001_CAM1EXC2_ROI01"):
+        for stream_name in (
+            "BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+            "BBC300_ROISignals_Series0001_CAM1EXC2_ROI01",
+        ):
             assert stream_name in timestamps
             assert len(timestamps[stream_name]) > 0
 
     def test_get_original_starting_time_and_rate(self):
         interface = self.data_interface_cls(**self.interface_kwargs)
         result = interface.get_original_starting_time_and_rate()
-        for stream_name in ("BBC300_ROISignals_Series0001_CAM1EXC1_ROI01", "BBC300_ROISignals_Series0001_CAM1EXC2_ROI01"):
+        for stream_name in (
+            "BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+            "BBC300_ROISignals_Series0001_CAM1EXC2_ROI01",
+        ):
             assert stream_name in result
             starting_time, rate = result[stream_name]
             assert abs(rate - 30.1) < 1.0  # BBC300 ROI signals are ~30 Hz
