@@ -97,6 +97,7 @@ Fiber Photometry
 .. toctree::
     :maxdepth: 1
 
+    Doric Fiber Photometry <fiberphotometry/doric_fp>
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
 
 Behavior
