@@ -4,11 +4,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+import pytest
 from hdmf.testing import TestCase
+from parameterized import parameterized
 from pynwb import NWBHDF5IO
 
-from neuroconv.datainterfaces import TDTFiberPhotometryInterface
+from neuroconv.datainterfaces import DoricFiberPhotometryInterface, TDTFiberPhotometryInterface
 from neuroconv.tools.testing.data_interface_mixins import (
+    DoricFiberPhotometryInterfaceMixin,
     TDTFiberPhotometryInterfaceMixin,
 )
 from neuroconv.utils import dict_deep_update, load_dict_from_file
@@ -16,10 +19,7 @@ from neuroconv.utils import dict_deep_update, load_dict_from_file
 try:
     from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 except ImportError:
-    from setup_paths import OUTPUT_PATH
-
-import pytest
-from parameterized import parameterized
+    from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
 
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
@@ -682,3 +682,241 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
         interface = self.data_interface_cls(**self.interface_kwargs)
         with self.assertRaises(AssertionError):
             interface.load(t2=1.0, evtype=["invalid"])
+
+
+# ---------------------------------------------------------------------------
+# Doric fiber photometry tests
+# ---------------------------------------------------------------------------
+
+_DORIC_STREAM_NAMES = sorted(
+    [
+        "BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+        "BBC300_ROISignals_Series0001_CAM1EXC1_ROI02",
+        "BBC300_ROISignals_Series0001_CAM1EXC1_ROI03",
+        "BBC300_ROISignals_Series0001_CAM1EXC2_ROI01",
+        "BBC300_ROISignals_Series0001_CAM1EXC2_ROI02",
+        "BBC300_ROISignals_Series0001_CAM1EXC2_ROI03",
+        "BBC300_Signals_Series0001_AnalogOut_AnalogCh1",
+        "BBC300_Signals_Series0001_AnalogOut_AnalogCh2",
+        "BBC300_Signals_Series0001_DigitalIO_Camera1",
+        "BBC300_Signals_Series0001_DigitalIO_DigitalCh1",
+    ]
+)
+
+_DORIC_METADATA = {
+    "Ophys": {
+        "FiberPhotometry": {
+            "OpticalFiberModels": [
+                {
+                    "name": "optical_fiber_model",
+                    "manufacturer": "Doric Lenses",
+                    "numerical_aperture": 0.48,
+                    "core_diameter_in_um": 400.0,
+                }
+            ],
+            "OpticalFibers": [
+                {
+                    "name": "optical_fiber",
+                    "model": "optical_fiber_model",
+                    "fiber_insertion": {"depth_in_mm": 2.8},
+                }
+            ],
+            "ExcitationSourceModels": [
+                {
+                    "name": "excitation_source_model",
+                    "manufacturer": "Doric Lenses",
+                    "source_type": "LED",
+                    "excitation_mode": "one-photon",
+                }
+            ],
+            "ExcitationSources": [
+                {
+                    "name": "excitation_source_465nm",
+                    "model": "excitation_source_model",
+                },
+                {
+                    "name": "excitation_source_405nm",
+                    "model": "excitation_source_model",
+                },
+            ],
+            "PhotodetectorModels": [
+                {
+                    "name": "photodetector_model",
+                    "manufacturer": "Doric Lenses",
+                    "detector_type": "photodiode",
+                }
+            ],
+            "Photodetectors": [
+                {
+                    "name": "photodetector",
+                    "model": "photodetector_model",
+                }
+            ],
+            "FiberPhotometryIndicators": [
+                {
+                    "name": "green_fluorophore",
+                    "description": "GCaMP7b calcium indicator.",
+                    "label": "GCaMP7b",
+                }
+            ],
+            "FiberPhotometryTable": {
+                "name": "fiber_photometry_table",
+                "description": "Fiber photometry acquisition metadata.",
+                "rows": [
+                    {
+                        "name": "0",
+                        "location": "DMS",
+                        "excitation_wavelength_in_nm": 465.0,
+                        "emission_wavelength_in_nm": 525.0,
+                        "indicator": "green_fluorophore",
+                        "optical_fiber": "optical_fiber",
+                        "excitation_source": "excitation_source_465nm",
+                        "photodetector": "photodetector",
+                    },
+                    {
+                        "name": "1",
+                        "location": "DMS",
+                        "excitation_wavelength_in_nm": 405.0,
+                        "emission_wavelength_in_nm": 525.0,
+                        "indicator": "green_fluorophore",
+                        "optical_fiber": "optical_fiber",
+                        "excitation_source": "excitation_source_405nm",
+                        "photodetector": "photodetector",
+                    },
+                ],
+            },
+            "FiberPhotometryResponseSeries": [
+                {
+                    "name": "signal_exc1_roi1",
+                    "description": "465 nm channel, ROI 1.",
+                    "stream_name": "BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+                    "unit": "a.u.",
+                    "fiber_photometry_table_region": [0],
+                    "fiber_photometry_table_region_description": "Row 0.",
+                },
+                {
+                    "name": "signal_exc2_roi1",
+                    "description": "405 nm channel, ROI 1.",
+                    "stream_name": "BBC300_ROISignals_Series0001_CAM1EXC2_ROI01",
+                    "unit": "a.u.",
+                    "fiber_photometry_table_region": [1],
+                    "fiber_photometry_table_region_description": "Row 1.",
+                },
+            ],
+        }
+    }
+}
+
+
+class TestDoricFiberPhotometryInterface(TestCase, DoricFiberPhotometryInterfaceMixin):
+    data_interface_cls = DoricFiberPhotometryInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric")
+    )
+    conversion_options = {}
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 6, 24, 13, 58, 38)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            assert "optical_fiber_model" in nwbfile.device_models
+            assert "optical_fiber" in nwbfile.devices
+            assert "excitation_source_465nm" in nwbfile.devices
+            assert "excitation_source_405nm" in nwbfile.devices
+            assert "photodetector" in nwbfile.devices
+
+            fp_meta = nwbfile.lab_meta_data["fiber_photometry"]
+            table = fp_meta.fiber_photometry_table
+            assert table.name == "fiber_photometry_table"
+            assert len(table) == 2
+
+            indicators = fp_meta.fiber_photometry_indicators.indicators
+            assert "green_fluorophore" in indicators
+
+            for series_name in ("signal_exc1_roi1", "signal_exc2_roi1"):
+                assert series_name in nwbfile.acquisition
+                series = nwbfile.acquisition[series_name]
+                assert series.unit == "a.u."
+                assert len(series.data) > 0
+                if series.timestamps is not None:
+                    assert len(series.timestamps) == len(series.data)
+                else:
+                    assert series.rate is not None
+
+    def _get_metadata(self):
+        metadata = self.data_interface_cls(**self.interface_kwargs).get_metadata()
+        metadata = dict_deep_update(metadata, _DORIC_METADATA)
+        metadata["NWBFile"]["session_description"] = "Test Doric fiber photometry session."
+        return metadata
+
+    @parameterized.expand(
+        [
+            ("timing_source_original", "original"),
+            ("timing_source_timestamps", "aligned_timestamps"),
+            ("timing_source_rate", "aligned_starting_time_and_rate"),
+        ]
+    )
+    def test_all_conversion_checks(self, _, timing_source):
+        metadata = self._get_metadata()
+        self.conversion_options["timing_source"] = timing_source
+        super().test_all_conversion_checks(metadata=metadata)
+        self.conversion_options.pop("timing_source", None)
+
+    def test_all_conversion_checks_stub_test(self):
+        metadata = self._get_metadata()
+        self.conversion_options["stub_test"] = True
+        super().test_all_conversion_checks(metadata=metadata)
+        self.conversion_options.pop("stub_test", None)
+
+    def test_check_run_conversion_stub_test_invalid(self):
+        metadata = self._get_metadata()
+        with pytest.raises(AssertionError, match="stub_test cannot be used with a specified t2"):
+            nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_invalid.nwb")
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+            self.conversion_options["stub_test"] = True
+            self.conversion_options["t2"] = 1.0
+            self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, metadata=metadata)
+        self.conversion_options.pop("stub_test", None)
+        self.conversion_options.pop("t2", None)
+
+    def test_get_stream_names(self):
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        assert interface.get_stream_names() == _DORIC_STREAM_NAMES
+
+    def test_get_original_timestamps(self):
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        timestamps = interface.get_original_timestamps()
+        for stream_name in ("BBC300_ROISignals_Series0001_CAM1EXC1_ROI01", "BBC300_ROISignals_Series0001_CAM1EXC2_ROI01"):
+            assert stream_name in timestamps
+            assert len(timestamps[stream_name]) > 0
+
+    def test_get_original_starting_time_and_rate(self):
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        result = interface.get_original_starting_time_and_rate()
+        for stream_name in ("BBC300_ROISignals_Series0001_CAM1EXC1_ROI01", "BBC300_ROISignals_Series0001_CAM1EXC2_ROI01"):
+            assert stream_name in result
+            starting_time, rate = result[stream_name]
+            assert abs(rate - 30.1) < 1.0  # BBC300 ROI signals are ~30 Hz
+
+    def test_set_aligned_timestamps_roundtrip(self):
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        original = interface.get_original_timestamps()
+        shifted = {name: ts + 10.0 for name, ts in original.items()}
+        interface.set_aligned_timestamps(shifted)
+        retrieved = interface.get_timestamps()
+        for name, ts in shifted.items():
+            np.testing.assert_array_equal(retrieved[name], ts)
+
+    def test_set_aligned_starting_time_and_rate_roundtrip(self):
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        original = interface.get_original_starting_time_and_rate()
+        aligned = {name: (st + 5.0, r) for name, (st, r) in original.items()}
+        interface.set_aligned_starting_time_and_rate(aligned)
+        retrieved = interface.get_starting_time_and_rate()
+        for name, (st, r) in aligned.items():
+            assert retrieved[name][0] == st
+            assert retrieved[name][1] == r
