@@ -596,6 +596,30 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
     conversion_options = dict(mask_type="pixel")
 
     def check_extracted_metadata(self, metadata):
+        """Check the new dict-based metadata format."""
+        metadata_key = "inscopix_segmentation"
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 4, 1, 12, 3, 53, 290011)
+        assert metadata["NWBFile"]["session_id"] == "FV4581_Ret"
+        assert metadata["NWBFile"]["experimenter"] == ["Bei-Xuan"]
+
+        expected_device = {
+            "name": "NVista3",
+            "description": "Inscopix Microscope (Serial: 11132301, Software: 1.5.2)",
+        }
+        assert metadata["Devices"] == {metadata_key: expected_device}
+
+        expected_plane_segmentation = {
+            "description": "Inscopix cell segmentation using cnmfe with traces in dF over noise",
+        }
+        assert metadata["Ophys"]["PlaneSegmentations"][metadata_key] == expected_plane_segmentation
+
+        assert metadata["Subject"]["subject_id"] == "FV4581"
+        assert metadata["Subject"]["species"] == "Unknown species"
+        assert metadata["Subject"]["strain"] == "CaMKIICre"
+        assert metadata["Subject"]["sex"] == "M"
+
+    def check_extracted_metadata_old_list_format(self, metadata):
         """Check that the extracted metadata contains expected Inscopix-specific items."""
         # Check session start time extraction
         assert "session_start_time" in metadata["NWBFile"]
@@ -687,6 +711,21 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
     conversion_options = dict(mask_type="pixel")
 
     def check_extracted_metadata(self, metadata):
+        """Check the new dict-based metadata format on a fixture without rich device metadata."""
+        metadata_key = "inscopix_segmentation"
+
+        # No device name/serial/software in this fixture, so no Devices entry
+        assert "Devices" not in metadata
+
+        expected_plane_segmentation = {
+            "description": "Inscopix cell segmentation using cnmfe with traces in dF over noise",
+        }
+        assert metadata["Ophys"]["PlaneSegmentations"][metadata_key] == expected_plane_segmentation
+
+        # No subject info in this fixture
+        assert "Subject" not in metadata
+
+    def check_extracted_metadata_old_list_format(self, metadata):
         """Check that the extracted metadata contains expected items."""
         # Check device has proper default name
         device_list = metadata["Ophys"]["Device"]
