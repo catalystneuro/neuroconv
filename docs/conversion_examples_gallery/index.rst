@@ -49,6 +49,7 @@ Sorting
     NeuroScope <sorting/neuroscope>
     Phy <sorting/phy>
     Plexon <sorting/plexon>
+    XClust <sorting/xclust>
 
 Intracellular electrophysiology
 -------------------------------

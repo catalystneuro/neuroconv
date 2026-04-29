@@ -216,6 +216,9 @@ tdt = [
 whitematter = [
     "neuroconv[ecephys_minimal]",
 ]
+xclust = [
+    "spikeinterface>=0.103.1",
+]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axon]",
@@ -240,6 +243,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[spikeglx]",
     "neuroconv[tdt]",
     "neuroconv[whitematter]",
+    "neuroconv[xclust]",
 ]
 
 ## Icephys

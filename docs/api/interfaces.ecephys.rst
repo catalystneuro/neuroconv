@@ -37,6 +37,10 @@ European Data Format (EDF) Recording
 ------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface
 
+European Data Format (EDF) Analog
+----------------------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.edf.edfanaloginterface
+
 Intan Amplifier
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intandatainterface
@@ -57,6 +61,10 @@ MaxOne Recording
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.maxwell.maxonedatainterface
 
+MCSRaw Recording
+----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.mcsraw.mcsrawdatainterface
+
 MEArec Recording
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.mearec.mearecdatainterface
@@ -72,6 +80,7 @@ NeuroScope Recording & Sorting
 OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysbinaryconverter
 
 Phy Sorting
 -----------
@@ -104,3 +113,7 @@ Tucker-Davis Technologies (TDT) Recording
 White Matter Recording
 ----------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.whitematter.whitematterdatainterface
+
+XClust Sorting
+--------------
+.. automodule:: neuroconv.datainterfaces.ecephys.xclust.xclustdatainterface
