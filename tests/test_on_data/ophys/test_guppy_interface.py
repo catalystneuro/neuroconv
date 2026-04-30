@@ -1,5 +1,7 @@
+import shutil
 from datetime import datetime, timezone
 
+import h5py
 import numpy as np
 import pandas
 import pytest
@@ -80,6 +82,17 @@ class TestGuppyInterface:
             assert metadata["NWBFile"].get("session_start_time") in (None, "")
         else:
             assert metadata["NWBFile"]["session_start_time"] == case["expected_session_start_time"]
+
+    def test_metadata_session_start_time_unset_when_time_rec_start_absent(self, case, tmp_path):
+        copied_folder = tmp_path / "guppy_output"
+        shutil.copytree(case["folder_path"], copied_folder)
+        for region in case["expected_regions"]:
+            with h5py.File(copied_folder / f"timeCorrection_{region}.hdf5", "r+") as time_correction_file:
+                del time_correction_file["timeRecStart"]
+
+        interface = GuppyInterface(folder_path=str(copied_folder))
+        metadata = interface.get_metadata()
+        assert metadata["NWBFile"].get("session_start_time") in (None, "")
 
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()
