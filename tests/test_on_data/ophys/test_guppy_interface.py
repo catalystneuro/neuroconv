@@ -34,6 +34,24 @@ class TestGuppyInterface:
                         "dls": ["cntrl_sig_fit", "dff", "z_score"],
                     },
                     expected_transients={"dms": ["z_score", "dff"], "dls": ["z_score", "dff"]},
+                    expected_cross_correlations=[
+                        {"event_name": "port_entries", "feature": "dff", "region_1": "dls", "region_2": "dms"},
+                        {"event_name": "port_entries", "feature": "z_score", "region_1": "dls", "region_2": "dms"},
+                        {"event_name": "rewarded_nose_pokes", "feature": "dff", "region_1": "dls", "region_2": "dms"},
+                        {
+                            "event_name": "rewarded_nose_pokes",
+                            "feature": "z_score",
+                            "region_1": "dls",
+                            "region_2": "dms",
+                        },
+                        {"event_name": "unrewarded_nose_pokes", "feature": "dff", "region_1": "dls", "region_2": "dms"},
+                        {
+                            "event_name": "unrewarded_nose_pokes",
+                            "feature": "z_score",
+                            "region_1": "dls",
+                            "region_2": "dms",
+                        },
+                    ],
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
                 ),
                 id="tdt_isosbestic_two_regions",
@@ -48,6 +66,24 @@ class TestGuppyInterface:
                         "dls": ["cntrl_sig_fit", "dff", "z_score"],
                     },
                     expected_transients={"dms": ["z_score", "dff"], "dls": ["z_score", "dff"]},
+                    expected_cross_correlations=[
+                        {"event_name": "port_entries", "feature": "dff", "region_1": "dls", "region_2": "dms"},
+                        {"event_name": "port_entries", "feature": "z_score", "region_1": "dls", "region_2": "dms"},
+                        {"event_name": "rewarded_nose_pokes", "feature": "dff", "region_1": "dls", "region_2": "dms"},
+                        {
+                            "event_name": "rewarded_nose_pokes",
+                            "feature": "z_score",
+                            "region_1": "dls",
+                            "region_2": "dms",
+                        },
+                        {"event_name": "unrewarded_nose_pokes", "feature": "dff", "region_1": "dls", "region_2": "dms"},
+                        {
+                            "event_name": "unrewarded_nose_pokes",
+                            "feature": "z_score",
+                            "region_1": "dls",
+                            "region_2": "dms",
+                        },
+                    ],
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
                 ),
                 id="tdt_isosbestic_two_regions_no_parameters_file",
@@ -94,6 +130,67 @@ class TestGuppyInterface:
         metadata = interface.get_metadata()
         assert metadata["NWBFile"].get("session_start_time") in (None, "")
 
+    def test_discovery_cross_correlations(self, interface, case):
+        actual = sorted(
+            (
+                {
+                    "event_name": entry["event"],
+                    "feature": entry["feature"],
+                    "region_1": entry["region_1"],
+                    "region_2": entry["region_2"],
+                }
+                for entry in interface.cross_correlations
+            ),
+            key=lambda entry: (entry["event_name"], entry["feature"]),
+        )
+        expected = sorted(
+            case["expected_cross_correlations"], key=lambda entry: (entry["event_name"], entry["feature"])
+        )
+        assert actual == expected
+
+    def test_metadata_cross_correlations(self, interface, case):
+        metadata = interface.get_metadata()
+        cross_correlations_metadata = metadata["Ophys"]["Guppy"]["CrossCorrelations"]
+        expected_names = {
+            f"cross_correlation_{entry['event_name']}_{entry['feature']}_{entry['region_1']}_{entry['region_2']}"
+            for entry in case["expected_cross_correlations"]
+        }
+        assert {entry["name"] for entry in cross_correlations_metadata} == expected_names
+
+    def test_cross_correlation_table_matches_source(self, interface, case):
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata, stub_test=False)
+        module = nwbfile.processing["fiber_photometry"]
+        for entry in case["expected_cross_correlations"]:
+            source_path = (
+                case["folder_path"]
+                / "cross_correlation_output"
+                / f"corr_{entry['event_name']}_{entry['feature']}_{entry['region_1']}_{entry['region_2']}.h5"
+            )
+            source_dataframe = pandas.read_hdf(source_path)
+            cross_correlation_table = module[
+                f"cross_correlation_{entry['event_name']}_{entry['feature']}_{entry['region_1']}_{entry['region_2']}"
+            ]
+            np.testing.assert_array_equal(
+                np.asarray(cross_correlation_table["lag_in_seconds"][:]),
+                source_dataframe["timestamps"].to_numpy(dtype=np.float64),
+            )
+            np.testing.assert_array_equal(
+                np.asarray(cross_correlation_table["mean"][:]),
+                source_dataframe["mean"].to_numpy(dtype=np.float64),
+            )
+            trial_columns = [
+                column for column in source_dataframe.columns if column not in ("timestamps", "mean", "err")
+            ]
+            for trial_column in trial_columns:
+                onset_in_seconds = float(trial_column)
+                column_name = f"trial_at_{onset_in_seconds:.6f}s"
+                np.testing.assert_array_equal(
+                    np.asarray(cross_correlation_table[column_name][:]),
+                    source_dataframe[trial_column].to_numpy(dtype=np.float64),
+                )
+
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()
         guppy_metadata = metadata["Ophys"]["Guppy"]
@@ -130,6 +227,15 @@ class TestGuppyInterface:
                 assert "timestamp" in table.colnames
                 assert "amplitude" in table.colnames
         assert "transient_summary" in module.data_interfaces
+        for entry in case["expected_cross_correlations"]:
+            cross_correlation_name = (
+                f"cross_correlation_{entry['event_name']}_{entry['feature']}_{entry['region_1']}_{entry['region_2']}"
+            )
+            assert cross_correlation_name in module.data_interfaces
+            cross_correlation_table = module[cross_correlation_name]
+            assert "lag_in_seconds" in cross_correlation_table.colnames
+            assert "mean" in cross_correlation_table.colnames
+            assert len(cross_correlation_table["lag_in_seconds"]) <= 100
 
     def test_transients_table_row_count_matches_csv(self, interface, case):
         metadata = interface.get_metadata()
@@ -224,3 +330,9 @@ class TestGuppyInterface:
             for region, prefixes in case["expected_traces"].items():
                 for prefix in prefixes:
                     assert f"{prefix}_{region}" in module.data_interfaces
+            for entry in case["expected_cross_correlations"]:
+                cross_correlation_name = (
+                    f"cross_correlation_{entry['event_name']}_{entry['feature']}"
+                    f"_{entry['region_1']}_{entry['region_2']}"
+                )
+                assert cross_correlation_name in module.data_interfaces

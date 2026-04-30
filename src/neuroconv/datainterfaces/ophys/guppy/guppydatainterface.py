@@ -101,11 +101,14 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         else:
             guppy_parameters = {}
 
+        cross_correlations = self._discover_cross_correlations(folder_path=folder_path, regions=regions)
+
         self.folder_path = folder_path
         self.parameters_file_path = Path(parameters_file_path) if parameters_file_path is not None else None
         self.regions = regions
         self.traces_by_region = traces_by_region
         self.transients_by_region = transients_by_region
+        self.cross_correlations = cross_correlations
         self.guppy_parameters = guppy_parameters
         self._region_to_aligned_timestamps: dict[str, np.ndarray] | None = None
         self._region_to_aligned_starting_time_and_rate: dict[str, tuple[float, float]] | None = None
@@ -116,6 +119,51 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         assert len(rows) >= 2, f"storesList.csv at {stores_list_path} must have at least two rows."
         semantic_names = [name.strip() for name in rows[1].split(",")]
         return [name[len("signal_") :] for name in semantic_names if name.startswith("signal_")]
+
+    @classmethod
+    def _discover_cross_correlations(cls, folder_path: Path, regions: list[str]) -> list[dict]:
+        cross_correlation_folder = folder_path / "cross_correlation_output"
+        if not cross_correlation_folder.is_dir():
+            return []
+
+        entries = []
+        for cross_correlation_path in sorted(cross_correlation_folder.glob("corr_*.h5")):
+            stem = cross_correlation_path.stem
+            assert stem.startswith("corr_"), f"Unexpected cross-correlation filename: {cross_correlation_path.name}."
+            remainder = stem[len("corr_") :]
+
+            region_2 = next((region for region in regions if remainder.endswith(f"_{region}")), None)
+            assert region_2 is not None, (
+                f"Could not parse target region from {cross_correlation_path.name}; "
+                f"expected suffix '_<region>' with region in {regions}."
+            )
+            remainder = remainder[: -len(f"_{region_2}")]
+
+            region_1 = next((region for region in regions if remainder.endswith(f"_{region}")), None)
+            assert region_1 is not None, (
+                f"Could not parse reference region from {cross_correlation_path.name}; "
+                f"expected suffix '_<region>' with region in {regions}."
+            )
+            remainder = remainder[: -len(f"_{region_1}")]
+
+            feature = next((feat for feat in cls._TRANSIENT_FEATURES if remainder.endswith(f"_{feat}")), None)
+            assert feature is not None, (
+                f"Could not parse feature from {cross_correlation_path.name}; "
+                f"expected suffix '_<feature>' with feature in {cls._TRANSIENT_FEATURES}."
+            )
+            event = remainder[: -len(f"_{feature}")]
+            assert event, f"Could not parse event name from {cross_correlation_path.name}."
+
+            entries.append(
+                dict(
+                    path=cross_correlation_path,
+                    event=event,
+                    feature=feature,
+                    region_1=region_1,
+                    region_2=region_2,
+                )
+            )
+        return entries
 
     def _read_time_correction(self, region: str) -> dict:
         time_correction_path = self.folder_path / f"timeCorrection_{region}.hdf5"
@@ -202,6 +250,28 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     )
                 )
 
+        cross_correlations_metadata = []
+        for entry in self.cross_correlations:
+            event = entry["event"]
+            feature = entry["feature"]
+            region_1 = entry["region_1"]
+            region_2 = entry["region_2"]
+            cross_correlations_metadata.append(
+                dict(
+                    name=f"cross_correlation_{event}_{feature}_{region_1}_{region_2}",
+                    event_name=event,
+                    feature=feature,
+                    region_1=region_1,
+                    region_2=region_2,
+                    description=(
+                        f"GuPPy cross-correlation between region '{region_1}' (reference) and "
+                        f"region '{region_2}' (target), aligned to event '{event}' onsets, computed "
+                        f"on the '{feature}' trace. Positive lag means '{region_2}' leads "
+                        f"'{region_1}'. Values are normalized per trial (divided by peak absolute value)."
+                    ),
+                )
+            )
+
         metadata["Ophys"]["Guppy"] = dict(
             ProcessingModule=dict(
                 name="fiber_photometry",
@@ -213,6 +283,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 name="transient_summary",
                 description=("Per-(region, feature) GuPPy transient summary: events/min and mean peak amplitude."),
             ),
+            CrossCorrelations=cross_correlations_metadata,
         )
         return metadata
 
@@ -223,7 +294,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         metadata_schema["properties"]["Ophys"]["properties"]["Guppy"] = dict(
             type="object",
             additionalProperties=False,
-            required=["ProcessingModule", "Traces", "Transients", "TransientSummary"],
+            required=["ProcessingModule", "Traces", "Transients", "TransientSummary", "CrossCorrelations"],
             properties=dict(
                 ProcessingModule=dict(
                     type="object",
@@ -266,6 +337,21 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     properties=dict(
                         name=dict(type="string"),
                         description=dict(type="string"),
+                    ),
+                ),
+                CrossCorrelations=dict(
+                    type="array",
+                    items=dict(
+                        type="object",
+                        required=["name", "event_name", "feature", "region_1", "region_2", "description"],
+                        properties=dict(
+                            name=dict(type="string"),
+                            event_name=dict(type="string"),
+                            feature=dict(type="string", enum=list(self._TRANSIENT_FEATURES)),
+                            region_1=dict(type="string"),
+                            region_2=dict(type="string"),
+                            description=dict(type="string"),
+                        ),
                     ),
                 ),
             ),
@@ -480,3 +566,61 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 ],
             )
             processing_module.add(transient_summary_table)
+
+        # Per-(event, feature, region pair) cross-correlation tables
+        cross_correlation_entries_by_name = {
+            entry["event"] + "|" + entry["feature"] + "|" + entry["region_1"] + "|" + entry["region_2"]: entry
+            for entry in self.cross_correlations
+        }
+        for cross_correlation_metadata in guppy_metadata["CrossCorrelations"]:
+            entry_key = (
+                cross_correlation_metadata["event_name"]
+                + "|"
+                + cross_correlation_metadata["feature"]
+                + "|"
+                + cross_correlation_metadata["region_1"]
+                + "|"
+                + cross_correlation_metadata["region_2"]
+            )
+            entry = cross_correlation_entries_by_name[entry_key]
+            cross_correlation_dataframe = pandas.read_hdf(entry["path"])
+            if stub_test:
+                cross_correlation_dataframe = cross_correlation_dataframe.iloc[
+                    : min(len(cross_correlation_dataframe), 100)
+                ]
+
+            trial_columns = [
+                column for column in cross_correlation_dataframe.columns if column not in ("timestamps", "mean", "err")
+            ]
+            columns = [
+                VectorData(
+                    name="lag_in_seconds",
+                    description="Lag axis in seconds, symmetric around zero.",
+                    data=cross_correlation_dataframe["timestamps"].to_numpy(dtype=np.float64),
+                ),
+                VectorData(
+                    name="mean",
+                    description="Across-trial mean cross-correlation at each lag.",
+                    data=cross_correlation_dataframe["mean"].to_numpy(dtype=np.float64),
+                ),
+            ]
+            for trial_column in trial_columns:
+                onset_in_seconds = float(trial_column)
+                columns.append(
+                    VectorData(
+                        name=f"trial_at_{onset_in_seconds:.6f}s",
+                        description=(
+                            f"Normalized cross-correlation aligned to event onset at {onset_in_seconds} s. "
+                            f"Each value at lag L is correlate(region_1, region_2) at lag L, divided by the "
+                            f"per-trial peak absolute value."
+                        ),
+                        data=cross_correlation_dataframe[trial_column].to_numpy(dtype=np.float64),
+                    )
+                )
+
+            cross_correlation_table = DynamicTable(
+                name=cross_correlation_metadata["name"],
+                description=cross_correlation_metadata["description"],
+                columns=columns,
+            )
+            processing_module.add(cross_correlation_table)
