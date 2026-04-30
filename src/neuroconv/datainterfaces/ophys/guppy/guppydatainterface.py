@@ -345,15 +345,10 @@ class GuppyFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         guppy_metadata = metadata["Ophys"]["Guppy"]
         processing_module_metadata = guppy_metadata["ProcessingModule"]
-        module_description = processing_module_metadata["description"]
-        if self.guppy_parameters:
-            module_description = (
-                f"{module_description} " f"GuPPyParamtersUsed: {json.dumps(self.guppy_parameters, allow_nan=True)}"
-            )
         processing_module = get_module(
             nwbfile=nwbfile,
             name=processing_module_metadata["name"],
-            description=module_description,
+            description=processing_module_metadata["description"],
         )
 
         original_starting_time_and_rate = self.get_original_starting_time_and_rate()
