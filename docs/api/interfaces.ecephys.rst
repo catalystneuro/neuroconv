@@ -1,5 +1,5 @@
-Recording & Sorting
-===================
+Extracellular Electrophysiology
+===============================
 
 Base Recording
 --------------
@@ -12,6 +12,10 @@ Base Sorting
 AlphaOmega
 ----------
 .. automodule:: neuroconv.datainterfaces.ecephys.alphaomega.alphaomegadatainterface
+
+Axon Recording
+--------------
+.. automodule:: neuroconv.datainterfaces.ecephys.axon.axondatainterface
 
 Axona Recording
 ---------------
@@ -33,9 +37,17 @@ European Data Format (EDF) Recording
 ------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface
 
-Intan Recording
+Intan Amplifier
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intandatainterface
+
+Intan Analog
+------------
+.. automodule:: neuroconv.datainterfaces.ecephys.intan.intananaloginterface
+
+Intan Stimulation
+-----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.intan.intanstiminterface
 
 KiloSort Sorting
 ----------------
@@ -60,7 +72,6 @@ NeuroScope Recording & Sorting
 OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
-
 
 Phy Sorting
 -----------
@@ -89,3 +100,7 @@ SpikeGLX Recording
 Tucker-Davis Technologies (TDT) Recording
 -----------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.tdt.tdtdatainterface
+
+White Matter Recording
+----------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.whitematter.whitematterdatainterface

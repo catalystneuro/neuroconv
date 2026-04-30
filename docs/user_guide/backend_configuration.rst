@@ -132,11 +132,37 @@ Then we can use this configuration to write the NWB file:
 
 .. code-block:: python
 
-    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+    from neuroconv.tools import configure_and_write_nwbfile
 
     dataset_configurations["acquisition/MyTimeSeries/data"] = dataset_configuration
 
-    configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, output_filepath="output.nwb")
+    configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output.nwb")
+
+
+Existing configuration
+----------------------
+
+If you have already written a file and want to get the configuration that was used, you can use the :py:meth:`~neuroconv.tools.nwb_helpers.get_existing_backend_configuration` function:
+
+.. code-block:: python
+
+    from neuroconv.tools.nwb_helpers import get_existing_backend_configuration
+    from pynwb import read_nwb
+
+    nwbfile = read_nwb("output.nwb")
+    backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
+
+    print(backend_configuration)
+
+Then, you can modify the configuration and write a new file using the same method as above. For example, we can increase
+the compression level but leave all the other settings the same.
+
+.. code-block:: python
+
+    backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compression_options["compression_opts"] = 9
+
+    nwbfile = read_nwb("output.nwb")
+    configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output2.nwb")
 
 
 Interfaces and Converters
@@ -156,11 +182,6 @@ The following example uses the :ref:`example data <example_data>` available from
     from zoneinfo import ZoneInfo
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import SpikeGLXRecordingInterface, PhySortingInterface
-    from neuroconv.tools.nwb_helpers import (
-        make_or_load_nwbfile,
-        get_default_backend_configuration,
-        configure_backend,
-    )
 
     # Instantiate interfaces and converter
     ap_interface = SpikeGLXRecordingInterface(
@@ -206,6 +227,7 @@ If you do not intend to make any alterations to the default configuration for th
         metadata = converter.get_metadata()
 
         # Create the in-memory NWBFile object and apply the default configuration for HDF5
+        nwbfile = converter.create_nwbfile(metadata=metadata)
         backend="hdf5"
 
         # Configure and write the NWB file
@@ -217,6 +239,98 @@ If you do not intend to make any alterations to the default configuration for th
         )
 
 and all datasets in the NWB file will automatically use the default configurations!
+
+
+Global Compression Settings
+---------------------------
+
+For convenience, NeuroConv provides a way to apply compression settings to all datasets at once, without having to modify each dataset configuration individually.
+
+This is particularly useful when you want to apply the same compression settings to all datasets in your NWB file.
+
+**Using Global Compression with Backend Configuration**
+
+You can use the :py:meth:`~neuroconv.tools.nwb_helpers._configuration_models._base_backend.BackendConfiguration.apply_global_compression` method to apply compression settings to all datasets in a backend configuration:
+
+.. code-block:: python
+
+    from neuroconv.tools import get_default_backend_configuration, configure_and_write_nwbfile
+
+    # Create an in-memory NWBFile object from a converter or a data interface
+    nwbfile = Converter.create_nwbfile()  # nwbfile = data_interface.create_nwbfile()
+
+    # Get the default backend configuration
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    # Apply Blosc compression with zstd compressor to all datasets
+    backend_configuration.apply_global_compression(
+        compression_method="Blosc",
+        compression_options={
+            "cname": "zstd",
+            "clevel": 5,
+        }
+    )
+
+    # Write the file with the modified configuration
+    configure_and_write_nwbfile(
+        nwbfile=nwbfile,
+        nwbfile_path="compressed_file.nwb",
+        backend_configuration=backend_configuration,
+    )
+
+
+Repacking
+---------
+
+If you simply want to update the backend configuration of an existing NWB file to conform with our recommended settings,
+you can use the :py:meth:`~neuroconv.tools.nwb_helpers.repack_nwbfile` function.
+For example, this function can be used to apply recommended chunking and compression settings to an NWB file that was created without them.
+
+.. code-block:: python
+
+    from datetime import datetime
+    from uuid import uuid4
+
+    from pynwb import NWBFile, TimeSeries, NWBHDF5IO
+    from neuroconv.tools.nwb_helpers import repack_nwbfile
+
+    session_start_time = datetime(2020, 1, 1, 12, 30, 0)
+    nwbfile = NWBFile(
+        identifier=str(uuid4()),
+        session_start_time=session_start_time,
+        session_description="A session of my experiment.",
+    )
+
+    time_series = TimeSeries(
+        name="MyTimeSeries",
+        description="A time series from my experiment.",
+        unit="cm/s",
+        data=[1., 2., 3.],
+        timestamps=[0.0, 0.2, 0.4],
+    )
+    nwbfile.add_acquisition(time_series)
+
+    with NWBHDF5IO(nwbfile_path="uncompressed_nwbfile.nwb", mode="w") as io:
+        io.write(nwbfile)
+
+    repack_nwbfile(
+        nwbfile_path="uncompressed_nwbfile.nwb",
+        export_nwbfile_path="repacked_nwbfile.nwb",
+    )
+
+This will create a new NWB file with the same data as the original,
+but with the recommended chunking and compression settings applied.
+
+You can also convert between backends by specifying the ``export_backend`` parameter:
+
+.. code-block:: python
+
+    # Convert HDF5 to Zarr
+    repack_nwbfile(
+        nwbfile_path="file.nwb",
+        export_nwbfile_path="file.nwb.zarr",
+        export_backend="zarr",
+    )
 
 
 FAQ

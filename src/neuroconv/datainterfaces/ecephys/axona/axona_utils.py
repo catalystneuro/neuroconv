@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Union
 
 import dateutil
 import numpy as np
@@ -122,7 +121,7 @@ def read_all_eeg_file_lfp_data(file_path: FilePath) -> np.ndarray:
 
 
 # Helper functions for AxonaPositionDataInterface
-def parse_generic_header(file_path: FilePath, params: Union[list, set]) -> dict:
+def parse_generic_header(file_path: FilePath, params: list | set) -> dict:
     """
     Given a binary file with phrases and line breaks, enters the
     first word of a phrase as dictionary key and the following

@@ -1,4 +1,4 @@
-Intracellular electrophysiology
+Intracellular Electrophysiology
 ===============================
 
 Base Interface

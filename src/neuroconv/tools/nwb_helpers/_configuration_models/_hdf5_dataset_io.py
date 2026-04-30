@@ -1,9 +1,11 @@
 """Base Pydantic models for the HDF5DatasetConfiguration."""
 
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 import h5py
+from hdmf import Container
 from pydantic import Field, InstanceOf
+from typing_extensions import Self
 
 from ._base_dataset_io import DatasetIOConfiguration
 from ...importing import is_package_installed
@@ -32,9 +34,26 @@ if is_package_installed(package_name="hdf5plugin"):
 class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
-    compression_method: Union[
-        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())], InstanceOf[h5py._hl.filters.FilterRefBase], None
-    ] = Field(
+    compression_method: (
+        Literal[
+            "szip",
+            "lzf",
+            "gzip",
+            "Bitshuffle",
+            "Blosc",
+            "Blosc2",
+            "BZip2",
+            "FciDecomp",
+            "LZ4",
+            "Sperr",
+            "SZ",
+            "SZ3",
+            "Zfp",
+            "Zstd",
+        ]
+        | InstanceOf[h5py._hl.filters.FilterRefBase]
+        | None
+    ) = Field(
         default="gzip",
         description=(
             "The specified compression method to apply to this dataset. "
@@ -45,7 +64,7 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     )
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
     # Looks like they'll have to be hand-typed however... Can try parsing the google docstrings - no annotation typing.
-    compression_options: Union[dict[str, Any], None] = Field(
+    compression_options: dict[str, Any] | None = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
 
@@ -62,10 +81,9 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
             elif isinstance(self.compression_method, str):
                 compression_options = self.compression_options or dict()
                 # The easiest way to ensure the form is correct is to instantiate the hdf5plugin and pass dynamic kwargs
-                compression_bundle = dict(
-                    **getattr(hdf5plugin, self.compression_method)(**compression_options),
-                    allow_plugin_filters=True,
-                )
+                plugin_class = getattr(hdf5plugin, self.compression_method)
+                plugin_instance = plugin_class(**compression_options)
+                compression_bundle = dict(**plugin_instance, allow_plugin_filters=True)
             elif isinstance(self.compression_method, h5py._hl.filters.FilterRefBase):
                 compression_bundle = dict(**self.compression_method, allow_plugin_filters=True)
             elif self.compression_method is None:
@@ -78,3 +96,38 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
             compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
 
         return dict(chunks=self.chunk_shape, **compression_bundle)
+
+    @classmethod
+    def from_neurodata_object_with_existing(
+        cls,
+        neurodata_object: Container,
+        dataset_name: Literal["data", "timestamps"],
+    ) -> Self:
+        """
+        Construct an HDF5DatasetIOConfiguration from existing dataset settings.
+
+        Parameters
+        ----------
+        neurodata_object : hdmf.Container
+            The neurodata object containing the field that has been read from disk.
+        dataset_name : "data" or "timestamps"
+            The name of the field that corresponds to the dataset on disk.
+
+        Returns
+        -------
+        Self
+            An HDF5DatasetIOConfiguration instance with settings matching the existing dataset.
+        """
+        kwargs = cls.get_kwargs_from_neurodata_object(
+            neurodata_object=neurodata_object,
+            dataset_name=dataset_name,
+        )
+        dataset = cls.get_dataset(neurodata_object=neurodata_object, dataset_name=dataset_name)
+        compression_method = dataset.compression
+        compression_opts = dataset.compression_opts
+        compression_options = dict(compression_opts=compression_opts)
+        return cls(
+            **kwargs,
+            compression_method=compression_method,
+            compression_options=compression_options,
+        )

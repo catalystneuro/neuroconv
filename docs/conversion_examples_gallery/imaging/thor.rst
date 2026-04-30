@@ -18,9 +18,13 @@ Convert Thor TIFF imaging data to NWB using
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ThorlabsTiff" / "single_channel_single_plane" / "20231018-002" / "ChanA_001_001_001_001.tif"
     >>> interface = ThorImagingInterface(file_path=file_path, channel_name="ChanA")
     >>>
+    >>> metadata = interface.get_metadata()
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
 .. note::

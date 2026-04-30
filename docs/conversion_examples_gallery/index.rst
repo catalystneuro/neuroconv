@@ -16,12 +16,13 @@ Recording
     :maxdepth: 1
 
     AlphaOmega <recording/alphaomega>
+    Axon <recording/axon>
     Axona <recording/axona>
     Biocam <recording/biocam>
     Blackrock <recording/blackrock>
     European Data Format (EDF) <recording/edf>
     Intan <recording/intan>
-    MaxOne <recording/maxone>
+    MaxOne <recording/maxwell>
     MCSRaw <recording/mcsraw>
     MEArec <recording/mearec>
     Neuralynx <recording/neuralynx>
@@ -33,6 +34,7 @@ Recording
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
     Tucker-Davis Technologies (TDT) <recording/tdt>
+    White Matter <recording/whitematter>
 
 Sorting
 ~~~~~~~
@@ -54,7 +56,7 @@ Intracellular electrophysiology
 .. toctree::
     :maxdepth: 1
 
-    ABF <recording/abf>
+    Axon Binary File (ABF) <recording/abf>
 
 Optical physiology
 ------------------
@@ -66,11 +68,14 @@ Imaging
     :maxdepth: 1
 
     Bruker <imaging/brukertiff>
+    Femtonics <imaging/femtonics>
     HDF5 <imaging/hdf5imaging>
     Micro-Manager <imaging/micromanagertiff>
     Miniscope <imaging/miniscope>
+    Inscopix <imaging/inscopix>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
+    ScanImage Legacy (v3.8 and older) <imaging/scanimage_legacy>
     Thor <imaging/thor>
     Tiff <imaging/tiff>
 
@@ -83,6 +88,7 @@ Segmentation
     Caiman <segmentation/caiman>
     CNMFE <segmentation/cnmfe>
     EXTRACT <segmentation/extract>
+    Inscopix <segmentation/inscopix>
     Suite2P <segmentation/suite2p>
 
 Fiber Photometry
@@ -137,5 +143,5 @@ Common interface combinations
     combinations/ecephys_pose_estimation
 
 .. note::
-  If you do not see the format you need, feel free to :format-request-form:`request it<>` or
+If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
   :ref:`build-data-interface`.

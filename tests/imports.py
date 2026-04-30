@@ -62,6 +62,7 @@ class TestImportStructure(TestCase):
             "nwb_helpers",  # Attached to namespace by top __init__ call of NWBConverter
             "path_expansion",
             "processes",
+            "iterative_write",
             # Functions and classes imported on the __init__
             "get_format_summaries",
             "get_package",
@@ -71,6 +72,7 @@ class TestImportStructure(TestCase):
             "data_transfers",
             "LocalPathExpander",
             "get_module",
+            "configure_and_write_nwbfile",
         ]
         assert sorted(current_structure) == sorted(expected_structure)
 

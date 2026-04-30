@@ -1,4 +1,5 @@
 import importlib.util
+import warnings
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -7,6 +8,7 @@ from pynwb import NWBFile
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
+    DeepDict,
     get_json_schema_from_method_signature,
     get_metadata_schema_for_icephys,
     get_schema_from_hdmf_class,
@@ -17,8 +19,6 @@ class BaseIcephysInterface(BaseExtractorInterface):
     """Primary class for all intracellular NeoInterfaces."""
 
     keywords = ("intracellular electrophysiology", "patch clamp", "current clamp")
-
-    ExtractorModuleName = "neo"
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -41,14 +41,13 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
         from ...tools.neo import get_number_of_electrodes, get_number_of_segments
 
-        self.source_data = dict()
-        self.source_data["file_paths"] = file_paths
+        super().__init__(file_paths=file_paths)
 
         self.readers_list = list()
         for f in file_paths:
-            self.readers_list.append(self.get_extractor()(filename=f))
+            file_source_data = {"filename": f}
+            self.readers_list.append(self._initialize_extractor(file_source_data))
 
-        self.subset_channels = None
         self.n_segments = get_number_of_segments(neo_reader=self.readers_list[0], block=0)
         self.n_channels = get_number_of_electrodes(neo_reader=self.readers_list[0])
 
@@ -61,7 +60,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Icephys"] = get_metadata_schema_for_icephys()
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         from ...tools.neo import get_number_of_electrodes
 
         metadata = super().get_metadata()
@@ -93,6 +92,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         icephys_experiment_type: str = "voltage_clamp",
         skip_electrodes: tuple[int] = (),
     ):
@@ -110,6 +110,33 @@ class BaseIcephysInterface(BaseExtractorInterface):
         skip_electrodes : tuple, optional
             Electrode IDs to skip. Defaults to ().
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "icephys_experiment_type",
+                "skip_electrodes",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to BaseIcephysInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            icephys_experiment_type = positional_values.get("icephys_experiment_type", icephys_experiment_type)
+            skip_electrodes = positional_values.get("skip_electrodes", skip_electrodes)
+
         from ...tools.neo import add_neo_to_nwb
 
         if nwbfile is None:

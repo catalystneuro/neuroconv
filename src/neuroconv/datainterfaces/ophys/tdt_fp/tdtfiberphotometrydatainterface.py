@@ -1,17 +1,18 @@
 import os
+import warnings
 from contextlib import redirect_stdout
-from datetime import datetime
+from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
 import numpy as np
-import pytz
 from pydantic import DirectoryPath, validate_call
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools import get_package
-from neuroconv.tools.fiber_photometry import add_fiber_photometry_device
+from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_model
 from neuroconv.utils import DeepDict
 
 
@@ -29,7 +30,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
+    def __init__(
+        self, folder_path: DirectoryPath, *args, verbose: bool = False
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """Initialize the TDTFiberPhotometryInterface.
 
         Parameters
@@ -39,12 +42,38 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         verbose : bool, optional
             Whether to print status messages, default = True.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to TDTFiberPhotometryInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+
         super().__init__(
             folder_path=folder_path,
             verbose=verbose,
         )
         # This module should be here so ndx_fiber_photometry is in the global namespace when an pynwb.io object is created
         import ndx_fiber_photometry  # noqa: F401
+        import ndx_ophys_devices  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
         """
@@ -58,7 +87,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         metadata = super().get_metadata()
         tdt_photometry = self.load(evtype=["scalars"])  # This evtype quickly loads info without loading all the data.
         start_timestamp = tdt_photometry.info.start_date.timestamp()
-        session_start_datetime = datetime.fromtimestamp(start_timestamp, tz=pytz.utc)
+        session_start_datetime = datetime.fromtimestamp(start_timestamp, tz=timezone.utc)
         metadata["NWBFile"]["session_start_time"] = session_start_datetime.isoformat()
         return metadata
 
@@ -101,7 +130,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 f"evtype must be a list containing some combination of 'all', 'epocs', 'snips', 'streams', or 'scalars', "
                 f"but got {evtype_string}."
             )
-        with open(os.devnull, "w") as f, redirect_stdout(f):
+        with open(os.devnull, "w", encoding="utf-8") as f, redirect_stdout(f):
             tdt_photometry = tdt.read_block(str(folder_path), t1=t1, t2=t2, evtype=evtype)
         return tdt_photometry
 
@@ -273,7 +302,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        *,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         t1: float = 0.0,
         t2: float = 0.0,
@@ -302,11 +331,52 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         AssertionError
             If the timing_source is not one of "original", "aligned_timestamps", or "aligned_starting_time_and_rate".
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "t1",
+                "t2",
+                "timing_source",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to TDTFiberPhotometryInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            t1 = positional_values.get("t1", t1)
+            t2 = positional_values.get("t2", t2)
+            timing_source = positional_values.get("timing_source", timing_source)
+
         from ndx_fiber_photometry import (
             CommandedVoltageSeries,
             FiberPhotometry,
+            FiberPhotometryIndicators,
             FiberPhotometryResponseSeries,
             FiberPhotometryTable,
+            FiberPhotometryViruses,
+            FiberPhotometryVirusInjections,
+        )
+        from ndx_ophys_devices import (
+            FiberInsertion,
+            Indicator,
+            OpticalFiber,
+            ViralVector,
+            ViralVectorInjection,
         )
 
         # Load Data
@@ -330,23 +400,92 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ), "timing_source must be one of 'original', 'aligned_timestamps', or 'aligned_starting_time_and_rate'."
 
         # Add Devices
+        device_model_types = [
+            "OpticalFiberModel",
+            "ExcitationSourceModel",
+            "PhotodetectorModel",
+            "BandOpticalFilterModel",
+            "EdgeOpticalFilterModel",
+            "DichroicMirrorModel",
+        ]
+        for device_type in device_model_types:
+            device_models_metadata = metadata["Ophys"]["FiberPhotometry"].get(device_type + "s", [])
+            for devices_metadata in device_models_metadata:
+                add_ophys_device_model(
+                    nwbfile=nwbfile,
+                    device_metadata=devices_metadata,
+                    device_type=device_type,
+                )
         device_types = [
-            "OpticalFiber",
             "ExcitationSource",
             "Photodetector",
             "BandOpticalFilter",
             "EdgeOpticalFilter",
             "DichroicMirror",
-            "Indicator",
         ]
         for device_type in device_types:
             devices_metadata = metadata["Ophys"]["FiberPhotometry"].get(device_type + "s", [])
             for device_metadata in devices_metadata:
-                add_fiber_photometry_device(
+                add_ophys_device(
                     nwbfile=nwbfile,
                     device_metadata=device_metadata,
                     device_type=device_type,
                 )
+        # Add Optical Fibers (special case bc they have additional FiberInsertion objects)
+        optical_fibers_metadata = metadata["Ophys"]["FiberPhotometry"].get("OpticalFibers", [])
+        for optical_fiber_metadata in optical_fibers_metadata:
+            fiber_insertion_metadata = optical_fiber_metadata["fiber_insertion"]
+            fiber_insertion = FiberInsertion(**fiber_insertion_metadata)
+            optical_fiber_metadata = deepcopy(optical_fiber_metadata)
+            optical_fiber_metadata["fiber_insertion"] = fiber_insertion
+            assert (
+                optical_fiber_metadata["model"] in nwbfile.device_models
+            ), f"Device model {optical_fiber_metadata['model']} not found in NWBFile device_models for {optical_fiber_metadata['name']}."
+            optical_fiber_metadata["model"] = nwbfile.device_models[optical_fiber_metadata["model"]]
+            optical_fiber = OpticalFiber(**optical_fiber_metadata)
+            nwbfile.add_device(optical_fiber)
+
+        # Add Viral Vectors, Injections, and Indicators
+        viral_vectors_metadata = metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryViruses", [])
+        name_to_viral_vector = {}
+        for viral_vector_metadata in viral_vectors_metadata:
+            viral_vector = ViralVector(**viral_vector_metadata)
+            name_to_viral_vector[viral_vector.name] = viral_vector
+        if len(name_to_viral_vector) > 0:
+            viruses = FiberPhotometryViruses(viral_vectors=list(name_to_viral_vector.values()))
+        else:
+            viruses = None
+
+        viral_vector_injections_metadata = metadata["Ophys"]["FiberPhotometry"].get(
+            "FiberPhotometryVirusInjections", []
+        )
+        name_to_viral_vector_injection = {}
+        for viral_vector_injection_metadata in viral_vector_injections_metadata:
+            viral_vector = name_to_viral_vector[viral_vector_injection_metadata["viral_vector"]]
+            viral_vector_injection_metadata = deepcopy(viral_vector_injection_metadata)
+            viral_vector_injection_metadata["viral_vector"] = viral_vector
+            viral_vector_injection = ViralVectorInjection(**viral_vector_injection_metadata)
+            name_to_viral_vector_injection[viral_vector_injection.name] = viral_vector_injection
+        if len(name_to_viral_vector_injection) > 0:
+            virus_injections = FiberPhotometryVirusInjections(
+                viral_vector_injections=list(name_to_viral_vector_injection.values())
+            )
+        else:
+            virus_injections = None
+
+        indicators_metadata = metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryIndicators", [])
+        name_to_indicator = {}
+        for indicator_metadata in indicators_metadata:
+            if "viral_vector_injection" in indicator_metadata:
+                viral_vector_injection = name_to_viral_vector_injection[indicator_metadata["viral_vector_injection"]]
+                indicator_metadata = deepcopy(indicator_metadata)
+                indicator_metadata["viral_vector_injection"] = viral_vector_injection
+            indicator = Indicator(**indicator_metadata)
+            name_to_indicator[indicator.name] = indicator
+        if len(name_to_indicator) > 0:
+            indicators = FiberPhotometryIndicators(indicators=list(name_to_indicator.values()))
+        else:
+            raise ValueError("At least one indicator must be specified in the metadata.")
 
         # Commanded Voltage Series
         for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"].get("CommandedVoltageSeries", []):
@@ -384,18 +523,18 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
         required_fields = [
             "location",
+            "excitation_wavelength_in_nm",
+            "emission_wavelength_in_nm",
             "indicator",
             "optical_fiber",
             "excitation_source",
             "photodetector",
-            "dichroic_mirror",
         ]
         device_fields = [
             "optical_fiber",
             "excitation_source",
             "photodetector",
             "dichroic_mirror",
-            "indicator",
             "excitation_filter",
             "emission_filter",
         ]
@@ -406,6 +545,10 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 ), f"FiberPhotometryTable metadata row {row_metadata['name']} is missing required field {field}."
             row_data = {field: nwbfile.devices[row_metadata[field]] for field in device_fields if field in row_metadata}
             row_data["location"] = row_metadata["location"]
+            row_data["excitation_wavelength_in_nm"] = row_metadata["excitation_wavelength_in_nm"]
+            row_data["emission_wavelength_in_nm"] = row_metadata["emission_wavelength_in_nm"]
+            if "indicator" in row_metadata:
+                row_data["indicator"] = name_to_indicator[row_metadata["indicator"]]
             if "coordinates" in row_metadata:
                 row_data["coordinates"] = row_metadata["coordinates"]
             if "commanded_voltage_series" in row_metadata:
@@ -414,6 +557,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         fiber_photometry_table_metadata = FiberPhotometry(
             name="fiber_photometry",
             fiber_photometry_table=fiber_photometry_table,
+            fiber_photometry_viruses=viruses,
+            fiber_photometry_virus_injections=virus_injections,
+            fiber_photometry_indicators=indicators,
         )
         nwbfile.add_lab_meta_data(fiber_photometry_table_metadata)
 

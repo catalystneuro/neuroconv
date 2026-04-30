@@ -1,17 +1,20 @@
 import json
-from typing import Optional
+import warnings
 
 import numpy as np
 from pydantic import DirectoryPath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import dict_deep_update
+from ....utils import DeepDict, dict_deep_update
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface for converting Neuralynx data. Uses
-    :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
+    """
+    Primary data interface for converting Neuralynx data.
+
+    Uses :py:func:`~spikeinterface.extractors.read_neuralynx` from SpikeInterface.
+    """
 
     display_name = "Neuralynx Recording"
     associated_suffixes = (".ncs", ".nse", ".ntt", ".nse", ".nev")
@@ -19,7 +22,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
-        from spikeinterface.extractors import NeuralynxRecordingExtractor
+        from spikeinterface.extractors.extractor_classes import (
+            NeuralynxRecordingExtractor,
+        )
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names
@@ -32,16 +37,19 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         ] = 'Path to Neuralynx directory containing ".ncs", ".nse", ".ntt", ".nse", or ".nev" files.'
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["all_annotations"] = True
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuralynxRecordingExtractor,
+        )
 
-        return extractor_kwargs
+        return NeuralynxRecordingExtractor
 
     def __init__(
         self,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        stream_name: str | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
@@ -50,7 +58,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        folder_path: FolderPathType
+        folder_path: DirectoryPath
             Path to Neuralynx directory.
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
@@ -58,6 +66,35 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stream_name",
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to NeuralynxRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stream_name = positional_values.get("stream_name", stream_name)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
@@ -71,7 +108,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
         # remove filter related entries already covered by `add_recording_extractor_properties`
@@ -105,19 +142,28 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     """
     Primary data interface for converting Neuralynx sorting data. Uses
-    :py:class:`~spikeinterface.extractors.NeuralynxSortingExtractor`.
+    :py:func:`~spikeinterface.extractors.read_neuralynx_sorting`.
     """
 
     display_name = "Neuralynx Sorting"
     associated_suffixes = (".nse", ".ntt", ".nse", ".nev")
     info = "Interface for Neuralynx sorting data."
 
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            NeuralynxSortingExtractor,
+        )
+
+        return NeuralynxSortingExtractor
+
     def __init__(
         self,
         folder_path: DirectoryPath,
-        sampling_frequency: Optional[float] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        sampling_frequency: float | None = None,
         verbose: bool = False,
-        stream_id: Optional[str] = None,
+        stream_id: str | None = None,
     ):
         """_summary_
 
@@ -133,6 +179,34 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
             Used by Spikeinterface and neo to calculate the t_start, if not provided and the stream is unique
             it will be chosen automatically
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "sampling_frequency",
+                "verbose",
+                "stream_id",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to NeuralynxSortingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
+            verbose = positional_values.get("verbose", verbose)
+            stream_id = positional_values.get("stream_id", stream_id)
 
         super().__init__(
             folder_path=folder_path, sampling_frequency=sampling_frequency, stream_id=stream_id, verbose=verbose

@@ -1,12 +1,13 @@
 import json
+import warnings
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 from warnings import warn
 
 from pydantic import FilePath, validate_call
 
 from ..baseicephysinterface import BaseIcephysInterface
+from ....utils import DeepDict
 
 
 def get_start_datetime(neo_reader):
@@ -44,7 +45,22 @@ class AbfInterface(BaseIcephysInterface):
     associated_suffixes = (".abf",)
     info = "Interface for ABF intracellular electrophysiology data."
 
-    ExtractorName = "AxonIO"
+    @classmethod
+    def get_extractor_class(cls):
+        from neo import AxonIO
+
+        return AxonIO
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = {}
+        if "filename" in interface_kwargs:
+            self.extractor_kwargs["filename"] = interface_kwargs["filename"]
+        elif "file_paths" in interface_kwargs and interface_kwargs["file_paths"]:
+            self.extractor_kwargs["filename"] = interface_kwargs["file_paths"][0]
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -67,8 +83,9 @@ class AbfInterface(BaseIcephysInterface):
     def __init__(
         self,
         file_paths: list[FilePath],
-        icephys_metadata: Optional[dict] = None,
-        icephys_metadata_file_path: Optional[FilePath] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        icephys_metadata: dict | None = None,
+        icephys_metadata_file_path: FilePath | None = None,
     ):
         """
         ABF IcephysInterface based on Neo AxonIO.
@@ -82,13 +99,40 @@ class AbfInterface(BaseIcephysInterface):
         icephys_metadata_file_path : FilePath, optional
             JSON file containing the Icephys-specific metadata.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "icephys_metadata",
+                "icephys_metadata_file_path",
+            ]
+            num_positional_args_before_args = 1  # file_paths
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to AbfInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            icephys_metadata = positional_values.get("icephys_metadata", icephys_metadata)
+            icephys_metadata_file_path = positional_values.get("icephys_metadata_file_path", icephys_metadata_file_path)
+
         super().__init__(file_paths=file_paths)
         self.source_data.update(
             icephys_metadata=icephys_metadata,
             icephys_metadata_file_path=icephys_metadata_file_path,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
         metadata = super().get_metadata()
@@ -96,7 +140,7 @@ class AbfInterface(BaseIcephysInterface):
         if self.source_data["icephys_metadata"]:
             icephys_metadata = self.source_data["icephys_metadata"]
         elif self.source_data["icephys_metadata_file_path"]:
-            with open(self.source_data["icephys_metadata_file_path"]) as json_file:
+            with open(self.source_data["icephys_metadata_file_path"], encoding="utf-8") as json_file:
                 icephys_metadata = json.load(json_file)
         else:
             icephys_metadata = dict()

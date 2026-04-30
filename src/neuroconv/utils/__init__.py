@@ -16,49 +16,9 @@ from .json_schema import (
     unroot_schema,
     get_json_schema_from_method_signature,
 )
+from .str_utils import to_camel_case
 from .types import (
     ArrayType,
     IntType,
     OptionalArrayType,
 )
-
-
-# TODO: remove after 3/1/2025
-def __getattr__(name):
-    from warnings import warn
-    from typing import Optional
-
-    from pydantic import FilePath, DirectoryPath
-
-    if name == "FilePath":
-        message = (
-            "The 'FilePath' type has been deprecated and will be removed after 3/1/2025. "
-            "Please use `pydantic.FilePath` instead."
-        )
-        warn(message=message, category=DeprecationWarning, stacklevel=2)
-
-        return FilePath
-    if name == "OptionalFilePath":
-        message = (
-            "The 'OptionalFilePath' type has been deprecated and will be removed after 3/1/2025. "
-            "Please use `typing.Optional[pydantic.FilePath]` instead."
-        )
-        warn(message=message, category=DeprecationWarning, stacklevel=2)
-
-        return Optional[FilePath]
-    if name == "FolderPathType":
-        message = (
-            "The 'FolderPathType' type has been deprecated and will be removed after 3/1/2025. "
-            "Please use `pydantic.DirectoryPath` instead."
-        )
-        warn(message=message, category=DeprecationWarning, stacklevel=2)
-
-        return DirectoryPath
-    if name == "OptionalFolderPathType":
-        message = (
-            "The 'OptionalFolderPathType' type has been deprecated and will be removed after 3/1/2025. "
-            "Please use `typing.Optional[pydantic.DirectoryPath]` instead."
-        )
-        warn(message=message, category=DeprecationWarning, stacklevel=2)
-
-        return Optional[DirectoryPath]

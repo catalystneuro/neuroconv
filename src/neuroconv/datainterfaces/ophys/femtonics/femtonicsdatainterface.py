@@ -1,0 +1,423 @@
+"""Femtonics imaging interface for NeuroConv."""
+
+import warnings
+from typing import Optional
+
+from pydantic import FilePath
+
+from ...ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....utils import DeepDict
+
+
+class FemtonicsImagingInterface(BaseImagingExtractorInterface):
+    """
+    Data interface for Femtonics imaging data (.mesc files).
+
+    This interface handles Femtonics two-photon microscopy data stored in MESc
+    (Measurement Session Container) format, which is an HDF5-based file format
+    containing imaging data, experiment metadata, scan parameters, and hardware configuration.
+    """
+
+    display_name = "Femtonics Imaging"
+    associated_suffixes = (".mesc",)
+    info = "Interface for Femtonics two-photon imaging data in MESc format."
+
+    def __init__(
+        self,
+        file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        session_name: Optional[str] = None,
+        munit_name: Optional[str] = None,
+        channel_name: Optional[str] = None,
+        verbose: bool = False,
+        metadata_key: str | None = None,
+    ):
+        """
+        Initialize the FemtonicsImagingInterface.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the .mesc file.
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to a key derived from
+            session_name, munit_name, and channel_name.
+        session_name : str, optional
+            Name of the MSession to use (e.g., "MSession_0", "MSession_1").
+            If None, and there is only one session, then the first available session will be selected automatically. Otherwise this to be specified with the desired session.
+            In Femtonics MESc files, an MSession ("Measurement Session") represents a single experimental session,
+            which may contain one or more MUnits (imaging acquisitions or experiments). MSessions are typically
+            named as "MSession_0", "MSession_1", etc...
+
+        munit_name : str, optional
+            Name of the MUnit within the specified session (e.g., "MUnit_0", "MUnit_1").
+            If None, and there is only one session, then the first available session will be selected automatically. Otherwise this to be specified with the desired session.
+
+            In Femtonics MESc files, an MUnit ("Measurement Unit") represents a single imaging acquisition or experiment,
+            including all associated imaging data and metadata. A single MSession can contain multiple MUnits,
+            each corresponding to a separate imaging run/experiment performed during the session.
+            MUnits are named as "MUnit_0", "MUnit_1", etc. within each session.
+
+        channel_name : str, optional
+            Name of the channel to extract (e.g., 'UG', 'UR').
+            If multiple channels are available and no channel is specified, an error will be raised.
+            If only one channel is available, it will be used automatically.
+
+        verbose : bool, optional
+            Whether to print verbose output. Default is False.
+        """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "session_name",
+                "munit_name",
+                "channel_name",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to FemtonicsImagingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            session_name = positional_values.get("session_name", session_name)
+            munit_name = positional_values.get("munit_name", munit_name)
+            channel_name = positional_values.get("channel_name", channel_name)
+            verbose = positional_values.get("verbose", verbose)
+
+        # Store parameters for later use
+        self._file_path = file_path
+        self._session_name = session_name
+        self._munit_name = munit_name
+        self._channel_name = channel_name
+
+        if metadata_key is None:
+            parts = ["femtonics_imaging"]
+            if session_name is not None:
+                parts.append(session_name)
+            if munit_name is not None:
+                parts.append(munit_name)
+            if channel_name is not None:
+                parts.append(f"channel_{channel_name}")
+            metadata_key = "_".join(parts)
+
+        # Initialize the extractor directly with string parameters
+        # The extractor now handles validation and selection internally
+        super().__init__(
+            file_path=file_path,
+            session_name=session_name,
+            munit_name=munit_name,
+            channel_name=channel_name,
+            verbose=verbose,
+            metadata_key=metadata_key,
+        )
+
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import FemtonicsImagingExtractor
+
+        return FemtonicsImagingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
+        self.extractor_kwargs.pop("metadata_key", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        """
+        Extract metadata specific to Femtonics imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata with Femtonics provenance.
+
+        Returns
+        -------
+        DeepDict
+            Dictionary containing extracted metadata including device information,
+            optical channels, imaging plane details, and acquisition parameters.
+        """
+        metadata = (
+            super().get_metadata()
+            if not use_new_metadata_format
+            else super().get_metadata(use_new_metadata_format=True)
+        )
+
+        femtonics_metadata = self.imaging_extractor._get_metadata()
+
+        # Session start time
+        session_start_time = femtonics_metadata.get("session_start_time")
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+
+        # Session UUID
+        session_uuid = femtonics_metadata.get("session_uuid")
+        if session_uuid:
+            metadata["NWBFile"]["session_id"] = session_uuid
+
+        # Experimenter
+        experimenter_info = femtonics_metadata.get("experimenter_info", {})
+        if experimenter_info.get("username"):
+            metadata["NWBFile"]["experimenter"] = [experimenter_info["username"]]
+
+        # Device version info
+        version_info = femtonics_metadata.get("mesc_version_info", {})
+        version_parts = []
+        if version_info.get("version"):
+            version_parts.append(f"version: {version_info['version']}")
+        if version_info.get("revision"):
+            version_parts.append(f"revision: {version_info['revision']}")
+
+        # Pixel size
+        pixel_size_info = femtonics_metadata.get("pixel_size_micrometers")
+        x_size = pixel_size_info["x_size"] if pixel_size_info else None
+        y_size = pixel_size_info["y_size"] if pixel_size_info else None
+        x_units = pixel_size_info.get("x_units") if pixel_size_info else None
+
+        # PMT settings for selected channel
+        pmt_settings = femtonics_metadata.get("pmt_settings", {})
+
+        # Geometric transformations
+        geometric_transformations = femtonics_metadata.get("geometric_transformations", {})
+
+        # Sampling frequency
+        sampling_freq = femtonics_metadata.get("sampling_frequency_hz")
+
+        # Session description (shared between both formats)
+        selected_session_name = femtonics_metadata.get("session_name")
+        selected_munit_name = femtonics_metadata.get("munit_name")
+        hostname = experimenter_info.get("hostname")
+
+        session_descr = f"Session: {selected_session_name}, MUnit: {selected_munit_name}."
+        if hostname:
+            session_descr += f" Session performed on workstation: {hostname}."
+        metadata["NWBFile"]["session_description"] = session_descr
+
+        # Build imaging plane description with geometric transformations
+        imaging_plane_description = ""
+        if geometric_transformations:
+            gt_parts = []
+            if geometric_transformations.get("translation") is not None:
+                gt_parts.append(f"translation: {geometric_transformations['translation']}")
+            if geometric_transformations.get("rotation") is not None:
+                gt_parts.append(f"rotation: {geometric_transformations['rotation']}")
+            if geometric_transformations.get("labeling_origin") is not None:
+                gt_parts.append(f"labeling_origin: {geometric_transformations['labeling_origin']}")
+            if gt_parts:
+                imaging_plane_description = "Geometric transformations: " + ", ".join(gt_parts)
+
+        # Build PMT description for selected channel
+        pmt_description = ""
+        if self._channel_name and self._channel_name in pmt_settings:
+            settings = pmt_settings[self._channel_name]
+            desc_parts = []
+            if settings.get("voltage") is not None:
+                desc_parts.append(f"PMT voltage: {settings['voltage']}V")
+            if settings.get("warmup_time") is not None:
+                desc_parts.append(f"Warmup time: {settings['warmup_time']}s")
+            if desc_parts:
+                pmt_description = ", ".join(desc_parts)
+
+        if use_new_metadata_format:
+            if version_parts:
+                metadata["Devices"] = {
+                    self.metadata_key: {"description": f"Femtonics MESc ({', '.join(version_parts)})"},
+                }
+
+            # ImagingPlanes
+            imaging_plane_entry = {}
+            if x_size is not None and y_size is not None:
+                imaging_plane_entry["grid_spacing"] = [float(x_size) * 1e-6, float(y_size) * 1e-6]
+                imaging_plane_entry["grid_spacing_unit"] = "meters"
+            if sampling_freq is not None:
+                imaging_plane_entry["imaging_rate"] = float(sampling_freq)
+            if imaging_plane_description:
+                imaging_plane_entry["description"] = imaging_plane_description
+
+            # MicroscopySeries
+            microscopy_series_entry = {}
+            if pmt_description:
+                microscopy_series_entry["description"] = pmt_description
+
+            ophys = {}
+            if imaging_plane_entry:
+                ophys["ImagingPlanes"] = {self.metadata_key: imaging_plane_entry}
+            if microscopy_series_entry:
+                ophys["MicroscopySeries"] = {self.metadata_key: microscopy_series_entry}
+            if ophys:
+                metadata["Ophys"] = ophys
+
+        else:
+            # Extract pixel size information for imaging plane
+            if pixel_size_info and "x_size" in pixel_size_info and "y_size" in pixel_size_info:
+                x_units_old = pixel_size_info.get("x_units")
+                y_units_old = pixel_size_info.get("y_units")
+
+                # Only update if both units are the same or if units are missing
+                if x_units_old == y_units_old:
+                    if "Ophys" in metadata and "ImagingPlane" in metadata["Ophys"]:
+                        for imaging_plane in metadata["Ophys"]["ImagingPlane"]:
+                            imaging_plane["grid_spacing"] = [x_size, y_size]
+                            if x_units_old:
+                                imaging_plane["grid_spacing_unit"] = x_units_old
+                            else:
+                                import warnings
+
+                                warnings.warn(
+                                    "Pixel size unit is missing in Femtonics metadata; 'grid_spacing_unit' will be set to 'n.a.'."
+                                )
+                                imaging_plane["grid_spacing_unit"] = "n.a."
+
+            # Add PMT settings to optical channels
+            if pmt_description:
+                imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+                optical_channels = imaging_plane.get("optical_channel", [])
+                if optical_channels:
+                    desc = optical_channels[0].get("description", "")
+                    desc = (desc + " " if desc else "") + pmt_description
+                    optical_channels[0]["description"] = desc.strip()
+
+            # Add version and revision info to Ophys Device description
+            if version_parts:
+                device = metadata["Ophys"]["Device"][0]
+                desc = device.get("description", "")
+                desc = f"{desc} {', '.join(version_parts)}"
+                device["description"] = desc.strip()
+
+            # Add imaging rate to ImagingPlane properties (Femtonics: only one imaging plane, always present)
+            if sampling_freq is not None:
+                imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+                imaging_plane["imaging_rate"] = sampling_freq
+
+            # Add geometric transformations to ImagingPlane description
+            if imaging_plane_description:
+                imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+                desc = imaging_plane.get("description", "")
+                desc = (desc + " " if desc else "") + imaging_plane_description
+                imaging_plane["description"] = desc.strip()
+
+        return metadata
+
+    @classmethod
+    def get_available_sessions(cls, file_path: FilePath) -> list[str]:
+        """
+        Get list of available session keys in the file.
+
+        Parameters
+        ----------
+        file_path : str or Path
+            Path to the .mesc file.
+
+        Returns
+        -------
+        list of str
+            List of available session keys.
+        """
+        from roiextractors import FemtonicsImagingExtractor
+
+        return FemtonicsImagingExtractor.get_available_sessions(file_path=file_path)
+
+    @classmethod
+    def get_available_munits(cls, file_path: FilePath, session_name: str = None) -> list[str]:
+        """
+        Get list of available unit keys in the specified session.
+
+        Parameters
+        ----------
+        file_path : str or Path
+            Path to the .mesc file.
+        session_name : str, optional
+            Name of the MSession to use (e.g., "MSession_0").
+            If None and only one session exists, uses that session automatically.
+            If multiple sessions exist, raises an error.
+
+        Returns
+        -------
+        list of str
+            List of available unit keys.
+        """
+        from roiextractors import FemtonicsImagingExtractor
+
+        # If no session_name provided, only auto-select if there's exactly one session
+        if session_name is None:
+            available_sessions = cls.get_available_sessions(file_path=file_path)
+            if not available_sessions:
+                raise ValueError("No sessions found")
+            if len(available_sessions) > 1:
+                raise ValueError(
+                    f"Multiple sessions found: {available_sessions}. " "Please specify 'session_name' to select one."
+                )
+            session_name = available_sessions[0]
+
+        return FemtonicsImagingExtractor.get_available_munits(file_path=file_path, session_name=session_name)
+
+    @classmethod
+    def get_available_channels(cls, file_path: FilePath, session_name: str = None, munit_name: str = None) -> list[str]:
+        """
+        Get available channels in the specified session/unit combination.
+
+        Parameters
+        ----------
+        file_path : str or Path
+            Path to the .mesc file.
+        session_name : str, optional
+            Name of the MSession to use (e.g., "MSession_0").
+            If None and only one session exists, uses that session automatically.
+            If multiple sessions exist, raises an error.
+        munit_name : str, optional
+            Name of the MUnit within the session (e.g., "MUnit_0").
+            If None and only one unit exists in the session, uses that unit automatically.
+            If multiple units exist, raises an error.
+
+        Returns
+        -------
+        list of str
+            List of available channel names.
+        """
+        from roiextractors import FemtonicsImagingExtractor
+
+        # If no session_name provided, only auto-select if there's exactly one session
+        if session_name is None:
+            available_sessions = cls.get_available_sessions(file_path=file_path)
+            if not available_sessions:
+                raise ValueError("No sessions found")
+            if len(available_sessions) > 1:
+                raise ValueError(
+                    f"Multiple sessions found: {available_sessions}. " "Please specify 'session_name' to select one."
+                )
+            session_name = available_sessions[0]
+
+        # If no munit_name provided, only auto-select if there's exactly one unit in the session
+        if munit_name is None:
+            available_munits = cls.get_available_munits(file_path=file_path, session_name=session_name)
+            if not available_munits:
+                raise ValueError(f"No units found in session {session_name}")
+            if len(available_munits) > 1:
+                raise ValueError(
+                    f"Multiple units found in session {session_name}: {available_munits}. "
+                    "Please specify 'munit_name' to select one."
+                )
+            munit_name = available_munits[0]
+
+        return FemtonicsImagingExtractor.get_available_channels(
+            file_path=file_path, session_name=session_name, munit_name=munit_name
+        )

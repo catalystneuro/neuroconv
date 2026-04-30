@@ -2,7 +2,6 @@ from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Dict, Optional, Union
 
 import numpy as np
 from hdmf.testing import TestCase
@@ -69,7 +68,7 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
         self.trial_interface = CsvTimeIntervalsInterface(file_path=self.csv_file_path)
         self.behavior_interface = MockBehaviorEventInterface(event_times=self.unaligned_behavior_event_timestamps)
 
-    def assertNWBFileTimesAligned(self, nwbfile_path: Union[str, Path]):
+    def assertNWBFileTimesAligned(self, nwbfile_path: str | Path):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
@@ -187,7 +186,7 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
             )
 
             def temporally_align_data_interfaces(
-                self, metadata: Optional[dict] = None, conversion_options: Optional[dict] = None
+                self, metadata: dict | None = None, conversion_options: dict | None = None
             ):
                 unaligned_trial_start_times = self.data_interface_objects["Trials"].get_original_timestamps(
                     column="start_time"
@@ -240,7 +239,7 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
         self.trial_interface = CsvTimeIntervalsInterface(file_path=self.csv_file_path)
         self.behavior_interface = MockBehaviorEventInterface(event_times=self.unaligned_behavior_event_timestamps)
 
-    def assertNWBFileTimesAligned(self, nwbfile_path: Union[str, Path]):
+    def assertNWBFileTimesAligned(self, nwbfile_path: str | Path):
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
@@ -357,7 +356,7 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
         class TestAlignmentConverter(NWBConverter):
             data_interface_classes = dict(Trials=CsvTimeIntervalsInterface, Behavior=MockBehaviorEventInterface)
 
-            def __init__(self, source_data: Dict[str, dict], verbose: bool = False):
+            def __init__(self, source_data: dict[str, dict], verbose: bool = False):
                 super().__init__(source_data=source_data, verbose=verbose)
 
                 unaligned_trial_start_timestamps = self.data_interface_objects["Trials"].get_timestamps(
@@ -505,7 +504,7 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
                 NIDQ=MockSpikeGLXNIDQInterface, Trials=CsvTimeIntervalsInterface, Behavior=MockBehaviorEventInterface
             )
 
-            def __init__(self, source_data: Dict[str, dict], verbose: bool = False):
+            def __init__(self, source_data: dict[str, dict], verbose: bool = False):
                 super().__init__(source_data=source_data, verbose=verbose)
 
                 inferred_aligned_trial_start_time = self.data_interface_objects["NIDQ"].get_event_times_from_ttl(

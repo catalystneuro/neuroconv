@@ -7,12 +7,15 @@ from .behavior.lightningpose.lightningposedatainterface import (
 )
 from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
+from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
-from .behavior.video.videodatainterface import VideoInterface
+from .behavior.video.externalvideointerface import ExternalVideoInterface
+from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.axon.axondatainterface import AxonRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
     AxonaPositionDataInterface,
@@ -30,7 +33,10 @@ from .ecephys.cellexplorer.cellexplorerdatainterface import (
     CellExplorerSortingInterface,
 )
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
+from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
+from .ecephys.intan.intananaloginterface import IntanAnalogInterface
+from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
 from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
@@ -44,6 +50,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeRecordingInterface,
     NeuroScopeSortingInterface,
 )
+from .ecephys.openephys.openephybinarysanaloginterface import OpenEphysBinaryAnalogInterface
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
@@ -65,7 +72,9 @@ from .ecephys.spikegadgets.spikegadgetsdatainterface import (
 )
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
+from .ecephys.spikeglx.spikeglxsyncchannelinterface import SpikeGLXSyncChannelInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
+from .ecephys.whitematter.whitematterdatainterface import WhiteMatterRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -78,15 +87,19 @@ from .ophys.brukertiff.brukertiffdatainterface import (
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
+from .ophys.femtonics.femtonicsdatainterface import FemtonicsImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
+from .ophys.inscopix.inscopixsegmentationdatainterface import InscopixSegmentationInterface
+from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
+from .ophys.minian.miniandatainterface import MinianSegmentationInterface
 from .ophys.miniscope.miniscopeimagingdatainterface import MiniscopeImagingInterface
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageImagingInterface,
-    ScanImageMultiFileImagingInterface,
+    ScanImageLegacyImagingInterface,
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
@@ -111,8 +124,11 @@ interface_list = [
     Spike2RecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXNIDQInterface,
+    SpikeGLXSyncChannelInterface,
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
+    IntanAnalogInterface,
+    IntanStimInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
     CellExplorerLFPInterface,
@@ -122,6 +138,7 @@ interface_list = [
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
     OpenEphysSortingInterface,
+    OpenEphysBinaryAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
     AxonaRecordingInterface,
@@ -129,6 +146,7 @@ interface_list = [
     AxonaLFPDataInterface,
     AxonaUnitRecordingInterface,
     EDFRecordingInterface,
+    EDFAnalogInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
     PlexonLFPInterface,
@@ -136,34 +154,42 @@ interface_list = [
     PlexonSortingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
+    AxonRecordingInterface,
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
+    WhiteMatterRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
-    Suite2pSegmentationInterface,
     ExtractSegmentationInterface,
+    FemtonicsImagingInterface,
+    InscopixSegmentationInterface,
     SimaSegmentationInterface,
+    Suite2pSegmentationInterface,
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
+    InscopixImagingInterface,
     ScanImageImagingInterface,
-    ScanImageMultiFileImagingInterface,
+    ScanImageLegacyImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
     TDTFiberPhotometryInterface,
+    MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
-    VideoInterface,
+    ExternalVideoInterface,
+    InternalVideoInterface,
     AudioInterface,
     DeepLabCutInterface,
     SLEAPInterface,
     MiniscopeBehaviorInterface,
+    MiniscopeHeadOrientationInterface,
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
@@ -197,9 +223,17 @@ interfaces_by_category = dict(
         if "Segmentation" in interface.__name__
     },
     fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
+    analog=dict(
+        OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
+        SpikeGLXNIDQ=SpikeGLXNIDQInterface,
+        SpikeGLXSync=SpikeGLXSyncChannelInterface,
+        IntanAnalog=IntanAnalogInterface,
+        IntanStim=IntanStimInterface,
+    ),
     icephys=dict(Abf=AbfInterface),
     behavior=dict(
-        Video=VideoInterface,
+        ExternalVideo=ExternalVideoInterface,
+        InternalVideo=InternalVideoInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,

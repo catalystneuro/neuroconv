@@ -1,4 +1,5 @@
-from typing import Literal, Optional
+import warnings
+from typing import Literal
 
 from dateutil.parser import parse
 from pydantic import DirectoryPath
@@ -63,10 +64,17 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
                 )
         return streams
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import BrukerTiffMultiPlaneImagingExtractor
+
+        return BrukerTiffMultiPlaneImagingExtractor
+
     def __init__(
         self,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        stream_name: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -80,6 +88,33 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             The name of the recording stream (e.g. 'Ch2').
         verbose : bool, default: False
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stream_name",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to BrukerTiffMultiPlaneImagingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stream_name = positional_values.get("stream_name", stream_name)
+            verbose = positional_values.get("verbose", verbose)
+
         self.folder_path = folder_path
         super().__init__(
             folder_path=folder_path,
@@ -87,7 +122,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             verbose=verbose,
         )
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
-        self._image_size = self.imaging_extractor.get_image_size()
+        self._frame_shape = self.imaging_extractor.get_frame_shape()
 
     def _determine_position_current(self) -> list[float]:
         """
@@ -191,8 +226,8 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         z_plane_current_position_in_meters = abs(origin_coords[-1]) / 1e6
         grid_spacing = [y_position_in_meters, x_position_in_meters, z_plane_current_position_in_meters]
         field_of_view = [
-            y_position_in_meters * self._image_size[1],
-            x_position_in_meters * self._image_size[0],
+            y_position_in_meters * self._frame_shape[1],
+            x_position_in_meters * self._frame_shape[0],
             z_plane_current_position_in_meters,
         ]
 
@@ -250,10 +285,17 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         streams = BrukerTiffMultiPlaneImagingExtractor.get_streams(folder_path=folder_path)
         return streams
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import BrukerTiffSinglePlaneImagingExtractor
+
+        return BrukerTiffSinglePlaneImagingExtractor
+
     def __init__(
         self,
         folder_path: DirectoryPath,
-        stream_name: Optional[str] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        stream_name: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -267,6 +309,33 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             The name of the recording stream (e.g. 'Ch2').
         verbose : bool, default: False
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stream_name",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to BrukerTiffSinglePlaneImagingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stream_name = positional_values.get("stream_name", stream_name)
+            verbose = positional_values.get("verbose", verbose)
+
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
@@ -274,7 +343,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         )
         self.folder_path = folder_path
         self._stream_name = self.imaging_extractor.stream_name.replace("_", "")
-        self._image_size = self.imaging_extractor.get_image_size()
+        self._frame_shape = self.imaging_extractor.get_frame_shape()
 
     def _determine_position_current(self) -> list[float]:
         """
@@ -285,8 +354,21 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             frame
             for frame in self.imaging_extractor._xml_root.findall(".//Frame")
             for file in frame.findall("File")
-            if stream_name in file.attrib["filename"]
+            if stream_name == file.attrib["channelName"]
         ]
+
+        if len(frames_per_stream) == 0:
+            # If no frames, fall back to the old logic which matches by file name
+            # At the moment this is used because the stream name is not only for channels
+            # But also for planes in the case of multi-plane imaging with disjoint planes
+            # For this case, the stream name for the plane is made-up from the file name
+            # And we need to match the stream (e.g.  "Ch2_000001") to the file name instead.
+            frames_per_stream = [
+                frame
+                for frame in self.imaging_extractor._xml_root.findall(".//Frame")
+                for file in frame.findall("File")
+                if stream_name in file.attrib["filename"]
+            ]
 
         # general positionCurrent
         position_values = []
@@ -365,8 +447,8 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         grid_spacing = [y_position_in_meters, x_position_in_meters]
         origin_coords = self._determine_position_current()
         field_of_view = [
-            y_position_in_meters * self._image_size[1],
-            x_position_in_meters * self._image_size[0],
+            y_position_in_meters * self._frame_shape[1],
+            x_position_in_meters * self._frame_shape[0],
         ]
 
         if len(streams["plane_streams"]) and len(origin_coords) == 3:

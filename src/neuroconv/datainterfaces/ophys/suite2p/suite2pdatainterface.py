@@ -1,5 +1,5 @@
+import warnings
 from copy import deepcopy
-from typing import Optional
 
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
@@ -107,14 +107,22 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
         return Suite2pSegmentationExtractor.get_available_channels(folder_path=folder_path)
 
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import Suite2pSegmentationExtractor
+
+        return Suite2pSegmentationExtractor
+
     @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,
-        channel_name: Optional[str] = None,
-        plane_name: Optional[str] = None,
-        plane_segmentation_name: Optional[str] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        channel_name: str | None = None,
+        plane_name: str | None = None,
+        plane_segmentation_name: str | None = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
 
@@ -131,9 +139,64 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             To determine what planes are available, use ``Suite2pSegmentationInterface.get_available_planes(folder_path)``.
         plane_segmentation_name: str, optional
             The name of the plane segmentation to be added.
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to
+            "suite2p_segmentation_{channel_name}_{plane_name}".
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "channel_name",
+                "plane_name",
+                "plane_segmentation_name",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to Suite2pSegmentationInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            channel_name = positional_values.get("channel_name", channel_name)
+            plane_name = positional_values.get("plane_name", plane_name)
+            plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
+            verbose = positional_values.get("verbose", verbose)
 
-        super().__init__(folder_path=folder_path, channel_name=channel_name, plane_name=plane_name)
+        if plane_segmentation_name is not None:
+            warnings.warn(
+                "`plane_segmentation_name` is deprecated. The dict-based metadata format uses "
+                "`metadata_key` for pattern discovery. To customize the PlaneSegmentation name, "
+                "edit `metadata['Ophys']['PlaneSegmentations'][metadata_key]['name']` directly. "
+                "`plane_segmentation_name` will be removed when the old list-based metadata "
+                "format is removed. See issue #269 for context.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if metadata_key is None:
+            resolved_channel = channel_name if channel_name is not None else "chan1"
+            resolved_plane = plane_name if plane_name is not None else "plane0"
+            metadata_key = f"suite2p_segmentation_{resolved_channel}_{resolved_plane}"
+
+        super().__init__(
+            folder_path=folder_path,
+            channel_name=channel_name,
+            plane_name=plane_name,
+            metadata_key=metadata_key,
+        )
         available_planes = self.get_available_planes(folder_path=self.source_data["folder_path"])
         available_channels = self.get_available_channels(folder_path=self.source_data["folder_path"])
 
@@ -147,9 +210,15 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self.plane_segmentation_name = plane_segmentation_name
         self.verbose = verbose
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Get metadata for the Suite2p segmentation data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata with Suite2p provenance.
 
         Returns
         -------
@@ -157,6 +226,57 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             Dictionary containing metadata including plane segmentation details,
             fluorescence data, and segmentation images.
         """
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+
+            plane_suffix = self.plane_segmentation_name.replace("PlaneSegmentation", "")
+            sampling_frequency = self.segmentation_extractor.get_sampling_frequency()
+
+            # ImagingPlanes: imaging_rate from ops["fs"]
+            imaging_plane_entry = {
+                "name": f"ImagingPlane{plane_suffix}",
+                "imaging_rate": float(sampling_frequency),
+            }
+
+            # PlaneSegmentations: link to imaging plane by metadata_key
+            plane_segmentation_entry = {
+                "name": self.plane_segmentation_name,
+                "description": "Segmentation data from Suite2p.",
+                "imaging_plane_metadata_key": self.metadata_key,
+            }
+
+            # RoiResponses: entries keyed by trace type
+            roi_responses_entry = {}
+            traces_dict = self.segmentation_extractor.get_traces_dict()
+            if traces_dict.get("raw") is not None:
+                roi_responses_entry["raw"] = {"name": f"RoiResponseSeries{plane_suffix}"}
+            if traces_dict.get("neuropil") is not None:
+                roi_responses_entry["neuropil"] = {"name": f"Neuropil{plane_suffix}"}
+            if traces_dict.get("deconvolved") is not None:
+                roi_responses_entry["deconvolved"] = {"name": f"Deconvolved{plane_suffix}"}
+            if traces_dict.get("dff") is not None:
+                roi_responses_entry["dff"] = {"name": f"DfOverF{plane_suffix}"}
+
+            # SegmentationImages: correlation and mean are produced by Suite2p
+            images_dict = self.segmentation_extractor.get_images_dict()
+            segmentation_images_entry = {}
+            if images_dict.get("correlation") is not None:
+                segmentation_images_entry["correlation"] = {"name": f"CorrelationImage{plane_suffix}"}
+            if images_dict.get("mean") is not None:
+                segmentation_images_entry["mean"] = {"name": f"MeanImage{plane_suffix}"}
+
+            ophys = {
+                "ImagingPlanes": {self.metadata_key: imaging_plane_entry},
+                "PlaneSegmentations": {self.metadata_key: plane_segmentation_entry},
+            }
+            if roi_responses_entry:
+                ophys["RoiResponses"] = {self.metadata_key: roi_responses_entry}
+            if segmentation_images_entry:
+                ophys["SegmentationImages"] = {self.metadata_key: segmentation_images_entry}
+
+            metadata["Ophys"] = ophys
+            return metadata
+
         metadata = super().get_metadata()
 
         # No need to update the metadata links for the default plane segmentation name
@@ -174,14 +294,15 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
-        stub_frames: int = 100,
+        stub_samples: int = 100,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
-        mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
-        plane_segmentation_name: Optional[str] = None,
-        iterator_options: Optional[dict] = None,
+        mask_type: str | None = "image",  # Literal["image", "pixel", "voxel"]
+        plane_segmentation_name: str | None = None,
+        iterator_options: dict | None = None,
     ):
         """
         Add segmentation data to the specified NWBFile.
@@ -193,10 +314,10 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata : dict, optional
             Metadata containing information about the segmentation. If None, default metadata is used.
         stub_test : bool, optional
-            If True, only a subset of the data (defined by `stub_frames`) will be added for testing purposes,
+            If True, only a subset of the data (defined by `stub_samples`) will be added for testing purposes,
             by default False.
-        stub_frames : int, optional
-            The number of frames to include in the subset if `stub_test` is True, by default 100.
+        stub_samples : int, optional
+            The number of samples (frames) to include in the subset if `stub_test` is True, by default 100.
         include_roi_centroids : bool, optional
             Whether to include the centroids of regions of interest (ROIs) in the data, by default True.
         include_roi_acceptance : bool, optional
@@ -217,11 +338,59 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         iterator_options : dict, optional
             Additional options for iterating over the data, by default None.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "stub_samples",
+                "include_roi_centroids",
+                "include_roi_acceptance",
+                "mask_type",
+                "plane_segmentation_name",
+                "iterator_options",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to Suite2pSegmentationInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            stub_samples = positional_values.get("stub_samples", stub_samples)
+            include_roi_centroids = positional_values.get("include_roi_centroids", include_roi_centroids)
+            include_roi_acceptance = positional_values.get("include_roi_acceptance", include_roi_acceptance)
+            mask_type = positional_values.get("mask_type", mask_type)
+            plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+
+        if plane_segmentation_name is not None:
+            warnings.warn(
+                "`plane_segmentation_name` is deprecated. The dict-based metadata format uses "
+                "`metadata_key` for pattern discovery. To customize the PlaneSegmentation name, "
+                "edit `metadata['Ophys']['PlaneSegmentations'][metadata_key]['name']` directly. "
+                "`plane_segmentation_name` will be removed when the old list-based metadata "
+                "format is removed. See issue #269 for context.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
-            stub_frames=stub_frames,
+            stub_samples=stub_samples,
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,

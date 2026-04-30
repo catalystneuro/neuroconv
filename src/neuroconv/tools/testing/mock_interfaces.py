@@ -1,9 +1,11 @@
+import warnings
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
 from pynwb.base import DynamicTable
+from pynwb.device import Device
 
 from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
@@ -21,7 +23,9 @@ from ...datainterfaces.ophys.baseimagingextractorinterface import (
 from ...datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
+from ...tools.nwb_helpers import get_module
 from ...utils import ArrayType, get_json_schema_from_method_signature
+from ...utils.dict import DeepDict
 
 
 class MockInterface(BaseDataInterface):
@@ -33,15 +37,129 @@ class MockInterface(BaseDataInterface):
 
         super().__init__(verbose=verbose, **source_data)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict], **conversion_options):
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, **conversion_options):
 
         return None
+
+
+class MockTimeSeriesInterface(BaseDataInterface):
+    """
+    A mock TimeSeries interface for testing purposes.
+
+    This interface uses pynwb's mock_TimeSeries to create synthetic time series data
+    without only pynwb as a dependency.
+    """
+
+    def __init__(
+        self,
+        *,
+        num_channels: int = 4,
+        sampling_frequency: float = 30_000.0,
+        duration: float = 1.0,
+        seed: int = 0,
+        verbose: bool = False,
+        metadata_key: str = "TimeSeries",
+    ):
+        """
+        Initialize a mock TimeSeries interface.
+
+        Parameters
+        ----------
+        num_channels : int, optional
+            Number of channels to generate, by default 4.
+        sampling_frequency : float, optional
+            Sampling frequency in Hz, by default 30,000.0 Hz.
+        duration : float, optional
+            Duration of the data in seconds, by default 1.0.
+        seed : int, optional
+            Seed for the random number generator, by default 0.
+        verbose : bool, optional
+            Control verbosity, by default False.
+        metadata_key : str, optional
+            Key for the TimeSeries metadata in the metadata dictionary, by default "TimeSeries".
+        """
+        self.num_channels = num_channels
+        self.sampling_frequency = sampling_frequency
+        self.duration = duration
+        self.seed = seed
+        self.metadata_key = metadata_key
+
+        super().__init__(verbose=verbose)
+
+    def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for the TimeSeries interface.
+
+        Returns
+        -------
+        dict
+            The metadata dictionary containing NWBFile and TimeSeries metadata.
+        """
+        metadata = super().get_metadata()
+        session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+
+        # Add TimeSeries metadata using the metadata_key
+        metadata["TimeSeries"] = {
+            self.metadata_key: {
+                "name": self.metadata_key,
+                "description": f"Mock TimeSeries data with {self.num_channels} channels",
+                "unit": "n.a.",
+            }
+        }
+
+        return metadata
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict | None = None,
+    ):
+        """
+        Add mock TimeSeries data to an NWB file.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file to which the TimeSeries data will be added.
+        metadata : dict, optional
+            Metadata dictionary. If None, uses default metadata.
+        """
+        from pynwb.testing.mock.base import mock_TimeSeries
+
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        # Generate mock data
+        rng = np.random.default_rng(self.seed)
+        num_samples = int(self.duration * self.sampling_frequency)
+        data = rng.standard_normal(size=(num_samples, self.num_channels)).astype("float32")
+
+        # Get TimeSeries kwargs from metadata
+        time_series_metadata = metadata.get("TimeSeries", {}).get(self.metadata_key, {})
+
+        tseries_kwargs = {
+            "name": time_series_metadata.get("name", "MockTimeSeries"),
+            "description": time_series_metadata.get("description", "Mock TimeSeries data"),
+            "unit": time_series_metadata.get("unit", "n.a."),
+            "data": data,
+            "starting_time": 0.0,
+            "rate": self.sampling_frequency,
+        }
+
+        # Apply any additional metadata
+        for key in ["comments", "conversion", "offset"]:
+            if key in time_series_metadata:
+                tseries_kwargs[key] = time_series_metadata[key]
+
+        time_series = mock_TimeSeries(**tseries_kwargs)
+        nwbfile.add_acquisition(time_series)
 
 
 class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
@@ -55,7 +173,7 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
         source_schema["additionalProperties"] = True
         return source_schema
 
-    def __init__(self, event_times: Optional[ArrayType] = None):
+    def __init__(self, event_times: ArrayType | None = None):
         """
         Initialize the interface with event times for behavior.
 
@@ -139,7 +257,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         return source_schema
 
     def __init__(
-        self, signal_duration: float = 7.0, ttl_times: Optional[list[list[float]]] = None, ttl_duration: float = 1.0
+        self, signal_duration: float = 7.0, ttl_times: list[list[float]] | None = None, ttl_duration: float = 1.0
     ):
         """
         Define a mock SpikeGLXNIDQInterface by overriding the recording extractor to be a mock TTL signal.
@@ -191,42 +309,105 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 
         # Minimal meta so `get_metadata` works similarly to real NIDQ header
         self.meta = {"acqMnMaXaDw": "0,0,8,1", "fileCreateTime": "2020-11-03T10:35:10", "niDev1ProductName": "PCI-6259"}
-        self.subset_channels = None
         self.verbose = None
         self.es_key = "ElectricalSeriesNIDQ"
+        self.metadata_key = "SpikeGLXNIDQ"
+        self._analog_channel_groups = {
+            "nidq_analog": {
+                "channels": list(channel_ids),
+            }
+        }
+        self._digital_channel_groups = {}
 
 
 class MockRecordingInterface(BaseRecordingExtractorInterface):
     """An interface with a spikeinterface recording object for testing purposes."""
 
-    ExtractorModuleName = "spikeinterface.core.generate"
-    ExtractorName = "generate_recording"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.core.generate import generate_recording
+
+        return generate_recording
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
+        *args,
         num_channels: int = 4,
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        set_probe: bool = False,
     ):
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "num_channels",
+                "sampling_frequency",
+                "durations",
+                "seed",
+                "verbose",
+                "es_key",
+                "set_probe",
+            ]
+            # Number of positional parameters before *args in the signature (self is counted by Python in error messages)
+            num_positional_args_before_args = 1  # self
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"MockRecordingInterface.__init__() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments "
+                    f"but {len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
+                )
+            # Map positional args to keyword args, positional args take precedence
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to MockRecordingInterface.__init__() is deprecated "
+                f"and will be removed in June 2026 or after. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            num_channels = positional_values.get("num_channels", num_channels)
+            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
+            durations = positional_values.get("durations", durations)
+            seed = positional_values.get("seed", seed)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+            set_probe = positional_values.get("set_probe", set_probe)
+
         super().__init__(
             num_channels=num_channels,
             sampling_frequency=sampling_frequency,
             durations=durations,
+            set_probe=set_probe,
             seed=seed,
             verbose=verbose,
             es_key=es_key,
         )
 
-        # Adding this as a safeguard before the spikeinterface changes are merged:
-        # https://github.com/SpikeInterface/spikeinterface/pull/3588
-        channel_ids = self.recording_extractor.get_channel_ids()
-        channel_ids_as_strings = [str(id) for id in channel_ids]
-        self.recording_extractor = self.recording_extractor.rename_channels(new_channel_ids=channel_ids_as_strings)
+        self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
+        self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
 
-    def get_metadata(self) -> dict:
+        # If probe was set, customize contact IDs to use "e0", "e1", etc. format for testing
+        if set_probe and self.recording_extractor.has_probe():
+            probe = self.recording_extractor.get_probe()
+            contact_ids = [f"e{i}" for i in range(num_channels)]
+            probe.set_contact_ids(contact_ids)
+            self.recording_extractor = self.recording_extractor.set_probe(probe, group_mode="by_probe")
+
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for the recording interface.
 
@@ -247,8 +428,19 @@ class MockSortingInterface(BaseSortingExtractorInterface):
     # TODO: Implement this class with the lazy generator once is merged
     # https://github.com/SpikeInterface/spikeinterface/pull/2227
 
-    ExtractorModuleName = "spikeinterface.core.generate"
-    ExtractorName = "generate_sorting"
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.core.generate import generate_sorting
+
+        return generate_sorting
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
@@ -287,7 +479,7 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         string_unit_ids = [str(id) for id in self.sorting_extractor.unit_ids]
         self.sorting_extractor = self.sorting_extractor.rename_units(new_unit_ids=string_unit_ids)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -299,12 +491,25 @@ class MockImagingInterface(BaseImagingExtractorInterface):
     A mock imaging interface for testing purposes.
     """
 
-    ExtractorModuleName = "roiextractors.testing"
-    ExtractorName = "generate_dummy_imaging_extractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors.testing import generate_dummy_imaging_extractor
+
+        return generate_dummy_imaging_extractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("photon_series_type", None)
+        self.extractor_kwargs.pop("metadata_key", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
-        num_frames: int = 30,
+        num_samples: int = 30,
         num_rows: int = 10,
         num_columns: int = 10,
         sampling_frequency: float = 30,
@@ -312,12 +517,13 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         verbose: bool = False,
         seed: int = 0,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str | None = None,
     ):
         """
         Parameters
         ----------
-        num_frames : int, optional
-            The number of frames in the mock imaging data, by default 30.
+        num_samples : int, optional
+            The number of samples (frames) in the mock imaging data, by default 30.
         num_rows : int, optional
             The number of rows (height) in each frame of the mock imaging data, by default 10.
         num_columns : int, optional
@@ -336,36 +542,149 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         """
 
         self.seed = seed
+        if metadata_key is None:
+            metadata_key = "mock_imaging"
+
         super().__init__(
-            num_frames=num_frames,
+            num_samples=num_samples,
             num_rows=num_rows,
             num_columns=num_columns,
             sampling_frequency=sampling_frequency,
             dtype=dtype,
             verbose=verbose,
             seed=seed,
+            metadata_key=metadata_key,
         )
 
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         session_start_time = datetime.now().astimezone()
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         metadata["NWBFile"]["session_start_time"] = session_start_time
+        if use_new_metadata_format:
+            metadata["Ophys"] = {
+                "MicroscopySeries": {
+                    self.metadata_key: {
+                        "description": "Imaging data from mock generator.",
+                    },
+                },
+            }
         return metadata
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict | None = None,
+        *args,
+        photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
+        photon_series_index: int = 0,
+        parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
+        stub_test: bool = False,
+        always_write_timestamps: bool = False,
+        iterator_type: str | None = "v2",
+        iterator_options: dict | None = None,
+    ):
+        """
+        Add imaging data to the NWB file.
+
+        This method demonstrates the *args pattern for deprecating positional arguments
+        while maintaining schema validation for keyword-only arguments.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file where the imaging data will be added.
+        metadata : dict, optional
+            Metadata for the NWBFile, by default None.
+        photon_series_type : {"TwoPhotonSeries", "OnePhotonSeries"}, optional
+            The type of photon series to be added, by default "TwoPhotonSeries".
+        photon_series_index : int, optional
+            The index of the photon series in the provided imaging data, by default 0.
+        parent_container : {"acquisition", "processing/ophys"}, optional
+            Specifies the parent container to which the photon series should be added.
+        stub_test : bool, optional
+            If True, only writes a small subset of frames for testing purposes, by default False.
+        always_write_timestamps : bool, optional
+            Whether to always write timestamps, by default False.
+        iterator_type : {"v2", None}, default: "v2"
+            The type of iterator for chunked data writing.
+        iterator_options : dict, optional
+            Options for controlling the iterative write process.
+        """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "photon_series_type",
+                "photon_series_index",
+                "parent_container",
+                "stub_test",
+                "always_write_timestamps",
+                "iterator_type",
+                "iterator_options",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
+                )
+            # Map positional args to keyword args, positional args take precedence
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to add_to_nwbfile is deprecated "
+                f"and will be removed in June 2026 or after. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
+            photon_series_index = positional_values.get("photon_series_index", photon_series_index)
+            parent_container = positional_values.get("parent_container", parent_container)
+            stub_test = positional_values.get("stub_test", stub_test)
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
+            iterator_type = positional_values.get("iterator_type", iterator_type)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+
+        # Call parent implementation with keyword arguments
+        super().add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            photon_series_type=photon_series_type,
+            photon_series_index=photon_series_index,
+            parent_container=parent_container,
+            stub_test=stub_test,
+            always_write_timestamps=always_write_timestamps,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
+        )
 
 
 class MockSegmentationInterface(BaseSegmentationExtractorInterface):
     """A mock segmentation interface for testing purposes."""
 
-    ExtractorModuleName = "roiextractors.testing"
-    ExtractorName = "generate_dummy_segmentation_extractor"
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors.testing import generate_dummy_segmentation_extractor
+
+        return generate_dummy_segmentation_extractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+
+        extractor_class = self.get_extractor_class()
+        extractor_instance = extractor_class(**self.extractor_kwargs)
+        return extractor_instance
 
     def __init__(
         self,
         num_rois: int = 10,
-        num_frames: int = 30,
+        num_samples: int = 30,
         num_rows: int = 25,
         num_columns: int = 25,
         sampling_frequency: float = 30.0,
@@ -376,14 +695,15 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         has_neuropil_signal: bool = True,
         seed: int = 0,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Parameters
         ----------
         num_rois : int, optional
             number of regions of interest, by default 10.
-        num_frames : int, optional
-            description, by default 30.
+        num_samples : int, optional
+            number of samples (frames), by default 30.
         num_rows : int, optional
             number of rows in the hypothetical video from which the data was extracted, by default 25.
         num_columns : int, optional
@@ -404,11 +724,15 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             seed for the random number generator, by default 0
         verbose : bool, optional
             controls verbosity, by default False.
+        metadata_key : str, optional
+            Metadata key for this interface. When None, defaults to "mock_segmentation".
         """
+        if metadata_key is None:
+            metadata_key = "mock_segmentation"
 
         super().__init__(
             num_rois=num_rois,
-            num_frames=num_frames,
+            num_samples=num_samples,
             num_rows=num_rows,
             num_columns=num_columns,
             sampling_frequency=sampling_frequency,
@@ -419,10 +743,269 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             has_neuropil_signal=has_neuropil_signal,
             verbose=verbose,
             seed=seed,
+            metadata_key=metadata_key,
         )
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         session_start_time = datetime.now().astimezone()
+
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+            metadata["NWBFile"]["session_start_time"] = session_start_time
+            metadata["Ophys"] = {
+                "PlaneSegmentations": {
+                    self.metadata_key: {"description": "Segmentation data from mock generator."},
+                },
+            }
+            return metadata
+
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
+
+
+class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
+    """
+    A mock pose estimation interface for testing purposes.
+    """
+
+    display_name = "Mock Pose Estimation"
+    keywords = (
+        "behavior",
+        "pose estimation",
+        "mock",
+    )
+    associated_suffixes = []
+    info = "Mock interface for pose estimation data testing."
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["timestamps", "confidence"])
+        source_schema["additionalProperties"] = True
+        return source_schema
+
+    def __init__(
+        self,
+        num_samples: int = 1000,
+        num_nodes: int = 3,
+        pose_estimation_metadata_key: str = "MockPoseEstimation",
+        seed: int = 0,
+        verbose: bool = False,
+    ):
+        """
+        Initialize a mock pose estimation interface.
+
+        Parameters
+        ----------
+        num_samples : int, optional
+            Number of samples to generate, by default 1000.
+        num_nodes : int, optional
+            Number of nodes/body parts to track, by default 3.
+        pose_estimation_metadata_key : str, optional
+            Key for pose estimation metadata container, by default "MockPoseEstimation".
+        seed : int, optional
+            Random seed for reproducible data generation, by default 0.
+        verbose : bool, optional
+            Control verbosity, by default False.
+        """
+        self.num_samples = num_samples
+        self.num_nodes = num_nodes
+        self.pose_estimation_metadata_key = pose_estimation_metadata_key
+        self.seed = seed
+        self.verbose = verbose
+
+        # Set metadata defaults
+        self.scorer = "MockScorer"
+        self.source_software = "MockSourceSoftware"
+
+        # Generate random nodes and edges
+        orbital_body_parts = [
+            "head",
+            "neck",
+            "left_shoulder",
+            "right_shoulder",
+            "chest",
+            "left_elbow",
+            "right_elbow",
+            "left_wrist",
+            "right_wrist",
+            "pelvis",
+        ]
+
+        # Use orbital body parts if we have enough, otherwise generate generic nodes
+        if num_nodes <= len(orbital_body_parts):
+            self.nodes = orbital_body_parts[:num_nodes]
+        else:
+            self.nodes = orbital_body_parts + [f"node_{i}" for i in range(len(orbital_body_parts), num_nodes)]
+
+        # Generate random edges (connect some nodes randomly)
+        np.random.seed(seed)  # For reproducible edge generation
+        num_edges = min(num_nodes - 1, max(1, num_nodes // 2))  # Reasonable number of edges
+        possible_edges = [(i, j) for i in range(num_nodes) for j in range(i + 1, num_nodes)]
+        selected_edges = np.random.choice(len(possible_edges), size=num_edges, replace=False)
+        self.edges = np.array([possible_edges[i] for i in selected_edges], dtype="uint8")
+
+        # Generate timestamps (private attributes)
+        self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
+        self._timestamps = np.copy(self._original_timestamps)
+
+        # Generate pose estimation data
+        self.pose_data = self._generate_pose_data()
+
+        super().__init__(verbose=verbose)
+
+        # Import ndx_pose to ensure it's available
+        import ndx_pose  # noqa: F401
+
+    def _generate_pose_data(self) -> np.ndarray:
+        """Generate pose estimation data with center following Lissajous trajectory and nodes fixed on circle."""
+        # Fixed to 2D for now
+        shape = (self.num_samples, self.num_nodes, 2)
+
+        # Generate Lissajous trajectory for the center
+        time_points = np.linspace(0, 4 * np.pi, self.num_samples)
+        center_x = 320 + 80 * np.sin(1.2 * time_points)  # Center follows Lissajous
+        center_y = 240 + 60 * np.sin(1.7 * time_points + np.pi / 3)
+
+        # Generate data for all nodes
+        data = np.zeros(shape)
+        circle_radius = 50  # Radius of circle around center
+
+        for node_index in range(self.num_nodes):
+            # Position each node equally spaced around a circle relative to center
+            angle = 2 * np.pi * node_index / self.num_nodes
+
+            # Fixed position on circle relative to center (no oscillations)
+            offset_x = circle_radius * np.cos(angle)
+            offset_y = circle_radius * np.sin(angle)
+
+            # Final position: center + fixed circle position
+            data[:, node_index, 0] = center_x + offset_x
+            data[:, node_index, 1] = center_y + offset_y
+
+        return data
+
+    def get_original_timestamps(self) -> np.ndarray:
+        """Get the original timestamps before any alignment."""
+        return self._original_timestamps
+
+    def get_timestamps(self) -> np.ndarray:
+        """Get the current (possibly aligned) timestamps."""
+        return self._timestamps
+
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """Set aligned timestamps."""
+        self._timestamps = aligned_timestamps
+
+    def get_metadata(self) -> DeepDict:
+        """Get metadata for the mock pose estimation interface."""
+        metadata = super().get_metadata()
+        session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+
+        # Create metadata following the DeepLabCut pattern
+        container_name = self.pose_estimation_metadata_key
+        skeleton_name = f"Skeleton{container_name}"
+        device_name = f"Camera{container_name}"
+
+        # Create PoseEstimation metadata structure
+        pose_estimation_metadata = DeepDict()
+
+        # Add Skeleton as a dictionary
+        pose_estimation_metadata["Skeletons"] = {
+            skeleton_name: {"name": skeleton_name, "nodes": self.nodes, "edges": self.edges.tolist()}
+        }
+
+        # Add Device as a dictionary
+        pose_estimation_metadata["Devices"] = {
+            device_name: {"name": device_name, "description": "Mock camera device for pose estimation testing."}
+        }
+
+        # Add PoseEstimation container
+        pose_estimation_metadata["PoseEstimationContainers"] = {
+            container_name: {
+                "name": container_name,
+                "description": f"Mock pose estimation data from {self.source_software}.",
+                "source_software": self.source_software,
+                "dimensions": [[640, 480]],
+                "skeleton": skeleton_name,
+                "devices": [device_name],
+                "scorer": self.scorer,
+                "original_videos": ["mock_video.mp4"],
+                "PoseEstimationSeries": {},
+            }
+        }
+
+        # Add a series for each node
+        for node in self.nodes:
+            # Convert node name to PascalCase for the series name
+            pascal_case_node = "".join(word.capitalize() for word in node.replace("_", " ").split())
+            series_name = f"PoseEstimationSeries{pascal_case_node}"
+
+            pose_estimation_metadata["PoseEstimationContainers"][container_name]["PoseEstimationSeries"][node] = {
+                "name": series_name,
+                "description": f"Mock pose estimation series for {node}.",
+                "unit": "pixels",
+                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                "confidence_definition": "Softmax output of the deep neural network.",
+            }
+
+        # Add PoseEstimation metadata to the main metadata
+        metadata["PoseEstimation"] = pose_estimation_metadata
+
+        return metadata
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
+        """Add mock pose estimation data to NWBFile using ndx-pose."""
+        from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
+
+        # Create or get behavior processing module
+        behavior_module = get_module(nwbfile, "behavior")
+
+        # Create device
+        device = Device(name="MockCamera", description="Mock camera device for pose estimation testing")
+        nwbfile.add_device(device)
+
+        # Create skeleton
+        skeleton = Skeleton(name="MockSkeleton", nodes=self.nodes, edges=self.edges)
+
+        # Create pose estimation series for each node
+        pose_estimation_series = []
+        for index, node_name in enumerate(self.nodes):
+            # Convert node name to PascalCase for the series name
+            pascal_case_node = "".join(word.capitalize() for word in node_name.replace("_", " ").split())
+            series_name = f"PoseEstimationSeries{pascal_case_node}"
+
+            series = PoseEstimationSeries(
+                name=series_name,
+                description=f"Pose estimation for {node_name}",
+                data=self.pose_data[:, index, :],
+                unit="pixels",
+                reference_frame="top left corner of video frame",
+                timestamps=self.get_timestamps(),
+                confidence=np.ones(self.num_samples),
+                confidence_definition="definition of confidence",
+            )
+            pose_estimation_series.append(series)
+
+        # Create pose estimation container
+        pose_estimation = PoseEstimation(
+            name="MockPoseEstimation",
+            description=f"Mock pose estimation data from {self.source_software}",
+            pose_estimation_series=pose_estimation_series,
+            skeleton=skeleton,
+            devices=[device],
+            scorer=self.scorer,
+            source_software=self.source_software,
+            dimensions=np.array([[640, 480]], dtype="uint16"),
+            original_videos=["mock_video.mp4"],
+            labeled_videos=["mock_video_labeled.mp4"],
+        )
+
+        behavior_module.add(pose_estimation)
+        if "Skeletons" not in behavior_module.data_interfaces:
+            skeletons = Skeletons(skeletons=[skeleton])
+            behavior_module.add(skeletons)
+        else:
+            skeletons = behavior_module["Skeletons"]
+            skeletons.add_skeletons(skeleton)

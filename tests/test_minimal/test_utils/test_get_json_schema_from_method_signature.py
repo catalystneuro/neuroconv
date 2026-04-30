@@ -1,5 +1,7 @@
+import inspect
+import types
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Union
+from typing import Literal
 
 import pytest
 from jsonschema import validate
@@ -7,6 +9,7 @@ from pydantic import DirectoryPath, FilePath
 from pynwb import NWBFile
 
 from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
+from neuroconv.tools.importing import get_package_version
 from neuroconv.utils import ArrayType, DeepDict, get_json_schema_from_method_signature
 
 
@@ -14,12 +17,12 @@ def test_get_json_schema_from_method_signature_basic():
     def basic_method(
         integer: int,
         floating: float,
-        string_or_path: Union[Path, str],
+        string_or_path: Path | str,
         boolean: bool,
         literal: Literal["a", "b", "c"],
-        dictionary: Dict[str, str],
+        dictionary: dict[str, str],
         string_with_default: str = "hi",
-        optional_dictionary: Optional[Dict[str, str]] = None,
+        optional_dictionary: dict[str, str] | None = None,
     ):
         pass
 
@@ -53,16 +56,16 @@ def test_get_json_schema_from_method_signature_advanced():
     They should also be compatible with __future__.annotations for SpikeInterface.
     """
 
-    # TODO: enable | instead of union when 3.11 is minimal
+    # Using Python 3.10 syntax for type annotations
     def advanced_method(
-        old_list_of_strings: List[str],
+        old_list_of_strings: list[str],
         new_list_of_strings: list[str],
-        old_dict_of_ints: Dict[str, int],
+        old_dict_of_ints: dict[str, int],
         new_dict_of_ints: dict[str, int],
-        nested_list_of_strings: List[List[str]],
+        nested_list_of_strings: list[list[str]],
         array_type: ArrayType,
         # more_nested_list_of_strings: list[list[list[str]]],
-        # pathalogical_case: list[dict[str | int | None, list[Optional[dict[str, list[Literal["a", "b"] | None]]]]],],
+        # pathalogical_case: list[dict[str | int | None, list[dict[str, list[Literal["a", "b"] | None]] | None]]],],
     ):
         pass
 
@@ -120,7 +123,7 @@ def test_get_json_schema_from_method_signature_init():
             folder_path: DirectoryPath,
             old_annotation_1: str,
             old_annotation_2: Path,
-            old_annotation_3: Union[str, Path],
+            old_annotation_3: str | Path,
         ):
             pass
 
@@ -230,30 +233,58 @@ def test_fix_to_358():
     class Test358:
         def add_to_nwbfile(
             self,
-            metadata: Optional[dict] = None,
+            metadata: dict | None = None,
             tag: str = "trials",
-            column_name_mapping: Optional[Dict[str, str]] = None,
-            column_descriptions: Optional[Dict[str, str]] = None,
+            column_name_mapping: dict[str, str] | None = None,
+            column_descriptions: dict[str, str] | None = None,
         ):
             pass
 
     test_conversion_options_schema = get_json_schema_from_method_signature(method=Test358.add_to_nwbfile)
-    expected_conversion_options_schema = {
-        "properties": {
-            "metadata": {"anyOf": [{"type": "object"}, {"type": "null"}], "default": None},
-            "tag": {"default": "trials", "type": "string"},
-            "column_name_mapping": {
-                "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
-                "default": None,
+
+    from packaging import version
+
+    pydantic_version = get_package_version("pydantic")
+
+    if pydantic_version >= version.parse("2.11"):
+
+        expected_conversion_options_schema = {
+            "properties": {
+                "metadata": {
+                    "anyOf": [{"additionalProperties": True, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
+                "tag": {"default": "trials", "type": "string"},
+                "column_name_mapping": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
+                "column_descriptions": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
             },
-            "column_descriptions": {
-                "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
-                "default": None,
+            "type": "object",
+            "additionalProperties": False,
+        }
+
+    else:
+        expected_conversion_options_schema = {
+            "properties": {
+                "metadata": {"anyOf": [{"type": "object"}, {"type": "null"}], "default": None},
+                "tag": {"default": "trials", "type": "string"},
+                "column_name_mapping": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
+                "column_descriptions": {
+                    "anyOf": [{"additionalProperties": {"type": "string"}, "type": "object"}, {"type": "null"}],
+                    "default": None,
+                },
             },
-        },
-        "type": "object",
-        "additionalProperties": False,
-    }
+            "type": "object",
+            "additionalProperties": False,
+        }
 
     assert test_conversion_options_schema == expected_conversion_options_schema
 
@@ -441,3 +472,160 @@ def test_json_schema_raises_error_for_missing_type_annotations():
         ),
     ):
         get_json_schema_from_method_signature(method=test_method)
+
+
+def test_get_json_schema_from_method_signature_with_args():
+    """Test that *args is skipped and keyword-only params after *args are included in schema."""
+
+    def method_with_args_and_keyword_only(
+        required_param: str,
+        *args,
+        keyword_only_param: int = 10,
+        another_keyword_only: bool = False,
+    ):
+        pass
+
+    test_json_schema = get_json_schema_from_method_signature(method=method_with_args_and_keyword_only)
+    expected_json_schema = {
+        "additionalProperties": False,
+        "properties": {
+            "required_param": {"type": "string"},
+            "keyword_only_param": {"default": 10, "type": "integer"},
+            "another_keyword_only": {"default": False, "type": "boolean"},
+        },
+        "required": ["required_param"],
+        "type": "object",
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_get_json_schema_from_method_signature_with_args_and_kwargs():
+    """Test that both *args and **kwargs are handled correctly."""
+
+    def method_with_args_and_kwargs(
+        required_param: str,
+        *args,
+        keyword_only_param: int = 10,
+        **kwargs,
+    ):
+        pass
+
+    test_json_schema = get_json_schema_from_method_signature(method=method_with_args_and_kwargs)
+    expected_json_schema = {
+        "additionalProperties": True,  # True because of **kwargs
+        "properties": {
+            "required_param": {"type": "string"},
+            "keyword_only_param": {"default": 10, "type": "integer"},
+        },
+        "required": ["required_param"],
+        "type": "object",
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+def test_mock_imaging_interface_schema_with_args_pattern():
+    """Test that MockImagingInterface with *args pattern generates correct schema.
+
+    TODO: Remove this test in June 2026 or after when positional arguments are no longer supported
+    and the *args pattern is removed from MockImagingInterface.
+    """
+    from neuroconv.tools.testing import MockImagingInterface
+
+    test_json_schema = get_json_schema_from_method_signature(
+        method=MockImagingInterface.add_to_nwbfile,
+        exclude=["nwbfile", "metadata"],
+    )
+
+    expected_json_schema = {
+        "additionalProperties": False,
+        "properties": {
+            "always_write_timestamps": {
+                "default": False,
+                "description": "Whether to always write timestamps, by default False.",
+                "type": "boolean",
+            },
+            "iterator_options": {
+                "anyOf": [{"additionalProperties": True, "type": "object"}, {"type": "null"}],
+                "default": None,
+                "description": "Options for controlling the iterative write process.",
+            },
+            "iterator_type": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": "v2",
+                "description": "The type of iterator for chunked data writing.",
+            },
+            "parent_container": {
+                "default": "acquisition",
+                "description": "Specifies the parent container to which the photon series should be added.",
+                "enum": ["acquisition", "processing/ophys"],
+                "type": "string",
+            },
+            "photon_series_index": {
+                "default": 0,
+                "description": "The index of the photon series in the provided imaging data, by default 0.",
+                "type": "integer",
+            },
+            "photon_series_type": {
+                "default": "TwoPhotonSeries",
+                "description": 'The type of photon series to be added, by default "TwoPhotonSeries".',
+                "enum": ["TwoPhotonSeries", "OnePhotonSeries"],
+                "type": "string",
+            },
+            "stub_test": {
+                "default": False,
+                "description": "If True, only writes a small subset of frames for testing purposes, by default False.",
+                "type": "boolean",
+            },
+        },
+        "type": "object",
+    }
+
+    assert test_json_schema == expected_json_schema
+
+
+class TestPEP563Annotations:
+    """Tests for PEP 563 (from __future__ import annotations) support.
+
+    When an external package (e.g. SpikeInterface) defines a BaseDataInterface subclass
+    in a module with ``from __future__ import annotations``, all type annotations on
+    ``__init__`` become strings at runtime. ``get_source_schema()`` then passes those
+    strings to pydantic, which cannot resolve them.
+
+    PEP 563 is a module-level directive, so we dynamically create a module
+    with it enabled to keep the tests self-contained.
+    """
+
+    @pytest.fixture()
+    def pep563_interface(self):
+        """Simulate an external interface defined in a module with PEP 563."""
+        source = (
+            "from __future__ import annotations\n"
+            "from pydantic import DirectoryPath\n"
+            "from neuroconv import BaseDataInterface\n"
+            "\n"
+            "class ExternalInterface(BaseDataInterface):\n"
+            "    display_name = 'External'\n"
+            "    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):\n"
+            "        pass\n"
+            "    def add_to_nwbfile(self, nwbfile, metadata):\n"
+            "        pass\n"
+        )
+        code = compile(source, "<external_pep563_module>", "exec")
+        module = types.ModuleType("_external_pep563_module")
+        exec(code, module.__dict__)
+        return module.ExternalInterface
+
+    def test_pep563_annotations_are_strings(self, pep563_interface):
+        """Verify that PEP 563 stores annotations as strings on the external interface."""
+        signature = inspect.signature(pep563_interface.__init__)
+        annotation = signature.parameters["folder_path"].annotation
+        assert isinstance(annotation, str), "Expected string annotation under PEP 563"
+        assert annotation == "DirectoryPath"
+
+    def test_get_source_schema_from_pep563_interface(self, pep563_interface):
+        """Test that get_source_schema works for an external interface using PEP 563."""
+        source_schema = pep563_interface.get_source_schema()
+        assert source_schema["properties"]["folder_path"] == {"format": "directory-path", "type": "string"}
+        assert source_schema["properties"]["verbose"] == {"default": False, "type": "boolean"}

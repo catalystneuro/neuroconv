@@ -1,7 +1,7 @@
 """Tests related to the equivalency feature of `configure_backend`."""
 
 from pathlib import Path
-from typing import Literal, Tuple
+from typing import Literal
 
 import numcodecs
 import numpy as np
@@ -21,7 +21,7 @@ from neuroconv.tools.nwb_helpers import (
 def _generate_integer_array(
     seed: int,
     dtype: np.dtype = np.dtype("int16"),
-    shape: Tuple[int, int] = (12, 5),
+    shape: tuple[int, int] = (12, 5),
 ) -> np.ndarray:
     random_number_generator = np.random.default_rng(seed=seed)
 
@@ -85,7 +85,7 @@ def test_configure_backend_equivalency(
         elif backend == "zarr":
             assert written_data.compressor == numcodecs.GZip(level=2)
 
-        assert_array_equal(x=nwbfile_1.acquisition["TestTimeSeries"].data[:], y=written_data[:])
+        assert_array_equal(array_1, written_data[:])
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])

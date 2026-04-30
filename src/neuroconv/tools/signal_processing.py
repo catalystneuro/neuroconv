@@ -1,9 +1,7 @@
-from typing import Optional
-
 import numpy as np
 
 
-def get_rising_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = None) -> np.ndarray:
+def get_rising_frames_from_ttl(trace: np.ndarray, threshold: float | None = None) -> np.ndarray:
     """
     Return the frame indices for rising events in a TTL pulse.
 
@@ -33,7 +31,7 @@ def get_rising_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = N
     return rising_frames
 
 
-def get_falling_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = None) -> np.ndarray:
+def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = None) -> np.ndarray:
     """
     Return the frame indices for falling events in a TTL pulse.
 

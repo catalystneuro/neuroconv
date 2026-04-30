@@ -17,11 +17,17 @@ runs:
         sudo apt-get update -qq
         sudo apt-get install -yqq --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine
       shell: bash
-    - name: Install wine on macOS
+
+    - name: Skip Wine install on macOS
       if: runner.os == 'macOS'
       run: |
-        brew install --cask xquartz
-        brew install --cask wine-stable
+        # Plexon2 tests require Wine on macOS via zugbruecke. The
+        # wine-crossover Homebrew cask (the only tap that worked reliably
+        # on Apple Silicon) was removed by Gcenx on 2026-04-16. Rather
+        # than maintain a pinned-cask workaround against a shrinking
+        # upstream, Plexon2 tests are skipped on macOS at the test layer.
+        # Linux keeps full Plexon2 coverage via apt-installed wine.
+        echo "Skipping Wine install on macOS; Plexon2 tests are skipped on macOS at the test layer."
       shell: bash
 
     - name: Skip installation on Windows

@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 from pydantic import DirectoryPath, validate_call
@@ -25,7 +26,9 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath):
+    def __init__(
+        self, folder_path: DirectoryPath, *args, verbose: bool = False
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Initialize reading recordings from the Miniscope behavioral camera.
 
@@ -34,7 +37,34 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         folder_path : DirectoryPath
             The path that points to the main Miniscope folder.
             The movie files are expected to be in sub folders within the main folder.
+        verbose : bool, optional
+            If True, enables verbose mode for detailed logging, by default False.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to MiniscopeBehaviorInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+
         from ndx_miniscope.utils import (
             get_recording_start_times,
             get_starting_frames,
@@ -44,7 +74,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
 
         natsort = get_package(package_name="natsort", installation_instructions="pip install natsort")
 
-        super().__init__(folder_path=folder_path)
+        super().__init__(folder_path=folder_path, verbose=verbose)
 
         folder_path = Path(self.source_data["folder_path"])
         self._behav_avi_file_paths = natsort.natsorted(list(folder_path.glob("*/BehavCam*/*.avi")))

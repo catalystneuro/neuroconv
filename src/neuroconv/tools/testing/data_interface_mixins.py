@@ -4,7 +4,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Optional, Type, Union
+from typing import Literal
 
 import numpy as np
 import pytest
@@ -13,7 +13,6 @@ from jsonschema.validators import Draft7Validator, validate
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
-from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
 
 from neuroconv import BaseDataInterface, NWBConverter
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
@@ -58,10 +57,10 @@ class DataInterfaceTestMixin:
         Directory where test files should be saved.
     """
 
-    data_interface_cls: Type[BaseDataInterface]
+    data_interface_cls: type[BaseDataInterface]
     interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
-    conversion_options: Optional[dict] = None
+    conversion_options: dict | None = None
     maxDiff = None
 
     @pytest.fixture
@@ -208,7 +207,7 @@ class DataInterfaceTestMixin:
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, backend: Union["hdf5", "zarr"] = "hdf5"
+        self, nwbfile_path: str, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
@@ -238,10 +237,10 @@ class TemporalAlignmentMixin:
     Generic class for testing temporal alignment methods.
     """
 
-    data_interface_cls: Type[BaseDataInterface]
+    data_interface_cls: type[BaseDataInterface]
     interface_kwargs: dict
     save_directory: Path = Path(tempfile.mkdtemp())
-    conversion_options: Optional[dict] = None
+    conversion_options: dict | None = None
     maxDiff = None
 
     @pytest.fixture
@@ -338,8 +337,33 @@ class TemporalAlignmentMixin:
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: Type[BaseImagingExtractorInterface]
+    data_interface_cls: type[BaseImagingExtractorInterface]
     optical_series_name: str = "TwoPhotonSeries"
+
+    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # when old list-based metadata format is removed
+    def test_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        self.check_extracted_metadata_old_list_format(metadata)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        """Override this method to make assertions about extracted metadata in old list-based format."""
+        pass
+
+    def test_get_metadata(self, setup_interface):
+        """Test get_metadata with the new dict-based format.
+
+        See https://github.com/catalystneuro/neuroconv/issues/1557 for discussion on
+        what get_metadata() should return (provenance vs convenience).
+        """
+        import inspect
+
+        sig = inspect.signature(self.interface.get_metadata)
+        if "use_new_metadata_format" not in sig.parameters:
+            pytest.skip("Interface does not support use_new_metadata_format yet")
+
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        self.check_extracted_metadata(metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         from roiextractors import NwbImagingExtractor
@@ -348,11 +372,7 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         imaging = self.interface.imaging_extractor
         nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path, optical_series_name=self.optical_series_name)
 
-        exclude_channel_comparison = False
-        if imaging.get_channel_names() is None:
-            exclude_channel_comparison = True
-
-        check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
+        check_imaging_equal(imaging, nwb_imaging)
 
     def check_nwbfile_temporal_alignment(self):
         nwbfile_path = str(
@@ -361,22 +381,56 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         )
 
         interface = self.data_interface_cls(**self.interface_kwargs)
+        original_first_timestamp = float(interface.get_original_timestamps()[0])
 
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
 
         metadata = interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+
+        # Use conversion_options if available
+        conversion_options = getattr(self, "conversion_options", {})
+
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **conversion_options)
 
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-            assert nwbfile.acquisition[self.optical_series_name].starting_time == aligned_starting_time
+            # The series stores timing either as (starting_time, rate) for regularly-sampled
+            # data, or as a full timestamps array for irregularly-sampled data. Verify the
+            # shift landed in whichever representation was used.
+            series = nwbfile.acquisition[self.optical_series_name]
+            expected_first_timestamp = original_first_timestamp + aligned_starting_time
+            if series.timestamps is not None:
+                assert series.timestamps[0] == expected_first_timestamp
+            else:
+                assert series.starting_time == expected_first_timestamp
 
 
 class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: BaseSegmentationExtractorInterface
+
+    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # when old list-based metadata format is removed
+    def test_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        self.check_extracted_metadata_old_list_format(metadata)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        """Override this method to make assertions about extracted metadata in old list-based format."""
+        pass
+
+    def test_get_metadata(self, setup_interface):
+        """Test get_metadata with the new dict-based format."""
+        import inspect
+
+        sig = inspect.signature(self.interface.get_metadata)
+        if "use_new_metadata_format" not in sig.parameters:
+            pytest.skip("Interface does not support use_new_metadata_format yet")
+
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        self.check_extracted_metadata(metadata)
 
     def check_read(self, nwbfile_path: str):
         from roiextractors import NwbSegmentationExtractor
@@ -392,11 +446,12 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     Generic class for testing any recording interface.
     """
 
-    data_interface_cls: Type[BaseRecordingExtractorInterface]
+    data_interface_cls: type[BaseRecordingExtractorInterface]
     is_lfp_interface: bool = False
 
     def check_read_nwb(self, nwbfile_path: str):
-        from spikeinterface.extractors import NwbRecordingExtractor
+        from spikeinterface.core.testing import check_recordings_equal
+        from spikeinterface.extractors.extractor_classes import NwbRecordingExtractor
 
         recording = self.interface.recording_extractor
 
@@ -433,7 +488,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             # The NwbRecordingExtractor on spikeinterface experiences an issue when duplicated channel_ids
             # are specified, which occurs during check_recordings_equal when there is only one channel
             if self.nwb_recording.get_channel_ids()[0] != self.nwb_recording.get_channel_ids()[-1]:
-                check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=False)
+                check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_in_uV=False)
 
                 # This was added to test probe, we should just compare the probes
                 for property_name in ["rel_x", "rel_y", "rel_z"]:
@@ -445,7 +500,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                             recording.get_property(property_name), self.nwb_recording.get_property(property_name)
                         )
                 if recording.has_scaleable_traces() and self.nwb_recording.has_scaleable_traces():
-                    check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=True)
+                    check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_in_uV=True)
 
             # Compare channel groups
             # Neuroconv ALWAYS writes a string property `group_name` to the electrode table.
@@ -610,9 +665,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: Type[BaseSortingExtractorInterface]
-    associated_recording_cls: Optional[Type[BaseRecordingExtractorInterface]] = None
-    associated_recording_kwargs: Optional[dict] = None
+    data_interface_cls: type[BaseSortingExtractorInterface]
+    associated_recording_cls: type[BaseRecordingExtractorInterface] | None = None
+    associated_recording_kwargs: dict | None = None
 
     def setUpFreshInterface(self):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
@@ -621,7 +676,8 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         self.interface.register_recording(recording_interface=recording_interface)
 
     def check_read_nwb(self, nwbfile_path: str):
-        from spikeinterface.extractors import NwbSortingExtractor
+        from spikeinterface.core.testing import check_sortings_equal
+        from spikeinterface.extractors.extractor_classes import NwbSortingExtractor
 
         sorting = self.interface.sorting_extractor
         sf = sorting.get_sampling_frequency()
@@ -921,7 +977,7 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, metadata: dict, backend: Union["hdf5", "zarr"] = "hdf5"
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
@@ -1120,75 +1176,6 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
             assert_array_equal(one_photon_series.timestamps, interface_times)
 
 
-class ScanImageSinglePlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    """
-    A mixing for testing ScanImage Single Plane Imaging interfaces.
-    """
-
-    def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-
-            assert self.imaging_plane_name in nwbfile.imaging_planes
-            assert self.photon_series_name in nwbfile.acquisition
-            photon_series_suffix = self.photon_series_name.replace("TwoPhotonSeries", "")
-            assert self.interface.two_photon_series_name_suffix == photon_series_suffix
-            two_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
-            assert two_photon_series.unit == "n.a."
-            assert two_photon_series.data.dtype == np.int16
-            assert two_photon_series.rate is None
-            assert two_photon_series.starting_time is None
-
-            imaging_extractor = self.interface.imaging_extractor
-            times_from_extractor = imaging_extractor._times
-            assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
-
-            data_from_extractor = imaging_extractor.get_video()
-            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
-
-            assert two_photon_series.description == json.dumps(self.interface.image_metadata)
-
-            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
-            optical_channel_names = [channel.name for channel in optical_channels]
-            assert self.interface_kwargs["channel_name"] in optical_channel_names
-            assert len(optical_channels) == 1
-
-
-class ScanImageMultiPlaneImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    """
-    A mixin for testing ScanImage MultiPlane Imaging interfaces.
-    """
-
-    def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-
-            assert self.imaging_plane_name in nwbfile.imaging_planes
-            assert self.photon_series_name in nwbfile.acquisition
-            photon_series_suffix = self.photon_series_name.replace("TwoPhotonSeries", "")
-            assert self.interface.two_photon_series_name_suffix == photon_series_suffix
-            two_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
-            assert two_photon_series.unit == "n.a."
-            assert two_photon_series.data.dtype == np.int16
-
-            assert two_photon_series.rate == self.expected_rate
-            assert two_photon_series.starting_time == self.expected_starting_time
-            assert two_photon_series.timestamps is None
-
-            imaging_extractor = self.interface.imaging_extractor
-            data_from_extractor = imaging_extractor.get_video()
-            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
-
-            assert two_photon_series.description == json.dumps(imaging_extractor._imaging_extractors[0].metadata)
-
-            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
-            optical_channel_names = [channel.name for channel in optical_channels]
-            assert self.interface_kwargs["channel_name"] in optical_channel_names
-            assert len(optical_channels) == 1
-
-
 class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """Mixin for testing TDT Fiber Photometry interfaces."""
 
@@ -1292,7 +1279,7 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         )
 
     def check_run_conversion_in_nwbconverter_with_backend_configuration(
-        self, nwbfile_path: str, metadata: dict, backend: Union["hdf5", "zarr"] = "hdf5"
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
     ):
         class TestNWBConverter(NWBConverter):
             data_interface_classes = dict(Test=type(self.interface))
@@ -1460,3 +1447,43 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
                 self.check_shift_timestamps_by_start_time()
                 self.check_interface_original_timestamps_inmutability()
                 self.check_nwbfile_temporal_alignment()
+
+
+class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    Generic class for testing any pose estimation interface.
+    """
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Check that pose estimation data can be read back from NWB file."""
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            # Check that behavior module exists
+            assert "behavior" in nwbfile.processing
+            behavior_module = nwbfile.processing["behavior"]
+
+            # Check for pose estimation container (this may vary by interface)
+            # Most interfaces will have some pose estimation container in behavior
+            pose_containers = [
+                data_interface
+                for name, data_interface in behavior_module.data_interfaces.items()
+                if hasattr(data_interface, "pose_estimation_series")
+            ]
+            assert len(pose_containers) > 0, "No pose estimation containers found in behavior module"
+
+            # Check that pose estimation series exist
+            pose_container = pose_containers[0]
+            assert hasattr(pose_container, "pose_estimation_series")
+            assert len(pose_container.pose_estimation_series) > 0
+
+            # Check that timestamps are properly written
+            for series_name, series in pose_container.pose_estimation_series.items():
+                assert hasattr(series, "timestamps")
+                assert len(series.timestamps) > 0
+                assert hasattr(series, "data")
+                assert len(series.data) > 0
+
+                # Check data dimensions (should be 2D: time x spatial_dims)
+                assert len(series.data.shape) == 2
+                assert series.data.shape[0] == len(series.timestamps)

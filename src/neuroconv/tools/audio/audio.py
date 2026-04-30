@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 from warnings import warn
 
 from pynwb import NWBFile
@@ -14,7 +14,7 @@ def add_acoustic_waveform_series(
     metadata: dict,
     starting_time: float = 0.0,
     write_as: Literal["stimulus", "acquisition"] = "stimulus",
-    iterator_options: Optional[dict] = None,
+    iterator_options: dict | None = None,
 ) -> NWBFile:
     """
 

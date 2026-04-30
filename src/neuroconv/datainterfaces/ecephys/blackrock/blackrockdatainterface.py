@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -6,12 +7,15 @@ from pydantic import FilePath
 from .header_tools import _parse_nev_basic_header, _parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import get_json_schema_from_method_signature
+from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting Blackrock data using a
-    :py:class:`~spikeinterface.extractors.BlackrockRecordingExtractor`."""
+    """
+    Primary data interface class for converting Blackrock data.
+
+    Uses the :py:func:`~spikeinterface.extractors.read_blackrock` reader from SpikeInterface.
+    """
 
     display_name = "Blackrock Recording"
     associated_suffixes = (".ns0", ".ns1", ".ns2", ".ns3", ".ns4", ".ns5")
@@ -25,16 +29,28 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         ] = "Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6."
         return source_schema
 
-    def _source_data_to_extractor_kwargs(self, source_data: dict) -> dict:
-        extractor_kwargs = source_data.copy()
-        extractor_kwargs["stream_id"] = self.stream_id
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            BlackrockRecordingExtractor,
+        )
 
-        return extractor_kwargs
+        return BlackrockRecordingExtractor
+
+    def _initialize_extractor(self, interface_kwargs: dict):
+        """Override to add stream_id."""
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs["stream_id"] = self.stream_id
+
+        return self.get_extractor_class()(**self.extractor_kwargs)
 
     def __init__(
         self,
         file_path: FilePath,
-        nsx_override: Optional[FilePath] = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        nsx_override: FilePath | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
@@ -48,6 +64,34 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "nsx_override",
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to BlackrockRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            nsx_override = positional_values.get("nsx_override", nsx_override)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
 
         file_path = Path(file_path)
         if file_path.suffix == "":
@@ -64,12 +108,12 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         self.stream_id = str(nsx_to_load)
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
-            metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"])
+            metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"].isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
 
@@ -90,28 +134,80 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock .nev file.")
         return metadata_schema
 
-    def __init__(self, file_path: FilePath, sampling_frequency: Optional[float] = None, verbose: bool = False):
+    @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import (
+            BlackrockSortingExtractor,
+        )
+
+        return BlackrockSortingExtractor
+
+    def __init__(
+        self,
+        file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        sampling_frequency: Optional[float] = None,
+        nsx_to_load: Optional[int | list | str] = None,
+        verbose: bool = False,
+    ):
         """
         Parameters
         ----------
         file_path : str, Path
             The file path to the ``.nev`` data
-        sampling_frequency: float, optional
+        sampling_frequency : float, optional
             The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
             used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
             this extractor to be initialized.
+        nsx_to_load : int | list | str, optional
+            IDs of nsX file from which to load data, e.g., if set to 5 only data from the ns5 file are loaded.
+            If 'all', then all nsX will be loaded. If None, all nsX files will be loaded. If empty list, no nsX files will be loaded.
         verbose : bool, default: False
             Enables verbosity
         """
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "sampling_frequency",
+                "nsx_to_load",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to BlackrockSortingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
+            nsx_to_load = positional_values.get("nsx_to_load", nsx_to_load)
+            verbose = positional_values.get("verbose", verbose)
 
-    def get_metadata(self) -> dict:
+        super().__init__(
+            file_path=file_path,
+            sampling_frequency=sampling_frequency,
+            nsx_to_load=nsx_to_load,
+            verbose=verbose,
+        )
+
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = _parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
-            metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
+            metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
         return metadata

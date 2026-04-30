@@ -1,23 +1,24 @@
-import math
-from typing import Optional, Tuple
-
 import numpy as np
 from pydantic import FilePath
 from tqdm import tqdm
 
 from neuroconv.tools.hdmf import GenericDataChunkIterator
+from neuroconv.tools.iterative_write import (
+    get_image_series_buffer_shape,
+    get_image_series_chunk_shape,
+)
 
 from ....tools import get_package
 
 
-def get_video_timestamps(file_path: FilePath, max_frames: Optional[int] = None, display_progress: bool = True) -> list:
+def get_video_timestamps(file_path: FilePath, max_frames: int | None = None, display_progress: bool = True) -> list:
     """Extract the timestamps of the video located in file_path
 
     Parameters
     ----------
     file_path : Path or str
         The path to a multimedia video file
-    max_frames : Optional[int], optional
+    max_frames : int | None, optional
         If provided, extract the timestamps of the video only up to max_frames.
     display_progress : bool, default: True
         Whether to display a progress bar during timestamp extraction.
@@ -46,13 +47,13 @@ class VideoCaptureContext:
         self._frame_count = None
         self._video_open_msg = "The video file is not open!"
 
-    def get_video_timestamps(self, max_frames: Optional[int] = None, display_progress: bool = True):
+    def get_video_timestamps(self, max_frames: int | None = None, display_progress: bool = True):
         """
         Return numpy array of the timestamps(s) for a video file.
 
         Parameters
         ----------
-        max_frames : Optional[int], optional
+        max_frames : int | None, optional
             If provided, extract the timestamps of the video only up to max_frames.
         display_progress : bool, default: True
             Whether to display a progress bar during timestamp extraction.
@@ -96,7 +97,7 @@ class VideoCaptureContext:
         prop = self.get_cv_attribute("CAP_PROP_FPS")
         return self.vc.get(prop)
 
-    def get_frame_shape(self) -> Tuple:
+    def get_frame_shape(self) -> tuple:
         """
         Return the shape of frames from a video file.
 
@@ -251,61 +252,126 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
     def __init__(
         self,
         video_file: FilePath,
-        buffer_gb: float = None,
-        chunk_shape: tuple = None,
+        buffer_gb: float | None = None,
+        buffer_shape: tuple | None = None,
+        chunk_mb: float | None = None,
+        chunk_shape: tuple | None = None,
+        display_progress: bool = False,
+        progress_bar_class: tqdm | None = None,
+        progress_bar_options: dict | None = None,
         stub_test: bool = False,
     ):
         self.video_capture_ob = VideoCaptureContext(video_file)
-        self._full_frame_size_mb, self._full_frame_shape = self._get_frame_details()
         if stub_test:
             self.video_capture_ob.frame_count = 10
+
+        self._dtype = self.video_capture_ob.get_video_frame_dtype()
+        self._num_samples = self.video_capture_ob.get_video_frame_count()
+        self._sample_shape = self.video_capture_ob.get_frame_shape()
+
+        if chunk_mb is None and chunk_shape is None:
+            chunk_mb = 10.0
+
+        if chunk_shape is None:
+            chunk_shape = self._get_default_chunk_shape(chunk_mb=chunk_mb)
+
+        if buffer_gb is None and buffer_shape is None:
+            buffer_gb = 1.0
+
+        if buffer_shape is None:
+            buffer_shape = self._get_scaled_buffer_shape(buffer_gb=buffer_gb, chunk_shape=chunk_shape)
+
         super().__init__(
-            buffer_gb=buffer_gb,
+            buffer_shape=buffer_shape,
             chunk_shape=chunk_shape,
-            display_progress=True,
+            display_progress=display_progress,
+            progress_bar_class=progress_bar_class,
+            progress_bar_options=progress_bar_options,
         )
 
     def _get_default_chunk_shape(self, chunk_mb):
-        """Shape is either one frame or a subset: scaled frame size but with all pixel colors"""
-        return self._fit_frames_to_size(chunk_mb)
+        """This is how the data is chunked for reading."""
 
-    def _get_default_buffer_shape(self, buffer_gb):
-        """Buffer shape is a multiple of frame shape along the frame dimension."""
-        assert buffer_gb >= self._full_frame_size_mb / 1e3, f"provide buffer size >= {self._full_frame_size_mb/1e3} GB"
-        return self._fit_frames_to_size(buffer_gb * 1e3)
-
-    def _fit_frames_to_size(self, size_mb):
-        """Finds the number of frames which fit size_mb and returns the full frame shape."""
-        frames_count = self._scale_shape_to_size(
-            size_mb=size_mb,
-            shape=self._full_frame_shape[:1],
-            size=self._full_frame_size_mb,
-            max_shape=self._maxshape[:1],
+        chunk_shape = get_image_series_chunk_shape(
+            num_samples=self._num_samples,
+            sample_shape=self._sample_shape,
+            dtype=self._dtype,
+            chunk_mb=chunk_mb,
         )
-        return frames_count + tuple(self._maxshape[1:])
+        return chunk_shape
 
-    @staticmethod
-    def _scale_shape_to_size(size_mb, shape, size, max_shape):
-        """Given the shape and size of array, return shape that will fit size_mb."""
-        k = math.floor((size_mb / size) ** (1 / len(shape)))
-        return tuple([min(max(int(x), shape[j]), max_shape[j]) for j, x in enumerate(k * np.array(shape))])
+    def _get_scaled_buffer_shape(self, buffer_gb: float, chunk_shape: tuple) -> tuple:
+        """Select the buffer_shape less than the threshold of buffer_gb that is also a multiple of the chunk_shape."""
 
-    def _get_frame_details(self):
-        """Get frame shape and size in MB"""
-        frame_shape = (1, *self.video_capture_ob.get_frame_shape())
-        min_frame_size_mb = (math.prod(frame_shape) * self._get_dtype().itemsize) / 1e6
-        return min_frame_size_mb, frame_shape
+        assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
+        assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
+
+        sample_shape = self._sample_shape
+        series_shape = self.shape
+        dtype = self._get_dtype()
+
+        buffer_shape = get_image_series_buffer_shape(
+            chunk_shape=chunk_shape,
+            sample_shape=sample_shape,
+            series_shape=series_shape,
+            dtype=dtype,
+            buffer_gb=buffer_gb,
+        )
+
+        return buffer_shape
+
+    @property
+    def shape(self):
+        """Return (num_frames, height, width, channels) for this video."""
+        return (self._num_samples, *self._sample_shape)
+
+    @property
+    def ndim(self):
+        """Return the number of dimensions (always 4: frames x height x width x channels)."""
+        return len(self.shape)
+
+    def __len__(self):
+        """Return the number of frames in this video."""
+        return self._num_samples
+
+    def __getitem__(self, selection):
+        """Enable array-like slicing with random frame access for video data.
+
+        Unlike _get_data (which reads frames sequentially from the current cursor
+        position), this method seeks to the correct frame position first, reads the
+        requested range, and applies spatial slicing on the result.
+
+        Note that this mutates the video capture position, so concurrent access
+        from multiple threads is not safe.
+        """
+        resolved = self._convert_index_to_slices(selection)
+
+        # Seek to the correct frame position before reading
+        start_frame = resolved[0].start
+        end_frame = resolved[0].stop
+        self.video_capture_ob.current_frame = start_frame
+
+        num_frames = end_frame - start_frame
+        frames = np.empty(shape=(num_frames, *self.shape[1:]), dtype=self._dtype)
+        for frame_index in range(num_frames):
+            frames[frame_index] = next(self.video_capture_ob)
+
+        # Apply spatial slicing (height, width, channels)
+        spatial_selection = (slice(0, num_frames),) + resolved[1:]
+        return frames[spatial_selection]
 
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         start_frame = selection[0].start
         end_frame = selection[0].stop
-        frames = np.empty(shape=[end_frame - start_frame, *self._maxshape[1:]])
+
+        shape = (end_frame - start_frame, *self.shape[1:])
+        frames = np.empty(shape=shape, dtype=self._dtype)
         for frame_number in range(end_frame - start_frame):
             frames[frame_number] = next(self.video_capture_ob)
         return frames
 
-    def _get_dtype(self):
-        return self.video_capture_ob.get_video_frame_dtype()
+    def _get_dtype(self) -> np.dtype:
+        return self._dtype
 
-    def _get_maxshape(self):
-        return (self.video_capture_ob.get_video_frame_count(), *self.video_capture_ob.get_frame_shape())
+    def _get_maxshape(self) -> tuple[int, int, int, int]:
+        return self.shape

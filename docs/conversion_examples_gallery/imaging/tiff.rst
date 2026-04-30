@@ -10,6 +10,9 @@ Install NeuroConv with the additional dependencies necessary for reading TIFF da
 Convert TIFF imaging data to NWB using
 :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`.
 
+Single File, Planar and Single-Channel TIFF conversion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. code-block:: python
 
     >>> from datetime import datetime
@@ -17,21 +20,108 @@ Convert TIFF imaging data to NWB using
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import TiffImagingInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"
-    >>> interface = TiffImagingInterface(file_path=file_path, sampling_frequency=15.0, verbose=False)
+    >>> # Single TIFF file
+    >>> file_paths = [OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"]
+    >>> interface = TiffImagingInterface(file_paths=file_paths, sampling_frequency=15.0, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
+By default, the :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`
+assumes that the data is single-channel and planar (i.e., non-volumetric). In terms of data layout,
+this means each acquired image is stored as a separate **frame** (also called a page or IFD in TIFF
+terminology), representing successive samples for a single channel.
+
+Multi-channel, volumetric, and multi-file TIFF conversion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For multi-channel and/or volumetric data (optionally split across multiple files), you specify the
+number of channels, which channel to extract, and number of planes:
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import TiffImagingInterface
+    >>>
+    >>> # Multi-file TIFF dataset with 2 channels and 5 z-planes
+    >>> file_paths = [
+    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif",
+    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00002.tif",
+    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00003.tif",
+    ... ]
+    >>> interface = TiffImagingInterface(
+    ...     file_paths=file_paths,
+    ...     sampling_frequency=30.0,
+    ...     num_channels=2,
+    ...     dimension_order="CZT", # Channels vary fastest, then Z-planes, then time
+    ...     channel_name="0",       # Extract channel 0
+    ...     num_planes=5,           # 5 z-planes per volume
+    ...     verbose=False,
+    ... )
+    >>>
+    >>> metadata = interface.get_metadata()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+The example above assumes that frames are laid out on disk with channels varying fastest, then Z-planes,
+then time (``dimension_order="CZT"``). This is the default and matches the layout used by ScanImage.
+See the next section if your data uses a different frame layout.
+
+When using multiple files, frames are assumed to continue **contiguously** across files. For example,
+if the first file ends at frame 23, the first frame of the second file is treated as frame 24. This is
+common when microscope software splits large acquisitions across multiple files to avoid file size limits.
+
+Specifying frame layout on disk
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If your data is laid out differently on disk, you can specify the frame layout using the ``dimension_order``
+parameter. This uses the concept of dimension order from the
+`OME-TIFF specification <https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/specification.html#dimensionorder>`_.
+
+The dimension order uses three letters:
+
+* **Z**: Depth plane (z-axis position in volumetric imaging)
+* **C**: Channel (e.g., different fluorophores or wavelengths)
+* **T**: Time (or acquisition cycles)
+
+The order indicates which dimension varies **fastest** (leftmost) to **slowest** (rightmost) when
+reading frames sequentially from the TIFF file. The key principle is that the leftmost dimension
+changes most frequently between consecutive frames. The following interactive visualizer illustrates
+the dimension order concept visually:
+
+
+.. raw:: html
+    :file: ../../_static/js/dimension-order-visualizer-embed.html
+
+|
+
+For detailed explanations of all six dimension orders (ZCT, CZT, ZTC, CTZ, TCZ, TZC) with example
+sequences and use cases, see the
+:py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` documentation.
+
 
 .. note::
+   The dimension order describes how frames (IFDs) are laid out on disk, which does not necessarily
+   match the order in which they were acquired. For example, some acquisition software may reorganize
+   frames during saving, or post-processing tools may reorder them. The ``dimension_order`` parameter
+   tells NeuroConv how to interpret the file as it exists, regardless of acquisition history.
 
-    The :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` is designed for
-    imaging data where all of the frames are in a multi-page TIFF file. It is not appropriate for datasets where the
-    TIFF data is distributed across many files, for example from Bruker acquisition software.
+.. note::
+   **Terminology**: In this documentation, we use "frame" to refer to each acquired image in the TIFF file.
+   This is equivalent to an **IFD (Image File Directory)** in the TIFF specification, or a **page** in
+   common TIFF libraries like tifffile.
