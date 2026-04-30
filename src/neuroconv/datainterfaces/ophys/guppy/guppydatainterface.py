@@ -3,15 +3,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
+import h5py
 import numpy as np
+import pandas
 from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb.base import TimeSeries
+from pynwb.core import DynamicTable, VectorData
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from neuroconv.tools import get_package
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.utils import DeepDict
+from neuroconv.utils.json_schema import get_base_schema
 
 
 class GuppyFiberPhotometryInterface(BaseTemporalAlignmentInterface):
@@ -115,7 +118,6 @@ class GuppyFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return [name[len("signal_") :] for name in semantic_names if name.startswith("signal_")]
 
     def _read_time_correction(self, region: str) -> dict:
-        h5py = get_package("h5py", installation_instructions="pip install h5py")
         time_correction_path = self.folder_path / f"timeCorrection_{region}.hdf5"
         assert time_correction_path.is_file(), f"Missing {time_correction_path} for region '{region}'."
         with h5py.File(time_correction_path, "r") as f:
@@ -216,8 +218,6 @@ class GuppyFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
     def get_metadata_schema(self) -> dict:
         """Return the metadata schema for this interface."""
-        from neuroconv.utils.json_schema import get_base_schema
-
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"].setdefault("Ophys", get_base_schema(tag="Ophys"))
         metadata_schema["properties"]["Ophys"]["properties"]["Guppy"] = dict(
@@ -338,10 +338,6 @@ class GuppyFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             via :meth:`set_aligned_timestamps`; ``"aligned_starting_time_and_rate"`` uses
             ``(starting_time, rate)`` provided via :meth:`set_aligned_starting_time_and_rate`.
         """
-        h5py = get_package("h5py", installation_instructions="pip install h5py")
-        pandas = get_package("pandas", installation_instructions="pip install pandas")
-        from pynwb.core import DynamicTable, VectorData
-
         assert timing_source in ("original", "aligned_timestamps", "aligned_starting_time_and_rate"), (
             f"timing_source must be 'original', 'aligned_timestamps', or "
             f"'aligned_starting_time_and_rate'; got {timing_source!r}."

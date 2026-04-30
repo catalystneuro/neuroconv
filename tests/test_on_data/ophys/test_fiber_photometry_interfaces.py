@@ -4,8 +4,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+import pandas
+import pytest
 from hdmf.testing import TestCase
+from parameterized import parameterized
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import (
     GuppyFiberPhotometryInterface,
@@ -20,9 +24,6 @@ try:
     from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 except ImportError:
     from setup_paths import OUTPUT_PATH
-
-import pytest
-from parameterized import parameterized
 
 
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
@@ -805,8 +806,6 @@ class TestGuppyFiberPhotometryInterface:
         assert {transient["name"] for transient in guppy_metadata["Transients"]} == expected_transient_names
 
     def test_add_to_nwbfile_lands_in_processing_module(self, interface, case):
-        from pynwb.testing.mock.file import mock_NWBFile
-
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile, metadata, stub_test=True)
@@ -828,9 +827,6 @@ class TestGuppyFiberPhotometryInterface:
         assert "transient_summary" in module.data_interfaces
 
     def test_transients_table_row_count_matches_csv(self, interface, case):
-        import pandas as pd
-        from pynwb.testing.mock.file import mock_NWBFile
-
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile, metadata, stub_test=False)
@@ -838,15 +834,12 @@ class TestGuppyFiberPhotometryInterface:
         for region, features in case["expected_transients"].items():
             for feature in features:
                 csv_path = case["folder_path"] / f"transientsOccurrences_{feature}_{region}.csv"
-                expected_count = len(pd.read_csv(csv_path))
+                expected_count = len(pandas.read_csv(csv_path))
                 table = module[f"transients_{region}_{feature}"]
                 assert len(table["timestamp"]) == expected_count
                 assert len(table["amplitude"]) == expected_count
 
     def test_transient_summary_matches_freq_amp(self, interface, case):
-        import pandas as pd
-        from pynwb.testing.mock.file import mock_NWBFile
-
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile, metadata, stub_test=False)
@@ -858,7 +851,7 @@ class TestGuppyFiberPhotometryInterface:
                 freq_amp_path = case["folder_path"] / f"freqAndAmp_{feature}_{region}.h5"
                 if not freq_amp_path.is_file():
                     continue
-                dataframe = pd.read_hdf(freq_amp_path)
+                dataframe = pandas.read_hdf(freq_amp_path)
                 expected_rows.append(
                     (
                         region,
@@ -879,8 +872,6 @@ class TestGuppyFiberPhotometryInterface:
         assert actual_rows == expected_rows
 
     def test_aligned_starting_time_shifts_traces_and_transients(self, interface, case):
-        from pynwb.testing.mock.file import mock_NWBFile
-
         original_starting_time_and_rate = interface.get_original_starting_time_and_rate()
         first_region = case["expected_regions"][0]
         original_start, _ = original_starting_time_and_rate[first_region]
@@ -905,9 +896,7 @@ class TestGuppyFiberPhotometryInterface:
         for region, features in case["expected_transients"].items():
             for feature in features:
                 csv_path = case["folder_path"] / f"transientsOccurrences_{feature}_{region}.csv"
-                import pandas as pd
-
-                expected_first_peak = float(pd.read_csv(csv_path)["timestamps"].iloc[0]) + offset
+                expected_first_peak = float(pandas.read_csv(csv_path)["timestamps"].iloc[0]) + offset
                 table = module[f"transients_{region}_{feature}"]
                 assert table["timestamp"][0] == pytest.approx(expected_first_peak)
 
