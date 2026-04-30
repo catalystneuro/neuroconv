@@ -31,10 +31,24 @@ class TestGuppyInterface:
                         "dms": ["cntrl_sig_fit", "dff", "z_score"],
                         "dls": ["cntrl_sig_fit", "dff", "z_score"],
                     },
-                    expected_transients={"dms": ["z_score"], "dls": ["z_score"]},
+                    expected_transients={"dms": ["z_score", "dff"], "dls": ["z_score", "dff"]},
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
                 ),
                 id="tdt_isosbestic_two_regions",
+            ),
+            pytest.param(
+                dict(
+                    folder_path=GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_1",
+                    parameters_file_path=None,
+                    expected_regions=["dms", "dls"],
+                    expected_traces={
+                        "dms": ["cntrl_sig_fit", "dff", "z_score"],
+                        "dls": ["cntrl_sig_fit", "dff", "z_score"],
+                    },
+                    expected_transients={"dms": ["z_score", "dff"], "dls": ["z_score", "dff"]},
+                    expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
+                ),
+                id="tdt_isosbestic_two_regions_no_parameters_file",
             ),
         ]
     )
