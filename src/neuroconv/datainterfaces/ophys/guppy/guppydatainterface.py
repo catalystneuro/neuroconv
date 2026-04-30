@@ -40,8 +40,8 @@ class GuppyFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        parameters_file_path: FilePath | None = None,
         *,
+        parameters_file_path: FilePath | None = None,
         verbose: bool = False,
     ):
         """Initialize the GuppyFiberPhotometryInterface.
