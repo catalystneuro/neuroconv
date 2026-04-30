@@ -1,0 +1,247 @@
+from datetime import datetime, timezone
+
+import numpy as np
+import pandas
+import pytest
+from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
+
+from neuroconv.datainterfaces import GuppyInterface
+
+try:
+    from ..setup_paths import OPHYS_DATA_PATH
+except ImportError:
+    from setup_paths import OPHYS_DATA_PATH
+
+
+GUPPY_DATA_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "GuPPy"
+
+
+class TestGuppyInterface:
+    """Tests for the GuppyInterface against the standard GuPPy fixture set."""
+
+    @pytest.fixture(
+        params=[
+            pytest.param(
+                dict(
+                    folder_path=GUPPY_DATA_PATH
+                    / "StandardOutputs_Clean"
+                    / "Photo_63_207-181030-103332"
+                    / "Photo_63_207-181030-103332_output_1",
+                    parameters_file_path=GUPPY_DATA_PATH
+                    / "SampleData_Clean"
+                    / "Photo_63_207-181030-103332"
+                    / "GuPPyParamtersUsed.json",
+                    expected_regions=["DMS"],
+                    expected_traces={"DMS": ["cntrl_sig_fit", "dff", "z_score"]},
+                    expected_transients={"DMS": ["z_score"]},
+                    expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
+                ),
+                id="clean_tdt_isosbestic_single_region",
+            ),
+            pytest.param(
+                dict(
+                    folder_path=GUPPY_DATA_PATH
+                    / "StandardOutputs_dff"
+                    / "sample_data_csv_1"
+                    / "sample_data_csv_1_output_1",
+                    parameters_file_path=None,
+                    expected_regions=["region"],
+                    expected_traces={"region": ["cntrl_sig_fit", "dff", "z_score"]},
+                    expected_transients={"region": ["dff"]},
+                    expected_session_start_time=None,
+                ),
+                id="csv_dff_driven",
+            ),
+            pytest.param(
+                dict(
+                    folder_path=GUPPY_DATA_PATH
+                    / "StandardOutputs_no_isosbestic"
+                    / "sample_data_csv_1"
+                    / "sample_data_csv_1_output_1",
+                    parameters_file_path=None,
+                    expected_regions=["region"],
+                    expected_traces={"region": ["cntrl_sig_fit", "dff", "z_score"]},
+                    expected_transients={"region": ["z_score"]},
+                    expected_session_start_time=None,
+                ),
+                id="csv_no_isosbestic",
+            ),
+            pytest.param(
+                dict(
+                    folder_path=GUPPY_DATA_PATH
+                    / "StandardOutputs_combined"
+                    / "Photo_048_392-200728-121222"
+                    / "Photo_048_392-200728-121222_output_1",
+                    parameters_file_path=GUPPY_DATA_PATH
+                    / "SampleData_combined"
+                    / "Photo_048_392-200728-121222"
+                    / "GuPPyParamtersUsed.json",
+                    expected_regions=["dms"],
+                    expected_traces={"dms": ["cntrl_sig_fit", "dff", "z_score"]},
+                    expected_transients={"dms": ["z_score"]},
+                    expected_session_start_time=datetime(2020, 7, 28, 17, 12, 25, tzinfo=timezone.utc),
+                ),
+                id="combined_session",
+            ),
+        ]
+    )
+    def case(self, request):
+        case = dict(request.param)
+        assert case[
+            "folder_path"
+        ].is_dir(), f"Test data missing at {case['folder_path']}. Place the GuPPy fixture set under {GUPPY_DATA_PATH}."
+        if case["parameters_file_path"] is not None:
+            assert case["parameters_file_path"].is_file(), f"Parameters file missing at {case['parameters_file_path']}."
+        return case
+
+    @pytest.fixture
+    def interface(self, case):
+        kwargs = dict(folder_path=str(case["folder_path"]))
+        if case["parameters_file_path"] is not None:
+            kwargs["parameters_file_path"] = str(case["parameters_file_path"])
+        return GuppyInterface(**kwargs)
+
+    def test_discovery(self, interface, case):
+        assert interface.regions == case["expected_regions"]
+        assert interface.traces_by_region == case["expected_traces"]
+        assert interface.transients_by_region == case["expected_transients"]
+
+    def test_metadata_session_start_time(self, interface, case):
+        metadata = interface.get_metadata()
+        if case["expected_session_start_time"] is None:
+            # CSV-input fixtures lack timeRecStart; session_start_time must be set by the user.
+            assert metadata["NWBFile"].get("session_start_time") in (None, "")
+        else:
+            assert metadata["NWBFile"]["session_start_time"] == case["expected_session_start_time"]
+
+    def test_metadata_traces_and_transients(self, interface, case):
+        metadata = interface.get_metadata()
+        guppy_metadata = metadata["Ophys"]["Guppy"]
+
+        expected_trace_names = {
+            f"{prefix}_{region}" for region, prefixes in case["expected_traces"].items() for prefix in prefixes
+        }
+        assert {trace["name"] for trace in guppy_metadata["Traces"]} == expected_trace_names
+
+        expected_transient_names = {
+            f"transients_{region}_{feature}"
+            for region, features in case["expected_transients"].items()
+            for feature in features
+        }
+        assert {transient["name"] for transient in guppy_metadata["Transients"]} == expected_transient_names
+
+    def test_add_to_nwbfile_lands_in_processing_module(self, interface, case):
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata, stub_test=True)
+
+        assert "fiber_photometry" in nwbfile.processing
+        assert not nwbfile.acquisition, "GuPPy interface must not write to /acquisition/."
+
+        module = nwbfile.processing["fiber_photometry"]
+        for region, prefixes in case["expected_traces"].items():
+            for prefix in prefixes:
+                series = module[f"{prefix}_{region}"]
+                assert series.data.shape[0] > 0
+                assert series.data.shape[0] <= int(np.ceil(series.rate)) + 1
+        for region, features in case["expected_transients"].items():
+            for feature in features:
+                table = module[f"transients_{region}_{feature}"]
+                assert "timestamp" in table.colnames
+                assert "amplitude" in table.colnames
+        assert "transient_summary" in module.data_interfaces
+
+    def test_transients_table_row_count_matches_csv(self, interface, case):
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata, stub_test=False)
+        module = nwbfile.processing["fiber_photometry"]
+        for region, features in case["expected_transients"].items():
+            for feature in features:
+                csv_path = case["folder_path"] / f"transientsOccurrences_{feature}_{region}.csv"
+                expected_count = len(pandas.read_csv(csv_path))
+                table = module[f"transients_{region}_{feature}"]
+                assert len(table["timestamp"]) == expected_count
+                assert len(table["amplitude"]) == expected_count
+
+    def test_transient_summary_matches_freq_amp(self, interface, case):
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata, stub_test=False)
+        summary = nwbfile.processing["fiber_photometry"]["transient_summary"]
+
+        expected_rows = []
+        for region, features in case["expected_transients"].items():
+            for feature in features:
+                freq_amp_path = case["folder_path"] / f"freqAndAmp_{feature}_{region}.h5"
+                if not freq_amp_path.is_file():
+                    continue
+                dataframe = pandas.read_hdf(freq_amp_path)
+                expected_rows.append(
+                    (
+                        region,
+                        feature,
+                        float(dataframe["freq (events/min)"].iloc[0]),
+                        float(dataframe["amplitude"].iloc[0]),
+                    )
+                )
+
+        actual_rows = list(
+            zip(
+                summary["region"].data,
+                summary["feature"].data,
+                summary["frequency_per_min"].data,
+                summary["mean_amplitude"].data,
+            )
+        )
+        assert actual_rows == expected_rows
+
+    def test_aligned_starting_time_shifts_traces_and_transients(self, interface, case):
+        original_starting_time_and_rate = interface.get_original_starting_time_and_rate()
+        first_region = case["expected_regions"][0]
+        original_start, _ = original_starting_time_and_rate[first_region]
+
+        offset = 12.34
+        interface.set_aligned_starting_time_and_rate(
+            {region: (start + offset, rate) for region, (start, rate) in original_starting_time_and_rate.items()}
+        )
+
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(
+            nwbfile,
+            metadata,
+            stub_test=False,
+            timing_source="aligned_starting_time_and_rate",
+        )
+        module = nwbfile.processing["fiber_photometry"]
+        first_trace_name = f"{case['expected_traces'][first_region][0]}_{first_region}"
+        assert module[first_trace_name].starting_time == pytest.approx(original_start + offset)
+
+        for region, features in case["expected_transients"].items():
+            for feature in features:
+                csv_path = case["folder_path"] / f"transientsOccurrences_{feature}_{region}.csv"
+                expected_first_peak = float(pandas.read_csv(csv_path)["timestamps"].iloc[0]) + offset
+                table = module[f"transients_{region}_{feature}"]
+                assert table["timestamp"][0] == pytest.approx(expected_first_peak)
+
+    def test_round_trip_write_read(self, interface, case, tmp_path):
+        metadata = interface.get_metadata()
+        if metadata["NWBFile"].get("session_start_time") in (None, ""):
+            metadata["NWBFile"]["session_start_time"] = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+        nwbfile_path = tmp_path / "test_guppy.nwb"
+        interface.run_conversion(
+            nwbfile_path=str(nwbfile_path),
+            metadata=metadata,
+            overwrite=True,
+            stub_test=True,
+        )
+        with NWBHDF5IO(str(nwbfile_path), "r") as io:
+            nwbfile = io.read()
+            assert "fiber_photometry" in nwbfile.processing
+            module = nwbfile.processing["fiber_photometry"]
+            for region, prefixes in case["expected_traces"].items():
+                for prefix in prefixes:
+                    assert f"{prefix}_{region}" in module.data_interfaces

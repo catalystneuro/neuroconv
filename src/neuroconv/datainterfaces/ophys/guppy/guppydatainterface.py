@@ -17,7 +17,7 @@ from neuroconv.utils import DeepDict
 from neuroconv.utils.json_schema import get_base_schema
 
 
-class GuppyFiberPhotometryInterface(BaseTemporalAlignmentInterface):
+class GuppyInterface(BaseTemporalAlignmentInterface):
     """
     Data Interface for converting GuPPy (Guided Photometry Analysis in Python) processed outputs.
 
@@ -32,7 +32,7 @@ class GuppyFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     """
 
     keywords = ("fiber photometry", "GuPPy", "processed")
-    display_name = "GuppyFiberPhotometry"
+    display_name = "Guppy"
     info = "Data Interface for converting fiber photometry data processed by GuPPy."
     associated_suffixes = ("hdf5", "csv", "h5", "json")
 
@@ -47,7 +47,7 @@ class GuppyFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         parameters_file_path: FilePath | None = None,
         verbose: bool = False,
     ):
-        """Initialize the GuppyFiberPhotometryInterface.
+        """Initialize the GuppyInterface.
 
         Parameters
         ----------
