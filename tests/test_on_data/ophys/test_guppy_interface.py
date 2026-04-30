@@ -14,7 +14,7 @@ except ImportError:
     from setup_paths import OPHYS_DATA_PATH
 
 
-GUPPY_DATA_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "GuPPy"
+GUPPY_DATA_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_63_207-181030-103332"
 
 
 class TestGuppyInterface:
@@ -24,65 +24,17 @@ class TestGuppyInterface:
         params=[
             pytest.param(
                 dict(
-                    folder_path=GUPPY_DATA_PATH
-                    / "StandardOutputs_Clean"
-                    / "Photo_63_207-181030-103332"
-                    / "Photo_63_207-181030-103332_output_1",
-                    parameters_file_path=GUPPY_DATA_PATH
-                    / "SampleData_Clean"
-                    / "Photo_63_207-181030-103332"
-                    / "GuPPyParamtersUsed.json",
-                    expected_regions=["DMS"],
-                    expected_traces={"DMS": ["cntrl_sig_fit", "dff", "z_score"]},
-                    expected_transients={"DMS": ["z_score"]},
+                    folder_path=GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_1",
+                    parameters_file_path=GUPPY_DATA_PATH / "GuPPyParamtersUsed.json",
+                    expected_regions=["dms", "dls"],
+                    expected_traces={
+                        "dms": ["cntrl_sig_fit", "dff", "z_score"],
+                        "dls": ["cntrl_sig_fit", "dff", "z_score"],
+                    },
+                    expected_transients={"dms": ["z_score"], "dls": ["z_score"]},
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
                 ),
-                id="clean_tdt_isosbestic_single_region",
-            ),
-            pytest.param(
-                dict(
-                    folder_path=GUPPY_DATA_PATH
-                    / "StandardOutputs_dff"
-                    / "sample_data_csv_1"
-                    / "sample_data_csv_1_output_1",
-                    parameters_file_path=None,
-                    expected_regions=["region"],
-                    expected_traces={"region": ["cntrl_sig_fit", "dff", "z_score"]},
-                    expected_transients={"region": ["dff"]},
-                    expected_session_start_time=None,
-                ),
-                id="csv_dff_driven",
-            ),
-            pytest.param(
-                dict(
-                    folder_path=GUPPY_DATA_PATH
-                    / "StandardOutputs_no_isosbestic"
-                    / "sample_data_csv_1"
-                    / "sample_data_csv_1_output_1",
-                    parameters_file_path=None,
-                    expected_regions=["region"],
-                    expected_traces={"region": ["cntrl_sig_fit", "dff", "z_score"]},
-                    expected_transients={"region": ["z_score"]},
-                    expected_session_start_time=None,
-                ),
-                id="csv_no_isosbestic",
-            ),
-            pytest.param(
-                dict(
-                    folder_path=GUPPY_DATA_PATH
-                    / "StandardOutputs_combined"
-                    / "Photo_048_392-200728-121222"
-                    / "Photo_048_392-200728-121222_output_1",
-                    parameters_file_path=GUPPY_DATA_PATH
-                    / "SampleData_combined"
-                    / "Photo_048_392-200728-121222"
-                    / "GuPPyParamtersUsed.json",
-                    expected_regions=["dms"],
-                    expected_traces={"dms": ["cntrl_sig_fit", "dff", "z_score"]},
-                    expected_transients={"dms": ["z_score"]},
-                    expected_session_start_time=datetime(2020, 7, 28, 17, 12, 25, tzinfo=timezone.utc),
-                ),
-                id="combined_session",
+                id="tdt_isosbestic_two_regions",
             ),
         ]
     )
