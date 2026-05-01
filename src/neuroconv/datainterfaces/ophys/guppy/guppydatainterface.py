@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -15,6 +16,14 @@ from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterf
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.utils import DeepDict
 from neuroconv.utils.json_schema import get_base_schema
+
+
+def _column_parses_as_float(column: str) -> bool:
+    try:
+        float(column)
+    except ValueError:
+        return False
+    return True
 
 
 class GuppyInterface(BaseTemporalAlignmentInterface):
@@ -590,11 +599,20 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 ]
 
             lag_axis = cross_correlation_dataframe["timestamps"].to_numpy(dtype=np.float64)
-            trial_columns = [
-                column for column in cross_correlation_dataframe.columns if column not in ("timestamps", "mean", "err")
-            ]
             entry_name = cross_correlation_metadata["name"]
             entry_description = cross_correlation_metadata["description"]
+
+            trial_columns = [
+                column for column in cross_correlation_dataframe.columns if _column_parses_as_float(column)
+            ]
+            bin_pattern = re.compile(r"^bin_\((\d+)-(\d+)\)$")
+            bin_columns = sorted(
+                (int(match.group(1)), int(match.group(2)), column)
+                for column, match in (
+                    (column, bin_pattern.match(column)) for column in cross_correlation_dataframe.columns
+                )
+                if match is not None
+            )
 
             trial_table = DynamicTable(name=entry_name, description=entry_description)
             trial_table.add_column(
@@ -640,3 +658,48 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 ],
             )
             processing_module.add(mean_table)
+
+            if bin_columns:
+                psth_bins_table = DynamicTable(
+                    name=f"{entry_name}_psth_bins",
+                    description=(
+                        f"Trial-binned PSTH cross-correlations for {entry_name}. "
+                        f"Each row is a bin of consecutive trials, with mean and error across the bin."
+                    ),
+                )
+                psth_bins_table.add_column(
+                    name="bin_start_trial_index",
+                    description="Start trial index of the bin (inclusive).",
+                )
+                psth_bins_table.add_column(
+                    name="bin_end_trial_index",
+                    description="End trial index of the bin (exclusive).",
+                )
+                psth_bins_table.add_column(
+                    name="lag_in_seconds",
+                    description="Lag axis in seconds, symmetric around zero.",
+                    index=True,
+                )
+                psth_bins_table.add_column(
+                    name="cross_correlation",
+                    description="Mean cross-correlation across trials in the bin at each lag.",
+                    index=True,
+                )
+                psth_bins_table.add_column(
+                    name="cross_correlation_error",
+                    description=(
+                        "Error (e.g., SEM) of cross-correlation across trials in the bin at each lag. "
+                        "NaN when the bin contains fewer than two valid trials."
+                    ),
+                    index=True,
+                )
+                for bin_start, bin_end, value_column in bin_columns:
+                    error_column = f"bin_err_({bin_start}-{bin_end})"
+                    psth_bins_table.add_row(
+                        bin_start_trial_index=bin_start,
+                        bin_end_trial_index=bin_end,
+                        lag_in_seconds=lag_axis,
+                        cross_correlation=cross_correlation_dataframe[value_column].to_numpy(dtype=np.float64),
+                        cross_correlation_error=cross_correlation_dataframe[error_column].to_numpy(dtype=np.float64),
+                    )
+                processing_module.add(psth_bins_table)

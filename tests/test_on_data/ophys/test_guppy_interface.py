@@ -1,3 +1,4 @@
+import re
 import shutil
 from datetime import datetime, timezone
 
@@ -9,6 +10,17 @@ from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import GuppyInterface
+
+
+def _column_parses_as_float(column: str) -> bool:
+    try:
+        float(column)
+    except ValueError:
+        return False
+    return True
+
+
+_BIN_COLUMN_PATTERN = re.compile(r"^bin_\((\d+)-(\d+)\)$")
 
 try:
     from ..setup_paths import OPHYS_DATA_PATH
@@ -176,9 +188,14 @@ class TestGuppyInterface:
             trial_table = module[entry_name]
             mean_table = module[f"{entry_name}_mean"]
 
-            trial_columns = [
-                column for column in source_dataframe.columns if column not in ("timestamps", "mean", "err")
-            ]
+            trial_columns = [column for column in source_dataframe.columns if _column_parses_as_float(column)]
+            bin_columns = sorted(
+                (int(match.group(1)), int(match.group(2)), column)
+                for column, match in (
+                    (column, _BIN_COLUMN_PATTERN.match(column)) for column in source_dataframe.columns
+                )
+                if match is not None
+            )
             expected_lag = source_dataframe["timestamps"].to_numpy(dtype=np.float64)
 
             assert len(trial_table) == len(trial_columns)
@@ -201,6 +218,24 @@ class TestGuppyInterface:
                 np.asarray(mean_table["mean"][:]),
                 source_dataframe["mean"].to_numpy(dtype=np.float64),
             )
+
+            psth_bins_table = module[f"{entry_name}_psth_bins"]
+            assert len(psth_bins_table) == len(bin_columns)
+            for i, (bin_start, bin_end, value_column) in enumerate(bin_columns):
+                assert psth_bins_table["bin_start_trial_index"][i] == bin_start
+                assert psth_bins_table["bin_end_trial_index"][i] == bin_end
+                np.testing.assert_array_equal(
+                    np.asarray(psth_bins_table["lag_in_seconds"][i]),
+                    expected_lag,
+                )
+                np.testing.assert_array_equal(
+                    np.asarray(psth_bins_table["cross_correlation"][i]),
+                    source_dataframe[value_column].to_numpy(dtype=np.float64),
+                )
+                np.testing.assert_array_equal(
+                    np.asarray(psth_bins_table["cross_correlation_error"][i]),
+                    source_dataframe[f"bin_err_({bin_start}-{bin_end})"].to_numpy(dtype=np.float64),
+                )
 
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()
@@ -255,6 +290,16 @@ class TestGuppyInterface:
             assert "lag_in_seconds" in mean_table.colnames
             assert "mean" in mean_table.colnames
             assert len(mean_table["lag_in_seconds"]) <= 100
+
+            psth_bins_name = f"{entry_name}_psth_bins"
+            assert psth_bins_name in module.data_interfaces
+            psth_bins_table = module[psth_bins_name]
+            assert "bin_start_trial_index" in psth_bins_table.colnames
+            assert "bin_end_trial_index" in psth_bins_table.colnames
+            assert "lag_in_seconds" in psth_bins_table.colnames
+            assert "cross_correlation" in psth_bins_table.colnames
+            assert "cross_correlation_error" in psth_bins_table.colnames
+            assert len(np.asarray(psth_bins_table["lag_in_seconds"][0])) <= 100
 
     def test_transients_table_row_count_matches_csv(self, interface, case):
         metadata = interface.get_metadata()
