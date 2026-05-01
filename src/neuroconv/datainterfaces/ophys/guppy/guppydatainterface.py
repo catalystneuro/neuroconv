@@ -130,6 +130,17 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 UserWarning,
             )
 
+        artifact_removal_method = None
+        if valid_signal_intervals_by_region:
+            artifact_removal_method = guppy_parameters.get("artifactsRemovalMethod")
+            if artifact_removal_method is None:
+                warnings.warn(
+                    "GuPPy parameters do not specify 'artifactsRemovalMethod' but artifact removal "
+                    "intervals were found; defaulting to 'concatenate' (GuPPy's UI default).",
+                    UserWarning,
+                )
+                artifact_removal_method = "concatenate"
+
         self.folder_path = folder_path
         self.parameters_file_path = Path(parameters_file_path) if parameters_file_path is not None else None
         self.regions = regions
@@ -137,6 +148,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self.transients_by_region = transients_by_region
         self.cross_correlations = cross_correlations
         self.valid_signal_intervals_by_region = valid_signal_intervals_by_region
+        self.artifact_removal_method = artifact_removal_method
         self.guppy_parameters = guppy_parameters
         self._region_to_aligned_timestamps: dict[str, np.ndarray] | None = None
         self._region_to_aligned_starting_time_and_rate: dict[str, tuple[float, float]] | None = None
@@ -750,7 +762,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 name="valid_signal_intervals",
                 description=(
                     "Time intervals retained as valid signal (i.e., not removed as artifacts) "
-                    "during GuPPy preprocessing. Method: manual coordinate-based selection. "
+                    f"during GuPPy preprocessing. Method: {self.artifact_removal_method}. "
                     "Sourced from coordsForPreProcessing_<region>.npy."
                 ),
             )

@@ -1,3 +1,4 @@
+import json
 import re
 import shutil
 from datetime import datetime, timezone
@@ -295,6 +296,8 @@ class TestGuppyInterface:
             return
 
         table = module["valid_signal_intervals"]
+        assert "Method:" in table.description
+        assert interface.artifact_removal_method in table.description
         actual_regions = list(table["region"][:])
         actual_starts = list(table["start_time"][:])
         actual_stops = list(table["stop_time"][:])
@@ -318,6 +321,29 @@ class TestGuppyInterface:
                 folder_path=str(copied_folder),
                 parameters_file_path=str(GUPPY_DATA_PATH / "GuPPyParamtersUsed2.json"),
             )
+
+    def test_missing_artifacts_removal_method_warns_and_defaults(self):
+        with pytest.warns(UserWarning, match="artifactsRemovalMethod"):
+            interface = GuppyInterface(
+                folder_path=str(GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2"),
+                parameters_file_path=str(GUPPY_DATA_PATH / "GuPPyParamtersUsed2.json"),
+            )
+        assert interface.artifact_removal_method == "concatenate"
+
+    def test_artifacts_removal_method_read_from_json(self, tmp_path):
+        source_folder = GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2"
+        copied_folder = tmp_path / "guppy_output"
+        shutil.copytree(source_folder, copied_folder)
+        params_source = json.loads((GUPPY_DATA_PATH / "GuPPyParamtersUsed2.json").read_text())
+        params_source["artifactsRemovalMethod"] = "replace with NaN"
+        params_path = tmp_path / "GuPPyParamtersUsed_with_method.json"
+        params_path.write_text(json.dumps(params_source))
+
+        interface = GuppyInterface(
+            folder_path=str(copied_folder),
+            parameters_file_path=str(params_path),
+        )
+        assert interface.artifact_removal_method == "replace with NaN"
 
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()
