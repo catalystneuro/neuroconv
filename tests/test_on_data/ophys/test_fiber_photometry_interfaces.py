@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+import pytest
 from hdmf.testing import TestCase
+from parameterized import parameterized
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import TDTFiberPhotometryInterface
@@ -17,9 +19,6 @@ try:
     from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 except ImportError:
     from setup_paths import OUTPUT_PATH
-
-import pytest
-from parameterized import parameterized
 
 
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
