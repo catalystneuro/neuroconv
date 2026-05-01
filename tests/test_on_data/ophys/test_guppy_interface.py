@@ -169,27 +169,38 @@ class TestGuppyInterface:
                 / f"corr_{entry['event_name']}_{entry['feature']}_{entry['region_1']}_{entry['region_2']}.h5"
             )
             source_dataframe = pandas.read_hdf(source_path)
-            cross_correlation_table = module[
-                f"cross_correlation_{entry['event_name']}_{entry['feature']}_{entry['region_1']}_{entry['region_2']}"
-            ]
-            np.testing.assert_array_equal(
-                np.asarray(cross_correlation_table["lag_in_seconds"][:]),
-                source_dataframe["timestamps"].to_numpy(dtype=np.float64),
+            entry_name = (
+                f"cross_correlation_{entry['event_name']}_{entry['feature']}"
+                f"_{entry['region_1']}_{entry['region_2']}"
             )
-            np.testing.assert_array_equal(
-                np.asarray(cross_correlation_table["mean"][:]),
-                source_dataframe["mean"].to_numpy(dtype=np.float64),
-            )
+            trial_table = module[entry_name]
+            mean_table = module[f"{entry_name}_mean"]
+
             trial_columns = [
                 column for column in source_dataframe.columns if column not in ("timestamps", "mean", "err")
             ]
-            for trial_column in trial_columns:
-                onset_in_seconds = float(trial_column)
-                column_name = f"trial_at_{onset_in_seconds:.6f}s"
+            expected_lag = source_dataframe["timestamps"].to_numpy(dtype=np.float64)
+
+            assert len(trial_table) == len(trial_columns)
+            for i, trial_column in enumerate(trial_columns):
+                assert trial_table["trial_onset_in_seconds"][i] == float(trial_column)
                 np.testing.assert_array_equal(
-                    np.asarray(cross_correlation_table[column_name][:]),
+                    np.asarray(trial_table["lag_in_seconds"][i]),
+                    expected_lag,
+                )
+                np.testing.assert_array_equal(
+                    np.asarray(trial_table["cross_correlation"][i]),
                     source_dataframe[trial_column].to_numpy(dtype=np.float64),
                 )
+
+            np.testing.assert_array_equal(
+                np.asarray(mean_table["lag_in_seconds"][:]),
+                expected_lag,
+            )
+            np.testing.assert_array_equal(
+                np.asarray(mean_table["mean"][:]),
+                source_dataframe["mean"].to_numpy(dtype=np.float64),
+            )
 
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()
@@ -228,14 +239,22 @@ class TestGuppyInterface:
                 assert "amplitude" in table.colnames
         assert "transient_summary" in module.data_interfaces
         for entry in case["expected_cross_correlations"]:
-            cross_correlation_name = (
+            entry_name = (
                 f"cross_correlation_{entry['event_name']}_{entry['feature']}_{entry['region_1']}_{entry['region_2']}"
             )
-            assert cross_correlation_name in module.data_interfaces
-            cross_correlation_table = module[cross_correlation_name]
-            assert "lag_in_seconds" in cross_correlation_table.colnames
-            assert "mean" in cross_correlation_table.colnames
-            assert len(cross_correlation_table["lag_in_seconds"]) <= 100
+            assert entry_name in module.data_interfaces
+            trial_table = module[entry_name]
+            assert "trial_onset_in_seconds" in trial_table.colnames
+            assert "lag_in_seconds" in trial_table.colnames
+            assert "cross_correlation" in trial_table.colnames
+            assert len(np.asarray(trial_table["lag_in_seconds"][0])) <= 100
+
+            mean_name = f"{entry_name}_mean"
+            assert mean_name in module.data_interfaces
+            mean_table = module[mean_name]
+            assert "lag_in_seconds" in mean_table.colnames
+            assert "mean" in mean_table.colnames
+            assert len(mean_table["lag_in_seconds"]) <= 100
 
     def test_transients_table_row_count_matches_csv(self, interface, case):
         metadata = interface.get_metadata()

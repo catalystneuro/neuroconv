@@ -589,38 +589,54 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     : min(len(cross_correlation_dataframe), 100)
                 ]
 
+            lag_axis = cross_correlation_dataframe["timestamps"].to_numpy(dtype=np.float64)
             trial_columns = [
                 column for column in cross_correlation_dataframe.columns if column not in ("timestamps", "mean", "err")
             ]
-            columns = [
-                VectorData(
-                    name="lag_in_seconds",
-                    description="Lag axis in seconds, symmetric around zero.",
-                    data=cross_correlation_dataframe["timestamps"].to_numpy(dtype=np.float64),
-                ),
-                VectorData(
-                    name="mean",
-                    description="Across-trial mean cross-correlation at each lag.",
-                    data=cross_correlation_dataframe["mean"].to_numpy(dtype=np.float64),
-                ),
-            ]
-            for trial_column in trial_columns:
-                onset_in_seconds = float(trial_column)
-                columns.append(
-                    VectorData(
-                        name=f"trial_at_{onset_in_seconds:.6f}s",
-                        description=(
-                            f"Normalized cross-correlation aligned to event onset at {onset_in_seconds} s. "
-                            f"Each value at lag L is correlate(region_1, region_2) at lag L, divided by the "
-                            f"per-trial peak absolute value."
-                        ),
-                        data=cross_correlation_dataframe[trial_column].to_numpy(dtype=np.float64),
-                    )
-                )
+            entry_name = cross_correlation_metadata["name"]
+            entry_description = cross_correlation_metadata["description"]
 
-            cross_correlation_table = DynamicTable(
-                name=cross_correlation_metadata["name"],
-                description=cross_correlation_metadata["description"],
-                columns=columns,
+            trial_table = DynamicTable(name=entry_name, description=entry_description)
+            trial_table.add_column(
+                name="trial_onset_in_seconds",
+                description="Trial event onset time in seconds.",
             )
-            processing_module.add(cross_correlation_table)
+            trial_table.add_column(
+                name="lag_in_seconds",
+                description="Lag axis in seconds, symmetric around zero.",
+                index=True,
+            )
+            trial_table.add_column(
+                name="cross_correlation",
+                description=(
+                    "Normalized cross-correlation aligned to the trial event onset. "
+                    "Each value at lag L is correlate(region_1, region_2) at lag L, "
+                    "divided by the per-trial peak absolute value."
+                ),
+                index=True,
+            )
+            for trial_column in trial_columns:
+                trial_table.add_row(
+                    trial_onset_in_seconds=float(trial_column),
+                    lag_in_seconds=lag_axis,
+                    cross_correlation=cross_correlation_dataframe[trial_column].to_numpy(dtype=np.float64),
+                )
+            processing_module.add(trial_table)
+
+            mean_table = DynamicTable(
+                name=f"{entry_name}_mean",
+                description=f"Across-trial mean cross-correlation for {entry_name}.",
+                columns=[
+                    VectorData(
+                        name="lag_in_seconds",
+                        description="Lag axis in seconds, symmetric around zero.",
+                        data=lag_axis,
+                    ),
+                    VectorData(
+                        name="mean",
+                        description="Across-trial mean cross-correlation at each lag.",
+                        data=cross_correlation_dataframe["mean"].to_numpy(dtype=np.float64),
+                    ),
+                ],
+            )
+            processing_module.add(mean_table)
