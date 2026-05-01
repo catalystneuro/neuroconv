@@ -39,7 +39,7 @@ class TestGuppyInterface:
             pytest.param(
                 dict(
                     folder_path=GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_1",
-                    parameters_file_path=GUPPY_DATA_PATH / "GuPPyParamtersUsed.json",
+                    parameters_file_path=GUPPY_DATA_PATH / "GuPPyParamtersUsed1.json",
                     expected_regions=["dms", "dls"],
                     expected_traces={
                         "dms": ["cntrl_sig_fit", "dff", "z_score"],
@@ -65,6 +65,7 @@ class TestGuppyInterface:
                         },
                     ],
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
+                    expected_valid_signal_intervals=[],
                 ),
                 id="tdt_isosbestic_two_regions",
             ),
@@ -97,8 +98,25 @@ class TestGuppyInterface:
                         },
                     ],
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
+                    expected_valid_signal_intervals=[],
                 ),
                 id="tdt_isosbestic_two_regions_no_parameters_file",
+            ),
+            pytest.param(
+                dict(
+                    folder_path=GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2",
+                    parameters_file_path=GUPPY_DATA_PATH / "GuPPyParamtersUsed2.json",
+                    expected_regions=["dms"],
+                    expected_traces={"dms": ["cntrl_sig_fit", "dff", "z_score"]},
+                    expected_transients={"dms": ["z_score"]},
+                    expected_cross_correlations=[],
+                    expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
+                    expected_valid_signal_intervals=[
+                        ("dms", 2.43144319, 20.71505607),
+                        ("dms", 40.04014057, 154.71773782),
+                    ],
+                ),
+                id="tdt_isosbestic_one_region_artifacts_removed",
             ),
         ]
     )
@@ -265,6 +283,42 @@ class TestGuppyInterface:
             assert f"{entry_name}_mean" in module.data_interfaces
             assert f"{entry_name}_psth_bins" not in module.data_interfaces
 
+    def test_valid_signal_intervals_match_source(self, interface, case):
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata, stub_test=False)
+        module = nwbfile.processing["fiber_photometry"]
+
+        expected = case["expected_valid_signal_intervals"]
+        if not expected:
+            assert "valid_signal_intervals" not in module.data_interfaces
+            return
+
+        table = module["valid_signal_intervals"]
+        actual_regions = list(table["region"][:])
+        actual_starts = list(table["start_time"][:])
+        actual_stops = list(table["stop_time"][:])
+        assert len(actual_regions) == len(expected)
+        for (region, start, stop), (expected_region, expected_start, expected_stop) in zip(
+            zip(actual_regions, actual_starts, actual_stops), expected
+        ):
+            assert region == expected_region
+            assert start == pytest.approx(expected_start)
+            assert stop == pytest.approx(expected_stop)
+
+    def test_remove_artifacts_flag_npy_mismatch_warns(self, tmp_path):
+        source_folder = GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2"
+        copied_folder = tmp_path / "guppy_output"
+        shutil.copytree(source_folder, copied_folder)
+        for npy_path in copied_folder.glob("coordsForPreProcessing_*.npy"):
+            npy_path.unlink()
+
+        with pytest.warns(UserWarning, match="no coordsForPreProcessing"):
+            GuppyInterface(
+                folder_path=str(copied_folder),
+                parameters_file_path=str(GUPPY_DATA_PATH / "GuPPyParamtersUsed2.json"),
+            )
+
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()
         guppy_metadata = metadata["Ophys"]["Guppy"]
@@ -402,6 +456,22 @@ class TestGuppyInterface:
                 expected_first_peak = float(pandas.read_csv(csv_path)["timestamps"].iloc[0]) + offset
                 table = module[f"transients_{region}_{feature}"]
                 assert table["timestamp"][0] == pytest.approx(expected_first_peak)
+
+        if case["expected_valid_signal_intervals"]:
+            interval_table = module["valid_signal_intervals"]
+            actual = list(
+                zip(
+                    list(interval_table["region"][:]),
+                    list(interval_table["start_time"][:]),
+                    list(interval_table["stop_time"][:]),
+                )
+            )
+            for (region, start, stop), (expected_region, expected_start, expected_stop) in zip(
+                actual, case["expected_valid_signal_intervals"]
+            ):
+                assert region == expected_region
+                assert start == pytest.approx(expected_start + offset)
+                assert stop == pytest.approx(expected_stop + offset)
 
     def test_round_trip_write_read(self, interface, case, tmp_path):
         metadata = interface.get_metadata()

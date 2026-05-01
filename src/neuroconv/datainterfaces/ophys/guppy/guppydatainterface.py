@@ -1,5 +1,6 @@
 import json
 import re
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -10,6 +11,7 @@ import pandas
 from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb.base import TimeSeries
 from pynwb.core import DynamicTable, VectorData
+from pynwb.epoch import TimeIntervals
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -111,6 +113,22 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             guppy_parameters = {}
 
         cross_correlations = self._discover_cross_correlations(folder_path=folder_path, regions=regions)
+        valid_signal_intervals_by_region = self._discover_valid_signal_intervals(
+            folder_path=folder_path, regions=regions
+        )
+        remove_artifacts_flag = guppy_parameters.get("removeArtifacts")
+        if remove_artifacts_flag is True and not valid_signal_intervals_by_region:
+            warnings.warn(
+                "GuPPy parameters specify removeArtifacts=True but no coordsForPreProcessing_<region>.npy "
+                "files were found; valid_signal_intervals will not be written.",
+                UserWarning,
+            )
+        elif remove_artifacts_flag is False and valid_signal_intervals_by_region:
+            warnings.warn(
+                "GuPPy parameters specify removeArtifacts=False but coordsForPreProcessing_<region>.npy "
+                "files were found; valid_signal_intervals will be written from the .npy files.",
+                UserWarning,
+            )
 
         self.folder_path = folder_path
         self.parameters_file_path = Path(parameters_file_path) if parameters_file_path is not None else None
@@ -118,6 +136,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self.traces_by_region = traces_by_region
         self.transients_by_region = transients_by_region
         self.cross_correlations = cross_correlations
+        self.valid_signal_intervals_by_region = valid_signal_intervals_by_region
         self.guppy_parameters = guppy_parameters
         self._region_to_aligned_timestamps: dict[str, np.ndarray] | None = None
         self._region_to_aligned_starting_time_and_rate: dict[str, tuple[float, float]] | None = None
@@ -173,6 +192,28 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 )
             )
         return entries
+
+    @classmethod
+    def _discover_valid_signal_intervals(cls, folder_path: Path, regions: list[str]) -> dict[str, np.ndarray]:
+        """Return ``{region: intervals_array}`` for each region with a coords file.
+
+        ``intervals_array`` has shape ``(N, 2)`` with columns
+        ``[start_in_seconds, stop_in_seconds]``. These are the intervals that GuPPy
+        kept (not the artifacts), per the format in
+        ``coordsForPreProcessing_<region>.npy``.
+        """
+        result = {}
+        for region in regions:
+            path = folder_path / f"coordsForPreProcessing_{region}.npy"
+            if not path.is_file():
+                continue
+            coords = np.load(path)
+            time_values = coords[:, 0]
+            assert (
+                time_values.shape[0] % 2 == 0
+            ), f"Expected even number of coordinates in {path}, got {time_values.shape[0]}."
+            result[region] = time_values.reshape(-1, 2)
+        return result
 
     def _read_time_correction(self, region: str) -> dict:
         time_correction_path = self.folder_path / f"timeCorrection_{region}.hdf5"
@@ -703,3 +744,37 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                         cross_correlation_error=cross_correlation_dataframe[error_column].to_numpy(dtype=np.float64),
                     )
                 processing_module.add(psth_bins_table)
+
+        if self.valid_signal_intervals_by_region:
+            valid_signal_intervals = TimeIntervals(
+                name="valid_signal_intervals",
+                description=(
+                    "Time intervals retained as valid signal (i.e., not removed as artifacts) "
+                    "during GuPPy preprocessing. Method: manual coordinate-based selection. "
+                    "Sourced from coordsForPreProcessing_<region>.npy."
+                ),
+            )
+            valid_signal_intervals.add_column(
+                name="region",
+                description="Region the interval applies to.",
+            )
+            for region in sorted(self.valid_signal_intervals_by_region):
+                intervals = self.valid_signal_intervals_by_region[region]
+                if timing_source == "aligned_starting_time_and_rate":
+                    aligned_start, _ = self.get_starting_time_and_rate()[region]
+                    original_start, _ = original_starting_time_and_rate[region]
+                    time_offset = aligned_start - original_start
+                    shifted_intervals = intervals + time_offset
+                elif timing_source == "aligned_timestamps":
+                    original_timestamps = self.get_original_timestamps()[region]
+                    aligned_timestamps = self.get_timestamps()[region]
+                    shifted_intervals = np.interp(intervals, original_timestamps, aligned_timestamps)
+                else:
+                    shifted_intervals = intervals
+                for start, stop in shifted_intervals:
+                    valid_signal_intervals.add_row(
+                        start_time=float(start),
+                        stop_time=float(stop),
+                        region=region,
+                    )
+            processing_module.add(valid_signal_intervals)
