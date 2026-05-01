@@ -12,6 +12,8 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import GuppyInterface
 
+from ..setup_paths import OPHYS_DATA_PATH
+
 
 def _column_parses_as_float(column: str) -> bool:
     try:
@@ -22,12 +24,6 @@ def _column_parses_as_float(column: str) -> bool:
 
 
 _BIN_COLUMN_PATTERN = re.compile(r"^bin_\((\d+)-(\d+)\)$")
-
-try:
-    from ..setup_paths import OPHYS_DATA_PATH
-except ImportError:
-    from setup_paths import OPHYS_DATA_PATH
-
 
 GUPPY_DATA_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_63_207-181030-103332"
 

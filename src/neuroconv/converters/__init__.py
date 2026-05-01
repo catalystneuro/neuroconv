@@ -17,6 +17,9 @@ from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
     BrukerTiffMultiPlaneConverter,
     BrukerTiffSinglePlaneConverter,
 )
+from ..datainterfaces.ophys.guppy.tdtfiberphotometryguppyconverter import (
+    TDTFiberPhotometryGuppyConverter,
+)
 from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConverter
 
 converter_list = [
@@ -28,4 +31,5 @@ converter_list = [
     MiniscopeConverter,
     SortedRecordingConverter,
     SortedSpikeGLXConverter,
+    TDTFiberPhotometryGuppyConverter,
 ]
