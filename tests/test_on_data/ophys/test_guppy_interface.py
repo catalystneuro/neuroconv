@@ -237,6 +237,34 @@ class TestGuppyInterface:
                     source_dataframe[f"bin_err_({bin_start}-{bin_end})"].to_numpy(dtype=np.float64),
                 )
 
+    def test_cross_correlation_without_psth_bin_columns(self, case, tmp_path):
+        copied_folder = tmp_path / "guppy_output"
+        shutil.copytree(case["folder_path"], copied_folder)
+        for h5_path in sorted((copied_folder / "cross_correlation_output").glob("corr_*.h5")):
+            dataframe = pandas.read_hdf(h5_path)
+            bin_columns = [column for column in dataframe.columns if column.startswith("bin_")]
+            dataframe = dataframe.drop(columns=bin_columns)
+            h5_path.unlink()
+            dataframe.to_hdf(h5_path, key="df", mode="w")
+
+        kwargs = dict(folder_path=str(copied_folder))
+        if case["parameters_file_path"] is not None:
+            kwargs["parameters_file_path"] = str(case["parameters_file_path"])
+        interface = GuppyInterface(**kwargs)
+        metadata = interface.get_metadata()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata, stub_test=False)
+
+        module = nwbfile.processing["fiber_photometry"]
+        for entry in case["expected_cross_correlations"]:
+            entry_name = (
+                f"cross_correlation_{entry['event_name']}_{entry['feature']}"
+                f"_{entry['region_1']}_{entry['region_2']}"
+            )
+            assert entry_name in module.data_interfaces
+            assert f"{entry_name}_mean" in module.data_interfaces
+            assert f"{entry_name}_psth_bins" not in module.data_interfaces
+
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()
         guppy_metadata = metadata["Ophys"]["Guppy"]
