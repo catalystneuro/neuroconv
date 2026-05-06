@@ -131,9 +131,7 @@ class TestDANNCEInterfaceTimestamps:
         file_path, n_samples, _, _, _ = dannce_mat_file
         frametimes_path, seconds = frametimes_npy_file
 
-        interface = DANNCEInterface(
-            file_path=file_path, frametimes_file_path=frametimes_path, sampling_rate=30.0
-        )
+        interface = DANNCEInterface(file_path=file_path, frametimes_file_path=frametimes_path, sampling_rate=30.0)
         timestamps = interface.get_timestamps()
 
         expected = seconds[np.arange(n_samples)]

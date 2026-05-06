@@ -1292,9 +1292,13 @@ def add_segmentation_to_nwbfile(
     plane_segmentation_name : str, optional
         The name of the PlaneSegmentation object to be added, by default None.
         Used with the old list-based metadata format.
+        Deprecated: in the dict-based format, use ``metadata_key`` for pattern discovery and edit
+        ``metadata["Ophys"]["PlaneSegmentations"][metadata_key]["name"]`` directly. Will be removed
+        when the old list-based metadata format is removed.
     background_plane_segmentation_name : str, optional
         The name of the background PlaneSegmentation, if any, by default None.
         Used with the old list-based metadata format.
+        Deprecated: same guidance as ``plane_segmentation_name``.
     include_background_segmentation : bool, optional
         If True, includes background plane segmentation, by default False.
         Used with the old list-based metadata format.

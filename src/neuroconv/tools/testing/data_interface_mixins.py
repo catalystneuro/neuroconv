@@ -381,6 +381,7 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         )
 
         interface = self.data_interface_cls(**self.interface_kwargs)
+        original_first_timestamp = float(interface.get_original_timestamps()[0])
 
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
@@ -396,7 +397,15 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-            assert nwbfile.acquisition[self.optical_series_name].starting_time == aligned_starting_time
+            # The series stores timing either as (starting_time, rate) for regularly-sampled
+            # data, or as a full timestamps array for irregularly-sampled data. Verify the
+            # shift landed in whichever representation was used.
+            series = nwbfile.acquisition[self.optical_series_name]
+            expected_first_timestamp = original_first_timestamp + aligned_starting_time
+            if series.timestamps is not None:
+                assert series.timestamps[0] == expected_first_timestamp
+            else:
+                assert series.starting_time == expected_first_timestamp
 
 
 class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):

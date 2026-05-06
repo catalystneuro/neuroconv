@@ -48,6 +48,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         file_paths: Optional[list[FilePath]] = None,
         interleave_slice_samples: Optional[bool] = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Parameters
@@ -55,6 +56,9 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         file_path : FilePath, optional
             Path to the ScanImage TIFF file. If this is part of a multi-file series, this should be the first file.
             Either `file_path` or `file_paths` must be provided.
+        metadata_key : str, optional
+            Metadata key for this interface. When None, defaults to a key derived from
+            ``channel_name`` and ``plane_index`` (e.g., ``scan_image_imaging_channel_1_plane_0``).
         channel_name : str, optional
             Name of the channel to extract (e.g., "Channel 1", "Channel 2").
 
@@ -143,6 +147,14 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         if interleave_slice_samples is None:
             interleave_slice_samples = False
 
+        if metadata_key is None:
+            parts = ["scan_image_imaging"]
+            if channel_name is not None:
+                parts.append(channel_name.replace(" ", "_").lower())
+            if plane_index is not None:
+                parts.append(f"plane_{plane_index}")
+            metadata_key = "_".join(parts)
+
         self.channel_name = channel_name
         self.plane_index = plane_index
         super().__init__(
@@ -153,6 +165,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             slice_sample=slice_sample,
             interleave_slice_samples=interleave_slice_samples,
             verbose=verbose,
+            metadata_key=metadata_key,
         )
 
         # Make sure the timestamps are available, the extractor caches them
@@ -169,14 +182,21 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("photon_series_type", None)
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata with ScanImage provenance.
 
         Returns
         -------
@@ -189,100 +209,128 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             - Imaging plane details including grid spacing and origin coordinates if available
             - Photon series metadata with scan line rate and other acquisition parameters
         """
-        metadata = super().get_metadata()
+        metadata = (
+            super().get_metadata()
+            if not use_new_metadata_format
+            else super().get_metadata(use_new_metadata_format=True)
+        )
 
         session_start_time = self._get_session_start_time()
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # Extract ScanImage-specific metadata
-        if hasattr(self.imaging_extractor, "_general_metadata"):
-            # Add general metadata to a custom field
-            scanimage_metadata = self.imaging_extractor._general_metadata
+        if not hasattr(self.imaging_extractor, "_general_metadata"):
+            return metadata
 
-            # Update device information
-            device_name = "Microscope"
-            metadata["Ophys"]["Device"][0].update(name=device_name, description=f"Microscope controlled by ScanImage")
-            channel_name_string = self.channel_name.replace(" ", "").capitalize()
+        # Extract source fields once from the ScanImage header
+        scanimage_metadata = self.imaging_extractor._general_metadata
+        frame_data = scanimage_metadata.get("FrameData", {})
+        roi_metadata = scanimage_metadata.get("RoiGroups", {})
 
-            optical_channel_name = f"OpticalChannel{channel_name_string}"
-            optical_channel_metadata = {
-                "name": optical_channel_name,
-                "description": "Optical channel from ScanImage acquisition",
-                "emission_lambda": np.nan,
-            }
-
-            # Update imaging plane metadata
-            imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-            plane_index_string = f"Plane{self.plane_index}" if self.plane_index is not None else ""
-            imaging_plane_name = f"ImagingPlane{channel_name_string}{plane_index_string}"
-            imaging_plane_metadata.update(
-                name=imaging_plane_name,
-                device=device_name,
-                imaging_rate=self.imaging_extractor.get_sampling_frequency(),
-                description="Imaging plane from ScanImage acquisition",
-                optical_channel=[optical_channel_metadata],
+        version = None
+        if "SI.VERSION_MAJOR" in frame_data:
+            version = (
+                f"{frame_data.get('SI.VERSION_MAJOR', '')}."
+                f"{frame_data.get('SI.VERSION_MINOR', '')}."
+                f"{frame_data.get('SI.VERSION_UPDATE', '')}"
             )
 
-            # Update photon series metadata
-            photon_series_key = self.photon_series_type  # "TwoPhotonSeries" or "OnePhotonSeries"
-            photon_series_metadata = metadata["Ophys"][photon_series_key][0]
+        scan_line_rate = None
+        if "SI.hRoiManager.linePeriod" in frame_data:
+            scan_line_rate = 1 / float(frame_data["SI.hRoiManager.linePeriod"])
+        elif "SI.hScan2D.scannerFrequency" in frame_data:
+            scan_line_rate = frame_data["SI.hScan2D.scannerFrequency"]
 
-            photon_series_name = f"{photon_series_key}{channel_name_string}{plane_index_string}"
-            photon_series_metadata["imaging_plane"] = imaging_plane_name
-            photon_series_metadata["name"] = photon_series_name
-            photon_series_metadata["description"] = f"Imaging data acquired using ScanImage for {self.channel_name}"
+        grid_spacing = None  # numpy array in micrometers (from source)
+        origin_coords = None  # list/tuple in micrometers (from source)
+        if "imagingRoiGroup" in roi_metadata and "rois" in roi_metadata["imagingRoiGroup"]:
+            rois = roi_metadata["imagingRoiGroup"]["rois"]
+            if isinstance(rois, dict) and "scanfields" in rois:
+                scanfields = rois["scanfields"]
+                if "sizeXY" in scanfields and "pixelResolutionXY" in scanfields:
+                    fov_size_in_um = np.array(scanfields["sizeXY"])
+                    frame_dimension = np.array(scanfields["pixelResolutionXY"])
+                    grid_spacing = fov_size_in_um / frame_dimension
+                if "centerXY" in scanfields:
+                    origin_coords = scanfields["centerXY"]
 
-            # Add additional metadata if available
-            if "FrameData" in scanimage_metadata:
-                frame_data = scanimage_metadata["FrameData"]
+        sampling_frequency = float(self.imaging_extractor.get_sampling_frequency())
 
-                # Calculate scan line rate from line period if available
-                if "SI.hRoiManager.linePeriod" in frame_data:
-                    scan_line_rate = 1 / float(frame_data["SI.hRoiManager.linePeriod"])
-                    photon_series_metadata.update(scan_line_rate=scan_line_rate)
-                elif "SI.hScan2D.scannerFrequency" in frame_data:
-                    photon_series_metadata.update(scan_line_rate=frame_data["SI.hScan2D.scannerFrequency"])
+        if use_new_metadata_format:
+            device_description = "Microscope controlled by ScanImage"
+            if version is not None:
+                device_description = f"Microscope and acquisition data with ScanImage (version {version})"
+            metadata["Devices"] = {
+                self.metadata_key: {"description": device_description},
+            }
 
-                # Add version information to device description if available
-                if "SI.VERSION_MAJOR" in frame_data:
-                    version = f"{frame_data.get('SI.VERSION_MAJOR', '')}.{frame_data.get('SI.VERSION_MINOR', '')}.{frame_data.get('SI.VERSION_UPDATE', '')}"
-                    metadata["Ophys"]["Device"][0][
-                        "description"
-                    ] = f"Microscope and acquisition data with ScanImage (version {version})"
+            imaging_plane_entry = {
+                "device_metadata_key": self.metadata_key,
+                "imaging_rate": sampling_frequency,
+            }
+            if grid_spacing is not None:
+                imaging_plane_entry["grid_spacing"] = (grid_spacing * 1e-6).tolist()
+                imaging_plane_entry["grid_spacing_unit"] = "meters"
+            if origin_coords is not None:
+                imaging_plane_entry["origin_coords"] = [float(c) * 1e-6 for c in origin_coords]
+                imaging_plane_entry["origin_coords_unit"] = "meters"
 
-            # Extract ROI metadata if available
-            if "RoiGroups" in scanimage_metadata:
-                roi_metadata = scanimage_metadata["RoiGroups"]
+            microscopy_series_entry = {
+                "imaging_plane_metadata_key": self.metadata_key,
+                "description": f"Imaging data acquired using ScanImage for {self.channel_name}",
+            }
+            if scan_line_rate is not None:
+                microscopy_series_entry["scan_line_rate"] = scan_line_rate
 
-                # Extract grid spacing and origin coordinates from scanfields
-                grid_spacing = None
-                grid_spacing_unit = "n.a"
-                origin_coords = None
-                origin_coords_unit = "n.a"
+            metadata["Ophys"] = {
+                "ImagingPlanes": {self.metadata_key: imaging_plane_entry},
+                "MicroscopySeries": {self.metadata_key: microscopy_series_entry},
+            }
+            return metadata
 
-                if "imagingRoiGroup" in roi_metadata and "rois" in roi_metadata["imagingRoiGroup"]:
-                    rois = roi_metadata["imagingRoiGroup"]["rois"]
-                    if isinstance(rois, dict) and "scanfields" in rois:
-                        scanfields = rois["scanfields"]
-                        if "sizeXY" in scanfields and "pixelResolutionXY" in scanfields:
-                            fov_size_in_um = np.array(scanfields["sizeXY"])
-                            frame_dimension = np.array(scanfields["pixelResolutionXY"])
-                            grid_spacing = fov_size_in_um / frame_dimension
-                            grid_spacing_unit = "micrometers"
+        # Old list-based format
+        device_name = "Microscope"
+        metadata["Ophys"]["Device"][0].update(name=device_name, description="Microscope controlled by ScanImage")
+        channel_name_string = self.channel_name.replace(" ", "").capitalize()
 
-                        if "centerXY" in scanfields:
-                            origin_coords = scanfields["centerXY"]
-                            origin_coords_unit = "micrometers"
+        optical_channel_name = f"OpticalChannel{channel_name_string}"
+        optical_channel_metadata = {
+            "name": optical_channel_name,
+            "description": "Optical channel from ScanImage acquisition",
+            "emission_lambda": np.nan,
+        }
 
-                # Update imaging plane metadata with grid spacing and origin coordinates
-                if grid_spacing is not None:
-                    imaging_plane_metadata.update(
-                        grid_spacing=grid_spacing.tolist(), grid_spacing_unit=grid_spacing_unit
-                    )
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        plane_index_string = f"Plane{self.plane_index}" if self.plane_index is not None else ""
+        imaging_plane_name = f"ImagingPlane{channel_name_string}{plane_index_string}"
+        imaging_plane_metadata.update(
+            name=imaging_plane_name,
+            device=device_name,
+            imaging_rate=sampling_frequency,
+            description="Imaging plane from ScanImage acquisition",
+            optical_channel=[optical_channel_metadata],
+        )
 
-                if origin_coords is not None:
-                    imaging_plane_metadata.update(origin_coords=origin_coords, origin_coords_unit=origin_coords_unit)
+        photon_series_key = self.photon_series_type  # "TwoPhotonSeries" or "OnePhotonSeries"
+        photon_series_metadata = metadata["Ophys"][photon_series_key][0]
+        photon_series_name = f"{photon_series_key}{channel_name_string}{plane_index_string}"
+        photon_series_metadata["imaging_plane"] = imaging_plane_name
+        photon_series_metadata["name"] = photon_series_name
+        photon_series_metadata["description"] = f"Imaging data acquired using ScanImage for {self.channel_name}"
+
+        if scan_line_rate is not None:
+            photon_series_metadata.update(scan_line_rate=scan_line_rate)
+
+        if version is not None:
+            metadata["Ophys"]["Device"][0][
+                "description"
+            ] = f"Microscope and acquisition data with ScanImage (version {version})"
+
+        if grid_spacing is not None:
+            imaging_plane_metadata.update(grid_spacing=grid_spacing.tolist(), grid_spacing_unit="micrometers")
+
+        if origin_coords is not None:
+            imaging_plane_metadata.update(origin_coords=origin_coords, origin_coords_unit="micrometers")
 
         return metadata
 
