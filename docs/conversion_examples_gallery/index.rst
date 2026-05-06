@@ -45,6 +45,7 @@ Sorting
     Blackrock  <sorting/blackrock>
     Cell Explorer <sorting/cellexplorer>
     KiloSort <sorting/kilosort>
+    MountainSort <sorting/mda>
     Neuralynx <sorting/neuralynx>
     NeuroScope <sorting/neuroscope>
     Phy <sorting/phy>

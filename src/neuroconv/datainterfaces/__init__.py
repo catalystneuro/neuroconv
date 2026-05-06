@@ -39,6 +39,7 @@ from .ecephys.intan.intananaloginterface import IntanAnalogInterface
 from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
+from .ecephys.mda.mdadatainterface import MdaSortingInterface
 from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
 from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
 from .ecephys.neuralynx.neuralynxdatainterface import (
@@ -141,6 +142,7 @@ interface_list = [
     OpenEphysBinaryAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
+    MdaSortingInterface,
     AxonaRecordingInterface,
     AxonaPositionDataInterface,
     AxonaLFPDataInterface,

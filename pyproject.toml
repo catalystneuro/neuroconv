@@ -169,6 +169,9 @@ maxwell = [
 mcsraw = [
     "neuroconv[ecephys_minimal]",
 ]
+mda = [
+    "neuroconv[ecephys_minimal]",
+]
 mearec = [
     "neuroconv[ecephys_minimal]",
     "MEArec>=1.8.0",
@@ -228,6 +231,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[kilosort]",
     "neuroconv[maxwell]",
     "neuroconv[mcsraw]",
+    "neuroconv[mda]",
     "neuroconv[mearec]",
     "neuroconv[neuralynx]",
     "neuroconv[neuroscope]",
