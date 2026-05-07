@@ -960,6 +960,13 @@ class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
         ):
             self.data_interface_cls(folder_path=folder_path)
 
+    def check_nwbfile_temporal_alignment(self):
+        # The deprecated multi-recording interface bypasses the parent add_to_nwbfile and does not
+        # propagate set_aligned_starting_time through to the written photon series. The class is
+        # being removed alongside the legacy MiniscopeConverter mode in December 2026, so this
+        # known limitation is left unaddressed.
+        pass
+
 
 class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = MiniscopeImagingInterface
@@ -975,6 +982,40 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         cls.imaging_plane_name = "ImagingPlane"
         cls.photon_series_name = "OnePhotonSeries"
         cls.optical_series_name = "OnePhotonSeries"
+
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635000)
+        assert metadata["Ophys"]["Device"][0] == {"name": "Miniscope", "model_name": "Miniscope_V3"}
+
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane_metadata["name"] == self.imaging_plane_name
+        assert imaging_plane_metadata["device"] == self.device_name
+        assert imaging_plane_metadata["imaging_rate"] == self.interface.imaging_extractor.get_sampling_frequency()
+
+        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
+        assert one_photon_series_metadata["name"] == self.photon_series_name
+        assert one_photon_series_metadata["unit"] == "px"
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == "miniscope_imaging"
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635000)
+
+        assert metadata["Devices"] == {
+            metadata_key: {"name": "Miniscope", "model_name": "Miniscope_V3"},
+        }
+
+        expected_imaging_rate = self.interface.imaging_extractor.get_sampling_frequency()
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "device_metadata_key": metadata_key,
+            "imaging_rate": expected_imaging_rate,
+        }
+        assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "imaging_plane_metadata_key": metadata_key,
+            "description": "Imaging data acquired with a Miniscope.",
+        }
 
     def check_read_nwb(self, nwbfile_path: str):
         """Override check_read_nwb for single-recording interface expectations."""
