@@ -187,7 +187,6 @@ class IntanAnalogInterface(BaseDataInterface):
         stub_test: bool = False,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
-        iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -205,8 +204,6 @@ class IntanAnalogInterface(BaseDataInterface):
             Type of iterator to use for data streaming
         iterator_options : dict, optional
             Additional options for the iterator
-        iterator_opts : dict, optional
-            Deprecated. Use 'iterator_options' instead.
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
@@ -216,7 +213,6 @@ class IntanAnalogInterface(BaseDataInterface):
                 "stub_test",
                 "iterator_type",
                 "iterator_options",
-                "iterator_opts",
                 "always_write_timestamps",
             ]
             num_positional_args_before_args = 2  # nwbfile, metadata
@@ -240,24 +236,11 @@ class IntanAnalogInterface(BaseDataInterface):
             stub_test = positional_values.get("stub_test", stub_test)
             iterator_type = positional_values.get("iterator_type", iterator_type)
             iterator_options = positional_values.get("iterator_options", iterator_options)
-            iterator_opts = positional_values.get("iterator_opts", iterator_opts)
             always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
         from ....tools.spikeinterface import (
             _stub_recording,
             add_recording_as_time_series_to_nwbfile,
         )
-
-        # Handle deprecated iterator_opts parameter
-        if iterator_opts is not None:
-            warnings.warn(
-                "The 'iterator_opts' parameter is deprecated and will be removed in May 2026 or after. "
-                "Use 'iterator_options' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            if iterator_options is not None:
-                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
-            iterator_options = iterator_opts
 
         if metadata is None:
             metadata = self.get_metadata()
