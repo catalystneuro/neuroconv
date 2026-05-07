@@ -1,6 +1,8 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed the deprecated `iterator_opts` parameter from `EDFAnalogInterface.add_to_nwbfile`, `CellExplorerLFPInterface.add_to_nwbfile`, `BaseLFPExtractorInterface.add_to_nwbfile`, `OpenEphysBinaryAnalogInterface.add_to_nwbfile`, `IntanAnalogInterface.add_to_nwbfile`, and `SpikeGLXNIDQInterface.add_to_nwbfile`. Use `iterator_options` instead. [PR #1730](https://github.com/catalystneuro/neuroconv/pull/1730)
+* Removed the deprecated `es_key` parameter from `SpikeGLXNIDQInterface.__init__`. The parameter had no effect since the NIDQ interface writes analog data as `TimeSeries` and digital data as `LabeledEvents`, not `ElectricalSeries`. [PR #1730](https://github.com/catalystneuro/neuroconv/pull/1730)
 * Bumped minimum spikeinterface version to `>=0.104.0`. Updated template metric names in unit property descriptions (`halfwidth` to `trough_half_width`/`peak_half_width`, `peak_to_valley` to `peak_to_trough_duration`). [PR #1697](https://github.com/catalystneuro/neuroconv/pull/1697)
 * Made `nwbfile_path` a required parameter in `write_recording_to_nwbfile`, `write_sorting_to_nwbfile`, and `write_sorting_analyzer_to_nwbfile`. To add data to an in-memory NWBFile, use `add_recording_to_nwbfile`, `add_sorting_to_nwbfile`, or `add_sorting_analyzer_to_nwbfile` instead. [PR #1689](https://github.com/catalystneuro/neuroconv/pull/1689)
 * `write_recording_to_nwbfile`, `write_sorting_to_nwbfile`, and `write_sorting_analyzer_to_nwbfile` now return `None` in append mode (`append_on_disk_nwbfile=True`) instead of the NWBFile object. [PR #1689](https://github.com/catalystneuro/neuroconv/pull/1689)
