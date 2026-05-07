@@ -739,6 +739,25 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
         assert len(pose_estimation_container.fields) > 0
 
 
+@pytest.mark.skipif(
+    ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0",
+)
+def test_deeplabcut_no_timestamps_warning():
+    """Test that a UserWarning is raised when timestamps are not set and no config file is provided."""
+    interface = DeepLabCutInterface(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+    )
+    nwbfile = mock_NWBFile()
+    with pytest.warns(UserWarning, match="Timestamps have not been set for DeepLabCutInterface"):
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+
 class TestDeepLabCutInterfaceGetAvailableSubjects:
     """Test the get_available_subjects static method of DeepLabCutInterface."""
 

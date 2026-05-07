@@ -598,7 +598,14 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         # Get timestamps
         timestamps = self._timestamps
         if timestamps is None:
-            timestamps = df.index.tolist()  # Use index as dummy timestamps if not provided
+            warnings.warn(
+                "Timestamps have not been set for DeepLabCutInterface. "
+                "The DataFrame index will be used as timestamps, which assumes a sampling rate of 1 Hz and is likely incorrect. "
+                "To set proper timestamps, use the `set_aligned_timestamps` method.",
+                UserWarning,
+                stacklevel=2,
+            )
+            timestamps = df.index.tolist()
 
         df_animal = df.xs(self.subject_name, level="individuals", axis=1)
 
