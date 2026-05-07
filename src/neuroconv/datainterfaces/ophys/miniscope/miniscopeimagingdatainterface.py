@@ -321,6 +321,15 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
                 "Either 'folder_path' must be provided, or both 'file_paths' and 'configuration_file_path' must be provided."
             )
 
+        from ._miniscope_readers import _raise_if_miniscope_v3_format
+
+        if folder_path is not None:
+            _raise_if_miniscope_v3_format(folder_path=str(folder_path))
+        elif configuration_file_path is not None:
+            _raise_if_miniscope_v3_format(folder_path=str(Path(configuration_file_path).parent))
+        elif file_paths is not None:
+            _raise_if_miniscope_v3_format(folder_path=str(Path(file_paths[0]).parent))
+
         if folder_path is not None and (file_paths is not None or configuration_file_path is not None):
             raise ValueError(
                 "When 'folder_path' is provided, 'file_paths' and 'configuration_file_path' cannot be specified. "
