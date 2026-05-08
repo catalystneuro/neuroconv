@@ -272,7 +272,8 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.8.0",
+    # TODO: pin to next roiextractors release once the unified BrukerTiffImagingExtractor (PR #567) is published.
+    "roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@main",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",

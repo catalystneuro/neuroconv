@@ -1,15 +1,276 @@
 import warnings
+from pathlib import Path
 from typing import Literal
 
-from dateutil.parser import parse
-from pydantic import DirectoryPath
+import numpy as np
+from dateutil.parser import parse as dateparse
+from pydantic import DirectoryPath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils.dict import DeepDict
+from ....utils import DeepDict
+
+
+class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
+    """Interface for Bruker Prairie View OME-TIFF imaging data.
+
+    This interface uses the unified ``BrukerTiffImagingExtractor`` from roiextractors,
+    which handles single-plane, volumetric, and multi-channel data through a single class.
+    Volumetric data is exposed as a 4D series.
+
+    Channels are identified by zero-indexed strings (``"0"``, ``"1"``, ...). When the data
+    contains multiple channels, ``channel_name`` is required.
+
+    The interface emits metadata in the new dict-based format keyed by ``metadata_key``,
+    populating ``Devices``, ``Ophys.ImagingPlanes``, and ``Ophys.MicroscopySeries``.
+    """
+
+    display_name = "Bruker TIFF Imaging"
+    associated_suffixes = (".ome", ".tif", ".xml", ".env")
+    info = "Interface for Bruker Prairie View OME-TIFF imaging data."
+
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import BrukerTiffImagingExtractor
+
+        return BrukerTiffImagingExtractor
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "Folder containing Bruker .ome.tif files and the matching configuration .xml."
+        return source_schema
+
+    def get_metadata_schema(self) -> dict:
+        """Return a schema compatible with the new dict-based Ophys metadata format.
+
+        The base imaging schema requires legacy ``Ophys.Device`` / ``Ophys.ImagingPlane`` /
+        ``Ophys.TwoPhotonSeries`` lists, which this interface does not produce. We bypass those
+        requirements and only validate ``NWBFile`` baseline metadata.
+        """
+        from ....basedatainterface import BaseDataInterface
+
+        return BaseDataInterface.get_metadata_schema(self)
+
+    @classmethod
+    def get_available_channels(cls, folder_path: DirectoryPath) -> list[str]:
+        """Return the channel names available in the Bruker dataset.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Folder containing Bruker .ome.tif files and the matching configuration .xml.
+
+        Returns
+        -------
+        list[str]
+            Zero-indexed channel name strings (e.g., ``["0"]`` for single-channel data,
+            ``["0", "1"]`` for dual-channel).
+        """
+        from roiextractors.extractors.tiffimagingextractors.ometiffimagingextractor import (
+            OMETiffImagingExtractor,
+        )
+
+        ome_files = sorted(Path(folder_path).glob("*.ome.tif"))
+        if not ome_files:
+            raise FileNotFoundError(f"No .ome.tif files found in '{folder_path}'.")
+        return OMETiffImagingExtractor.get_available_channel_names(ome_files[0])
+
+    @validate_call
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        *,
+        channel_name: str | None = None,
+        metadata_key: str | None = None,
+        verbose: bool = False,
+    ):
+        """
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Folder containing Bruker .ome.tif files and the matching configuration .xml.
+        channel_name : str, optional
+            Zero-indexed channel name (e.g. ``"0"``, ``"1"``). Required when the data has more
+            than one channel. Use :meth:`get_available_channels` to see what is available.
+        metadata_key : str, optional
+            Metadata key for this interface. When ``None``, defaults to ``"bruker_tiff_imaging"``,
+            with a channel suffix when ``channel_name`` is provided
+            (e.g. ``"bruker_tiff_imaging_0"``).
+        verbose : bool, default: False
+        """
+        if metadata_key is None:
+            metadata_key = "bruker_tiff_imaging"
+            if channel_name is not None:
+                metadata_key = f"{metadata_key}_{channel_name}"
+
+        self.channel_name = channel_name
+        super().__init__(
+            folder_path=folder_path,
+            channel_name=channel_name,
+            verbose=verbose,
+            metadata_key=metadata_key,
+        )
+
+    def get_metadata(self) -> DeepDict:
+        """Return metadata in the new dict-based format only.
+
+        Populates ``Devices``, ``Ophys.ImagingPlanes`` and ``Ophys.MicroscopySeries`` keyed by
+        ``self.metadata_key``. Cross-references are wired via ``device_metadata_key`` and
+        ``imaging_plane_metadata_key``.
+        """
+        metadata = super().get_metadata(use_new_metadata_format=True)
+
+        bruker_xml_metadata = self.imaging_extractor._bruker_xml_metadata
+
+        if "date" in bruker_xml_metadata:
+            metadata["NWBFile"]["session_start_time"] = dateparse(bruker_xml_metadata["date"])
+
+        device_name = "BrukerFluorescenceMicroscope"
+        device_description = f"Version {bruker_xml_metadata['version']}" if "version" in bruker_xml_metadata else None
+        device_entry = {"name": device_name}
+        if device_description is not None:
+            device_entry["description"] = device_description
+        metadata["Devices"] = {self.metadata_key: device_entry}
+
+        channel_suffix = f"Ch{self.channel_name}" if self.channel_name is not None else ""
+        imaging_plane_name = f"ImagingPlane{channel_suffix}"
+        photon_series_name = f"TwoPhotonSeries{channel_suffix}"
+        is_volumetric = self.imaging_extractor.get_num_planes() > 1
+
+        sampling_frequency = float(self.imaging_extractor.get_sampling_frequency())
+        frame_shape = self.imaging_extractor.get_frame_shape()  # (num_rows, num_columns)
+        grid_spacing, origin_coords, field_of_view = self._extract_spatial_metadata(
+            frame_shape=frame_shape, is_volumetric=is_volumetric
+        )
+
+        imaging_plane_entry = {
+            "name": imaging_plane_name,
+            "description": "The imaging plane origin_coords units are in the microscope reference frame.",
+            "device_metadata_key": self.metadata_key,
+            "imaging_rate": sampling_frequency,
+            "excitation_lambda": np.nan,
+            "indicator": "unknown",
+            "location": "unknown",
+            "optical_channel": [
+                {
+                    "name": "OpticalChannel",
+                    "description": "An optical channel of the microscope.",
+                    "emission_lambda": np.nan,
+                }
+            ],
+            "grid_spacing": grid_spacing,
+            "grid_spacing_unit": "meters",
+            "origin_coords": origin_coords,
+            "origin_coords_unit": "micrometers",
+        }
+
+        microscopy_series_entry = {
+            "name": photon_series_name,
+            "unit": "n.a.",
+            "imaging_plane_metadata_key": self.metadata_key,
+            "description": (
+                "The volumetric imaging data acquired from the Bruker Two-Photon Microscope."
+                if is_volumetric
+                else "Imaging data acquired from the Bruker Two-Photon Microscope."
+            ),
+            "field_of_view": field_of_view,
+        }
+        if "scanLinePeriod" in bruker_xml_metadata:
+            microscopy_series_entry["scan_line_rate"] = 1 / float(bruker_xml_metadata["scanLinePeriod"])
+
+        metadata["Ophys"] = {
+            "ImagingPlanes": {self.metadata_key: imaging_plane_entry},
+            "MicroscopySeries": {self.metadata_key: microscopy_series_entry},
+        }
+
+        return metadata
+
+    def _extract_spatial_metadata(
+        self, frame_shape: tuple[int, int], is_volumetric: bool
+    ) -> tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]:
+        """Compute grid_spacing, origin_coords, and field_of_view from the Bruker XML.
+
+        Returns tuples (not lists) because ``dict_deep_update`` collapses repeated
+        values in primitive lists (e.g. ``[7.09e-05, 7.09e-05]`` -> ``[7.09e-05]``)
+        when NWBConverter merges per-interface metadata.
+        """
+        bruker_xml_metadata = self.imaging_extractor._bruker_xml_metadata
+        microns_per_pixel = bruker_xml_metadata["micronsPerPixel"]
+        x_size_meters = float(microns_per_pixel[0]["XAxis"]) / 1e6
+        y_size_meters = float(microns_per_pixel[1]["YAxis"]) / 1e6
+
+        origin_coords = self._determine_position_current(is_volumetric=is_volumetric)
+
+        grid_spacing: tuple[float, ...] = (y_size_meters, x_size_meters)
+        field_of_view: tuple[float, ...] = (y_size_meters * frame_shape[1], x_size_meters * frame_shape[0])
+        if is_volumetric and len(origin_coords) == 3:
+            z_plane_spacing_meters = abs(origin_coords[-1]) / 1e6
+            grid_spacing = grid_spacing + (z_plane_spacing_meters,)
+            field_of_view = field_of_view + (z_plane_spacing_meters,)
+
+        return grid_spacing, tuple(origin_coords), field_of_view
+
+    def _determine_position_current(self, is_volumetric: bool) -> list[float]:
+        """Return [y, x] (planar) or [y, x, z] (volumetric) microscope-frame positions in micrometers."""
+        xml_root = self.imaging_extractor._xml_root
+        default_position_element = xml_root.find(".//PVStateValue[@key='positionCurrent']")
+        if default_position_element is None:
+            return [0.0, 0.0]
+
+        position_values: list[float] = []
+        for axis in ["YAxis", "XAxis"]:
+            sub_indexed_values = default_position_element.find(f"./SubindexedValues[@index='{axis}']")
+            if sub_indexed_values is None:
+                position_values.append(0.0)
+                continue
+            for sub_indexed_value in sub_indexed_values:
+                position_values.append(float(sub_indexed_value.attrib["value"]))
+
+        if not is_volumetric:
+            return position_values
+
+        # Volumetric: derive a Z spacing from the swing of the changing z-axis device across frames.
+        frame_elements = xml_root.findall(".//Frame")
+        default_z_values_element = default_position_element.find("./SubindexedValues[@index='ZAxis']")
+        default_z_values = (
+            [float(v.attrib["value"]) for v in default_z_values_element] if default_z_values_element is not None else []
+        )
+
+        z_plane_values: list[float] = []
+        for frame in frame_elements:
+            position_element = frame.find(".//PVStateValue[@key='positionCurrent']")
+            if position_element is None:
+                continue
+            z_values_element = position_element.find("./SubindexedValues[@index='ZAxis']")
+            if z_values_element is None:
+                continue
+            for device_index, sub_indexed_value in enumerate(z_values_element):
+                z_value = float(sub_indexed_value.attrib["value"])
+                if device_index < len(default_z_values) and default_z_values[device_index] != z_value:
+                    z_plane_values.append(z_value)
+
+        if z_plane_values:
+            z_value = abs(z_plane_values[0] - z_plane_values[-1]) if len(z_plane_values) > 1 else z_plane_values[0]
+        else:
+            z_value = 0.0
+        position_values.append(z_value)
+        return position_values
+
+
+# ---------------------------------------------------------------------------
+# Deprecated interfaces. Will be removed on or after November 2026.
+# Use BrukerTiffImagingInterface instead.
+# ---------------------------------------------------------------------------
 
 
 class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
-    """Interface for Bruker multi-plane TIFF files using BrukerTiffMultiPlaneImagingExtractor from roiextractors."""
+    """Deprecated. Use ``BrukerTiffImagingInterface`` instead.
+
+    Interface for Bruker multi-plane TIFF files using ``BrukerTiffMultiPlaneImagingExtractor``
+    from roiextractors.
+    """
 
     display_name = "Bruker TIFF Imaging (single channel, multiple planes)"
     associated_suffixes = (".ome", ".tif", ".xml", ".env")
@@ -88,6 +349,13 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
             The name of the recording stream (e.g. 'Ch2').
         verbose : bool, default: False
         """
+        warnings.warn(
+            "BrukerTiffMultiPlaneImagingInterface is deprecated and will be removed on or after November 2026. "
+            "Use BrukerTiffImagingInterface instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
@@ -188,7 +456,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata
-        session_start_time = parse(xml_metadata["date"])
+        session_start_time = dateparse(xml_metadata["date"])
         metadata["NWBFile"].update(session_start_time=session_start_time)
 
         description = f"Version {xml_metadata['version']}"
@@ -243,7 +511,10 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
 
 
 class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
-    """Data Interface for BrukerTiffSinglePlaneImagingExtractor."""
+    """Deprecated. Use ``BrukerTiffImagingInterface`` instead.
+
+    Data Interface for ``BrukerTiffSinglePlaneImagingExtractor``.
+    """
 
     display_name = "Bruker TIFF Imaging (single channel, single plane)"
     associated_suffixes = BrukerTiffMultiPlaneImagingInterface.associated_suffixes
@@ -309,6 +580,13 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
             The name of the recording stream (e.g. 'Ch2').
         verbose : bool, default: False
         """
+        warnings.warn(
+            "BrukerTiffSinglePlaneImagingInterface is deprecated and will be removed on or after November 2026. "
+            "Use BrukerTiffImagingInterface instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
@@ -381,7 +659,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
         # The frames for each plane will have the same positionCurrent values
         position_element = frames_per_stream[0].find(".//PVStateValue[@key='positionCurrent']")
-        if not position_element:
+        if position_element is None:
             return position_values
 
         default_z_position_values = default_position_element.find("./SubindexedValues[@index='ZAxis']")
@@ -410,7 +688,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata
-        session_start_time = parse(xml_metadata["date"])
+        session_start_time = dateparse(xml_metadata["date"])
         metadata["NWBFile"].update(session_start_time=session_start_time)
 
         description = f"Version {xml_metadata['version']}"
