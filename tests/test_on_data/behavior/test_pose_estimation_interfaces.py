@@ -13,6 +13,7 @@ from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 
 from neuroconv.datainterfaces import (
+    DANNCEInterface,
     DeepLabCutInterface,
     LightningPoseDataInterface,
     SLEAPInterface,
@@ -807,3 +808,71 @@ class TestDeepLabCutInterfaceGetAvailableSubjects:
 
         with pytest.raises(IOError, match="not a valid DeepLabCut output data file"):
             DeepLabCutInterface.get_available_subjects(invalid_file)
+
+
+@pytest.mark.skipif(
+    ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0",
+)
+class TestDANNCEInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    data_interface_cls = DANNCEInterface
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "dannce" / "save_data_MAX.mat"),
+        sampling_rate=30.0,
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        container_name = "PoseEstimationDANNCE"
+        skeleton_name = f"Skeleton{container_name}_Ind1"
+        device_name = f"Camera{container_name}"
+
+        assert "PoseEstimation" in metadata
+        pose_metadata = metadata["PoseEstimation"]
+
+        # Check Skeletons
+        assert "Skeletons" in pose_metadata
+        assert skeleton_name in pose_metadata["Skeletons"]
+        skeleton = pose_metadata["Skeletons"][skeleton_name]
+        assert skeleton["name"] == skeleton_name
+        assert len(skeleton["nodes"]) == 22
+
+        # Check Devices
+        assert "Devices" in pose_metadata
+        assert device_name in pose_metadata["Devices"]
+
+        # Check PoseEstimationContainers
+        assert "PoseEstimationContainers" in pose_metadata
+        assert container_name in pose_metadata["PoseEstimationContainers"]
+        container = pose_metadata["PoseEstimationContainers"][container_name]
+        assert container["name"] == container_name
+        assert container["source_software"] == "DANNCE"
+        assert container["skeleton"] == skeleton_name
+        assert container["devices"] == [device_name]
+
+        # Check PoseEstimationSeries
+        assert "PoseEstimationSeries" in container
+        series = container["PoseEstimationSeries"]
+        assert len(series) == 22
+        for landmark_meta in series.values():
+            assert landmark_meta["unit"] == "mm"
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            behavior = nwbfile.processing["behavior"]
+            assert "PoseEstimationDANNCE" in behavior.data_interfaces
+            assert "Skeletons" in behavior.data_interfaces
+
+            pe = behavior.data_interfaces["PoseEstimationDANNCE"]
+            assert len(pe.pose_estimation_series) == 22
+            assert pe.source_software == "DANNCE"
+
+            for series in pe.pose_estimation_series.values():
+                assert series.data.shape == (400, 3)
+                assert series.confidence.shape == (400,)
+                assert series.unit == "mm"
+
+            skeleton = pe.skeleton
+            assert len(skeleton.nodes[:]) == 22

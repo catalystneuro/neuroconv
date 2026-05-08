@@ -92,6 +92,11 @@ audio = [
     "ndx-sound>=0.2.2",
     "scipy", # for scipy.io.wavfile
 ]
+dannce = [
+    "ndx-pose>=0.2",
+    "scipy",
+    # opencv (via neuroconv[video]) is only needed when video_file_path is provided for timestamp extraction
+]
 sleap = [
     "av>=10.0.0",
     "sleap-io>=0.5.2",
@@ -119,6 +124,7 @@ medpc = [
 behavior = [
     "neuroconv[sleap]",
     "neuroconv[audio]",
+    "neuroconv[dannce]",
     "neuroconv[deeplabcut]",
     "neuroconv[fictrac]",
     "neuroconv[video]",
