@@ -1,3 +1,4 @@
+import warnings
 from copy import deepcopy
 
 from pydantic import FilePath, validate_call
@@ -97,7 +98,7 @@ class LightningPoseConverter(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        *,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
         starting_frames_original_videos: list[int] | None = None,
@@ -124,6 +125,43 @@ class LightningPoseConverter(BaseDataInterface):
         stub_test : bool, optional
             If True, only a subset of the data will be added for testing purposes, by default False.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "reference_frame",
+                "confidence_definition",
+                "starting_frames_original_videos",
+                "starting_frames_labeled_videos",
+                "stub_test",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to LightningPoseConverter.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            reference_frame = positional_values.get("reference_frame", reference_frame)
+            confidence_definition = positional_values.get("confidence_definition", confidence_definition)
+            starting_frames_original_videos = positional_values.get(
+                "starting_frames_original_videos", starting_frames_original_videos
+            )
+            starting_frames_labeled_videos = positional_values.get(
+                "starting_frames_labeled_videos", starting_frames_labeled_videos
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         metadata_copy = deepcopy(metadata)
         original_video_interface.add_to_nwbfile(
