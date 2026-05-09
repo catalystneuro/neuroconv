@@ -1,5 +1,4 @@
 import warnings
-from pathlib import Path
 from typing import Literal
 
 from pydantic import DirectoryPath, validate_call
@@ -59,14 +58,7 @@ class BrukerTiffConverter(ConverterPipe):
             Folder containing Bruker .ome.tif files and the matching configuration .xml.
         verbose : bool, default: False
         """
-        from roiextractors.extractors.tiffimagingextractors.ometiffimagingextractor import (
-            OMETiffImagingExtractor,
-        )
-
-        ome_files = sorted(Path(folder_path).glob("*.ome.tif"))
-        if not ome_files:
-            raise FileNotFoundError(f"No .ome.tif files found in '{folder_path}'.")
-        channel_names = OMETiffImagingExtractor.get_available_channel_names(ome_files[0])
+        channel_names = BrukerTiffImagingInterface.get_available_channels(folder_path=folder_path)
 
         data_interfaces: dict[str, BrukerTiffImagingInterface] = {}
         if len(channel_names) == 1:
