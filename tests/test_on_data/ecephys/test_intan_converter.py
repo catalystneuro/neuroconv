@@ -1,0 +1,144 @@
+"""Tests for IntanConverter — auto-discovery and routing of Intan streams."""
+
+from datetime import datetime
+
+import pytest
+from pynwb import read_nwb
+
+from neuroconv.converters import IntanConverter
+
+try:
+    from ..setup_paths import ECEPHY_DATA_PATH
+except ImportError:
+    from setup_paths import ECEPHY_DATA_PATH
+
+
+INTAN_PATH = ECEPHY_DATA_PATH / "intan"
+
+RHS_TRADITIONAL = INTAN_PATH / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
+RHD_FILE_PER_SIGNAL = INTAN_PATH / "intan_fps_test_231117_052500" / "info.rhd"
+RHD_FILE_PER_CHANNEL = INTAN_PATH / "intan_fpc_test_231117_052630" / "info.rhd"
+RHS_FILE_PER_SIGNAL = INTAN_PATH / "intan_fps_rhs_test_240329_091536" / "info.rhs"
+SPLIT_FOLDER = INTAN_PATH / "test_tetrode_240502_162925"
+
+
+class TestStreamDiscovery:
+    """`get_streams` parses the file header to enumerate present streams."""
+
+    def test_rhs_traditional_streams(self):
+        streams = IntanConverter.get_streams(file_path=RHS_TRADITIONAL)
+        assert "RHS2000 amplifier channel" in streams
+        assert "USB board ADC input channel" in streams
+        assert "Stim channel" in streams
+        # Digital streams are present in the header but unrouted.
+        assert "USB board digital input channel" in streams
+
+    def test_rhd_file_per_signal_streams(self):
+        streams = IntanConverter.get_streams(file_path=RHD_FILE_PER_SIGNAL)
+        assert "RHD2000 amplifier channel" in streams
+        assert "RHD2000 auxiliary input channel" in streams
+        assert "USB board ADC input channel" in streams
+
+
+class TestAutoDiscoveryRouting:
+    """`__init__` instantiates a sub-interface for every routed stream that's present."""
+
+    def test_rhs_traditional_routing(self):
+        converter = IntanConverter(file_path=RHS_TRADITIONAL)
+        keys = set(converter.data_interface_objects.keys())
+        # Digital streams present in header but skipped (no IntanDigitalInterface yet).
+        assert keys == {"Recording", "AnalogADCInput", "AnalogADCOutput", "Stim"}
+
+    def test_rhd_file_per_signal_routing(self):
+        converter = IntanConverter(file_path=RHD_FILE_PER_SIGNAL)
+        keys = set(converter.data_interface_objects.keys())
+        assert keys == {"Recording", "AnalogAuxiliary", "AnalogADCInput"}
+
+    def test_rhs_file_per_signal_routing(self):
+        converter = IntanConverter(file_path=RHS_FILE_PER_SIGNAL)
+        keys = set(converter.data_interface_objects.keys())
+        assert keys == {"Recording", "AnalogADCInput", "AnalogADCOutput", "AnalogDC", "Stim"}
+
+    def test_rhd_file_per_channel_routing(self):
+        converter = IntanConverter(file_path=RHD_FILE_PER_CHANNEL)
+        keys = set(converter.data_interface_objects.keys())
+        # File-per-channel save mode routes the same way as file-per-signal.
+        assert "Recording" in keys
+
+
+class TestStreamsFilter:
+    """The `streams` parameter narrows which sub-interfaces get instantiated."""
+
+    def test_filter_to_amplifier_only(self):
+        converter = IntanConverter(file_path=RHS_TRADITIONAL, streams=["RHS2000 amplifier channel"])
+        assert set(converter.data_interface_objects.keys()) == {"Recording"}
+
+    def test_unknown_stream_raises(self):
+        with pytest.raises(ValueError, match="not present"):
+            IntanConverter(file_path=RHS_TRADITIONAL, streams=["bogus stream"])
+
+    def test_present_but_unrouted_stream_raises(self):
+        # Digital streams are in the header but not currently supported by the converter.
+        with pytest.raises(ValueError, match="not currently supported"):
+            IntanConverter(file_path=RHS_TRADITIONAL, streams=["USB board digital input channel"])
+
+
+class TestMetadataMerging:
+    """Multiple sub-interfaces should merge their Devices into a single entry."""
+
+    def test_single_device_after_merge(self):
+        converter = IntanConverter(file_path=RHS_TRADITIONAL)
+        metadata = converter.get_metadata()
+        # Both top-level Devices and Ecephys.Device should hold one Intan entry,
+        # not one per sub-interface.
+        assert metadata["Devices"] == [
+            {"name": "Intan", "description": "RHS Stim/Recording System", "manufacturer": "Intan"}
+        ]
+        assert metadata["Ecephys"]["Device"] == [
+            {"name": "Intan", "description": "RHS Stim/Recording System", "manufacturer": "Intan"}
+        ]
+
+    def test_unique_time_series_metadata_keys(self):
+        converter = IntanConverter(file_path=RHS_TRADITIONAL)
+        metadata = converter.get_metadata()
+        # Each sub-interface contributes a uniquely-keyed TimeSeries entry.
+        ts_keys = set(metadata["TimeSeries"].keys())
+        assert ts_keys == {"TimeSeriesIntanADCInput", "TimeSeriesIntanADCOutput", "TimeSeriesIntanStim"}
+
+
+class TestSplitFiles:
+    """`saved_files_are_split=True` is forwarded to every sub-interface."""
+
+    def test_concatenated_recording(self):
+        first_file = sorted(SPLIT_FOLDER.glob("*.rhd"))[0]
+        converter = IntanConverter(file_path=first_file, saved_files_are_split=True)
+        # The split fixture is amplifier-only; only Recording gets routed.
+        assert set(converter.data_interface_objects.keys()) == {"Recording"}
+        # Three full chunks of 1_800_064 samples plus a shorter tail of 45_184 samples.
+        recording = converter.data_interface_objects["Recording"].recording_extractor
+        assert recording.get_num_samples() == 1_800_064 * 3 + 45_184
+
+
+class TestFullConversion:
+    """End-to-end: discover, convert, read back, verify all expected NWB objects exist."""
+
+    def test_rhs_traditional_roundtrip(self, tmp_path):
+        converter = IntanConverter(file_path=RHS_TRADITIONAL)
+
+        metadata = converter.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+
+        nwbfile_path = tmp_path / "intan_converter.nwb"
+        converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        nwbfile = read_nwb(nwbfile_path)
+
+        # Amplifier traces in acquisition.
+        assert "ElectricalSeries" in nwbfile.acquisition
+        # ADC in/out as TimeSeries in acquisition.
+        assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
+        assert "TimeSeriesIntanADCOutput" in nwbfile.acquisition
+        # Stim as TimeSeries in stimulus.
+        assert "TimeSeriesIntanStim" in nwbfile.stimulus
+        # Single Intan device.
+        assert list(nwbfile.devices.keys()) == ["Intan"]
