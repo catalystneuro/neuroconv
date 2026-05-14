@@ -98,11 +98,9 @@ class IntanAnalogInterface(BaseDataInterface):
             verbose = positional_values.get("verbose", verbose)
             metadata_key = positional_values.get("metadata_key", metadata_key)
 
-        from spikeinterface.extractors import read_intan, read_split_intan_files
-
         self._file_path = Path(file_path)
         self._stream_name = stream_name
-        self.saved_files_are_split = saved_files_are_split
+        self._saved_files_are_split = saved_files_are_split
 
         # Stream type descriptions and time series name mapping
         self.stream_info = {
@@ -141,12 +139,16 @@ class IntanAnalogInterface(BaseDataInterface):
 
         # Load the recording extractor using stream_name
         if saved_files_are_split:
+            from spikeinterface.extractors import read_split_intan_files
+
             self.recording_extractor = read_split_intan_files(
                 folder_path=self._file_path.parent,
                 stream_name=self._stream_name,
                 all_annotations=True,
             )
         else:
+            from spikeinterface.extractors import read_intan
+
             _warn_if_split_siblings_detected(self._file_path, interface_name="IntanAnalogInterface")
             self.recording_extractor = read_intan(
                 file_path=self._file_path,

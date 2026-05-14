@@ -47,11 +47,10 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
-        saved_files_are_split = self.extractor_kwargs.pop("saved_files_are_split", False)
         self.extractor_kwargs["all_annotations"] = True
         self.extractor_kwargs["stream_id"] = self.stream_id
 
-        if saved_files_are_split:
+        if self._saved_files_are_split:
             from spikeinterface.extractors.extractor_classes import (
                 IntanSplitFilesRecordingExtractor,
             )
@@ -124,7 +123,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             ignore_integrity_checks = positional_values.get("ignore_integrity_checks", ignore_integrity_checks)
 
         self.file_path = Path(file_path)
-        self.saved_files_are_split = saved_files_are_split
+        self._saved_files_are_split = saved_files_are_split
 
         if not saved_files_are_split:
             _warn_if_split_siblings_detected(self.file_path, interface_name="IntanRecordingInterface")
@@ -134,7 +133,6 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             verbose=verbose,
             es_key=es_key,
             ignore_integrity_checks=ignore_integrity_checks,
-            saved_files_are_split=saved_files_are_split,
         )
 
         super().__init__(**init_kwargs)

@@ -23,15 +23,6 @@ SPLIT_FOLDER = ECEPHY_DATA_PATH / "intan" / "test_tetrode_240502_162925"
 class TestIntanRecordingInterfaceSplit:
     """The test_tetrode fixture contains four rotated .rhd files (amplifier-only)."""
 
-    def test_concatenates_all_chunks(self):
-        """saved_files_are_split=True pulls in every sibling file."""
-        first_file = sorted(SPLIT_FOLDER.glob("*.rhd"))[0]
-        interface = IntanRecordingInterface(file_path=first_file, saved_files_are_split=True)
-
-        expected_total = 1_800_064 * 3 + 45_184  # three full chunks + shorter tail
-        assert interface.recording_extractor.get_num_samples() == expected_total
-        assert interface.recording_extractor.get_num_segments() == 1
-
     def test_single_file_ignores_siblings(self):
         """saved_files_are_split=False reads only the file it was pointed at."""
         first_file = sorted(SPLIT_FOLDER.glob("*.rhd"))[0]
@@ -62,21 +53,8 @@ class TestIntanRecordingInterfaceSplit:
 
         nwbfile = read_nwb(nwbfile_path)
         series = nwbfile.acquisition["ElectricalSeries"]
+        # Data set has three full chunks of 1_800_064 samples plus a shorter tail of 45_184 samples.
         assert series.data.shape[0] == 1_800_064 * 3 + 45_184
-
-
-# Analog and stim interfaces inherit the same dispatch; the test_tetrode fixture
-# has only amplifier data, so a rotated analog/stim fixture would need to be added
-# to ephy_testing_data to exercise those code paths end-to-end. For now the single-file
-# paths are covered by the existing test_intan_analog_interface.py and
-# test_intan_stim_interface.py tests; the split-mode dispatch is validated above on
-# the amplifier interface.
-#
-# Related issues:
-# - https://github.com/catalystneuro/neuroconv/issues/789 (parent tracking issue for
-#   Intan modes/formats; mentions the rotation scenario explicitly)
-# - https://github.com/catalystneuro/neuroconv/issues/519 (where the rotation case
-#   was first surfaced by Szonja's comment about ConcatenateSegmentRecording)
 
 
 def test_analog_interface_accepts_flag():

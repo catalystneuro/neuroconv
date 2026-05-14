@@ -65,20 +65,22 @@ class IntanStimInterface(BaseDataInterface):
             files in ``file_path.parent`` are concatenated in filename order (Intan's default
             ``{prefix}_YYMMDD_HHMMSS`` naming makes lexicographic order match chronological order).
         """
-        from spikeinterface.extractors import read_intan, read_split_intan_files
-
         self._file_path = Path(file_path)
         self._stream_name = "Stim channel"
         self.metadata_key = metadata_key
-        self.saved_files_are_split = saved_files_are_split
+        self._saved_files_are_split = saved_files_are_split
 
         if saved_files_are_split:
+            from spikeinterface.extractors import read_split_intan_files
+
             self.recording_extractor = read_split_intan_files(
                 folder_path=self._file_path.parent,
                 stream_name=self._stream_name,
                 all_annotations=True,
             )
         else:
+            from spikeinterface.extractors import read_intan
+
             _warn_if_split_siblings_detected(self._file_path, interface_name="IntanStimInterface")
             self.recording_extractor = read_intan(
                 file_path=self._file_path,
