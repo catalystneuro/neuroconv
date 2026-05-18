@@ -9,10 +9,18 @@ used by the Turner-Delong M1 (primary motor cortex) MPTP
 - One row per chamber on the standard ``nwbfile.electrodes`` table, with
   chamber-relative microdrive parameters as custom columns.
 - One ``Localization`` container in ``nwbfile.lab_meta_data['localization']``,
-  wrapping the ``NMTv2Space`` and one ``AnatomicalCoordinatesTable`` whose rows
-  carry both Cicerone-native (``x_raw, y_raw, z_raw`` in ``(ML, VD, AP)``) and
-  NMT v2 RAS (``x, y, z``) coordinates. The table's ``localized_entity`` column
-  references the electrode rows in ``nwbfile.electrodes``.
+  wrapping two ``Space`` objects and two parallel ``AnatomicalCoordinatesTable``
+  instances, one per coordinate frame:
+
+  * ``NMTv2Coordinates`` linked to ``NMTv2Space`` (RAS, ``+x = Right``). Each
+    row's ``x, y, z`` is the composed stereotaxic target in NMT v2 RAS, in mm.
+  * ``CiceroneStereoHf0Coordinates`` linked to ``CiceroneStereoHf0`` (LSA,
+    ``+x = Left``, ``+y = Superior/Dorsal``, ``+z = Anterior``). Each row's
+    ``x, y, z`` is the same physical point expressed in Cicerone's native frame.
+
+  Both tables' ``localized_entity`` columns reference the same rows in
+  ``nwbfile.electrodes``; consumers can join either table back to the chamber
+  metadata.
 """
 
 from __future__ import annotations
@@ -178,67 +186,83 @@ class CiceroneSessionInterface(BaseDataInterface):
         ndx_anatomical_localization,
         electrode_row_by_chamber: dict[int, int],
     ) -> None:
-        """Build a ``Localization`` container with the NMT v2 space and an
-        ``AnatomicalCoordinatesTable`` carrying both Cicerone-native and
-        NMT v2 RAS coordinates for every chamber's planned electrode."""
-        space = ndx_anatomical_localization.NMTv2Space(name="NMTv2")
-        localization = ndx_anatomical_localization.Localization(spaces=[space])
+        """Build a ``Localization`` container with two ``Space`` objects and two
+        parallel ``AnatomicalCoordinatesTable`` instances, one per coordinate
+        frame (NMT v2 RAS and Cicerone-native ``stereoHf0``). Both tables
+        reference the same electrodes via ``localized_entity``."""
+        nmt_space = ndx_anatomical_localization.NMTv2Space(name="NMTv2")
+        cicerone_space = ndx_anatomical_localization.Space(
+            name="CiceroneStereoHf0",
+            space_name="Cicerone stereoHf0",
+            origin=(
+                "Ear bar zero (EBZ): intersection of the midsagittal plane and the interaural "
+                "line, with the horizontal plane aligned to the Horsley-Clarke stereotaxic "
+                "convention. Identical origin and alignment to NMT v2; differs only in axis "
+                "convention (Cicerone uses LSA: +x = Left, +y = Superior/Dorsal, +z = Anterior). "
+                "Documented in the MonkeyCicerone v1.0 user manual, Panel F."
+            ),
+            units="mm",
+            orientation="LSA",
+        )
+        localization = ndx_anatomical_localization.Localization(spaces=[nmt_space, cicerone_space])
         nwbfile.add_lab_meta_data(localization)
 
-        coordinates_table = ndx_anatomical_localization.AnatomicalCoordinatesTable(
+        method_description = (
+            "Composed from MonkeyCicerone session-file fields (chtrans translation "
+            "and dial rotations, eltrans microdrive coordinates, calibration depth, "
+            "chtrans plane base orientation) by neuroconv's CiceroneSessionInterface. "
+            "Field meanings were verified against the MonkeyCicerone v1.0 GUI on the "
+            "loaded session. The rx (vertical dial) sign convention was verified by a "
+            "controlled GUI sweep on 2026-05-18: +rx tilts the chamber posterior and "
+            "-rx tilts it anterior in the plane=0 case, matching the right-hand-rule "
+            "prediction implemented here. Other dial signs and the rotation-matrix "
+            "order share the same construction and were validated via six "
+            "synthetic-input experiments. Direct numerical equivalence to Cicerone's "
+            "renderer is not testable (Cicerone exposes no composed coordinate). "
+            "Tier A archival output: coordinates only, no atlas brain-region lookup."
+        )
+
+        nmt_table = ndx_anatomical_localization.AnatomicalCoordinatesTable(
             name="NMTv2Coordinates",
             description=(
-                "Composed stereotaxic targets for each MonkeyCicerone electrode. The "
-                "x/y/z columns are in NMT v2 RAS (mm), derived from the chamber pose "
-                "and electrode microdrive parameters that live on the linked rows of "
-                "nwbfile.electrodes. The x_raw/y_raw/z_raw columns preserve the same "
-                "point in Cicerone's native stereoHf0 frame (ML, VD, AP), with "
-                "+x = Left per the MonkeyCicerone v1.0 manual Panel F. See the "
-                "CiceroneSessionInterface docstring for the verification status of "
-                "the chamber rotation composition."
+                "Composed stereotaxic targets for each MonkeyCicerone electrode, expressed "
+                "in NMT v2 RAS (mm). Derived from the chamber pose and electrode microdrive "
+                "parameters that live on the linked rows of nwbfile.electrodes. The same "
+                "physical points expressed in Cicerone's native frame are in the parallel "
+                "CiceroneStereoHf0Coordinates table. See CiceroneSessionInterface docstring "
+                "for the verification status of the chamber rotation composition."
             ),
-            space=space,
-            method=(
-                "Composed from MonkeyCicerone session-file fields (chtrans translation "
-                "and dial rotations, eltrans microdrive coordinates, calibration depth, "
-                "chtrans plane base orientation) by neuroconv's CiceroneSessionInterface. "
-                "Field meanings were verified against the MonkeyCicerone v1.0 GUI on the "
-                "loaded session. The rx (vertical dial) sign convention was verified by a "
-                "controlled GUI sweep on 2026-05-18: +rx tilts the chamber posterior and "
-                "-rx tilts it anterior in the plane=0 case, matching the right-hand-rule "
-                "prediction implemented here. Other dial signs and the rotation-matrix "
-                "order share the same construction and were validated via six "
-                "synthetic-input experiments. Direct numerical equivalence to Cicerone's "
-                "renderer is not testable (Cicerone exposes no composed coordinate). "
-                "Tier A archival output: coordinates only, no atlas brain-region lookup."
-            ),
+            space=nmt_space,
+            method=method_description,
             target=nwbfile.electrodes,
-            columns=[_make_raw_coordinate_column("x_raw", "ML axis (Cicerone native, +x = Left), in mm.")[0]]
-            + [_make_raw_coordinate_column("y_raw", "VD axis (Cicerone native, ventral-dorsal), in mm.")[0]]
-            + [_make_raw_coordinate_column("z_raw", "AP axis (Cicerone native, anterior-posterior), in mm.")[0]],
         )
-        localization.add_anatomical_coordinates_tables(coordinates_table)
+        cicerone_table = ndx_anatomical_localization.AnatomicalCoordinatesTable(
+            name="CiceroneStereoHf0Coordinates",
+            description=(
+                "Composed stereotaxic targets for each MonkeyCicerone electrode, expressed "
+                "in Cicerone's native stereoHf0 frame (LSA: +x = Left, +y = Superior/Dorsal, "
+                "+z = Anterior; mm). Same physical points as the parallel NMTv2Coordinates "
+                "table, only the axis convention differs (axis permutation plus one sign flip)."
+            ),
+            space=cicerone_space,
+            method=method_description,
+            target=nwbfile.electrodes,
+        )
+        localization.add_anatomical_coordinates_tables(nmt_table)
+        localization.add_anatomical_coordinates_tables(cicerone_table)
+
         for chamber in self._session.chambers:
             target = compose_electrode_target(chamber)
-            coordinates_table.add_row(
+            electrode_index = electrode_row_by_chamber[chamber.index]
+            nmt_table.add_row(
                 x=target.ras_x,
                 y=target.ras_y,
                 z=target.ras_z,
-                x_raw=target.ml,
-                y_raw=target.vd,
-                z_raw=target.ap,
-                localized_entity=electrode_row_by_chamber[chamber.index],
+                localized_entity=electrode_index,
             )
-
-
-def _make_raw_coordinate_column(name: str, description: str):
-    """Create a VectorData column for a raw-coordinate axis.
-
-    Wrapped in a function so we can pass these to ``AnatomicalCoordinatesTable``
-    via the ``columns=`` kwarg; the table only declares ``x``, ``y``, ``z`` and
-    ``localized_entity`` as required columns, so the raw axes need to be added
-    explicitly.
-    """
-    from hdmf.common.table import VectorData
-
-    return (VectorData(name=name, description=description, data=[]),)
+            cicerone_table.add_row(
+                x=target.ml,
+                y=target.vd,
+                z=target.ap,
+                localized_entity=electrode_index,
+            )

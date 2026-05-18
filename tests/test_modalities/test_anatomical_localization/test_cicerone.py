@@ -142,8 +142,10 @@ def test_interface_roundtrip_writes_and_reads_back():
     assert {"CiceroneChamber1", "CiceroneChamber2"} <= set(nwbfile.devices.keys())
     assert "localization" in nwbfile.lab_meta_data
     localization = nwbfile.lab_meta_data["localization"]
-    assert "NMTv2" in localization.spaces
-    assert "NMTv2Coordinates" in localization.anatomical_coordinates_tables
+    assert {"NMTv2", "CiceroneStereoHf0"} <= set(localization.spaces.keys())
+    assert {"NMTv2Coordinates", "CiceroneStereoHf0Coordinates"} <= set(
+        localization.anatomical_coordinates_tables.keys()
+    )
     assert len(nwbfile.electrodes) == 2
     assert {"cicerone_chamber_index", "cicerone_eltrans_ml", "cicerone_calibration_mm"} <= set(
         nwbfile.electrodes.colnames
@@ -158,8 +160,20 @@ def test_interface_roundtrip_writes_and_reads_back():
             assert "CiceroneChamber1" in nwb_read.devices
             assert "localization" in nwb_read.lab_meta_data
             loc = nwb_read.lab_meta_data["localization"]
-            coords_table = loc.anatomical_coordinates_tables["NMTv2Coordinates"]
-            df = coords_table.to_dataframe()
-            assert len(df) == 2
-            assert {"x", "y", "z", "x_raw", "y_raw", "z_raw"} <= set(df.columns)
-            assert np.all(np.isfinite(df[["x", "y", "z", "x_raw", "y_raw", "z_raw"]].values))
+
+            nmt_df = loc.anatomical_coordinates_tables["NMTv2Coordinates"].to_dataframe()
+            cicerone_df = loc.anatomical_coordinates_tables["CiceroneStereoHf0Coordinates"].to_dataframe()
+            assert len(nmt_df) == 2
+            assert len(cicerone_df) == 2
+            assert {"x", "y", "z"} <= set(nmt_df.columns)
+            assert {"x", "y", "z"} <= set(cicerone_df.columns)
+            assert "x_raw" not in nmt_df.columns
+            assert "x_raw" not in cicerone_df.columns
+            assert np.all(np.isfinite(nmt_df[["x", "y", "z"]].values))
+            assert np.all(np.isfinite(cicerone_df[["x", "y", "z"]].values))
+
+            # The two tables describe the SAME physical points in different frames;
+            # the axis permutation/sign flip must hold: NMT (x, y, z) = (-cic_x, cic_z, cic_y)
+            np.testing.assert_allclose(nmt_df["x"].to_numpy(), -cicerone_df["x"].to_numpy(), atol=1e-9)
+            np.testing.assert_allclose(nmt_df["y"].to_numpy(), cicerone_df["z"].to_numpy(), atol=1e-9)
+            np.testing.assert_allclose(nmt_df["z"].to_numpy(), cicerone_df["y"].to_numpy(), atol=1e-9)
