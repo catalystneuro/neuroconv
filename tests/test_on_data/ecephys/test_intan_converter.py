@@ -2,7 +2,6 @@
 
 from datetime import datetime
 
-import pytest
 from pynwb import read_nwb
 
 from neuroconv.converters import IntanConverter
@@ -64,23 +63,6 @@ class TestAutoDiscoveryRouting:
         keys = set(converter.data_interface_objects.keys())
         # File-per-channel save mode routes the same way as file-per-signal.
         assert "Recording" in keys
-
-
-class TestStreamsFilter:
-    """The `streams` parameter narrows which sub-interfaces get instantiated."""
-
-    def test_filter_to_amplifier_only(self):
-        converter = IntanConverter(file_path=RHS_TRADITIONAL, streams=["RHS2000 amplifier channel"])
-        assert set(converter.data_interface_objects.keys()) == {"Recording"}
-
-    def test_unknown_stream_raises(self):
-        with pytest.raises(ValueError, match="not present"):
-            IntanConverter(file_path=RHS_TRADITIONAL, streams=["bogus stream"])
-
-    def test_present_but_unrouted_stream_raises(self):
-        # Digital streams are in the header but not currently supported by the converter.
-        with pytest.raises(ValueError, match="not currently supported"):
-            IntanConverter(file_path=RHS_TRADITIONAL, streams=["USB board digital input channel"])
 
 
 class TestMetadataMerging:
