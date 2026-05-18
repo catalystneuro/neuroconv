@@ -37,6 +37,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .cicerone_session_parser import ChamberRecord
+from .cicerone_sites_parser import SiteRecord
 
 
 @dataclass
@@ -147,6 +148,83 @@ def compose_electrode_target(
         [
             chamber.eltrans_ml,
             chamber.calibration_mm - chamber.eltrans_depth - depth_mm,
+            eltrans_ap,
+        ]
+    )
+
+    rotation = compose_chamber_rotation_matrix(
+        vertical_dial_deg=chamber.vertical_dial_deg,
+        horizontal_dial_deg=chamber.horizontal_dial_deg,
+        skull_fit_dial_deg=chamber.skull_fit_dial_deg,
+        plane=chamber.plane,
+    )
+
+    translation = np.array([chamber.translation_ml, chamber.translation_vd, chamber.translation_ap])
+
+    stereotaxic = translation + rotation @ electrode_in_chamber
+    ras_x, ras_y, ras_z = cicerone_to_nmt_v2_ras(*stereotaxic)
+
+    return ElectrodeTarget(
+        chamber_index=chamber.index,
+        ml=float(stereotaxic[0]),
+        vd=float(stereotaxic[1]),
+        ap=float(stereotaxic[2]),
+        ras_x=float(ras_x),
+        ras_y=float(ras_y),
+        ras_z=float(ras_z),
+    )
+
+
+def compose_site_target(chamber: ChamberRecord, site: SiteRecord) -> ElectrodeTarget:
+    """Compose the stereotaxic position of one recording site's electrode tip.
+
+    Drives the same composer math as :func:`compose_electrode_target`, but with
+    the microdrive coordinates and calibration coming from a sites-file row
+    rather than the chamber's configuration-file ``eltrans`` / ``calibration``.
+    The chamber's pose (translation, rotations, plane) comes from the
+    configuration as usual.
+
+    Parameters
+    ----------
+    chamber : ChamberRecord
+        The chamber whose pose this site lives in. Must satisfy
+        ``chamber.index == site.chamber``; the caller is responsible for
+        matching them.
+    site : SiteRecord
+        One row of the sites file, providing microdrive coordinates
+        (``site.ap``, ``site.ml``, ``site.depth``) and the calibration value
+        (``site.electrode_calibr``) that applied at the moment the site was
+        saved.
+
+    Returns
+    -------
+    ElectrodeTarget
+        Stereotaxic position of the electrode tip in both Cicerone-native
+        ``stereoHf0`` and NMT v2 RAS frames.
+
+    Raises
+    ------
+    ValueError
+        If the chamber's index does not match the site's recorded chamber.
+    """
+    if chamber.index != site.chamber:
+        raise ValueError(
+            f"Chamber index mismatch: ChamberRecord has index {chamber.index} "
+            f"but SiteRecord references chamber {site.chamber}."
+        )
+
+    # The sites file reports microdrive coordinates in its own column order
+    # (AP, ML, Depth). The composer wants them in the chamber-local
+    # (ml, depth, ap) order, so we re-permute. Cicerone clamps the AP
+    # microdrive value to [-10, 10] mm at the GUI, but sites are saved with
+    # the operator's intended values; we match Cicerone's GUI clamping for
+    # consistency with the chamber-level path.
+    eltrans_ap = max(-10.0, min(10.0, site.ap))
+
+    electrode_in_chamber = np.array(
+        [
+            site.ml,
+            site.electrode_calibr - site.depth,
             eltrans_ap,
         ]
     )

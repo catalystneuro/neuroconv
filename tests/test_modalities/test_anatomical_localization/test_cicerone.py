@@ -19,9 +19,14 @@ from neuroconv.datainterfaces.anatomical_localization.cicerone.cicerone_geometry
 from neuroconv.datainterfaces.anatomical_localization.cicerone.cicerone_session_parser import (
     parse_session_file,
 )
+from neuroconv.datainterfaces.anatomical_localization.cicerone.cicerone_sites_parser import (
+    parse_sites_file,
+)
 
 SYNTHETIC = Path(__file__).parent / "synthetic_session.txt"
 ANONYMIZED_ORION = Path(__file__).parent / "anonymized_orion_session.txt"
+SAMPLE_MER_CONFIG = Path(__file__).parent / "sample_mer_configuration.txt"
+SAMPLE_MER_SITES = Path(__file__).parent / "sample_mer_sites.txt"
 
 
 def _parse_orion_silently():
@@ -125,12 +130,145 @@ def test_anonymized_orion_produces_finite_anatomically_plausible_targets():
         assert -20 < target.vd < 100
 
 
+def test_sites_parser_reads_bundled_sample():
+    """The Cicerone-shipped sample MER file has 189 sites across 2 tracks in
+    Chamber 1, with annotations like ``stn``, ``background``, ``other``."""
+    sites = parse_sites_file(SAMPLE_MER_SITES)
+    assert len(sites) == 189
+    assert {s.chamber for s in sites} == {1}
+    assert sorted({s.track_number for s in sites}) == [1, 2]
+    assert sum(1 for s in sites if s.track_number == 1) == 70
+    assert sum(1 for s in sites if s.track_number == 2) == 119
+    # SiteNumber RESETS at each new track: confirms the (track, site) pair
+    # is the row-unique key, not SiteNumber alone.
+    track1_site_numbers = sorted({s.site_number for s in sites if s.track_number == 1})
+    track2_site_numbers = sorted({s.site_number for s in sites if s.track_number == 2})
+    assert track1_site_numbers[0] == 1 and track1_site_numbers[-1] == 70
+    assert track2_site_numbers[0] == 1 and track2_site_numbers[-1] == 119
+    # Sample contains real anatomical labels and clinical annotations
+    locations = {s.location for s in sites if s.location}
+    assert "stn" in locations
+    assert "background" in locations
+    assert any(s.site_comment for s in sites)
+
+
+def test_sites_interface_writes_all_sites_when_no_selection():
+    """With sites_file_path provided and no track_numbers/site_numbers, the
+    interface writes one electrode row per site (189 in the sample)."""
+    interface = CiceroneSessionInterface(
+        file_path=SAMPLE_MER_CONFIG,
+        sites_file_path=SAMPLE_MER_SITES,
+    )
+    nwbfile = NWBFile(
+        session_description="Cicerone sites mode test",
+        identifier="cicerone-sites-all",
+        session_start_time=datetime(2026, 1, 1).astimezone(),
+    )
+    interface.add_to_nwbfile(nwbfile)
+    assert len(nwbfile.electrodes) == 189
+    coords_table = nwbfile.lab_meta_data["localization"].anatomical_coordinates_tables["NMTv2Coordinates"]
+    assert len(coords_table) == 189
+    df = nwbfile.electrodes.to_dataframe()
+    assert "cicerone_site_number" in df.columns
+    assert "cicerone_location" in df.columns
+    assert (df["cicerone_track_number"] == 1).sum() == 70
+    assert (df["cicerone_track_number"] == 2).sum() == 119
+
+
+def test_sites_interface_filters_by_track_site_pairs():
+    """Three specific sites: site 1 of track 1, site 69 of track 2 (which is
+    labeled stn in the sample), and site 119 of track 2 (the last one)."""
+    interface = CiceroneSessionInterface(
+        file_path=SAMPLE_MER_CONFIG,
+        sites_file_path=SAMPLE_MER_SITES,
+        track_numbers=[1, 2, 2],
+        site_numbers=[1, 69, 119],
+    )
+    nwbfile = NWBFile(
+        session_description="Cicerone sites filter test",
+        identifier="cicerone-sites-filter",
+        session_start_time=datetime(2026, 1, 1).astimezone(),
+    )
+    interface.add_to_nwbfile(nwbfile)
+    df = nwbfile.electrodes.to_dataframe()
+    assert len(df) == 3
+    assert df["cicerone_track_number"].tolist() == [1, 2, 2]
+    assert df["cicerone_site_number"].tolist() == [1, 69, 119]
+    # Site 69 of track 2 is the first STN-labeled site in the sample
+    site_stn = df[(df["cicerone_track_number"] == 2) & (df["cicerone_site_number"] == 69)]
+    assert site_stn["cicerone_location"].iloc[0] == "stn"
+
+
+def test_sites_interface_raises_on_unknown_track_site_pair():
+    """A (track, site) combination that does not exist in the file must
+    raise at construction with a helpful error."""
+    with pytest.raises(ValueError, match="No site with TrackNumber=2, SiteNumber=250"):
+        CiceroneSessionInterface(
+            file_path=SAMPLE_MER_CONFIG,
+            sites_file_path=SAMPLE_MER_SITES,
+            track_numbers=[2],
+            site_numbers=[250],
+        )
+
+
+def test_sites_interface_raises_when_only_one_list_provided():
+    with pytest.raises(ValueError, match="site_numbers was provided but track_numbers was not"):
+        CiceroneSessionInterface(
+            file_path=SAMPLE_MER_CONFIG,
+            sites_file_path=SAMPLE_MER_SITES,
+            site_numbers=[1],
+        )
+    with pytest.raises(ValueError, match="track_numbers was provided but site_numbers was not"):
+        CiceroneSessionInterface(
+            file_path=SAMPLE_MER_CONFIG,
+            sites_file_path=SAMPLE_MER_SITES,
+            track_numbers=[1],
+        )
+
+
+def test_sites_interface_raises_on_length_mismatch():
+    with pytest.raises(ValueError, match="must have the same length; got 2 and 1"):
+        CiceroneSessionInterface(
+            file_path=SAMPLE_MER_CONFIG,
+            sites_file_path=SAMPLE_MER_SITES,
+            track_numbers=[1, 2],
+            site_numbers=[1],
+        )
+
+
+def test_sites_two_tables_describe_same_points():
+    """For each filtered site, NMT (x, y, z) = (-cic_x, cic_z, cic_y)."""
+    interface = CiceroneSessionInterface(
+        file_path=SAMPLE_MER_CONFIG,
+        sites_file_path=SAMPLE_MER_SITES,
+        track_numbers=[1, 2, 2, 2],
+        site_numbers=[1, 1, 47, 119],
+    )
+    nwbfile = NWBFile(
+        session_description="Cicerone sites axis-frame test",
+        identifier="cicerone-sites-frames",
+        session_start_time=datetime(2026, 1, 1).astimezone(),
+    )
+    interface.add_to_nwbfile(nwbfile)
+    loc = nwbfile.lab_meta_data["localization"]
+    nmt_df = loc.anatomical_coordinates_tables["NMTv2Coordinates"].to_dataframe()
+    cic_df = loc.anatomical_coordinates_tables["CiceroneStereoHf0Coordinates"].to_dataframe()
+    np.testing.assert_allclose(nmt_df["x"].to_numpy(), -cic_df["x"].to_numpy(), atol=1e-9)
+    np.testing.assert_allclose(nmt_df["y"].to_numpy(), cic_df["z"].to_numpy(), atol=1e-9)
+    np.testing.assert_allclose(nmt_df["z"].to_numpy(), cic_df["y"].to_numpy(), atol=1e-9)
+
+
 def test_interface_roundtrip_writes_and_reads_back():
-    interface = CiceroneSessionInterface(file_path=SYNTHETIC)
+    interface = CiceroneSessionInterface(
+        file_path=SAMPLE_MER_CONFIG,
+        sites_file_path=SAMPLE_MER_SITES,
+        track_numbers=[1, 2],
+        site_numbers=[1, 1],
+    )
 
     metadata = interface.get_metadata()
-    assert metadata["Subject"]["subject_id"] == "SYN-001"
-    assert "SyntheticMonkey" in metadata["Subject"]["description"]
+    assert metadata["Subject"]["subject_id"] == "M-001"
+    assert "Rhesus" in metadata["Subject"]["description"]
 
     nwbfile = NWBFile(
         session_description="Cicerone interface roundtrip test",
@@ -139,7 +277,7 @@ def test_interface_roundtrip_writes_and_reads_back():
     )
     interface.add_to_nwbfile(nwbfile)
 
-    assert {"CiceroneChamber1", "CiceroneChamber2"} <= set(nwbfile.devices.keys())
+    assert "CiceroneChamber1" in nwbfile.devices
     assert "localization" in nwbfile.lab_meta_data
     localization = nwbfile.lab_meta_data["localization"]
     assert {"NMTv2", "CiceroneStereoHf0"} <= set(localization.spaces.keys())
@@ -147,9 +285,13 @@ def test_interface_roundtrip_writes_and_reads_back():
         localization.anatomical_coordinates_tables.keys()
     )
     assert len(nwbfile.electrodes) == 2
-    assert {"cicerone_chamber_index", "cicerone_eltrans_ml", "cicerone_calibration_mm"} <= set(
-        nwbfile.electrodes.colnames
-    )
+    assert {
+        "cicerone_chamber_index",
+        "cicerone_eltrans_ml",
+        "cicerone_calibration_mm",
+        "cicerone_site_number",
+        "cicerone_track_number",
+    } <= set(nwbfile.electrodes.colnames)
 
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "cicerone.nwb"
