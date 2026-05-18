@@ -23,7 +23,7 @@ class OpenEphysBinaryConverter(ConverterPipe):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["streams"])
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__)
         source_schema["properties"]["folder_path"][
             "description"
         ] = "Path to the folder containing OpenEphys binary streams."
@@ -54,28 +54,25 @@ class OpenEphysBinaryConverter(ConverterPipe):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        streams: list[str] | None = None,
         verbose: bool = False,
     ):
         """
-        Read all data from multiple streams stored in OpenEphys binary format.
+        Read all data from every stream stored in OpenEphys binary format.
+
+        For finer control, construct a ``ConverterPipe`` directly with the specific
+        interfaces you want; ``OpenEphysBinaryConverter.get_streams(folder_path=...)``
+        lists what is available.
 
         Parameters
         ----------
         folder_path : DirectoryPath
             Path to the folder containing OpenEphys binary streams.
-        streams : list of str, optional
-            A specific list of streams to load.
-            To see which streams are available, run
-            `OpenEphysBinaryConverter.get_streams(folder_path="path/to/openephys")`.
-            By default, all available streams are loaded.
         verbose : bool, default: False
             Whether to output verbose text.
         """
         folder_path = Path(folder_path)
 
-        stream_names = streams or self.get_streams(folder_path=folder_path)
-        self._stream_names = stream_names
+        stream_names = self.get_streams(folder_path=folder_path)
 
         non_neural_indicators = ["ADC", "NI-DAQ"]
         is_non_neural = lambda name: any(indicator in name for indicator in non_neural_indicators)

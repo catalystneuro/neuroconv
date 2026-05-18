@@ -74,16 +74,3 @@ class TestMultiStreamWithAnalog:
         assert len(ap_electrode_indices) == 384
         assert len(lfp_electrode_indices) == 384
         assert ap_electrode_indices == lfp_electrode_indices
-
-    def test_streams_argument_filters_data(self):
-        all_streams = OpenEphysBinaryConverter.get_streams(folder_path=self.folder_path)
-        neural_only = [s for s in all_streams if "NI-DAQ" not in s]
-
-        converter = OpenEphysBinaryConverter(folder_path=self.folder_path, streams=neural_only)
-        conversion_options = {name: dict(stub_test=True) for name in converter.data_interface_objects}
-        nwbfile = converter.create_nwbfile(conversion_options=conversion_options)
-
-        assert "ElectricalSeriesProbeAAP" in nwbfile.acquisition
-        assert "ElectricalSeriesProbeALFP" in nwbfile.acquisition
-        assert "TimeSeriesPXIe6341" not in nwbfile.acquisition
-        assert len(nwbfile.acquisition) == 4
