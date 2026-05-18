@@ -23,7 +23,7 @@ class OpenEphysBinaryConverter(ConverterPipe):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_json_schema_from_method_signature(method=cls.__init__)
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["exclude_streams"])
         source_schema["properties"]["folder_path"][
             "description"
         ] = "Path to the folder containing OpenEphys binary streams."
@@ -54,25 +54,36 @@ class OpenEphysBinaryConverter(ConverterPipe):
     def __init__(
         self,
         folder_path: DirectoryPath,
+        exclude_streams: list[str] | None = None,
         verbose: bool = False,
     ):
         """
         Read all data from every stream stored in OpenEphys binary format.
 
-        For finer control, construct a ``ConverterPipe`` directly with the specific
-        interfaces you want; ``OpenEphysBinaryConverter.get_streams(folder_path=...)``
-        lists what is available.
-
         Parameters
         ----------
         folder_path : DirectoryPath
             Path to the folder containing OpenEphys binary streams.
+        exclude_streams : list of str, optional
+            Stream names to skip from auto-discovery. Useful for omitting a large
+            stream (for example an LFP band) during a fast test conversion.
+            ``OpenEphysBinaryConverter.get_streams(folder_path=...)`` lists what is
+            available. Unknown names raise ``ValueError``.
         verbose : bool, default: False
             Whether to output verbose text.
         """
         folder_path = Path(folder_path)
 
         stream_names = self.get_streams(folder_path=folder_path)
+
+        if exclude_streams:
+            unknown = [name for name in exclude_streams if name not in stream_names]
+            if unknown:
+                raise ValueError(
+                    f"Cannot exclude streams {unknown}: not present in {folder_path}. "
+                    f"Available streams: {stream_names}."
+                )
+            stream_names = [name for name in stream_names if name not in exclude_streams]
 
         non_neural_indicators = ["ADC", "NI-DAQ"]
         is_non_neural = lambda name: any(indicator in name for indicator in non_neural_indicators)
