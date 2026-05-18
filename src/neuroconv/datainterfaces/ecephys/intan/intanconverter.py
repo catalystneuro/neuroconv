@@ -68,7 +68,7 @@ class IntanConverter(ConverterPipe):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_json_schema_from_method_signature(method=cls.__init__)
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=["exclude_streams"])
         source_schema["properties"]["file_path"]["description"] = (
             "Path to a .rhd or .rhs file. For Traditional save mode pass the single recording file; "
             "for One File Per Signal Type and One File Per Channel modes pass the info.rhd/info.rhs "
@@ -105,6 +105,7 @@ class IntanConverter(ConverterPipe):
     def __init__(
         self,
         file_path: FilePath,
+        exclude_streams: list[str] | None = None,
         verbose: bool = False,
         saved_files_are_split: bool = False,
     ):
@@ -112,8 +113,7 @@ class IntanConverter(ConverterPipe):
         Auto-discover and route all Intan streams in a .rhd or .rhs file.
 
         Streams present in the file header that do not have a routed sub-interface
-        (digital input/output, supply voltage) are skipped. For finer control,
-        construct a ``ConverterPipe`` directly with the specific interfaces you want.
+        (digital input/output, supply voltage) are skipped automatically.
 
         Parameters
         ----------
@@ -123,6 +123,11 @@ class IntanConverter(ConverterPipe):
             pass the ``info.rhd``/``info.rhs`` header file; when
             ``saved_files_are_split=True`` pass any one chunk in the rotated session
             folder.
+        exclude_streams : list of str, optional
+            Stream names to skip from auto-discovery. Useful for omitting a large
+            stream (for example the Stim channel) during a fast test conversion.
+            ``IntanConverter.get_streams(file_path=...)`` lists what is available.
+            Unknown names raise ``ValueError``.
         verbose : bool, default: False
             Whether to output verbose text.
         saved_files_are_split : bool, default: False
@@ -132,8 +137,19 @@ class IntanConverter(ConverterPipe):
         """
         file_path = Path(file_path)
 
+        present_streams = self.get_streams(file_path=file_path)
+
+        if exclude_streams:
+            unknown = [name for name in exclude_streams if name not in present_streams]
+            if unknown:
+                raise ValueError(
+                    f"Cannot exclude streams {unknown}: not present in {file_path.name}. "
+                    f"Available streams: {present_streams}."
+                )
+            present_streams = [name for name in present_streams if name not in exclude_streams]
+
         data_interfaces = {}
-        for stream_name in self.get_streams(file_path=file_path):
+        for stream_name in present_streams:
             if stream_name not in _STREAM_TO_INTERFACE:
                 continue
             interface_key, interface_class, extra_kwargs = _STREAM_TO_INTERFACE[stream_name]

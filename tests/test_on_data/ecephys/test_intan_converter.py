@@ -2,6 +2,7 @@
 
 from datetime import datetime
 
+import pytest
 from pynwb import read_nwb
 
 from neuroconv.converters import IntanConverter
@@ -86,6 +87,20 @@ class TestMetadataMerging:
         # Each sub-interface contributes a uniquely-keyed TimeSeries entry.
         ts_keys = set(metadata["TimeSeries"].keys())
         assert ts_keys == {"TimeSeriesIntanADCInput", "TimeSeriesIntanADCOutput", "TimeSeriesIntanStim"}
+
+
+class TestExcludeStreams:
+    """`exclude_streams` subtracts named streams from auto-discovery."""
+
+    def test_exclude_stim_stream(self):
+        converter = IntanConverter(file_path=RHS_TRADITIONAL, exclude_streams=["Stim channel"])
+        keys = set(converter.data_interface_objects.keys())
+        assert "Stim" not in keys
+        assert "Recording" in keys
+
+    def test_exclude_unknown_stream_raises(self):
+        with pytest.raises(ValueError, match="not present"):
+            IntanConverter(file_path=RHS_TRADITIONAL, exclude_streams=["bogus stream"])
 
 
 class TestSplitFiles:
