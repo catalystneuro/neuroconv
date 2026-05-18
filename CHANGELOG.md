@@ -1,6 +1,7 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Removed the deprecated `external_mode` parameter from `LightningPoseConverter.add_to_nwbfile` and migrated the converter to `ExternalVideoInterface`. Videos are now always written as external `ImageSeries` with the `ExternalVideos` dict-based metadata structure (the old `Videos` list structure is no longer accepted). [PR #1734](https://github.com/catalystneuro/neuroconv/pull/1734)
 * Removed the deprecated `iterator_opts` parameter from `EDFAnalogInterface.add_to_nwbfile`, `CellExplorerLFPInterface.add_to_nwbfile`, `BaseLFPExtractorInterface.add_to_nwbfile`, `OpenEphysBinaryAnalogInterface.add_to_nwbfile`, `IntanAnalogInterface.add_to_nwbfile`, and `SpikeGLXNIDQInterface.add_to_nwbfile`. Use `iterator_options` instead. [PR #1730](https://github.com/catalystneuro/neuroconv/pull/1730)
 * Removed the deprecated `es_key` parameter from `SpikeGLXNIDQInterface.__init__`. The parameter had no effect since the NIDQ interface writes analog data as `TimeSeries` and digital data as `LabeledEvents`, not `ElectricalSeries`. [PR #1730](https://github.com/catalystneuro/neuroconv/pull/1730)
 * Bumped minimum spikeinterface version to `>=0.104.0`. Updated template metric names in unit property descriptions (`halfwidth` to `trough_half_width`/`peak_half_width`, `peak_to_valley` to `peak_to_trough_duration`). [PR #1697](https://github.com/catalystneuro/neuroconv/pull/1697)
