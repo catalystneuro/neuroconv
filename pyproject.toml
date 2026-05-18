@@ -116,6 +116,9 @@ lightningpose = [
 medpc = [
     "ndx-events==0.2.2",
 ]
+vame = [
+    "ndx-vame>=0.2.0",
+]
 behavior = [
     "neuroconv[sleap]",
     "neuroconv[audio]",
@@ -124,6 +127,7 @@ behavior = [
     "neuroconv[video]",
     "neuroconv[lightningpose]",
     "neuroconv[medpc]",
+    "neuroconv[vame]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
 ]
 
