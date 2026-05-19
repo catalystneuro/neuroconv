@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
+from pynwb.image import ImageSeries
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
@@ -86,11 +87,11 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         from packaging import version as version_parse
 
         ndx_pose_version = version("ndx-pose")
-        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.2.0"):
+        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.2.1"):
             raise ImportError(
-                "DANNCE interface requires ndx-pose version 0.2.0 or later. "
+                "DANNCE interface requires ndx-pose version 0.2.1 or later. "
                 f"Found version {ndx_pose_version}. Please upgrade: "
-                "pip install 'ndx-pose>=0.2.0'"
+                "pip install 'ndx-pose>=0.2.1'"
             )
 
         file_path = Path(file_path)
@@ -333,6 +334,8 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: dict | None = None,
         stub_test: bool = False,
+        source_video: ImageSeries | None = None,
+        labeled_video: ImageSeries | None = None,
     ) -> None:
         """
         Add DANNCE pose estimation data to an NWB file.
@@ -346,6 +349,16 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         stub_test : bool, default: False
             If True, write only the first 100 frames to the NWB file for quick smoke testing.
             The interface's internal data arrays are not mutated.
+        source_video : ImageSeries, optional
+            Formal NWB link to an ``ImageSeries`` containing the source video used for pose
+            estimation. The ``ImageSeries`` must already be added to the ``NWBFile`` (e.g. in
+            ``nwbfile.acquisition``) before calling this method. When provided, this is preferred
+            over the string-path ``original_videos`` field.
+        labeled_video : ImageSeries, optional
+            Formal NWB link to an ``ImageSeries`` containing the labeled video (with pose
+            estimation overlays). The ``ImageSeries`` must already be added to the ``NWBFile``
+            before calling this method. When provided, this is preferred over the string-path
+            ``labeled_videos`` field.
         """
         from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
@@ -450,6 +463,8 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             source_software=container_metadata.get("source_software", "DANNCE"),
             source_software_version=container_metadata.get("source_software_version"),
             skeleton=skeleton,
+            source_video=source_video,
+            labeled_video=labeled_video,
         )
 
         behavior_module.add(pose_estimation)
