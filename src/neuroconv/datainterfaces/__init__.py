@@ -41,6 +41,7 @@ from .ecephys.intan.intananaloginterface import IntanAnalogInterface
 from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
+from .ecephys.mda.mdadatainterface import MdaSortingInterface
 from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
 from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
 from .ecephys.neuralynx.neuralynxdatainterface import (
@@ -77,6 +78,7 @@ from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.spikeglx.spikeglxsyncchannelinterface import SpikeGLXSyncChannelInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 from .ecephys.whitematter.whitematterdatainterface import WhiteMatterRecordingInterface
+from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -144,6 +146,7 @@ interface_list = [
     OpenEphysBinaryAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
+    MdaSortingInterface,
     AxonaRecordingInterface,
     AxonaPositionDataInterface,
     AxonaLFPDataInterface,
@@ -162,6 +165,7 @@ interface_list = [
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
     WhiteMatterRecordingInterface,
+    XClustSortingInterface,
     # Icephys
     AbfInterface,
     # Ophys

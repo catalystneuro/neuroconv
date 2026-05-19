@@ -46,6 +46,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
     def _initialize_extractor(self, interface_kwargs):
         self.extractor_kwargs = deepcopy(interface_kwargs)
         self.extractor_kwargs.pop("verbose", None)  # Remove interface params
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
@@ -73,6 +74,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         sampling_frequency: Optional[float] = None,
         timestamps_path: Optional[FilePath] = None,
         verbose: bool = False,
+        metadata_key: Optional[str] = None,
     ):
         """
 
@@ -86,6 +88,8 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             Path to the timeStamps.csv file. If not provided, assumes default location at folder_path/timeStamps.csv.
         verbose : bool, default False
             Whether to print progress
+        metadata_key : str, optional
+            Metadata key for this interface. When None, defaults to "minian_segmentation".
         """
         # Handle deprecated positional arguments
         if args:
@@ -116,8 +120,14 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             timestamps_path = positional_values.get("timestamps_path", timestamps_path)
             verbose = positional_values.get("verbose", verbose)
 
+        if metadata_key is None:
+            metadata_key = "minian_segmentation"
+
         super().__init__(
-            folder_path=folder_path, sampling_frequency=sampling_frequency, timestamps_path=timestamps_path
+            folder_path=folder_path,
+            sampling_frequency=sampling_frequency,
+            timestamps_path=timestamps_path,
+            metadata_key=metadata_key,
         )
         self.verbose = verbose
 
@@ -195,9 +205,16 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             iterator_options=iterator_options,
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Get metadata for the Minian segmentation data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata keyed by ``metadata_key`` under
+            ``Ophys.PlaneSegmentations``.
 
         Returns
         -------
@@ -207,7 +224,18 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             - session_id: Unique identifier for the session.
             - subject_id: Unique identifier for the subject.
         """
-        metadata = super().get_metadata()
+        metadata = (
+            super().get_metadata()
+            if not use_new_metadata_format
+            else super().get_metadata(use_new_metadata_format=True)
+        )
         metadata["NWBFile"]["session_id"] = self.segmentation_extractor._get_session_id()
-        # metadata["Subject"]["subject_id"] = self.segmentation_extractor._get_subject_id()
+
+        if use_new_metadata_format:
+            metadata["Ophys"] = {
+                "PlaneSegmentations": {
+                    self.metadata_key: {"description": "Segmentation data acquired with Minian."},
+                },
+            }
+
         return metadata
