@@ -335,7 +335,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         metadata: dict | None = None,
         stub_test: bool = False,
         source_video: ImageSeries | None = None,
-        labeled_video: ImageSeries | None = None,
     ) -> None:
         """
         Add DANNCE pose estimation data to an NWB file.
@@ -354,11 +353,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             estimation. The ``ImageSeries`` must already be added to the ``NWBFile`` (e.g. in
             ``nwbfile.acquisition``) before calling this method. When provided, this is preferred
             over the string-path ``original_videos`` field.
-        labeled_video : ImageSeries, optional
-            Formal NWB link to an ``ImageSeries`` containing the labeled video (with pose
-            estimation overlays). The ``ImageSeries`` must already be added to the ``NWBFile``
-            before calling this method. When provided, this is preferred over the string-path
-            ``labeled_videos`` field.
         """
         from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
@@ -464,7 +458,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             source_software_version=container_metadata.get("source_software_version"),
             skeleton=skeleton,
             source_video=source_video,
-            labeled_video=labeled_video,
         )
 
         behavior_module.add(pose_estimation)

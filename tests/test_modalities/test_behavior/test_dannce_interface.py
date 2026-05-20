@@ -299,7 +299,7 @@ class TestDANNCEInterfaceConversion:
         skeleton = nwbfile.processing["behavior"]["Skeletons"]["SkeletonPoseEstimationDANNCE_Mouse1"]
         assert skeleton.subject is None
 
-    def test_source_video_and_labeled_video_links(self, dannce_mat_file):
+    def test_source_video_links(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
 
@@ -317,22 +317,12 @@ class TestDANNCEInterfaceConversion:
             external_file=["camera1.mp4"],
             rate=30.0,
         )
-        labeled_video = ImageSeries(
-            name="LabeledVideo",
-            description="Labeled video with DANNCE pose estimation overlays.",
-            unit="NA",
-            format="external",
-            external_file=["camera1_labeled.mp4"],
-            rate=30.0,
-        )
         nwbfile.add_acquisition(source_video)
-        nwbfile.add_acquisition(labeled_video)
 
-        interface.add_to_nwbfile(nwbfile=nwbfile, source_video=source_video, labeled_video=labeled_video)
+        interface.add_to_nwbfile(nwbfile=nwbfile, source_video=source_video)
 
         pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
         assert pe.source_video is source_video
-        assert pe.labeled_video is labeled_video
 
     def test_source_video_defaults_to_none(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
@@ -343,7 +333,6 @@ class TestDANNCEInterfaceConversion:
 
         pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
         assert pe.source_video is None
-        assert pe.labeled_video is None
 
     def test_stub_test_limits_output_samples(self, tmp_path):
         # Build a larger fixture (500 samples) so stub_test (=100) actually slices.
