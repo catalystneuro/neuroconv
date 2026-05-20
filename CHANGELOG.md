@@ -1,5 +1,8 @@
 # v0.9.4 (Upcoming)
 
+## Features
+* Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
+
 ## Removals, Deprecations and Changes
 * Removed the deprecated `external_mode` parameter from `LightningPoseConverter.add_to_nwbfile` and migrated the converter to `ExternalVideoInterface`. Videos are now always written as external `ImageSeries` with the `ExternalVideos` dict-based metadata structure (the old `Videos` list structure is no longer accepted). [PR #1734](https://github.com/catalystneuro/neuroconv/pull/1734)
 * Removed the deprecated `iterator_opts` parameter from `EDFAnalogInterface.add_to_nwbfile`, `CellExplorerLFPInterface.add_to_nwbfile`, `BaseLFPExtractorInterface.add_to_nwbfile`, `OpenEphysBinaryAnalogInterface.add_to_nwbfile`, `IntanAnalogInterface.add_to_nwbfile`, and `SpikeGLXNIDQInterface.add_to_nwbfile`. Use `iterator_options` instead. [PR #1730](https://github.com/catalystneuro/neuroconv/pull/1730)
