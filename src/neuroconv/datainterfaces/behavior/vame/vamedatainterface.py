@@ -222,6 +222,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *,
         stub_test: bool = False,
     ) -> None:
         """Write VAME outputs to an NWBFile as a ``VAMEProject`` container.
