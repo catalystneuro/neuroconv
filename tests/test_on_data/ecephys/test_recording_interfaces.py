@@ -30,6 +30,7 @@ from neuroconv.datainterfaces import (
     Plexon2RecordingInterface,
     PlexonLFPInterface,
     PlexonRecordingInterface,
+    PvfsRecordingInterface,
     Spike2RecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
@@ -41,9 +42,19 @@ from neuroconv.tools.testing.data_interface_mixins import (
 )
 
 try:
-    from ..setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
+    from ..setup_paths import (
+        ECEPHY_DATA_PATH,
+        OUTPUT_PATH,
+        PVFS_TEST_FILE_PATH,
+        PVFS_TEST_FILE_SKIP_REASON,
+    )
 except ImportError:
-    from ..setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
+    from ..setup_paths import (
+        ECEPHY_DATA_PATH,
+        OUTPUT_PATH,
+        PVFS_TEST_FILE_PATH,
+        PVFS_TEST_FILE_SKIP_REASON,
+    )
 
 
 this_python_version = version.parse(python_version())
@@ -824,6 +835,35 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 20, 15, 59, 39)
+
+
+# Requires a real .pvfs file; see ``resolve_pvfs_test_file_path`` in setup_paths.py.
+@pytest.mark.skipif(
+    PVFS_TEST_FILE_PATH is None,
+    reason=PVFS_TEST_FILE_SKIP_REASON,
+)
+class TestPvfsRecordingInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = PvfsRecordingInterface
+    interface_kwargs = dict(
+        file_path=str(PVFS_TEST_FILE_PATH or "missing.pvfs"),
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        # PVFS session_start_time is read from experiment.db3; assert it is present
+        # and is a populated tz-aware datetime without hard-coding the exact value
+        # (so dropping in a stubbed PVFS file in ephy_testing_data does not require
+        # a code update here).
+        session_start_time = metadata["NWBFile"]["session_start_time"]
+        assert isinstance(session_start_time, datetime)
+        assert session_start_time.tzinfo is not None
+
+        # PVFS-specific Device / ElectrodeGroup defaults set by the interface.
+        devices = metadata["Ecephys"]["Device"]
+        assert any(device["name"] == "DevicePVFS" for device in devices)
+
+        electrode_groups = metadata["Ecephys"]["ElectrodeGroup"]
+        assert any(group["name"] == "PVFSGroup" for group in electrode_groups)
 
 
 class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):

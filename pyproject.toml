@@ -201,6 +201,15 @@ plexon2 = [
     "neuroconv[ecephys_minimal]",
     "zugbruecke >= 0.2.1; platform_system != 'Windows'",
 ]
+pvfs = [
+    "neuroconv[ecephys_minimal]",
+    "pypvfs>=0.1",
+]
+pvfs_video = [
+    "neuroconv[pvfs]",
+    "pypvfs[video]",
+    "av>=10.0",
+]
 spike2 = [
     "neuroconv[ecephys_minimal]",
     "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
@@ -242,6 +251,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[phy]",
     "neuroconv[plexon]",
     "neuroconv[plexon2]",
+    "neuroconv[pvfs]",
     "neuroconv[spike2]",
     "neuroconv[spikegadgets]",
     "neuroconv[spikeglx]",
