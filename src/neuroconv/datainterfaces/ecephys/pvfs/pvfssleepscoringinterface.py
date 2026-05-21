@@ -73,9 +73,7 @@ class PvfsSleepScoringInterface(BaseDataInterface):
     def get_source_schema(cls) -> dict:
         """Return the JSON schema for the source arguments of this interface."""
         source_schema = super().get_source_schema()
-        source_schema["properties"]["file_path"]["description"] = (
-            "Path to the Pinnacle .pvfs container."
-        )
+        source_schema["properties"]["file_path"]["description"] = "Path to the Pinnacle .pvfs container."
         return source_schema
 
     def __init__(self, file_path: FilePath, verbose: bool = False) -> None:
@@ -97,9 +95,7 @@ class PvfsSleepScoringInterface(BaseDataInterface):
         from ._metadata import read_sleep_scoring_sessions_from_pvfs
 
         if self._cached_sessions is None:
-            self._cached_sessions = read_sleep_scoring_sessions_from_pvfs(
-                self.file_path
-            )
+            self._cached_sessions = read_sleep_scoring_sessions_from_pvfs(self.file_path)
         return self._cached_sessions
 
     def has_scoring(self) -> bool:
@@ -155,14 +151,10 @@ class PvfsSleepScoringInterface(BaseDataInterface):
             session = sessions[session_number]
             if not session.epochs:
                 continue
-            time_intervals = self._build_time_intervals(
-                session, session_start_seconds=session_start_seconds
-            )
+            time_intervals = self._build_time_intervals(session, session_start_seconds=session_start_seconds)
             nwbfile.add_time_intervals(time_intervals)
 
-    def _resolve_session_start_time(
-        self, nwbfile: NWBFile, metadata: dict | None
-    ) -> datetime | None:
+    def _resolve_session_start_time(self, nwbfile: NWBFile, metadata: dict | None) -> datetime | None:
         if metadata and metadata.get("NWBFile", {}).get("session_start_time"):
             return metadata["NWBFile"]["session_start_time"]
         if nwbfile.session_start_time is not None:
@@ -229,10 +221,7 @@ class PvfsSleepScoringInterface(BaseDataInterface):
 
     @staticmethod
     def _build_description(session: "SleepScoringSession") -> str:
-        parts = [
-            "Sleep-stage scoring exported from Pinnacle PVFS "
-            f"(session_number={session.session_number})."
-        ]
+        parts = ["Sleep-stage scoring exported from Pinnacle PVFS " f"(session_number={session.session_number})."]
         if session.user_id:
             parts.append(f"Scorer: {session.user_id}.")
         if session.epoch_length_seconds:

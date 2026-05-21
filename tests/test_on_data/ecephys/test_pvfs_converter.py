@@ -20,7 +20,9 @@ from neuroconv.converters import PvfsConverter
 from neuroconv.datainterfaces.ecephys.pvfs.pvfsannotationsinterface import (
     PvfsAnnotationsInterface,
 )
-from neuroconv.datainterfaces.ecephys.pvfs.pvfsdatainterface import PvfsRecordingInterface
+from neuroconv.datainterfaces.ecephys.pvfs.pvfsdatainterface import (
+    PvfsRecordingInterface,
+)
 from neuroconv.datainterfaces.ecephys.pvfs.pvfssleepscoringinterface import (
     PvfsSleepScoringInterface,
 )
@@ -45,9 +47,7 @@ class TestPvfsConverterOnSleepData:
 
         # At least one Recording interface (one per sampling-rate group) must be present.
         recording_names = [name for name in interfaces if name.startswith("Recording")]
-        assert recording_names, (
-            f"PvfsConverter created no recording interfaces (got {list(interfaces)})."
-        )
+        assert recording_names, f"PvfsConverter created no recording interfaces (got {list(interfaces)})."
         for name in recording_names:
             assert isinstance(interfaces[name], PvfsRecordingInterface)
 
@@ -80,19 +80,13 @@ class TestPvfsConverterOnSleepData:
         metadata["Subject"]["subject_id"] = "pvfs_test_subject"
 
         nwbfile_path = tmp_path / "pvfs_converter_round_trip.nwb"
-        converter.run_conversion(
-            nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True
-        )
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
         assert nwbfile_path.exists() and nwbfile_path.stat().st_size > 0
 
         nwbfile = read_nwb(path=nwbfile_path)
 
         # Every sampling-rate group must land as its own ElectricalSeries in /acquisition.
-        electrical_series = [
-            obj
-            for obj in nwbfile.acquisition.values()
-            if obj.neurodata_type == "ElectricalSeries"
-        ]
+        electrical_series = [obj for obj in nwbfile.acquisition.values() if obj.neurodata_type == "ElectricalSeries"]
         assert electrical_series, "No ElectricalSeries was written by PvfsConverter."
         # ElectricalSeries names must be unique and follow the PVFS naming scheme.
         es_names = [es.name for es in electrical_series]
@@ -121,9 +115,7 @@ class TestPvfsConverterOnSleepData:
         # when ``has_video()`` returns True.
         converter = PvfsConverter(file_path=self.file_path, include_video=True)
         interfaces = converter.data_interface_objects
-        video_interfaces = [
-            iface for iface in interfaces.values() if isinstance(iface, PvfsVideoInterface)
-        ]
+        video_interfaces = [iface for iface in interfaces.values() if isinstance(iface, PvfsVideoInterface)]
         # We don't assert on the exact count -- if Pinnacle ever ships a video stream
         # in this file we want this test to keep passing, but a video interface should
         # only ever appear when there is something to write.
@@ -135,9 +127,7 @@ class TestPvfsConverterOnSleepData:
         # auto-attach a PvfsSleepScoringInterface.
         converter = PvfsConverter(file_path=self.file_path, include_video=False)
         interfaces = converter.data_interface_objects
-        assert "SleepScoring" in interfaces, (
-            f"PvfsConverter did not attach SleepScoring (got {list(interfaces)})."
-        )
+        assert "SleepScoring" in interfaces, f"PvfsConverter did not attach SleepScoring (got {list(interfaces)})."
         assert isinstance(interfaces["SleepScoring"], PvfsSleepScoringInterface)
         assert interfaces["SleepScoring"].has_scoring()
 
@@ -163,9 +153,7 @@ class TestPvfsConverterOnSleepData:
         metadata["Subject"]["subject_id"] = "pvfs_scoring_test_subject"
 
         nwbfile_path = tmp_path / "pvfs_converter_scoring_round_trip.nwb"
-        converter.run_conversion(
-            nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True
-        )
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
         assert nwbfile_path.exists() and nwbfile_path.stat().st_size > 0
 
         nwbfile = read_nwb(path=nwbfile_path)
@@ -181,14 +169,13 @@ class TestPvfsConverterOnSleepData:
         for session_number, session in populated.items():
             table_name = f"sleep_stages_session_{session_number}"
             assert table_name in nwbfile.intervals, (
-                f"Missing TimeIntervals table for session {session_number}; "
-                f"got {list(nwbfile.intervals)}."
+                f"Missing TimeIntervals table for session {session_number}; " f"got {list(nwbfile.intervals)}."
             )
             table = nwbfile.intervals[table_name]
             actual_columns = {col.name for col in table.columns}
-            assert expected_columns.issubset(actual_columns), (
-                f"Missing scoring columns: {expected_columns - actual_columns}"
-            )
+            assert expected_columns.issubset(
+                actual_columns
+            ), f"Missing scoring columns: {expected_columns - actual_columns}"
 
             df = table.to_dataframe()
             assert len(df) == len(session.epochs)

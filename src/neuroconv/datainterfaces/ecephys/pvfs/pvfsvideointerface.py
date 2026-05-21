@@ -46,9 +46,7 @@ class PvfsVideoInterface(BaseDataInterface):
     def get_source_schema(cls) -> dict:
         """Return the JSON schema for the source arguments of this interface."""
         source_schema = super().get_source_schema()
-        source_schema["properties"]["file_path"]["description"] = (
-            "Path to the Pinnacle .pvfs container."
-        )
+        source_schema["properties"]["file_path"]["description"] = "Path to the Pinnacle .pvfs container."
         return source_schema
 
     def __init__(
@@ -67,9 +65,7 @@ class PvfsVideoInterface(BaseDataInterface):
             verbose=verbose,
         )
         self.file_path = str(file_path)
-        self.video_output_dir = (
-            Path(video_output_dir) if video_output_dir is not None else None
-        )
+        self.video_output_dir = Path(video_output_dir) if video_output_dir is not None else None
         self.embed_frames = bool(embed_frames)
         self._cached_metadata: "PvfsMetadata | None" = None
 
@@ -123,8 +119,7 @@ class PvfsVideoInterface(BaseDataInterface):
 
         if session_start_time is None:
             warnings.warn(
-                "PvfsVideoInterface could not determine session_start_time; "
-                "skipping video export.",
+                "PvfsVideoInterface could not determine session_start_time; " "skipping video export.",
                 RuntimeWarning,
                 stacklevel=2,
             )
@@ -177,9 +172,7 @@ class PvfsVideoInterface(BaseDataInterface):
             width, height = video.get_frame_size()
             start_ht = video.get_start_time()
             start_abs = hightime_to_seconds(start_ht)
-            starting_time = (
-                float(start_abs - session_start_seconds) if start_abs is not None else 0.0
-            )
+            starting_time = float(start_abs - session_start_seconds) if start_abs is not None else 0.0
 
             if frame_count <= 0 or frame_rate <= 0:
                 warnings.warn(
@@ -211,8 +204,7 @@ class PvfsVideoInterface(BaseDataInterface):
                 image_series = ImageSeries(
                     name=f"ImageSeriesPVFS_{stream_name}",
                     description=(
-                        f"PVFS embedded video stream '{stream_name}' "
-                        f"({width}x{height}, {frame_rate:.3f} fps)."
+                        f"PVFS embedded video stream '{stream_name}' " f"({width}x{height}, {frame_rate:.3f} fps)."
                     ),
                     unit="n.a.",
                     format="external",
@@ -239,8 +231,7 @@ class PvfsVideoInterface(BaseDataInterface):
             from pvfs_tools.Core.webm_helpers import WebMWriter
         except ImportError as exc:  # pragma: no cover - exercised when av is missing
             raise ImportError(
-                "PvfsVideoInterface requires PyAV. Install with "
-                '`pip install "neuroconv[pvfs_video]"`.'
+                "PvfsVideoInterface requires PyAV. Install with " '`pip install "neuroconv[pvfs_video]"`.'
             ) from exc
 
         pvfs_stem = Path(self.file_path).stem
@@ -277,8 +268,7 @@ class PvfsVideoInterface(BaseDataInterface):
             import numpy as np
         except ImportError as exc:  # pragma: no cover
             raise ImportError(
-                "Inline video embedding requires PyAV + numpy. Install with "
-                '`pip install "neuroconv[pvfs_video]"`.'
+                "Inline video embedding requires PyAV + numpy. Install with " '`pip install "neuroconv[pvfs_video]"`.'
             ) from exc
 
         decoded = []
@@ -296,16 +286,13 @@ class PvfsVideoInterface(BaseDataInterface):
 
         if not decoded:
             warnings.warn(
-                f"PVFS video stream '{stream_name}' produced 0 decoded frames; "
-                "skipping inline embedding.",
+                f"PVFS video stream '{stream_name}' produced 0 decoded frames; " "skipping inline embedding.",
                 RuntimeWarning,
                 stacklevel=2,
             )
             return ImageSeries(
                 name=name,
-                description=(
-                    f"PVFS embedded video stream '{stream_name}' (no frames decoded)."
-                ),
+                description=(f"PVFS embedded video stream '{stream_name}' (no frames decoded)."),
                 unit="n.a.",
                 data=np.zeros((0, 1, 1, 3), dtype=np.uint8),
                 starting_time=starting_time,

@@ -65,9 +65,7 @@ class PvfsRecordingInterface(BaseRecordingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """Return the JSON schema for the source arguments of this interface."""
         source_schema = super().get_source_schema()
-        source_schema["properties"]["file_path"]["description"] = (
-            "Path to the Pinnacle .pvfs container."
-        )
+        source_schema["properties"]["file_path"]["description"] = "Path to the Pinnacle .pvfs container."
         return source_schema
 
     def __init__(
@@ -112,8 +110,7 @@ class PvfsRecordingInterface(BaseRecordingExtractorInterface):
             dict(
                 name="DevicePVFS",
                 description=(
-                    "Pinnacle Technology data acquisition (PVFS source). "
-                    "Manufacturer: Pinnacle Technology, Inc."
+                    "Pinnacle Technology data acquisition (PVFS source). " "Manufacturer: Pinnacle Technology, Inc."
                 ),
             )
         ]
@@ -142,10 +139,7 @@ class PvfsRecordingInterface(BaseRecordingExtractorInterface):
                 es_name = f"{self.es_key}PVFS{rate_label}"
             ecephys[self.es_key] = dict(
                 name=es_name,
-                description=(
-                    "PVFS indexed time-series channels grouped by sampling rate "
-                    f"({rate_label})."
-                ),
+                description=("PVFS indexed time-series channels grouped by sampling rate " f"({rate_label})."),
             )
 
         self._apply_channel_properties()

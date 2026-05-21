@@ -87,9 +87,7 @@ def _select_channels_for_rate(
 
     tol = max(1e-6, abs(sampling_rate_hz) * 1e-6)
     selected = [
-        name
-        for name in candidate_names
-        if rates[name] is not None and abs(rates[name] - sampling_rate_hz) <= tol
+        name for name in candidate_names if rates[name] is not None and abs(rates[name] - sampling_rate_hz) <= tol
     ]
     if not selected:
         raise ValueError(f"No channels match the requested sampling rate {sampling_rate_hz} Hz.")
@@ -185,9 +183,7 @@ class PvfsRecordingExtractor(BaseRecording):
 
             assert min_samples is not None
             self._common_num_samples = int(min_samples)
-            self._common_t_start_seconds = (
-                float(earliest_start) if earliest_start is not None else 0.0
-            )
+            self._common_t_start_seconds = float(earliest_start) if earliest_start is not None else 0.0
 
         BaseRecording.__init__(
             self,

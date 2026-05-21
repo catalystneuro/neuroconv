@@ -47,9 +47,7 @@ class PvfsAnnotationsInterface(BaseDataInterface):
     def get_source_schema(cls) -> dict:
         """Return the JSON schema for the source arguments of this interface."""
         source_schema = super().get_source_schema()
-        source_schema["properties"]["file_path"]["description"] = (
-            "Path to the Pinnacle .pvfs container."
-        )
+        source_schema["properties"]["file_path"]["description"] = "Path to the Pinnacle .pvfs container."
         return source_schema
 
     def __init__(self, file_path: FilePath, verbose: bool = False) -> None:
@@ -111,11 +109,7 @@ class PvfsAnnotationsInterface(BaseDataInterface):
         session_start_seconds = session_start_time.timestamp()
 
         # Ensure the custom columns exist before we add rows.
-        existing_column_names = (
-            {col.name for col in nwbfile.epochs.columns}
-            if nwbfile.epochs is not None
-            else set()
-        )
+        existing_column_names = {col.name for col in nwbfile.epochs.columns} if nwbfile.epochs is not None else set()
         if "label" not in existing_column_names:
             nwbfile.add_epoch_column(name="label", description="PVFS annotation text")
         if "channel" not in existing_column_names:

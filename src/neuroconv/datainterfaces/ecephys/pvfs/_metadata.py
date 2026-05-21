@@ -26,12 +26,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator
 
 if TYPE_CHECKING:  # pragma: no cover - import only for type checkers
-    from pvfs_tools.Core.pvfs_binding import HighTime, PvfsFile
-    from pvfs_tools.Database.models import (
-        Annotation,
-        ChannelInformation,
-        ExperimentInformation,
-    )
+    pass
 
 EXPERIMENT_DB_FILENAME = "experiment.db3"
 EXPERIMENT_DB_BACKUP_FILENAME = "experiment_backup.db3"
@@ -113,11 +108,7 @@ def filter_indexed_channels(
     """Drop database channels that reference embedded video streams, not EEG/EMG."""
     if not video_bases:
         return dict(channels)
-    return {
-        name: info
-        for name, info in channels.items()
-        if resolve_channel_file_base(info, name) not in video_bases
-    }
+    return {name: info for name, info in channels.items() if resolve_channel_file_base(info, name) not in video_bases}
 
 
 def hightime_to_datetime(ht: Any) -> datetime | None:
@@ -197,10 +188,7 @@ class PvfsMetadata:
         }
         if self.experiment is not None and self.experiment.name:
             subject["subject_id"] = self.experiment.name
-            subject["description"] = (
-                "Subject identifier from PVFS experiment metadata "
-                f"({self.experiment.name})."
-            )
+            subject["description"] = "Subject identifier from PVFS experiment metadata " f"({self.experiment.name})."
         else:
             # NWB's metadata schema requires ``Subject.subject_id``.  PVFS does not
             # always record one (e.g. Pinnacle's public sleep_data sample leaves
@@ -274,9 +262,7 @@ def extract_experiment_db(
         if rc == 0 and out_path.exists() and out_path.stat().st_size > 0:
             return out_path
 
-    raise FileNotFoundError(
-        "No experiment.db3 (or experiment_backup.db3) found inside the PVFS container."
-    )
+    raise FileNotFoundError("No experiment.db3 (or experiment_backup.db3) found inside the PVFS container.")
 
 
 def _read_metadata_from_db(db_path: str | os.PathLike) -> PvfsMetadata:
@@ -489,8 +475,7 @@ def read_sleep_scoring_sessions(
         populated_sessions = [
             int(row[0])
             for row in con.execute(
-                f"SELECT DISTINCT session_number FROM {SLEEP_SCORES_TABLE} "
-                "ORDER BY session_number"
+                f"SELECT DISTINCT session_number FROM {SLEEP_SCORES_TABLE} " "ORDER BY session_number"
             )
         ]
         if not populated_sessions:
@@ -517,15 +502,12 @@ def read_sleep_scoring_sessions(
         con.close()
 
 
-def _read_legend(
-    con: sqlite3.Connection, session_number: int
-) -> dict[int, ScoreLegendEntry]:
+def _read_legend(con: sqlite3.Connection, session_number: int) -> dict[int, ScoreLegendEntry]:
     if not _table_exists(con, SCORE_LEGEND_TABLE):
         return {}
     legend: dict[int, ScoreLegendEntry] = {}
     for row in con.execute(
-        f"SELECT score, score_name, flags FROM {SCORE_LEGEND_TABLE} "
-        "WHERE session_number=? ORDER BY score",
+        f"SELECT score, score_name, flags FROM {SCORE_LEGEND_TABLE} " "WHERE session_number=? ORDER BY score",
         (session_number,),
     ):
         score = int(row["score"])
@@ -535,9 +517,7 @@ def _read_legend(
     return legend
 
 
-def _read_session_metadata(
-    con: sqlite3.Connection, session_number: int
-) -> dict[str, object]:
+def _read_session_metadata(con: sqlite3.Connection, session_number: int) -> dict[str, object]:
     """Read one row of :data:`SLEEP_SCORING_SESSION_TABLE`, returning a plain dict."""
     if not _table_exists(con, SLEEP_SCORING_SESSION_TABLE):
         return {}
@@ -557,9 +537,7 @@ def _read_session_metadata(
     }
 
 
-def _read_session_epochs(
-    con: sqlite3.Connection, session_number: int
-) -> list[SleepEpoch]:
+def _read_session_epochs(con: sqlite3.Connection, session_number: int) -> list[SleepEpoch]:
     epochs: list[SleepEpoch] = []
     for row in con.execute(
         f"SELECT start_time_seconds, start_time_sub_seconds, "

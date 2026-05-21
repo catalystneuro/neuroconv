@@ -93,9 +93,7 @@ class PvfsConverter(ConverterPipe):
                 rate_groups[rate].append(name)
 
         if not rate_groups:
-            raise ValueError(
-                f"No indexed channels with a usable sampling rate were found in {file_path}."
-            )
+            raise ValueError(f"No indexed channels with a usable sampling rate were found in {file_path}.")
 
         interfaces: dict[str, object] = {}
         sorted_rates = sorted(rate_groups.keys())
@@ -111,18 +109,14 @@ class PvfsConverter(ConverterPipe):
             )
 
         if self.include_annotations and pvfs_meta.annotations:
-            interfaces["Annotations"] = PvfsAnnotationsInterface(
-                file_path=str(file_path), verbose=verbose
-            )
+            interfaces["Annotations"] = PvfsAnnotationsInterface(file_path=str(file_path), verbose=verbose)
 
         if self.include_sleep_scoring:
             # Cheap pre-check (one SQLite query) so we only spin up the
             # interface when actual scored epochs exist.
             scoring_sessions = read_sleep_scoring_sessions_from_pvfs(file_path)
             if any(session.epochs for session in scoring_sessions.values()):
-                interfaces["SleepScoring"] = PvfsSleepScoringInterface(
-                    file_path=str(file_path), verbose=verbose
-                )
+                interfaces["SleepScoring"] = PvfsSleepScoringInterface(file_path=str(file_path), verbose=verbose)
 
         if self.include_video:
             video_interface = PvfsVideoInterface(
