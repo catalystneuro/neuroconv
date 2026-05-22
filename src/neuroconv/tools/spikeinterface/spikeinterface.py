@@ -19,10 +19,12 @@ from ..nwb_helpers import (
     ZarrBackendConfiguration,
     configure_backend,
     get_default_backend_configuration,
+    get_default_nwbfile_metadata,
     get_module,
     make_nwbfile_from_metadata,
 )
 from ..nwb_helpers._metadata_and_file_helpers import (
+    _add_device_to_nwbfile,
     _resolve_backend,
     configure_and_write_nwbfile,
 )
@@ -31,6 +33,153 @@ from ...utils import (
     calculate_regular_series_rate,
 )
 from ...utils.str_utils import human_readable_size
+
+
+def _is_dict_based_metadata(metadata: dict) -> bool:
+    """Detect whether ecephys metadata uses the new dict-based format or the old list-based format.
+
+    Dict-based format has a top-level ``"Devices"`` key and/or plural dict-valued keys under
+    ``"Ecephys"`` (``"ElectrodeGroups"``, ``"ElectricalSeries"`` as a dict keyed by
+    ``metadata_key``). The old list-based format has ``"Device"`` (list) and
+    ``"ElectrodeGroup"`` (list, singular) under ``"Ecephys"``, plus ``"ElectricalSeries"``
+    as a single dict (or entries keyed by an ``es_key`` name).
+
+    Returns True for dict-based, False for list-based.
+    """
+    if "Devices" in metadata:
+        return True
+
+    ecephys = metadata.get("Ecephys", {})
+
+    if "ElectrodeGroups" in ecephys:
+        return True
+
+    # A dict-valued "ElectricalSeries" that holds per-metadata-key entries (each value being a
+    # dict of per-series fields) is the dict-based shape. The old format's "ElectricalSeries"
+    # value is a flat dict of fields like {"name": ..., "description": ...}.
+    electrical_series = ecephys.get("ElectricalSeries")
+    if isinstance(electrical_series, dict) and electrical_series:
+        first_value = next(iter(electrical_series.values()))
+        if isinstance(first_value, dict):
+            return True
+
+    if "ElectrodeGroup" in ecephys or "Device" in ecephys:
+        return False
+
+    # Ambiguous or empty metadata falls back to the old list-based format so existing callers
+    # (including those using the historical flat ``es_key`` pattern under ``metadata["Ecephys"]``)
+    # see no behavior change. Opt in to dict-based by passing ``metadata_key`` to
+    # ``add_recording_to_nwbfile`` or by populating ``metadata["Devices"]`` /
+    # ``metadata["Ecephys"]["ElectrodeGroups"]``.
+    return False
+
+
+def _get_ecephys_metadata_placeholders():
+    """
+    Returns fresh ecephys metadata with centralized placeholder values.
+
+    Placeholders are kept in one place so they are easy to identify downstream and
+    we make up as little metadata as possible. All fields included here are strictly
+    required by the NWB schema. Each call returns an independent copy.
+    """
+    metadata = get_default_nwbfile_metadata()
+
+    default_metadata_key = "default_metadata_key"
+
+    metadata["Devices"] = {
+        default_metadata_key: {
+            "name": "Device",
+            "description": "Ecephys probe. Automatically generated.",
+        },
+    }
+
+    metadata["Ecephys"] = {
+        "ElectrodeGroups": {
+            default_metadata_key: {
+                "name": "ElectrodeGroup",
+                "description": "no description",
+                "location": "unknown",
+                "device_metadata_key": default_metadata_key,
+            },
+        },
+        # ElectricalSeries entries are not part of the placeholders: the pipeline already
+        # determines defaults for ``name`` and ``description`` from ``write_as`` inside
+        # ``_add_recording_segment_to_nwbfile``. Users who want to customize either field
+        # pass their own ``metadata["Ecephys"]["ElectricalSeries"][metadata_key]`` entry.
+    }
+
+    return metadata
+
+
+def _add_electrode_groups_to_nwbfile(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict | None = None,
+):
+    """
+    Add electrode groups to an NWBFile using the dict-based metadata format.
+
+    Creates groups for entries in ``metadata["Ecephys"]["ElectrodeGroups"]`` whose ``name``
+    matches a channel ``group_name`` on the recording. For channel groups not covered by
+    user metadata, synthesizes default entries using the placeholders, all linked to the
+    default device under ``metadata["Devices"]["default_metadata_key"]``. Each entry's
+    ``device_metadata_key`` is resolved against ``metadata["Devices"]`` and the device
+    is created lazily on first reference.
+    """
+    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+
+    if metadata is None:
+        metadata = {}
+
+    placeholders = _get_ecephys_metadata_placeholders()
+    default_group_template = placeholders["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]
+    default_device_metadata = placeholders["Devices"]["default_metadata_key"]
+    default_device_key = default_group_template["device_metadata_key"]
+
+    electrode_groups_metadata = metadata.get("Ecephys", {}).get("ElectrodeGroups", {})
+    channel_group_names = set(_get_group_name(recording=recording).tolist())
+
+    user_entries = [entry for entry in electrode_groups_metadata.values() if entry.get("name") in channel_group_names]
+    desired_names = {entry["name"] for entry in user_entries}
+    missing_channel_group_names = channel_group_names - desired_names - set(nwbfile.electrode_groups.keys())
+    auto_entries = [
+        {
+            "name": group_name,
+            "description": default_group_template["description"],
+            "location": default_group_template["location"],
+            "device_metadata_key": default_device_key,
+        }
+        for group_name in sorted(missing_channel_group_names)
+    ]
+    if auto_entries:
+        # The synthesized entries reference the default device under default_device_key.
+        # Ensure metadata["Devices"] carries it so the lookup below resolves uniformly.
+        metadata.setdefault("Devices", {}).setdefault(default_device_key, default_device_metadata)
+
+    required_fields = ("name", "description", "location")
+    for group_metadata in (*user_entries, *auto_entries):
+        group_kwargs = group_metadata.copy()
+
+        missing_fields = [field for field in required_fields if field not in group_kwargs]
+        if missing_fields:
+            placeholder_hint = "\n".join(f"  {field}: {default_group_template[field]!r}" for field in missing_fields)
+            raise ValueError(
+                "Electrode group metadata is missing required fields.\n"
+                "For a complete NWB file, the following fields should be provided. "
+                f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
+            )
+
+        if group_kwargs["name"] in nwbfile.electrode_groups:
+            continue
+
+        device_metadata_key = group_kwargs.pop("device_metadata_key", None)
+        if device_metadata_key is not None:
+            device_metadata = metadata["Devices"][device_metadata_key]
+        else:
+            device_metadata = default_device_metadata
+        group_kwargs["device"] = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
+
+        nwbfile.create_electrode_group(**group_kwargs)
 
 
 def add_recording_to_nwbfile(
@@ -44,9 +193,13 @@ def add_recording_to_nwbfile(
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
     null_values_for_properties: dict | None = None,
+    metadata_key: str | None = None,
 ):
     """
     Adds traces from recording object as ElectricalSeries to an NWBFile object.
+
+    Supports both the dict-based metadata format (primary) and the old list-based format
+    (backward compatible). The shape is detected automatically from ``metadata``.
 
     Parameters
     ----------
@@ -55,20 +208,35 @@ def add_recording_to_nwbfile(
     nwbfile : NWBFile
         nwb file to which the recording information is to be added
     metadata : dict, optional
-        metadata info for constructing the nwb file.
-        Should be of the format::
+        Metadata for constructing the NWB file. The primary (dict-based) format is::
 
-            metadata['Ecephys']['ElectricalSeries'] = dict(
-                name=my_name,
-                description=my_description
-            )
+            metadata["Devices"] = {
+                "my_probe": {"name": ..., "manufacturer": ...},
+            }
+            metadata["Ecephys"] = {
+                "ElectrodeGroups": {
+                    "my_group": {
+                        "name": ..., "description": ..., "location": ...,
+                        "device_metadata_key": "my_probe",
+                    },
+                },
+                "ElectricalSeries": {
+                    "my_series": {"name": ..., "description": ...},
+                },
+            }
+
+        The old list-based format remains supported for backward compatibility::
+
+            metadata["Ecephys"]["ElectricalSeries"] = dict(name=my_name, description=my_description)
+
     write_as : {'raw', 'processed', 'lfp'}
         How to save the traces data in the nwb file. Options:
         - 'raw': save it in acquisition
         - 'processed': save it as FilteredEphys, in a processing module
         - 'lfp': save it as LFP, in a processing module
     es_key : str, optional
-        Key in metadata dictionary containing metadata info for the specific electrical series
+        Key in metadata dictionary containing metadata info for the specific electrical series.
+        Used with the old list-based metadata format; ignored when ``metadata_key`` is provided.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -85,12 +253,19 @@ def add_recording_to_nwbfile(
     null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
+    metadata_key : str, optional
+        Key in ``metadata["Ecephys"]["ElectricalSeries"]`` identifying the series to write.
+        When provided, uses the dict-based metadata format and ``es_key`` is ignored.
+        When omitted, the series name and description come from the per-``write_as`` defaults
+        in :func:`_add_recording_segment_to_nwbfile`.
 
     Notes
     -----
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
+    if metadata is None:
+        metadata = _get_ecephys_metadata_placeholders()
 
     add_recording_metadata_to_nwbfile(
         recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
@@ -109,6 +284,7 @@ def add_recording_to_nwbfile(
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
             null_values_for_properties=null_values_for_properties,
+            metadata_key=metadata_key,
         )
 
 
@@ -238,6 +414,7 @@ def _add_recording_segment_to_nwbfile(
     always_write_timestamps: bool = False,
     *,
     null_values_for_properties: dict | None = None,
+    metadata_key: str | None = None,
 ):
     """
     See add_recording_to_nwbfile for details.
@@ -344,7 +521,15 @@ def _add_recording_segment_to_nwbfile(
             eseries_kwargs["timestamps"] = timestamps
 
     # Update with user metadata - allows override of all fields including name, description, data, timestamps, etc.
-    if metadata is not None and "Ecephys" in metadata and es_key is not None:
+    if metadata_key is not None:
+        electrical_series_metadata_dict = metadata.get("Ecephys", {}).get("ElectricalSeries", {})
+        if metadata_key not in electrical_series_metadata_dict:
+            raise ValueError(
+                f"metadata['Ecephys']['ElectricalSeries'] does not contain key '{metadata_key}'. "
+                f"Available keys: {sorted(electrical_series_metadata_dict)}"
+            )
+        eseries_kwargs.update(electrical_series_metadata_dict[metadata_key])
+    elif metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
 
@@ -388,30 +573,15 @@ def _get_default_ecephys_metadata():
     return metadata
 
 
-def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = None):
+def _add_devices_to_nwbfile_old_list_format(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = None):
     """
-    Add device information to nwbfile object.
+    Private implementation. Add devices from old list-based metadata.
 
-    Will always ensure nwbfile has at least one device, but multiple
-    devices within the metadata list will also be created.
-
-    Parameters
-    ----------
-    nwbfile: NWBFile
-        nwb file to which the recording information is to be added
-    metadata: DeepDict
-        metadata info for constructing the nwb file (optional).
-        Should be of the format::
-
-            metadata['Ecephys']['Device'] = [
-                {
-                    'name': my_name,
-                    'description': my_description
-                },
-                ...
-            ]
-
-        Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
+    Reads ``metadata["Ecephys"]["Device"]`` as a list of device dicts
+    ``{"name": ..., "description": ...}`` and creates each in the NWBFile.
+    Called directly by the dispatcher in :func:`add_recording_metadata_to_nwbfile` so the
+    public, deprecated :func:`add_devices_to_nwbfile` wrapper does not fire its warning on
+    normal pipeline use.
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
@@ -432,7 +602,49 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = N
             nwbfile.create_device(**device_kwargs)
 
 
-def _add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict | None = None):
+def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = None):
+    """
+    Add device information to nwbfile object.
+
+    Will always ensure nwbfile has at least one device, but multiple
+    devices within the metadata list will also be created.
+
+    .. deprecated::
+        ``add_devices_to_nwbfile`` is deprecated and will be removed on or after November 2026.
+        Use the dict-based metadata format (``metadata["Devices"]``) with
+        :func:`add_recording_to_nwbfile` instead, or call
+        :func:`~neuroconv.tools.nwb_helpers._add_device_to_nwbfile` directly for a single device.
+
+    Parameters
+    ----------
+    nwbfile: NWBFile
+        nwb file to which the recording information is to be added
+    metadata: DeepDict
+        metadata info for constructing the nwb file (optional).
+        Should be of the format::
+
+            metadata['Ecephys']['Device'] = [
+                {
+                    'name': my_name,
+                    'description': my_description
+                },
+                ...
+            ]
+
+        Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
+    """
+    warnings.warn(
+        "add_devices_to_nwbfile is deprecated and will be removed on or after November 2026. "
+        "Use _add_device_to_nwbfile with the new dict-based metadata format (metadata['Devices']) instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+    _add_devices_to_nwbfile_old_list_format(nwbfile=nwbfile, metadata=metadata)
+
+
+def _add_electrode_groups_to_nwbfile_old_list_format(
+    recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict | None = None
+):
     """
     Add electrode group information to nwbfile object.
 
@@ -469,7 +681,7 @@ def _add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NW
     if "Ecephys" not in metadata:
         metadata["Ecephys"] = dict()
 
-    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+    _add_devices_to_nwbfile_old_list_format(nwbfile=nwbfile, metadata=metadata)
 
     group_names = _get_group_name(recording=recording)
 
@@ -498,7 +710,7 @@ def _add_electrode_groups_to_nwbfile(recording: BaseRecording, nwbfile: pynwb.NW
             device_name = group_metadata.get("device", defaults[0]["device"])
             if device_name not in nwbfile.devices:
                 new_device_metadata = dict(Ecephys=dict(Device=[dict(name=device_name)]))
-                add_devices_to_nwbfile(nwbfile=nwbfile, metadata=new_device_metadata)
+                _add_devices_to_nwbfile_old_list_format(nwbfile=nwbfile, metadata=new_device_metadata)
                 warnings.warn(
                     f"Device '{device_name}' not detected in "
                     "attempted link to electrode group! Automatically generating."
@@ -951,7 +1163,11 @@ def _add_electrodes_to_nwbfile(
     if len(groupless_names) > 0:
         electrode_group_list = [dict(name=group_name) for group_name in groupless_names]
         missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=electrode_group_list))
-        _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=missing_group_metadata)
+        # The hand-rolled metadata above is old-format-shaped (a list under ``Ecephys.ElectrodeGroup``),
+        # so it routes to the old-format helper directly regardless of the outer call's metadata shape.
+        _add_electrode_groups_to_nwbfile_old_list_format(
+            recording=recording, nwbfile=nwbfile, metadata=missing_group_metadata
+        )
 
     group_list = [nwbfile.electrode_groups[group_name] for group_name in group_names]
     data_to_add["group"] = dict(description="the ElectrodeGroup object", data=group_list, index=False)
@@ -1659,8 +1875,14 @@ def add_recording_metadata_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     """
-    add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-    _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    if metadata is not None and _is_dict_based_metadata(metadata):
+        # Devices are created lazily inside _add_electrode_groups_to_nwbfile when a group
+        # references them via device_metadata_key, mirroring the roiextractors imaging-plane pattern.
+        _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    else:
+        # The old-format helper handles devices internally (creating defaults as needed)
+        # via _add_devices_to_nwbfile_old_list_format, so no explicit device-creation call here.
+        _add_electrode_groups_to_nwbfile_old_list_format(recording=recording, nwbfile=nwbfile, metadata=metadata)
     _add_electrodes_to_nwbfile(
         recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
     )
