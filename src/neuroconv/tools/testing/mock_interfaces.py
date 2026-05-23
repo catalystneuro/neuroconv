@@ -787,9 +787,9 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self,
         num_samples: int = 1000,
         num_nodes: int = 3,
-        pose_estimation_metadata_key: str = "MockPoseEstimation",
         seed: int = 0,
         verbose: bool = False,
+        metadata_key: str = "MockPoseEstimation",
     ):
         """
         Initialize a mock pose estimation interface.
@@ -800,16 +800,16 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
             Number of samples to generate, by default 1000.
         num_nodes : int, optional
             Number of nodes/body parts to track, by default 3.
-        pose_estimation_metadata_key : str, optional
-            Key for pose estimation metadata container, by default "MockPoseEstimation".
         seed : int, optional
             Random seed for reproducible data generation, by default 0.
         verbose : bool, optional
             Control verbosity, by default False.
+        metadata_key : str, default: "MockPoseEstimation"
+            Metadata key for this interface.
         """
         self.num_samples = num_samples
         self.num_nodes = num_nodes
-        self.pose_estimation_metadata_key = pose_estimation_metadata_key
+        self.metadata_key = metadata_key
         self.seed = seed
         self.verbose = verbose
 
@@ -897,114 +897,131 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self._timestamps = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the mock pose estimation interface."""
+        """Get metadata for the mock pose estimation interface in the dict-based shape.
+
+        Returns metadata with top-level ``metadata["Devices"]`` and the pose sub-modality at
+        ``metadata["Behavior"]["Pose"]`` holding ``Skeletons`` and ``PoseEstimations`` registries,
+        all keyed by ``self.metadata_key`` and cross-referenced via ``device_metadata_key`` and
+        ``skeleton_metadata_key``.
+        """
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # Create metadata following the DeepLabCut pattern
-        container_name = self.pose_estimation_metadata_key
+        container_name = self.metadata_key
         skeleton_name = f"Skeleton{container_name}"
         device_name = f"Camera{container_name}"
 
-        # Create PoseEstimation metadata structure
-        pose_estimation_metadata = DeepDict()
-
-        # Add Skeleton as a dictionary
-        pose_estimation_metadata["Skeletons"] = {
-            skeleton_name: {"name": skeleton_name, "nodes": self.nodes, "edges": self.edges.tolist()}
-        }
-
-        # Add Device as a dictionary
-        pose_estimation_metadata["Devices"] = {
-            device_name: {"name": device_name, "description": "Mock camera device for pose estimation testing."}
-        }
-
-        # Add PoseEstimation container
-        pose_estimation_metadata["PoseEstimationContainers"] = {
-            container_name: {
-                "name": container_name,
-                "description": f"Mock pose estimation data from {self.source_software}.",
-                "source_software": self.source_software,
-                "dimensions": [[640, 480]],
-                "skeleton": skeleton_name,
-                "devices": [device_name],
-                "scorer": self.scorer,
-                "original_videos": ["mock_video.mp4"],
-                "PoseEstimationSeries": {},
-            }
-        }
-
-        # Add a series for each node
+        pose_estimation_series_entries = {}
         for node in self.nodes:
-            # Convert node name to PascalCase for the series name
             pascal_case_node = "".join(word.capitalize() for word in node.replace("_", " ").split())
-            series_name = f"PoseEstimationSeries{pascal_case_node}"
-
-            pose_estimation_metadata["PoseEstimationContainers"][container_name]["PoseEstimationSeries"][node] = {
-                "name": series_name,
+            pose_estimation_series_entries[node] = {
+                "name": f"PoseEstimationSeries{pascal_case_node}",
                 "description": f"Mock pose estimation series for {node}.",
                 "unit": "pixels",
                 "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                 "confidence_definition": "Softmax output of the deep neural network.",
             }
 
-        # Add PoseEstimation metadata to the main metadata
-        metadata["PoseEstimation"] = pose_estimation_metadata
+        metadata["Devices"] = {
+            self.metadata_key: {
+                "name": device_name,
+                "description": "Mock camera device for pose estimation testing.",
+            }
+        }
+        metadata["Behavior"] = {
+            "Pose": {
+                "Skeletons": {
+                    self.metadata_key: {
+                        "name": skeleton_name,
+                        "nodes": self.nodes,
+                        "edges": self.edges.tolist(),
+                    },
+                },
+                "PoseEstimations": {
+                    self.metadata_key: {
+                        "name": container_name,
+                        "description": f"Mock pose estimation data from {self.source_software}.",
+                        "source_software": self.source_software,
+                        "scorer": self.scorer,
+                        "dimensions": [[640, 480]],
+                        "original_videos": ["mock_video.mp4"],
+                        "device_metadata_key": self.metadata_key,
+                        "skeleton_metadata_key": self.metadata_key,
+                        "PoseEstimationSeries": pose_estimation_series_entries,
+                    },
+                },
+            },
+        }
 
         return metadata
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
-        """Add mock pose estimation data to NWBFile using ndx-pose."""
+        """Add mock pose estimation data to NWBFile using ndx-pose, reading names from metadata."""
         from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
-        # Create or get behavior processing module
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        pose_metadata = metadata["Behavior"]["Pose"]
+        container_entry = pose_metadata["PoseEstimations"][self.metadata_key]
+        device_entry = metadata["Devices"][container_entry["device_metadata_key"]]
+        skeleton_entry = pose_metadata["Skeletons"][container_entry["skeleton_metadata_key"]]
+
         behavior_module = get_module(nwbfile, "behavior")
 
-        # Create device
-        device = Device(name="MockCamera", description="Mock camera device for pose estimation testing")
-        nwbfile.add_device(device)
+        # Lazy device creation: reuse an existing Device with the same name, otherwise create one.
+        # This lets multiple interfaces share a device by pointing their entries at the same
+        # ``device_metadata_key`` (or at distinct keys whose entries share the same ``name``).
+        device_name = device_entry["name"]
+        if device_name in nwbfile.devices:
+            device = nwbfile.devices[device_name]
+        else:
+            device = Device(name=device_name, description=device_entry.get("description", ""))
+            nwbfile.add_device(device)
 
-        # Create skeleton
-        skeleton = Skeleton(name="MockSkeleton", nodes=self.nodes, edges=self.edges)
+        # Lazy skeleton creation: reuse an existing Skeleton with the same name when present.
+        skeleton_name = skeleton_entry["name"]
+        existing_skeletons = (
+            behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}
+        )
+        if skeleton_name in existing_skeletons:
+            skeleton = existing_skeletons[skeleton_name]
+        else:
+            skeleton = Skeleton(name=skeleton_name, nodes=skeleton_entry["nodes"], edges=self.edges)
 
-        # Create pose estimation series for each node
+        pose_estimation_series_metadata = container_entry["PoseEstimationSeries"]
         pose_estimation_series = []
         for index, node_name in enumerate(self.nodes):
-            # Convert node name to PascalCase for the series name
-            pascal_case_node = "".join(word.capitalize() for word in node_name.replace("_", " ").split())
-            series_name = f"PoseEstimationSeries{pascal_case_node}"
-
+            series_metadata = pose_estimation_series_metadata[node_name]
             series = PoseEstimationSeries(
-                name=series_name,
-                description=f"Pose estimation for {node_name}",
+                name=series_metadata["name"],
+                description=series_metadata["description"],
                 data=self.pose_data[:, index, :],
-                unit="pixels",
-                reference_frame="top left corner of video frame",
+                unit=series_metadata["unit"],
+                reference_frame=series_metadata["reference_frame"],
                 timestamps=self.get_timestamps(),
                 confidence=np.ones(self.num_samples),
-                confidence_definition="definition of confidence",
+                confidence_definition=series_metadata["confidence_definition"],
             )
             pose_estimation_series.append(series)
 
-        # Create pose estimation container
         pose_estimation = PoseEstimation(
-            name="MockPoseEstimation",
-            description=f"Mock pose estimation data from {self.source_software}",
+            name=container_entry["name"],
+            description=container_entry["description"],
             pose_estimation_series=pose_estimation_series,
             skeleton=skeleton,
             devices=[device],
-            scorer=self.scorer,
-            source_software=self.source_software,
-            dimensions=np.array([[640, 480]], dtype="uint16"),
-            original_videos=["mock_video.mp4"],
-            labeled_videos=["mock_video_labeled.mp4"],
+            scorer=container_entry["scorer"],
+            source_software=container_entry["source_software"],
+            dimensions=np.array(container_entry["dimensions"], dtype="uint16"),
+            original_videos=container_entry.get("original_videos"),
+            labeled_videos=container_entry.get("labeled_videos"),
         )
 
         behavior_module.add(pose_estimation)
         if "Skeletons" not in behavior_module.data_interfaces:
             skeletons = Skeletons(skeletons=[skeleton])
             behavior_module.add(skeletons)
-        else:
-            skeletons = behavior_module["Skeletons"]
-            skeletons.add_skeletons(skeleton)
+        elif skeleton.name not in behavior_module["Skeletons"].skeletons:
+            behavior_module["Skeletons"].add_skeletons(skeleton)
