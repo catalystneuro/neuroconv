@@ -1,0 +1,40 @@
+{
+  "hed_version": "8.3.0",
+  "definitions": [
+    "(Definition/Center-target-appearance, (Sensory-event, Experimental-stimulus, Visual-presentation, Cue, (Center-of, Computer-screen), Target))",
+    "(Definition/Lateral-target-appearance, (Sensory-event, Experimental-stimulus, Visual-presentation, (Lateral, Computer-screen), Target))",
+    "(Definition/Cursor-movement, (Agent-action, Participant-response, (Animal-agent, Experiment-participant, (Move, Wrist))))",
+    "(Definition/Reward-delivery, (Sensory-event, Gustatory-presentation, Feedback, Reward, (Ingestible-object, Label/Juice)))",
+    "(Definition/Torque-perturbation, (Sensory-event, Experimental-stimulus, Tactile-presentation, Label/Torque-perturbation))"
+  ],
+  "column_tags": {
+    "center_target_appearance_time": "Def/Center-target-appearance",
+    "lateral_target_appearance_time": "Def/Lateral-target-appearance",
+    "cursor_departure_time": "Def/Cursor-movement",
+    "reward_time": "Def/Reward-delivery",
+    "movement_type": null,
+    "torque_perturbation_type": null,
+    "torque_perturbation_onset_time": "Def/Torque-perturbation",
+    "derived_movement_onset_time": "Data-feature, (Computed-feature), (Def/Cursor-movement, Onset)",
+    "derived_movement_end_time": "Data-feature, (Computed-feature), (Def/Cursor-movement, Offset)",
+    "derived_peak_velocity": "(Computed-feature, (Data-maximum, Speed))",
+    "derived_peak_velocity_time": "Data-feature, (Computed-feature), (Data-maximum, Speed)",
+    "derived_movement_amplitude": "(Computed-feature, Distance)",
+    "derived_end_position": "(Computed-feature, Position, Angle)"
+  },
+  "comments": {
+    "center_target_appearance_time": "References the Definition for the center target cue behavior. Treated as an event at the timestamp in this column.",
+    "lateral_target_appearance_time": "References the Definition for the lateral target stimulus. Treated as an event at the timestamp in this column.",
+    "cursor_departure_time": "References the Definition for the monkey's wrist movement. This column represents the real-time detection of the action initiation (cursor leaving start zone).",
+    "reward_time": "References the Definition for the reward outcome (juice delivery).",
+    "movement_type": "Categorical column defining the direction of movement (flexion vs extension). Requires a separate JSON sidecar to map these string values to specific HED tags (e.g., 'flexion' -> '(Flexion)').",
+    "torque_perturbation_type": "Categorical column defining the direction/existence of the perturbation. Requires a separate JSON sidecar to map values to tags.",
+    "torque_perturbation_onset_time": "References the Definition for the mechanical torque pulse. Removed invalid 'Mechanical-stimulation'/'Force' tags, replaced with 'Sensory-event', 'Tactile-presentation', and a 'Label'.",
+    "derived_movement_onset_time": "Using the Onset tag with the Cursor-movement Definition creates a temporal scope for the movement duration. Marked as Computed-feature to distinguish from the real-time cursor departure detection.",
+    "derived_movement_end_time": "Using the Offset tag paired with the onset column closes the temporal scope of the movement event. Marked as Computed-feature.",
+    "derived_peak_velocity": "The magnitude of the peak velocity. Removed '/#' placeholder to resolve validation error; the tag 'Speed' characterizes the numeric data in this column.",
+    "derived_peak_velocity_time": "An event acting as a data marker for the moment peak velocity occurred. 'Data-maximum' and 'Speed' indicate what reached a peak at this time.",
+    "derived_movement_amplitude": "Numeric distance of the movement. Removed '/#' placeholder to resolve validation error; 'Distance' characterizes the data.",
+    "derived_end_position": "Final joint position. Removed '/#' placeholder to resolve validation error; 'Angle' characterizes the data."
+  }
+}
