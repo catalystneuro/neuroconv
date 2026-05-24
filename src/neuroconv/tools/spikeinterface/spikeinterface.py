@@ -333,7 +333,7 @@ def _add_recording_segment_to_nwbfile(
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+            recording_t_start = _get_recording_segment_start_time(recording=recording, segment_index=segment_index)
 
         if rate:
             starting_time = float(recording_t_start)
@@ -1394,7 +1394,7 @@ def _add_time_series_segment_to_nwbfile(
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+            recording_t_start = _get_recording_segment_start_time(recording=recording, segment_index=segment_index)
 
         if rate:
             starting_time = float(recording_t_start)
@@ -2872,3 +2872,31 @@ def _stub_recording(recording: BaseRecording, *, stub_samples: int = 100) -> Bas
     recording_stubbed = AppendSegmentRecording(recording_list=recording_segments_stubbed)
 
     return recording_stubbed
+
+
+def _get_recording_segment_start_time(recording: BaseRecording, segment_index: int) -> float:
+    if hasattr(recording, "get_start_time"):
+        start_time = recording.get_start_time(segment_index=segment_index)
+        return 0.0 if start_time is None else float(start_time)
+
+    segments = None
+    if hasattr(recording, "segments"):
+        segments = recording.segments
+    elif hasattr(recording, "_recording_segments"):
+        segments = recording._recording_segments
+    elif hasattr(recording, "_segments"):
+        segments = recording._segments
+
+    if segments is None:
+        return 0.0
+
+    segment = segments[segment_index]
+    if hasattr(segment, "get_start_time"):
+        start_time = segment.get_start_time()
+        return 0.0 if start_time is None else float(start_time)
+    if hasattr(segment, "t_start"):
+        return 0.0 if segment.t_start is None else float(segment.t_start)
+    if hasattr(segment, "_t_start"):
+        return 0.0 if segment._t_start is None else float(segment._t_start)
+
+    return 0.0
