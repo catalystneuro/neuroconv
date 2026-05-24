@@ -1,6 +1,7 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
+from .behavior.facemap.facemapdatainterface import FacemapInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
     LightningPoseDataInterface,
@@ -197,6 +198,7 @@ interface_list = [
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
+    FacemapInterface,
     MedPCInterface,
     # Text
     CsvTimeIntervalsInterface,
@@ -242,6 +244,7 @@ interfaces_by_category = dict(
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
         LightningPose=LightningPoseDataInterface,
+        Facemap=FacemapInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
