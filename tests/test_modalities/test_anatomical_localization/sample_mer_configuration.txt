@@ -1,0 +1,207 @@
+# MONKEY CICERONE configuration file (version 1.0)
+
+MonkeyName Rhesus
+MonkeyID M-001
+output_folder C:/MonkeyCicerone/SampleData/Recordings/
+
+mri_dicom_folder C:/MonkeyCicerone/SampleData/Imaging/sagittalT2_dicom
+ct_dicom_folder C:/MonkeyCicerone/SampleData/Imaging/axialCT_dicom
+mCx_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_mCx.stl
+Cd_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Cd.stl
+Pu_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Pu.stl
+Th_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Th.stl
+Th_Rt_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Th_Rt.stl
+LGP_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_LGP.stl
+MGP_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_MGP.stl
+Sth_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Sth.stl
+opt_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_opt.stl
+ac_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_ac.stl
+pc_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_pc.stl
+
+site_markers striatum thalamus stn sn gpe gpi optictract quiet border background other
+
+#MRI/CT 4x4 transformation matrices (row by row)
+orient_mat_list 2.22045e-016 0 1 0 0 1 0 0 -1 0 2.22045e-016 0 0 0 0 1
+mri_mat_list 2.22045e-016 0 1 0.5 0 1 0 -12.25 -1 0 2.22045e-016 7.5 0 0 0 1
+reslice_mat_list 0.999391 0 -0.0348995 0 0 1 0 0 0.0348995 0 0.999391 0 0 0 0 1
+mri_flip_flag 0
+ct_orient_mat_list 1 0 0 0 0 2.22045e-016 -1 0 0 1 2.22045e-016 0 0 0 0 1
+ct_mat_list 1 0 0 -2.75 0 2.22045e-016 -1 -3.5 0 1 2.22045e-016 -0.75 0 0 0 1
+ct_reslice_mat_list 0.974428 -0.199944 -0.102526 0 0.222645 0.920692 0.320556 0 0.0303013 -0.335186 0.941665 0 0 0 0 1
+ct_flip_flag 0
+ct_contour 330
+
+#Landmarks
+landmarks pc_z_trans -12.1
+landmarks earbar_y_trans -16.9
+landmarks earbar_z_trans -18.9
+landmarks earbar_length 70
+landmarks orbitbar_x_trans 17.9
+landmarks orbitbar_y_trans -18.7
+landmarks orbitbar_z_trans 28.6
+landmarks orbitbar_distance 35.5
+
+current_system stereoHf0
+
+#Chamber 1
+chview1 1
+ changle1 20
+ chtype1 dbs
+ chelec1 micro
+chtrans x1 -7.7
+chtrans y1 68.6
+chtrans z1 -0.8
+chtrans rx1 35.0
+chtrans ry1 0.0
+chtrans rz1 0
+chtrans rcy1 -43.5
+chtrans plane1 0
+eltrans x1 0.0
+eltrans y1 -40.0
+eltrans z1 0.0
+calibration elec1 -15.0
+
+#Chamber 2
+chview2 1
+ changle2 10
+ chtype2 dbs
+ chelec2 micro
+chtrans x2 4.1
+chtrans y2 61.5
+chtrans z2 7.3
+chtrans rx2 5.0
+chtrans ry2 0
+chtrans rz2 0
+chtrans rcy2 -157.0
+chtrans plane2 0
+eltrans x2 1.0
+eltrans y2 -31
+eltrans z2 -0.5
+calibration elec2 -14
+
+#Chamber 3
+chview3 0
+ changle3 0
+ chtype3 micro
+ chelec3 micro
+chtrans x3 0
+chtrans y3 0
+chtrans z3 0
+chtrans rx3 0
+chtrans ry3 0
+chtrans rz3 0
+chtrans rcy3 0
+chtrans plane3 0
+eltrans x3 0
+eltrans y3 0
+eltrans z3 0
+calibration elec3 0
+
+#Nuclei
+nuctrans x_mCx 0
+nuctrans y_mCx 0
+nuctrans z_mCx 0
+nuctrans sx_mCx 1
+nuctrans sy_mCx 1
+nuctrans sz_mCx 1
+nuctrans view_mCx 1
+ nuctrans opacity_mCx 100
+
+nuctrans x_Cd 0
+nuctrans y_Cd 0
+nuctrans z_Cd 0
+nuctrans sx_Cd 1
+nuctrans sy_Cd 1
+nuctrans sz_Cd 1
+nuctrans view_Cd 1
+ nuctrans opacity_Cd 100
+
+nuctrans x_Pu 0
+nuctrans y_Pu 0
+nuctrans z_Pu 0
+nuctrans sx_Pu 1
+nuctrans sy_Pu 1
+nuctrans sz_Pu 1
+nuctrans view_Pu 1
+ nuctrans opacity_Pu 100
+
+nuctrans x_Th 0
+nuctrans y_Th 0
+nuctrans z_Th 0
+nuctrans sx_Th 1
+nuctrans sy_Th 1
+nuctrans sz_Th 1
+nuctrans view_Th 1
+ nuctrans opacity_Th 100
+
+nuctrans x_Th_Rt 0
+nuctrans y_Th_Rt 0
+nuctrans z_Th_Rt 0
+nuctrans sx_Th_Rt 1
+nuctrans sy_Th_Rt 1
+nuctrans sz_Th_Rt 1
+nuctrans view_Th_Rt 1
+ nuctrans opacity_Th_Rt 100
+
+nuctrans x_LGP 0
+nuctrans y_LGP 0
+nuctrans z_LGP 0
+nuctrans sx_LGP 1
+nuctrans sy_LGP 1
+nuctrans sz_LGP 1
+nuctrans view_LGP 1
+ nuctrans opacity_LGP 100
+
+nuctrans x_MGP 0
+nuctrans y_MGP 0
+nuctrans z_MGP 0
+nuctrans sx_MGP 1
+nuctrans sy_MGP 1
+nuctrans sz_MGP 1
+nuctrans view_MGP 1
+ nuctrans opacity_MGP 100
+
+nuctrans x_Sth 0
+nuctrans y_Sth 0
+nuctrans z_Sth 0
+nuctrans sx_Sth 1
+nuctrans sy_Sth 1
+nuctrans sz_Sth 1
+nuctrans view_Sth 1
+ nuctrans opacity_Sth 100
+
+nuctrans x_opt 0
+nuctrans y_opt 0
+nuctrans z_opt 0
+nuctrans sx_opt 1
+nuctrans sy_opt 1
+nuctrans sz_opt 1
+nuctrans view_opt 1
+ nuctrans opacity_opt 100
+
+nuctrans x_ac 0
+nuctrans y_ac 0
+nuctrans z_ac 0
+nuctrans sx_ac 1
+nuctrans sy_ac 1
+nuctrans sz_ac 1
+nuctrans view_ac 1
+ nuctrans opacity_ac 100
+
+nuctrans x_pc 0
+nuctrans y_pc 0
+nuctrans z_pc 0
+nuctrans sx_pc 1
+nuctrans sy_pc 1
+nuctrans sz_pc 1
+nuctrans view_pc 1
+ nuctrans opacity_pc 100
+
+nuctrans x_ALL 0
+nuctrans y_ALL 0
+nuctrans z_ALL 0.00
+nuctrans sx_ALL 0.16
+nuctrans sy_ALL 0.20
+nuctrans sz_ALL 0.06
+nuctrans view_ALL 1
+ nuctrans opacity_ALL 100

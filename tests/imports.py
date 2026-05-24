@@ -86,6 +86,7 @@ class TestImportStructure(TestCase):
         interface_name_list = [interface.__name__ for interface in interface_list]
         expected_structure = [
             # Sub-modules
+            "anatomical_localization",
             "behavior",
             "ecephys",
             "icephys",

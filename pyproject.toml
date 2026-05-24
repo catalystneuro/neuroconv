@@ -87,6 +87,14 @@ text = [
     "neuroconv[excel]",
 ]
 
+## Anatomical localization
+cicerone = [
+    "ndx-anatomical-localization>=0.1.0",
+]
+anatomical_localization = [
+    "neuroconv[cicerone]",
+]
+
 ## Behavior
 audio = [
     "ndx-sound>=0.2.2",
@@ -387,6 +395,7 @@ full = [
     "neuroconv[image]",
     "neuroconv[ophys]",
     "neuroconv[text]",
+    "neuroconv[anatomical_localization]",
 ]
 
 [tool.setuptools.packages.find]

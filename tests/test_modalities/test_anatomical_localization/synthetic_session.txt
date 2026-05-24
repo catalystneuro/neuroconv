@@ -1,0 +1,46 @@
+# MONKEY CICERONE configuration file (version 1.0)
+
+MonkeyName SyntheticMonkey
+MonkeyID SYN-001
+
+current_system stereoHf0
+
+landmarks pc_z_trans -11.7
+landmarks earbar_y_trans -11.2
+landmarks earbar_z_trans -19.2
+
+#Chamber 1: plane=0 (perpendicular, sagittal base), trivial geometry
+chview1 1
+changle1 0
+chtype1 micro
+chelec1 micro
+chtrans x1 0.0
+chtrans y1 30.0
+chtrans z1 0.0
+chtrans rx1 0.0
+chtrans ry1 0.0
+chtrans rz1 0
+chtrans rcy1 0.0
+chtrans plane1 0
+eltrans x1 0.0
+eltrans y1 0.0
+eltrans z1 0.0
+calibration elec1 5.0
+
+#Chamber 2: plane=1 (parallel, coronal base), nonzero rotations
+chview2 1
+changle2 20
+chtype2 dbs
+chelec2 micro
+chtrans x2 -5.0
+chtrans y2 40.0
+chtrans z2 10.0
+chtrans rx2 10.0
+chtrans ry2 0.0
+chtrans rz2 0
+chtrans rcy2 -90.0
+chtrans plane2 1
+eltrans x2 2.0
+eltrans y2 0.0
+eltrans z2 1.0
+calibration elec2 -8.0

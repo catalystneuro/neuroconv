@@ -1,0 +1,257 @@
+# MONKEY CICERONE configuration file (version 1.0)
+
+MonkeyName AnimalA
+MonkeyID ANIMAL-A-001
+output_folder ./output/
+
+mri_dicom_folder ./mri_dicom
+ct_dicom_folder ./ct_dicom
+mCx_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_mCx.stl
+Cd_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Cd.stl
+Pu_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Pu.stl
+Th_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Th.stl
+Th_VLO_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Th_VLO.stl
+Th_VPLO_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Th_VPLO.stl
+Th_Rt_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Th_Rt.stl
+LGP_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_LGP.stl
+MGP_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_MGP.stl
+Sth_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_Sth.stl
+SNR_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_SNR.stl
+SNC_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_SNC.stl
+opt_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_opt.stl
+ac_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_ac.stl
+pc_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_pc.stl
+scp_filename C:/MonkeyCicerone/StandardAtlas/StandardAtlas_scp.stl
+
+site_markers other cortex gpe gpi background border th str rtn thalamus stn snr sn
+
+#MRI/CT 4x4 transformation matrices (row by row)
+orient_mat_list 2.22045e-016 0 1 0 0 1 0 0 -1 0 2.22045e-016 0 0 0 0 1
+mri_mat_list 2.22045e-016 0 1 1 0 1 0 -20.25 -1 0 2.22045e-016 6.5 0 0 0 1
+reslice_mat_list 0.933148 0.359087 -0.0170898 0 -0.359286 0.93317 -0.0104365 0 0.0122001 0.015879 0.999799 0 0 0 0 1
+mri_flip_flag 0
+ct_orient_mat_list 2.22045e-016 0 1 0 0 1 0 0 -1 0 2.22045e-016 0 0 0 0 1
+ct_mat_list 2.22045e-016 0 1 1.5 0 1 0 -17.75 -1 0 2.22045e-016 -4.5 0 0 0 1
+ct_reslice_mat_list 0.931734 0.362851 -0.0145262 0 -0.363129 0.931299 -0.0286565 0 0.00313023 0.0319751 0.999483 0 0 0 0 1
+ct_flip_flag 0
+ct_contour 583
+
+#Landmarks
+landmarks pc_z_trans -11.7
+landmarks earbar_y_trans -11.2
+landmarks earbar_z_trans -19.2
+landmarks earbar_length 90
+landmarks orbitbar_x_trans 15.6
+landmarks orbitbar_y_trans -4.7
+landmarks orbitbar_z_trans 39.8
+landmarks orbitbar_distance 27.9
+
+current_system stereoHf0
+
+#Chamber 1
+chview1 1
+ changle1 5
+ chtype1 micro
+ chelec1 micro
+chtrans x1 -0.1
+chtrans y1 33.8
+chtrans z1 15.1
+chtrans rx1 5.0
+chtrans ry1 0.0
+chtrans rz1 0
+chtrans rcy1 -90.0
+chtrans plane1 0
+eltrans x1 0.0
+eltrans y1 0.0
+eltrans z1 15
+calibration elec1 10.23
+
+#Chamber 2
+chview2 1
+ changle2 20
+ chtype2 dbs
+ chelec2 micro
+chtrans x2 -0.5
+chtrans y2 64.9
+chtrans z2 8.9
+chtrans rx2 12.5
+chtrans ry2 0.0
+chtrans rz2 0
+chtrans rcy2 -90.0
+chtrans plane2 1
+eltrans x2 7.0
+eltrans y2 0
+eltrans z2 8.0
+calibration elec2 -20.01
+
+#Chamber 3
+chview3 1
+ changle3 20
+ chtype3 dbs
+ chelec3 micro
+chtrans x3 -0.5
+chtrans y3 63.9
+chtrans z3 22.5
+chtrans rx3 -2.5
+chtrans ry3 0.0
+chtrans rz3 0
+chtrans rcy3 90.0
+chtrans plane3 1
+eltrans x3 -7
+eltrans y3 0.0
+eltrans z3 -18
+calibration elec3 -20.02
+
+#Nuclei
+nuctrans x_mCx 0
+nuctrans y_mCx 0
+nuctrans z_mCx 0
+nuctrans sx_mCx 1
+nuctrans sy_mCx 1
+nuctrans sz_mCx 1
+nuctrans view_mCx 0
+ nuctrans opacity_mCx 100
+
+nuctrans x_Cd 0
+nuctrans y_Cd 0
+nuctrans z_Cd 0
+nuctrans sx_Cd 1
+nuctrans sy_Cd 1
+nuctrans sz_Cd 1
+nuctrans view_Cd 0
+ nuctrans opacity_Cd 100
+
+nuctrans x_Pu 0
+nuctrans y_Pu 0
+nuctrans z_Pu 0
+nuctrans sx_Pu 1
+nuctrans sy_Pu 1
+nuctrans sz_Pu 1
+nuctrans view_Pu 0
+ nuctrans opacity_Pu 100
+
+nuctrans x_Th 0
+nuctrans y_Th 0
+nuctrans z_Th 0
+nuctrans sx_Th 1
+nuctrans sy_Th 1
+nuctrans sz_Th 1
+nuctrans view_Th 0
+ nuctrans opacity_Th 100
+
+nuctrans x_Th_VLO 0
+nuctrans y_Th_VLO 0
+nuctrans z_Th_VLO 0
+nuctrans sx_Th_VLO 1
+nuctrans sy_Th_VLO 1
+nuctrans sz_Th_VLO 1
+nuctrans view_Th_VLO 0
+ nuctrans opacity_Th_VLO 100
+
+nuctrans x_Th_VPLO 0
+nuctrans y_Th_VPLO 0
+nuctrans z_Th_VPLO 0
+nuctrans sx_Th_VPLO 1
+nuctrans sy_Th_VPLO 1
+nuctrans sz_Th_VPLO 1
+nuctrans view_Th_VPLO 0
+ nuctrans opacity_Th_VPLO 100
+
+nuctrans x_Th_Rt 0
+nuctrans y_Th_Rt 0
+nuctrans z_Th_Rt 0
+nuctrans sx_Th_Rt 1
+nuctrans sy_Th_Rt 1
+nuctrans sz_Th_Rt 1
+nuctrans view_Th_Rt 0
+ nuctrans opacity_Th_Rt 100
+
+nuctrans x_LGP 0
+nuctrans y_LGP 0
+nuctrans z_LGP 0
+nuctrans sx_LGP 1
+nuctrans sy_LGP 1
+nuctrans sz_LGP 1
+nuctrans view_LGP 0
+ nuctrans opacity_LGP 100
+
+nuctrans x_MGP 0
+nuctrans y_MGP 0
+nuctrans z_MGP 0
+nuctrans sx_MGP 1
+nuctrans sy_MGP 1
+nuctrans sz_MGP 1
+nuctrans view_MGP 0
+ nuctrans opacity_MGP 100
+
+nuctrans x_Sth 0
+nuctrans y_Sth 0
+nuctrans z_Sth 0
+nuctrans sx_Sth 1
+nuctrans sy_Sth 1
+nuctrans sz_Sth 1
+nuctrans view_Sth 0
+ nuctrans opacity_Sth 100
+
+nuctrans x_SNR 0
+nuctrans y_SNR 0
+nuctrans z_SNR 0
+nuctrans sx_SNR 1
+nuctrans sy_SNR 1
+nuctrans sz_SNR 1
+nuctrans view_SNR 0
+ nuctrans opacity_SNR 100
+
+nuctrans x_SNC 0
+nuctrans y_SNC 0
+nuctrans z_SNC 0
+nuctrans sx_SNC 1
+nuctrans sy_SNC 1
+nuctrans sz_SNC 1
+nuctrans view_SNC 0
+ nuctrans opacity_SNC 100
+
+nuctrans x_opt 0
+nuctrans y_opt 0
+nuctrans z_opt 0
+nuctrans sx_opt 1
+nuctrans sy_opt 1
+nuctrans sz_opt 1
+nuctrans view_opt 0
+ nuctrans opacity_opt 100
+
+nuctrans x_ac 0
+nuctrans y_ac 0
+nuctrans z_ac 0
+nuctrans sx_ac 1
+nuctrans sy_ac 1
+nuctrans sz_ac 1
+nuctrans view_ac 0
+ nuctrans opacity_ac 100
+
+nuctrans x_pc 0
+nuctrans y_pc 0
+nuctrans z_pc 0
+nuctrans sx_pc 1
+nuctrans sy_pc 1
+nuctrans sz_pc 1
+nuctrans view_pc 0
+ nuctrans opacity_pc 100
+
+nuctrans x_scp 0
+nuctrans y_scp 0
+nuctrans z_scp 0
+nuctrans sx_scp 1
+nuctrans sy_scp 1
+nuctrans sz_scp 1
+nuctrans view_scp 0
+ nuctrans opacity_scp 100
+
+nuctrans x_ALL 0
+nuctrans y_ALL 0
+nuctrans z_ALL 0
+nuctrans sx_ALL 0
+nuctrans sy_ALL 0
+nuctrans sz_ALL 0
+nuctrans view_ALL 0
+ nuctrans opacity_ALL 100

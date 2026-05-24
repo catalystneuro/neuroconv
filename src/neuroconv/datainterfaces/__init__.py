@@ -1,3 +1,8 @@
+# Anatomical localization
+from .anatomical_localization.cicerone.ciceronesessioninterface import (
+    CiceroneSessionInterface,
+)
+
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
@@ -203,6 +208,8 @@ interface_list = [
     ExcelTimeIntervalsInterface,
     # Image
     ImageInterface,
+    # Anatomical localization
+    CiceroneSessionInterface,
 ]
 
 interfaces_by_category = dict(
@@ -249,5 +256,8 @@ interfaces_by_category = dict(
     ),
     image=dict(
         Image=ImageInterface,
+    ),
+    anatomical_localization=dict(
+        CiceroneSession=CiceroneSessionInterface,
     ),
 )
