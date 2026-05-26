@@ -154,7 +154,15 @@ def _add_electrode_groups_to_nwbfile(
     if auto_entries:
         # The synthesized entries reference the default device under default_device_key.
         # Ensure metadata["Devices"] carries it so the lookup below resolves uniformly.
-        metadata.setdefault("Devices", {}).setdefault(default_device_key, default_device_metadata)
+        devices = metadata.get("Devices")
+        if isinstance(devices, list):
+            # Some unmigrated interfaces (e.g. SpikeGLXNIDQInterface) still emit
+            # ``metadata["Devices"]`` as a legacy top-level list. Migrate it into
+            # dict form keyed by ``name`` so the lookup chain below resolves uniformly.
+            metadata["Devices"] = {entry.get("name", f"device_{i}"): entry for i, entry in enumerate(devices)}
+        elif not isinstance(devices, dict):
+            metadata["Devices"] = {}
+        metadata["Devices"].setdefault(default_device_key, default_device_metadata)
 
     required_fields = ("name", "description", "location")
     for group_metadata in (*user_entries, *auto_entries):
