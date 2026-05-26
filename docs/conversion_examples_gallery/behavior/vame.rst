@@ -95,8 +95,8 @@ Full conversion (latent vectors + community labels + config)
 Specifying Metadata
 ~~~~~~~~~~~~~~~~~~~
 
-VAME metadata lives under ``metadata["VAME"][vame_project_metadata_key]``, where
-``vame_project_metadata_key`` defaults to ``"VAMEProject"`` and matches the name of the
+VAME metadata lives under ``metadata["VAME"][metadata_key]``, where
+``metadata_key`` defaults to ``"VAMEProject"`` and matches the name of the
 ``VAMEProject`` group written to the NWB file.
 
 Call :py:meth:`~neuroconv.datainterfaces.behavior.vame.vamedatainterface.VameInterface.get_metadata`
@@ -189,7 +189,7 @@ or :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPI
 Multiple VAME runs in one file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use ``vame_project_metadata_key`` to store results from multiple algorithms or parameter
+Use ``metadata_key`` to store results from multiple algorithms or parameter
 sets in the same NWB file. Each instance gets its own metadata entry and its own
 ``VAMEProject`` group:
 
@@ -208,12 +208,12 @@ sets in the same NWB file. Each instance gets its own metadata entry and its own
     ...         VameKmeans=dict(
     ...             motif_labels_file_path=str(kmeans_motif_path),
     ...             sampling_frequency_hz=30.0,
-    ...             vame_project_metadata_key="VAMEKmeans15",
+    ...             metadata_key="VAMEKmeans15",
     ...         ),
     ...         VameHmm=dict(
     ...             motif_labels_file_path=str(hmm_motif_path),
     ...             sampling_frequency_hz=30.0,
-    ...             vame_project_metadata_key="VAMEHmm15",
+    ...             metadata_key="VAMEHmm15",
     ...         ),
     ...     )
     ... )

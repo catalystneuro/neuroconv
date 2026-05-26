@@ -154,7 +154,7 @@ class TestTwoVameInterfaces:
 
     This reflects the typical real-world scenario: latent vectors and config are shared between
     runs (both produced by the same trained model), while motif and community labels differ per
-    segmentation algorithm. Each run gets its own VAMEProject container via vame_project_metadata_key.
+    segmentation algorithm. Each run gets its own VAMEProject container via metadata_key.
     """
 
     def test_two_vame_interfaces_in_nwbconverter(self, tmp_path):
@@ -168,14 +168,14 @@ class TestTwoVameInterfaces:
                 community_labels_file_path=str(COMMUNITY_LABELS_PATH),
                 vame_config_file_path=str(CONFIG_PATH),
                 sampling_frequency_hz=30.0,
-                vame_project_metadata_key="KmeansRun",
+                metadata_key="KmeansRun",
             ),
             Hmm=dict(
                 motif_labels_file_path=str(HMM_LABELS_PATH),
                 latent_vectors_file_path=str(LATENT_VECTORS_PATH),  # same model output
                 vame_config_file_path=str(CONFIG_PATH),  # same project config
                 sampling_frequency_hz=30.0,
-                vame_project_metadata_key="HmmRun",
+                metadata_key="HmmRun",
             ),
         )
         converter = TwoVameConverter(source_data=source_data)

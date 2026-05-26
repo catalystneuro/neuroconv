@@ -21,10 +21,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
     community labels to NWB using the ``ndx-vame`` extension.
 
     The NWB container name and all series descriptions are controlled via the metadata dict
-    under ``metadata["VAME"][vame_project_metadata_key]``.
+    under ``metadata["VAME"][metadata_key]``.
 
     To store two VAME runs (e.g. k-means and HMM) in the same NWB file, create two
-    ``VameInterface`` instances with different ``vame_project_metadata_key`` values and
+    ``VameInterface`` instances with different ``metadata_key`` values and
     wrap them in an :class:`~neuroconv.NWBConverter`.
     """
 
@@ -89,9 +89,9 @@ class VameInterface(BaseTemporalAlignmentInterface):
         sampling_frequency_hz : float, optional
             Video acquisition rate in Hz (frames per second). Required when not providing aligned
             timestamps via :meth:`set_aligned_timestamps`.
-        vame_project_metadata_key : str, default "VAMEProject"
+        metadata_key : str, default "VAMEProject"
             Key used to look up this interface's metadata inside
-            ``metadata["VAME"][vame_project_metadata_key]``. Change this when storing
+            ``metadata["VAME"][metadata_key]``. Change this when storing
             results from multiple VAME runs in the same NWB file so each run has a unique
             metadata entry.
         pose_estimation_name : str, optional
@@ -107,7 +107,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         self.latent_vectors_file_path = Path(latent_vectors_file_path) if latent_vectors_file_path else None
         self.community_labels_file_path = Path(community_labels_file_path) if community_labels_file_path else None
         self.sampling_frequency_hz = sampling_frequency_hz
-        self.vame_project_metadata_key = vame_project_metadata_key
+        self.metadata_key = metadata_key
         self.pose_estimation_name = pose_estimation_name
 
         # Read VAME config if provided
@@ -180,7 +180,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         metadata = super().get_metadata()
 
         vame_project_metadata: dict = dict(
-            name=self.vame_project_metadata_key,
+            name=self.metadata_key,
             MotifSeries=dict(name="MotifSeries", description="VAME behavioral motif labels."),
         )
 
@@ -198,7 +198,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 description="VAME community labels grouping motifs into higher-level behavioral states.",
             )
 
-        metadata["VAME"] = {self.vame_project_metadata_key: vame_project_metadata}
+        metadata["VAME"] = {self.metadata_key: vame_project_metadata}
 
         return metadata
 
@@ -228,7 +228,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         """Write VAME outputs to an NWBFile as a ``VAMEProject`` container.
 
         The container name and all series descriptions are taken from
-        ``metadata["VAME"][vame_project_metadata_key]``. Call :meth:`get_metadata` to
+        ``metadata["VAME"][metadata_key]``. Call :meth:`get_metadata` to
         inspect the defaults and override specific fields before conversion.
 
         Parameters
@@ -237,7 +237,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
             Target NWB file.
         metadata : dict, optional
             Metadata dictionary. VAME-specific fields live under
-            ``metadata["VAME"][vame_project_metadata_key]`` and include:
+            ``metadata["VAME"][metadata_key]`` and include:
 
             - ``"name"`` – name of the ``VAMEProject`` group in the NWB file.
             - ``"MotifSeries"`` – dict with ``name``, ``description``, ``algorithm``.
@@ -260,7 +260,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         if metadata is not None:
             default_metadata.deep_update(metadata)
 
-        vame_metadata = default_metadata["VAME"][self.vame_project_metadata_key]
+        vame_metadata = default_metadata["VAME"][self.metadata_key]
         project_name = vame_metadata["name"]
         motif_metadata = vame_metadata["MotifSeries"]
 
