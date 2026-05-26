@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import pytest
 from pynwb import read_nwb
 
 from neuroconv.converters import OpenEphysBinaryConverter
@@ -75,11 +76,11 @@ class TestMultiStreamWithAnalog:
         assert len(lfp_electrode_indices) == 384
         assert ap_electrode_indices == lfp_electrode_indices
 
-    def test_streams_argument_filters_data(self):
+    def test_exclude_streams_filters_data(self):
         all_streams = OpenEphysBinaryConverter.get_streams(folder_path=self.folder_path)
-        neural_only = [s for s in all_streams if "NI-DAQ" not in s]
+        analog_streams = [s for s in all_streams if "NI-DAQ" in s]
 
-        converter = OpenEphysBinaryConverter(folder_path=self.folder_path, streams=neural_only)
+        converter = OpenEphysBinaryConverter(folder_path=self.folder_path, exclude_streams=analog_streams)
         conversion_options = {name: dict(stub_test=True) for name in converter.data_interface_objects}
         nwbfile = converter.create_nwbfile(conversion_options=conversion_options)
 
@@ -87,3 +88,7 @@ class TestMultiStreamWithAnalog:
         assert "ElectricalSeriesProbeALFP" in nwbfile.acquisition
         assert "TimeSeriesPXIe6341" not in nwbfile.acquisition
         assert len(nwbfile.acquisition) == 4
+
+    def test_exclude_unknown_stream_raises(self):
+        with pytest.raises(ValueError, match="not present"):
+            OpenEphysBinaryConverter(folder_path=self.folder_path, exclude_streams=["bogus stream"])
