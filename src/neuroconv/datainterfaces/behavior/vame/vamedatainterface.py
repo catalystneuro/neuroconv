@@ -67,7 +67,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         community_labels_file_path: FilePath | None = None,
         vame_config_file_path: FilePath | None = None,
         sampling_frequency_hz: float | None = None,
-        vame_project_metadata_key: str = "VAMEProject",
+        metadata_key: str = "VAMEProject",
         pose_estimation_name: str | None = None,
         verbose: bool = False,
     ):
