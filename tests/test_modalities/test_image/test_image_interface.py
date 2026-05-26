@@ -119,6 +119,7 @@ class TestRGBImageInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 5
             for image in images_container.images.values():
                 assert isinstance(image, RGBImage)
+                assert image.data.dtype == np.uint8
 
 
 @pytest.mark.parametrize("format", ["PNG", "JPEG", "TIFF"])
@@ -148,6 +149,7 @@ class TestGrayscaleImageInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 5
             for image in images_container.images.values():
                 assert isinstance(image, GrayscaleImage)
+                assert image.data.dtype == np.uint8
 
 
 @pytest.mark.parametrize("format", ["PNG", "TIFF"])  # JPEG doesn't support RGBA
@@ -177,6 +179,7 @@ class TestRGBAImageInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 5
             for image in images_container.images.values():
                 assert isinstance(image, RGBAImage)
+                assert image.data.dtype == np.uint8
 
 
 @pytest.mark.parametrize("format", ["PNG", "TIFF"])  # JPEG doesn't support LA
@@ -206,6 +209,7 @@ class TestLAtoRGBAImageInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 5
             for image in images_container.images.values():
                 assert isinstance(image, RGBAImage)
+                assert image.data.dtype == np.uint8
                 # Verify the data shape is correct for RGBA (height, width, 4)
                 assert image.data.shape[-1] == 4
                 # Verify R, G, B channels are equal (since they come from L channel)
@@ -240,6 +244,7 @@ class TestI16GrayscaleImageInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 5
             for image in images_container.images.values():
                 assert isinstance(image, GrayscaleImage)
+                assert image.data.dtype == np.uint16
 
 
 class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):

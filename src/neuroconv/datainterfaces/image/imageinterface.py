@@ -13,21 +13,13 @@ from pynwb.image import GrayscaleImage, RGBAImage, RGBImage
 from ...basedatainterface import BaseDataInterface
 from ...utils import DeepDict
 
-# Map PIL image mode -> numpy dtype. PIL exposes mode strings that imply a pixel
-# representation; the conversion to NWB previously always used float64, which
-# silently widens 8/16-bit source images by 4-8x. Preserving the source dtype is
-# what users expect (writing a uint16 TIFF should produce a uint16 dataset).
+# Map PIL image mode -> numpy dtype, for modes supported by ImageInterface.
 _PIL_MODE_TO_NUMPY_DTYPE = {
     "L": np.uint8,
-    "P": np.uint8,
     "RGB": np.uint8,
     "RGBA": np.uint8,
-    "LA": np.uint8,  # converted to RGBA (also uint8) before write
+    "LA": np.uint8,
     "I;16": np.uint16,
-    "I;16B": np.uint16,
-    "I;16L": np.uint16,
-    "I": np.int32,
-    "F": np.float32,
 }
 
 
@@ -55,15 +47,12 @@ class SingleImageIterator(AbstractDataChunkIterator):
                 self._image_shape = self._image_shape[:-1] + (4,)
                 self._max_shape = self._max_shape[:-1] + (4,)
 
-            # Resolve the numpy dtype the source image will be written as.
-            # Default to uint8 for unrecognized modes (safer than float64 in size
-            # terms; downstream will still produce correct pixel values).
             self._dtype = np.dtype(_PIL_MODE_TO_NUMPY_DTYPE.get(self.image_mode, np.uint8))
 
             # Calculate file size in bytes
             self._size_bytes = self._file_path.stat().st_size
-            # Calculate approximate memory size when loaded as numpy array.
-            self._memory_size = int(np.prod(self._image_shape) * self._dtype.itemsize)
+            # Calculate approximate memory size when loaded as numpy array
+            self._memory_size = np.prod(self._image_shape) * self._dtype.itemsize
 
         self._images_returned = 0  # Number of images returned in __next__
 
@@ -118,24 +107,13 @@ class SingleImageIterator(AbstractDataChunkIterator):
 
     @property
     def dtype(self):
-        """Numpy dtype the dataset will be allocated with, derived from the source image mode.
-
-        Previously this returned ``np.dtype(float)`` unconditionally, which caused
-        uint8/uint16 source images to be stored as float64 — a 4-8x size blowup.
-        The dtype is now inferred from the PIL image mode at __init__ time so the
-        on-disk representation matches the source.
-        """
+        """Define the data type of the array"""
         return self._dtype
 
     @property
     def maxshape(self):
-        """Property describing the maximum shape of the data array that is being iterated over.
-
-        Single images are fixed-shape; reporting (None, None) here previously broke the
-        backend configuration's chunk-shape estimator. Use the concrete image shape so
-        downstream tools can compute chunk sizes correctly.
-        """
-        return self._image_shape
+        """Property describing the maximum shape of the data array that is being iterated over"""
+        return self._max_shape
 
     def __len__(self):
         return self._image_shape[0]
