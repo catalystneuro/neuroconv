@@ -55,17 +55,17 @@ class VameInterface(BaseTemporalAlignmentInterface):
         )
         source_schema["properties"]["vame_config_file_path"]["description"] = (
             "Path to the VAME 'config.yaml' project file. "
-            "When provided, project metadata are serialized into the NWB file. Optional."
+            "The full configuration is serialized as JSON and stored in the VAMEProject.vame_config field."
         )
         return source_schema
 
     @validate_call
     def __init__(
         self,
-        motif_labels_file_path: FilePath,
+        vame_config_file_path: FilePath,
+        motif_labels_file_path: FilePath | None = None,
         latent_vectors_file_path: FilePath | None = None,
         community_labels_file_path: FilePath | None = None,
-        vame_config_file_path: FilePath | None = None,
         sampling_frequency_hz: float | None = None,
         metadata_key: str = "VAMEProject",
         pose_estimation_name: str | None = None,
@@ -75,7 +75,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        motif_labels_file_path : FilePath
+        vame_config_file_path : FilePath
+            Path to the VAME ``config.yaml`` project file. The full configuration
+            is serialized as JSON and stored in the ``VAMEProject.vame_config`` field.
+        motif_labels_file_path : FilePath, optional
             Path to the .npy file containing VAME motif labels (1D int array, one value per frame).
         latent_vectors_file_path : FilePath, optional
             Path to the .npy file containing VAME latent-space vectors (2D float32 array of
@@ -83,9 +86,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
         community_labels_file_path : FilePath, optional
             Path to the .npy file containing VAME community labels (1D int array, one value
             per frame). Typically located inside a ``community/`` sub-directory of the algorithm directory.
-        vame_config_file_path : FilePath, optional
-            Path to the VAME ``config.yaml`` project file. When provided, the full configuration
-            is serialized as JSON and stored in the ``VAMEProject.vame_config`` field.
         sampling_frequency_hz : float, optional
             Video acquisition rate in Hz (frames per second). Required when not providing aligned
             timestamps via :meth:`set_aligned_timestamps`.
@@ -104,17 +104,14 @@ class VameInterface(BaseTemporalAlignmentInterface):
         """
         import ndx_vame  # noqa: F401 – ensure ndx-vame namespace is registered
 
-        self.motif_labels_file_path = Path(motif_labels_file_path)
+        self.vame_config_dict = load_dict_from_file(vame_config_file_path)
+
+        self.motif_labels_file_path = Path(motif_labels_file_path) if motif_labels_file_path else None
         self.latent_vectors_file_path = Path(latent_vectors_file_path) if latent_vectors_file_path else None
         self.community_labels_file_path = Path(community_labels_file_path) if community_labels_file_path else None
         self.sampling_frequency_hz = sampling_frequency_hz
         self.metadata_key = metadata_key
         self.pose_estimation_name = pose_estimation_name
-
-        # Read VAME config if provided
-        self.vame_config_dict = {}
-        if vame_config_file_path is not None:
-            self.vame_config_dict = load_dict_from_file(vame_config_file_path)  # for validation and error handling
 
         super().__init__(
             motif_labels_file_path=motif_labels_file_path,
@@ -180,10 +177,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
-        vame_project_metadata: dict = dict(
-            name=self.metadata_key,
-            MotifSeries=dict(name="MotifSeries", description="VAME behavioral motif labels."),
-        )
+        vame_project_metadata: dict = dict(name=self.metadata_key)
+
+        if self.motif_labels_file_path is not None:
+            vame_project_metadata["MotifSeries"] = dict(name="MotifSeries", description="VAME behavioral motif labels.")
 
         if self.latent_vectors_file_path is not None:
             zdims = self.vame_config_dict.get("zdims")
@@ -209,7 +206,14 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 "VameInterface cannot generate original timestamps without a sampling_frequency_hz. "
                 "Provide sampling_frequency_hz at construction or call set_aligned_timestamps()."
             )
-        n_frames = len(np.load(self.motif_labels_file_path))
+        reference_file = self.motif_labels_file_path or self.latent_vectors_file_path or self.community_labels_file_path
+        if reference_file is None:
+            raise ValueError(
+                "VameInterface cannot generate original timestamps without any data file. "
+                "Provide at least one of motif_labels_file_path, latent_vectors_file_path, or "
+                "community_labels_file_path, or call set_aligned_timestamps()."
+            )
+        n_frames = np.load(reference_file).shape[0]
         return np.arange(n_frames) / self.sampling_frequency_hz
 
     def get_timestamps(self) -> np.ndarray:
@@ -280,7 +284,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
         vame_metadata = default_metadata["VAME"][self.metadata_key]
         project_name = vame_metadata["name"]
-        motif_metadata = vame_metadata["MotifSeries"]
 
         n_frames = min(100, len(self.get_timestamps())) if stub_test else None
 
@@ -305,16 +308,15 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 **timing_kwargs,
             )
 
-        # MotifSeries (required)
-        motif_data = np.load(self.motif_labels_file_path)[:n_frames].astype(np.int32)
-        motif_kwargs: dict = dict(
-            data=motif_data,
-            **motif_metadata,
-            **timing_kwargs,
-        )
-        if latent_series is not None:
-            motif_kwargs["latent_space_series"] = latent_series
-        motif_series = MotifSeries(**motif_kwargs)
+        # MotifSeries (optional)
+        motif_series = None
+        motif_metadata = vame_metadata.get("MotifSeries")
+        if self.motif_labels_file_path is not None and motif_metadata is not None:
+            motif_data = np.load(self.motif_labels_file_path)[:n_frames].astype(np.int32)
+            motif_kwargs: dict = dict(data=motif_data, **motif_metadata, **timing_kwargs)
+            if latent_series is not None:
+                motif_kwargs["latent_space_series"] = latent_series
+            motif_series = MotifSeries(**motif_kwargs)
 
         # CommunitySeries (optional)
         community_series = None

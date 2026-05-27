@@ -44,7 +44,11 @@ class TestVameInterfaceMotifOnly(DataInterfaceTestMixin):
     """VameInterface with only motif labels (no optional inputs)."""
 
     data_interface_cls = VameInterface
-    interface_kwargs = dict(motif_labels_file_path=str(MOTIF_LABELS_PATH), sampling_frequency_hz=30.0)
+    interface_kwargs = dict(
+        vame_config_file_path=str(CONFIG_PATH),
+        motif_labels_file_path=str(MOTIF_LABELS_PATH),
+        sampling_frequency_hz=30.0,
+    )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -58,7 +62,8 @@ class TestVameInterfaceMotifOnly(DataInterfaceTestMixin):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
-            assert project.vame_config == "{}"
+            config = json.loads(project.vame_config)
+            assert config["project_name"] == "my_vame_project"
             assert project.latent_space_series is None
             assert project.community_series is None
             assert_array_equal(project.motif_series.data[:], np.load(MOTIF_LABELS_PATH).astype(np.int32))
@@ -131,6 +136,7 @@ class TestVameInterfaceHmm(DataInterfaceTestMixin):
 
     data_interface_cls = VameInterface
     interface_kwargs = dict(
+        vame_config_file_path=str(CONFIG_PATH),
         motif_labels_file_path=str(HMM_LABELS_PATH),
         sampling_frequency_hz=30.0,
     )
