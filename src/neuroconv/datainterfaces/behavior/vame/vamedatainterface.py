@@ -95,9 +95,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
             results from multiple VAME runs in the same NWB file so each run has a unique
             metadata entry.
         pose_estimation_name : str, optional
-            Name of an existing ``PoseEstimation`` container already present in the NWB file's
-            ``behavior`` processing module. When provided, a soft link from the ``VAMEProject``
-            to that container is added to record the upstream pose data used by VAME.
+            Name of an existing ``PoseEstimation`` container already present in the NWB file.
+            When provided, a soft link from the ``VAMEProject`` to that container is added to
+            record the upstream pose data used by VAME. Raises ``ValueError`` if the name is
+            not found, listing any available ``PoseEstimation`` containers to help.
         verbose : bool, default False
             Controls verbosity of the conversion process.
         """
@@ -218,6 +219,23 @@ class VameInterface(BaseTemporalAlignmentInterface):
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         self._timestamps = np.asarray(aligned_timestamps)
 
+    def _get_pose_estimation(self, nwbfile: NWBFile):
+        pose_estimation_containers = {
+            obj.name: obj for obj in nwbfile.objects.values() if type(obj).__name__ == "PoseEstimation"
+        }
+        if self.pose_estimation_name in pose_estimation_containers:
+            return pose_estimation_containers[self.pose_estimation_name]
+        if pose_estimation_containers:
+            raise ValueError(
+                f"No PoseEstimation container named '{self.pose_estimation_name}' was found in the NWB file. "
+                f"Available PoseEstimation containers: {list(pose_estimation_containers)}."
+            )
+        raise ValueError(
+            f"No PoseEstimation container named '{self.pose_estimation_name}' was found in the NWB file. "
+            "No PoseEstimation containers exist in the file — ensure the pose estimation interface "
+            "runs before VameInterface."
+        )
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -315,7 +333,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         pose_estimation = None
         behavior_module = get_module(nwbfile, name="behavior", description="Processed behavioral data.")
         if self.pose_estimation_name is not None:
-            pose_estimation = behavior_module.data_interfaces.get(self.pose_estimation_name)
+            pose_estimation = self._get_pose_estimation(nwbfile)
 
         vame_project = VAMEProject(
             name=project_name,
