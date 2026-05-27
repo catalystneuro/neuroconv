@@ -46,7 +46,14 @@ def _is_dict_based_metadata(metadata: dict) -> bool:
 
     Returns True for dict-based, False for list-based.
     """
-    if "Devices" in metadata:
+    # A dict-valued top-level ``Devices`` is the dict-based shape. A list-valued ``Devices``
+    # is the legacy top-level emission used by unmigrated interfaces such as
+    # ``SpikeGLXNIDQInterface``, ``SpikeGLXSyncChannelInterface``, ``IntanAnalogInterface``,
+    # and ``IntanStimInterface``: ``metadata["Devices"] = [device_dict, ...]``. Those must
+    # route to the old-list-format path so downstream code that iterates the list (e.g.
+    # ``for device in metadata["Devices"]: ...``) keeps working until each interface is
+    # migrated to emit dict-shaped ``Devices``.
+    if isinstance(metadata.get("Devices"), dict):
         return True
 
     ecephys = metadata.get("Ecephys", {})
@@ -154,15 +161,7 @@ def _add_electrode_groups_to_nwbfile(
     if auto_entries:
         # The synthesized entries reference the default device under default_device_key.
         # Ensure metadata["Devices"] carries it so the lookup below resolves uniformly.
-        devices = metadata.get("Devices")
-        if isinstance(devices, list):
-            # Some unmigrated interfaces (e.g. SpikeGLXNIDQInterface) still emit
-            # ``metadata["Devices"]`` as a legacy top-level list. Migrate it into
-            # dict form keyed by ``name`` so the lookup chain below resolves uniformly.
-            metadata["Devices"] = {entry.get("name", f"device_{i}"): entry for i, entry in enumerate(devices)}
-        elif not isinstance(devices, dict):
-            metadata["Devices"] = {}
-        metadata["Devices"].setdefault(default_device_key, default_device_metadata)
+        metadata.setdefault("Devices", {}).setdefault(default_device_key, default_device_metadata)
 
     required_fields = ("name", "description", "location")
     for group_metadata in (*user_entries, *auto_entries):
