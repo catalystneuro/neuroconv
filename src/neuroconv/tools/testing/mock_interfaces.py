@@ -790,6 +790,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         seed: int = 0,
         verbose: bool = False,
         metadata_key: str = "MockPoseEstimation",
+        pose_estimation_metadata_key: str | None = None,
     ):
         """
         Initialize a mock pose estimation interface.
@@ -806,7 +807,19 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
             Control verbosity, by default False.
         metadata_key : str, default: "MockPoseEstimation"
             Metadata key for this interface.
+        pose_estimation_metadata_key : str, optional
+            Deprecated. Renamed to ``metadata_key``; passing it forwards the value to
+            ``metadata_key`` and will be removed on or after December 2026.
         """
+        if pose_estimation_metadata_key is not None:
+            warnings.warn(
+                "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
+                "will be removed on or after December 2026. Please use 'metadata_key' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            metadata_key = pose_estimation_metadata_key
+
         self.num_samples = num_samples
         self.num_nodes = num_nodes
         self.metadata_key = metadata_key
