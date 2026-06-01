@@ -965,30 +965,38 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
 
         pose_metadata = metadata["Behavior"]["Pose"]
         container_entry = pose_metadata["PoseEstimations"][self.metadata_key]
-        device_entry = metadata["Devices"][container_entry["device_metadata_key"]]
-        skeleton_entry = pose_metadata["Skeletons"][container_entry["skeleton_metadata_key"]]
 
         behavior_module = get_module(nwbfile, "behavior")
 
-        # Lazy device creation: reuse an existing Device with the same name, otherwise create one.
-        # This lets multiple interfaces share a device by pointing their entries at the same
-        # ``device_metadata_key`` (or at distinct keys whose entries share the same ``name``).
-        device_name = device_entry["name"]
-        if device_name in nwbfile.devices:
-            device = nwbfile.devices[device_name]
-        else:
-            device = Device(name=device_name, description=device_entry.get("description", ""))
-            nwbfile.add_device(device)
+        # Lazy device creation: only write a device when the container references one. ndx-pose
+        # makes ``devices`` optional, so an absent ``device_metadata_key`` means "no device", not a
+        # fabricated placeholder. Reuse an existing Device with the same name when present, which
+        # lets multiple interfaces share a device by pointing at the same ``device_metadata_key``.
+        device = None
+        device_metadata_key = container_entry.get("device_metadata_key")
+        if device_metadata_key is not None:
+            device_entry = metadata["Devices"][device_metadata_key]
+            device_name = device_entry["name"]
+            if device_name in nwbfile.devices:
+                device = nwbfile.devices[device_name]
+            else:
+                device = Device(name=device_name, description=device_entry.get("description", ""))
+                nwbfile.add_device(device)
 
-        # Lazy skeleton creation: reuse an existing Skeleton with the same name when present.
-        skeleton_name = skeleton_entry["name"]
-        existing_skeletons = (
-            behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}
-        )
-        if skeleton_name in existing_skeletons:
-            skeleton = existing_skeletons[skeleton_name]
-        else:
-            skeleton = Skeleton(name=skeleton_name, nodes=skeleton_entry["nodes"], edges=self.edges)
+        # Lazy skeleton creation: only write a skeleton when the container references one. Reuse an
+        # existing Skeleton with the same name when present.
+        skeleton = None
+        skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
+        if skeleton_metadata_key is not None:
+            skeleton_entry = pose_metadata["Skeletons"][skeleton_metadata_key]
+            skeleton_name = skeleton_entry["name"]
+            existing_skeletons = (
+                behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}
+            )
+            if skeleton_name in existing_skeletons:
+                skeleton = existing_skeletons[skeleton_name]
+            else:
+                skeleton = Skeleton(name=skeleton_name, nodes=skeleton_entry["nodes"], edges=self.edges)
 
         pose_estimation_series_metadata = container_entry["PoseEstimationSeries"]
         pose_estimation_series = []
@@ -1011,17 +1019,22 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
             description=container_entry["description"],
             pose_estimation_series=pose_estimation_series,
             skeleton=skeleton,
-            devices=[device],
+            devices=[device] if device is not None else None,
             scorer=container_entry["scorer"],
             source_software=container_entry["source_software"],
-            dimensions=np.array(container_entry["dimensions"], dtype="uint16"),
+            dimensions=(
+                np.array(container_entry["dimensions"], dtype="uint16")
+                if container_entry.get("dimensions") is not None
+                else None
+            ),
             original_videos=container_entry.get("original_videos"),
             labeled_videos=container_entry.get("labeled_videos"),
         )
 
         behavior_module.add(pose_estimation)
-        if "Skeletons" not in behavior_module.data_interfaces:
-            skeletons = Skeletons(skeletons=[skeleton])
-            behavior_module.add(skeletons)
-        elif skeleton.name not in behavior_module["Skeletons"].skeletons:
-            behavior_module["Skeletons"].add_skeletons(skeleton)
+        if skeleton is not None:
+            if "Skeletons" not in behavior_module.data_interfaces:
+                skeletons = Skeletons(skeletons=[skeleton])
+                behavior_module.add(skeletons)
+            elif skeleton.name not in behavior_module["Skeletons"].skeletons:
+                behavior_module["Skeletons"].add_skeletons(skeleton)

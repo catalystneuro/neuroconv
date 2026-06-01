@@ -306,6 +306,56 @@ class TestPoseEstimationMetadata:
         assert container_a.skeleton.name == "SkeletonA"
         assert container_b.skeleton.name == "SkeletonB"
 
+    def test_device_and_skeleton_omitted_are_not_written(self):
+        """A container that references no device or skeleton writes neither object.
+
+        ndx-pose makes ``devices`` and ``skeleton`` optional, so the writer only creates objects the
+        metadata references: a container with no ``device_metadata_key`` / ``skeleton_metadata_key``
+        produces a ``PoseEstimation`` with no device and no skeleton, and no ``Skeletons`` collection
+        is added to the behavior module. The writer never fabricates a placeholder.
+        """
+        metadata_key = "no_device_no_skeleton"
+        bodyparts = ["head", "neck", "left_shoulder"]
+
+        interface = MockPoseEstimationInterface(num_samples=50, num_nodes=3, metadata_key=metadata_key)
+
+        metadata = {
+            "Behavior": {
+                "Pose": {
+                    "PoseEstimations": {
+                        metadata_key: {
+                            "name": "PoseNoDeviceNoSkeleton",
+                            "description": "Pose estimation without a device or skeleton.",
+                            "source_software": "MockSourceSoftware",
+                            "scorer": "MockScorer",
+                            # No device, so the per-camera fields (dimensions, original_videos,
+                            # labeled_videos) are omitted too: they are parallel to the cameras.
+                            "PoseEstimationSeries": {
+                                bodypart: {
+                                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                                    "description": f"Mock pose estimation series for {bodypart}.",
+                                    "unit": "pixels",
+                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                                    "confidence_definition": "Softmax output of the deep neural network.",
+                                }
+                                for bodypart in bodyparts
+                            },
+                        },
+                    },
+                },
+            },
+        }
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        assert len(nwbfile.devices) == 0
+        behavior_module = nwbfile.processing["behavior"]
+        assert "Skeletons" not in behavior_module.data_interfaces
+        container = behavior_module["PoseNoDeviceNoSkeleton"]
+        assert container.skeleton is None
+        assert not container.devices
+
     def test_user_overrides_propagate_to_nwbfile(self):
         """Names supplied in the metadata dict flow through ``add_to_nwbfile`` into the NWB containers.
 
