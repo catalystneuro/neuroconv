@@ -299,7 +299,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         stub_test: bool = False,
         stub_samples: int = 100,
         include_roi_centroids: bool = True,
-        include_roi_acceptance: bool = True,
+        include_roi_acceptance: bool | None = None,
         mask_type: str | None = "image",  # Literal["image", "pixel", "voxel"]
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
@@ -321,7 +321,9 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         include_roi_centroids : bool, optional
             Whether to include the centroids of regions of interest (ROIs) in the data, by default True.
         include_roi_acceptance : bool, optional
-            Whether to include acceptance status of ROIs, by default True.
+            Deprecated and ignored. ROI acceptance is now written automatically as a
+            column on the PlaneSegmentation table whenever the segmentation extractor
+            exposes acceptance/rejection through its property system.
         mask_type : str, default: 'image'
             There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
 
@@ -375,6 +377,16 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
             iterator_options = positional_values.get("iterator_options", iterator_options)
 
+        if include_roi_acceptance is not None:
+            warnings.warn(
+                "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
+                "written automatically as a column on the PlaneSegmentation table whenever the "
+                "segmentation extractor exposes acceptance/rejection through its property system. "
+                "This parameter will be removed on or after November 2026.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         if plane_segmentation_name is not None:
             warnings.warn(
                 "`plane_segmentation_name` is deprecated. The dict-based metadata format uses "
@@ -392,7 +404,6 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             stub_test=stub_test,
             stub_samples=stub_samples,
             include_roi_centroids=include_roi_centroids,
-            include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
             plane_segmentation_name=self.plane_segmentation_name,
             iterator_options=iterator_options,
