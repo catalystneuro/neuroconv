@@ -18,10 +18,9 @@ def _read_isxd_outer_metadata(file_path) -> dict:
 
     We read this directly from disk (rather than going through the pyisx C
     API) because pyisx's `Movie.get_acquisition_info()` only surfaces a
-    curated subset of the JSON, and the fields we need to detect multiplane
-    (`hasFrameHeaderFooter`, `timingInfo.numTimes`, and the
-    `extraProperties.microscope.multiplane` block) live in the full header
-    rather than that subset.
+    curated subset of the JSON, and the `extraProperties.microscope.multiplane`
+    block we use to detect multiplane recordings lives in the full metadata
+    block rather than that subset.
     """
     import json
     import struct
@@ -34,133 +33,42 @@ def _read_isxd_outer_metadata(file_path) -> dict:
     return json.loads(payload)
 
 
-def _read_per_frame_efocus(file_path, num_frames_to_read: int) -> list[int]:
-    """
-    Read the electronic-focus value of each of the first N frames.
-
-    Inscopix microscopes have an electrically tunable lens (ETL) whose focal
-    depth is recorded per frame. In single-plane recordings the ETL is parked
-    at a fixed depth and every frame's efocus is identical. In multiplane
-    recordings the ETL cycles through 2-4 programmed depths between
-    consecutive frames, so efocus rotates with a period equal to the plane
-    count. The per-frame efocus value is therefore the authoritative signal
-    for plane count, more reliable than any configuration flag in the JSON
-    header (which records what the user configured in IDPS, not necessarily
-    what was acquired).
-
-    Per-frame headers are 2560-uint16 lines that bracket each frame's pixel
-    data when the JSON's `hasFrameHeaderFooter` is true. They encode scalar
-    metadata into the upper 12 bits of certain pixel positions: `efocus`
-    occupies positions FRAME_META_EFOCUS (1270) and FRAME_META_EFOCUS+1 as a
-    16-bit little-endian value. Each byte is shifted right by
-    `metadataStringLength` (4) to recover the value, per
-    `isxMosaicMovieFile.cpp::readFrameMetadata` in isxcore.
-
-    Caller is responsible for confirming `hasFrameHeaderFooter` is true; this
-    function will return garbage on files that do not have per-frame headers
-    (the C library does not signal an error in that case).
-    """
-    import ctypes
-
-    import isx
-    from isx._internal import IsxMoviePtr, c_api
-
-    # Bind the symbol pyisx leaves unbound. `argtypes` pins the C calling
-    # convention; without it ctypes would call with default int promotion and
-    # likely segfault when it pushes a pointer through an int slot.
-    if not hasattr(c_api.isx_movie_get_frame_header, "argtypes") or not c_api.isx_movie_get_frame_header.argtypes:
-        c_api.isx_movie_get_frame_header.argtypes = [
-            IsxMoviePtr,
-            ctypes.c_size_t,
-            ctypes.POINTER(ctypes.c_uint16),
-        ]
-
-    # Layout constants from isxcore. NUM_HEADER_VALUES=2560 is the row width;
-    # METADATA_BIT_SHIFT=4 is `metadataStringLength`; EFOCUS_OFFSET=1270 is
-    # FRAME_META_EFOCUS, the first of two positions holding the 16-bit value.
-    NUM_HEADER_VALUES = 2560
-    METADATA_BIT_SHIFT = 4
-    METADATA_BYTE_MASK = 0xFF
-    EFOCUS_OFFSET = 1270
-
-    movie = isx.Movie.read(str(file_path))
-
-    # One ctypes-managed buffer reused across frames; the C function memcpys
-    # 2560 uint16 values into it on each call.
-    header_buffer = (ctypes.c_uint16 * NUM_HEADER_VALUES)()
-
-    efocus_values: list[int] = []
-    for frame_index in range(num_frames_to_read):
-        c_api.isx_movie_get_frame_header(movie._ptr, frame_index, header_buffer)
-        low_byte = (header_buffer[EFOCUS_OFFSET] >> METADATA_BIT_SHIFT) & METADATA_BYTE_MASK
-        high_byte = (header_buffer[EFOCUS_OFFSET + 1] >> METADATA_BIT_SHIFT) & METADATA_BYTE_MASK
-        efocus_values.append((high_byte << 8) | low_byte)
-    return efocus_values
-
-
-def _detect_efocus_cycle(efocus_values: list[int]) -> int | None:
-    """
-    Return the cycle period if the efocus sequence cycles, otherwise None.
-
-    A genuine multiplane recording produces an efocus sequence that repeats
-    with a fixed short period N equal to the plane count (e.g. period 3 for
-    a 3-plane config). Constant sequences (single-plane) return None.
-    Irregular sequences with no period (dropped frames, dual-color channel
-    switching, lens settling artifacts) also return None.
-
-    Inscopix's miniscopes do not advertise plane counts above ~4, so we cap
-    the search at period 6 to avoid finding spurious long-period matches in
-    short sequences.
-    """
-    if len(set(efocus_values)) <= 1:
-        return None
-    num_values = len(efocus_values)
-    max_period = min(num_values // 2, 6)
-    for period in range(2, max_period + 1):
-        if all(efocus_values[i] == efocus_values[i + period] for i in range(num_values - period)):
-            return period
-    return None
-
-
 def is_file_multiplane(file_path) -> bool:
     """
     Detect whether an .isxd file is a multiplane recording.
 
-    Layered detection:
-    1. If the file has per-frame headers (`hasFrameHeaderFooter` true) and
-       enough frames for a robust cycle test, sample efocus across the first
-       few frames and return whether they cycle. This is authoritative
-       because it observes what the ETL actually did during acquisition.
-    2. Otherwise, fall back to the JSON `microscope.multiplane.enabled` flag,
-       which records what was configured in IDPS but may disagree with the
-       recording (older recordings, GUI toggles after configuration, etc.).
-    3. If neither signal is available, treat as single-plane and warn so the
-       user knows we could not verify.
+    Reads the ``microscope.multiplane.enabled`` flag from the JSON metadata
+    block at the end of the file. This flag is written by the Inscopix
+    acquisition software (IDPS) and records whether multiplane mode was enabled
+    for the recording. When the ``microscope.multiplane`` block is absent
+    (older files, or files rewritten by ``isx.Movie.write``, which drops the
+    whole ``extraProperties`` tree) we cannot tell, so we assume single-plane.
+
+    This trusts the acquisition configuration rather than reading the per-frame
+    electronic-focus (efocus) values directly. For raw acquisition files the
+    flag and the efocus cycling agree by construction, so the flag is
+    sufficient. A per-frame efocus reader (which would additionally catch
+    derived/processed files whose inherited flag no longer matches their actual
+    frames) was designed and deliberately left out, since that case can only
+    arise from closed IDPS processing and could not be shown to be a real
+    input. See the "Inscopix multiplane detection" vault note for the efocus
+    design (both the byte-read and ctypes-binding variants) and the full
+    reasoning.
     """
     import warnings
 
     metadata = _read_isxd_outer_metadata(file_path)
-
-    if metadata.get("hasFrameHeaderFooter"):
-        num_recorded_frames = metadata.get("timingInfo", {}).get("numTimes", 0)
-        # Twelve consecutive frames let _detect_efocus_cycle confirm any cycle
-        # of period 2-6 with at least one full repetition past the first.
-        num_frames_to_check = min(num_recorded_frames, 12)
-        if num_frames_to_check >= 4:
-            efocus_values = _read_per_frame_efocus(file_path, num_frames_to_check)
-            return _detect_efocus_cycle(efocus_values) is not None
-
-    extra_properties = metadata.get("extraProperties") or {}
-    multiplane_block = (extra_properties.get("microscope") or {}).get("multiplane")
+    microscope = (metadata.get("extraProperties") or {}).get("microscope") or {}
+    multiplane_block = microscope.get("multiplane")
     if multiplane_block is not None:
         return bool(multiplane_block.get("enabled"))
 
     warnings.warn(
-        f"Could not verify plane count for {file_path}; the file has neither per-frame "
-        "headers nor a `microscope.multiplane` block in its JSON metadata. Proceeding as "
-        "single-plane. If this is a multiplane recording, the resulting NWB file will be "
-        "incorrect. Please report files that hit this path at "
-        "https://github.com/catalystneuro/neuroconv/issues so we can extend the detection.",
+        f"Could not determine plane count for {file_path}: the file has no "
+        "`microscope.multiplane` block in its JSON metadata (its extraProperties may have "
+        "been stripped, e.g. by isx.Movie.write). Proceeding as single-plane. If this is a "
+        "multiplane recording the resulting NWB file will be incorrect; please report such "
+        "files at https://github.com/catalystneuro/neuroconv/issues.",
         stacklevel=2,
     )
     return False
