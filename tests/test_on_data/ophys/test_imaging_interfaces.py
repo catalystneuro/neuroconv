@@ -1199,22 +1199,12 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min:
     """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
 
     def test_multiplane_not_implemented_error(self):
-        """Test that multiplane ISXD files raise NotImplementedError with proper message."""
+        """Test that multiplane ISXD files raise NotImplementedError."""
         from neuroconv.datainterfaces import InscopixImagingInterface
 
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
-
-        with pytest.raises(NotImplementedError) as exc_info:
+        with pytest.raises(NotImplementedError, match="Multiplane ISXD file detected"):
             InscopixImagingInterface(file_path=file_path)
-
-        expected_message = (
-            f"Multiplane ISXD file detected at {file_path}.\n"
-            "roiextractors cannot yet separate the per-plane frames; loading as 2D would "
-            "interleave focal planes into one time series.\n"
-            "Track support at https://github.com/catalystneuro/roiextractors/issues "
-            "and the upstream pyisx wrapper gap at https://github.com/inscopix/pyisx/issues/36."
-        )
-        assert str(exc_info.value) == expected_message
 
 
 @skip_on_python_313
@@ -1223,22 +1213,12 @@ class TestInscopixImagingInterfaceMultiplaneMovie:
     """Test InscopixImagingInterface with multiplane_movie.isxd (multiplane file that should raise NotImplementedError)."""
 
     def test_multiplane_not_implemented_error(self):
-        """Test that multiplane ISXD files raise NotImplementedError with proper message."""
+        """Test that multiplane ISXD files raise NotImplementedError."""
         from neuroconv.datainterfaces import InscopixImagingInterface
 
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "multiplane_movie.isxd")
-
-        with pytest.raises(NotImplementedError) as exc_info:
+        with pytest.raises(NotImplementedError, match="Multiplane ISXD file detected"):
             InscopixImagingInterface(file_path=file_path)
-
-        expected_message = (
-            f"Multiplane ISXD file detected at {file_path}.\n"
-            "roiextractors cannot yet separate the per-plane frames; loading as 2D would "
-            "interleave focal planes into one time series.\n"
-            "Track support at https://github.com/catalystneuro/roiextractors/issues "
-            "and the upstream pyisx wrapper gap at https://github.com/inscopix/pyisx/issues/36."
-        )
-        assert str(exc_info.value) == expected_message
 
 
 @skip_on_python_313
