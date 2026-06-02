@@ -2695,6 +2695,26 @@ class TestAddRecording:
                 iterator_type=None,
             )
 
+    def test_metadata_passed_without_metadata_key_raises(self):
+        """Passing metadata without a metadata_key raises.
+
+        ``metadata_key`` selects which ``ElectricalSeries`` entry to write, so it is required
+        whenever metadata is passed. The only metadata-free path is passing no metadata at all,
+        which writes the recording with default metadata.
+        """
+        recording = generate_recording()
+        nwbfile = mock_NWBFile()
+
+        metadata = {"Ecephys": {"ElectricalSeries": {"my_key": {"name": "ElectricalSeries"}}}}
+
+        expected_error = re.escape(
+            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
+            "`metadata['Ecephys']['ElectricalSeries']` entry to write, so it is required whenever "
+            "metadata is passed. To write the recording with default metadata, pass no metadata at all."
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
     def test_metadata_not_mutated(self):
         """add_recording_to_nwbfile does not mutate the input metadata dict."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])

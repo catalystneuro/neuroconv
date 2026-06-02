@@ -265,6 +265,13 @@ def add_recording_to_nwbfile(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
+    if metadata is not None and metadata_key is None and _is_dict_based_metadata(metadata):
+        raise ValueError(
+            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
+            "`metadata['Ecephys']['ElectricalSeries']` entry to write, so it is required whenever "
+            "metadata is passed. To write the recording with default metadata, pass no metadata at all."
+        )
+
     if metadata is None:
         metadata = _get_ecephys_metadata_placeholders()
 
