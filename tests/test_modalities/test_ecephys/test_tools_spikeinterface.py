@@ -2613,10 +2613,8 @@ class TestAddRecording:
             iterator_type=None,
         )
 
-        # Device, electrode group, and electrodes-table rows are all de-duplicated across calls.
-        # The disambiguation in ``_build_channel_id_to_electrodes_table_map`` matches by
-        # ``f"{group_name}_{electrode_name}_{channel_name}"``, so the second call resolves all
-        # channels to the existing rows rather than appending duplicates.
+        # Device, electrode group, and electrodes-table rows are all de-duplicated across calls:
+        # the second recording's channels resolve to the existing rows rather than appending duplicates.
         assert list(nwbfile.devices.keys()) == ["SharedProbe"]
         device = nwbfile.devices["SharedProbe"]
 
