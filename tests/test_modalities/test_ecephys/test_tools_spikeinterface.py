@@ -2770,6 +2770,68 @@ class TestAddRecording:
 
         assert metadata == metadata_before, "Metadata was mutated on the default-generation path"
 
+    def test_partially_specified_electrode_groups(self):
+        """Specified and default-generated electrode groups coexist correctly in one call.
+
+        A recording can have some channel groups the user annotated and others they left
+        unspecified. The specified groups must keep their user fields and device; the unspecified
+        groups must get defaults; and every channel must map to its correct group.
+        """
+        recording = generate_recording(sampling_frequency=1.0, num_channels=4, durations=[1.0])
+        recording.set_channel_groups([0, 0, 1, 1])
+        nwbfile = mock_NWBFile()
+
+        metadata = {
+            "Devices": {
+                "v1_probe": {"name": "V1 Probe", "description": "annotated probe"},
+            },
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    # Only group "0" is described; group "1" is left to the default-generation path.
+                    "v1_probe": {
+                        "name": "0",
+                        "description": "V1 shank",
+                        "location": "V1",
+                        "device_metadata_key": "v1_probe",
+                    },
+                },
+                "ElectricalSeries": {
+                    "session": {"name": "ElectricalSeries", "description": "raw"},
+                },
+            },
+        }
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="session",
+            iterator_type=None,
+        )
+
+        defaults = _get_ecephys_metadata_placeholders()
+        default_device_name = defaults["Devices"]["default_metadata_key"]["name"]
+        default_location = defaults["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]["location"]
+
+        # The user device and the default device coexist.
+        assert set(nwbfile.devices) == {"V1 Probe", default_device_name}
+
+        # The specified group keeps its fields and its device.
+        group_user = nwbfile.electrode_groups["0"]
+        assert group_user.location == "V1"
+        assert group_user.device is nwbfile.devices["V1 Probe"]
+
+        # The unspecified group is generated with defaults and the default device.
+        group_default = nwbfile.electrode_groups["1"]
+        assert group_default.location == default_location
+        assert group_default.device is nwbfile.devices[default_device_name]
+
+        # Every channel maps to the right group.
+        electrodes_df = nwbfile.electrodes.to_dataframe()
+        assert electrodes_df["group_name"].tolist() == ["0", "0", "1", "1"]
+        expected_groups = [group_user, group_user, group_default, group_default]
+        assert list(electrodes_df["group"]) == expected_groups
+
     def test_multiple_devices(self):
         """Channels split across two devices, each its own ElectrodeGroup.
 
