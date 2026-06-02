@@ -141,7 +141,6 @@ def _add_electrode_groups_to_nwbfile(
     placeholders = _get_ecephys_metadata_placeholders()
     default_group_template = placeholders["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]
     default_device_metadata = placeholders["Devices"]["default_metadata_key"]
-    default_device_key = default_group_template["device_metadata_key"]
 
     electrode_groups_metadata = metadata.get("Ecephys", {}).get("ElectrodeGroups", {})
     channel_group_names = set(_get_group_name(recording=recording).tolist())
@@ -154,14 +153,9 @@ def _add_electrode_groups_to_nwbfile(
             "name": group_name,
             "description": default_group_template["description"],
             "location": default_group_template["location"],
-            "device_metadata_key": default_device_key,
         }
         for group_name in sorted(missing_channel_group_names)
     ]
-    if auto_entries:
-        # The synthesized entries reference the default device under default_device_key.
-        # Ensure metadata["Devices"] carries it so the lookup below resolves uniformly.
-        metadata.setdefault("Devices", {}).setdefault(default_device_key, default_device_metadata)
 
     required_fields = ("name", "description", "location")
     for group_metadata in (*user_entries, *auto_entries):

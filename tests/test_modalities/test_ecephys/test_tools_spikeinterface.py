@@ -2738,6 +2738,38 @@ class TestAddRecording:
 
         assert metadata == metadata_before, "Metadata was mutated"
 
+    def test_metadata_not_mutated_when_generating_defaults(self):
+        """Automatic addition of required fields for unspecified metadata must not modify the caller's metadata.
+
+        Regression test for the case the sibling ``test_metadata_not_mutated`` does not cover:
+        there every component is specified, whereas here the recording's channel groups are left
+        unspecified so the pipeline has to generate defaults for them. Generating those defaults
+        must leave the input metadata unchanged, so a dict reused across interfaces is never
+        silently altered.
+        """
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        # A user who has not annotated the probe simply omits ElectrodeGroups (and Devices)
+        # rather than passing empty dicts. Every channel group then falls to the auto path,
+        # and a mutation would materialize a "Devices" key the user never wrote.
+        metadata = {
+            "Ecephys": {
+                "ElectricalSeries": {"session": {"name": "ElectricalSeries", "description": "raw"}},
+            },
+        }
+        metadata_before = deepcopy(metadata)
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="session",
+            iterator_type=None,
+        )
+
+        assert metadata == metadata_before, "Metadata was mutated on the default-generation path"
+
     def test_multiple_devices(self):
         """Channels split across two devices, each its own ElectrodeGroup.
 
