@@ -216,8 +216,11 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 "Provide at least one of motif_labels_file_path, latent_vectors_file_path, or "
                 "community_labels_file_path, or call set_aligned_timestamps()."
             )
-        n_frames = np.load(reference_file).shape[0]
-        return np.arange(n_frames) / self._sampling_frequency_hz
+        num_frames = np.load(reference_file).shape[0]
+        time_window = self._vame_config.get("time_window", 0)
+        offset_frames = int(time_window // 2)
+        starting_time = offset_frames / self._sampling_frequency_hz
+        return starting_time + np.arange(num_frames) / self._sampling_frequency_hz
 
     def get_timestamps(self) -> np.ndarray:
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
