@@ -105,14 +105,14 @@ class VameInterface(BaseTemporalAlignmentInterface):
         """
         import ndx_vame  # noqa: F401 – ensure ndx-vame namespace is registered
 
-        self.vame_config_dict = load_dict_from_file(file_path)
+        self._vame_config = load_dict_from_file(file_path)
 
-        self.motif_labels_file_path = Path(motif_labels_file_path) if motif_labels_file_path else None
-        self.latent_vectors_file_path = Path(latent_vectors_file_path) if latent_vectors_file_path else None
-        self.community_labels_file_path = Path(community_labels_file_path) if community_labels_file_path else None
-        self.sampling_frequency_hz = sampling_frequency_hz
-        self.metadata_key = metadata_key
-        self.pose_estimation_name = pose_estimation_name
+        self._motif_labels_file_path = Path(motif_labels_file_path) if motif_labels_file_path else None
+        self._latent_vectors_file_path = Path(latent_vectors_file_path) if latent_vectors_file_path else None
+        self._community_labels_file_path = Path(community_labels_file_path) if community_labels_file_path else None
+        self._sampling_frequency_hz = sampling_frequency_hz
+        self._metadata_key = metadata_key
+        self._pose_estimation_name = pose_estimation_name
 
         super().__init__(
             file_path=file_path,
@@ -178,36 +178,38 @@ class VameInterface(BaseTemporalAlignmentInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
-        vame_project_metadata: dict = dict(name=self.metadata_key)
+        vame_project_metadata: dict = dict(name=self._metadata_key)
 
-        if self.motif_labels_file_path is not None:
+        if self._motif_labels_file_path is not None:
             vame_project_metadata["MotifSeries"] = dict(name="MotifSeries", description="VAME behavioral motif labels.")
 
-        if self.latent_vectors_file_path is not None:
-            zdims = self.vame_config_dict.get("zdims")
+        if self._latent_vectors_file_path is not None:
+            zdims = self._vame_config.get("zdims")
             dims_info = f" ({zdims} dimensions per frame)" if zdims else ""
             vame_project_metadata["LatentSpaceSeries"] = dict(
                 name="LatentSpaceSeries",
                 description=f"VAME latent-space embeddings{dims_info}.",
             )
 
-        if self.community_labels_file_path is not None:
+        if self._community_labels_file_path is not None:
             vame_project_metadata["CommunitySeries"] = dict(
                 name="CommunitySeries",
                 description="VAME community labels grouping motifs into higher-level behavioral states.",
             )
 
-        metadata["VAME"] = {self.metadata_key: vame_project_metadata}
+        metadata["VAME"] = {self._metadata_key: vame_project_metadata}
 
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        if self.sampling_frequency_hz is None:
+        if self._sampling_frequency_hz is None:
             raise ValueError(
                 "VameInterface cannot generate original timestamps without a sampling_frequency_hz. "
                 "Provide sampling_frequency_hz at construction or call set_aligned_timestamps()."
             )
-        reference_file = self.motif_labels_file_path or self.latent_vectors_file_path or self.community_labels_file_path
+        reference_file = (
+            self._motif_labels_file_path or self._latent_vectors_file_path or self._community_labels_file_path
+        )
         if reference_file is None:
             raise ValueError(
                 "VameInterface cannot generate original timestamps without any data file. "
@@ -215,7 +217,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 "community_labels_file_path, or call set_aligned_timestamps()."
             )
         n_frames = np.load(reference_file).shape[0]
-        return np.arange(n_frames) / self.sampling_frequency_hz
+        return np.arange(n_frames) / self._sampling_frequency_hz
 
     def get_timestamps(self) -> np.ndarray:
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
@@ -228,15 +230,15 @@ class VameInterface(BaseTemporalAlignmentInterface):
         pose_estimation_containers = {
             obj.name: obj for obj in nwbfile.objects.values() if type(obj).__name__ == "PoseEstimation"
         }
-        if self.pose_estimation_name in pose_estimation_containers:
-            return pose_estimation_containers[self.pose_estimation_name]
+        if self._pose_estimation_name in pose_estimation_containers:
+            return pose_estimation_containers[self._pose_estimation_name]
         if pose_estimation_containers:
             raise ValueError(
-                f"No PoseEstimation container named '{self.pose_estimation_name}' was found in the NWB file. "
+                f"No PoseEstimation container named '{self._pose_estimation_name}' was found in the NWB file. "
                 f"Available PoseEstimation containers: {list(pose_estimation_containers)}."
             )
         raise ValueError(
-            f"No PoseEstimation container named '{self.pose_estimation_name}' was found in the NWB file. "
+            f"No PoseEstimation container named '{self._pose_estimation_name}' was found in the NWB file. "
             "No PoseEstimation containers exist in the file — ensure the pose estimation interface "
             "runs before VameInterface."
         )
@@ -283,7 +285,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         if metadata is not None:
             default_metadata.deep_update(metadata)
 
-        vame_metadata = default_metadata["VAME"][self.metadata_key]
+        vame_metadata = default_metadata["VAME"][self._metadata_key]
         project_name = vame_metadata["name"]
 
         n_frames = min(100, len(self.get_timestamps())) if stub_test else None
@@ -301,8 +303,8 @@ class VameInterface(BaseTemporalAlignmentInterface):
         # LatentSpaceSeries (optional)
         latent_series = None
         latent_series_metadata = vame_metadata.get("LatentSpaceSeries")
-        if self.latent_vectors_file_path is not None and latent_series_metadata is not None:
-            latent_data = np.load(self.latent_vectors_file_path)[:n_frames].astype(np.float32)
+        if self._latent_vectors_file_path is not None and latent_series_metadata is not None:
+            latent_data = np.load(self._latent_vectors_file_path)[:n_frames].astype(np.float32)
             latent_series = LatentSpaceSeries(
                 data=latent_data,
                 **latent_series_metadata,
@@ -312,8 +314,8 @@ class VameInterface(BaseTemporalAlignmentInterface):
         # MotifSeries (optional)
         motif_series = None
         motif_metadata = vame_metadata.get("MotifSeries")
-        if self.motif_labels_file_path is not None and motif_metadata is not None:
-            motif_data = np.load(self.motif_labels_file_path)[:n_frames].astype(np.int32)
+        if self._motif_labels_file_path is not None and motif_metadata is not None:
+            motif_data = np.load(self._motif_labels_file_path)[:n_frames].astype(np.int32)
             motif_kwargs: dict = dict(data=motif_data, **motif_metadata, **timing_kwargs)
             if latent_series is not None:
                 motif_kwargs["latent_space_series"] = latent_series
@@ -322,8 +324,8 @@ class VameInterface(BaseTemporalAlignmentInterface):
         # CommunitySeries (optional)
         community_series = None
         community_metadata = vame_metadata.get("CommunitySeries")
-        if self.community_labels_file_path is not None and community_metadata is not None:
-            community_data = np.load(self.community_labels_file_path)[:n_frames].astype(np.int32)
+        if self._community_labels_file_path is not None and community_metadata is not None:
+            community_data = np.load(self._community_labels_file_path)[:n_frames].astype(np.int32)
             community_kwargs: dict = dict(
                 data=community_data,
                 **community_metadata,
@@ -335,7 +337,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         # Optional link to an upstream PoseEstimation container
         pose_estimation = None
         behavior_module = get_module(nwbfile, name="behavior", description="Processed behavioral data.")
-        if self.pose_estimation_name is not None:
+        if self._pose_estimation_name is not None:
             pose_estimation = self._get_pose_estimation(nwbfile)
 
         vame_project = VAMEProject(
@@ -344,7 +346,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
             latent_space_series=latent_series,
             motif_series=motif_series,
             community_series=community_series,
-            vame_config=json.dumps(self.vame_config_dict),
+            vame_config=json.dumps(self._vame_config),
         )
 
         behavior_module.add(vame_project)
