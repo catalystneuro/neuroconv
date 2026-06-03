@@ -155,6 +155,38 @@ class TestVameInterfaceHmm(DataInterfaceTestMixin):
             assert_array_equal(project.motif_series.data[:], np.load(HMM_LABELS_PATH).astype(np.int32))
 
 
+class TestVameInterfaceTimestamps:
+    """Verify that get_original_timestamps() applies the time_window/2 offset."""
+
+    def test_starting_time_offset(self):
+        sampling_frequency_hz = 30.0
+        interface = VameInterface(
+            file_path=str(CONFIG_PATH),
+            motif_labels_file_path=str(MOTIF_LABELS_PATH),
+            sampling_frequency_hz=sampling_frequency_hz,
+        )
+        timestamps = interface.get_original_timestamps()
+        expected_offset = 0.5
+        assert timestamps[0] == expected_offset, f"Expected starting time {expected_offset}, got {timestamps[0]}"
+
+    def test_no_time_window_in_config(self, tmp_path):
+        """When time_window is absent from config the offset is zero."""
+        import yaml
+
+        config = {"project_name": "test", "zdims": 10}
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(yaml.dump(config))
+
+        sampling_frequency_hz = 10.0
+        interface = VameInterface(
+            file_path=str(config_path),
+            motif_labels_file_path=str(MOTIF_LABELS_PATH),
+            sampling_frequency_hz=sampling_frequency_hz,
+        )
+        timestamps = interface.get_original_timestamps()
+        assert timestamps[0] == 0.0
+
+
 class TestTwoVameInterfaces:
     """Two VameInterface instances (k-means and HMM) written to the same NWB file via NWBConverter.
 
