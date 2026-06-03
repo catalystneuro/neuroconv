@@ -45,7 +45,7 @@ class TestVameInterfaceMotifOnly(DataInterfaceTestMixin):
 
     data_interface_cls = VameInterface
     interface_kwargs = dict(
-        vame_config_file_path=str(CONFIG_PATH),
+        file_path=str(CONFIG_PATH),
         motif_labels_file_path=str(MOTIF_LABELS_PATH),
         sampling_frequency_hz=30.0,
     )
@@ -77,7 +77,7 @@ class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
         motif_labels_file_path=str(MOTIF_LABELS_PATH),
         latent_vectors_file_path=str(LATENT_VECTORS_PATH),
         community_labels_file_path=str(COMMUNITY_LABELS_PATH),
-        vame_config_file_path=str(CONFIG_PATH),
+        file_path=str(CONFIG_PATH),
         sampling_frequency_hz=30.0,
     )
     save_directory = OUTPUT_PATH
@@ -110,7 +110,7 @@ class TestVameInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMix
         motif_labels_file_path=str(MOTIF_LABELS_PATH),
         latent_vectors_file_path=str(LATENT_VECTORS_PATH),
         community_labels_file_path=str(COMMUNITY_LABELS_PATH),
-        vame_config_file_path=str(CONFIG_PATH),
+        file_path=str(CONFIG_PATH),
         sampling_frequency_hz=30.0,
     )
     conversion_options = dict(stub_test=True)
@@ -136,7 +136,7 @@ class TestVameInterfaceHmm(DataInterfaceTestMixin):
 
     data_interface_cls = VameInterface
     interface_kwargs = dict(
-        vame_config_file_path=str(CONFIG_PATH),
+        file_path=str(CONFIG_PATH),
         motif_labels_file_path=str(HMM_LABELS_PATH),
         sampling_frequency_hz=30.0,
     )
@@ -169,17 +169,17 @@ class TestTwoVameInterfaces:
 
         source_data = dict(
             Kmeans=dict(
+                file_path=str(CONFIG_PATH),
                 motif_labels_file_path=str(MOTIF_LABELS_PATH),
                 latent_vectors_file_path=str(LATENT_VECTORS_PATH),
                 community_labels_file_path=str(COMMUNITY_LABELS_PATH),
-                vame_config_file_path=str(CONFIG_PATH),
                 sampling_frequency_hz=30.0,
                 metadata_key="KmeansRun",
             ),
             Hmm=dict(
+                file_path=str(CONFIG_PATH),  # same project config
                 motif_labels_file_path=str(HMM_LABELS_PATH),
                 latent_vectors_file_path=str(LATENT_VECTORS_PATH),  # same model output
-                vame_config_file_path=str(CONFIG_PATH),  # same project config
                 sampling_frequency_hz=30.0,
                 metadata_key="HmmRun",
             ),

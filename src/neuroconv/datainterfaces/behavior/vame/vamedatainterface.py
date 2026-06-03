@@ -53,7 +53,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
             "(1D int array, one community ID per video frame). "
             "Typically named 'cohort_community_label_{session}.npy'. Optional."
         )
-        source_schema["properties"]["vame_config_file_path"]["description"] = (
+        source_schema["properties"]["file_path"]["description"] = (
             "Path to the VAME 'config.yaml' project file. "
             "The full configuration is serialized as JSON and stored in the VAMEProject.vame_config field."
         )
@@ -62,7 +62,8 @@ class VameInterface(BaseTemporalAlignmentInterface):
     @validate_call
     def __init__(
         self,
-        vame_config_file_path: FilePath,
+        file_path: FilePath,
+        *,
         motif_labels_file_path: FilePath | None = None,
         latent_vectors_file_path: FilePath | None = None,
         community_labels_file_path: FilePath | None = None,
@@ -75,7 +76,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        vame_config_file_path : FilePath
+        file_path : FilePath
             Path to the VAME ``config.yaml`` project file. The full configuration
             is serialized as JSON and stored in the ``VAMEProject.vame_config`` field.
         motif_labels_file_path : FilePath, optional
@@ -104,7 +105,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         """
         import ndx_vame  # noqa: F401 – ensure ndx-vame namespace is registered
 
-        self.vame_config_dict = load_dict_from_file(vame_config_file_path)
+        self.vame_config_dict = load_dict_from_file(file_path)
 
         self.motif_labels_file_path = Path(motif_labels_file_path) if motif_labels_file_path else None
         self.latent_vectors_file_path = Path(latent_vectors_file_path) if latent_vectors_file_path else None
@@ -114,10 +115,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
         self.pose_estimation_name = pose_estimation_name
 
         super().__init__(
+            file_path=file_path,
             motif_labels_file_path=motif_labels_file_path,
             latent_vectors_file_path=latent_vectors_file_path,
             community_labels_file_path=community_labels_file_path,
-            vame_config_file_path=vame_config_file_path,
             verbose=verbose,
         )
 

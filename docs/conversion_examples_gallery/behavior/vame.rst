@@ -32,33 +32,6 @@ A typical VAME project has the following output layout for each session::
                         └── cohort_community_label_<session>.npy
 
 
-Minimal conversion (motif labels only)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-    >>> from datetime import datetime
-    >>> from zoneinfo import ZoneInfo
-    >>> from pathlib import Path
-    >>> from neuroconv.datainterfaces import VameInterface
-
-    >>> motif_labels_file_path = Path(
-    ...     "/path/to/project/results/session/VAME/kmeans-15/15_kmeans_label_session.npy"
-    ... )
-
-    >>> interface = VameInterface(
-    ...     motif_labels_file_path=motif_labels_file_path,
-    ...     sampling_frequency_hz=30.0,   # video frame rate in Hz
-    ... )
-
-    >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"].update(
-    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
-    ...     session_description="Open-field behavioral recording segmented with VAME.",
-    ... )
-    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P90D")
-    >>> interface.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=metadata)
-
 
 Full conversion (latent vectors + community labels + config)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -76,10 +49,10 @@ Full conversion (latent vectors + community labels + config)
     >>> n_clusters = 15
 
     >>> interface = VameInterface(
+    ...     file_path=project / "config.yaml",
     ...     motif_labels_file_path=project / "results" / session / "VAME" / f"{algorithm}-{n_clusters}" / f"{n_clusters}_{algorithm}_label_{session}.npy",
     ...     latent_vectors_file_path=project / "results" / session / "VAME" / "latent_vectors.npy",
     ...     community_labels_file_path=project / "results" / session / "VAME" / f"{algorithm}-{n_clusters}" / "community" / f"cohort_community_label_{session}.npy",
-    ...     vame_config_file_path=project / "config.yaml",
     ...     sampling_frequency_hz=30.0,
     ...     verbose=False,
     ... )
