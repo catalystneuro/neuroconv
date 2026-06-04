@@ -41,22 +41,23 @@ CONFIG_PATH = VAME_DATA_PATH / "config.yaml"
 
 
 class TestVameInterfaceMotifOnly(DataInterfaceTestMixin):
-    """VameInterface with only motif labels (no optional inputs)."""
+    """VameInterface with a single motif series and no optional inputs."""
 
     data_interface_cls = VameInterface
     interface_kwargs = dict(
         file_path=str(CONFIG_PATH),
-        motif_labels_file_path=str(MOTIF_LABELS_PATH),
+        motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         sampling_frequency_hz=30.0,
     )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        vame_meta = metadata["VAME"]["VAMEProject"]
-        assert vame_meta["name"] == "VAMEProject"
-        assert "algorithm" not in vame_meta["MotifSeries"]
-        assert "LatentSpaceSeries" not in vame_meta
-        assert "CommunitySeries" not in vame_meta
+        project_meta = metadata["Behavior"]["VAMEProjects"]["VAMEProject"]
+        assert project_meta["name"] == "VAMEProject"
+        assert "MotifSeries" in project_meta
+        assert "kmeans" in project_meta["MotifSeries"]
+        assert "LatentSpaceSeries" not in project_meta
+        assert "CommunitySeries" not in project_meta
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
@@ -65,8 +66,11 @@ class TestVameInterfaceMotifOnly(DataInterfaceTestMixin):
             config = json.loads(project.vame_config)
             assert config["project_name"] == "my_vame_project"
             assert project.latent_space_series is None
-            assert project.community_series is None
-            assert_array_equal(project.motif_series.data[:], np.load(MOTIF_LABELS_PATH).astype(np.int32))
+            assert len(project.community_series) == 0
+            assert_array_equal(
+                project.motif_series["MotifSeriesKmeans"].data[:],
+                np.load(MOTIF_LABELS_PATH).astype(np.int32),
+            )
 
 
 class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -74,29 +78,35 @@ class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
     data_interface_cls = VameInterface
     interface_kwargs = dict(
-        motif_labels_file_path=str(MOTIF_LABELS_PATH),
-        latent_vectors_file_path=str(LATENT_VECTORS_PATH),
-        community_labels_file_path=str(COMMUNITY_LABELS_PATH),
         file_path=str(CONFIG_PATH),
+        motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
+        latent_vectors_file_path=str(LATENT_VECTORS_PATH),
+        community_labels_file_paths={"kmeans": str(COMMUNITY_LABELS_PATH)},
         sampling_frequency_hz=30.0,
     )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        vame_meta = metadata["VAME"]["VAMEProject"]
-        assert vame_meta["name"] == "VAMEProject"
-        assert "algorithm" not in vame_meta["MotifSeries"]
-        assert "30 dimensions" in vame_meta["LatentSpaceSeries"]["description"]
-        assert "CommunitySeries" in vame_meta
+        project_meta = metadata["Behavior"]["VAMEProjects"]["VAMEProject"]
+        assert project_meta["name"] == "VAMEProject"
+        assert "kmeans" in project_meta["MotifSeries"]
+        assert "30 dimensions" in project_meta["LatentSpaceSeries"]["description"]
+        assert "kmeans" in project_meta["CommunitySeries"]
+        assert project_meta["CommunitySeries"]["kmeans"]["motif_series_key"] == "kmeans"
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
-            assert_array_equal(project.motif_series.data[:], np.load(MOTIF_LABELS_PATH).astype(np.int32))
+            assert_array_equal(
+                project.motif_series["MotifSeriesKmeans"].data[:],
+                np.load(MOTIF_LABELS_PATH).astype(np.int32),
+            )
             assert_array_equal(project.latent_space_series.data[:], np.load(LATENT_VECTORS_PATH).astype(np.float32))
-            assert_array_equal(project.community_series.data[:], np.load(COMMUNITY_LABELS_PATH).astype(np.int32))
-            assert project.community_series.algorithm == "n/a"  # ndx-vame default; algorithm not set by interface
+            assert_array_equal(
+                project.community_series["CommunitySeriesKmeans"].data[:],
+                np.load(COMMUNITY_LABELS_PATH).astype(np.int32),
+            )
             config = json.loads(project.vame_config)
             assert config["project_name"] == "my_vame_project"
             assert config["n_clusters"] == 15
@@ -107,52 +117,71 @@ class TestVameInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMix
 
     data_interface_cls = VameInterface
     interface_kwargs = dict(
-        motif_labels_file_path=str(MOTIF_LABELS_PATH),
-        latent_vectors_file_path=str(LATENT_VECTORS_PATH),
-        community_labels_file_path=str(COMMUNITY_LABELS_PATH),
         file_path=str(CONFIG_PATH),
+        motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
+        latent_vectors_file_path=str(LATENT_VECTORS_PATH),
+        community_labels_file_paths={"kmeans": str(COMMUNITY_LABELS_PATH)},
         sampling_frequency_hz=30.0,
     )
     conversion_options = dict(stub_test=True)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        vame_meta = metadata["VAME"]["VAMEProject"]
-        assert vame_meta["name"] == "VAMEProject"
-        assert "LatentSpaceSeries" in vame_meta
-        assert "CommunitySeries" in vame_meta
+        project_meta = metadata["Behavior"]["VAMEProjects"]["VAMEProject"]
+        assert project_meta["name"] == "VAMEProject"
+        assert "LatentSpaceSeries" in project_meta
+        assert "CommunitySeries" in project_meta
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
-            assert len(project.motif_series.data[:]) == 100
+            assert len(project.motif_series["MotifSeriesKmeans"].data[:]) == 100
             assert len(project.latent_space_series.data[:]) == 100
-            assert len(project.community_series.data[:]) == 100
+            assert len(project.community_series["CommunitySeriesKmeans"].data[:]) == 100
 
 
-class TestVameInterfaceHmm(DataInterfaceTestMixin):
-    """VameInterface with HMM-segmented motif labels."""
+class TestVameInterfaceMultipleAlgorithms(DataInterfaceTestMixin):
+    """Single VameInterface with two MotifSeries (kmeans + hmm) in one VAMEProject."""
 
     data_interface_cls = VameInterface
     interface_kwargs = dict(
         file_path=str(CONFIG_PATH),
-        motif_labels_file_path=str(HMM_LABELS_PATH),
+        motif_labels_file_paths={
+            "kmeans": str(MOTIF_LABELS_PATH),
+            "hmm": str(HMM_LABELS_PATH),
+        },
+        latent_vectors_file_path=str(LATENT_VECTORS_PATH),
+        community_labels_file_paths={"kmeans": str(COMMUNITY_LABELS_PATH)},
         sampling_frequency_hz=30.0,
     )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        vame_meta = metadata["VAME"]["VAMEProject"]
-        assert vame_meta["name"] == "VAMEProject"
-        assert "LatentSpaceSeries" not in vame_meta
-        assert "CommunitySeries" not in vame_meta
+        project_meta = metadata["Behavior"]["VAMEProjects"]["VAMEProject"]
+        assert "kmeans" in project_meta["MotifSeries"]
+        assert "hmm" in project_meta["MotifSeries"]
+        assert "kmeans" in project_meta["CommunitySeries"]
+        assert project_meta["CommunitySeries"]["kmeans"]["motif_series_key"] == "kmeans"
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
-            assert_array_equal(project.motif_series.data[:], np.load(HMM_LABELS_PATH).astype(np.int32))
+            assert len(project.motif_series) == 2
+            assert_array_equal(
+                project.motif_series["MotifSeriesKmeans"].data[:],
+                np.load(MOTIF_LABELS_PATH).astype(np.int32),
+            )
+            assert_array_equal(
+                project.motif_series["MotifSeriesHmm"].data[:],
+                np.load(HMM_LABELS_PATH).astype(np.int32),
+            )
+            assert len(project.community_series) == 1
+            assert_array_equal(
+                project.community_series["CommunitySeriesKmeans"].data[:],
+                np.load(COMMUNITY_LABELS_PATH).astype(np.int32),
+            )
 
 
 class TestVameInterfaceTimestamps:
@@ -162,7 +191,7 @@ class TestVameInterfaceTimestamps:
         sampling_frequency_hz = 30.0
         interface = VameInterface(
             file_path=str(CONFIG_PATH),
-            motif_labels_file_path=str(MOTIF_LABELS_PATH),
+            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
             sampling_frequency_hz=sampling_frequency_hz,
         )
         timestamps = interface.get_original_timestamps()
@@ -180,59 +209,72 @@ class TestVameInterfaceTimestamps:
         sampling_frequency_hz = 10.0
         interface = VameInterface(
             file_path=str(config_path),
-            motif_labels_file_path=str(MOTIF_LABELS_PATH),
+            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
             sampling_frequency_hz=sampling_frequency_hz,
         )
         timestamps = interface.get_original_timestamps()
         assert timestamps[0] == 0.0
 
 
-class TestTwoVameInterfaces:
-    """Two VameInterface instances (k-means and HMM) written to the same NWB file via NWBConverter.
+class TestTwoVameProjects:
+    """Two VameInterface instances with different metadata_key values written to the same NWB file.
 
-    This reflects the typical real-world scenario: latent vectors and config are shared between
-    runs (both produced by the same trained model), while motif and community labels differ per
-    segmentation algorithm. Each run gets its own VAMEProject container via metadata_key.
+    Represents two completely separate VAME model trainings stored in one session file.
     """
 
-    def test_two_vame_interfaces_in_nwbconverter(self, tmp_path):
-        class TwoVameConverter(NWBConverter):
-            data_interface_classes = dict(Kmeans=VameInterface, Hmm=VameInterface)
+    def test_two_vame_projects_in_nwbconverter(self, tmp_path):
+        class TwoProjectConverter(NWBConverter):
+            data_interface_classes = dict(ProjectA=VameInterface, ProjectB=VameInterface)
 
         source_data = dict(
-            Kmeans=dict(
+            ProjectA=dict(
                 file_path=str(CONFIG_PATH),
-                motif_labels_file_path=str(MOTIF_LABELS_PATH),
+                motif_labels_file_paths={
+                    "kmeans": str(MOTIF_LABELS_PATH),
+                    "hmm": str(HMM_LABELS_PATH),
+                },
                 latent_vectors_file_path=str(LATENT_VECTORS_PATH),
-                community_labels_file_path=str(COMMUNITY_LABELS_PATH),
+                community_labels_file_paths={"kmeans": str(COMMUNITY_LABELS_PATH)},
                 sampling_frequency_hz=30.0,
-                metadata_key="KmeansRun",
+                metadata_key="ProjectA",
             ),
-            Hmm=dict(
-                file_path=str(CONFIG_PATH),  # same project config
-                motif_labels_file_path=str(HMM_LABELS_PATH),
-                latent_vectors_file_path=str(LATENT_VECTORS_PATH),  # same model output
+            ProjectB=dict(
+                file_path=str(CONFIG_PATH),
+                motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
                 sampling_frequency_hz=30.0,
-                metadata_key="HmmRun",
+                metadata_key="ProjectB",
             ),
         )
-        converter = TwoVameConverter(source_data=source_data)
+        converter = TwoProjectConverter(source_data=source_data)
         metadata = converter.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
 
-        nwbfile_path = tmp_path / "two_vame.nwb"
+        nwbfile_path = tmp_path / "two_projects.nwb"
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata)
 
         with NWBHDF5IO(path=str(nwbfile_path), mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             behavior = nwbfile.processing["behavior"].data_interfaces
-            assert "KmeansRun" in behavior
-            assert "HmmRun" in behavior
-            kmeans = behavior["KmeansRun"]
-            hmm = behavior["HmmRun"]
-            assert_array_equal(kmeans.motif_series.data[:], np.load(MOTIF_LABELS_PATH).astype(np.int32))
-            assert_array_equal(kmeans.latent_space_series.data[:], np.load(LATENT_VECTORS_PATH).astype(np.float32))
-            assert_array_equal(kmeans.community_series.data[:], np.load(COMMUNITY_LABELS_PATH).astype(np.int32))
-            assert_array_equal(hmm.motif_series.data[:], np.load(HMM_LABELS_PATH).astype(np.int32))
-            assert_array_equal(hmm.latent_space_series.data[:], np.load(LATENT_VECTORS_PATH).astype(np.float32))
-            assert hmm.community_series is None
+            assert "ProjectA" in behavior
+            assert "ProjectB" in behavior
+
+            project_a = behavior["ProjectA"]
+            assert len(project_a.motif_series) == 2
+            assert_array_equal(
+                project_a.motif_series["MotifSeriesKmeans"].data[:],
+                np.load(MOTIF_LABELS_PATH).astype(np.int32),
+            )
+            assert_array_equal(
+                project_a.motif_series["MotifSeriesHmm"].data[:],
+                np.load(HMM_LABELS_PATH).astype(np.int32),
+            )
+            assert_array_equal(project_a.latent_space_series.data[:], np.load(LATENT_VECTORS_PATH).astype(np.float32))
+            assert len(project_a.community_series) == 1
+
+            project_b = behavior["ProjectB"]
+            assert len(project_b.motif_series) == 1
+            assert_array_equal(
+                project_b.motif_series["MotifSeriesKmeans"].data[:],
+                np.load(MOTIF_LABELS_PATH).astype(np.int32),
+            )
+            assert project_b.latent_space_series is None
