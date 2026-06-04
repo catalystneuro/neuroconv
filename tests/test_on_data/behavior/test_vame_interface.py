@@ -184,6 +184,42 @@ class TestVameInterfaceMultipleAlgorithms(DataInterfaceTestMixin):
             )
 
 
+class TestVameInterfaceAutoDiscover(DataInterfaceTestMixin):
+    """VameInterface with session_name auto-discovers all paths from the config."""
+
+    data_interface_cls = VameInterface
+    interface_kwargs = dict(
+        file_path=str(CONFIG_PATH),
+        session_name=_SESSION_STEM,
+        sampling_frequency_hz=30.0,
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        project_meta = metadata["Behavior"]["VAMEProjects"]["VAMEProject"]
+        assert "kmeans" in project_meta["MotifSeries"]
+        assert "hmm" in project_meta["MotifSeries"]
+        assert "LatentSpaceSeries" in project_meta
+        assert "kmeans" in project_meta["CommunitySeries"]
+        assert project_meta["CommunitySeries"]["kmeans"]["motif_series_key"] == "kmeans"
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
+            assert len(project.motif_series) == 2
+            assert_array_equal(
+                project.motif_series["MotifSeriesKmeans"].data[:],
+                np.load(MOTIF_LABELS_PATH).astype(np.int32),
+            )
+            assert_array_equal(
+                project.motif_series["MotifSeriesHmm"].data[:],
+                np.load(HMM_LABELS_PATH).astype(np.int32),
+            )
+            assert_array_equal(project.latent_space_series.data[:], np.load(LATENT_VECTORS_PATH).astype(np.float32))
+            assert len(project.community_series) == 1
+
+
 class TestVameInterfaceTimestamps:
     """Verify that get_original_timestamps() applies the time_window/2 offset."""
 
