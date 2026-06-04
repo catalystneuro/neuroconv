@@ -323,19 +323,20 @@ class VameInterface(BaseTemporalAlignmentInterface):
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         self._timestamps = np.asarray(aligned_timestamps)
 
-    def _get_pose_estimation(self, nwbfile: NWBFile):
+    @staticmethod
+    def _get_pose_estimation(nwbfile: NWBFile, name: str):
         pose_estimation_containers = {
             obj.name: obj for obj in nwbfile.objects.values() if type(obj).__name__ == "PoseEstimation"
         }
-        if self._pose_estimation_name in pose_estimation_containers:
-            return pose_estimation_containers[self._pose_estimation_name]
+        if name in pose_estimation_containers:
+            return pose_estimation_containers[name]
         if pose_estimation_containers:
             raise ValueError(
-                f"No PoseEstimation container named '{self._pose_estimation_name}' was found in the NWB file. "
+                f"No PoseEstimation container named '{name}' was found in the NWB file. "
                 f"Available PoseEstimation containers: {list(pose_estimation_containers)}."
             )
         raise ValueError(
-            f"No PoseEstimation container named '{self._pose_estimation_name}' was found in the NWB file. "
+            f"No PoseEstimation container named '{name}' was found in the NWB file. "
             "No PoseEstimation containers exist in the file — ensure the pose estimation interface "
             "runs before VameInterface."
         )
