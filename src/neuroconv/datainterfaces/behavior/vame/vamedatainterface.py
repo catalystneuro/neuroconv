@@ -96,6 +96,15 @@ class VameInterface(BaseTemporalAlignmentInterface):
             "Path to the VAME 'config.yaml' project file. "
             "The full configuration is serialized as JSON and stored in the VAMEProject.vame_config field."
         )
+        source_schema["properties"]["session_name"] = {
+            "type": "string",
+            "description": (
+                "Session name as it appears in config.yaml 'session_names'. "
+                "When provided, motif labels, latent vectors, and community labels are "
+                "auto-discovered from the standard VAME results layout under config.yaml's parent directory. "
+                "Explicitly supplied file path arguments take precedence over auto-discovered paths."
+            ),
+        }
         source_schema["properties"]["motif_labels_file_paths"]["description"] = (
             "Dict mapping a run name to the .npy file containing VAME motif labels "
             "(1D int array, one cluster ID per video frame). "
@@ -118,6 +127,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePath,
         *,
+        session_name: str | None = None,
         latent_vectors_file_path: FilePath | None = None,
         motif_labels_file_paths: dict[str, FilePath] | None = None,
         community_labels_file_paths: dict[str, FilePath] | None = None,
@@ -132,6 +142,21 @@ class VameInterface(BaseTemporalAlignmentInterface):
         file_path : FilePath
             Path to the VAME ``config.yaml`` project file. The full configuration
             is serialized as JSON and stored in the ``VAMEProject.vame_config`` field.
+        session_name : str, optional
+            Session name as it appears in ``config.yaml`` under ``session_names``. When
+            provided, motif labels, latent vectors, and community labels are auto-discovered
+            from the standard VAME results layout under the config file's parent directory::
+
+                <config_parent>/results/<session_name>/VAME/
+                    latent_vectors.npy
+                    <algorithm>-<n_clusters>/
+                        <n_clusters>_<algorithm>_label_<session_name>.npy
+                        community/
+                            cohort_community_label_<session_name>.npy
+
+            Algorithms and ``n_clusters`` are read from the config. Explicitly supplied
+            ``motif_labels_file_paths``, ``latent_vectors_file_path``, or
+            ``community_labels_file_paths`` arguments take precedence over auto-discovered paths.
         latent_vectors_file_path : FilePath, optional
             Path to the .npy file containing VAME latent-space vectors (2D float32 array of
             shape ``(n_frames, n_latent_dims)``). Shared across all algorithm runs — a single
@@ -161,6 +186,18 @@ class VameInterface(BaseTemporalAlignmentInterface):
         import ndx_vame  # noqa: F401 – ensure ndx-vame namespace is registered
 
         self._vame_config = load_dict_from_file(file_path)
+
+        if session_name is not None:
+            motif_labels_file_paths, latent_vectors_file_path, community_labels_file_paths = (
+                self._autodiscover_file_paths(
+                    file_path=Path(file_path),
+                    session_name=session_name,
+                    motif_labels_file_paths=motif_labels_file_paths,
+                    latent_vectors_file_path=latent_vectors_file_path,
+                    community_labels_file_paths=community_labels_file_paths,
+                )
+            )
+
         self._motif_labels_file_paths = (
             {k: Path(v) for k, v in motif_labels_file_paths.items()} if motif_labels_file_paths else None
         )
@@ -173,11 +210,63 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
         super().__init__(
             file_path=file_path,
+            session_name=session_name,
             motif_labels_file_paths=motif_labels_file_paths,
             latent_vectors_file_path=latent_vectors_file_path,
             community_labels_file_paths=community_labels_file_paths,
             verbose=verbose,
         )
+
+    def _autodiscover_file_paths(
+        self,
+        *,
+        file_path: Path,
+        session_name: str,
+        motif_labels_file_paths: dict | None,
+        latent_vectors_file_path: Path | None,
+        community_labels_file_paths: dict | None,
+    ) -> tuple:
+        """Return (motif_labels_file_paths, latent_vectors_file_path, community_labels_file_paths)
+        with any None argument filled in from the standard VAME results layout."""
+        project_dir = file_path.parent
+        session_vame_dir = project_dir / "results" / session_name / "VAME"
+        algorithms = self._vame_config.get("segmentation_algorithms", [])
+        n_clusters = self._vame_config.get("n_clusters")
+
+        if motif_labels_file_paths is None and n_clusters is not None:
+            discovered = {
+                algo: session_vame_dir / f"{algo}-{n_clusters}" / f"{n_clusters}_{algo}_label_{session_name}.npy"
+                for algo in algorithms
+                if (
+                    session_vame_dir / f"{algo}-{n_clusters}" / f"{n_clusters}_{algo}_label_{session_name}.npy"
+                ).exists()
+            }
+            if discovered:
+                motif_labels_file_paths = discovered
+
+        if latent_vectors_file_path is None:
+            candidate = session_vame_dir / "latent_vectors.npy"
+            if candidate.exists():
+                latent_vectors_file_path = candidate
+
+        if community_labels_file_paths is None and n_clusters is not None:
+            discovered = {
+                algo: session_vame_dir
+                / f"{algo}-{n_clusters}"
+                / "community"
+                / f"cohort_community_label_{session_name}.npy"
+                for algo in algorithms
+                if (
+                    session_vame_dir
+                    / f"{algo}-{n_clusters}"
+                    / "community"
+                    / f"cohort_community_label_{session_name}.npy"
+                ).exists()
+            }
+            if discovered:
+                community_labels_file_paths = discovered
+
+        return motif_labels_file_paths, latent_vectors_file_path, community_labels_file_paths
 
     def get_metadata_schema(self) -> dict:
         from ....utils import get_base_schema
