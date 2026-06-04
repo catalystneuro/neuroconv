@@ -33,12 +33,13 @@ A typical VAME project has the following output layout for each session::
 
 
 
-Full conversion (multiple algorithm runs in one VAMEProject)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Full conversion (auto-discover all runs from config)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Both ``kmeans`` and ``hmm`` runs belong to the same VAME project and share the same latent
-vectors. Pass all runs together in a single ``VameInterface`` so they end up in one
-``VAMEProject`` group in the NWB file.
+Pass ``session_name`` and the interface discovers all motif labels, latent vectors, and
+community labels from the standard VAME results layout under the config file's parent
+directory. Algorithms and ``n_clusters`` are read directly from ``config.yaml``, so both
+``kmeans`` and ``hmm`` runs end up in one ``VAMEProject`` group automatically.
 
 When a key in ``community_labels_file_paths`` matches a key in ``motif_labels_file_paths``,
 ``get_metadata`` automatically sets ``motif_series_key`` so each ``CommunitySeries`` is
@@ -53,22 +54,11 @@ linked to its corresponding ``MotifSeries``. No extra metadata wiring is needed.
 
     >>> project = Path("/path/to/my_vame_project")
     >>> session = "session_name"
-    >>> n_clusters = 15
-    >>> vame_dir = project / "results" / session / "VAME"
 
     >>> interface = VameInterface(
     ...     file_path=project / "config.yaml",
-    ...     motif_labels_file_paths={
-    ...         "kmeans": vame_dir / f"kmeans-{n_clusters}" / f"{n_clusters}_kmeans_label_{session}.npy",
-    ...         "hmm": vame_dir / f"hmm-{n_clusters}" / f"{n_clusters}_hmm_label_{session}.npy",
-    ...     },
-    ...     latent_vectors_file_path=vame_dir / "latent_vectors.npy",
-    ...     community_labels_file_paths={
-    ...         "kmeans": vame_dir / f"kmeans-{n_clusters}" / "community" / f"cohort_community_label_{session}.npy",
-    ...         "hmm": vame_dir / f"hmm-{n_clusters}" / "community" / f"cohort_community_label_{session}.npy",
-    ...     },
+    ...     session_name=session,
     ...     sampling_frequency_hz=30.0,
-    ...     verbose=False,
     ... )
 
     >>> metadata = interface.get_metadata()
@@ -77,6 +67,21 @@ linked to its corresponding ``MotifSeries``. No extra metadata wiring is needed.
     ...     session_description="Open-field behavioral recording segmented with VAME.",
     ... )
     >>> interface.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=metadata)
+
+Explicit file paths take precedence over auto-discovered ones, so you can override
+individual paths while still relying on auto-discovery for the rest:
+
+.. code-block:: python
+
+    >>> interface = VameInterface(
+    ...     file_path=project / "config.yaml",
+    ...     session_name=session,
+    ...     # override just the kmeans community labels; everything else is auto-discovered
+    ...     community_labels_file_paths={
+    ...         "kmeans": project / "results" / session / "VAME" / "kmeans-15" / "community" / "cohort_community_label_session.npy",
+    ...     },
+    ...     sampling_frequency_hz=30.0,
+    ... )
 
 
 Specifying Metadata
