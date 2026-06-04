@@ -10,7 +10,7 @@ Install NeuroConv with the additional dependencies necessary for reading VAME da
 Convert `VAME <https://github.com/LINCellularNeuroscience/VAME>`_ behavioral segmentation
 outputs to NWB using
 :py:class:`~neuroconv.datainterfaces.behavior.vame.vamedatainterface.VameInterface`.
-The interface reads per-session ``.npy`` output files—motif labels, optionally latent-space
+The interface reads per-session ``.npy`` output files—motif labels, latent-space
 vectors and community labels—and writes them to NWB using the
 `ndx-vame <https://github.com/catalystneuro/ndx-vame>`_ NWB extension.
 
@@ -33,8 +33,16 @@ A typical VAME project has the following output layout for each session::
 
 
 
-Full conversion (latent vectors + community labels + config)
+Full conversion (multiple algorithm runs in one VAMEProject)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Both ``kmeans`` and ``hmm`` runs belong to the same VAME project and share the same latent
+vectors. Pass all runs together in a single ``VameInterface`` so they end up in one
+``VAMEProject`` group in the NWB file.
+
+When a key in ``community_labels_file_paths`` matches a key in ``motif_labels_file_paths``,
+``get_metadata`` automatically sets ``motif_series_key`` so each ``CommunitySeries`` is
+linked to its corresponding ``MotifSeries``. No extra metadata wiring is needed.
 
 .. code-block:: python
 
@@ -45,14 +53,20 @@ Full conversion (latent vectors + community labels + config)
 
     >>> project = Path("/path/to/my_vame_project")
     >>> session = "session_name"
-    >>> algorithm = "kmeans"
     >>> n_clusters = 15
+    >>> vame_dir = project / "results" / session / "VAME"
 
     >>> interface = VameInterface(
     ...     file_path=project / "config.yaml",
-    ...     motif_labels_file_path=project / "results" / session / "VAME" / f"{algorithm}-{n_clusters}" / f"{n_clusters}_{algorithm}_label_{session}.npy",
-    ...     latent_vectors_file_path=project / "results" / session / "VAME" / "latent_vectors.npy",
-    ...     community_labels_file_path=project / "results" / session / "VAME" / f"{algorithm}-{n_clusters}" / "community" / f"cohort_community_label_{session}.npy",
+    ...     motif_labels_file_paths={
+    ...         "kmeans": vame_dir / f"kmeans-{n_clusters}" / f"{n_clusters}_kmeans_label_{session}.npy",
+    ...         "hmm": vame_dir / f"hmm-{n_clusters}" / f"{n_clusters}_hmm_label_{session}.npy",
+    ...     },
+    ...     latent_vectors_file_path=vame_dir / "latent_vectors.npy",
+    ...     community_labels_file_paths={
+    ...         "kmeans": vame_dir / f"kmeans-{n_clusters}" / "community" / f"cohort_community_label_{session}.npy",
+    ...         "hmm": vame_dir / f"hmm-{n_clusters}" / "community" / f"cohort_community_label_{session}.npy",
+    ...     },
     ...     sampling_frequency_hz=30.0,
     ...     verbose=False,
     ... )
@@ -68,9 +82,12 @@ Full conversion (latent vectors + community labels + config)
 Specifying Metadata
 ~~~~~~~~~~~~~~~~~~~
 
-VAME metadata lives under ``metadata["VAME"][metadata_key]``, where
+VAME metadata lives under ``metadata["Behavior"]["VAMEProjects"][metadata_key]``, where
 ``metadata_key`` defaults to ``"VAMEProject"`` and matches the name of the
 ``VAMEProject`` group written to the NWB file.
+
+``MotifSeries`` and ``CommunitySeries`` are dicts keyed by the run name (the same key used
+in ``motif_labels_file_paths`` / ``community_labels_file_paths``).
 
 Call :py:meth:`~neuroconv.datainterfaces.behavior.vame.vamedatainterface.VameInterface.get_metadata`
 to retrieve the auto-populated defaults, then edit specific fields before conversion:
@@ -78,8 +95,8 @@ to retrieve the auto-populated defaults, then edit specific fields before conver
 .. code-block:: python
 
     >>> metadata = interface.get_metadata()
-    >>> metadata["VAME"]["VAMEProject"]["name"] = "VAMEKmeans15"
-    >>> metadata["VAME"]["VAMEProject"]["MotifSeries"]["description"] = (
+    >>> metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["name"] = "VAMEKmeans15"
+    >>> metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["MotifSeries"]["kmeans"]["description"] = (
     ...     "k-means motif labels (15 clusters) for the open-field test session."
     ... )
     >>> interface.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=metadata)
@@ -89,20 +106,23 @@ The same information can be provided as a YAML file and loaded with
 
 .. code-block:: yaml
 
-    VAME:
-      VAMEProject:
-        name: VAMEKmeans15
-        MotifSeries:
-          name: MotifSeries
-          description: "k-means motif labels (15 clusters) for the open-field test session."
-          algorithm: kmeans
-        LatentSpaceSeries:
-          name: LatentSpaceSeries
-          description: "VAME latent-space embeddings (30 dimensions per frame)."
-        CommunitySeries:
-          name: CommunitySeries
-          description: "Community labels grouping kmeans motifs into higher-level behavioral states."
-          algorithm: kmeans
+    Behavior:
+      VAMEProjects:
+        VAMEProject:
+          name: VAMEKmeans15
+          MotifSeries:
+            kmeans:
+              name: MotifSeriesKmeans
+              description: "k-means motif labels (15 clusters) for the open-field test session."
+              algorithm: kmeans
+          LatentSpaceSeries:
+            name: LatentSpaceSeries
+            description: "VAME latent-space embeddings (30 dimensions per frame)."
+          CommunitySeries:
+            kmeans:
+              name: CommunitySeriesKmeans
+              description: "Community labels grouping kmeans motifs into higher-level behavioral states."
+              motif_series_key: kmeans
 
 .. code-block:: python
 
@@ -121,7 +141,10 @@ instead of ``sampling_frequency_hz``:
 
 .. code-block:: python
 
-    >>> interface = VameInterface(motif_labels_file_path=motif_labels_file_path)
+    >>> interface = VameInterface(
+    ...     file_path=project / "config.yaml",
+    ...     motif_labels_file_paths={"kmeans": motif_labels_file_path},
+    ... )
     >>> interface.set_aligned_timestamps(aligned_timestamps)  # seconds, aligned to session start
     >>> interface.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=metadata)
 
@@ -129,9 +152,9 @@ instead of ``sampling_frequency_hz``:
 Linking to pose estimation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To record the upstream pose data used by VAME, pass the name of an existing
-``PoseEstimation`` container to ``pose_estimation_name``. The container must already be
-present in the NWB file when ``add_to_nwbfile`` is called—typically written by a preceding
+To record the upstream pose data used by VAME, set ``pose_estimation_metadata_key`` in the
+metadata to the name of an existing ``PoseEstimation`` container. The container must already
+be present in the NWB file when ``add_to_nwbfile`` is called—typically written by a preceding
 :py:class:`~neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface.DeepLabCutInterface`
 or :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPInterface`.
 
@@ -150,21 +173,24 @@ or :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPI
     ...     source_data=dict(
     ...         DLC=dict(file_path="/path/to/dlc_output.h5"),
     ...         VAME=dict(
-    ...             motif_labels_file_path=str(motif_labels_file_path),
+    ...             file_path=str(project / "config.yaml"),
+    ...             motif_labels_file_paths={"kmeans": str(motif_labels_file_path)},
     ...             sampling_frequency_hz=30.0,
-    ...             pose_estimation_name="PoseEstimationDeepLabCut",
     ...         ),
     ...     )
     ... )
-    >>> converter.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=converter.get_metadata())
+    >>> metadata = converter.get_metadata()
+    >>> metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = (
+    ...     "PoseEstimationDeepLabCut"
+    ... )
+    >>> converter.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=metadata)
 
 
-Multiple VAME runs in one file
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Multiple VAME projects in one file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use ``metadata_key`` to store results from multiple algorithms or parameter
-sets in the same NWB file. Each instance gets its own metadata entry and its own
-``VAMEProject`` group:
+Use ``metadata_key`` to store results from multiple VAME projects in the same NWB file.
+Each instance gets its own metadata entry and its own ``VAMEProject`` group:
 
 .. code-block:: python
 
@@ -178,15 +204,17 @@ sets in the same NWB file. Each instance gets its own metadata entry and its own
 
     >>> converter = MyConverter(
     ...     source_data=dict(
-    ...         VameKmeans=dict(
-    ...             motif_labels_file_path=str(kmeans_motif_path),
+    ...         VAMEProjectA=dict(
+    ...             file_path=str(project_A / "config.yaml"),
+    ...             motif_labels_file_paths={"kmeans": str(kmeans_motif_path)},
     ...             sampling_frequency_hz=30.0,
-    ...             metadata_key="VAMEKmeans15",
+    ...             metadata_key="VAMEProjectA",
     ...         ),
-    ...         VameHmm=dict(
-    ...             motif_labels_file_path=str(hmm_motif_path),
+    ...         VAMEProjectB=dict(
+    ...             file_path=str(project_B / "config.yaml"),
+    ...             motif_labels_file_paths={"hmm": str(hmm_motif_path)},
     ...             sampling_frequency_hz=30.0,
-    ...             metadata_key="VAMEHmm15",
+    ...             metadata_key="VAMEProjectB",
     ...         ),
     ...     )
     ... )
@@ -195,19 +223,22 @@ The metadata YAML for this multi-run converter looks like:
 
 .. code-block:: yaml
 
-    VAME:
-      VAMEKmeans15:
-        name: VAMEKmeans15
-        MotifSeries:
-          name: MotifSeries
-          description: "k-means motif labels (15 clusters)."
-          algorithm: kmeans
-      VAMEHmm15:
-        name: VAMEHmm15
-        MotifSeries:
-          name: MotifSeries
-          description: "HMM motif labels (15 states)."
-          algorithm: hmm
+    Behavior:
+      VAMEProjects:
+        VAMEProjectA:
+          name: VAMEProjectA
+          MotifSeries:
+            kmeans:
+              name: MotifSeriesKmeans
+              description: "k-means motif labels (15 clusters)."
+              algorithm: kmeans
+        VAMEProjectB:
+          name: VAMEProjectB
+          MotifSeries:
+            hmm:
+              name: MotifSeriesHmm
+              description: "HMM motif labels (15 states)."
+              algorithm: hmm
 
 .. code-block:: python
 
