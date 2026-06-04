@@ -15,16 +15,70 @@ from ....utils import DeepDict, calculate_regular_series_rate, load_dict_from_fi
 class VameInterface(BaseTemporalAlignmentInterface):
     """DataInterface for VAME behavioral segmentation data using the ndx-vame NWB extension.
 
-    EthoML/VAME (Variational Animal Motion Encoding) segments animal behavior into discrete motifs
-    by training a variational autoencoder on pose estimation time series. This interface
-    writes the per-frame outputs—motif labels, optional latent-space embeddings, and optional
-    community labels to NWB using the ``ndx-vame`` extension.
+    VAME (Variational Animal Motion Encoding) segments animal behavior into discrete motifs
+    by training a variational autoencoder on pose estimation time series.
+
+    This interface writes the per-frame motif labels, latent-space embeddings, and community
+    labels to NWB using the ``ndx-vame`` extension.
 
     The NWB container name and all series descriptions are controlled via the metadata dict
-    under ``metadata["VAME"][metadata_key]``.
+    under ``metadata["Behavior"]["VAMEProjects"][metadata_key]``.
 
-    To store two VAME runs (e.g. k-means and HMM) in the same NWB file, create two
-    ``VameInterface`` instances with different ``metadata_key`` values and
+    Metadata Structure
+    ------------------
+    The metadata is organized in a hierarchical structure:
+
+    .. code-block:: python
+
+        metadata = {
+            "Behavior": {
+                "VAMEProjects": {
+                    "VAMEProject": {            # keyed by metadata_key (default "VAMEProject")
+                        "name": "VAMEProject",
+                        "LatentSpaceSeries": {  # optional — one per project, shared across runs
+                            "name": "LatentSpaceSeries",
+                            "description": "VAME latent-space embeddings (30 dimensions per frame).",
+                        },
+                        "MotifSeries": {        # keyed by run name supplied at construction
+                            "kmeans": {
+                                "name": "MotifSeriesKmeans",
+                                "description": "VAME behavioral motif labels.",
+                                "algorithm": "kmeans",
+                            },
+                            "hmm": {
+                                "name": "MotifSeriesHmm",
+                                "description": "VAME behavioral motif labels.",
+                                "algorithm": "hmm",
+                            },
+                        },
+                        "CommunitySeries": {    # keyed by run name; links to MotifSeries via key
+                            "kmeans": {
+                                "name": "CommunitySeriesKmeans",
+                                "description": "VAME community labels ...",
+                                "motif_series_key": "kmeans",  # cross-ref to MotifSeries["kmeans"]
+                            },
+                        },
+                        "pose_estimation_metadata_key": "PoseEstimation",  # cross-ref to Behavior/PoseEstimation
+                    }
+                }
+            }
+        }
+
+    The metadata can be customized by:
+
+    #. Calling :meth:`get_metadata` to retrieve the defaults.
+    #. Modifying the returned dictionary as needed.
+    #. Passing the modified metadata to :meth:`add_to_nwbfile` or :meth:`run_conversion`.
+
+    Notes
+    -----
+    - ``motif_series_key`` in a ``CommunitySeries`` entry is automatically set to the matching
+      run key when the same key exists in ``motif_labels_file_paths``.
+    - ``pose_estimation_metadata_key`` must name a ``PoseEstimation`` container that is already
+      present in the NWB file when :meth:`add_to_nwbfile` is called (i.e. the pose estimation
+      interface must run first).
+    - To store results from two completely separate VAME model
+    trainings, create two ``VameInterface`` instances with different ``metadata_key`` values and
     wrap them in an :class:`~neuroconv.NWBConverter`.
     """
 
