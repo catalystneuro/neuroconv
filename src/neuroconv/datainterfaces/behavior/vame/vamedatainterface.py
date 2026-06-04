@@ -351,7 +351,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         """Write VAME outputs to an NWBFile as a ``VAMEProject`` container.
 
         The container name and all series descriptions are taken from
-        ``metadata["VAME"][metadata_key]``. Call :meth:`get_metadata` to
+        ``metadata["Behavior"]["VAMEProjects"][metadata_key]``. Call :meth:`get_metadata` to
         inspect the defaults and override specific fields before conversion.
 
         Parameters
@@ -360,17 +360,18 @@ class VameInterface(BaseTemporalAlignmentInterface):
             Target NWB file.
         metadata : dict, optional
             Metadata dictionary. VAME-specific fields live under
-            ``metadata["VAME"][metadata_key]`` and include:
+            ``metadata["Behavior"]["VAMEProjects"][metadata_key]`` and include:
 
-            - ``"name"`` – name of the ``VAMEProject`` group in the NWB file.
-            - ``"MotifSeries"`` – dict with ``name``, ``description``, ``algorithm``.
+            - ``"name"`` – name of the ``VAMEProject`` group.
             - ``"LatentSpaceSeries"`` – dict with ``name`` and ``description``.
-              Omit the key entirely to suppress writing even when a file was provided.
-            - ``"CommunitySeries"`` – dict with ``name``, ``description``, ``algorithm``.
-              Same suppression rule as ``LatentSpaceSeries``.
-        stub_test : bool, default: False
-            If ``True``, only the first 100 frames of each data array are written. Useful
-            for fast, lightweight testing without loading full datasets.
+            - ``"MotifSeries"`` – dict of run_key → ``{name, description, algorithm}``.
+            - ``"CommunitySeries"`` – dict of run_key →
+              ``{name, description, algorithm, motif_series_key}``.
+              ``motif_series_key`` cross-references a key in ``MotifSeries``.
+            - ``"pose_estimation_metadata_key"`` – name of a ``PoseEstimation`` container
+              already present in the NWB file to soft-link from the ``VAMEProject``.
+        stub_test : bool, default False
+            If ``True``, only the first 100 frames of each data array are written.
         """
         from ndx_vame import (
             CommunitySeries,
@@ -383,7 +384,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         if metadata is not None:
             default_metadata.deep_update(metadata)
 
-        vame_metadata = default_metadata["VAME"][self._metadata_key]
+        vame_metadata = default_metadata["Behavior"]["VAMEProjects"][self._metadata_key]
         project_name = vame_metadata["name"]
 
         n_frames = min(100, len(self.get_timestamps())) if stub_test else None
@@ -398,53 +399,55 @@ class VameInterface(BaseTemporalAlignmentInterface):
             timing_kwargs["rate"] = float(rate)
             timing_kwargs["starting_time"] = timestamps[0]
 
-        # LatentSpaceSeries (optional)
+        # LatentSpaceSeries (optional, shared across algorithm runs)
         latent_series = None
         latent_series_metadata = vame_metadata.get("LatentSpaceSeries")
         if self._latent_vectors_file_path is not None and latent_series_metadata is not None:
             latent_data = np.load(self._latent_vectors_file_path)[:n_frames].astype(np.float32)
-            latent_series = LatentSpaceSeries(
-                data=latent_data,
-                **latent_series_metadata,
-                **timing_kwargs,
-            )
+            latent_series = LatentSpaceSeries(data=latent_data, **latent_series_metadata, **timing_kwargs)
 
-        # MotifSeries (optional)
-        motif_series = None
-        motif_metadata = vame_metadata.get("MotifSeries")
-        if self._motif_labels_file_path is not None and motif_metadata is not None:
-            motif_data = np.load(self._motif_labels_file_path)[:n_frames].astype(np.int32)
-            motif_kwargs: dict = dict(data=motif_data, **motif_metadata, **timing_kwargs)
+        # MotifSeries — one per run key
+        motif_series_objects = {}
+        motif_series_metadata = vame_metadata.get("MotifSeries", {})
+        for run_key, file_path in (self._motif_labels_file_paths or {}).items():
+            motif_meta = dict(motif_series_metadata.get(run_key, {}))
+            motif_data = np.load(file_path)[:n_frames].astype(np.int32)
+            motif_kwargs: dict = dict(data=motif_data, **motif_meta, **timing_kwargs)
             if latent_series is not None:
                 motif_kwargs["latent_space_series"] = latent_series
-            motif_series = MotifSeries(**motif_kwargs)
+            motif_series_objects[run_key] = MotifSeries(**motif_kwargs)
 
-        # CommunitySeries (optional)
-        community_series = None
-        community_metadata = vame_metadata.get("CommunitySeries")
-        if self._community_labels_file_path is not None and community_metadata is not None:
-            community_data = np.load(self._community_labels_file_path)[:n_frames].astype(np.int32)
-            community_kwargs: dict = dict(
-                data=community_data,
-                **community_metadata,
-                **timing_kwargs,
-                motif_series=motif_series,
-            )
-            community_series = CommunitySeries(**community_kwargs)
+        # CommunitySeries — one per run key, optionally linked to a MotifSeries
+        community_series_objects = {}
+        community_series_meta = vame_metadata.get("CommunitySeries", {})
+        for run_key, file_path in (self._community_labels_file_paths or {}).items():
+            community_meta = dict(community_series_meta.get(run_key, {}))
+            motif_series_key = community_meta.pop("motif_series_key", None)
+            community_data = np.load(file_path)[:n_frames].astype(np.int32)
+            community_kwargs: dict = dict(data=community_data, **community_meta, **timing_kwargs)
+            linked_motif = motif_series_objects.get(motif_series_key) if motif_series_key else None
+            if linked_motif is not None:
+                community_kwargs["motif_series"] = linked_motif
+            community_series_objects[run_key] = CommunitySeries(**community_kwargs)
 
         # Optional link to an upstream PoseEstimation container
         pose_estimation = None
-        behavior_module = get_module(nwbfile, name="behavior", description="Processed behavioral data.")
-        if self._pose_estimation_name is not None:
-            pose_estimation = self._get_pose_estimation(nwbfile)
+        pose_estimation_key = vame_metadata.get("pose_estimation_metadata_key")
+        if pose_estimation_key is not None:
+            pose_estimation = self._get_pose_estimation(nwbfile, pose_estimation_key)
 
-        vame_project = VAMEProject(
+        vame_project_kwargs = dict(
             name=project_name,
-            pose_estimation=pose_estimation,
-            latent_space_series=latent_series,
-            motif_series=motif_series,
-            community_series=community_series,
             vame_config=json.dumps(self._vame_config),
         )
+        if latent_series is not None:
+            vame_project_kwargs["latent_space_series"] = latent_series
+        if motif_series_objects:
+            vame_project_kwargs["motif_series"] = list(motif_series_objects.values())
+        if community_series_objects:
+            vame_project_kwargs["community_series"] = list(community_series_objects.values())
+        if pose_estimation is not None:
+            vame_project_kwargs["pose_estimation"] = pose_estimation
 
-        behavior_module.add(vame_project)
+        behavior_module = get_module(nwbfile, name="behavior", description="processed behavioral data")
+        behavior_module.add(VAMEProject(**vame_project_kwargs))
