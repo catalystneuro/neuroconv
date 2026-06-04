@@ -259,9 +259,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
         vame_project_metadata: dict = dict(name=self._metadata_key)
 
-        if self._motif_labels_file_path is not None:
-            vame_project_metadata["MotifSeries"] = dict(name="MotifSeries", description="VAME behavioral motif labels.")
-
         if self._latent_vectors_file_path is not None:
             zdims = self._vame_config.get("zdims")
             dims_info = f" ({zdims} dimensions per frame)" if zdims else ""
@@ -270,13 +267,28 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 description=f"VAME latent-space embeddings{dims_info}.",
             )
 
-        if self._community_labels_file_path is not None:
-            vame_project_metadata["CommunitySeries"] = dict(
-                name="CommunitySeries",
-                description="VAME community labels grouping motifs into higher-level behavioral states.",
-            )
+        if self._motif_labels_file_paths is not None:
+            vame_project_metadata["MotifSeries"] = {
+                run_key: dict(
+                    name=f"MotifSeries{run_key.capitalize()}",
+                    description="VAME behavioral motif labels.",
+                )
+                for run_key in self._motif_labels_file_paths
+            }
 
-        metadata["VAME"] = {self._metadata_key: vame_project_metadata}
+        if self._community_labels_file_paths is not None:
+            vame_project_metadata["CommunitySeries"] = {
+                run_key: dict(
+                    name=f"CommunitySeries{run_key.capitalize()}",
+                    description="VAME community labels grouping motifs into higher-level behavioral states.",
+                    motif_series_key=(
+                        run_key if self._motif_labels_file_paths and run_key in self._motif_labels_file_paths else None
+                    ),
+                )
+                for run_key in self._community_labels_file_paths
+            }
+
+        metadata["Behavior"]["VAMEProjects"] = {self._metadata_key: vame_project_metadata}
 
         return metadata
 
