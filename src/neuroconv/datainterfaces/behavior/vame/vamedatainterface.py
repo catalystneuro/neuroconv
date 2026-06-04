@@ -298,14 +298,17 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 "VameInterface cannot generate original timestamps without a sampling_frequency_hz. "
                 "Provide sampling_frequency_hz at construction or call set_aligned_timestamps()."
             )
-        reference_file = (
-            self._motif_labels_file_path or self._latent_vectors_file_path or self._community_labels_file_path
-        )
-        if reference_file is None:
+        if self._motif_labels_file_paths:
+            reference_file = next(iter(self._motif_labels_file_paths.values()))
+        elif self._latent_vectors_file_path:
+            reference_file = self._latent_vectors_file_path
+        elif self._community_labels_file_paths:
+            reference_file = next(iter(self._community_labels_file_paths.values()))
+        else:
             raise ValueError(
                 "VameInterface cannot generate original timestamps without any data file. "
-                "Provide at least one of motif_labels_file_path, latent_vectors_file_path, or "
-                "community_labels_file_path, or call set_aligned_timestamps()."
+                "Provide at least one of motif_labels_file_paths, latent_vectors_file_path, or "
+                "community_labels_file_paths, or call set_aligned_timestamps()."
             )
         num_frames = np.load(reference_file).shape[0]
         time_window = self._vame_config.get("time_window", 0)
