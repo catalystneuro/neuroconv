@@ -92,24 +92,24 @@ class VameInterface(BaseTemporalAlignmentInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
-        source_schema["properties"]["motif_labels_file_path"]["description"] = (
-            "Path to the .npy file containing VAME motif labels "
+        source_schema["properties"]["file_path"]["description"] = (
+            "Path to the VAME 'config.yaml' project file. "
+            "The full configuration is serialized as JSON and stored in the VAMEProject.vame_config field."
+        )
+        source_schema["properties"]["motif_labels_file_paths"]["description"] = (
+            "Dict mapping a run name to the .npy file containing VAME motif labels "
             "(1D int array, one cluster ID per video frame). "
-            "Typically named '{n_clusters}_{algorithm}_label_{session}.npy'."
+            'Example: {"kmeans": "path/to/15_kmeans_label.npy", "hmm": "path/to/15_hmm_label.npy"}.'
         )
         source_schema["properties"]["latent_vectors_file_path"]["description"] = (
             "Path to the .npy file containing VAME latent-space vectors "
             "(2D float32 array of shape (n_frames, n_latent_dims)). "
-            "Typically named 'latent_vectors.npy'. Optional."
+            "Shared across all algorithm runs within the same project. Optional."
         )
-        source_schema["properties"]["community_labels_file_path"]["description"] = (
-            "Path to the .npy file containing VAME community labels "
+        source_schema["properties"]["community_labels_file_paths"]["description"] = (
+            "Dict mapping a run name to the .npy file containing VAME community labels "
             "(1D int array, one community ID per video frame). "
-            "Typically named 'cohort_community_label_{session}.npy'. Optional."
-        )
-        source_schema["properties"]["file_path"]["description"] = (
-            "Path to the VAME 'config.yaml' project file. "
-            "The full configuration is serialized as JSON and stored in the VAMEProject.vame_config field."
+            'Example: {"kmeans": "path/to/cohort_community_label.npy"}. Optional.'
         )
         return source_schema
 
@@ -118,12 +118,11 @@ class VameInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePath,
         *,
-        motif_labels_file_path: FilePath | None = None,
         latent_vectors_file_path: FilePath | None = None,
-        community_labels_file_path: FilePath | None = None,
+        motif_labels_file_paths: dict[str, FilePath] | None = None,
+        community_labels_file_paths: dict[str, FilePath] | None = None,
         sampling_frequency_hz: float | None = None,
         metadata_key: str = "VAMEProject",
-        pose_estimation_name: str | None = None,
         verbose: bool = False,
     ):
         """Initialize VameInterface.
@@ -133,46 +132,50 @@ class VameInterface(BaseTemporalAlignmentInterface):
         file_path : FilePath
             Path to the VAME ``config.yaml`` project file. The full configuration
             is serialized as JSON and stored in the ``VAMEProject.vame_config`` field.
-        motif_labels_file_path : FilePath, optional
-            Path to the .npy file containing VAME motif labels (1D int array, one value per frame).
         latent_vectors_file_path : FilePath, optional
             Path to the .npy file containing VAME latent-space vectors (2D float32 array of
-            shape ``(n_frames, n_latent_dims)``). Typically located one level above the algorithm-specific sub-directory.
-        community_labels_file_path : FilePath, optional
-            Path to the .npy file containing VAME community labels (1D int array, one value
-            per frame). Typically located inside a ``community/`` sub-directory of the algorithm directory.
+            shape ``(n_frames, n_latent_dims)``). Shared across all algorithm runs — a single
+            ``LatentSpaceSeries`` is written and each ``MotifSeries`` links to it.
+        motif_labels_file_paths : dict[str, FilePath], optional
+            Dict mapping a run name to the .npy file containing VAME motif labels
+            (1D int array, one cluster ID per video frame). Each entry becomes a separate
+            ``MotifSeries`` in the NWB file. Example::
+                {"kmeans": "path/to/15_kmeans_label.npy", "hmm": "path/to/15_hmm_label.npy"}
+        community_labels_file_paths : dict[str, FilePath], optional
+            Dict mapping a run name to the .npy file containing VAME community labels
+            (1D int array, one community ID per video frame). When a run key matches one in
+            ``motif_labels_file_paths``, the ``CommunitySeries`` is automatically linked to
+            that ``MotifSeries``. Example::
+                {"kmeans": "path/to/cohort_community_label.npy"}
         sampling_frequency_hz : float, optional
             Video acquisition rate in Hz (frames per second). Required when not providing aligned
             timestamps via :meth:`set_aligned_timestamps`.
         metadata_key : str, default "VAMEProject"
             Key used to look up this interface's metadata inside
-            ``metadata["VAME"][metadata_key]``. Change this when storing
-            results from multiple VAME runs in the same NWB file so each run has a unique
-            metadata entry.
-        pose_estimation_name : str, optional
-            Name of an existing ``PoseEstimation`` container already present in the NWB file.
-            When provided, a soft link from the ``VAMEProject`` to that container is added to
-            record the upstream pose data used by VAME. Raises ``ValueError`` if the name is
-            not found, listing any available ``PoseEstimation`` containers to help.
+            ``metadata["Behavior"]["VAMEProjects"][metadata_key]``. Change this when storing
+            results from multiple VAME projects in the same NWB file so each project
+            has a unique metadata entry and ``VAMEProject`` container.
         verbose : bool, default False
             Controls verbosity of the conversion process.
         """
         import ndx_vame  # noqa: F401 – ensure ndx-vame namespace is registered
 
         self._vame_config = load_dict_from_file(file_path)
-
-        self._motif_labels_file_path = Path(motif_labels_file_path) if motif_labels_file_path else None
+        self._motif_labels_file_paths = (
+            {k: Path(v) for k, v in motif_labels_file_paths.items()} if motif_labels_file_paths else None
+        )
         self._latent_vectors_file_path = Path(latent_vectors_file_path) if latent_vectors_file_path else None
-        self._community_labels_file_path = Path(community_labels_file_path) if community_labels_file_path else None
+        self._community_labels_file_paths = (
+            {k: Path(v) for k, v in community_labels_file_paths.items()} if community_labels_file_paths else None
+        )
         self._sampling_frequency_hz = sampling_frequency_hz
         self._metadata_key = metadata_key
-        self._pose_estimation_name = pose_estimation_name
 
         super().__init__(
             file_path=file_path,
-            motif_labels_file_path=motif_labels_file_path,
+            motif_labels_file_paths=motif_labels_file_paths,
             latent_vectors_file_path=latent_vectors_file_path,
-            community_labels_file_path=community_labels_file_path,
+            community_labels_file_paths=community_labels_file_paths,
             verbose=verbose,
         )
 
@@ -181,51 +184,73 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
         metadata_schema = super().get_metadata_schema()
 
-        # Define the schema for VAME metadata
-        motif_schema = {
+        motif_entry_schema = {
             "type": "object",
             "properties": {
                 "name": {"type": "string", "description": "Name of the MotifSeries."},
-                "algorithm": {
-                    "type": ["string", "null"],
-                    "description": "The algorithm used for motif detection.",
-                },
+                "description": {"type": "string"},
+                "algorithm": {"type": ["string", "null"], "description": "The algorithm used for motif detection."},
             },
             "required": ["name"],
+            "additionalProperties": False,
         }
-        community_schema = {
+        community_entry_schema = {
             "type": "object",
             "properties": {
                 "name": {"type": "string", "description": "Name of the CommunitySeries."},
+                "description": {"type": "string"},
                 "algorithm": {
                     "type": ["string", "null"],
                     "description": "The algorithm used for community clustering.",
                 },
+                "motif_series_key": {
+                    "type": ["string", "null"],
+                    "description": "Key into MotifSeries that this CommunitySeries links to.",
+                },
             },
             "required": ["name"],
+            "additionalProperties": False,
         }
-
-        vame_schema = get_base_schema(tag="VAME")
-        vame_schema["additionalProperties"] = {
+        vame_project_schema = {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "The name of the group that holds VAME project data.",
-                },
-                "MotifSeries": motif_schema,
+                "name": {"type": "string", "description": "Name of the VAMEProject group in the NWB file."},
                 "LatentSpaceSeries": {
                     "type": "object",
-                    "properties": {"name": {"type": "string", "description": "Name of the LatentSpaceSeries."}},
+                    "properties": {
+                        "name": {"type": "string", "description": "Name of the LatentSpaceSeries."},
+                        "description": {"type": "string"},
+                    },
                     "required": ["name"],
+                    "additionalProperties": False,
                 },
-                "CommunitySeries": community_schema,
+                "MotifSeries": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": motif_entry_schema,
+                },
+                "CommunitySeries": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": community_entry_schema,
+                },
+                "pose_estimation_metadata_key": {
+                    "type": ["string", "null"],
+                    "description": ("Name of a PoseEstimation container already present in the NWB file to link to."),
+                },
             },
             "required": ["name"],
             "additionalProperties": False,
         }
 
-        metadata_schema["properties"]["VAME"] = vame_schema
+        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
+        metadata_schema["properties"]["Behavior"]["properties"] = {
+            "VAMEProjects": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": vame_project_schema,
+            }
+        }
 
         return metadata_schema
 
