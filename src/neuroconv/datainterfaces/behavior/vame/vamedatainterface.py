@@ -1,9 +1,11 @@
 """DataInterface for VAME behavioral segmentation data."""
 
 import json
+import warnings
 from pathlib import Path
 
 import numpy as np
+from packaging.version import Version
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
@@ -188,14 +190,16 @@ class VameInterface(BaseTemporalAlignmentInterface):
         self._vame_config = load_dict_from_file(file_path)
 
         if session_name is not None:
-            motif_labels_file_paths, latent_vectors_file_path, community_labels_file_paths = (
-                self._autodiscover_file_paths(
-                    file_path=Path(file_path),
-                    session_name=session_name,
-                    motif_labels_file_paths=motif_labels_file_paths,
-                    latent_vectors_file_path=latent_vectors_file_path,
-                    community_labels_file_paths=community_labels_file_paths,
-                )
+            (
+                motif_labels_file_paths,
+                latent_vectors_file_path,
+                community_labels_file_paths,
+            ) = self._autodiscover_file_paths(
+                file_path=Path(file_path),
+                session_name=session_name,
+                motif_labels_file_paths=motif_labels_file_paths,
+                latent_vectors_file_path=latent_vectors_file_path,
+                community_labels_file_paths=community_labels_file_paths,
             )
 
         self._motif_labels_file_paths = (
@@ -217,6 +221,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
             verbose=verbose,
         )
 
+    # Oldest VAME version whose results layout (segmentation_algorithms list + per-algorithm
+    # subdirectory naming) we have verified against real test data.
+    _AUTODISCOVER_MIN_VAME_VERSION = "0.13.0"
+
     def _autodiscover_file_paths(
         self,
         *,
@@ -228,12 +236,39 @@ class VameInterface(BaseTemporalAlignmentInterface):
     ) -> tuple:
         """Return (motif_labels_file_paths, latent_vectors_file_path, community_labels_file_paths)
         with any None argument filled in from the standard VAME results layout."""
-        project_dir = file_path.parent
-        session_vame_dir = project_dir / "results" / session_name / "VAME"
+        vame_version_str = self._vame_config.get("vame_version")
+        if vame_version_str is None:
+            warnings.warn(
+                "The VAME config does not contain a 'vame_version' field. "
+                f"Auto-discovery of file paths has only been verified for VAME >= "
+                f"{self._AUTODISCOVER_MIN_VAME_VERSION}. Results may be incorrect for older versions.",
+                UserWarning,
+                stacklevel=3,
+            )
+        elif Version(str(vame_version_str)) < Version(self._AUTODISCOVER_MIN_VAME_VERSION):
+            warnings.warn(
+                f"VAME version {vame_version_str} is older than {self._AUTODISCOVER_MIN_VAME_VERSION}. "
+                "Auto-discovery of file paths has only been verified for VAME >= "
+                f"{self._AUTODISCOVER_MIN_VAME_VERSION} and may not work correctly for this version.",
+                UserWarning,
+                stacklevel=3,
+            )
+
         algorithms = self._vame_config.get("segmentation_algorithms", [])
         n_clusters = self._vame_config.get("n_clusters")
+        if not algorithms or n_clusters is None:
+            warnings.warn(
+                "Cannot auto-discover VAME file paths: 'segmentation_algorithms' or 'n_clusters' "
+                "is missing from config.yaml. Provide file paths explicitly.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return motif_labels_file_paths, latent_vectors_file_path, community_labels_file_paths
 
-        if motif_labels_file_paths is None and n_clusters is not None:
+        project_dir = file_path.parent
+        session_vame_dir = project_dir / "results" / session_name / "VAME"
+
+        if motif_labels_file_paths is None:
             discovered = {
                 algo: session_vame_dir / f"{algo}-{n_clusters}" / f"{n_clusters}_{algo}_label_{session_name}.npy"
                 for algo in algorithms
@@ -243,13 +278,20 @@ class VameInterface(BaseTemporalAlignmentInterface):
             }
             if discovered:
                 motif_labels_file_paths = discovered
+            else:
+                warnings.warn(
+                    f"No motif label files were found for session '{session_name}' under '{session_vame_dir}'. "
+                    "Provide motif_labels_file_paths explicitly if the files are in a non-standard location.",
+                    UserWarning,
+                    stacklevel=3,
+                )
 
         if latent_vectors_file_path is None:
             candidate = session_vame_dir / "latent_vectors.npy"
             if candidate.exists():
                 latent_vectors_file_path = candidate
 
-        if community_labels_file_paths is None and n_clusters is not None:
+        if community_labels_file_paths is None:
             discovered = {
                 algo: session_vame_dir
                 / f"{algo}-{n_clusters}"
