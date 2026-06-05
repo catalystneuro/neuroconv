@@ -170,16 +170,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
             return metadata
 
-        # Dict-based format. The base interface emits only what it owns and has real metadata for:
-        # the ElectricalSeries entry keyed by ``metadata_key`` (which also marks the metadata as
-        # dict-based so the pipeline dispatches to the new path). The default device and the
-        # electrode groups are deliberately left to the pipeline: it creates a default device and
-        # synthesizes one group per channel-group from the recording's ``group`` properties. This
-        # mirrors the ophys interfaces, which emit only their series sub-registry and leave the
-        # Device / ImagingPlane defaults to the placeholder factory rather than emitting them from
-        # ``get_metadata``. Concrete interfaces with real device/group metadata (a probe name, a
-        # group location) add ``Devices`` / ``Ecephys.ElectrodeGroups`` entries in their own
-        # migrations.
+        # Dict-based format: emit only the ElectricalSeries entry keyed by ``metadata_key`` (which
+        # also marks the metadata as dict-based, so the pipeline dispatches to the new path). The
+        # default device and electrode groups are left to the pipeline, which creates a default
+        # device and synthesizes one group per channel-group from the recording's ``group`` properties.
         metadata["Ecephys"] = dict()
         if self.es_key is not None:
             metadata["Ecephys"]["ElectricalSeries"] = {
