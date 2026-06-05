@@ -62,8 +62,8 @@ What these names are and where they come from:
 
 - The **channel names** are the recorded analog-to-digital (ADC) channels, the signals the amplifier digitized
   (the cell's response and any monitor outputs). neuroconv reads them from the ABF header, exactly as the
-  acquisition software (Clampex) stored them; these are the values you give to ``response_channel_name`` and
-  ``stimulus_channel_name``in case you are using one of the channels as a monitor.
+  acquisition software (Clampex) stored them; these are the values you give to ``response_channel_name`` (and to
+  ``stimulus_channel_name`` if you are using one of the recorded channels as a monitor).
 - The **command names** are the digital-to-analog (DAC) command channels from the protocol, the waveforms the
   amplifier was told to deliver. neuroconv reads them from the protocol's DAC table, so they exist only in ABF
   version 2 files (version 1 has no protocol section, hence the empty list); these are the values you give to
