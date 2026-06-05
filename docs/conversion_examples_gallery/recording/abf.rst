@@ -44,9 +44,36 @@ recording is described explicitly through the constructor arguments:
   the protocol (ABF version 2 only); or ``stimulus_channel_name``, a recorded monitor channel holding the actual
   delivered signal (works for ABF v1 and v2). ``izero`` takes no stimulus.
 
+To find out the names of the channels and commands, neuroconv provides two utility methods:
+
+.. code-block:: python
+
+    >>> from neuroconv.datainterfaces import AxonIntracellularInterface
+    >>>
+    >>> file_path = f"{ECEPHY_DATA_PATH}/axon/File_axon_5.abf"
+    >>>
+    >>> # The recorded channels: the options for `response_channel_name` and `stimulus_channel_name`.
+    >>> channel_names = AxonIntracellularInterface.get_channel_names(file_path=file_path)
+    >>>
+    >>> # The command channels: the options for `stimulus_command` (an empty list for ABF v1, which has no protocol).
+    >>> command_names = AxonIntracellularInterface.get_command_names(file_path=file_path)
+
+What these names are and where they come from:
+
+- The **channel names** are the recorded analog-to-digital (ADC) channels, the signals the amplifier digitized
+  (the cell's response and any monitor outputs). neuroconv reads them from the ABF header, exactly as the
+  acquisition software (Clampex) stored them; these are the values you give to ``response_channel_name`` and
+  ``stimulus_channel_name``in case you are using one of the channels as a monitor.
+- The **command names** are the digital-to-analog (DAC) command channels from the protocol, the waveforms the
+  amplifier was told to deliver. neuroconv reads them from the protocol's DAC table, so they exist only in ABF
+  version 2 files (version 1 has no protocol section, hence the empty list); these are the values you give to
+  ``stimulus_command``.
+
+A channel or command whose stored name is blank falls back to ``ch{index}`` / ``cmd{index}``, so every one is
+always addressable by a non-empty name.
+
 The interface writes one continuous ``PatchClampSeries`` per electrode and records each sweep through the NWB
-``IntracellularRecordings`` table. The upper icephys hierarchy tables (``SimultaneousRecordings`` and above)
-are not built by a single interface; they are assembled once the full set of channels and files is known.
+``IntracellularRecordings`` table.
 
 Legacy AbfInterface
 ~~~~~~~~~~~~~~~~~~~~
