@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import DirectoryPath, FilePath, validate_call
+from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from .guppydatainterface import GuppyInterface
@@ -32,7 +32,6 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         tdt_folder_path: DirectoryPath,
         guppy_folder_path: DirectoryPath,
         *,
-        parameters_file_path: FilePath | None = None,
         verbose: bool = False,
     ):
         """Initialize the TDT + GuPPy converter.
@@ -43,19 +42,15 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             Path to the TDT tank folder containing the raw acquisition files (Tbk, Tdx, tev,
             tin, tsq).
         guppy_folder_path : DirectoryPath
-            Path to the GuPPy ``<session>_output_<N>`` folder containing ``storesList.csv`` and
-            the per-region derived ``.hdf5`` files.
-        parameters_file_path : FilePath, optional
-            Path to the ``GuPPyParamtersUsed.json`` file produced by GuPPy. Forwarded to
-            :class:`GuppyInterface`. If omitted, parameter-derived metadata falls back to
-            defaults.
+            Path to the GuPPy ``<session>_output_<N>`` folder containing ``storesList.csv``,
+            the per-region derived ``.hdf5`` files, and the ``GuPPyParamtersUsed.json``
+            provenance file (discovered automatically by :class:`GuppyInterface`).
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
         tdt_interface = TDTFiberPhotometryInterface(folder_path=tdt_folder_path, verbose=verbose)
         guppy_interface = GuppyInterface(
             folder_path=guppy_folder_path,
-            parameters_file_path=parameters_file_path,
             verbose=verbose,
         )
         super().__init__(

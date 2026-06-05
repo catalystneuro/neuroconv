@@ -36,7 +36,6 @@ class TestGuppyInterface:
             pytest.param(
                 dict(
                     folder_path=GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_1",
-                    parameters_file_path=GUPPY_DATA_PATH / "GuPPyParamtersUsed1.json",
                     expected_regions=["dms", "dls"],
                     expected_traces={
                         "dms": ["cntrl_sig_fit", "dff", "z_score"],
@@ -68,49 +67,15 @@ class TestGuppyInterface:
             ),
             pytest.param(
                 dict(
-                    folder_path=GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_1",
-                    parameters_file_path=None,
-                    expected_regions=["dms", "dls"],
-                    expected_traces={
-                        "dms": ["cntrl_sig_fit", "dff", "z_score"],
-                        "dls": ["cntrl_sig_fit", "dff", "z_score"],
-                    },
-                    expected_transients={"dms": ["z_score", "dff"], "dls": ["z_score", "dff"]},
-                    expected_cross_correlations=[
-                        {"event_name": "port_entries", "feature": "dff", "region_1": "dls", "region_2": "dms"},
-                        {"event_name": "port_entries", "feature": "z_score", "region_1": "dls", "region_2": "dms"},
-                        {"event_name": "rewarded_nose_pokes", "feature": "dff", "region_1": "dls", "region_2": "dms"},
-                        {
-                            "event_name": "rewarded_nose_pokes",
-                            "feature": "z_score",
-                            "region_1": "dls",
-                            "region_2": "dms",
-                        },
-                        {"event_name": "unrewarded_nose_pokes", "feature": "dff", "region_1": "dls", "region_2": "dms"},
-                        {
-                            "event_name": "unrewarded_nose_pokes",
-                            "feature": "z_score",
-                            "region_1": "dls",
-                            "region_2": "dms",
-                        },
-                    ],
-                    expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
-                    expected_valid_signal_intervals=[],
-                ),
-                id="tdt_isosbestic_two_regions_no_parameters_file",
-            ),
-            pytest.param(
-                dict(
                     folder_path=GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2",
-                    parameters_file_path=GUPPY_DATA_PATH / "GuPPyParamtersUsed2.json",
                     expected_regions=["dms"],
                     expected_traces={"dms": ["cntrl_sig_fit", "dff", "z_score"]},
                     expected_transients={"dms": ["z_score"]},
                     expected_cross_correlations=[],
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
                     expected_valid_signal_intervals=[
-                        ("dms", 2.43144319, 20.71505607),
-                        ("dms", 40.04014057, 154.71773782),
+                        ("dms", 3.93579108, 18.51639376),
+                        ("dms", 40.04014057, 154.60201876),
                     ],
                 ),
                 id="tdt_isosbestic_one_region_artifacts_removed",
@@ -122,16 +87,11 @@ class TestGuppyInterface:
         assert case[
             "folder_path"
         ].is_dir(), f"Test data missing at {case['folder_path']}. Place the GuPPy fixture set under {GUPPY_DATA_PATH}."
-        if case["parameters_file_path"] is not None:
-            assert case["parameters_file_path"].is_file(), f"Parameters file missing at {case['parameters_file_path']}."
         return case
 
     @pytest.fixture
     def interface(self, case):
-        kwargs = dict(folder_path=str(case["folder_path"]))
-        if case["parameters_file_path"] is not None:
-            kwargs["parameters_file_path"] = str(case["parameters_file_path"])
-        return GuppyInterface(**kwargs)
+        return GuppyInterface(folder_path=str(case["folder_path"]))
 
     def test_discovery(self, interface, case):
         assert interface.regions == case["expected_regions"]
@@ -262,10 +222,7 @@ class TestGuppyInterface:
             h5_path.unlink()
             dataframe.to_hdf(h5_path, key="df", mode="w")
 
-        kwargs = dict(folder_path=str(copied_folder))
-        if case["parameters_file_path"] is not None:
-            kwargs["parameters_file_path"] = str(case["parameters_file_path"])
-        interface = GuppyInterface(**kwargs)
+        interface = GuppyInterface(folder_path=str(copied_folder))
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile, metadata, stub_test=False)
@@ -313,33 +270,44 @@ class TestGuppyInterface:
             npy_path.unlink()
 
         with pytest.warns(UserWarning, match="no coordsForPreProcessing"):
-            GuppyInterface(
-                folder_path=str(copied_folder),
-                parameters_file_path=str(GUPPY_DATA_PATH / "GuPPyParamtersUsed2.json"),
-            )
+            GuppyInterface(folder_path=str(copied_folder))
 
-    def test_missing_artifacts_removal_method_warns_and_defaults(self):
+    def test_missing_artifacts_removal_method_warns_and_defaults(self, tmp_path):
+        source_folder = GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2"
+        copied_folder = tmp_path / "guppy_output"
+        shutil.copytree(source_folder, copied_folder)
+        params_path = copied_folder / "GuPPyParamtersUsed.json"
+        params_source = json.loads(params_path.read_text())
+        params_source.pop("artifactsRemovalMethod", None)
+        params_path.write_text(json.dumps(params_source))
+
         with pytest.warns(UserWarning, match="artifactsRemovalMethod"):
-            interface = GuppyInterface(
-                folder_path=str(GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2"),
-                parameters_file_path=str(GUPPY_DATA_PATH / "GuPPyParamtersUsed2.json"),
-            )
+            interface = GuppyInterface(folder_path=str(copied_folder))
         assert interface.artifact_removal_method == "concatenate"
 
     def test_artifacts_removal_method_read_from_json(self, tmp_path):
         source_folder = GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2"
         copied_folder = tmp_path / "guppy_output"
         shutil.copytree(source_folder, copied_folder)
-        params_source = json.loads((GUPPY_DATA_PATH / "GuPPyParamtersUsed2.json").read_text())
+        params_path = copied_folder / "GuPPyParamtersUsed.json"
+        params_source = json.loads(params_path.read_text())
         params_source["artifactsRemovalMethod"] = "replace with NaN"
-        params_path = tmp_path / "GuPPyParamtersUsed_with_method.json"
         params_path.write_text(json.dumps(params_source))
 
-        interface = GuppyInterface(
-            folder_path=str(copied_folder),
-            parameters_file_path=str(params_path),
-        )
+        interface = GuppyInterface(folder_path=str(copied_folder))
         assert interface.artifact_removal_method == "replace with NaN"
+
+    def test_missing_parameters_file_raises(self, case, tmp_path):
+        copied_folder = tmp_path / "guppy_output"
+        shutil.copytree(case["folder_path"], copied_folder)
+        (copied_folder / "GuPPyParamtersUsed.json").unlink()
+        with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):
+            GuppyInterface(folder_path=str(copied_folder))
+
+    def test_metadata_processing_module_includes_guppy_version(self, interface):
+        metadata = interface.get_metadata()
+        description = metadata["Ophys"]["Guppy"]["ProcessingModule"]["description"]
+        assert "(GuPPy version 2.0.0a7)" in description
 
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()

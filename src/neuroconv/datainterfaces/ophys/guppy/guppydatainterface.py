@@ -8,7 +8,7 @@ from typing import Literal
 import h5py
 import numpy as np
 import pandas
-from pydantic import DirectoryPath, FilePath, validate_call
+from pydantic import DirectoryPath, validate_call
 from pynwb.base import TimeSeries
 from pynwb.core import DynamicTable, VectorData
 from pynwb.epoch import TimeIntervals
@@ -55,7 +55,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self,
         folder_path: DirectoryPath,
         *,
-        parameters_file_path: FilePath | None = None,
         verbose: bool = False,
     ):
         """Initialize the GuppyInterface.
@@ -64,18 +63,15 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         ----------
         folder_path : DirectoryPath
             Path to the GuPPy output folder (the ``<session>_output_<N>`` directory containing
-            ``storesList.csv`` and the per-region derived ``.hdf5`` files).
-        parameters_file_path : FilePath, optional
-            Path to the ``GuPPyParamtersUsed.json`` file produced by GuPPy. GuPPy does not save
-            this file at a fixed location relative to ``folder_path``, so the path must be
-            provided explicitly when you want the parameters captured. If omitted, the
-            parameters are not loaded and trace/transient descriptions fall back to defaults.
+            ``storesList.csv``, the per-region derived ``.hdf5`` files, and the
+            ``GuPPyParamtersUsed.json`` provenance file). GuPPy always writes
+            ``GuPPyParamtersUsed.json`` into this folder, so it is discovered automatically; if
+            it is missing the folder is not a valid GuPPy output and construction fails.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
         super().__init__(
             folder_path=folder_path,
-            parameters_file_path=parameters_file_path,
             verbose=verbose,
         )
 
@@ -106,11 +102,12 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             for region in regions
         }
 
-        if parameters_file_path is not None:
-            with open(parameters_file_path, "r") as parameters_file:
-                guppy_parameters = json.load(parameters_file)
-        else:
-            guppy_parameters = {}
+        parameters_file_path = folder_path / "GuPPyParamtersUsed.json"
+        assert (
+            parameters_file_path.is_file()
+        ), f"GuPPyParamtersUsed.json not found in {folder_path}; this does not look like a GuPPy output folder."
+        with open(parameters_file_path, "r") as parameters_file:
+            guppy_parameters = json.load(parameters_file)
 
         cross_correlations = self._discover_cross_correlations(folder_path=folder_path, regions=regions)
         valid_signal_intervals_by_region = self._discover_valid_signal_intervals(
@@ -142,7 +139,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 artifact_removal_method = "concatenate"
 
         self.folder_path = folder_path
-        self.parameters_file_path = Path(parameters_file_path) if parameters_file_path is not None else None
+        self.parameters_file_path = parameters_file_path
         self.regions = regions
         self.traces_by_region = traces_by_region
         self.transients_by_region = transients_by_region
@@ -334,10 +331,17 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 )
             )
 
+        guppy_version = guppy_parameters.get("guppy_version")
+        processing_module_description = "GuPPy-derived fiber photometry processing outputs."
+        if guppy_version is not None:
+            processing_module_description = (
+                f"GuPPy-derived fiber photometry processing outputs (GuPPy version {guppy_version})."
+            )
+
         metadata["Ophys"]["Guppy"] = dict(
             ProcessingModule=dict(
                 name="fiber_photometry",
-                description="GuPPy-derived fiber photometry processing outputs.",
+                description=processing_module_description,
             ),
             Traces=traces_metadata,
             Transients=transients_metadata,

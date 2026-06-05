@@ -12,7 +12,6 @@ from ..setup_paths import OPHYS_DATA_PATH
 
 SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_63_207-181030-103332"
 GUPPY_OUTPUT_FOLDER = SESSION_FOLDER / "Photo_63_207-181030-103332_output_1"
-PARAMETERS_FILE = SESSION_FOLDER / "GuPPyParamtersUsed1.json"
 FIBER_PHOTOMETRY_METADATA_FILE = Path(__file__).parent / "fiber_photometry_metadata.yaml"
 
 
@@ -27,7 +26,6 @@ class TestTDTFiberPhotometryGuppyConverter:
         return TDTFiberPhotometryGuppyConverter(
             tdt_folder_path=SESSION_FOLDER,
             guppy_folder_path=GUPPY_OUTPUT_FOLDER,
-            parameters_file_path=PARAMETERS_FILE,
         )
 
     @pytest.fixture
