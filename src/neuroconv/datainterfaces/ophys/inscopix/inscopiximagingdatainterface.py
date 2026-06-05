@@ -46,6 +46,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         file_path: FilePath,
         verbose: bool = False,
         metadata_key: str | None = None,
+        skip_multiplane_check: bool = False,
         **kwargs,
     ):
         """
@@ -58,6 +59,8 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         metadata_key : str, optional
             # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
             Metadata key for this interface. When None, defaults to "inscopix_imaging".
+        skip_multiplane_check: bool, optional
+            If True, skips the multiplane check. Only set if 100% certain the Inscopix file contains one focal plane
         **kwargs : dict, optional
             Additional keyword arguments passed to the parent class.
 
@@ -67,7 +70,8 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             If the file contains multiplane configuration that is not yet supported.
         """
         # Check for multiplane configuration before proceeding
-        is_file_multiplane(file_path)
+        if not skip_multiplane_check:
+            is_file_multiplane(file_path)
 
         if metadata_key is None:
             metadata_key = "inscopix_imaging"

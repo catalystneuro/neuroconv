@@ -1236,6 +1236,81 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
 
 @skip_on_python_313
 @skip_on_darwin_arm64
+class TestInscopixImagingInterfaceMovie128x128x100Part1MultiplaneBypass(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with movie_128x128x100_part1.isxd (minimal metadata file) w/ multiplane check bypass"""
+
+    data_interface_cls = InscopixImagingInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd"),
+        skip_multiplane_check=True
+    )
+    optical_series_name = "OnePhotonSeries"
+
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        """Test metadata extraction for file with minimal acquisition info."""
+
+        # NWBFile checks
+        nwbfile = metadata["NWBFile"]
+        assert nwbfile["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+        assert "session_id" not in nwbfile
+        assert "experimenter" not in nwbfile
+
+        # Device checks
+        device = metadata["Ophys"]["Device"][0]
+        assert device["name"] == "Microscope"  # Default metadata because this was not included in the source metadata
+        assert "description" not in device or device.get("description", "") == ""
+
+        # ImagingPlane checks
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane["name"] == "ImagingPlane"
+        assert (
+            imaging_plane["device"] == "Microscope"
+        )  # Default metadata because this was not included in the source metadata
+        assert (
+            imaging_plane["description"] == "The plane or volume being imaged by the microscope."
+        )  # Default metadata because this was not included in the source metadata
+
+        # Optical channel checks
+        optical_channel = imaging_plane["optical_channel"][0]
+        assert (
+            optical_channel["name"] == "OpticalChannel"
+        )  # Default metadata because this was not included in the source metadata
+        assert (
+            optical_channel["description"] == "An optical channel of the microscope."
+        )  # Default metadata because this was not included in the source metadata
+
+        # OnePhotonSeries checks
+        ops = metadata["Ophys"]["OnePhotonSeries"][0]
+        assert ops["name"] == "OnePhotonSeries"
+        assert (
+            ops["description"] == "Imaging data from one-photon excitation microscopy."
+        )  # Default metadata because this was not included in the source metadata
+        assert ops["unit"] == "n.a."  # Default metadata because this was not included in the source metadata
+        assert ops["imaging_plane"] == "ImagingPlane"
+        assert ops["dimension"] == [128, 128]
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Test new dict-based metadata for file with minimal acquisition info."""
+        metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+
+        expected_ophys = {
+            "MicroscopySeries": {
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                },
+            },
+        }
+        assert metadata["Ophys"] == expected_ophys
+        assert "Devices" not in metadata
+        assert "Subject" not in metadata
+
+
+@skip_on_python_313
+@skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMovieLongerThan3Min:
     """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
 
@@ -1334,6 +1409,84 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
+    optical_series_name = "OnePhotonSeries"
+
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        """Test metadata extraction for uint8 file with minimal acquisition info."""
+
+        # NWBFile checks
+        nwbfile = metadata["NWBFile"]
+        assert nwbfile["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+        assert "session_id" not in nwbfile
+        assert "experimenter" not in nwbfile
+
+        # Device checks
+        device = metadata["Ophys"]["Device"][0]
+        assert device["name"] == "Microscope"  # Default metadata because this was not included in the source metadata
+        assert "description" not in device or device.get("description", "") == ""
+
+        # ImagingPlane checks
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane["name"] == "ImagingPlane"
+        assert (
+            imaging_plane["device"] == "Microscope"
+        )  # Default metadata because this was not included in the source metadata
+        assert (
+            imaging_plane["description"] == "The plane or volume being imaged by the microscope."
+        )  # Default metadata because this was not included in the source metadata
+
+        # Optical channel checks
+        optical_channel = imaging_plane["optical_channel"][0]
+        assert (
+            optical_channel["name"] == "OpticalChannel"
+        )  # Default metadata because this was not included in the source metadata
+        assert (
+            optical_channel["description"] == "An optical channel of the microscope."
+        )  # Default metadata because this was not included in the source metadata
+
+        # OnePhotonSeries checks
+        ops = metadata["Ophys"]["OnePhotonSeries"][0]
+        assert ops["name"] == "OnePhotonSeries"
+        assert (
+            ops["description"] == "Imaging data from one-photon excitation microscopy."
+        )  # Default metadata because this was not included in the source metadata
+        assert ops["unit"] == "n.a."  # Default metadata because this was not included in the source metadata
+        assert (
+            ops["imaging_plane"] == "ImagingPlane"
+        )  # Default metadata because this was not included in the source metadata
+        assert ops["dimension"] == [3, 4]
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Test new dict-based metadata for uint8 file with minimal acquisition info."""
+        metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+
+        expected_ophys = {
+            "MicroscopySeries": {
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                },
+            },
+        }
+        assert metadata["Ophys"] == expected_ophys
+        assert "Devices" not in metadata
+        assert "Subject" not in metadata
+
+
+@skip_on_python_313
+@skip_on_darwin_arm64
+class TestInscopixImagingInterfaceMovieU8MultiplaneBypass(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with movie_u8.isxd (minimal metadata file, uint8 dtype) w/ multiplane bypass check."""
+
+    data_interface_cls = InscopixImagingInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"),
+        skip_multiplane_check=True
+    )
+
     optical_series_name = "OnePhotonSeries"
 
     # TODO: remove when old list-based metadata format is removed
