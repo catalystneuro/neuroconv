@@ -1,10 +1,29 @@
 from pynwb import NWBFile
+from pynwb.icephys import (
+    CurrentClampSeries,
+    CurrentClampStimulusSeries,
+    IZeroClampSeries,
+    VoltageClampSeries,
+    VoltageClampStimulusSeries,
+)
 
 from ..utils import DeepDict
 
 # The key under which the default (placeholder) entries are registered. An interface re-keys these to its own
 # file-derived keys; mirrors the ophys ``default_metadata_key``.
 DEFAULT_METADATA_KEY = "default_metadata_key"
+
+# clamp mode -> NWB response / stimulus classes. Shared icephys knowledge (not Axon-specific): any icephys
+# interface can map a clamp mode to the right pynwb series types.
+_RESPONSE_CLASS = {
+    "voltage_clamp": VoltageClampSeries,
+    "current_clamp": CurrentClampSeries,
+    "izero": IZeroClampSeries,
+}
+_STIMULUS_CLASS = {
+    "voltage_clamp": VoltageClampStimulusSeries,
+    "current_clamp": CurrentClampStimulusSeries,
+}
 
 
 def _get_icephys_metadata_placeholders() -> DeepDict:

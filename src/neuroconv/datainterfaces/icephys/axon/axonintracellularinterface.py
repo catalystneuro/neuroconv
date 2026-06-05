@@ -6,58 +6,19 @@ from typing import Literal
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
-from pynwb.icephys import (
-    CurrentClampSeries,
-    CurrentClampStimulusSeries,
-    IZeroClampSeries,
-    VoltageClampSeries,
-    VoltageClampStimulusSeries,
-)
 
 from ....basedatainterface import BaseDataInterface
-from ....tools.icephys import _add_intracellular_electrode_to_nwbfile
+from ....tools.icephys import (
+    _RESPONSE_CLASS,
+    _STIMULUS_CLASS,
+    _add_intracellular_electrode_to_nwbfile,
+)
 from ....utils import (
     DeepDict,
     calculate_regular_series_rate,
     get_conversion_from_unit,
     to_camel_case,
 )
-
-# clamp mode -> NWB response / stimulus classes
-_RESPONSE_CLASS = {
-    "voltage_clamp": VoltageClampSeries,
-    "current_clamp": CurrentClampSeries,
-    "izero": IZeroClampSeries,
-}
-_STIMULUS_CLASS = {
-    "voltage_clamp": VoltageClampStimulusSeries,
-    "current_clamp": CurrentClampStimulusSeries,
-}
-
-
-def _recorded_channel_names(reader) -> list[str]:
-    """
-    Recorded analog-to-digital converter channel names (the `response_channel_name` / `stimulus_channel_name` options).
-
-    neo builds each name by stripping spaces from the stored name, which can yield an empty string (see neo
-    handoff Gap 4); fall back to ``ch{index}`` so every channel stays addressable by name.
-    """
-    names = []
-    for index, channel in enumerate(reader.header["signal_channels"]):
-        name = str(channel["name"]).strip()
-        names.append(name or f"ch{index}")
-    return names
-
-
-def _dac_channel_names(reader) -> list[str]:
-    """The protocol's DAC command channel names (the `stimulus_command` options); ``cmd{index}`` if blank."""
-    dac_info = reader._axon_info.get("listDACInfo", [])
-    names = []
-    for index, dac in enumerate(dac_info):
-        raw = dac["DACChNames"]
-        name = (raw.decode(errors="replace") if hasattr(raw, "decode") else str(raw)).strip()
-        names.append(name or f"cmd{index}")
-    return names
 
 
 class AxonIntracellularInterface(BaseDataInterface):
@@ -161,7 +122,7 @@ class AxonIntracellularInterface(BaseDataInterface):
             ) from exception
         self._reader = reader
         self._signal_channels = reader.header["signal_channels"]
-        self._channel_names = _recorded_channel_names(reader)
+        self._channel_names = self._recorded_channel_names(reader)
 
         # Map the response channel name to its position in neo's signal_channels list now, so a name that isn't a
         # recorded channel fails at construction (with the available names). The stimulus channel/command names are
@@ -241,10 +202,16 @@ class AxonIntracellularInterface(BaseDataInterface):
             }
         }
 
-        response_class = _RESPONSE_CLASS[self._mode].__name__
+        # Default series name = the NWB neurodata type + the electrode suffix, written out per clamp mode so the
+        # naming pattern is explicit here (add_to_nwbfile instantiates the matching class via _RESPONSE_CLASS).
+        response_type_name = {
+            "voltage_clamp": "VoltageClampSeries",
+            "current_clamp": "CurrentClampSeries",
+            "izero": "IZeroClampSeries",
+        }[self._mode]
         metadata["Icephys"]["PatchClampSeries"] = {
             series_metadata_key: {
-                "name": f"{response_class}{electrode_name_suffix}",
+                "name": f"{response_type_name}{electrode_name_suffix}",
                 "description": f"Intracellular response ({self._mode}).",
                 "electrode_metadata_key": electrode_metadata_key,
             }
@@ -254,10 +221,13 @@ class AxonIntracellularInterface(BaseDataInterface):
         # `series_metadata_key` (no `_stimulus` suffix), and reuses the response's electrode, so it carries only a
         # name and a description. The shared key is the pairing.
         if self._has_stimulus:
-            stimulus_class = _STIMULUS_CLASS[self._mode].__name__
+            stimulus_type_name = {
+                "voltage_clamp": "VoltageClampStimulusSeries",
+                "current_clamp": "CurrentClampStimulusSeries",
+            }[self._mode]
             metadata["Icephys"]["PatchClampStimulusSeries"] = {
                 series_metadata_key: {
-                    "name": f"{stimulus_class}{electrode_name_suffix}",
+                    "name": f"{stimulus_type_name}{electrode_name_suffix}",
                     "description": f"Intracellular stimulus ({self._mode}).",
                 }
             }
@@ -274,12 +244,10 @@ class AxonIntracellularInterface(BaseDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
-        # Locate this interface's entries by the series metadata key (resolved at construction). The response is in
-        # PatchClampSeries; its paired stimulus, if any, is the same key in the parallel PatchClampStimulusSeries
-        # registry (None when absent). The electrode is followed from the response's editable link.
+        # Locate this interface's response entry by its series metadata key (resolved at construction) and follow
+        # the editable link to the electrode. The paired stimulus, if any, is read further down where it is used.
         series_metadata_key = self._series_metadata_key
         response_metadata = metadata["Icephys"]["PatchClampSeries"][series_metadata_key]
-        stimulus_metadata = metadata["Icephys"].get("PatchClampStimulusSeries", {}).get(series_metadata_key)
         electrode = _add_intracellular_electrode_to_nwbfile(
             nwbfile, metadata, response_metadata["electrode_metadata_key"]
         )
@@ -312,7 +280,9 @@ class AxonIntracellularInterface(BaseDataInterface):
         nwbfile.add_acquisition(response_series)
 
         stimulus_series = None
-        if stimulus_metadata is not None:
+        if self._has_stimulus:
+            # Read the stimulus directly (same key, parallel registry); a missing entry fails loud, no silent drop.
+            stimulus_metadata = metadata["Icephys"]["PatchClampStimulusSeries"][series_metadata_key]
             stimulus_series = self._build_stimulus_series(
                 self._reader, stimulus_metadata, electrode, timestamps, self._sampling_rate, self._num_sweeps
             )
@@ -390,7 +360,7 @@ class AxonIntracellularInterface(BaseDataInterface):
         """
         reader = cls.get_extractor_class()(filename=str(file_path))
         reader.parse_header()
-        return _recorded_channel_names(reader)
+        return cls._recorded_channel_names(reader)
 
     @classmethod
     def get_command_names(cls, file_path: FilePath) -> list[str]:
@@ -412,27 +382,7 @@ class AxonIntracellularInterface(BaseDataInterface):
         reader.parse_header()
         if reader._axon_info["fFileVersionNumber"] < 2:
             return []
-        return _dac_channel_names(reader)
-
-    # ------------------------------------------------------------------ helpers
-
-    def _channel_name_to_index(self, name: str) -> int:
-        """Resolve a recorded ADC channel name to its signal_channels index."""
-        if name in self._channel_names:
-            return self._channel_names.index(name)
-        raise ValueError(
-            f"Recorded channel '{name}' not found in '{self._file_path.name}'. "
-            f"Available recorded channels: {self._channel_names}."
-        )
-
-    def _command_name_to_index(self, name: str) -> int:
-        """Resolve a DAC command channel name to its index in the protocol's DAC list."""
-        dac_names = _dac_channel_names(self._reader)
-        if name in dac_names:
-            return dac_names.index(name)
-        raise ValueError(
-            f"DAC command '{name}' not found in '{self._file_path.name}'. Available commands: {dac_names}."
-        )
+        return cls._dac_channel_names(reader)
 
     # ------------------------------------------------------------------ writing helpers
 
@@ -522,15 +472,33 @@ class AxonIntracellularInterface(BaseDataInterface):
         return _STIMULUS_CLASS[self._mode](**kwargs)
 
     def _extract_stimulus_type(self) -> str:
+        r"""Short label for the run's stimulus type.
+
+        nOperationMode  sProtocolPath (neo gives bytes)             ->  result
+        --------------  -----------------------------------------  ----  -------------------------------
+        3               anything                                   ->  "gap-free"
+        3               b"C:\Axon\gapfree.pro"                     ->  "gap-free"   (mode 3 short-circuits)
+        5               b"C:\Axon\Params\CC_ADP.pro"               ->  "CC_ADP"
+        2               b"D:\proto\FI_DEPOL.pro"                   ->  "FI_DEPOL"
+        1               b"E:\x\Simple Voltage Clamp Protocol.pro"  ->  "Simple Voltage Clamp Protocol"
+        5               b"" or missing                             ->  "not described"
+        None            None  (ABF v1: no protocol section)        ->  "not described"
+
+        Axon stores, in the ABF header, the acquisition mode (``nOperationMode``; ``3`` is gap-free (a single sweep) the
+        others are protocol-driven, e.g. ``5`` episodic stimulation) and the path of the Clampex protocol ``.pro`` file
+        loaded at record time (``sProtocolPath``). neo exposes both on ``reader._axon_info`` (nested under
+        ``["protocol"]`` in newer neo, top-level in older). We reduce them to one human-readable label: gap-free
+        has no protocol, so it is ``"gap-free"``; otherwise the protocol file's stem is the most meaningful short
+        name; failing both, ``"not described"``. The label is written to the ``stimulus_type`` column on each
+        IntracellularRecordings row
+        """
         info = self._reader._axon_info
         operation_mode = info.get("protocol", {}).get("nOperationMode", info.get("nOperationMode"))
         if operation_mode == 3:
             return "gap-free"
         protocol_path = info.get("sProtocolPath")
         if protocol_path:
-            # neo returns `sProtocolPath` as bytes; decode it (as `_dac_channel_names` does for the DAC names) so
-            # the `b'...'` repr never leaks into the label. It is a Windows path, so PureWindowsPath splits on `\`
-            # (and `/`) on any host OS.
+            # neo returns `sProtocolPath` as bytes; decode it so the `b'...'` repr never leaks into the label.
             protocol_path = (
                 protocol_path.decode(errors="replace") if hasattr(protocol_path, "decode") else str(protocol_path)
             )
@@ -538,3 +506,52 @@ class AxonIntracellularInterface(BaseDataInterface):
             if protocol_name:
                 return protocol_name
         return "not described"
+
+    # ------------------------------------------------------ neo name/index disambiguation
+    # Corralled here because these exist only to work around neo's channel/command naming: it strips spaces from
+    # the stored names (which can leave a name empty) and otherwise addresses channels positionally. They turn
+    # neo's names into stable, non-empty, name-addressable handles, and resolve a name back to its index.
+    # Candidates for removal once neo exposes reliable names upstream (see the neo robustness handoff).
+
+    @staticmethod
+    def _recorded_channel_names(reader) -> list[str]:
+        """
+        Recorded analog-to-digital converter channel names (the `response_channel_name` / `stimulus_channel_name` options).
+
+        neo builds each name by stripping spaces from the stored name, which can yield an empty string (see neo
+        handoff Gap 4); fall back to ``ch{index}`` so every channel stays addressable by name.
+        """
+        names = []
+        for index, channel in enumerate(reader.header["signal_channels"]):
+            name = str(channel["name"]).strip()
+            names.append(name or f"ch{index}")
+        return names
+
+    @staticmethod
+    def _dac_channel_names(reader) -> list[str]:
+        """The protocol's DAC command channel names (the `stimulus_command` options); ``cmd{index}`` if blank."""
+        dac_info = reader._axon_info.get("listDACInfo", [])
+        names = []
+        for index, dac in enumerate(dac_info):
+            raw = dac["DACChNames"]
+            name = (raw.decode(errors="replace") if hasattr(raw, "decode") else str(raw)).strip()
+            names.append(name or f"cmd{index}")
+        return names
+
+    def _channel_name_to_index(self, name: str) -> int:
+        """Resolve a recorded ADC channel name to its signal_channels index."""
+        if name in self._channel_names:
+            return self._channel_names.index(name)
+        raise ValueError(
+            f"Recorded channel '{name}' not found in '{self._file_path.name}'. "
+            f"Available recorded channels: {self._channel_names}."
+        )
+
+    def _command_name_to_index(self, name: str) -> int:
+        """Resolve a DAC command channel name to its index in the protocol's DAC list."""
+        dac_names = self._dac_channel_names(self._reader)
+        if name in dac_names:
+            return dac_names.index(name)
+        raise ValueError(
+            f"DAC command '{name}' not found in '{self._file_path.name}'. Available commands: {dac_names}."
+        )
