@@ -1,4 +1,5 @@
 from .checks import calculate_regular_series_rate
+from .units import get_conversion_from_unit
 from .dict import (
     DeepDict,
     append_replace_dict_in_list,
