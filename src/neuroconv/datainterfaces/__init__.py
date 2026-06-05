@@ -67,6 +67,10 @@ from .ecephys.plexon.plexondatainterface import (
     PlexonLFPInterface,
     PlexonSortingInterface,
 )
+from .ecephys.pvfs.pvfsannotationsinterface import PvfsAnnotationsInterface
+from .ecephys.pvfs.pvfsdatainterface import PvfsRecordingInterface
+from .ecephys.pvfs.pvfssleepscoringinterface import PvfsSleepScoringInterface
+from .ecephys.pvfs.pvfsvideointerface import PvfsVideoInterface
 from .ecephys.spike2.spike2datainterface import Spike2RecordingInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import (
     SpikeGadgetsRecordingInterface,
@@ -155,6 +159,7 @@ interface_list = [
     PlexonLFPInterface,
     Plexon2RecordingInterface,
     PlexonSortingInterface,
+    PvfsRecordingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
     AxonRecordingInterface,
@@ -198,6 +203,9 @@ interface_list = [
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
     MedPCInterface,
+    PvfsAnnotationsInterface,
+    PvfsSleepScoringInterface,
+    PvfsVideoInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,

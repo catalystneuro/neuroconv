@@ -91,6 +91,14 @@ Plexon Recording & Sorting
 
 .. automodule:: neuroconv.datainterfaces.ecephys.plexon.plexondatainterface
 
+Pinnacle PVFS
+-------------
+.. automodule:: neuroconv.datainterfaces.ecephys.pvfs.pvfsdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.pvfs.pvfsannotationsinterface
+.. automodule:: neuroconv.datainterfaces.ecephys.pvfs.pvfssleepscoringinterface
+.. automodule:: neuroconv.datainterfaces.ecephys.pvfs.pvfsvideointerface
+.. automodule:: neuroconv.datainterfaces.ecephys.pvfs.pvfsconverter
+
 Spike2
 ------
 .. automodule:: neuroconv.datainterfaces.ecephys.spike2.spike2datainterface
