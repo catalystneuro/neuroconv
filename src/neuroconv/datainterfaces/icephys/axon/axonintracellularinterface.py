@@ -317,7 +317,7 @@ class AxonIntracellularInterface(BaseDataInterface):
         """
         columns = {
             "sequence": self._file_path.stem,
-            "stimulus_type": self._extract_stimulus_type(),
+            "stimulus_type": self._extract_and_format_stimulus_type(),
         }
         column_descriptions = {
             "sequence": "Run identity grouping rows into a sequential recording (one run per source file).",
@@ -471,7 +471,7 @@ class AxonIntracellularInterface(BaseDataInterface):
             kwargs.update(timestamps=timestamps)
         return _STIMULUS_CLASS[self._mode](**kwargs)
 
-    def _extract_stimulus_type(self) -> str:
+    def _extract_and_format_stimulus_type(self) -> str:
         r"""Short label for the run's stimulus type.
 
         nOperationMode  sProtocolPath (neo gives bytes)             ->  result
