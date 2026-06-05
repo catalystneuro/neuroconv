@@ -1145,10 +1145,12 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
                 self.check_nwbfile_temporal_alignment()
 
 
-class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class MiniscopeImagingInterfaceMixin(ImagingExtractorInterfaceTestMixin):
     """
     A mixin for testing Miniscope Imaging interfaces.
     """
+
+    optical_series_name = "OnePhotonSeries"
 
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_miniscope import Miniscope
