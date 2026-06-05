@@ -27,6 +27,8 @@ def _get_icephys_metadata_placeholders() -> DeepDict:
       placeholder.
     - ``Icephys.PatchClampSeries[key]``: the response series, linked to its electrode by
       ``electrode_metadata_key``.
+    - ``Icephys.PatchClampStimulusSeries[key]``: the optional paired stimulus, in a parallel registry at the
+      SAME key as its response. It reuses the response's electrode, so it carries no ``electrode_metadata_key``.
     """
     metadata = DeepDict()
     metadata["Devices"] = {
@@ -46,6 +48,11 @@ def _get_icephys_metadata_placeholders() -> DeepDict:
             DEFAULT_METADATA_KEY: {
                 "name": "PatchClampSeries",
                 "electrode_metadata_key": DEFAULT_METADATA_KEY,
+            }
+        },
+        "PatchClampStimulusSeries": {
+            DEFAULT_METADATA_KEY: {
+                "name": "PatchClampStimulusSeries",
             }
         },
     }

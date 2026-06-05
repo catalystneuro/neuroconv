@@ -242,21 +242,25 @@ class AxonIntracellularInterface(BaseDataInterface):
         }
 
         response_class = _RESPONSE_CLASS[self._mode].__name__
-        patch_clamp_series = {
+        metadata["Icephys"]["PatchClampSeries"] = {
             series_metadata_key: {
                 "name": f"{response_class}{electrode_name_suffix}",
                 "description": f"Intracellular response ({self._mode}).",
                 "electrode_metadata_key": electrode_metadata_key,
             }
         }
+        # A paired stimulus is an owned 1:1 partner of the response, not a shared resource, so it does not get its
+        # own key plus a cross-link. It lives in a parallel PatchClampStimulusSeries registry at the SAME
+        # `series_metadata_key` (no `_stimulus` suffix), and reuses the response's electrode, so it carries only a
+        # name and a description. The shared key is the pairing.
         if self._has_stimulus:
             stimulus_class = _STIMULUS_CLASS[self._mode].__name__
-            patch_clamp_series[f"{series_metadata_key}_stimulus"] = {
-                "name": f"{stimulus_class}{electrode_name_suffix}",
-                "description": f"Intracellular stimulus ({self._mode}).",
-                "electrode_metadata_key": electrode_metadata_key,
+            metadata["Icephys"]["PatchClampStimulusSeries"] = {
+                series_metadata_key: {
+                    "name": f"{stimulus_class}{electrode_name_suffix}",
+                    "description": f"Intracellular stimulus ({self._mode}).",
+                }
             }
-        metadata["Icephys"]["PatchClampSeries"] = patch_clamp_series
 
         return metadata
 
@@ -270,12 +274,12 @@ class AxonIntracellularInterface(BaseDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
-        # Locate this interface's entries by the series metadata key (resolved at construction), then follow the
-        # links to the ancillary objects.
+        # Locate this interface's entries by the series metadata key (resolved at construction). The response is in
+        # PatchClampSeries; its paired stimulus, if any, is the same key in the parallel PatchClampStimulusSeries
+        # registry (None when absent). The electrode is followed from the response's editable link.
         series_metadata_key = self._series_metadata_key
-        patch_clamp_series = metadata["Icephys"]["PatchClampSeries"]
-        response_metadata = patch_clamp_series[series_metadata_key]
-        stimulus_metadata = patch_clamp_series.get(f"{series_metadata_key}_stimulus")
+        response_metadata = metadata["Icephys"]["PatchClampSeries"][series_metadata_key]
+        stimulus_metadata = metadata["Icephys"].get("PatchClampStimulusSeries", {}).get(series_metadata_key)
         electrode = _add_intracellular_electrode_to_nwbfile(
             nwbfile, metadata, response_metadata["electrode_metadata_key"]
         )

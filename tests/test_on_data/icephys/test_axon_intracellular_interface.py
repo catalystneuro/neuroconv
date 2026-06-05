@@ -100,16 +100,20 @@ class TestAxonMultiSweepCurrentClampCommand(DataInterfaceTestMixin):
                 "description": "Intracellular response (current_clamp).",
                 "electrode_metadata_key": electrode_metadata_key,
             },
-            f"{electrode_metadata_key}_stimulus": {
+        }
+        # The paired stimulus lives in the parallel PatchClampStimulusSeries registry at the SAME key, with no
+        # `_stimulus` suffix and no electrode link (it reuses the response's electrode).
+        expected_stimulus_metadata = {
+            electrode_metadata_key: {
                 "name": f"CurrentClampStimulusSeries{electrode_name_suffix}",
                 "description": "Intracellular stimulus (current_clamp).",
-                "electrode_metadata_key": electrode_metadata_key,
             },
         }
 
         assert metadata["Devices"] == expected_device_metadata
         assert metadata["Icephys"]["IntracellularElectrodes"] == expected_electrode_metadata
         assert metadata["Icephys"]["PatchClampSeries"] == expected_series_metadata
+        assert metadata["Icephys"]["PatchClampStimulusSeries"] == expected_stimulus_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
@@ -251,10 +255,11 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
                 "description": "Intracellular response (voltage_clamp).",
                 "electrode_metadata_key": electrode_metadata_key,
             },
-            f"{electrode_metadata_key}_stimulus": {
+        }
+        assert metadata["Icephys"]["PatchClampStimulusSeries"] == {
+            electrode_metadata_key: {
                 "name": f"VoltageClampStimulusSeries{electrode_name_suffix}",
                 "description": "Intracellular stimulus (voltage_clamp).",
-                "electrode_metadata_key": electrode_metadata_key,
             },
         }
 
@@ -391,7 +396,8 @@ class TestAxonRecordedMonitorStimulus(DataInterfaceTestMixin):
         # session_start_time is read from the ABF header (same file as the episodic test).
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 6, 10, 17, 14, 1, 315000)
 
-        # A recorded-monitor stimulus still produces a paired `_stimulus` series entry alongside the response.
+        # A recorded-monitor stimulus produces a paired entry in the parallel PatchClampStimulusSeries registry,
+        # at the same key as the response.
         electrode_metadata_key = "21610017_IN0"
         electrode_name_suffix = "21610017IN0"
         assert metadata["Icephys"]["PatchClampSeries"] == {
@@ -400,10 +406,11 @@ class TestAxonRecordedMonitorStimulus(DataInterfaceTestMixin):
                 "description": "Intracellular response (current_clamp).",
                 "electrode_metadata_key": electrode_metadata_key,
             },
-            f"{electrode_metadata_key}_stimulus": {
+        }
+        assert metadata["Icephys"]["PatchClampStimulusSeries"] == {
+            electrode_metadata_key: {
                 "name": f"CurrentClampStimulusSeries{electrode_name_suffix}",
                 "description": "Intracellular stimulus (current_clamp).",
-                "electrode_metadata_key": electrode_metadata_key,
             },
         }
 
