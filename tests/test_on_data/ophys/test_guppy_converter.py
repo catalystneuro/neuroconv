@@ -16,7 +16,6 @@ FIBER_PHOTOMETRY_METADATA_FILE = Path(__file__).parent / "fiber_photometry_metad
 
 
 EXPECTED_REGIONS = ("dms", "dls")
-EXPECTED_REGION_TO_TDT_STREAM = {"dms": "Dv2A", "dls": "Dv4B"}
 EXPECTED_TDT_SESSION_START_TIME = datetime(2018, 10, 30, 15, 33, 53, 999999, tzinfo=timezone.utc)
 
 
@@ -41,20 +40,6 @@ class TestTDTFiberPhotometryGuppyConverter:
 
     def test_construction_creates_both_interfaces(self, converter):
         assert set(converter.data_interface_objects) == {"TDTFiberPhotometry", "Guppy"}
-
-    def test_region_to_tdt_stream_mapping(self, converter):
-        assert converter._region_to_tdt_stream == EXPECTED_REGION_TO_TDT_STREAM
-
-    def test_alignment_shifts_guppy_to_tdt_clock(self, converter):
-        guppy_interface = converter.data_interface_objects["Guppy"]
-        tdt_interface = converter.data_interface_objects["TDTFiberPhotometry"]
-        tdt_starting_time_and_rate = tdt_interface.get_original_starting_time_and_rate()
-
-        aligned_region_to_timestamps = guppy_interface.get_timestamps()
-        for region, tdt_stream_name in EXPECTED_REGION_TO_TDT_STREAM.items():
-            tdt_starting_time, _ = tdt_starting_time_and_rate[tdt_stream_name]
-            aligned_first_timestamp = float(aligned_region_to_timestamps[region][0])
-            np.testing.assert_allclose(aligned_first_timestamp, tdt_starting_time, atol=1e-9)
 
     def test_session_start_time_taken_from_tdt(self, converter):
         metadata = converter.get_metadata()
@@ -110,7 +95,13 @@ class TestTDTFiberPhotometryGuppyConverter:
                         series_name in processing_module.data_interfaces
                     ), f"Expected {series_name} in fiber_photometry processing module."
 
-    def test_guppy_timestamps_in_nwb_match_tdt_clock(self, converter, metadata, tmp_path):
+    def test_guppy_timestamps_in_nwb_are_native(self, converter, metadata, tmp_path):
+        """GuPPy traces keep their native timestamps -- no cross-system offset is applied.
+
+        GuPPy and TDT share the recording-start origin, so GuPPy's emitted timestamps already sit
+        on the TDT clock. The first sample stays ~1s in (the lights-on delay) rather than being
+        shoved to the TDT stream start (0.0), which the old offset alignment did incorrectly.
+        """
         nwbfile_path = tmp_path / "tdt_guppy_alignment.nwb"
         converter.run_conversion(
             nwbfile_path=str(nwbfile_path),
@@ -119,16 +110,17 @@ class TestTDTFiberPhotometryGuppyConverter:
             stub_test=True,
         )
 
-        tdt_interface = converter.data_interface_objects["TDTFiberPhotometry"]
-        tdt_starting_time_and_rate = tdt_interface.get_original_starting_time_and_rate()
+        guppy_interface = converter.data_interface_objects["Guppy"]
+        native_region_to_timestamps = guppy_interface.get_original_timestamps()
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
             processing_module = nwbfile.processing["guppy"]
-            for region, tdt_stream_name in EXPECTED_REGION_TO_TDT_STREAM.items():
-                tdt_starting_time, _ = tdt_starting_time_and_rate[tdt_stream_name]
+            for region in EXPECTED_REGIONS:
+                native_timestamps = native_region_to_timestamps[region]
                 dff_series = processing_module.data_interfaces[f"dff_{region}"]
-                assert (
-                    dff_series.timestamps is not None
-                ), f"Expected aligned timestamps on dff_{region}, got starting_time/rate."
-                np.testing.assert_allclose(float(dff_series.timestamps[0]), tdt_starting_time, atol=1e-9)
+                assert dff_series.timestamps is not None, f"Expected timestamps on dff_{region}."
+                written = np.asarray(dff_series.timestamps[:])
+                np.testing.assert_allclose(written, native_timestamps[: written.shape[0]], atol=1e-9)
+                # ~1s lights-on delay preserved, not shifted to the TDT stream start of 0.0.
+                assert written[0] > 0.5

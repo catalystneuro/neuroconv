@@ -338,7 +338,10 @@ class TestGuppyInterface:
             for prefix in prefixes:
                 series = module[f"{prefix}_{region}"]
                 assert series.data.shape[0] > 0
-                assert series.data.shape[0] <= int(np.ceil(series.rate)) + 1
+                assert series.timestamps is not None
+                assert series.data.shape[0] == len(series.timestamps)
+                # stub keeps ~1 second of data
+                assert float(series.timestamps[-1] - series.timestamps[0]) <= 1.01
         for region, features in case["expected_transients"].items():
             for feature in features:
                 table = module[f"transients_{region}_{feature}"]
@@ -419,26 +422,18 @@ class TestGuppyInterface:
         assert actual_rows == expected_rows
 
     def test_aligned_starting_time_shifts_traces_and_transients(self, interface, case):
-        original_starting_time_and_rate = interface.get_original_starting_time_and_rate()
         first_region = case["expected_regions"][0]
-        original_start, _ = original_starting_time_and_rate[first_region]
+        original_first_timestamp = float(interface.get_original_timestamps()[first_region][0])
 
         offset = 12.34
-        interface.set_aligned_starting_time_and_rate(
-            {region: (start + offset, rate) for region, (start, rate) in original_starting_time_and_rate.items()}
-        )
+        interface.set_aligned_starting_time(offset)
 
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(
-            nwbfile,
-            metadata,
-            stub_test=False,
-            timing_source="aligned_starting_time_and_rate",
-        )
+        interface.add_to_nwbfile(nwbfile, metadata, stub_test=False)
         module = nwbfile.processing["fiber_photometry"]
         first_trace_name = f"{case['expected_traces'][first_region][0]}_{first_region}"
-        assert module[first_trace_name].starting_time == pytest.approx(original_start + offset)
+        assert float(module[first_trace_name].timestamps[0]) == pytest.approx(original_first_timestamp + offset)
 
         for region, features in case["expected_transients"].items():
             for feature in features:

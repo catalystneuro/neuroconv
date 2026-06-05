@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Literal
 
 from pydantic import DirectoryPath, validate_call
@@ -16,8 +15,9 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
     via the ``ndx-fiber-photometry`` extension) with :class:`GuppyInterface` (derived traces,
     transient tables, and cross-correlations added to a ``fiber_photometry`` ProcessingModule).
 
-    On instantiation, GuPPy's per-region corrected timebase is shifted onto the raw TDT
-    acquisition clock so that all series in the resulting NWBFile share a single time axis
+    GuPPy and TDT share a single origin (recording start = ``session_start_time``): GuPPy emits
+    timestamps in seconds since recording start, the same clock the raw TDT streams use. No
+    cross-system re-alignment is therefore needed -- both interfaces write on the shared clock,
     rooted at ``nwbfile.session_start_time`` (taken from the TDT tank).
     """
 
@@ -60,43 +60,6 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             },
             verbose=verbose,
         )
-        self._align_guppy_to_tdt()
-
-    def _align_guppy_to_tdt(self) -> None:
-        """Shift each GuPPy region's timestamps onto the raw TDT signal stream's clock."""
-        tdt_interface = self.data_interface_objects["TDTFiberPhotometry"]
-        guppy_interface = self.data_interface_objects["Guppy"]
-
-        stores_list_path = Path(guppy_interface.folder_path) / "storesList.csv"
-        rows = stores_list_path.read_text().strip().splitlines()
-        assert len(rows) >= 2, f"storesList.csv at {stores_list_path} must have at least two rows."
-        raw_store_names = [name.strip() for name in rows[0].split(",")]
-        semantic_names = [name.strip() for name in rows[1].split(",")]
-        region_to_tdt_stream = {
-            semantic_name[len("signal_") :]: raw_store_name
-            for raw_store_name, semantic_name in zip(raw_store_names, semantic_names)
-            if semantic_name.startswith("signal_")
-        }
-        self._region_to_tdt_stream = region_to_tdt_stream
-
-        tdt_stream_to_starting_time_and_rate = tdt_interface.get_original_starting_time_and_rate()
-        guppy_region_to_timestamps = guppy_interface.get_original_timestamps()
-
-        region_to_aligned_timestamps = {}
-        for region, timestamps in guppy_region_to_timestamps.items():
-            assert region in region_to_tdt_stream, (
-                f"GuPPy region '{region}' has no matching 'signal_{region}' entry in {stores_list_path}; "
-                f"cannot align to a TDT stream."
-            )
-            tdt_stream_name = region_to_tdt_stream[region]
-            assert tdt_stream_name in tdt_stream_to_starting_time_and_rate, (
-                f"TDT stream '{tdt_stream_name}' (mapped from GuPPy region '{region}') not found in TDT folder; "
-                f"available streams: {list(tdt_stream_to_starting_time_and_rate)}."
-            )
-            tdt_starting_time, _ = tdt_stream_to_starting_time_and_rate[tdt_stream_name]
-            offset = tdt_starting_time - float(timestamps[0])
-            region_to_aligned_timestamps[region] = timestamps + offset
-        guppy_interface.set_aligned_timestamps(region_to_aligned_timestamps)
 
     def get_metadata(self):
         """Merge sub-interface metadata, with the TDT tank as the authoritative session start time."""
@@ -150,7 +113,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         conversion_options = conversion_options.copy() if conversion_options else {}
         tdt_options = {"stub_test": stub_test, "t1": t1, "t2": t2}
         tdt_options.update(conversion_options.pop("TDTFiberPhotometry", {}))
-        guppy_options: dict = {"stub_test": stub_test, "timing_source": "aligned_timestamps"}
+        guppy_options: dict = {"stub_test": stub_test}
         guppy_options.update(conversion_options.pop("Guppy", {}))
         merged_conversion_options = {
             "TDTFiberPhotometry": tdt_options,
@@ -182,7 +145,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         conversion_options = conversion_options.copy() if conversion_options else {}
         tdt_options = {"stub_test": stub_test, "t1": t1, "t2": t2}
         tdt_options.update(conversion_options.pop("TDTFiberPhotometry", {}))
-        guppy_options: dict = {"stub_test": stub_test, "timing_source": "aligned_timestamps"}
+        guppy_options: dict = {"stub_test": stub_test}
         guppy_options.update(conversion_options.pop("Guppy", {}))
         merged_conversion_options = {
             "TDTFiberPhotometry": tdt_options,

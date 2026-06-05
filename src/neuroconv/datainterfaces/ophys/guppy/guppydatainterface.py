@@ -3,7 +3,6 @@ import re
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
 
 import h5py
 import numpy as np
@@ -148,7 +147,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self.artifact_removal_method = artifact_removal_method
         self.guppy_parameters = guppy_parameters
         self._region_to_aligned_timestamps: dict[str, np.ndarray] | None = None
-        self._region_to_aligned_starting_time_and_rate: dict[str, tuple[float, float]] | None = None
 
     @staticmethod
     def _discover_regions(stores_list_path: Path) -> list[str]:
@@ -445,36 +443,19 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             {region: timestamps + aligned_starting_time for region, timestamps in region_to_timestamps.items()}
         )
 
-    def get_original_starting_time_and_rate(self) -> dict[str, tuple[float, float]]:
-        """Return the original ``(starting_time, sampling_rate)`` for each region."""
-        result = {}
-        for region in self.regions:
-            time_correction = self._read_time_correction(region)
-            result[region] = (float(time_correction["timestamps"][0]), time_correction["sampling_rate"])
-        return result
-
-    def get_starting_time_and_rate(self) -> dict[str, tuple[float, float]]:
-        """Return the (possibly aligned) ``(starting_time, sampling_rate)`` for each region."""
-        if self._region_to_aligned_starting_time_and_rate is not None:
-            return self._region_to_aligned_starting_time_and_rate
-        return self.get_original_starting_time_and_rate()
-
-    def set_aligned_starting_time_and_rate(
-        self, region_to_aligned_starting_time_and_rate: dict[str, tuple[float, float]]
-    ) -> None:
-        """Override the per-region ``(starting_time, sampling_rate)`` with externally-aligned values."""
-        self._region_to_aligned_starting_time_and_rate = region_to_aligned_starting_time_and_rate
-
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict,
         *,
         stub_test: bool = False,
-        timing_source: Literal["original", "aligned_timestamps", "aligned_starting_time_and_rate"] = "original",
     ) -> None:
         """
         Add GuPPy-derived fiber photometry products to an NWBFile.
+
+        Traces, transient peaks, and valid-signal intervals are written on the timestamps GuPPy
+        emits (seconds since recording start), or on the externally-aligned timestamps provided
+        via :meth:`set_aligned_timestamps` / :meth:`set_aligned_starting_time`.
 
         Parameters
         ----------
@@ -485,16 +466,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         stub_test : bool, optional
             If True, only the first ~1 second of each trace is written, and transient tables are
             filtered to peaks falling inside that window. Default = False.
-        timing_source : {"original", "aligned_timestamps", "aligned_starting_time_and_rate"}, optional
-            Source of timing information. ``"aligned_timestamps"`` uses any timestamps provided
-            via :meth:`set_aligned_timestamps`; ``"aligned_starting_time_and_rate"`` uses
-            ``(starting_time, rate)`` provided via :meth:`set_aligned_starting_time_and_rate`.
         """
-        assert timing_source in ("original", "aligned_timestamps", "aligned_starting_time_and_rate"), (
-            f"timing_source must be 'original', 'aligned_timestamps', or "
-            f"'aligned_starting_time_and_rate'; got {timing_source!r}."
-        )
-
         guppy_metadata = metadata["Ophys"]["Guppy"]
         processing_module_metadata = guppy_metadata["ProcessingModule"]
         processing_module = get_module(
@@ -503,7 +475,8 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             description=processing_module_metadata["description"],
         )
 
-        original_starting_time_and_rate = self.get_original_starting_time_and_rate()
+        region_to_original_timestamps = self.get_original_timestamps()
+        region_to_timestamps = self.get_timestamps()
         # Cache per-region stub bounds so transient tables share the trace's stub window.
         region_to_stub_end_time: dict[str, float] = {}
 
@@ -515,36 +488,22 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             with h5py.File(trace_path, "r") as f:
                 data = f["data"][:]
 
-            original_starting_time, original_rate = original_starting_time_and_rate[region]
-            if timing_source == "aligned_timestamps":
-                timestamps = self.get_timestamps()[region]
-                timing_kwargs = dict(timestamps=timestamps)
-                rate = original_rate
-            elif timing_source == "aligned_starting_time_and_rate":
-                starting_time, rate = self.get_starting_time_and_rate()[region]
-                timing_kwargs = dict(starting_time=starting_time, rate=rate)
-            else:
-                timing_kwargs = dict(starting_time=original_starting_time, rate=original_rate)
-                rate = original_rate
-
+            timestamps = region_to_timestamps[region]
             if stub_test:
-                stub_sample_count = min(int(np.ceil(rate)), data.shape[0])
+                # Keep ~1 second, selected by timestamp window so gapped (artifact-removed)
+                # timelines still stub correctly.
+                stub_sample_count = int(np.searchsorted(timestamps, timestamps[0] + 1.0, side="right"))
+                stub_sample_count = max(1, min(stub_sample_count, data.shape[0]))
                 data = data[:stub_sample_count]
-                if "timestamps" in timing_kwargs:
-                    stub_timestamps = timing_kwargs["timestamps"][:stub_sample_count]
-                    timing_kwargs = dict(timestamps=stub_timestamps)
-                    region_to_stub_end_time[region] = float(stub_timestamps[-1])
-                else:
-                    region_to_stub_end_time[region] = (
-                        timing_kwargs["starting_time"] + (stub_sample_count - 1) / timing_kwargs["rate"]
-                    )
+                timestamps = timestamps[:stub_sample_count]
+                region_to_stub_end_time[region] = float(timestamps[-1])
 
             time_series = TimeSeries(
                 name=trace_metadata["name"],
                 description=trace_metadata["description"],
                 data=data,
                 unit=trace_metadata["unit"],
-                **timing_kwargs,
+                timestamps=timestamps,
             )
             processing_module.add(time_series)
 
@@ -557,14 +516,10 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             peak_timestamps = occurrences["timestamps"].to_numpy(dtype=float)
             peak_amplitudes = occurrences["amplitude"].to_numpy(dtype=float)
 
-            if timing_source == "aligned_starting_time_and_rate":
-                aligned_start, _ = self.get_starting_time_and_rate()[region]
-                original_start, _ = original_starting_time_and_rate[region]
-                peak_timestamps = peak_timestamps + (aligned_start - original_start)
-            elif timing_source == "aligned_timestamps":
-                original_timestamps = self.get_original_timestamps()[region]
-                aligned_timestamps = self.get_timestamps()[region]
-                peak_timestamps = np.interp(peak_timestamps, original_timestamps, aligned_timestamps)
+            # Peaks are in GuPPy's emitted timebase; map them onto the (possibly aligned) timestamps.
+            peak_timestamps = np.interp(
+                peak_timestamps, region_to_original_timestamps[region], region_to_timestamps[region]
+            )
 
             if stub_test:
                 stub_end_time = region_to_stub_end_time.get(region)
@@ -776,17 +731,11 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             )
             for region in sorted(self.valid_signal_intervals_by_region):
                 intervals = self.valid_signal_intervals_by_region[region]
-                if timing_source == "aligned_starting_time_and_rate":
-                    aligned_start, _ = self.get_starting_time_and_rate()[region]
-                    original_start, _ = original_starting_time_and_rate[region]
-                    time_offset = aligned_start - original_start
-                    shifted_intervals = intervals + time_offset
-                elif timing_source == "aligned_timestamps":
-                    original_timestamps = self.get_original_timestamps()[region]
-                    aligned_timestamps = self.get_timestamps()[region]
-                    shifted_intervals = np.interp(intervals, original_timestamps, aligned_timestamps)
-                else:
-                    shifted_intervals = intervals
+                # Interval boundaries are in GuPPy's emitted recording timebase. Shift them by the
+                # same scalar offset applied to the region's timestamps (they are boundary values,
+                # not per-sample timestamps to interpolate against).
+                time_offset = float(region_to_timestamps[region][0]) - float(region_to_original_timestamps[region][0])
+                shifted_intervals = intervals + time_offset
                 for start, stop in shifted_intervals:
                     valid_signal_intervals.add_row(
                         start_time=float(start),
