@@ -88,12 +88,31 @@ class TestTDTFiberPhotometryGuppyConverter:
 
             assert "guppy" in nwbfile.processing
             processing_module = nwbfile.processing["guppy"]
+            # GuPPy region -> acquisition table rows, auto-derived from the shared stream-name linkage.
+            expected_region_to_indices = {"dms": [0, 1], "dls": [2, 3]}
             for region in EXPECTED_REGIONS:
                 for prefix in ("cntrl_sig_fit", "dff", "z_score"):
                     series_name = f"{prefix}_{region}"
                     assert (
                         series_name in processing_module.data_interfaces
                     ), f"Expected {series_name} in fiber_photometry processing module."
+                    series = processing_module.data_interfaces[series_name]
+                    # Derived traces are FiberPhotometryResponseSeries linked into the acquisition table,
+                    # each pointing at both the excitation-signal and isosbestic-control rows for its region.
+                    assert series.neurodata_type == "FiberPhotometryResponseSeries"
+                    assert list(series.fiber_photometry_table_region.data[:]) == expected_region_to_indices[region]
+
+    def test_derive_region_to_table_indices(self, converter, metadata):
+        """The auto-join composes region -> store names -> stream_name -> table rows."""
+        region_to_indices = converter._derive_region_to_table_indices(metadata)
+        assert region_to_indices == {"dms": [0, 1], "dls": [2, 3]}
+
+    def test_unmatched_stream_name_raises(self, converter, metadata):
+        """A region whose stores match no response-series stream_name fails loudly."""
+        for response_series in metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryResponseSeries"]:
+            response_series["stream_name"] = "does_not_exist"
+        with pytest.raises(AssertionError, match="matched no FiberPhotometryResponseSeries"):
+            converter._derive_region_to_table_indices(metadata)
 
     def test_guppy_timestamps_in_nwb_are_native(self, converter, metadata, tmp_path):
         """GuPPy traces keep their native timestamps -- no cross-system offset is applied.

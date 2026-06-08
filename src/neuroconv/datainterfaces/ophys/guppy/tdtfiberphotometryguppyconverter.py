@@ -106,14 +106,23 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         t1: float = 0.0,
         t2: float = 0.0,
     ) -> None:
-        """Add raw TDT and GuPPy-derived data to the provided NWBFile."""
+        """Add raw TDT and GuPPy-derived data to the provided NWBFile.
+
+        The TDT interface runs first (it builds the ``FiberPhotometryTable``), then the GuPPy step runs
+        with auto-derived ``fiber_photometry_table_region_indices`` so its derived traces are written as
+        ``FiberPhotometryResponseSeries`` linked back into that table. Ordering is guaranteed by the
+        insertion order of ``data_interface_objects`` (TDT before GuPPy).
+        """
         if metadata is None:
             metadata = self.get_metadata()
 
         conversion_options = conversion_options.copy() if conversion_options else {}
         tdt_options = {"stub_test": stub_test, "t1": t1, "t2": t2}
         tdt_options.update(conversion_options.pop("TDTFiberPhotometry", {}))
-        guppy_options: dict = {"stub_test": stub_test}
+        guppy_options: dict = {
+            "stub_test": stub_test,
+            "fiber_photometry_table_region_indices": self._derive_region_to_table_indices(metadata),
+        }
         guppy_options.update(conversion_options.pop("Guppy", {}))
         merged_conversion_options = {
             "TDTFiberPhotometry": tdt_options,
@@ -142,10 +151,16 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         t2: float = 0.0,
     ) -> None:
         """Run the NWB conversion for both TDT acquisition and GuPPy processing outputs."""
+        if metadata is None:
+            metadata = self.get_metadata()
+
         conversion_options = conversion_options.copy() if conversion_options else {}
         tdt_options = {"stub_test": stub_test, "t1": t1, "t2": t2}
         tdt_options.update(conversion_options.pop("TDTFiberPhotometry", {}))
-        guppy_options: dict = {"stub_test": stub_test}
+        guppy_options: dict = {
+            "stub_test": stub_test,
+            "fiber_photometry_table_region_indices": self._derive_region_to_table_indices(metadata),
+        }
         guppy_options.update(conversion_options.pop("Guppy", {}))
         merged_conversion_options = {
             "TDTFiberPhotometry": tdt_options,
@@ -163,3 +178,36 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             conversion_options=merged_conversion_options,
             append_on_disk_nwbfile=append_on_disk_nwbfile,
         )
+
+    def _derive_region_to_table_indices(self, metadata: dict) -> dict[str, list[int]]:
+        """Auto-derive each GuPPy region's fiber-photometry table row indices from the shared linkage.
+
+        The join key is the acquisition store / ``stream_name`` that both sides reference:
+        ``GuPPy region -> storesList store names -> response-series stream_name -> table row indices``.
+        Each region unions the rows of every response series whose ``stream_name`` is one of that
+        region's signal/control stores (rows can be many-to-many: several series may share a stream,
+        and a region spans both its signal and isosbestic-control rows). Fails loudly if a region
+        resolves to no rows.
+        """
+        response_series_metadata = metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryResponseSeries"]
+        stream_name_to_indices: dict[str, set] = {}
+        for series in response_series_metadata:
+            stream_name_to_indices.setdefault(series["stream_name"], set()).update(
+                series["fiber_photometry_table_region"]
+            )
+
+        guppy_interface = self.data_interface_objects["Guppy"]
+        region_to_indices: dict[str, list[int]] = {}
+        for region in guppy_interface.regions:
+            store_names = guppy_interface.region_to_store_names[region]
+            indices: set = set()
+            for store_name in store_names.values():
+                indices.update(stream_name_to_indices.get(store_name, set()))
+            assert indices, (
+                f"GuPPy region '{region}' (stores {sorted(store_names.values())}) matched no "
+                f"FiberPhotometryResponseSeries 'stream_name' in the acquisition metadata; cannot link "
+                f"it to the fiber photometry table. Check that storesList.csv store names align with "
+                f"the FiberPhotometryResponseSeries 'stream_name' entries."
+            )
+            region_to_indices[region] = sorted(indices)
+        return region_to_indices

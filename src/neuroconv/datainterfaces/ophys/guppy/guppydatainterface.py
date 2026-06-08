@@ -7,8 +7,8 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pandas
+from ndx_fiber_photometry import FiberPhotometryResponseSeries
 from pydantic import DirectoryPath, validate_call
-from pynwb.base import TimeSeries
 from pynwb.core import DynamicTable, VectorData
 from pynwb.epoch import TimeIntervals
 from pynwb.file import NWBFile
@@ -36,9 +36,24 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
     per-region freq/amplitude summary). The raw signal/control traces and TTL/behavioral
     events are out of scope and are owned by the acquisition and event interfaces respectively.
 
-    All derived series are placed in a ``ProcessingModule`` (default name ``fiber_photometry``).
-    Plain ``pynwb.base.TimeSeries`` and ``pynwb.core.DynamicTable`` objects are used so that no
-    NWB extensions are required.
+    The derived continuous traces are written as ``ndx_fiber_photometry.FiberPhotometryResponseSeries``
+    so they carry the same device/fiber/indicator provenance as the raw acquisition. Those series are
+    not self-contained: each one needs a ``DynamicTableRegion`` into a ``FiberPhotometryTable`` that
+    the *acquisition* side owns. This interface therefore does **not stand alone** -- its
+    :meth:`add_to_nwbfile` requires the acquisition's ``FiberPhotometryTable`` to already be present in
+    the NWBFile and a ``fiber_photometry_table_region_indices`` map (region -> table row indices) to be
+    supplied by a converter that pairs GuPPy with an acquisition interface (see
+    ``TDTFiberPhotometryGuppyConverter``). GuPPy retrieves that table and builds the per-trace regions
+    itself; it exposes the join key the converter needs to compute the indices via
+    :attr:`region_to_store_names`.
+
+    All derived series and tables are placed in a ``ProcessingModule`` (default name
+    ``fiber_photometry``).
+
+    Note: each derived trace is 1-D ``(N,)`` but its table region may point at multiple rows (the
+    excitation signal and isosbestic control it was computed from). This deliberately departs from
+    the ``data.shape[1] == len(table_region)`` convention; it is an agreed interim representation
+    tracked in ndx-fiber-photometry issue #54.
     """
 
     keywords = ("fiber photometry", "GuPPy", "processed")
@@ -85,6 +100,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             f"No regions discovered in {stores_list_path}. Expected semantic names matching "
             f"'signal_<R>' (with optional matching 'control_<R>')."
         )
+        region_to_store_names = self._discover_region_to_store_names(stores_list_path)
 
         traces_by_region = {
             region: [
@@ -140,6 +156,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self.folder_path = folder_path
         self.parameters_file_path = parameters_file_path
         self.regions = regions
+        self.region_to_store_names = region_to_store_names
         self.traces_by_region = traces_by_region
         self.transients_by_region = transients_by_region
         self.cross_correlations = cross_correlations
@@ -154,6 +171,33 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         assert len(rows) >= 2, f"storesList.csv at {stores_list_path} must have at least two rows."
         semantic_names = [name.strip() for name in rows[1].split(",")]
         return [name[len("signal_") :] for name in semantic_names if name.startswith("signal_")]
+
+    @staticmethod
+    def _discover_region_to_store_names(stores_list_path: Path) -> dict[str, dict[str, str]]:
+        """Return ``{region: {"signal": <store>, "control": <store>}}`` from ``storesList.csv``.
+
+        Row 0 of ``storesList.csv`` holds the acquisition store names (e.g. ``Dv2A``) and row 1 holds
+        the matching GuPPy semantic names (e.g. ``signal_dms``). This mapping is the join key a
+        converter uses to link GuPPy regions to acquisition fiber-photometry table rows. Only the
+        ``signal_<region>`` and ``control_<region>`` stores participate; behavioral stores
+        (``port_entries``, nose pokes, ...) are ignored.
+        """
+        rows = stores_list_path.read_text().strip().splitlines()
+        assert len(rows) >= 2, f"storesList.csv at {stores_list_path} must have at least two rows."
+        store_names = [name.strip() for name in rows[0].split(",")]
+        semantic_names = [name.strip() for name in rows[1].split(",")]
+        assert len(store_names) == len(semantic_names), (
+            f"storesList.csv at {stores_list_path} has mismatched row lengths: "
+            f"{len(store_names)} store names vs {len(semantic_names)} semantic names."
+        )
+        region_to_store_names: dict[str, dict[str, str]] = {}
+        for store_name, semantic_name in zip(store_names, semantic_names):
+            for kind in ("signal", "control"):
+                prefix = f"{kind}_"
+                if semantic_name.startswith(prefix):
+                    region = semantic_name[len(prefix) :]
+                    region_to_store_names.setdefault(region, {})[kind] = store_name
+        return region_to_store_names
 
     @classmethod
     def _discover_cross_correlations(cls, folder_path: Path, regions: list[str]) -> list[dict]:
@@ -443,10 +487,33 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             {region: timestamps + aligned_starting_time for region, timestamps in region_to_timestamps.items()}
         )
 
+    @staticmethod
+    def _get_fiber_photometry_table(nwbfile: NWBFile):
+        """Return the acquisition ``FiberPhotometryTable`` already present in ``nwbfile``.
+
+        GuPPy does not own this table; the acquisition interface must have added it (as a
+        ``FiberPhotometry`` lab_meta_data object) before this interface runs.
+        """
+        fiber_photometry_lab_meta_data = next(
+            (
+                lab_meta_data
+                for lab_meta_data in nwbfile.lab_meta_data.values()
+                if hasattr(lab_meta_data, "fiber_photometry_table")
+            ),
+            None,
+        )
+        assert fiber_photometry_lab_meta_data is not None, (
+            "No FiberPhotometryTable found in the NWBFile. GuppyInterface does not stand alone; the "
+            "acquisition interface must add the fiber photometry table before GuPPy runs (drive both "
+            "through a converter, e.g. TDTFiberPhotometryGuppyConverter)."
+        )
+        return fiber_photometry_lab_meta_data.fiber_photometry_table
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict,
+        fiber_photometry_table_region_indices: dict[str, list[int]],
         *,
         stub_test: bool = False,
     ) -> None:
@@ -457,16 +524,29 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         emits (seconds since recording start), or on the externally-aligned timestamps provided
         via :meth:`set_aligned_timestamps` / :meth:`set_aligned_starting_time`.
 
+        This interface does **not stand alone**: the acquisition ``FiberPhotometryTable`` must already
+        be present in ``nwbfile``, and ``fiber_photometry_table_region_indices`` is required. Both are
+        supplied by a converter that owns the acquisition side (see
+        ``TDTFiberPhotometryGuppyConverter``). Calling this without them fails loudly.
+
         Parameters
         ----------
         nwbfile : NWBFile
-            The in-memory NWBFile to add the data to.
+            The in-memory NWBFile to add the data to. Must already contain the acquisition
+            ``FiberPhotometryTable`` (as a ``FiberPhotometry`` lab_meta_data object).
         metadata : dict
             Metadata dictionary; must contain ``metadata["Ophys"]["Guppy"]``.
+        fiber_photometry_table_region_indices : dict[str, list[int]]
+            Mapping from GuPPy region label (e.g. ``"dms"``) to the acquisition
+            ``FiberPhotometryTable`` row indices that region's derived traces were computed from
+            (typically the excitation signal and isosbestic control rows). GuPPy builds a fresh
+            ``DynamicTableRegion`` per trace from these indices -- fresh per trace because a
+            ``DynamicTableRegion`` cannot be parented to more than one ``TimeSeries``.
         stub_test : bool, optional
             If True, only the first ~1 second of each trace is written, and transient tables are
             filtered to peaks falling inside that window. Default = False.
         """
+        fiber_photometry_table = self._get_fiber_photometry_table(nwbfile)
         guppy_metadata = metadata["Ophys"]["Guppy"]
         processing_module_metadata = guppy_metadata["ProcessingModule"]
         processing_module = get_module(
@@ -498,14 +578,29 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 timestamps = timestamps[:stub_sample_count]
                 region_to_stub_end_time[region] = float(timestamps[-1])
 
-            time_series = TimeSeries(
-                name=trace_metadata["name"],
+            trace_name = trace_metadata["name"]
+            assert region in fiber_photometry_table_region_indices, (
+                f"No fiber_photometry_table_region_indices supplied for region '{region}' (trace "
+                f"'{trace_name}'). GuppyInterface does not stand alone; drive it through a converter "
+                f"(e.g. TDTFiberPhotometryGuppyConverter)."
+            )
+            # A fresh DynamicTableRegion per trace: one region cannot be parented to multiple series.
+            fiber_photometry_table_region = fiber_photometry_table.create_fiber_photometry_table_region(
+                description=(
+                    f"Acquisition fiber-photometry table rows (excitation signal and isosbestic "
+                    f"control) that GuPPy trace '{trace_name}' was computed from."
+                ),
+                region=fiber_photometry_table_region_indices[region],
+            )
+            response_series = FiberPhotometryResponseSeries(
+                name=trace_name,
                 description=trace_metadata["description"],
                 data=data,
                 unit=trace_metadata["unit"],
                 timestamps=timestamps,
+                fiber_photometry_table_region=fiber_photometry_table_region,
             )
-            processing_module.add(time_series)
+            processing_module.add(response_series)
 
         # Per-region, per-feature transient peak tables
         for transient_metadata in guppy_metadata["Transients"]:
