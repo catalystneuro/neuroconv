@@ -52,8 +52,8 @@ linked to its corresponding ``MotifSeries``. No extra metadata wiring is needed.
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import VameInterface
 
-    >>> project = Path("/path/to/my_vame_project")
-    >>> session = "session_name"
+    >>> project = BEHAVIOR_DATA_PATH / "vame" / "my_vame_project"
+    >>> session = "Session001_DPI1DLC_resnet50_MLOF_PASC_Inhibitor_Cohort3Mar10shuffle1_700000"
 
     >>> interface = VameInterface(
     ...     file_path=project / "config.yaml",
@@ -66,7 +66,7 @@ linked to its corresponding ``MotifSeries``. No extra metadata wiring is needed.
     ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
     ...     session_description="Open-field behavioral recording segmented with VAME.",
     ... )
-    >>> interface.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=metadata)
+    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
 
 Explicit file paths take precedence over auto-discovered ones, so you can override
 individual paths while still relying on auto-discovery for the rest:
@@ -78,7 +78,7 @@ individual paths while still relying on auto-discovery for the rest:
     ...     session_name=session,
     ...     # override just the kmeans community labels; everything else is auto-discovered
     ...     community_labels_file_paths={
-    ...         "kmeans": project / "results" / session / "VAME" / "kmeans-15" / "community" / "cohort_community_label_session.npy",
+    ...         "kmeans": project / "results" / session / "VAME" / "kmeans-15" / "community" / f"cohort_community_label_{session}.npy",
     ...     },
     ...     sampling_frequency_hz=30.0,
     ... )
@@ -100,11 +100,15 @@ to retrieve the auto-populated defaults, then edit specific fields before conver
 .. code-block:: python
 
     >>> metadata = interface.get_metadata()
+    >>> metadata["NWBFile"].update(
+    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...     session_description="Open-field behavioral recording segmented with VAME.",
+    ... )
     >>> metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["name"] = "VAMEKmeans15"
     >>> metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["MotifSeries"]["kmeans"]["description"] = (
     ...     "k-means motif labels (15 clusters) for the open-field test session."
     ... )
-    >>> interface.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=metadata)
+    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
 The same information can be provided as a YAML file and loaded with
 :py:func:`~neuroconv.utils.load_dict_from_file`:
@@ -132,9 +136,9 @@ The same information can be provided as a YAML file and loaded with
 .. code-block:: python
 
     >>> from neuroconv.utils import load_dict_from_file, dict_deep_update
-    >>> file_metadata = load_dict_from_file("/path/to/metadata.yaml")
-    >>> metadata = dict_deep_update(interface.get_metadata(), file_metadata)
-    >>> interface.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=metadata)
+    >>> file_metadata = load_dict_from_file("/path/to/metadata.yaml")  # doctest: +SKIP
+    >>> metadata = dict_deep_update(interface.get_metadata(), file_metadata)  # doctest: +SKIP
+    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)  # doctest: +SKIP
 
 
 Temporal alignment
@@ -146,12 +150,20 @@ instead of ``sampling_frequency_hz``:
 
 .. code-block:: python
 
+    >>> import numpy as np
+    >>> motif_labels_file_path = project / "results" / session / "VAME" / "kmeans-15" / f"15_kmeans_label_{session}.npy"
+    >>> aligned_timestamps = np.arange(len(np.load(motif_labels_file_path))) / 30.0
     >>> interface = VameInterface(
     ...     file_path=project / "config.yaml",
     ...     motif_labels_file_paths={"kmeans": motif_labels_file_path},
     ... )
-    >>> interface.set_aligned_timestamps(aligned_timestamps)  # seconds, aligned to session start
-    >>> interface.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=metadata)
+    >>> interface.set_aligned_timestamps(aligned_timestamps)
+    >>> metadata = interface.get_metadata()
+    >>> metadata["NWBFile"].update(
+    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...     session_description="Open-field behavioral recording segmented with VAME.",
+    ... )
+    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
 
 Linking to pose estimation
@@ -174,7 +186,7 @@ or :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPI
     ...         VAME=VameInterface,
     ...     )
 
-    >>> converter = PoseAndVameConverter(
+    >>> converter = PoseAndVameConverter(  # doctest: +SKIP
     ...     source_data=dict(
     ...         DLC=dict(file_path="/path/to/dlc_output.h5"),
     ...         VAME=dict(
@@ -184,11 +196,11 @@ or :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPI
     ...         ),
     ...     )
     ... )
-    >>> metadata = converter.get_metadata()
-    >>> metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = (
+    >>> metadata = converter.get_metadata()  # doctest: +SKIP
+    >>> metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = (  # doctest: +SKIP
     ...     "PoseEstimationDeepLabCut"
     ... )
-    >>> converter.run_conversion(nwbfile_path="/path/to/output.nwb", metadata=metadata)
+    >>> converter.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)  # doctest: +SKIP
 
 
 Multiple VAME projects in one file
@@ -199,8 +211,7 @@ Each instance gets its own metadata entry and its own ``VAMEProject`` group:
 
 .. code-block:: python
 
-    >>> from neuroconv import NWBConverter
-
+    >>> hmm_labels_file_path = project / "results" / session / "VAME" / "hmm-15" / f"15_hmm_label_{session}.npy"
     >>> class MyConverter(NWBConverter):
     ...     data_interface_classes = dict(
     ...         VameKmeans=VameInterface,
@@ -209,15 +220,15 @@ Each instance gets its own metadata entry and its own ``VAMEProject`` group:
 
     >>> converter = MyConverter(
     ...     source_data=dict(
-    ...         VAMEProjectA=dict(
-    ...             file_path=str(project_A / "config.yaml"),
-    ...             motif_labels_file_paths={"kmeans": str(kmeans_motif_path)},
+    ...         VameKmeans=dict(
+    ...             file_path=str(project / "config.yaml"),
+    ...             motif_labels_file_paths={"kmeans": str(motif_labels_file_path)},
     ...             sampling_frequency_hz=30.0,
     ...             metadata_key="VAMEProjectA",
     ...         ),
-    ...         VAMEProjectB=dict(
-    ...             file_path=str(project_B / "config.yaml"),
-    ...             motif_labels_file_paths={"hmm": str(hmm_motif_path)},
+    ...         VameHmm=dict(
+    ...             file_path=str(project / "config.yaml"),
+    ...             motif_labels_file_paths={"hmm": str(hmm_labels_file_path)},
     ...             sampling_frequency_hz=30.0,
     ...             metadata_key="VAMEProjectB",
     ...         ),
@@ -248,7 +259,12 @@ The metadata YAML for this multi-run converter looks like:
 .. code-block:: python
 
     >>> metadata = converter.get_metadata()
+    >>> metadata["NWBFile"].update(
+    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...     session_description="Multi-project VAME behavioral segmentation.",
+    ... )
     >>> converter.run_conversion(
-    ...     nwbfile_path="/path/to/output.nwb",
+    ...     nwbfile_path=path_to_save_nwbfile,
     ...     metadata=metadata,
+    ...     overwrite=True,
     ... )
