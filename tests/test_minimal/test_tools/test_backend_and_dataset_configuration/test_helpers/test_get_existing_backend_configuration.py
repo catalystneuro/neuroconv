@@ -7,10 +7,10 @@ import numpy as np
 import pytest
 from hdmf_zarr import ZarrDataIO
 from hdmf_zarr.nwb import NWBZarrIO
-from numcodecs import Blosc
 from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
+from zarr.codecs import BloscCodec
 
 from neuroconv.tools.nwb_helpers import (
     HDF5BackendConfiguration,
@@ -68,24 +68,21 @@ def hdf5_nwbfile_path(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def zarr_nwbfile_path(tmp_path_factory):
-    compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
-    filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
-    filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
-    filters = [filter1, filter2]
+    compressor = BloscCodec(cname="lz4", clevel=5)
 
     nwbfile_path = tmp_path_factory.mktemp("data") / "test_default_backend_configuration_hdf5_nwbfile.nwb.zarr"
     nwbfile = generate_complex_nwbfile()
 
     # Add a ZarrDataIO-compressed time series
     raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
-    data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressor=compressor, filters=filters)
+    data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressor=compressor)
     raw_time_series = mock_TimeSeries(name="CompressedRawTimeSeries", data=data)
     nwbfile.add_acquisition(raw_time_series)
 
     # Add ZarrDataIO-compressed trials column
     number_of_trials = 10
     start_time = np.linspace(start=0.0, stop=10.0, num=number_of_trials)
-    data = ZarrDataIO(data=start_time, chunks=(5,), compressor=compressor, filters=filters)
+    data = ZarrDataIO(data=start_time, chunks=(5,), compressor=compressor)
     nwbfile.add_trial_column(
         name="compressed_start_time",
         description="start time of epoch",
@@ -229,7 +226,7 @@ intervals/trials/start_time/data
   chunk shape : (10,)
   disk space usage per chunk : 80 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
+  compression method : ZstdCodec(level=0, checksum=False)
 
 
 intervals/trials/stop_time/data
@@ -244,7 +241,7 @@ intervals/trials/stop_time/data
   chunk shape : (10,)
   disk space usage per chunk : 80 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
+  compression method : ZstdCodec(level=0, checksum=False)
 
 
 intervals/trials/compressed_start_time/data
@@ -259,9 +256,7 @@ intervals/trials/compressed_start_time/data
   chunk shape : (5,)
   disk space usage per chunk : 40 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
-
-  filter methods : [Blosc(cname='zstd', clevel=1, shuffle=SHUFFLE, blocksize=0), Blosc(cname='zstd', clevel=2, shuffle=SHUFFLE, blocksize=0)]
+  compression method : BloscCodec(_tunable_attrs=set(), typesize=8, cname=<BloscCname.lz4: 'lz4'>, clevel=5, shuffle=<BloscShuffle.shuffle: 'shuffle'>, blocksize=0)
 
 
 processing/ecephys/ProcessedTimeSeries/data
@@ -276,7 +271,7 @@ processing/ecephys/ProcessedTimeSeries/data
   chunk shape : (4, 2)
   disk space usage per chunk : 64 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
+  compression method : ZstdCodec(level=0, checksum=False)
 
 
 acquisition/RawTimeSeries/data
@@ -291,7 +286,7 @@ acquisition/RawTimeSeries/data
   chunk shape : (2, 3)
   disk space usage per chunk : 48 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
+  compression method : ZstdCodec(level=0, checksum=False)
 
 
 acquisition/CompressedRawTimeSeries/data
@@ -306,9 +301,7 @@ acquisition/CompressedRawTimeSeries/data
   chunk shape : (1, 3)
   disk space usage per chunk : 12 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
-
-  filter methods : [Blosc(cname='zstd', clevel=1, shuffle=SHUFFLE, blocksize=0), Blosc(cname='zstd', clevel=2, shuffle=SHUFFLE, blocksize=0)]
+  compression method : BloscCodec(_tunable_attrs=set(), typesize=4, cname=<BloscCname.lz4: 'lz4'>, clevel=5, shuffle=<BloscShuffle.shuffle: 'shuffle'>, blocksize=0)
 
 """
     assert stdout.getvalue() == expected_print

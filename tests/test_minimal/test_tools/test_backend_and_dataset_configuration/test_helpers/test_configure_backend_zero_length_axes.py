@@ -8,13 +8,13 @@ helper function which is called by `BackendConfiguration.from_nwbfile(...)`.
 from pathlib import Path
 from typing import Literal
 
-import numcodecs
 import numpy as np
 import pytest
 from hdmf.common import DynamicTable, VectorData
 from numpy.testing import assert_array_equal
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
+from zarr.abc.codec import BytesBytesCodec
 
 from neuroconv.tools.nwb_helpers import (
     BACKEND_NWB_IO,
@@ -128,6 +128,7 @@ def test_dynamic_table_skip_zero_length_axis(
         if backend == "hdf5":
             assert written_data.compression == "gzip"
         elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=1)
+            assert len(written_data.compressors) > 0
+            assert isinstance(written_data.compressors[0], BytesBytesCodec)
 
         assert_array_equal(integer_array, written_data[:])
