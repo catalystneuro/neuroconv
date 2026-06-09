@@ -74,6 +74,11 @@ class TestGuppyInterface:
                     ],
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
                     expected_valid_signal_intervals=[],
+                    expected_event_store_to_event_name={
+                        "LNRW": "rewarded_nose_pokes",
+                        "LNnR": "unrewarded_nose_pokes",
+                        "PrtN": "port_entries",
+                    },
                 ),
                 id="tdt_isosbestic_two_regions",
             ),
@@ -89,6 +94,7 @@ class TestGuppyInterface:
                         ("dms", 3.93579108, 18.51639376),
                         ("dms", 40.04014057, 154.60201876),
                     ],
+                    expected_event_store_to_event_name={},
                 ),
                 id="tdt_isosbestic_one_region_artifacts_removed",
             ),
@@ -150,6 +156,10 @@ class TestGuppyInterface:
         assert interface.regions == case["expected_regions"]
         assert interface.traces_by_region == case["expected_traces"]
         assert interface.transients_by_region == case["expected_transients"]
+
+    def test_discovery_event_store_to_event_name(self, interface, case):
+        """Behavioral event stores (non signal/control) from storesList.csv map to human-readable names."""
+        assert interface.event_store_to_event_name == case["expected_event_store_to_event_name"]
 
     def test_metadata_session_start_time(self, interface, case):
         metadata = interface.get_metadata()

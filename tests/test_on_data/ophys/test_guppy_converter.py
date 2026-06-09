@@ -102,6 +102,20 @@ class TestTDTFiberPhotometryGuppyConverter:
                     assert series.neurodata_type == "FiberPhotometryResponseSeries"
                     assert list(series.fiber_photometry_table_region.data[:]) == expected_region_to_indices[region]
 
+    def test_events_derived_from_guppy_stores_list(self, converter):
+        """Only the storesList.csv behavioral event stores propagate, with human-readable names."""
+        events_interface = converter.data_interface_objects["TDTEvents"]
+        # storesList.csv lists LNRW, LNnR, PrtN as the (non-fiber) event stores, in that order.
+        assert events_interface.source_data["event_names"] == ["LNRW", "LNnR", "PrtN"]
+
+        events_metadata = converter.get_metadata()["Behavior"]["TDTEvents"]["Events"]
+        epoc_name_to_event_name = {event["epoc_name"]: event["name"] for event in events_metadata}
+        assert epoc_name_to_event_name == {
+            "LNRW": "rewarded_nose_pokes",
+            "LNnR": "unrewarded_nose_pokes",
+            "PrtN": "port_entries",
+        }
+
     def test_run_conversion_writes_tdt_events(self, converter, metadata, tmp_path):
         nwbfile_path = tmp_path / "tdt_guppy_events.nwb"
         converter.run_conversion(
@@ -116,12 +130,20 @@ class TestTDTFiberPhotometryGuppyConverter:
 
             assert "behavior" in nwbfile.processing
             behavior_module = nwbfile.processing["behavior"]
-            # Onset counts of each epoc in the Photo_63 tank, stored as ndx_events.Events.
-            expected_epoc_to_length = {"PrtN": 5, "LNnR": 35, "PrtR": 2, "RNPS": 1, "LNRW": 2}
-            for epoc_name, expected_length in expected_epoc_to_length.items():
-                events = behavior_module.data_interfaces[epoc_name]
+            # Only the storesList event stores are written, with human-readable names. Onset counts
+            # come from the corresponding Photo_63 epocs (PrtN=5, LNnR=35, LNRW=2).
+            expected_event_to_length = {
+                "port_entries": 5,
+                "unrewarded_nose_pokes": 35,
+                "rewarded_nose_pokes": 2,
+            }
+            for event_name, expected_length in expected_event_to_length.items():
+                events = behavior_module.data_interfaces[event_name]
                 assert events.neurodata_type == "Events"
                 assert len(events.timestamps) == expected_length
+            # Tank epocs absent from storesList.csv (PrtR, RNPS) are not propagated.
+            assert "PrtR" not in behavior_module.data_interfaces
+            assert "RNPS" not in behavior_module.data_interfaces
 
     def test_derive_region_to_table_indices(self, converter, metadata):
         """The auto-join composes region -> store names -> stream_name -> table rows."""

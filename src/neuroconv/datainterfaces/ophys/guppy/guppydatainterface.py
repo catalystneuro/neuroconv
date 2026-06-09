@@ -101,6 +101,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             f"'signal_<R>' (with optional matching 'control_<R>')."
         )
         region_to_store_names = self._discover_region_to_store_names(stores_list_path)
+        event_store_to_event_name = self._discover_event_store_to_event_name(stores_list_path)
 
         traces_by_region = {
             region: [
@@ -157,6 +158,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self.parameters_file_path = parameters_file_path
         self.regions = regions
         self.region_to_store_names = region_to_store_names
+        self.event_store_to_event_name = event_store_to_event_name
         self.traces_by_region = traces_by_region
         self.transients_by_region = transients_by_region
         self.cross_correlations = cross_correlations
@@ -198,6 +200,32 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     region = semantic_name[len(prefix) :]
                     region_to_store_names.setdefault(region, {})[kind] = store_name
         return region_to_store_names
+
+    @staticmethod
+    def _discover_event_store_to_event_name(stores_list_path: Path) -> dict[str, str]:
+        """Return ``{store_name: event_name}`` for the behavioral event stores in ``storesList.csv``.
+
+        Row 0 of ``storesList.csv`` holds the acquisition store names (e.g. ``PrtN``) and row 1 the
+        matching GuPPy semantic names (e.g. ``port_entries``). The ``signal_<region>`` and
+        ``control_<region>`` stores are the fiber photometry channels; every *other* store in the
+        list is a behavioral event GuPPy processed (e.g. ``PrtN`` -> ``port_entries``,
+        ``LNRW`` -> ``rewarded_nose_pokes``). Stores present in the TDT tank but absent from
+        ``storesList.csv`` were not used by GuPPy and are excluded.
+        """
+        rows = stores_list_path.read_text().strip().splitlines()
+        assert len(rows) >= 2, f"storesList.csv at {stores_list_path} must have at least two rows."
+        store_names = [name.strip() for name in rows[0].split(",")]
+        semantic_names = [name.strip() for name in rows[1].split(",")]
+        assert len(store_names) == len(semantic_names), (
+            f"storesList.csv at {stores_list_path} has mismatched row lengths: "
+            f"{len(store_names)} store names vs {len(semantic_names)} semantic names."
+        )
+        event_store_to_event_name: dict[str, str] = {}
+        for store_name, semantic_name in zip(store_names, semantic_names):
+            if semantic_name.startswith("signal_") or semantic_name.startswith("control_"):
+                continue
+            event_store_to_event_name[store_name] = semantic_name
+        return event_store_to_event_name
 
     @classmethod
     def _discover_cross_correlations(cls, folder_path: Path, regions: list[str]) -> list[dict]:

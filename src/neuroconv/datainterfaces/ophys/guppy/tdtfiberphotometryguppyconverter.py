@@ -35,7 +35,6 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         tdt_folder_path: DirectoryPath,
         guppy_folder_path: DirectoryPath,
         *,
-        event_names: list[str] | None = None,
         verbose: bool = False,
     ):
         """Initialize the TDT + GuPPy converter.
@@ -49,20 +48,28 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             Path to the GuPPy ``<session>_output_<N>`` folder containing ``storesList.csv``,
             the per-region derived ``.hdf5`` files, and the ``GuPPyParamtersUsed.json``
             provenance file (discovered automatically by :class:`GuppyInterface`).
-        event_names : list[str], optional
-            The names of the TDT epocs (read from the same ``tdt_folder_path`` tank) to store as
-            raw events. If None (default), every epoc in the tank is stored.
         verbose : bool, optional
             Whether to print status messages, default = False.
+
+        Notes
+        -----
+        The raw TDT events stored are exactly the behavioral event stores GuPPy listed in
+        ``storesList.csv`` -- i.e. only the epocs GuPPy actually processed -- each given the
+        human-readable name from that file (e.g. the ``PrtN`` store becomes the ``port_entries``
+        Events object). Stores present in the tank but absent from ``storesList.csv`` (and the
+        fiber signal/control stores) are excluded.
         """
         tdt_interface = TDTFiberPhotometryInterface(folder_path=tdt_folder_path, verbose=verbose)
-        events_interface = TDTEventsInterface(
-            folder_path=tdt_folder_path,
-            event_names=event_names,
-            verbose=verbose,
-        )
         guppy_interface = GuppyInterface(
             folder_path=guppy_folder_path,
+            verbose=verbose,
+        )
+        # Store only the behavioral event stores GuPPy listed in storesList.csv, named with the
+        # human-readable semantic names from that file (applied in get_metadata).
+        self._event_store_to_event_name = guppy_interface.event_store_to_event_name
+        events_interface = TDTEventsInterface(
+            folder_path=tdt_folder_path,
+            event_names=list(self._event_store_to_event_name.keys()),
             verbose=verbose,
         )
         super().__init__(
@@ -82,6 +89,15 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         # The TDT side adds a FiberPhotometry lab_meta_data object named "fiber_photometry";
         # rename the GuPPy ProcessingModule to avoid colliding with that name during NWB write.
         metadata["Ophys"]["Guppy"]["ProcessingModule"]["name"] = "guppy"
+        # Name each raw TDT event with the human-readable name GuPPy recorded in storesList.csv
+        # (e.g. the "PrtN" store becomes the "port_entries" Events object).
+        for event in metadata["Behavior"]["TDTEvents"]["Events"]:
+            event_name = self._event_store_to_event_name.get(event["epoc_name"])
+            if event_name is not None:
+                event["name"] = event_name
+                event["description"] = (
+                    f"Onset times of the '{event_name}' behavioral events (from TDT store '{event['epoc_name']}')."
+                )
         return metadata
 
     def get_metadata_schema(self) -> dict:
