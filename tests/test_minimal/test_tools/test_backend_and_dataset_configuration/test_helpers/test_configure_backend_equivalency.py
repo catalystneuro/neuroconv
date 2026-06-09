@@ -3,12 +3,12 @@
 from pathlib import Path
 from typing import Literal
 
-import numcodecs
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
+from zarr.codecs import GzipCodec
 
 from neuroconv.tools.nwb_helpers import (
     BACKEND_NWB_IO,
@@ -83,7 +83,10 @@ def test_configure_backend_equivalency(
             assert written_data.compression == "gzip"
             assert written_data.compression_opts == 2
         elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=2)
+            assert len(written_data.compressors) > 0
+            compressor = written_data.compressors[0]
+            assert isinstance(compressor, GzipCodec)
+            assert compressor.level == 2
 
         assert_array_equal(array_1, written_data[:])
 

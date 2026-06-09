@@ -49,7 +49,7 @@ def _is_dataset_written_to_file(
     ) or (
         isinstance(candidate_dataset, zarr.Array)  # If the source data is a Zarr Array
         and backend == "zarr"
-        and Path(candidate_dataset.store.path).resolve()
+        and Path(candidate_dataset.store.root).resolve()
         == normalized_existing  # If the source Zarr 'file' is the appending NWBFile
     )
 
@@ -140,6 +140,16 @@ def get_default_dataset_io_configurations(
                 # Skip datasets with any zero-length axes
                 dataset_name = "data"
                 candidate_dataset = getattr(column, dataset_name)
+
+                # Skip datasets that are plain string lists (e.g., string columns in zarr v3)
+                if (
+                    backend == "zarr"
+                    and isinstance(candidate_dataset, list)
+                    and len(candidate_dataset) > 0
+                    and isinstance(candidate_dataset[0], str)
+                ):
+                    continue
+
                 full_shape = get_data_shape(data=candidate_dataset)
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
@@ -223,13 +233,22 @@ def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[Datase
                 if any(isinstance(value, Container) for value in candidate_dataset):
                     continue  # Skip
 
-                # Skip when columns whose values are a reference type
+                # Skip over columns whose values are a reference type
                 if isinstance(column, TimeSeriesReferenceVectorData):
                     continue
 
                 # Skip datasets with any zero-length axes
                 dataset_name = "data"
                 candidate_dataset = getattr(column, dataset_name)
+
+                # Skip datasets that are plain string lists (e.g., string columns in zarr v3)
+                if (
+                    isinstance(candidate_dataset, list)
+                    and len(candidate_dataset) > 0
+                    and isinstance(candidate_dataset[0], str)
+                ):
+                    continue
+
                 full_shape = get_data_shape(data=candidate_dataset)
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
