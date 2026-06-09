@@ -570,6 +570,8 @@ class VameInterface(BaseTemporalAlignmentInterface):
         vame_project_kwargs = dict(
             name=project_name,
             vame_config=json.dumps(self._vame_config),
+            time_window_samples=int(self._vame_config.get("time_window", 0)),
+            vame_version=str(self._vame_config.get("vame_version", "")),
         )
         if latent_series is not None:
             vame_project_kwargs["latent_space_series"] = latent_series
