@@ -117,7 +117,7 @@ medpc = [
     "ndx-events==0.2.2",
 ]
 vame = [
-    "ndx-vame @ git+https://github.com/catalystneuro/ndx-vame.git@update-VAMEProject-allow-multiple-series",
+    "ndx-vame @ git+https://github.com/catalystneuro/ndx-vame.git@main",
 ]
 behavior = [
     "neuroconv[sleap]",
