@@ -5,15 +5,18 @@ from pynwb import NWBFile
 
 from .guppydatainterface import GuppyInterface
 from ..tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
+from ...behavior.tdt_events.tdteventsdatainterface import TDTEventsInterface
 from ....nwbconverter import ConverterPipe
 
 
 class TDTFiberPhotometryGuppyConverter(ConverterPipe):
-    """Bundle raw TDT fiber photometry acquisition with GuPPy-derived processing outputs.
+    """Bundle raw TDT fiber photometry acquisition, raw events, and GuPPy-derived processing outputs.
 
-    Combines :class:`TDTFiberPhotometryInterface` (raw acquisition added to ``nwbfile.acquisition``
-    via the ``ndx-fiber-photometry`` extension) with :class:`GuppyInterface` (derived traces,
-    transient tables, and cross-correlations added to a ``fiber_photometry`` ProcessingModule).
+    Combines the three parts of a GuPPy session: :class:`TDTFiberPhotometryInterface` (raw acquisition
+    traces added to ``nwbfile.acquisition`` via the ``ndx-fiber-photometry`` extension),
+    :class:`TDTEventsInterface` (raw discrete events/epocs added to a ``behavior`` ProcessingModule
+    via the ``ndx-events`` extension), and :class:`GuppyInterface` (derived traces, transient tables,
+    and cross-correlations added to a ``fiber_photometry`` ProcessingModule).
 
     GuPPy and TDT share a single origin (recording start = ``session_start_time``): GuPPy emits
     timestamps in seconds since recording start, the same clock the raw TDT streams use. No
@@ -22,7 +25,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
     """
 
     display_name = "TDT Fiber Photometry + GuPPy"
-    keywords = TDTFiberPhotometryInterface.keywords + GuppyInterface.keywords
+    keywords = TDTFiberPhotometryInterface.keywords + TDTEventsInterface.keywords + GuppyInterface.keywords
     associated_suffixes = TDTFiberPhotometryInterface.associated_suffixes + GuppyInterface.associated_suffixes
     info = "Converter that bundles raw TDT fiber photometry acquisition with GuPPy-derived processing outputs."
 
@@ -32,6 +35,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         tdt_folder_path: DirectoryPath,
         guppy_folder_path: DirectoryPath,
         *,
+        event_names: list[str] | None = None,
         verbose: bool = False,
     ):
         """Initialize the TDT + GuPPy converter.
@@ -45,10 +49,18 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             Path to the GuPPy ``<session>_output_<N>`` folder containing ``storesList.csv``,
             the per-region derived ``.hdf5`` files, and the ``GuPPyParamtersUsed.json``
             provenance file (discovered automatically by :class:`GuppyInterface`).
+        event_names : list[str], optional
+            The names of the TDT epocs (read from the same ``tdt_folder_path`` tank) to store as
+            raw events. If None (default), every epoc in the tank is stored.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
         tdt_interface = TDTFiberPhotometryInterface(folder_path=tdt_folder_path, verbose=verbose)
+        events_interface = TDTEventsInterface(
+            folder_path=tdt_folder_path,
+            event_names=event_names,
+            verbose=verbose,
+        )
         guppy_interface = GuppyInterface(
             folder_path=guppy_folder_path,
             verbose=verbose,
@@ -56,6 +68,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         super().__init__(
             data_interfaces={
                 "TDTFiberPhotometry": tdt_interface,
+                "TDTEvents": events_interface,
                 "Guppy": guppy_interface,
             },
             verbose=verbose,
@@ -119,6 +132,8 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         conversion_options = conversion_options.copy() if conversion_options else {}
         tdt_options = {"stub_test": stub_test, "t1": t1, "t2": t2}
         tdt_options.update(conversion_options.pop("TDTFiberPhotometry", {}))
+        events_options: dict = {}
+        events_options.update(conversion_options.pop("TDTEvents", {}))
         guppy_options: dict = {
             "stub_test": stub_test,
             "fiber_photometry_table_region_indices": self._derive_region_to_table_indices(metadata),
@@ -126,6 +141,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         guppy_options.update(conversion_options.pop("Guppy", {}))
         merged_conversion_options = {
             "TDTFiberPhotometry": tdt_options,
+            "TDTEvents": events_options,
             "Guppy": guppy_options,
         }
         merged_conversion_options.update(conversion_options)
@@ -157,6 +173,8 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         conversion_options = conversion_options.copy() if conversion_options else {}
         tdt_options = {"stub_test": stub_test, "t1": t1, "t2": t2}
         tdt_options.update(conversion_options.pop("TDTFiberPhotometry", {}))
+        events_options: dict = {}
+        events_options.update(conversion_options.pop("TDTEvents", {}))
         guppy_options: dict = {
             "stub_test": stub_test,
             "fiber_photometry_table_region_indices": self._derive_region_to_table_indices(metadata),
@@ -164,6 +182,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         guppy_options.update(conversion_options.pop("Guppy", {}))
         merged_conversion_options = {
             "TDTFiberPhotometry": tdt_options,
+            "TDTEvents": events_options,
             "Guppy": guppy_options,
         }
         merged_conversion_options.update(conversion_options)

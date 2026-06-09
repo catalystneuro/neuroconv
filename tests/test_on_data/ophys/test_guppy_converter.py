@@ -38,8 +38,8 @@ class TestTDTFiberPhotometryGuppyConverter:
             row.pop("commanded_voltage_series", None)
         return merged_metadata
 
-    def test_construction_creates_both_interfaces(self, converter):
-        assert set(converter.data_interface_objects) == {"TDTFiberPhotometry", "Guppy"}
+    def test_construction_creates_all_interfaces(self, converter):
+        assert set(converter.data_interface_objects) == {"TDTFiberPhotometry", "TDTEvents", "Guppy"}
 
     def test_session_start_time_taken_from_tdt(self, converter):
         metadata = converter.get_metadata()
@@ -101,6 +101,27 @@ class TestTDTFiberPhotometryGuppyConverter:
                     # each pointing at both the excitation-signal and isosbestic-control rows for its region.
                     assert series.neurodata_type == "FiberPhotometryResponseSeries"
                     assert list(series.fiber_photometry_table_region.data[:]) == expected_region_to_indices[region]
+
+    def test_run_conversion_writes_tdt_events(self, converter, metadata, tmp_path):
+        nwbfile_path = tmp_path / "tdt_guppy_events.nwb"
+        converter.run_conversion(
+            nwbfile_path=str(nwbfile_path),
+            metadata=metadata,
+            overwrite=True,
+            stub_test=True,
+        )
+
+        with NWBHDF5IO(str(nwbfile_path), "r") as io:
+            nwbfile = io.read()
+
+            assert "behavior" in nwbfile.processing
+            behavior_module = nwbfile.processing["behavior"]
+            # Onset counts of each epoc in the Photo_63 tank, stored as ndx_events.Events.
+            expected_epoc_to_length = {"PrtN": 5, "LNnR": 35, "PrtR": 2, "RNPS": 1, "LNRW": 2}
+            for epoc_name, expected_length in expected_epoc_to_length.items():
+                events = behavior_module.data_interfaces[epoc_name]
+                assert events.neurodata_type == "Events"
+                assert len(events.timestamps) == expected_length
 
     def test_derive_region_to_table_indices(self, converter, metadata):
         """The auto-join composes region -> store names -> stream_name -> table rows."""
