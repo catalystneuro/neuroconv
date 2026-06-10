@@ -24,29 +24,47 @@ class IntanConverter(ConverterPipe):
     associated_suffixes = (".rhd", ".rhs")
     info = "Auto-discovers Intan streams and routes each to the appropriate sub-interface."
 
-    # Maps header stream name to (interface_key, interface_class, extra_kwargs).
-    # stream_name is always passed explicitly by the converter; extra_kwargs holds only
-    # interface-specific parameters beyond file_path and stream_name.
+    # Maps header stream name to interface routing.
+    # "interface_name" and "interface" are routing fields consumed by the converter loop.
+    # All remaining keys are forwarded verbatim as constructor kwargs. stream_name and
+    # file_path are always injected by the loop; only interface-specific extras appear here.
+    _ROUTING_KEYS = frozenset({"interface_name", "interface"})
     _STREAM_TO_INTERFACE = {
-        "RHD2000 amplifier channel": ("Recording", IntanRecordingInterface, {}),
-        "RHS2000 amplifier channel": ("Recording", IntanRecordingInterface, {}),
-        "RHD2000 auxiliary input channel": (
-            "AnalogAuxiliary",
-            IntanAnalogInterface,
-            {"metadata_key": "TimeSeriesIntanAuxiliary"},
-        ),
-        "USB board ADC input channel": (
-            "AnalogADCInput",
-            IntanAnalogInterface,
-            {"metadata_key": "TimeSeriesIntanADCInput"},
-        ),
-        "USB board ADC output channel": (
-            "AnalogADCOutput",
-            IntanAnalogInterface,
-            {"metadata_key": "TimeSeriesIntanADCOutput"},
-        ),
-        "DC Amplifier channel": ("AnalogDC", IntanAnalogInterface, {"metadata_key": "TimeSeriesIntanDC"}),
-        "Stim channel": ("Stim", IntanStimInterface, {"metadata_key": "TimeSeriesIntanStim"}),
+        "RHD2000 amplifier channel": {
+            "interface_name": "Recording",
+            "interface": IntanRecordingInterface,
+            "metadata_key": "electrical_series",
+        },
+        "RHS2000 amplifier channel": {
+            "interface_name": "Recording",
+            "interface": IntanRecordingInterface,
+            "metadata_key": "electrical_series",
+        },
+        "RHD2000 auxiliary input channel": {
+            "interface_name": "AnalogAuxiliary",
+            "interface": IntanAnalogInterface,
+            "metadata_key": "time_series_intan_auxiliary",
+        },
+        "USB board ADC input channel": {
+            "interface_name": "AnalogADCInput",
+            "interface": IntanAnalogInterface,
+            "metadata_key": "time_series_intan_adc_input",
+        },
+        "USB board ADC output channel": {
+            "interface_name": "AnalogADCOutput",
+            "interface": IntanAnalogInterface,
+            "metadata_key": "time_series_intan_adc_output",
+        },
+        "DC Amplifier channel": {
+            "interface_name": "AnalogDC",
+            "interface": IntanAnalogInterface,
+            "metadata_key": "time_series_intan_dc",
+        },
+        "Stim channel": {
+            "interface_name": "Stim",
+            "interface": IntanStimInterface,
+            "metadata_key": "time_series_intan_stim",
+        },
     }
 
     @classmethod
@@ -135,10 +153,13 @@ class IntanConverter(ConverterPipe):
         for stream_name in present_streams:
             if stream_name not in self._STREAM_TO_INTERFACE:
                 continue
-            interface_key, interface_class, extra_kwargs = self._STREAM_TO_INTERFACE[stream_name]
-            interface_kwargs = dict(file_path=file_path, stream_name=stream_name, **extra_kwargs)
+            entry = self._STREAM_TO_INTERFACE[stream_name]
+            interface_kwargs = dict(file_path=file_path, stream_name=stream_name)
+            interface_kwargs.update({k: v for k, v in entry.items() if k not in self._ROUTING_KEYS})
+            if entry["interface"] is IntanRecordingInterface:
+                interface_kwargs["es_key"] = interface_kwargs.pop("metadata_key")
             if saved_files_are_split:
                 interface_kwargs["saved_files_are_split"] = True
-            data_interfaces[interface_key] = interface_class(**interface_kwargs)
+            data_interfaces[entry["interface_name"]] = entry["interface"](**interface_kwargs)
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)

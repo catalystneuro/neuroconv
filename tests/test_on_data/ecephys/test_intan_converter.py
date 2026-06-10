@@ -86,7 +86,7 @@ class TestMetadataMerging:
         metadata = converter.get_metadata()
         # Each sub-interface contributes a uniquely-keyed TimeSeries entry.
         ts_keys = set(metadata["TimeSeries"].keys())
-        assert ts_keys == {"TimeSeriesIntanADCInput", "TimeSeriesIntanADCOutput", "TimeSeriesIntanStim"}
+        assert ts_keys == {"time_series_intan_adc_input", "time_series_intan_adc_output", "time_series_intan_stim"}
 
 
 class TestExcludeStreams:
@@ -131,12 +131,12 @@ class TestFullConversion:
         nwbfile = read_nwb(nwbfile_path)
 
         # Amplifier traces in acquisition.
-        assert "ElectricalSeries" in nwbfile.acquisition
+        assert "electrical_series" in nwbfile.acquisition
         # ADC in/out as TimeSeries in acquisition.
-        assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
-        assert "TimeSeriesIntanADCOutput" in nwbfile.acquisition
+        assert "time_series_intan_adc_input" in nwbfile.acquisition
+        assert "time_series_intan_adc_output" in nwbfile.acquisition
         # Stim as TimeSeries in stimulus.
-        assert "TimeSeriesIntanStim" in nwbfile.stimulus
+        assert "time_series_intan_stim" in nwbfile.stimulus
         # Single Intan device.
         assert list(nwbfile.devices.keys()) == ["Intan"]
 
@@ -152,9 +152,9 @@ class TestFullConversion:
 
         nwbfile = read_nwb(nwbfile_path)
 
-        assert "ElectricalSeries" in nwbfile.acquisition
-        assert "TimeSeriesIntanAuxiliary" in nwbfile.acquisition
-        assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
+        assert "electrical_series" in nwbfile.acquisition
+        assert "time_series_intan_auxiliary" in nwbfile.acquisition
+        assert "time_series_intan_adc_input" in nwbfile.acquisition
         assert list(nwbfile.devices.keys()) == ["Intan"]
 
     def test_rhs_file_per_signal_roundtrip(self, tmp_path):
@@ -169,11 +169,11 @@ class TestFullConversion:
 
         nwbfile = read_nwb(nwbfile_path)
 
-        assert "ElectricalSeries" in nwbfile.acquisition
-        assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
-        assert "TimeSeriesIntanADCOutput" in nwbfile.acquisition
-        assert "TimeSeriesIntanDC" in nwbfile.acquisition
-        assert "TimeSeriesIntanStim" in nwbfile.stimulus
+        assert "electrical_series" in nwbfile.acquisition
+        assert "time_series_intan_adc_input" in nwbfile.acquisition
+        assert "time_series_intan_adc_output" in nwbfile.acquisition
+        assert "time_series_intan_dc" in nwbfile.acquisition
+        assert "time_series_intan_stim" in nwbfile.stimulus
         assert list(nwbfile.devices.keys()) == ["Intan"]
 
     def test_split_files_roundtrip(self, tmp_path):
@@ -189,5 +189,5 @@ class TestFullConversion:
 
         nwbfile = read_nwb(nwbfile_path)
 
-        assert "ElectricalSeries" in nwbfile.acquisition
+        assert "electrical_series" in nwbfile.acquisition
         assert list(nwbfile.devices.keys()) == ["Intan"]
