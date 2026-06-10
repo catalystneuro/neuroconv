@@ -7,6 +7,7 @@ import h5py
 import numpy as np
 import pandas
 import pytest
+from ndx_events import Events
 from ndx_fiber_photometry import (
     FiberPhotometry,
     FiberPhotometryIndicators,
@@ -36,8 +37,21 @@ def _column_parses_as_float(column: str) -> bool:
 
 
 _BIN_COLUMN_PATTERN = re.compile(r"^bin_\((\d+)-(\d+)\)$")
+_PREFIX_TO_TRACE_TYPE = dict(cntrl_sig_fit="control_fit", dff="dff", z_score="z_score")
 
 GUPPY_DATA_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_63_207-181030-103332"
+
+
+def _resolve_regions(module, dynamic_table_region) -> list[str]:
+    """Resolve a region DynamicTableRegion's row indices to GuPPy region names."""
+    region_names = list(module["regions"]["region"].data)
+    return [region_names[index] for index in dynamic_table_region.data]
+
+
+def _resolve_events(module, dynamic_table_region) -> list[str]:
+    """Resolve an event DynamicTableRegion's row indices to GuPPy event names."""
+    event_names = list(module["events"]["event_name"].data)
+    return [event_names[index] for index in dynamic_table_region.data]
 
 
 class TestGuppyInterface:
@@ -55,23 +69,35 @@ class TestGuppyInterface:
                     },
                     expected_transients={"dms": ["z_score", "dff"], "dls": ["z_score", "dff"]},
                     expected_cross_correlations=[
-                        {"event_name": "port_entries", "feature": "dff", "region_1": "dls", "region_2": "dms"},
-                        {"event_name": "port_entries", "feature": "z_score", "region_1": "dls", "region_2": "dms"},
-                        {"event_name": "rewarded_nose_pokes", "feature": "dff", "region_1": "dls", "region_2": "dms"},
+                        {"event_name": "port_entries", "trace_type": "dff", "region_1": "dls", "region_2": "dms"},
+                        {"event_name": "port_entries", "trace_type": "z_score", "region_1": "dls", "region_2": "dms"},
                         {
                             "event_name": "rewarded_nose_pokes",
-                            "feature": "z_score",
+                            "trace_type": "dff",
                             "region_1": "dls",
                             "region_2": "dms",
                         },
-                        {"event_name": "unrewarded_nose_pokes", "feature": "dff", "region_1": "dls", "region_2": "dms"},
+                        {
+                            "event_name": "rewarded_nose_pokes",
+                            "trace_type": "z_score",
+                            "region_1": "dls",
+                            "region_2": "dms",
+                        },
                         {
                             "event_name": "unrewarded_nose_pokes",
-                            "feature": "z_score",
+                            "trace_type": "dff",
+                            "region_1": "dls",
+                            "region_2": "dms",
+                        },
+                        {
+                            "event_name": "unrewarded_nose_pokes",
+                            "trace_type": "z_score",
                             "region_1": "dls",
                             "region_2": "dms",
                         },
                     ],
+                    expected_psth_count=24,  # 3 events x 2 regions x 2 features x {corrected, uncorrected}
+                    expected_peak_auc_count=12,  # 3 events x 2 regions x 2 features
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
                     expected_valid_signal_intervals=[],
                     expected_event_store_to_event_name={
@@ -89,6 +115,8 @@ class TestGuppyInterface:
                     expected_traces={"dms": ["cntrl_sig_fit", "dff", "z_score"]},
                     expected_transients={"dms": ["z_score"]},
                     expected_cross_correlations=[],
+                    expected_psth_count=0,
+                    expected_peak_auc_count=0,
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
                     expected_valid_signal_intervals=[
                         ("dms", 3.93579108, 18.51639376),
@@ -120,9 +148,10 @@ class TestGuppyInterface:
     def linked_nwbfile(self, case):
         """A mock NWBFile pre-populated with an acquisition ``FiberPhotometryTable``.
 
-        ``GuppyInterface`` is non-standalone: it links its derived traces into a table the acquisition
-        side owns, so tests must supply that table. Two rows per region mirror the signal + isosbestic
-        control fibers a GuPPy region is computed from.
+        ``GuppyInterface`` is non-standalone: the derived traces are ``FiberPhotometryResponseSeries``
+        whose ``fiber_photometry_table_region`` is their defining provenance, so tests must supply that
+        table. Two rows per region mirror the signal + isosbestic control fibers a region is computed
+        from.
         """
         nwbfile = mock_NWBFile()
         indicator = Indicator(name="indicator", label="GCaMP")
@@ -152,19 +181,30 @@ class TestGuppyInterface:
         )
         return nwbfile
 
+    def _add(self, interface, nwbfile, region_to_indices, *, stub_test):
+        metadata = interface.get_metadata()
+        interface.add_to_nwbfile(
+            nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=stub_test
+        )
+        return nwbfile.processing["fiber_photometry"]
+
+    # ----------------------------------------------------------------- discovery / metadata
+
     def test_discovery(self, interface, case):
         assert interface.regions == case["expected_regions"]
         assert interface.traces_by_region == case["expected_traces"]
         assert interface.transients_by_region == case["expected_transients"]
 
     def test_discovery_event_store_to_event_name(self, interface, case):
-        """Behavioral event stores (non signal/control) from storesList.csv map to human-readable names."""
         assert interface.event_store_to_event_name == case["expected_event_store_to_event_name"]
+
+    def test_discovery_psths_and_peak_aucs(self, interface, case):
+        assert len(interface.psths) == case["expected_psth_count"]
+        assert len(interface.peak_aucs) == case["expected_peak_auc_count"]
 
     def test_metadata_session_start_time(self, interface, case):
         metadata = interface.get_metadata()
         if case["expected_session_start_time"] is None:
-            # CSV-input fixtures lack timeRecStart; session_start_time must be set by the user.
             assert metadata["NWBFile"].get("session_start_time") in (None, "")
         else:
             assert metadata["NWBFile"]["session_start_time"] == case["expected_session_start_time"]
@@ -185,16 +225,16 @@ class TestGuppyInterface:
             (
                 {
                     "event_name": entry["event"],
-                    "feature": entry["feature"],
+                    "trace_type": entry["feature"],
                     "region_1": entry["region_1"],
                     "region_2": entry["region_2"],
                 }
                 for entry in interface.cross_correlations
             ),
-            key=lambda entry: (entry["event_name"], entry["feature"]),
+            key=lambda entry: (entry["event_name"], entry["trace_type"]),
         )
         expected = sorted(
-            case["expected_cross_correlations"], key=lambda entry: (entry["event_name"], entry["feature"])
+            case["expected_cross_correlations"], key=lambda entry: (entry["event_name"], entry["trace_type"])
         )
         assert actual == expected
 
@@ -202,112 +242,247 @@ class TestGuppyInterface:
         metadata = interface.get_metadata()
         cross_correlations_metadata = metadata["Ophys"]["Guppy"]["CrossCorrelations"]
         expected_names = {
-            f"cross_correlation_{entry['event_name']}_{entry['feature']}_{entry['region_1']}_{entry['region_2']}"
+            f"cross_correlation_{entry['event_name']}_{entry['trace_type']}_{entry['region_1']}_{entry['region_2']}"
             for entry in case["expected_cross_correlations"]
         }
         assert {entry["name"] for entry in cross_correlations_metadata} == expected_names
 
-    def test_cross_correlation_table_matches_source(self, interface, case, linked_nwbfile, region_to_indices):
+    def test_metadata_processing_module_includes_guppy_version(self, interface):
         metadata = interface.get_metadata()
-        interface.add_to_nwbfile(
-            linked_nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=False
+        description = metadata["Ophys"]["Guppy"]["ProcessingModule"]["description"]
+        assert "(GuPPy version 2.0.0a7)" in description
+
+    def test_metadata_traces_and_transients(self, interface, case):
+        metadata = interface.get_metadata()
+        guppy_metadata = metadata["Ophys"]["Guppy"]
+
+        expected_trace_names = {
+            f"{prefix}_{region}" for region, prefixes in case["expected_traces"].items() for prefix in prefixes
+        }
+        assert {trace["name"] for trace in guppy_metadata["Traces"]} == expected_trace_names
+
+        expected_transient_names = {
+            f"transients_{region}_{feature}"
+            for region, features in case["expected_transients"].items()
+            for feature in features
+        }
+        assert {transient["name"] for transient in guppy_metadata["Transients"]} == expected_transient_names
+
+    # ----------------------------------------------------------------- registries / parameters
+
+    def test_registries(self, interface, case, linked_nwbfile, region_to_indices):
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=True)
+
+        regions_table = module["regions"]
+        assert regions_table.neurodata_type == "GuppyRegionsTable"
+        assert list(regions_table["region"].data) == case["expected_regions"]
+        # The ragged fiber link (a VectorIndex over a DynamicTableRegion) stores, in region order,
+        # each region's acquisition table rows. Check the flat stored indices.
+        flat_fiber_indices = list(regions_table["fiber_photometry_table_region"].target.data[:])
+        expected_flat = [index for region in case["expected_regions"] for index in region_to_indices[region]]
+        assert flat_fiber_indices == expected_flat
+
+        events_table = module["events"]
+        assert events_table.neurodata_type == "GuppyEventsTable"
+        assert sorted(events_table["event_name"].data) == sorted(case["expected_event_store_to_event_name"].values())
+
+    def test_parameters(self, interface, case, linked_nwbfile, region_to_indices):
+        self._add(interface, linked_nwbfile, region_to_indices, stub_test=True)
+        parameters = linked_nwbfile.lab_meta_data["guppy_parameters"]
+        assert parameters.neurodata_type == "GuppyParameters"
+        assert parameters.guppy_version == "2.0.0a7"
+        # zscore_method is present in the fixture parameters file.
+        assert parameters.zscore_method is not None
+
+    def test_events_registry_references_behavior_objects(self, interface, case, linked_nwbfile, region_to_indices):
+        """When behavioral event objects exist in the file, the events registry resolves to them by name.
+
+        Uses the ``ndx_events.Events`` type the converter writes; the registry holds a generic object
+        reference, so the lookup is by name.
+        """
+        if not interface.event_names:
+            module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=True)
+            assert "events" not in module["events"].colnames  # no optional object-reference column
+            return
+
+        behavior_module = linked_nwbfile.create_processing_module(name="behavior", description="behavioral events")
+        event_objects = {}
+        for event_name in interface.event_names:
+            events = Events(name=event_name, description=event_name, timestamps=[0.0, 1.0])
+            behavior_module.add(events)
+            event_objects[event_name] = events
+
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=True)
+        events_table = module["events"]
+        for row_index, event_name in enumerate(events_table["event_name"].data):
+            assert events_table["events"][row_index] is event_objects[event_name]
+
+    # ----------------------------------------------------------------- products land as ndx-guppy types
+
+    def test_add_to_nwbfile_lands_in_processing_module(self, interface, case, linked_nwbfile, region_to_indices):
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=True)
+        assert "fiber_photometry" in linked_nwbfile.processing
+        assert not linked_nwbfile.acquisition, "GuPPy interface must not write to /acquisition/."
+
+        for region, prefixes in case["expected_traces"].items():
+            for prefix in prefixes:
+                series = module[f"{prefix}_{region}"]
+                assert series.neurodata_type == "GuppyDerivedResponseSeries"
+                assert series.trace_type == _PREFIX_TO_TRACE_TYPE[prefix]
+                assert list(series.fiber_photometry_table_region.data[:]) == region_to_indices[region]
+                assert _resolve_regions(module, series.region) == [region]
+                assert series.data.shape[0] == len(series.timestamps)
+                assert float(series.timestamps[-1] - series.timestamps[0]) <= 1.01  # stub keeps ~1 s
+
+        for region, features in case["expected_transients"].items():
+            for feature in features:
+                table = module[f"transients_{region}_{feature}"]
+                assert table.neurodata_type == "GuppyTransientsTable"
+                assert table.trace_type == feature
+                assert "timestamp" in table.colnames and "amplitude" in table.colnames
+                if len(table) > 0:
+                    assert set(_resolve_regions(module, table["region"])) == {region}
+
+        assert module["transient_summary"].neurodata_type == "GuppyTransientSummaryTable"
+
+        for entry in case["expected_cross_correlations"]:
+            name = (
+                f"cross_correlation_{entry['event_name']}_{entry['trace_type']}"
+                f"_{entry['region_1']}_{entry['region_2']}"
+            )
+            cross_correlation = module[name]
+            assert cross_correlation.neurodata_type == "GuppyCrossCorrelation"
+            assert cross_correlation.trace_type == entry["trace_type"]
+            assert cross_correlation.trials.shape[0] == cross_correlation.lag.shape[0]  # lag-first
+            assert cross_correlation.trials.shape[1] == cross_correlation.trial_onset_times.shape[0]
+            assert _resolve_regions(module, cross_correlation.region) == [entry["region_1"], entry["region_2"]]
+            assert _resolve_events(module, cross_correlation.event) == [entry["event_name"]]
+
+        for entry in interface.psths:
+            suffix = "" if entry["baseline_corrected"] else "_baseline_uncorrected"
+            psth = module[f"psth_{entry['event']}_{entry['region']}_{entry['feature']}{suffix}"]
+            assert psth.neurodata_type == "GuppyPSTH"
+            assert psth.trace_type == entry["feature"]
+            assert bool(psth.baseline_corrected) == entry["baseline_corrected"]
+            assert psth.traces.shape[0] == psth.peri_event_time.shape[0]  # time-first
+            assert _resolve_regions(module, psth.region) == [entry["region"]]
+            assert _resolve_events(module, psth.event) == [entry["event"]]
+
+        for entry in interface.peak_aucs:
+            peak_auc = module[f"peak_auc_{entry['event']}_{entry['region']}_{entry['feature']}"]
+            assert peak_auc.neurodata_type == "GuppyPeakAUC"
+            assert peak_auc.peak_positive.shape[0] == peak_auc.window_start.shape[0]  # window-first
+            assert peak_auc.peak_positive.shape[1] == peak_auc.trial_onset_times.shape[0]
+            assert _resolve_regions(module, peak_auc.region) == [entry["region"]]
+
+    # ----------------------------------------------------------------- products match their source files
+
+    def test_transients_table_row_count_matches_csv(self, interface, case, linked_nwbfile, region_to_indices):
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
+        for region, features in case["expected_transients"].items():
+            for feature in features:
+                csv_path = case["folder_path"] / f"transientsOccurrences_{feature}_{region}.csv"
+                expected_count = len(pandas.read_csv(csv_path))
+                table = module[f"transients_{region}_{feature}"]
+                assert len(table["timestamp"]) == expected_count
+                assert len(table["amplitude"]) == expected_count
+
+    def test_transient_summary_matches_freq_amp(self, interface, case, linked_nwbfile, region_to_indices):
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
+        summary = module["transient_summary"]
+
+        expected_rows = []
+        for region, features in case["expected_transients"].items():
+            for feature in features:
+                freq_amp_path = case["folder_path"] / f"freqAndAmp_{feature}_{region}.h5"
+                if not freq_amp_path.is_file():
+                    continue
+                dataframe = pandas.read_hdf(freq_amp_path)
+                expected_rows.append(
+                    (
+                        region,
+                        feature,
+                        float(dataframe["freq (events/min)"].iloc[0]),
+                        float(dataframe["amplitude"].iloc[0]),
+                    )
+                )
+
+        actual_rows = list(
+            zip(
+                _resolve_regions(module, summary["region"]),
+                summary["trace_type"].data,
+                summary["frequency_per_min"].data,
+                summary["mean_amplitude"].data,
+            )
         )
-        module = linked_nwbfile.processing["fiber_photometry"]
+        assert actual_rows == expected_rows
+
+    def test_cross_correlation_matches_source(self, interface, case, linked_nwbfile, region_to_indices):
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
         for entry in case["expected_cross_correlations"]:
             source_path = (
                 case["folder_path"]
                 / "cross_correlation_output"
-                / f"corr_{entry['event_name']}_{entry['feature']}_{entry['region_1']}_{entry['region_2']}.h5"
+                / f"corr_{entry['event_name']}_{entry['trace_type']}_{entry['region_1']}_{entry['region_2']}.h5"
             )
-            source_dataframe = pandas.read_hdf(source_path)
-            entry_name = (
-                f"cross_correlation_{entry['event_name']}_{entry['feature']}"
+            source = pandas.read_hdf(source_path)
+            name = (
+                f"cross_correlation_{entry['event_name']}_{entry['trace_type']}"
                 f"_{entry['region_1']}_{entry['region_2']}"
             )
-            trial_table = module[entry_name]
-            mean_table = module[f"{entry_name}_mean"]
+            cross_correlation = module[name]
 
-            trial_columns = [column for column in source_dataframe.columns if _column_parses_as_float(column)]
+            trial_columns = [column for column in source.columns if _column_parses_as_float(column)]
+            np.testing.assert_array_equal(cross_correlation.lag[:], source["timestamps"].to_numpy(dtype=np.float64))
+            np.testing.assert_array_equal(cross_correlation.trials[:], source[trial_columns].to_numpy(dtype=np.float64))
+            np.testing.assert_array_equal(
+                cross_correlation.trial_onset_times[:], np.array([float(column) for column in trial_columns])
+            )
+            np.testing.assert_array_equal(cross_correlation.mean[:], source["mean"].to_numpy(dtype=np.float64))
+            np.testing.assert_array_equal(cross_correlation.error[:], source["err"].to_numpy(dtype=np.float64))
+
             bin_columns = sorted(
-                (int(match.group(1)), int(match.group(2)), column)
-                for column, match in (
-                    (column, _BIN_COLUMN_PATTERN.match(column)) for column in source_dataframe.columns
-                )
+                (int(match.group(1)), int(match.group(2)))
+                for match in (_BIN_COLUMN_PATTERN.match(column) for column in source.columns)
                 if match is not None
             )
-            expected_lag = source_dataframe["timestamps"].to_numpy(dtype=np.float64)
-
-            assert len(trial_table) == len(trial_columns)
-            for i, trial_column in enumerate(trial_columns):
-                assert trial_table["trial_onset_in_seconds"][i] == float(trial_column)
+            if bin_columns:
                 np.testing.assert_array_equal(
-                    np.asarray(trial_table["lag_in_seconds"][i]),
-                    expected_lag,
+                    cross_correlation.bin_edges[:], np.array([[start, stop] for start, stop in bin_columns])
                 )
                 np.testing.assert_array_equal(
-                    np.asarray(trial_table["cross_correlation"][i]),
-                    source_dataframe[trial_column].to_numpy(dtype=np.float64),
+                    cross_correlation.binned_mean[:],
+                    np.stack([source[f"bin_({a}-{b})"].to_numpy(dtype=np.float64) for a, b in bin_columns], axis=1),
                 )
 
-            np.testing.assert_array_equal(
-                np.asarray(mean_table["lag_in_seconds"][:]),
-                expected_lag,
+    def test_psth_matches_source(self, interface, case, linked_nwbfile, region_to_indices):
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
+        for entry in interface.psths:  # no-op for fixtures without PSTH files
+            source = pandas.read_hdf(entry["path"])
+            suffix = "" if entry["baseline_corrected"] else "_baseline_uncorrected"
+            psth = module[f"psth_{entry['event']}_{entry['region']}_{entry['feature']}{suffix}"]
+            trial_columns = [column for column in source.columns if _column_parses_as_float(column)]
+            np.testing.assert_array_equal(psth.peri_event_time[:], source["timestamps"].to_numpy(dtype=np.float64))
+            np.testing.assert_array_equal(psth.traces[:], source[trial_columns].to_numpy(dtype=np.float64))
+            np.testing.assert_array_equal(psth.mean[:], source["mean"].to_numpy(dtype=np.float64))
+            np.testing.assert_array_equal(psth.error[:], source["err"].to_numpy(dtype=np.float64))
+
+    def test_peak_auc_matches_source(self, interface, case, linked_nwbfile, region_to_indices):
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
+        for entry in interface.peak_aucs:
+            source = pandas.read_hdf(entry["path"])
+            peak_auc = module[f"peak_auc_{entry['event']}_{entry['region']}_{entry['feature']}"]
+            window_count = sum(1 for column in source.columns if str(column).startswith("peak_pos_"))
+            mean_row = next(str(index) for index in source.index if str(index).endswith("mean"))
+            expected_mean_peak_positive = np.array(
+                [float(source.loc[mean_row, f"peak_pos_{window + 1}"]) for window in range(window_count)]
             )
-            np.testing.assert_array_equal(
-                np.asarray(mean_table["mean"][:]),
-                source_dataframe["mean"].to_numpy(dtype=np.float64),
-            )
-
-            psth_bins_table = module[f"{entry_name}_psth_bins"]
-            assert len(psth_bins_table) == len(bin_columns)
-            for i, (bin_start, bin_end, value_column) in enumerate(bin_columns):
-                assert psth_bins_table["bin_start_trial_index"][i] == bin_start
-                assert psth_bins_table["bin_end_trial_index"][i] == bin_end
-                np.testing.assert_array_equal(
-                    np.asarray(psth_bins_table["lag_in_seconds"][i]),
-                    expected_lag,
-                )
-                np.testing.assert_array_equal(
-                    np.asarray(psth_bins_table["cross_correlation"][i]),
-                    source_dataframe[value_column].to_numpy(dtype=np.float64),
-                )
-                np.testing.assert_array_equal(
-                    np.asarray(psth_bins_table["cross_correlation_error"][i]),
-                    source_dataframe[f"bin_err_({bin_start}-{bin_end})"].to_numpy(dtype=np.float64),
-                )
-
-    def test_cross_correlation_without_psth_bin_columns(self, case, tmp_path, linked_nwbfile, region_to_indices):
-        copied_folder = tmp_path / "guppy_output"
-        shutil.copytree(case["folder_path"], copied_folder)
-        for h5_path in sorted((copied_folder / "cross_correlation_output").glob("corr_*.h5")):
-            dataframe = pandas.read_hdf(h5_path)
-            bin_columns = [column for column in dataframe.columns if column.startswith("bin_")]
-            dataframe = dataframe.drop(columns=bin_columns)
-            h5_path.unlink()
-            dataframe.to_hdf(h5_path, key="df", mode="w")
-
-        interface = GuppyInterface(folder_path=str(copied_folder))
-        metadata = interface.get_metadata()
-        interface.add_to_nwbfile(
-            linked_nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=False
-        )
-
-        module = linked_nwbfile.processing["fiber_photometry"]
-        for entry in case["expected_cross_correlations"]:
-            entry_name = (
-                f"cross_correlation_{entry['event_name']}_{entry['feature']}"
-                f"_{entry['region_1']}_{entry['region_2']}"
-            )
-            assert entry_name in module.data_interfaces
-            assert f"{entry_name}_mean" in module.data_interfaces
-            assert f"{entry_name}_psth_bins" not in module.data_interfaces
+            np.testing.assert_array_equal(peak_auc.mean_peak_positive[:], expected_mean_peak_positive)
+            start_points = np.asarray(interface.guppy_parameters["peak_startPoint"], dtype=np.float64)
+            np.testing.assert_array_equal(peak_auc.window_start[:], start_points[~np.isnan(start_points)])
 
     def test_valid_signal_intervals_match_source(self, interface, case, linked_nwbfile, region_to_indices):
-        metadata = interface.get_metadata()
-        interface.add_to_nwbfile(
-            linked_nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=False
-        )
-        module = linked_nwbfile.processing["fiber_photometry"]
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
 
         expected = case["expected_valid_signal_intervals"]
         if not expected:
@@ -315,9 +490,9 @@ class TestGuppyInterface:
             return
 
         table = module["valid_signal_intervals"]
-        assert "Method:" in table.description
+        assert table.neurodata_type == "GuppyValidSignalIntervals"
         assert interface.artifact_removal_method in table.description
-        actual_regions = list(table["region"][:])
+        actual_regions = _resolve_regions(module, table["region"])
         actual_starts = list(table["start_time"][:])
         actual_stops = list(table["stop_time"][:])
         assert len(actual_regions) == len(expected)
@@ -327,6 +502,109 @@ class TestGuppyInterface:
             assert region == expected_region
             assert start == pytest.approx(expected_start)
             assert stop == pytest.approx(expected_stop)
+
+    def test_cross_correlation_without_psth_bin_columns(self, case, tmp_path, linked_nwbfile, region_to_indices):
+        copied_folder = tmp_path / "guppy_output"
+        shutil.copytree(case["folder_path"], copied_folder)
+        cross_correlation_folder = copied_folder / "cross_correlation_output"
+        if cross_correlation_folder.is_dir():
+            for h5_path in sorted(cross_correlation_folder.glob("corr_*.h5")):
+                dataframe = pandas.read_hdf(h5_path)
+                bin_columns = [column for column in dataframe.columns if column.startswith("bin_")]
+                dataframe = dataframe.drop(columns=bin_columns)
+                h5_path.unlink()
+                dataframe.to_hdf(h5_path, key="df", mode="w")
+
+        interface = GuppyInterface(folder_path=str(copied_folder))
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
+        for entry in case["expected_cross_correlations"]:
+            name = (
+                f"cross_correlation_{entry['event_name']}_{entry['trace_type']}"
+                f"_{entry['region_1']}_{entry['region_2']}"
+            )
+            cross_correlation = module[name]
+            assert cross_correlation.bin_edges is None
+            assert cross_correlation.binned_mean is None
+
+    # ----------------------------------------------------------------- alignment / roundtrip / errors
+
+    def test_aligned_starting_time_shifts_traces_and_transients(
+        self, interface, case, linked_nwbfile, region_to_indices
+    ):
+        first_region = case["expected_regions"][0]
+        original_first_timestamp = float(interface.get_original_timestamps()[first_region][0])
+
+        offset = 12.34
+        interface.set_aligned_starting_time(offset)
+        module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
+
+        first_trace_name = f"{case['expected_traces'][first_region][0]}_{first_region}"
+        assert float(module[first_trace_name].timestamps[0]) == pytest.approx(original_first_timestamp + offset)
+
+        for region, features in case["expected_transients"].items():
+            for feature in features:
+                csv_path = case["folder_path"] / f"transientsOccurrences_{feature}_{region}.csv"
+                expected_first_peak = float(pandas.read_csv(csv_path)["timestamps"].iloc[0]) + offset
+                table = module[f"transients_{region}_{feature}"]
+                assert table["timestamp"][0] == pytest.approx(expected_first_peak)
+
+        if case["expected_valid_signal_intervals"]:
+            interval_table = module["valid_signal_intervals"]
+            actual = list(
+                zip(
+                    _resolve_regions(module, interval_table["region"]),
+                    list(interval_table["start_time"][:]),
+                    list(interval_table["stop_time"][:]),
+                )
+            )
+            for (region, start, stop), (expected_region, expected_start, expected_stop) in zip(
+                actual, case["expected_valid_signal_intervals"]
+            ):
+                assert region == expected_region
+                assert start == pytest.approx(expected_start + offset)
+                assert stop == pytest.approx(expected_stop + offset)
+
+    def test_round_trip_write_read(self, interface, case, linked_nwbfile, region_to_indices, tmp_path):
+        # GuppyInterface is non-standalone: add its products to an acquisition-linked NWBFile and
+        # write that file directly (run_conversion alone would build a fresh file with no table).
+        self._add(interface, linked_nwbfile, region_to_indices, stub_test=True)
+
+        nwbfile_path = tmp_path / "test_guppy.nwb"
+        with NWBHDF5IO(str(nwbfile_path), "w") as io:
+            io.write(linked_nwbfile)
+        with NWBHDF5IO(str(nwbfile_path), "r") as io:
+            nwbfile = io.read()
+            module = nwbfile.processing["fiber_photometry"]
+            assert module["regions"].neurodata_type == "GuppyRegionsTable"
+            for region, prefixes in case["expected_traces"].items():
+                for prefix in prefixes:
+                    series = module.data_interfaces[f"{prefix}_{region}"]
+                    assert series.neurodata_type == "GuppyDerivedResponseSeries"
+                    assert series.trace_type == _PREFIX_TO_TRACE_TYPE[prefix]
+                    assert list(series.fiber_photometry_table_region.data[:]) == region_to_indices[region]
+            for entry in case["expected_cross_correlations"]:
+                name = (
+                    f"cross_correlation_{entry['event_name']}_{entry['trace_type']}"
+                    f"_{entry['region_1']}_{entry['region_2']}"
+                )
+                assert module.data_interfaces[name].neurodata_type == "GuppyCrossCorrelation"
+            assert nwbfile.lab_meta_data["guppy_parameters"].neurodata_type == "GuppyParameters"
+
+    def test_add_to_nwbfile_without_table_raises(self, interface, region_to_indices):
+        """Non-standalone: GuPPy fails loudly if no acquisition FiberPhotometryTable is present."""
+        metadata = interface.get_metadata()
+        with pytest.raises(AssertionError, match="No FiberPhotometryTable found"):
+            interface.add_to_nwbfile(
+                mock_NWBFile(), metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=True
+            )
+
+    def test_add_to_nwbfile_without_indices_raises(self, interface, linked_nwbfile, case):
+        """Non-standalone: GuPPy fails loudly if a region has no supplied table-region indices."""
+        metadata = interface.get_metadata()
+        with pytest.raises(AssertionError, match="No fiber_photometry_table_region_indices supplied"):
+            interface.add_to_nwbfile(linked_nwbfile, metadata, fiber_photometry_table_region_indices={}, stub_test=True)
+
+    # ----------------------------------------------------------------- warnings / construction errors
 
     def test_remove_artifacts_flag_npy_mismatch_warns(self, tmp_path):
         source_folder = GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2"
@@ -369,207 +647,3 @@ class TestGuppyInterface:
         (copied_folder / "GuPPyParamtersUsed.json").unlink()
         with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):
             GuppyInterface(folder_path=str(copied_folder))
-
-    def test_metadata_processing_module_includes_guppy_version(self, interface):
-        metadata = interface.get_metadata()
-        description = metadata["Ophys"]["Guppy"]["ProcessingModule"]["description"]
-        assert "(GuPPy version 2.0.0a7)" in description
-
-    def test_metadata_traces_and_transients(self, interface, case):
-        metadata = interface.get_metadata()
-        guppy_metadata = metadata["Ophys"]["Guppy"]
-
-        expected_trace_names = {
-            f"{prefix}_{region}" for region, prefixes in case["expected_traces"].items() for prefix in prefixes
-        }
-        assert {trace["name"] for trace in guppy_metadata["Traces"]} == expected_trace_names
-
-        expected_transient_names = {
-            f"transients_{region}_{feature}"
-            for region, features in case["expected_transients"].items()
-            for feature in features
-        }
-        assert {transient["name"] for transient in guppy_metadata["Transients"]} == expected_transient_names
-
-    def test_add_to_nwbfile_lands_in_processing_module(self, interface, case, linked_nwbfile, region_to_indices):
-        metadata = interface.get_metadata()
-        interface.add_to_nwbfile(
-            linked_nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=True
-        )
-
-        assert "fiber_photometry" in linked_nwbfile.processing
-        assert not linked_nwbfile.acquisition, "GuPPy interface must not write to /acquisition/."
-
-        module = linked_nwbfile.processing["fiber_photometry"]
-        for region, prefixes in case["expected_traces"].items():
-            for prefix in prefixes:
-                series = module[f"{prefix}_{region}"]
-                # Derived traces are FiberPhotometryResponseSeries linked into the acquisition table.
-                assert series.neurodata_type == "FiberPhotometryResponseSeries"
-                assert list(series.fiber_photometry_table_region.data[:]) == region_to_indices[region]
-                assert series.data.shape[0] > 0
-                assert series.timestamps is not None
-                assert series.data.shape[0] == len(series.timestamps)
-                # stub keeps ~1 second of data
-                assert float(series.timestamps[-1] - series.timestamps[0]) <= 1.01
-        for region, features in case["expected_transients"].items():
-            for feature in features:
-                table = module[f"transients_{region}_{feature}"]
-                assert "timestamp" in table.colnames
-                assert "amplitude" in table.colnames
-        assert "transient_summary" in module.data_interfaces
-        for entry in case["expected_cross_correlations"]:
-            entry_name = (
-                f"cross_correlation_{entry['event_name']}_{entry['feature']}_{entry['region_1']}_{entry['region_2']}"
-            )
-            assert entry_name in module.data_interfaces
-            trial_table = module[entry_name]
-            assert "trial_onset_in_seconds" in trial_table.colnames
-            assert "lag_in_seconds" in trial_table.colnames
-            assert "cross_correlation" in trial_table.colnames
-            assert len(np.asarray(trial_table["lag_in_seconds"][0])) <= 100
-
-            mean_name = f"{entry_name}_mean"
-            assert mean_name in module.data_interfaces
-            mean_table = module[mean_name]
-            assert "lag_in_seconds" in mean_table.colnames
-            assert "mean" in mean_table.colnames
-            assert len(mean_table["lag_in_seconds"]) <= 100
-
-            psth_bins_name = f"{entry_name}_psth_bins"
-            assert psth_bins_name in module.data_interfaces
-            psth_bins_table = module[psth_bins_name]
-            assert "bin_start_trial_index" in psth_bins_table.colnames
-            assert "bin_end_trial_index" in psth_bins_table.colnames
-            assert "lag_in_seconds" in psth_bins_table.colnames
-            assert "cross_correlation" in psth_bins_table.colnames
-            assert "cross_correlation_error" in psth_bins_table.colnames
-            assert len(np.asarray(psth_bins_table["lag_in_seconds"][0])) <= 100
-
-    def test_transients_table_row_count_matches_csv(self, interface, case, linked_nwbfile, region_to_indices):
-        metadata = interface.get_metadata()
-        interface.add_to_nwbfile(
-            linked_nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=False
-        )
-        module = linked_nwbfile.processing["fiber_photometry"]
-        for region, features in case["expected_transients"].items():
-            for feature in features:
-                csv_path = case["folder_path"] / f"transientsOccurrences_{feature}_{region}.csv"
-                expected_count = len(pandas.read_csv(csv_path))
-                table = module[f"transients_{region}_{feature}"]
-                assert len(table["timestamp"]) == expected_count
-                assert len(table["amplitude"]) == expected_count
-
-    def test_transient_summary_matches_freq_amp(self, interface, case, linked_nwbfile, region_to_indices):
-        metadata = interface.get_metadata()
-        interface.add_to_nwbfile(
-            linked_nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=False
-        )
-        summary = linked_nwbfile.processing["fiber_photometry"]["transient_summary"]
-
-        expected_rows = []
-        for region, features in case["expected_transients"].items():
-            for feature in features:
-                freq_amp_path = case["folder_path"] / f"freqAndAmp_{feature}_{region}.h5"
-                if not freq_amp_path.is_file():
-                    continue
-                dataframe = pandas.read_hdf(freq_amp_path)
-                expected_rows.append(
-                    (
-                        region,
-                        feature,
-                        float(dataframe["freq (events/min)"].iloc[0]),
-                        float(dataframe["amplitude"].iloc[0]),
-                    )
-                )
-
-        actual_rows = list(
-            zip(
-                summary["region"].data,
-                summary["feature"].data,
-                summary["frequency_per_min"].data,
-                summary["mean_amplitude"].data,
-            )
-        )
-        assert actual_rows == expected_rows
-
-    def test_aligned_starting_time_shifts_traces_and_transients(
-        self, interface, case, linked_nwbfile, region_to_indices
-    ):
-        first_region = case["expected_regions"][0]
-        original_first_timestamp = float(interface.get_original_timestamps()[first_region][0])
-
-        offset = 12.34
-        interface.set_aligned_starting_time(offset)
-
-        metadata = interface.get_metadata()
-        interface.add_to_nwbfile(
-            linked_nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=False
-        )
-        module = linked_nwbfile.processing["fiber_photometry"]
-        first_trace_name = f"{case['expected_traces'][first_region][0]}_{first_region}"
-        assert float(module[first_trace_name].timestamps[0]) == pytest.approx(original_first_timestamp + offset)
-
-        for region, features in case["expected_transients"].items():
-            for feature in features:
-                csv_path = case["folder_path"] / f"transientsOccurrences_{feature}_{region}.csv"
-                expected_first_peak = float(pandas.read_csv(csv_path)["timestamps"].iloc[0]) + offset
-                table = module[f"transients_{region}_{feature}"]
-                assert table["timestamp"][0] == pytest.approx(expected_first_peak)
-
-        if case["expected_valid_signal_intervals"]:
-            interval_table = module["valid_signal_intervals"]
-            actual = list(
-                zip(
-                    list(interval_table["region"][:]),
-                    list(interval_table["start_time"][:]),
-                    list(interval_table["stop_time"][:]),
-                )
-            )
-            for (region, start, stop), (expected_region, expected_start, expected_stop) in zip(
-                actual, case["expected_valid_signal_intervals"]
-            ):
-                assert region == expected_region
-                assert start == pytest.approx(expected_start + offset)
-                assert stop == pytest.approx(expected_stop + offset)
-
-    def test_round_trip_write_read(self, interface, case, linked_nwbfile, region_to_indices, tmp_path):
-        # GuppyInterface is non-standalone: add its products to an acquisition-linked NWBFile and
-        # write that file directly (run_conversion alone would build a fresh file with no table).
-        metadata = interface.get_metadata()
-        interface.add_to_nwbfile(
-            linked_nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=True
-        )
-
-        nwbfile_path = tmp_path / "test_guppy.nwb"
-        with NWBHDF5IO(str(nwbfile_path), "w") as io:
-            io.write(linked_nwbfile)
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            nwbfile = io.read()
-            assert "fiber_photometry" in nwbfile.processing
-            module = nwbfile.processing["fiber_photometry"]
-            for region, prefixes in case["expected_traces"].items():
-                for prefix in prefixes:
-                    series = module.data_interfaces[f"{prefix}_{region}"]
-                    assert series.neurodata_type == "FiberPhotometryResponseSeries"
-                    assert list(series.fiber_photometry_table_region.data[:]) == region_to_indices[region]
-            for entry in case["expected_cross_correlations"]:
-                cross_correlation_name = (
-                    f"cross_correlation_{entry['event_name']}_{entry['feature']}"
-                    f"_{entry['region_1']}_{entry['region_2']}"
-                )
-                assert cross_correlation_name in module.data_interfaces
-
-    def test_add_to_nwbfile_without_table_raises(self, interface, region_to_indices):
-        """Non-standalone: GuPPy fails loudly if no acquisition FiberPhotometryTable is present."""
-        metadata = interface.get_metadata()
-        with pytest.raises(AssertionError, match="No FiberPhotometryTable found"):
-            interface.add_to_nwbfile(
-                mock_NWBFile(), metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=True
-            )
-
-    def test_add_to_nwbfile_without_indices_raises(self, interface, linked_nwbfile, case):
-        """Non-standalone: GuPPy fails loudly if a region has no supplied table-region indices."""
-        metadata = interface.get_metadata()
-        with pytest.raises(AssertionError, match="No fiber_photometry_table_region_indices supplied"):
-            interface.add_to_nwbfile(linked_nwbfile, metadata, fiber_photometry_table_region_indices={}, stub_test=True)

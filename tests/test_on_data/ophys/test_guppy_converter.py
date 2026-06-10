@@ -88,8 +88,15 @@ class TestTDTFiberPhotometryGuppyConverter:
 
             assert "guppy" in nwbfile.processing
             processing_module = nwbfile.processing["guppy"]
+            # The registries anchor region/event identity for every GuPPy product.
+            regions_table = processing_module["regions"]
+            assert regions_table.neurodata_type == "GuppyRegionsTable"
+            assert list(regions_table["region"].data) == list(EXPECTED_REGIONS)
+            assert processing_module["events"].neurodata_type == "GuppyEventsTable"
+
             # GuPPy region -> acquisition table rows, auto-derived from the shared stream-name linkage.
             expected_region_to_indices = {"dms": [0, 1], "dls": [2, 3]}
+            region_row = {region: index for index, region in enumerate(EXPECTED_REGIONS)}
             for region in EXPECTED_REGIONS:
                 for prefix in ("cntrl_sig_fit", "dff", "z_score"):
                     series_name = f"{prefix}_{region}"
@@ -97,10 +104,11 @@ class TestTDTFiberPhotometryGuppyConverter:
                         series_name in processing_module.data_interfaces
                     ), f"Expected {series_name} in fiber_photometry processing module."
                     series = processing_module.data_interfaces[series_name]
-                    # Derived traces are FiberPhotometryResponseSeries linked into the acquisition table,
-                    # each pointing at both the excitation-signal and isosbestic-control rows for its region.
-                    assert series.neurodata_type == "FiberPhotometryResponseSeries"
+                    # Derived traces are GuppyDerivedResponseSeries (a FiberPhotometryResponseSeries subtype)
+                    # linked both into the acquisition table and to the GuPPy regions registry row.
+                    assert series.neurodata_type == "GuppyDerivedResponseSeries"
                     assert list(series.fiber_photometry_table_region.data[:]) == expected_region_to_indices[region]
+                    assert list(series.region.data) == [region_row[region]]
 
     def test_events_derived_from_guppy_stores_list(self, converter):
         """Only the storesList.csv behavioral event stores propagate, with human-readable names."""
@@ -144,6 +152,13 @@ class TestTDTFiberPhotometryGuppyConverter:
             # Tank epocs absent from storesList.csv (PrtR, RNPS) are not propagated.
             assert "PrtR" not in behavior_module.data_interfaces
             assert "RNPS" not in behavior_module.data_interfaces
+
+            # The GuPPy events registry's optional object reference resolves to those behavior Events.
+            events_table = nwbfile.processing["guppy"]["events"]
+            registry_event_names = list(events_table["event_name"].data)
+            for row_index, event_name in enumerate(registry_event_names):
+                referenced = events_table["events"][row_index]
+                assert referenced is behavior_module.data_interfaces[event_name]
 
     def test_derive_region_to_table_indices(self, converter, metadata):
         """The auto-join composes region -> store names -> stream_name -> table rows."""

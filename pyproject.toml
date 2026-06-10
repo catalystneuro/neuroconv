@@ -356,6 +356,7 @@ tdt_fp = [
 ]
 guppy = [
     "neuroconv[fiber_photometry]",
+    "ndx-guppy>=0.1.0",
     "tables",
 ]
 thor = [
