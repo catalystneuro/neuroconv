@@ -67,26 +67,53 @@ class TestAutoDiscoveryRouting:
 
 
 class TestMetadataMerging:
-    """Multiple sub-interfaces should merge their Devices into a single entry."""
+    """Multiple sub-interfaces merge into a single coherent metadata dict."""
 
-    def test_single_device_after_merge(self):
+    def test_device_metadata(self):
         converter = IntanConverter(file_path=RHS_TRADITIONAL)
         metadata = converter.get_metadata()
-        # Both top-level Devices and Ecephys.Device should hold one Intan entry,
-        # not one per sub-interface.
-        assert metadata["Devices"] == [
-            {"name": "Intan", "description": "RHS Stim/Recording System", "manufacturer": "Intan"}
-        ]
-        assert metadata["Ecephys"]["Device"] == [
-            {"name": "Intan", "description": "RHS Stim/Recording System", "manufacturer": "Intan"}
-        ]
+        expected_device = {"name": "Intan", "description": "RHS Stim/Recording System", "manufacturer": "Intan"}
+        assert metadata["Devices"] == [expected_device]
+        assert metadata["Ecephys"]["Device"] == [expected_device]
 
-    def test_unique_time_series_metadata_keys(self):
+    def test_time_series_metadata_structure(self):
         converter = IntanConverter(file_path=RHS_TRADITIONAL)
         metadata = converter.get_metadata()
-        # Each sub-interface contributes a uniquely-keyed TimeSeries entry.
-        ts_keys = set(metadata["TimeSeries"].keys())
-        assert ts_keys == {"time_series_intan_adc_input", "time_series_intan_adc_output", "time_series_intan_stim"}
+        ts = metadata["TimeSeries"]
+
+        assert set(ts.keys()) == {
+            "time_series_intan_adc_input",
+            "time_series_intan_adc_output",
+            "time_series_intan_stim",
+        }
+
+        # name field is the NWB object name (PascalCase from stream_info); metadata_key is
+        # the snake_case dict key used to look up the entry.
+        assert ts["time_series_intan_adc_input"]["name"] == "TimeSeriesIntanADCInput"
+        assert ts["time_series_intan_adc_output"]["name"] == "TimeSeriesIntanADCOutput"
+        assert ts["time_series_intan_stim"]["name"] == "TimeSeriesIntanStim"
+
+        assert "ADC input" in ts["time_series_intan_adc_input"]["description"]
+        assert "ADC output" in ts["time_series_intan_adc_output"]["description"]
+        assert "stimulation" in ts["time_series_intan_stim"]["description"].lower()
+
+    def test_ecephys_recording_metadata(self):
+        converter = IntanConverter(file_path=RHS_TRADITIONAL)
+        metadata = converter.get_metadata()
+        ecephys = metadata["Ecephys"]
+
+        assert ecephys["intan_amplifier"]["name"] == "IntanAmplifier"
+        assert ecephys["ElectricalSeriesRaw"] == {
+            "name": "ElectricalSeriesRaw",
+            "description": "Raw acquisition traces.",
+        }
+
+    def test_rhd_device_description(self):
+        converter = IntanConverter(file_path=RHD_FILE_PER_SIGNAL)
+        metadata = converter.get_metadata()
+        expected_device = {"name": "Intan", "description": "RHD Recording System", "manufacturer": "Intan"}
+        assert metadata["Devices"] == [expected_device]
+        assert metadata["Ecephys"]["Device"] == [expected_device]
 
 
 class TestExcludeStreams:
@@ -130,13 +157,13 @@ class TestFullConversion:
 
         nwbfile = read_nwb(nwbfile_path)
 
-        # Amplifier traces in acquisition.
-        assert "electrical_series" in nwbfile.acquisition
-        # ADC in/out as TimeSeries in acquisition.
-        assert "time_series_intan_adc_input" in nwbfile.acquisition
-        assert "time_series_intan_adc_output" in nwbfile.acquisition
-        # Stim as TimeSeries in stimulus.
-        assert "time_series_intan_stim" in nwbfile.stimulus
+        # Amplifier traces in acquisition (name = es_key = "electrical_series").
+        assert "IntanAmplifier" in nwbfile.acquisition
+        # ADC in/out as TimeSeries in acquisition (name from stream_info, PascalCase).
+        assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
+        assert "TimeSeriesIntanADCOutput" in nwbfile.acquisition
+        # Stim as TimeSeries in stimulus (name hardcoded in IntanStimInterface).
+        assert "TimeSeriesIntanStim" in nwbfile.stimulus
         # Single Intan device.
         assert list(nwbfile.devices.keys()) == ["Intan"]
 
@@ -152,9 +179,9 @@ class TestFullConversion:
 
         nwbfile = read_nwb(nwbfile_path)
 
-        assert "electrical_series" in nwbfile.acquisition
-        assert "time_series_intan_auxiliary" in nwbfile.acquisition
-        assert "time_series_intan_adc_input" in nwbfile.acquisition
+        assert "IntanAmplifier" in nwbfile.acquisition
+        assert "TimeSeriesIntanAuxiliary" in nwbfile.acquisition
+        assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
         assert list(nwbfile.devices.keys()) == ["Intan"]
 
     def test_rhs_file_per_signal_roundtrip(self, tmp_path):
@@ -169,11 +196,11 @@ class TestFullConversion:
 
         nwbfile = read_nwb(nwbfile_path)
 
-        assert "electrical_series" in nwbfile.acquisition
-        assert "time_series_intan_adc_input" in nwbfile.acquisition
-        assert "time_series_intan_adc_output" in nwbfile.acquisition
-        assert "time_series_intan_dc" in nwbfile.acquisition
-        assert "time_series_intan_stim" in nwbfile.stimulus
+        assert "IntanAmplifier" in nwbfile.acquisition
+        assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
+        assert "TimeSeriesIntanADCOutput" in nwbfile.acquisition
+        assert "TimeSeriesIntanDC" in nwbfile.acquisition
+        assert "TimeSeriesIntanStim" in nwbfile.stimulus
         assert list(nwbfile.devices.keys()) == ["Intan"]
 
     def test_split_files_roundtrip(self, tmp_path):
@@ -189,5 +216,5 @@ class TestFullConversion:
 
         nwbfile = read_nwb(nwbfile_path)
 
-        assert "electrical_series" in nwbfile.acquisition
+        assert "IntanAmplifier" in nwbfile.acquisition
         assert list(nwbfile.devices.keys()) == ["Intan"]

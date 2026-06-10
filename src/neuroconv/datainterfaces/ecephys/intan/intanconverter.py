@@ -33,12 +33,12 @@ class IntanConverter(ConverterPipe):
         "RHD2000 amplifier channel": {
             "interface_name": "Recording",
             "interface": IntanRecordingInterface,
-            "metadata_key": "electrical_series",
+            "metadata_key": "intan_amplifier",
         },
         "RHS2000 amplifier channel": {
             "interface_name": "Recording",
             "interface": IntanRecordingInterface,
-            "metadata_key": "electrical_series",
+            "metadata_key": "intan_amplifier",
         },
         "RHD2000 auxiliary input channel": {
             "interface_name": "AnalogAuxiliary",
@@ -106,6 +106,7 @@ class IntanConverter(ConverterPipe):
     def __init__(
         self,
         file_path: FilePath,
+        *,
         exclude_streams: list[str] | None = None,
         verbose: bool = False,
         saved_files_are_split: bool = False,
@@ -154,9 +155,11 @@ class IntanConverter(ConverterPipe):
             if stream_name not in self._STREAM_TO_INTERFACE:
                 continue
             entry = self._STREAM_TO_INTERFACE[stream_name]
-            interface_kwargs = dict(file_path=file_path, stream_name=stream_name)
+            interface_kwargs = dict(file_path=file_path)
             interface_kwargs.update({k: v for k, v in entry.items() if k not in self._ROUTING_KEYS})
-            if entry["interface"] is IntanRecordingInterface:
+            if entry["interface"] is IntanAnalogInterface:
+                interface_kwargs["stream_name"] = stream_name
+            elif entry["interface"] is IntanRecordingInterface:
                 interface_kwargs["es_key"] = interface_kwargs.pop("metadata_key")
             if saved_files_are_split:
                 interface_kwargs["saved_files_are_split"] = True
