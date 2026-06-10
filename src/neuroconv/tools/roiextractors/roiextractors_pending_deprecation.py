@@ -561,7 +561,6 @@ def _add_plane_segmentation_to_nwbfile(
     metadata: dict | None,
     plane_segmentation_name: str | None = None,
     include_roi_centroids: bool = True,
-    include_roi_acceptance: bool = True,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
 ) -> NWBFile:
@@ -584,10 +583,6 @@ def _add_plane_segmentation_to_nwbfile(
         Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings),
         you may wish to disable this for faster write speeds.
-    include_roi_acceptance : bool, default: True
-        Whether to include if the detected ROI was 'accepted' or 'rejected'.
-        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
-        faster write speeds.
     mask_type : str, default: 'image'
         There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
 
@@ -610,13 +605,6 @@ def _add_plane_segmentation_to_nwbfile(
 
     default_plane_segmentation_index = 0
     roi_ids = segmentation_extractor.get_roi_ids()
-    if include_roi_acceptance:
-        accepted_list = segmentation_extractor.get_accepted_list()
-        is_id_accepted = [int(roi_id in accepted_list) for roi_id in roi_ids]
-        rejected_list = segmentation_extractor.get_rejected_list()
-        is_id_rejected = [int(roi_id in rejected_list) for roi_id in roi_ids]
-    else:
-        is_id_accepted, is_id_rejected = None, None
     if mask_type == "image":
         image_or_pixel_masks = segmentation_extractor.get_roi_image_masks()
     elif mask_type == "pixel" or mask_type == "voxel":
@@ -646,15 +634,12 @@ def _add_plane_segmentation_to_nwbfile(
     nwbfile = _add_plane_segmentation(
         background_or_roi_ids=roi_ids,
         image_or_pixel_masks=image_or_pixel_masks,
-        is_id_accepted=is_id_accepted,
-        is_id_rejected=is_id_rejected,
         roi_locations=roi_locations,
         default_plane_segmentation_index=default_plane_segmentation_index,
         nwbfile=nwbfile,
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
         include_roi_centroids=include_roi_centroids,
-        include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
         segmentation_extractor_properties=segmentation_extractor_properties,
@@ -671,9 +656,6 @@ def _add_plane_segmentation(
     plane_segmentation_name: str | None = None,
     include_roi_centroids: bool = False,
     roi_locations: np.ndarray | None = None,
-    include_roi_acceptance: bool = False,
-    is_id_accepted: list | None = None,
-    is_id_rejected: list | None = None,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
     segmentation_extractor_properties: dict | None = None,
@@ -791,18 +773,6 @@ def _add_plane_segmentation(
             name="ROICentroids",
             description="The x, y, (z) centroids of each ROI.",
             data=roi_locations,
-        )
-
-    if include_roi_acceptance:
-        plane_segmentation.add_column(
-            name="Accepted",
-            description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
-            data=is_id_accepted,
-        )
-        plane_segmentation.add_column(
-            name="Rejected",
-            description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
-            data=is_id_rejected,
         )
 
     default_segmentation_extractor_properties = {
@@ -1179,7 +1149,6 @@ def _add_segmentation_to_nwbfile_old_list_format(
     background_plane_segmentation_name: str | None = None,
     include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
-    include_roi_acceptance: bool = True,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
 ) -> NWBFile:
@@ -1196,7 +1165,6 @@ def _add_segmentation_to_nwbfile_old_list_format(
         metadata=metadata,
         plane_segmentation_name=plane_segmentation_name,
         include_roi_centroids=include_roi_centroids,
-        include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
     )
