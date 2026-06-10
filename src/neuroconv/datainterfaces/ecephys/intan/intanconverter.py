@@ -8,48 +8,6 @@ from .intanstiminterface import IntanStimInterface
 from ....nwbconverter import ConverterPipe
 from ....utils import get_json_schema_from_method_signature
 
-# Header stream name -> (interface key, interface class, extra kwargs).
-# IntanRecordingInterface accepts both RHD2000 and RHS2000 amplifier streams (it
-# selects by stream_id, not stream_name). Each IntanAnalogInterface instance gets
-# a unique metadata_key to avoid collisions in metadata["TimeSeries"].
-_STREAM_TO_INTERFACE = {
-    "RHD2000 amplifier channel": (
-        "Recording",
-        IntanRecordingInterface,
-        {},
-    ),
-    "RHS2000 amplifier channel": (
-        "Recording",
-        IntanRecordingInterface,
-        {},
-    ),
-    "RHD2000 auxiliary input channel": (
-        "AnalogAuxiliary",
-        IntanAnalogInterface,
-        {"stream_name": "RHD2000 auxiliary input channel", "metadata_key": "TimeSeriesIntanAuxiliary"},
-    ),
-    "USB board ADC input channel": (
-        "AnalogADCInput",
-        IntanAnalogInterface,
-        {"stream_name": "USB board ADC input channel", "metadata_key": "TimeSeriesIntanADCInput"},
-    ),
-    "USB board ADC output channel": (
-        "AnalogADCOutput",
-        IntanAnalogInterface,
-        {"stream_name": "USB board ADC output channel", "metadata_key": "TimeSeriesIntanADCOutput"},
-    ),
-    "DC Amplifier channel": (
-        "AnalogDC",
-        IntanAnalogInterface,
-        {"stream_name": "DC Amplifier channel", "metadata_key": "TimeSeriesIntanDC"},
-    ),
-    "Stim channel": (
-        "Stim",
-        IntanStimInterface,
-        {"metadata_key": "TimeSeriesIntanStim"},
-    ),
-}
-
 
 class IntanConverter(ConverterPipe):
     """
@@ -65,6 +23,31 @@ class IntanConverter(ConverterPipe):
     keywords = IntanRecordingInterface.keywords
     associated_suffixes = (".rhd", ".rhs")
     info = "Auto-discovers Intan streams and routes each to the appropriate sub-interface."
+
+    # Maps header stream name to (interface_key, interface_class, extra_kwargs).
+    # stream_name is always passed explicitly by the converter; extra_kwargs holds only
+    # interface-specific parameters beyond file_path and stream_name.
+    _STREAM_TO_INTERFACE = {
+        "RHD2000 amplifier channel": ("Recording", IntanRecordingInterface, {}),
+        "RHS2000 amplifier channel": ("Recording", IntanRecordingInterface, {}),
+        "RHD2000 auxiliary input channel": (
+            "AnalogAuxiliary",
+            IntanAnalogInterface,
+            {"metadata_key": "TimeSeriesIntanAuxiliary"},
+        ),
+        "USB board ADC input channel": (
+            "AnalogADCInput",
+            IntanAnalogInterface,
+            {"metadata_key": "TimeSeriesIntanADCInput"},
+        ),
+        "USB board ADC output channel": (
+            "AnalogADCOutput",
+            IntanAnalogInterface,
+            {"metadata_key": "TimeSeriesIntanADCOutput"},
+        ),
+        "DC Amplifier channel": ("AnalogDC", IntanAnalogInterface, {"metadata_key": "TimeSeriesIntanDC"}),
+        "Stim channel": ("Stim", IntanStimInterface, {"metadata_key": "TimeSeriesIntanStim"}),
+    }
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -150,10 +133,10 @@ class IntanConverter(ConverterPipe):
 
         data_interfaces = {}
         for stream_name in present_streams:
-            if stream_name not in _STREAM_TO_INTERFACE:
+            if stream_name not in self._STREAM_TO_INTERFACE:
                 continue
-            interface_key, interface_class, extra_kwargs = _STREAM_TO_INTERFACE[stream_name]
-            interface_kwargs = dict(file_path=file_path, **extra_kwargs)
+            interface_key, interface_class, extra_kwargs = self._STREAM_TO_INTERFACE[stream_name]
+            interface_kwargs = dict(file_path=file_path, stream_name=stream_name, **extra_kwargs)
             if saved_files_are_split:
                 interface_kwargs["saved_files_are_split"] = True
             data_interfaces[interface_key] = interface_class(**interface_kwargs)

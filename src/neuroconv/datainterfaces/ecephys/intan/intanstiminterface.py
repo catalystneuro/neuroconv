@@ -41,6 +41,7 @@ class IntanStimInterface(BaseDataInterface):
         self,
         file_path: FilePath,
         *,
+        stream_name: str = "Stim channel",
         verbose: bool = False,
         metadata_key: str = "TimeSeriesIntanStim",
         saved_files_are_split: bool = False,
@@ -55,6 +56,8 @@ class IntanStimInterface(BaseDataInterface):
             RHS Stim/Recording System and are not present in .rhd files. When
             ``saved_files_are_split=True``, this is any single file in the session folder;
             its parent directory is scanned for siblings.
+        stream_name : str, default: "Stim channel"
+            The stim stream name from the file header.
         verbose : bool, default: False
             Verbose output.
         metadata_key : str, default: "TimeSeriesIntanStim"
@@ -66,7 +69,7 @@ class IntanStimInterface(BaseDataInterface):
             ``{prefix}_YYMMDD_HHMMSS`` naming makes lexicographic order match chronological order).
         """
         self._file_path = Path(file_path)
-        self._stream_name = "Stim channel"
+        self._stream_name = stream_name
         self.metadata_key = metadata_key
         self._saved_files_are_split = saved_files_are_split
 

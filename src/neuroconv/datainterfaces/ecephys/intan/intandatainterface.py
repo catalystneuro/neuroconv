@@ -67,6 +67,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
+        stream_name: str | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
         ignore_integrity_checks: bool = False,
@@ -80,7 +81,10 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         file_path : FilePath
             Path to either a rhd or a rhs file. When ``saved_files_are_split=True``, this is
             any single file in the session folder; its parent directory is scanned for siblings.
-
+        stream_name : str or None, default: None
+            The amplifier stream name from the file header. Accepted values are
+            ``"RHD2000 amplifier channel"`` and ``"RHS2000 amplifier channel"``. This
+            parameter is informational; the interface always selects stream_id ``"0"``.
         verbose : bool, default: False
             Verbose
         es_key : str, default: "ElectricalSeries"

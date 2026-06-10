@@ -139,3 +139,55 @@ class TestFullConversion:
         assert "TimeSeriesIntanStim" in nwbfile.stimulus
         # Single Intan device.
         assert list(nwbfile.devices.keys()) == ["Intan"]
+
+    def test_rhd_file_per_signal_roundtrip(self, tmp_path):
+        """RHD2000 amplifier channel + auxiliary input channel are written correctly."""
+        converter = IntanConverter(file_path=RHD_FILE_PER_SIGNAL)
+
+        metadata = converter.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+
+        nwbfile_path = tmp_path / "intan_rhd_fps.nwb"
+        converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        nwbfile = read_nwb(nwbfile_path)
+
+        assert "ElectricalSeries" in nwbfile.acquisition
+        assert "TimeSeriesIntanAuxiliary" in nwbfile.acquisition
+        assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
+        assert list(nwbfile.devices.keys()) == ["Intan"]
+
+    def test_rhs_file_per_signal_roundtrip(self, tmp_path):
+        """RHS file-per-signal is the only fixture that exercises the DC Amplifier channel stream."""
+        converter = IntanConverter(file_path=RHS_FILE_PER_SIGNAL)
+
+        metadata = converter.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+
+        nwbfile_path = tmp_path / "intan_rhs_fps.nwb"
+        converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        nwbfile = read_nwb(nwbfile_path)
+
+        assert "ElectricalSeries" in nwbfile.acquisition
+        assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
+        assert "TimeSeriesIntanADCOutput" in nwbfile.acquisition
+        assert "TimeSeriesIntanDC" in nwbfile.acquisition
+        assert "TimeSeriesIntanStim" in nwbfile.stimulus
+        assert list(nwbfile.devices.keys()) == ["Intan"]
+
+    def test_split_files_roundtrip(self, tmp_path):
+        """saved_files_are_split=True end-to-end: chunks are concatenated and written as one recording."""
+        first_file = sorted(SPLIT_FOLDER.glob("*.rhd"))[0]
+        converter = IntanConverter(file_path=first_file, saved_files_are_split=True)
+
+        metadata = converter.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+
+        nwbfile_path = tmp_path / "intan_split.nwb"
+        converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        nwbfile = read_nwb(nwbfile_path)
+
+        assert "ElectricalSeries" in nwbfile.acquisition
+        assert list(nwbfile.devices.keys()) == ["Intan"]
