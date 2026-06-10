@@ -580,14 +580,15 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         metadata_schema["properties"]["Ophys"]["properties"]["Guppy"] = dict(
             type="object",
             additionalProperties=False,
+            # Only the always-present keys are required. The data-dependent product
+            # lists (Transients, CrossCorrelations, PSTHs, PeakAUCs) are empty for
+            # sessions that lack those products -- e.g. a single-region experiment has
+            # no region pairs to cross-correlate -- and empty lists are pruned from the
+            # metadata before validation, so requiring them would reject valid sessions.
             required=[
                 "ProcessingModule",
                 "Traces",
-                "Transients",
                 "TransientSummary",
-                "CrossCorrelations",
-                "PSTHs",
-                "PeakAUCs",
             ],
             properties=dict(
                 ProcessingModule=dict(
