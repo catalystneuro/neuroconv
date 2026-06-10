@@ -486,63 +486,64 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     )
                 )
 
+        # Each event-bearing product is one object per condition, concatenated across events; metadata
+        # mirrors that with one entry per condition carrying the list of events it spans.
         cross_correlations_metadata = []
-        for entry in self.cross_correlations:
-            event = entry["event"]
-            feature = entry["feature"]
-            region_1 = entry["region_1"]
-            region_2 = entry["region_2"]
+        for (feature, region_1, region_2), entries in self._group_by_condition(
+            self.cross_correlations, ("feature", "region_1", "region_2")
+        ).items():
+            event_names = [entry["event"] for entry in entries]
             cross_correlations_metadata.append(
                 dict(
-                    name=f"cross_correlation_{event}_{feature}_{region_1}_{region_2}",
-                    event_name=event,
+                    name=f"cross_correlation_{feature}_{region_1}_{region_2}",
+                    event_names=event_names,
                     trace_type=feature,
                     region_1=region_1,
                     region_2=region_2,
                     description=(
                         f"GuPPy cross-correlation between region '{region_1}' (reference) and "
-                        f"region '{region_2}' (target), aligned to event '{event}' onsets, computed "
-                        f"on the '{feature}' trace. Positive lag means '{region_2}' leads "
-                        f"'{region_1}'. Values are normalized per trial (divided by peak absolute value)."
+                        f"region '{region_2}' (target), computed on the '{feature}' trace, with trials "
+                        f"concatenated across events ({', '.join(event_names)}). Positive lag means "
+                        f"'{region_2}' leads '{region_1}'. Values are normalized per trial (divided by "
+                        f"peak absolute value)."
                     ),
                 )
             )
 
         psths_metadata = []
-        for entry in self.psths:
-            event = entry["event"]
-            region = entry["region"]
-            feature = entry["feature"]
-            baseline_corrected = entry["baseline_corrected"]
+        for (region, feature, baseline_corrected), entries in self._group_by_condition(
+            self.psths, ("region", "feature", "baseline_corrected")
+        ).items():
+            event_names = [entry["event"] for entry in entries]
             suffix = "" if baseline_corrected else "_baseline_uncorrected"
             psths_metadata.append(
                 dict(
-                    name=f"psth_{event}_{region}_{feature}{suffix}",
-                    event_name=event,
+                    name=f"psth_{region}_{feature}{suffix}",
+                    event_names=event_names,
                     region=region,
                     trace_type=feature,
                     baseline_corrected=baseline_corrected,
                     description=(
-                        f"GuPPy peri-event PSTH of the '{feature}' trace for region '{region}', aligned to "
-                        f"'{event}' onsets ({'baseline-corrected' if baseline_corrected else 'baseline-uncorrected'})."
+                        f"GuPPy peri-event PSTH of the '{feature}' trace for region '{region}', with trials "
+                        f"concatenated across events ({', '.join(event_names)}); "
+                        f"{'baseline-corrected' if baseline_corrected else 'baseline-uncorrected'}."
                     ),
                 )
             )
 
         peak_aucs_metadata = []
-        for entry in self.peak_aucs:
-            event = entry["event"]
-            region = entry["region"]
-            feature = entry["feature"]
+        for (region, feature), entries in self._group_by_condition(self.peak_aucs, ("region", "feature")).items():
+            event_names = [entry["event"] for entry in entries]
             peak_aucs_metadata.append(
                 dict(
-                    name=f"peak_auc_{event}_{region}_{feature}",
-                    event_name=event,
+                    name=f"peak_auc_{region}_{feature}",
+                    event_names=event_names,
                     region=region,
                     trace_type=feature,
                     description=(
-                        f"GuPPy peak/area summary of the '{feature}' PSTH for region '{region}', aligned to "
-                        f"'{event}' onsets, over the configured peak windows."
+                        f"GuPPy peak/area summary of the '{feature}' PSTH for region '{region}', over the "
+                        f"configured peak windows, with trials concatenated across events "
+                        f"({', '.join(event_names)})."
                     ),
                 )
             )
@@ -637,10 +638,10 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     type="array",
                     items=dict(
                         type="object",
-                        required=["name", "event_name", "trace_type", "region_1", "region_2", "description"],
+                        required=["name", "event_names", "trace_type", "region_1", "region_2", "description"],
                         properties=dict(
                             name=dict(type="string"),
-                            event_name=dict(type="string"),
+                            event_names=dict(type="array", items=dict(type="string")),
                             trace_type=trace_type_schema,
                             region_1=dict(type="string"),
                             region_2=dict(type="string"),
@@ -652,10 +653,10 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     type="array",
                     items=dict(
                         type="object",
-                        required=["name", "event_name", "region", "trace_type", "baseline_corrected", "description"],
+                        required=["name", "event_names", "region", "trace_type", "baseline_corrected", "description"],
                         properties=dict(
                             name=dict(type="string"),
-                            event_name=dict(type="string"),
+                            event_names=dict(type="array", items=dict(type="string")),
                             region=dict(type="string"),
                             trace_type=trace_type_schema,
                             baseline_corrected=dict(type="boolean"),
@@ -667,10 +668,10 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     type="array",
                     items=dict(
                         type="object",
-                        required=["name", "event_name", "region", "trace_type", "description"],
+                        required=["name", "event_names", "region", "trace_type", "description"],
                         properties=dict(
                             name=dict(type="string"),
-                            event_name=dict(type="string"),
+                            event_names=dict(type="array", items=dict(type="string")),
                             region=dict(type="string"),
                             trace_type=trace_type_schema,
                             description=dict(type="string"),
@@ -799,11 +800,11 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 table=regions_table,
             )
 
-        def event_reference(event_name: str) -> DynamicTableRegion:
+        def event_reference(event_names: list[str], name: str = "event") -> DynamicTableRegion:
             return DynamicTableRegion(
-                name="event",
-                data=[event_to_row_index[event_name]],
-                description="GuPPy behavioral event this object was aligned to.",
+                name=name,
+                data=[event_to_row_index[event_name] for event_name in event_names],
+                description="GuPPy behavioral event(s) this object's columns were aligned to.",
                 table=events_table,
             )
 
@@ -900,105 +901,84 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             summary_metadata=guppy_metadata["TransientSummary"],
         )
 
-        # Cross-correlations (one GuppyCrossCorrelation per (event, trace_type, region pair)).
-        cross_correlation_entries_by_name = {
-            f"{entry['event']}|{entry['feature']}|{entry['region_1']}|{entry['region_2']}": entry
-            for entry in self.cross_correlations
-        }
+        # Cross-correlations: one GuppyCrossCorrelation per (trace_type, region-pair) condition,
+        # concatenating every event's trials/bins along the trials/bin axes.
+        cross_correlation_groups = self._group_by_condition(
+            self.cross_correlations, ("feature", "region_1", "region_2")
+        )
         for cross_correlation_metadata in guppy_metadata["CrossCorrelations"]:
-            entry_key = (
-                f"{cross_correlation_metadata['event_name']}|{cross_correlation_metadata['trace_type']}"
-                f"|{cross_correlation_metadata['region_1']}|{cross_correlation_metadata['region_2']}"
-            )
-            entry = cross_correlation_entries_by_name[entry_key]
-            dataframe = pandas.read_hdf(entry["path"])
-            if stub_test:
-                dataframe = dataframe.iloc[: min(len(dataframe), 100)]
-
-            lag = dataframe["timestamps"].to_numpy(dtype=np.float64)
-            trial_columns = [column for column in dataframe.columns if _column_parses_as_float(column)]
-            trial_onset_times = np.array([float(column) for column in trial_columns], dtype=np.float64)
-            trials = dataframe[trial_columns].to_numpy(dtype=np.float64)  # (num_lags, num_trials)
-            binned = self._extract_bins(dataframe, value_template="bin_({0}-{1})", error_template="bin_err_({0}-{1})")
-
-            cross_correlation = ndx_guppy.GuppyCrossCorrelation(
+            entries = cross_correlation_groups[
+                (
+                    cross_correlation_metadata["trace_type"],
+                    cross_correlation_metadata["region_1"],
+                    cross_correlation_metadata["region_2"],
+                )
+            ]
+            concatenated = self._concatenate_event_matrices(entries, stub_test=stub_test)
+            cross_correlation_kwargs = dict(
                 name=cross_correlation_metadata["name"],
                 trace_type=cross_correlation_metadata["trace_type"],
                 unit="a.u.",
                 region=region_reference(
                     [cross_correlation_metadata["region_1"], cross_correlation_metadata["region_2"]]
                 ),
-                event=event_reference(cross_correlation_metadata["event_name"]),
-                lag=lag,
-                trial_onset_times=trial_onset_times,
-                trials=trials,
-                mean=dataframe["mean"].to_numpy(dtype=np.float64),
-                error=dataframe["err"].to_numpy(dtype=np.float64),
-                **(
-                    dict(
-                        bin_edges=binned["bin_edges"],
-                        bin_edges__bin_basis=bin_basis,
-                        binned_mean=binned["binned_value"],
-                        binned_error=binned["binned_error"],
-                    )
-                    if binned is not None
-                    else {}
-                ),
+                event=event_reference(concatenated["trial_event_names"]),
+                summary_event=event_reference(concatenated["summary_event_names"], name="summary_event"),
+                lag=concatenated["axis"],
+                trial_onset_times=concatenated["trial_onset_times"],
+                trials=concatenated["traces"],
+                mean=concatenated["mean"],
+                error=concatenated["error"],
             )
-            processing_module.add(cross_correlation)
+            if "bin_edges" in concatenated:
+                cross_correlation_kwargs.update(
+                    bin_edges=concatenated["bin_edges"],
+                    bin_edges__bin_basis=bin_basis,
+                    bin_event=event_reference(concatenated["bin_event_names"], name="bin_event"),
+                    binned_mean=concatenated["binned_value"],
+                    binned_error=concatenated["binned_error"],
+                )
+            processing_module.add(ndx_guppy.GuppyCrossCorrelation(**cross_correlation_kwargs))
 
-        # Peri-event PSTHs.
-        psth_entries_by_name = {
-            f"psth_{entry['event']}_{entry['region']}_{entry['feature']}"
-            + ("" if entry["baseline_corrected"] else "_baseline_uncorrected"): entry
-            for entry in self.psths
-        }
+        # Peri-event PSTHs: one GuppyPSTH per (region, trace_type, baseline) condition,
+        # concatenating every event's trials/bins along the trials/bin axes.
+        psth_groups = self._group_by_condition(self.psths, ("region", "feature", "baseline_corrected"))
         for psth_metadata in guppy_metadata["PSTHs"]:
-            entry = psth_entries_by_name[psth_metadata["name"]]
-            dataframe = pandas.read_hdf(entry["path"])
-            if stub_test:
-                dataframe = dataframe.iloc[: min(len(dataframe), 100)]
-
-            peri_event_time = dataframe["timestamps"].to_numpy(dtype=np.float64)
-            trial_columns = [column for column in dataframe.columns if _column_parses_as_float(column)]
-            trial_onset_times = np.array([float(column) for column in trial_columns], dtype=np.float64)
-            traces = dataframe[trial_columns].to_numpy(dtype=np.float64)  # (num_samples, num_trials)
-            binned = self._extract_bins(dataframe, value_template="bin_({0}-{1})", error_template="bin_err_({0}-{1})")
-
-            psth = ndx_guppy.GuppyPSTH(
+            entries = psth_groups[
+                (psth_metadata["region"], psth_metadata["trace_type"], psth_metadata["baseline_corrected"])
+            ]
+            concatenated = self._concatenate_event_matrices(entries, stub_test=stub_test)
+            psth_kwargs = dict(
                 name=psth_metadata["name"],
                 trace_type=psth_metadata["trace_type"],
                 baseline_corrected=bool(psth_metadata["baseline_corrected"]),
                 unit="a.u.",
                 region=region_reference([psth_metadata["region"]]),
-                event=event_reference(psth_metadata["event_name"]),
-                peri_event_time=peri_event_time,
-                trial_onset_times=trial_onset_times,
-                traces=traces,
-                mean=dataframe["mean"].to_numpy(dtype=np.float64),
-                error=dataframe["err"].to_numpy(dtype=np.float64),
-                **(
-                    dict(
-                        bin_edges=binned["bin_edges"],
-                        bin_edges__bin_basis=bin_basis,
-                        binned_mean=binned["binned_value"],
-                        binned_error=binned["binned_error"],
-                    )
-                    if binned is not None
-                    else {}
-                ),
+                event=event_reference(concatenated["trial_event_names"]),
+                summary_event=event_reference(concatenated["summary_event_names"], name="summary_event"),
+                peri_event_time=concatenated["axis"],
+                trial_onset_times=concatenated["trial_onset_times"],
+                traces=concatenated["traces"],
+                mean=concatenated["mean"],
+                error=concatenated["error"],
             )
-            processing_module.add(psth)
+            if "bin_edges" in concatenated:
+                psth_kwargs.update(
+                    bin_edges=concatenated["bin_edges"],
+                    bin_edges__bin_basis=bin_basis,
+                    bin_event=event_reference(concatenated["bin_event_names"], name="bin_event"),
+                    binned_mean=concatenated["binned_value"],
+                    binned_error=concatenated["binned_error"],
+                )
+            processing_module.add(ndx_guppy.GuppyPSTH(**psth_kwargs))
 
-        # Peak/AUC summaries.
-        peak_auc_entries_by_name = {
-            f"peak_auc_{entry['event']}_{entry['region']}_{entry['feature']}": entry for entry in self.peak_aucs
-        }
+        # Peak/AUC summaries: one GuppyPeakAUC per (region, trace_type) condition, concatenated across events.
+        peak_auc_groups = self._group_by_condition(self.peak_aucs, ("region", "feature"))
         for peak_auc_metadata in guppy_metadata["PeakAUCs"]:
-            entry = peak_auc_entries_by_name[peak_auc_metadata["name"]]
+            entries = peak_auc_groups[(peak_auc_metadata["region"], peak_auc_metadata["trace_type"])]
             peak_auc = self._build_peak_auc(
                 ndx_guppy=ndx_guppy,
-                entry=entry,
+                entries=entries,
                 peak_auc_metadata=peak_auc_metadata,
                 region_reference=region_reference,
                 event_reference=event_reference,
@@ -1136,6 +1116,92 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         )
         processing_module.add(transient_summary_table)
 
+    def _group_by_condition(self, entries: list[dict], key_fields: tuple[str, ...]) -> dict[tuple, list[dict]]:
+        """Group per-event discovery entries by a condition key, ordering each group by event.
+
+        ``key_fields`` are the entry fields that define a condition (everything except the event),
+        e.g. ``("region", "feature", "baseline_corrected")`` for PSTHs. Within each group the entries
+        are ordered by their event's position in ``self.event_names`` so concatenation across events
+        is deterministic.
+        """
+        event_order = {event_name: index for index, event_name in enumerate(self.event_names)}
+        groups: dict[tuple, list[dict]] = {}
+        for entry in entries:
+            key = tuple(entry[field] for field in key_fields)
+            groups.setdefault(key, []).append(entry)
+        for entry_list in groups.values():
+            entry_list.sort(key=lambda entry: event_order[entry["event"]])
+        return groups
+
+    def _concatenate_event_matrices(self, entries: list[dict], stub_test: bool) -> dict:
+        """Read each event's PSTH/cross-correlation dataframe and concatenate across events.
+
+        PSTH and cross-correlation files share a layout: an x-axis column ``timestamps``, one
+        float-named column per trial, an across-trial ``mean``/``err``, and optional
+        ``bin_(a-b)``/``bin_err_(a-b)`` columns. Trials and bins are concatenated across events (each
+        column labeled by its event); the per-event ``mean``/``err`` become one column per event.
+        """
+        axis = None
+        traces_blocks: list[np.ndarray] = []
+        trial_onset_times: list[float] = []
+        trial_event_names: list[str] = []
+        mean_columns: list[np.ndarray] = []
+        error_columns: list[np.ndarray] = []
+        summary_event_names: list[str] = []
+        bin_edges_blocks: list[np.ndarray] = []
+        binned_value_blocks: list[np.ndarray] = []
+        binned_error_blocks: list[np.ndarray] = []
+        bin_event_names: list[str] = []
+
+        for entry in entries:
+            event_name = entry["event"]
+            dataframe = pandas.read_hdf(entry["path"])
+            if stub_test:
+                dataframe = dataframe.iloc[: min(len(dataframe), 100)]
+
+            event_axis = dataframe["timestamps"].to_numpy(dtype=np.float64)
+            if axis is None:
+                axis = event_axis
+            else:
+                assert np.array_equal(axis, event_axis), (
+                    f"GuPPy event files for one condition must share an identical x-axis to be "
+                    f"concatenated across events, but '{entry['path'].name}' differs."
+                )
+
+            trial_columns = [column for column in dataframe.columns if _column_parses_as_float(column)]
+            traces_blocks.append(dataframe[trial_columns].to_numpy(dtype=np.float64))
+            trial_onset_times.extend(float(column) for column in trial_columns)
+            trial_event_names.extend([event_name] * len(trial_columns))
+
+            mean_columns.append(dataframe["mean"].to_numpy(dtype=np.float64))
+            error_columns.append(dataframe["err"].to_numpy(dtype=np.float64))
+            summary_event_names.append(event_name)
+
+            binned = self._extract_bins(dataframe, value_template="bin_({0}-{1})", error_template="bin_err_({0}-{1})")
+            if binned is not None:
+                bin_edges_blocks.append(binned["bin_edges"])
+                binned_value_blocks.append(binned["binned_value"])
+                binned_error_blocks.append(binned["binned_error"])
+                bin_event_names.extend([event_name] * binned["bin_edges"].shape[0])
+
+        concatenated = dict(
+            axis=axis,
+            traces=np.concatenate(traces_blocks, axis=1),
+            trial_onset_times=np.array(trial_onset_times, dtype=np.float64),
+            trial_event_names=trial_event_names,
+            mean=np.stack(mean_columns, axis=1),
+            error=np.stack(error_columns, axis=1),
+            summary_event_names=summary_event_names,
+        )
+        if bin_edges_blocks:
+            concatenated.update(
+                bin_edges=np.concatenate(bin_edges_blocks, axis=0),
+                binned_value=np.concatenate(binned_value_blocks, axis=1),
+                binned_error=np.concatenate(binned_error_blocks, axis=1),
+                bin_event_names=bin_event_names,
+            )
+        return concatenated
+
     @staticmethod
     def _extract_bins(dataframe: pandas.DataFrame, value_template: str, error_template: str):
         """Return stacked ``(num_x, num_bins)`` binned value/error arrays + ``(num_bins, 2)`` edges, or None.
@@ -1161,69 +1227,106 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         return dict(bin_edges=bin_edges, binned_value=binned_value, binned_error=binned_error)
 
     def _build_peak_auc(
-        self, ndx_guppy, entry: dict, peak_auc_metadata: dict, region_reference, event_reference, bin_basis: str
+        self, ndx_guppy, entries: list[dict], peak_auc_metadata: dict, region_reference, event_reference, bin_basis: str
     ):
-        """Build a full-fidelity GuppyPeakAUC from a peak_AUC_*.h5 DataFrame.
+        """Build a full-fidelity GuppyPeakAUC for one (region, trace_type) condition, concatenated across events.
 
-        The DataFrame is indexed by ``peak_pos_<w>`` / ``peak_neg_<w>`` / ``area_<w>`` rows (one set per
-        window) and has one column per trial (suffixed by the trial onset time), per bin
-        (``..._bin_(a-b)``), and the across-trial mean (``..._mean``), all session-id prefixed.
+        Each event's peak_AUC_*.h5 is a DataFrame whose columns are the per-window metric names
+        (``peak_pos_<w>`` / ``peak_neg_<w>`` / ``area_<w>``) and whose index rows are the
+        session-id-prefixed per-trial onsets, per-bin labels (``..._bin_(a-b)``), and the across-trial
+        mean (``..._mean``). Per-trial and per-bin columns are concatenated across events (each labeled
+        by its event); each event's mean becomes one column of the mean_* metrics.
         """
-        dataframe = pandas.read_hdf(entry["path"])
-        # Columns are the per-window metric names (peak_pos_<w>, peak_neg_<w>, area_<w>); the index rows
-        # are the session-id-prefixed per-trial onsets, per-bin labels, and the across-trial mean.
-        window_count = sum(1 for column in dataframe.columns if str(column).startswith("peak_pos_"))
-
-        mean_row = None
-        trial_rows: list[tuple[float, str]] = []
-        bin_rows: list[tuple[int, int, str]] = []
-        for index_value in dataframe.index:
-            row = str(index_value)
-            bin_match = _BIN_COLUMN_PATTERN.search(row)
-            if bin_match is not None:
-                bin_rows.append((int(bin_match.group(1)), int(bin_match.group(2)), row))
-            elif row.endswith("mean"):
-                mean_row = row
-            else:
-                trial_rows.append((float(row.rsplit("_", 1)[-1]), row))
-        trial_rows.sort()
-        bin_rows.sort()
-
-        def matrix(metric_prefix: str, rows: list[str]) -> np.ndarray:
-            return np.array(
-                [
-                    [float(dataframe.loc[row, f"{metric_prefix}_{window + 1}"]) for row in rows]
-                    for window in range(window_count)
-                ],
-                dtype=np.float64,
-            )
-
-        trial_row_names = [row for _, row in trial_rows]
         window_start, window_stop = self._peak_windows()
+        window_count = window_start.shape[0]
+
+        peak_positive_blocks: list[np.ndarray] = []
+        peak_negative_blocks: list[np.ndarray] = []
+        area_blocks: list[np.ndarray] = []
+        trial_onset_times: list[float] = []
+        trial_event_names: list[str] = []
+        mean_peak_positive_columns: list[np.ndarray] = []
+        mean_peak_negative_columns: list[np.ndarray] = []
+        mean_area_columns: list[np.ndarray] = []
+        summary_event_names: list[str] = []
+        bin_edges_blocks: list[np.ndarray] = []
+        binned_peak_positive_blocks: list[np.ndarray] = []
+        binned_peak_negative_blocks: list[np.ndarray] = []
+        binned_area_blocks: list[np.ndarray] = []
+        bin_event_names: list[str] = []
+
+        for entry in entries:
+            event_name = entry["event"]
+            dataframe = pandas.read_hdf(entry["path"])
+
+            mean_row = None
+            trial_rows: list[tuple[float, str]] = []
+            bin_rows: list[tuple[int, int, str]] = []
+            for index_value in dataframe.index:
+                row = str(index_value)
+                bin_match = _BIN_COLUMN_PATTERN.search(row)
+                if bin_match is not None:
+                    bin_rows.append((int(bin_match.group(1)), int(bin_match.group(2)), row))
+                elif row.endswith("mean"):
+                    mean_row = row
+                else:
+                    trial_rows.append((float(row.rsplit("_", 1)[-1]), row))
+            trial_rows.sort()
+            bin_rows.sort()
+
+            def matrix(metric_prefix: str, rows: list[str]) -> np.ndarray:
+                return np.array(
+                    [
+                        [float(dataframe.loc[row, f"{metric_prefix}_{window + 1}"]) for row in rows]
+                        for window in range(window_count)
+                    ],
+                    dtype=np.float64,
+                )
+
+            trial_row_names = [row for _, row in trial_rows]
+            peak_positive_blocks.append(matrix("peak_pos", trial_row_names))
+            peak_negative_blocks.append(matrix("peak_neg", trial_row_names))
+            area_blocks.append(matrix("area", trial_row_names))
+            trial_onset_times.extend(onset for onset, _ in trial_rows)
+            trial_event_names.extend([event_name] * len(trial_rows))
+
+            mean_peak_positive_columns.append(matrix("peak_pos", [mean_row]).reshape(-1))
+            mean_peak_negative_columns.append(matrix("peak_neg", [mean_row]).reshape(-1))
+            mean_area_columns.append(matrix("area", [mean_row]).reshape(-1))
+            summary_event_names.append(event_name)
+
+            if bin_rows:
+                bin_row_names = [row for _, _, row in bin_rows]
+                bin_edges_blocks.append(np.array([[start, stop] for start, stop, _ in bin_rows], dtype=np.float64))
+                binned_peak_positive_blocks.append(matrix("peak_pos", bin_row_names))
+                binned_peak_negative_blocks.append(matrix("peak_neg", bin_row_names))
+                binned_area_blocks.append(matrix("area", bin_row_names))
+                bin_event_names.extend([event_name] * len(bin_rows))
 
         kwargs = dict(
             name=peak_auc_metadata["name"],
             trace_type=peak_auc_metadata["trace_type"],
             unit="a.u.",
             region=region_reference([peak_auc_metadata["region"]]),
-            event=event_reference(peak_auc_metadata["event_name"]),
+            event=event_reference(trial_event_names),
+            summary_event=event_reference(summary_event_names, name="summary_event"),
             window_start=window_start,
             window_stop=window_stop,
-            trial_onset_times=np.array([onset for onset, _ in trial_rows], dtype=np.float64),
-            peak_positive=matrix("peak_pos", trial_row_names),
-            peak_negative=matrix("peak_neg", trial_row_names),
-            area_under_curve=matrix("area", trial_row_names),
-            mean_peak_positive=matrix("peak_pos", [mean_row]).reshape(-1),
-            mean_peak_negative=matrix("peak_neg", [mean_row]).reshape(-1),
-            mean_area_under_curve=matrix("area", [mean_row]).reshape(-1),
+            trial_onset_times=np.array(trial_onset_times, dtype=np.float64),
+            peak_positive=np.concatenate(peak_positive_blocks, axis=1),
+            peak_negative=np.concatenate(peak_negative_blocks, axis=1),
+            area_under_curve=np.concatenate(area_blocks, axis=1),
+            mean_peak_positive=np.stack(mean_peak_positive_columns, axis=1),
+            mean_peak_negative=np.stack(mean_peak_negative_columns, axis=1),
+            mean_area_under_curve=np.stack(mean_area_columns, axis=1),
         )
-        if bin_rows:
-            bin_row_names = [row for _, _, row in bin_rows]
+        if bin_edges_blocks:
             kwargs.update(
-                bin_edges=np.array([[start, stop] for start, stop, _ in bin_rows], dtype=np.float64),
+                bin_edges=np.concatenate(bin_edges_blocks, axis=0),
                 bin_edges__bin_basis=bin_basis,
-                binned_peak_positive=matrix("peak_pos", bin_row_names),
-                binned_peak_negative=matrix("peak_neg", bin_row_names),
-                binned_area_under_curve=matrix("area", bin_row_names),
+                bin_event=event_reference(bin_event_names, name="bin_event"),
+                binned_peak_positive=np.concatenate(binned_peak_positive_blocks, axis=1),
+                binned_peak_negative=np.concatenate(binned_peak_negative_blocks, axis=1),
+                binned_area_under_curve=np.concatenate(binned_area_blocks, axis=1),
             )
         return ndx_guppy.GuppyPeakAUC(**kwargs)

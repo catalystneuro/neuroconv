@@ -110,6 +110,23 @@ class TestTDTFiberPhotometryGuppyConverter:
                     assert list(series.fiber_photometry_table_region.data[:]) == expected_region_to_indices[region]
                     assert list(series.region.data) == [region_row[region]]
 
+            # Event-bearing products are concatenated across events into one object per condition: 8
+            # PSTHs (2 regions x 2 features x {corrected, uncorrected}), 4 peak/AUCs, 2 cross-corrs.
+            products_by_type = {}
+            for product in processing_module.data_interfaces.values():
+                products_by_type.setdefault(product.neurodata_type, []).append(product)
+            assert len(products_by_type["GuppyPSTH"]) == 8
+            assert len(products_by_type["GuppyPeakAUC"]) == 4
+            assert len(products_by_type["GuppyCrossCorrelation"]) == 2
+
+            # One concatenated PSTH spans all three events: the per-trial 'event' reference resolves
+            # into the events registry, and 'mean' has one column per event.
+            event_names = list(processing_module["events"]["event_name"].data)
+            psth = processing_module["psth_dms_z_score"]
+            assert psth.traces.shape[1] == len(psth.event.data)  # one per-trial event label per column
+            assert set(event_names[index] for index in psth.event.data) == set(event_names)
+            assert psth.mean.shape[1] == len(event_names)
+
     def test_events_derived_from_guppy_stores_list(self, converter):
         """Only the storesList.csv behavioral event stores propagate, with human-readable names."""
         events_interface = converter.data_interface_objects["TDTEvents"]

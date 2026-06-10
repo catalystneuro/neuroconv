@@ -54,6 +54,22 @@ def _resolve_events(module, dynamic_table_region) -> list[str]:
     return [event_names[index] for index in dynamic_table_region.data]
 
 
+def _group_by_condition(entries, key_fields, event_order):
+    """Group per-event discovery entries by condition, ordering each group by event.
+
+    Mirrors ``GuppyInterface._group_by_condition``: the event-bearing products emit one object per
+    condition with trials concatenated across events in ``event_order`` order, so the tests compare
+    against the same grouping.
+    """
+    groups = {}
+    for entry in entries:
+        key = tuple(entry[field] for field in key_fields)
+        groups.setdefault(key, []).append(entry)
+    for entry_list in groups.values():
+        entry_list.sort(key=lambda entry: event_order[entry["event"]])
+    return groups
+
+
 class TestGuppyInterface:
     """Tests for the GuppyInterface against the standard GuPPy fixture set."""
 
@@ -241,8 +257,9 @@ class TestGuppyInterface:
     def test_metadata_cross_correlations(self, interface, case):
         metadata = interface.get_metadata()
         cross_correlations_metadata = metadata["Ophys"]["Guppy"]["CrossCorrelations"]
+        # One object per (trace_type, region-pair); the event is concatenated into the data.
         expected_names = {
-            f"cross_correlation_{entry['event_name']}_{entry['trace_type']}_{entry['region_1']}_{entry['region_2']}"
+            f"cross_correlation_{entry['trace_type']}_{entry['region_1']}_{entry['region_2']}"
             for entry in case["expected_cross_correlations"]
         }
         assert {entry["name"] for entry in cross_correlations_metadata} == expected_names
@@ -345,35 +362,51 @@ class TestGuppyInterface:
 
         assert module["transient_summary"].neurodata_type == "GuppyTransientSummaryTable"
 
-        for entry in case["expected_cross_correlations"]:
-            name = (
-                f"cross_correlation_{entry['event_name']}_{entry['trace_type']}"
-                f"_{entry['region_1']}_{entry['region_2']}"
-            )
-            cross_correlation = module[name]
+        # Each event-bearing product is one object per condition, with trials concatenated across
+        # events: the per-trial 'event' reference labels every trials column, while 'summary_event'
+        # has one row per event (matching the columns of 'mean'/'mean_*').
+        event_order = {name: index for index, name in enumerate(interface.event_names)}
+
+        cross_correlation_groups = _group_by_condition(
+            interface.cross_correlations, ("feature", "region_1", "region_2"), event_order
+        )
+        for (feature, region_1, region_2), entries in cross_correlation_groups.items():
+            cross_correlation = module[f"cross_correlation_{feature}_{region_1}_{region_2}"]
+            expected_events = [entry["event"] for entry in entries]
             assert cross_correlation.neurodata_type == "GuppyCrossCorrelation"
-            assert cross_correlation.trace_type == entry["trace_type"]
+            assert cross_correlation.trace_type == feature
             assert cross_correlation.trials.shape[0] == cross_correlation.lag.shape[0]  # lag-first
             assert cross_correlation.trials.shape[1] == cross_correlation.trial_onset_times.shape[0]
-            assert _resolve_regions(module, cross_correlation.region) == [entry["region_1"], entry["region_2"]]
-            assert _resolve_events(module, cross_correlation.event) == [entry["event_name"]]
+            assert cross_correlation.trials.shape[1] == len(cross_correlation.event.data)  # per-trial event labels
+            assert cross_correlation.mean.shape[1] == len(expected_events)  # one summary column per event
+            assert _resolve_regions(module, cross_correlation.region) == [region_1, region_2]
+            assert _resolve_events(module, cross_correlation.summary_event) == expected_events
+            assert set(_resolve_events(module, cross_correlation.event)) == set(expected_events)
 
-        for entry in interface.psths:
-            suffix = "" if entry["baseline_corrected"] else "_baseline_uncorrected"
-            psth = module[f"psth_{entry['event']}_{entry['region']}_{entry['feature']}{suffix}"]
+        psth_groups = _group_by_condition(interface.psths, ("region", "feature", "baseline_corrected"), event_order)
+        for (region, feature, baseline_corrected), entries in psth_groups.items():
+            suffix = "" if baseline_corrected else "_baseline_uncorrected"
+            psth = module[f"psth_{region}_{feature}{suffix}"]
+            expected_events = [entry["event"] for entry in entries]
             assert psth.neurodata_type == "GuppyPSTH"
-            assert psth.trace_type == entry["feature"]
-            assert bool(psth.baseline_corrected) == entry["baseline_corrected"]
+            assert psth.trace_type == feature
+            assert bool(psth.baseline_corrected) == baseline_corrected
             assert psth.traces.shape[0] == psth.peri_event_time.shape[0]  # time-first
-            assert _resolve_regions(module, psth.region) == [entry["region"]]
-            assert _resolve_events(module, psth.event) == [entry["event"]]
+            assert psth.traces.shape[1] == len(psth.event.data)  # per-trial event labels
+            assert psth.mean.shape[1] == len(expected_events)  # one summary column per event
+            assert _resolve_regions(module, psth.region) == [region]
+            assert _resolve_events(module, psth.summary_event) == expected_events
 
-        for entry in interface.peak_aucs:
-            peak_auc = module[f"peak_auc_{entry['event']}_{entry['region']}_{entry['feature']}"]
+        peak_auc_groups = _group_by_condition(interface.peak_aucs, ("region", "feature"), event_order)
+        for (region, feature), entries in peak_auc_groups.items():
+            peak_auc = module[f"peak_auc_{region}_{feature}"]
+            expected_events = [entry["event"] for entry in entries]
             assert peak_auc.neurodata_type == "GuppyPeakAUC"
             assert peak_auc.peak_positive.shape[0] == peak_auc.window_start.shape[0]  # window-first
             assert peak_auc.peak_positive.shape[1] == peak_auc.trial_onset_times.shape[0]
-            assert _resolve_regions(module, peak_auc.region) == [entry["region"]]
+            assert peak_auc.mean_peak_positive.shape[1] == len(expected_events)  # one summary column per event
+            assert _resolve_regions(module, peak_auc.region) == [region]
+            assert _resolve_events(module, peak_auc.summary_event) == expected_events
 
     # ----------------------------------------------------------------- products match their source files
 
@@ -419,65 +452,77 @@ class TestGuppyInterface:
 
     def test_cross_correlation_matches_source(self, interface, case, linked_nwbfile, region_to_indices):
         module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
-        for entry in case["expected_cross_correlations"]:
-            source_path = (
-                case["folder_path"]
-                / "cross_correlation_output"
-                / f"corr_{entry['event_name']}_{entry['trace_type']}_{entry['region_1']}_{entry['region_2']}.h5"
-            )
-            source = pandas.read_hdf(source_path)
-            name = (
-                f"cross_correlation_{entry['event_name']}_{entry['trace_type']}"
-                f"_{entry['region_1']}_{entry['region_2']}"
-            )
-            cross_correlation = module[name]
-
-            trial_columns = [column for column in source.columns if _column_parses_as_float(column)]
-            np.testing.assert_array_equal(cross_correlation.lag[:], source["timestamps"].to_numpy(dtype=np.float64))
-            np.testing.assert_array_equal(cross_correlation.trials[:], source[trial_columns].to_numpy(dtype=np.float64))
-            np.testing.assert_array_equal(
-                cross_correlation.trial_onset_times[:], np.array([float(column) for column in trial_columns])
-            )
-            np.testing.assert_array_equal(cross_correlation.mean[:], source["mean"].to_numpy(dtype=np.float64))
-            np.testing.assert_array_equal(cross_correlation.error[:], source["err"].to_numpy(dtype=np.float64))
-
-            bin_columns = sorted(
-                (int(match.group(1)), int(match.group(2)))
-                for match in (_BIN_COLUMN_PATTERN.match(column) for column in source.columns)
-                if match is not None
-            )
-            if bin_columns:
-                np.testing.assert_array_equal(
-                    cross_correlation.bin_edges[:], np.array([[start, stop] for start, stop in bin_columns])
+        event_order = {name: index for index, name in enumerate(interface.event_names)}
+        # The object for one condition concatenates its events' trials/bins; compare against the same
+        # concatenation of the per-event source files.
+        for (feature, region_1, region_2), entries in _group_by_condition(
+            interface.cross_correlations, ("feature", "region_1", "region_2"), event_order
+        ).items():
+            cross_correlation = module[f"cross_correlation_{feature}_{region_1}_{region_2}"]
+            trials_blocks, onset_values, mean_blocks = [], [], []
+            bin_edges_blocks, binned_mean_blocks = [], []
+            for entry in entries:
+                source = pandas.read_hdf(entry["path"])
+                np.testing.assert_array_equal(cross_correlation.lag[:], source["timestamps"].to_numpy(dtype=np.float64))
+                trial_columns = [column for column in source.columns if _column_parses_as_float(column)]
+                trials_blocks.append(source[trial_columns].to_numpy(dtype=np.float64))
+                onset_values.extend(float(column) for column in trial_columns)
+                mean_blocks.append(source["mean"].to_numpy(dtype=np.float64))
+                bin_columns = sorted(
+                    (int(match.group(1)), int(match.group(2)))
+                    for match in (_BIN_COLUMN_PATTERN.match(column) for column in source.columns)
+                    if match is not None
                 )
+                if bin_columns:
+                    bin_edges_blocks.append(np.array([[start, stop] for start, stop in bin_columns], dtype=np.float64))
+                    binned_mean_blocks.append(
+                        np.stack([source[f"bin_({a}-{b})"].to_numpy(dtype=np.float64) for a, b in bin_columns], axis=1)
+                    )
+            np.testing.assert_array_equal(cross_correlation.trials[:], np.concatenate(trials_blocks, axis=1))
+            np.testing.assert_array_equal(cross_correlation.trial_onset_times[:], np.array(onset_values))
+            np.testing.assert_array_equal(cross_correlation.mean[:], np.stack(mean_blocks, axis=1))
+            if bin_edges_blocks:
+                np.testing.assert_array_equal(cross_correlation.bin_edges[:], np.concatenate(bin_edges_blocks, axis=0))
                 np.testing.assert_array_equal(
-                    cross_correlation.binned_mean[:],
-                    np.stack([source[f"bin_({a}-{b})"].to_numpy(dtype=np.float64) for a, b in bin_columns], axis=1),
+                    cross_correlation.binned_mean[:], np.concatenate(binned_mean_blocks, axis=1)
                 )
 
     def test_psth_matches_source(self, interface, case, linked_nwbfile, region_to_indices):
         module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
-        for entry in interface.psths:  # no-op for fixtures without PSTH files
-            source = pandas.read_hdf(entry["path"])
-            suffix = "" if entry["baseline_corrected"] else "_baseline_uncorrected"
-            psth = module[f"psth_{entry['event']}_{entry['region']}_{entry['feature']}{suffix}"]
-            trial_columns = [column for column in source.columns if _column_parses_as_float(column)]
-            np.testing.assert_array_equal(psth.peri_event_time[:], source["timestamps"].to_numpy(dtype=np.float64))
-            np.testing.assert_array_equal(psth.traces[:], source[trial_columns].to_numpy(dtype=np.float64))
-            np.testing.assert_array_equal(psth.mean[:], source["mean"].to_numpy(dtype=np.float64))
-            np.testing.assert_array_equal(psth.error[:], source["err"].to_numpy(dtype=np.float64))
+        event_order = {name: index for index, name in enumerate(interface.event_names)}
+        # no-op for fixtures without PSTH files
+        for (region, feature, baseline_corrected), entries in _group_by_condition(
+            interface.psths, ("region", "feature", "baseline_corrected"), event_order
+        ).items():
+            suffix = "" if baseline_corrected else "_baseline_uncorrected"
+            psth = module[f"psth_{region}_{feature}{suffix}"]
+            traces_blocks, mean_blocks = [], []
+            for entry in entries:
+                source = pandas.read_hdf(entry["path"])
+                np.testing.assert_array_equal(psth.peri_event_time[:], source["timestamps"].to_numpy(dtype=np.float64))
+                trial_columns = [column for column in source.columns if _column_parses_as_float(column)]
+                traces_blocks.append(source[trial_columns].to_numpy(dtype=np.float64))
+                mean_blocks.append(source["mean"].to_numpy(dtype=np.float64))
+            np.testing.assert_array_equal(psth.traces[:], np.concatenate(traces_blocks, axis=1))
+            np.testing.assert_array_equal(psth.mean[:], np.stack(mean_blocks, axis=1))
 
     def test_peak_auc_matches_source(self, interface, case, linked_nwbfile, region_to_indices):
         module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
-        for entry in interface.peak_aucs:
-            source = pandas.read_hdf(entry["path"])
-            peak_auc = module[f"peak_auc_{entry['event']}_{entry['region']}_{entry['feature']}"]
-            window_count = sum(1 for column in source.columns if str(column).startswith("peak_pos_"))
-            mean_row = next(str(index) for index in source.index if str(index).endswith("mean"))
-            expected_mean_peak_positive = np.array(
-                [float(source.loc[mean_row, f"peak_pos_{window + 1}"]) for window in range(window_count)]
-            )
-            np.testing.assert_array_equal(peak_auc.mean_peak_positive[:], expected_mean_peak_positive)
+        event_order = {name: index for index, name in enumerate(interface.event_names)}
+        for (region, feature), entries in _group_by_condition(
+            interface.peak_aucs, ("region", "feature"), event_order
+        ).items():
+            peak_auc = module[f"peak_auc_{region}_{feature}"]
+            # mean_peak_positive is (num_windows, num_events): one column per event's across-trial mean.
+            expected_mean_columns = []
+            for entry in entries:
+                source = pandas.read_hdf(entry["path"])
+                window_count = sum(1 for column in source.columns if str(column).startswith("peak_pos_"))
+                mean_row = next(str(index) for index in source.index if str(index).endswith("mean"))
+                expected_mean_columns.append(
+                    np.array([float(source.loc[mean_row, f"peak_pos_{window + 1}"]) for window in range(window_count)])
+                )
+            np.testing.assert_array_equal(peak_auc.mean_peak_positive[:], np.stack(expected_mean_columns, axis=1))
             start_points = np.asarray(interface.guppy_parameters["peak_startPoint"], dtype=np.float64)
             np.testing.assert_array_equal(peak_auc.window_start[:], start_points[~np.isnan(start_points)])
 
@@ -517,14 +562,14 @@ class TestGuppyInterface:
 
         interface = GuppyInterface(folder_path=str(copied_folder))
         module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
-        for entry in case["expected_cross_correlations"]:
-            name = (
-                f"cross_correlation_{entry['event_name']}_{entry['trace_type']}"
-                f"_{entry['region_1']}_{entry['region_2']}"
-            )
-            cross_correlation = module[name]
+        event_order = {name: index for index, name in enumerate(interface.event_names)}
+        for feature, region_1, region_2 in _group_by_condition(
+            interface.cross_correlations, ("feature", "region_1", "region_2"), event_order
+        ):
+            cross_correlation = module[f"cross_correlation_{feature}_{region_1}_{region_2}"]
             assert cross_correlation.bin_edges is None
             assert cross_correlation.binned_mean is None
+            assert cross_correlation.bin_event is None
 
     # ----------------------------------------------------------------- alignment / roundtrip / errors
 
@@ -583,10 +628,7 @@ class TestGuppyInterface:
                     assert series.trace_type == _PREFIX_TO_TRACE_TYPE[prefix]
                     assert list(series.fiber_photometry_table_region.data[:]) == region_to_indices[region]
             for entry in case["expected_cross_correlations"]:
-                name = (
-                    f"cross_correlation_{entry['event_name']}_{entry['trace_type']}"
-                    f"_{entry['region_1']}_{entry['region_2']}"
-                )
+                name = f"cross_correlation_{entry['trace_type']}_{entry['region_1']}_{entry['region_2']}"
                 assert module.data_interfaces[name].neurodata_type == "GuppyCrossCorrelation"
             assert nwbfile.lab_meta_data["guppy_parameters"].neurodata_type == "GuppyParameters"
 
