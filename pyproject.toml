@@ -356,8 +356,13 @@ tdt_fp = [
 ]
 guppy = [
     "neuroconv[fiber_photometry]",
-    "ndx-guppy>=0.1.0",
+    "ndx-guppy @ git+https://github.com/catalystneuro/ndx-guppy.git@main",
     "tables",
+]
+guppy_tdt = [  # For the TDTFiberPhotometryGuppyConverter
+    "neuroconv[guppy]",
+    "neuroconv[tdt_fp]",
+    "neuroconv[tdt_events]",
 ]
 thor = [
     "neuroconv[ophys_minimal]",
@@ -382,7 +387,7 @@ ophys = [
     "neuroconv[sima]",
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
-    "neuroconv[guppy]",
+    "neuroconv[guppy_tdt]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
