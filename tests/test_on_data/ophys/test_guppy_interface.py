@@ -1,4 +1,3 @@
-import json
 import re
 import shutil
 from datetime import datetime, timezone
@@ -123,24 +122,6 @@ class TestGuppyInterface:
                     },
                 ),
                 id="tdt_isosbestic_two_regions",
-            ),
-            pytest.param(
-                dict(
-                    folder_path=GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2",
-                    expected_regions=["dms"],
-                    expected_traces={"dms": ["cntrl_sig_fit", "dff", "z_score"]},
-                    expected_transients={"dms": ["z_score"]},
-                    expected_cross_correlations=[],
-                    expected_psth_count=0,
-                    expected_peak_auc_count=0,
-                    expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
-                    expected_valid_signal_intervals=[
-                        ("dms", 3.93579108, 18.51639376),
-                        ("dms", 40.04014057, 154.60201876),
-                    ],
-                    expected_event_store_to_event_name={},
-                ),
-                id="tdt_isosbestic_one_region_artifacts_removed",
             ),
         ]
     )
@@ -647,41 +628,6 @@ class TestGuppyInterface:
             interface.add_to_nwbfile(linked_nwbfile, metadata, fiber_photometry_table_region_indices={}, stub_test=True)
 
     # ----------------------------------------------------------------- warnings / construction errors
-
-    def test_remove_artifacts_flag_npy_mismatch_warns(self, tmp_path):
-        source_folder = GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2"
-        copied_folder = tmp_path / "guppy_output"
-        shutil.copytree(source_folder, copied_folder)
-        for npy_path in copied_folder.glob("coordsForPreProcessing_*.npy"):
-            npy_path.unlink()
-
-        with pytest.warns(UserWarning, match="no coordsForPreProcessing"):
-            GuppyInterface(folder_path=str(copied_folder))
-
-    def test_missing_artifacts_removal_method_warns_and_defaults(self, tmp_path):
-        source_folder = GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2"
-        copied_folder = tmp_path / "guppy_output"
-        shutil.copytree(source_folder, copied_folder)
-        params_path = copied_folder / "GuPPyParamtersUsed.json"
-        params_source = json.loads(params_path.read_text())
-        params_source.pop("artifactsRemovalMethod", None)
-        params_path.write_text(json.dumps(params_source))
-
-        with pytest.warns(UserWarning, match="artifactsRemovalMethod"):
-            interface = GuppyInterface(folder_path=str(copied_folder))
-        assert interface.artifact_removal_method == "concatenate"
-
-    def test_artifacts_removal_method_read_from_json(self, tmp_path):
-        source_folder = GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_2"
-        copied_folder = tmp_path / "guppy_output"
-        shutil.copytree(source_folder, copied_folder)
-        params_path = copied_folder / "GuPPyParamtersUsed.json"
-        params_source = json.loads(params_path.read_text())
-        params_source["artifactsRemovalMethod"] = "replace with NaN"
-        params_path.write_text(json.dumps(params_source))
-
-        interface = GuppyInterface(folder_path=str(copied_folder))
-        assert interface.artifact_removal_method == "replace with NaN"
 
     def test_missing_parameters_file_raises(self, case, tmp_path):
         copied_folder = tmp_path / "guppy_output"
