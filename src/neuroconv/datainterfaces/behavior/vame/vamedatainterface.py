@@ -579,8 +579,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
             vame_project_kwargs["motif_series"] = list(motif_series_objects.values())
         if community_series_objects:
             vame_project_kwargs["community_series"] = list(community_series_objects.values())
+
+        vame_project = VAMEProject(**vame_project_kwargs)
         if pose_estimation is not None:
-            vame_project_kwargs["pose_estimation"] = pose_estimation
+            vame_project.pose_estimation = pose_estimation
 
         behavior_module = get_module(nwbfile, name="behavior", description="processed behavioral data")
-        behavior_module.add(VAMEProject(**vame_project_kwargs))
+        behavior_module.add(vame_project)
