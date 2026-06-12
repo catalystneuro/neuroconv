@@ -142,6 +142,7 @@ class TestVameInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMix
     def check_extracted_metadata(self, metadata: dict):
         project_meta = metadata["Behavior"]["VAMEProjects"]["VAMEProject"]
         assert project_meta["name"] == "VAMEProject"
+        assert "kmeans" in project_meta["MotifSeries"]
         assert "LatentSpaceSeries" in project_meta
         assert "CommunitySeries" in project_meta
 
@@ -350,11 +351,10 @@ class TestVameInterfaceGetOriginalTimestamps:
         assert timestamps[0] == 0.0
 
     def test_raises_when_no_sampling_frequency(self):
-        """"""
+        """Without sampling_frequency_hz, get_original_timestamps() cannot compute timestamps."""
         interface = VameInterface(
-            file_path=CONFIG_PATH,
-            motif_labels_file_paths={"kmeans": MOTIF_LABELS_PATH},
-            # no sampling_frequency_hz
+            file_path=str(CONFIG_PATH),
+            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
         with pytest.raises(ValueError, match="sampling_frequency_hz"):
             interface.get_original_timestamps()
