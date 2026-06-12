@@ -30,7 +30,7 @@ def _column_parses_as_float(column: str) -> bool:
 # GuPPy derived-trace prefix -> ndx-guppy trace_type controlled value.
 _PREFIX_TO_TRACE_TYPE = dict(cntrl_sig_fit="control_fit", dff="dff", z_score="z_score")
 # Per-window peak/area metric row prefixes in the peak_AUC_*.h5 DataFrame index.
-_BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+)-(\d+)\)$")
+_BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
 
 
 class GuppyInterface(BaseTemporalAlignmentInterface):
@@ -1178,7 +1178,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             error_columns.append(dataframe["err"].to_numpy(dtype=np.float64))
             summary_event_names.append(event_name)
 
-            binned = self._extract_bins(dataframe, value_template="bin_({0}-{1})", error_template="bin_err_({0}-{1})")
+            binned = self._extract_bins(dataframe)
             if binned is not None:
                 bin_edges_blocks.append(binned["bin_edges"])
                 binned_value_blocks.append(binned["binned_value"])
@@ -1204,28 +1204,61 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         return concatenated
 
     @staticmethod
-    def _extract_bins(dataframe: pandas.DataFrame, value_template: str, error_template: str):
+    def _extract_bins(dataframe: pandas.DataFrame):
         """Return stacked ``(num_x, num_bins)`` binned value/error arrays + ``(num_bins, 2)`` edges, or None.
 
-        Bin value columns match ``bin_(<start>-<stop>)`` and their errors ``bin_err_(<start>-<stop>)``.
+        Bin value columns match ``bin_(<start>-<stop>)`` (integer ``bin_(0-3)`` for "# of trials" binning
+        or decimal ``bin_(0.0-2.0)`` for "Time (min)" binning) and their errors ``bin_err_(<start>-<stop>)``.
+        The original column labels are reused verbatim for lookup -- and the error column is derived by
+        swapping the ``bin_(`` prefix for ``bin_err_(`` -- so both label formats resolve without
+        reconstructing the name from the parsed edges. Bin edges are assumed non-negative.
         """
         bin_columns = sorted(
-            (int(match.group(1)), int(match.group(2)))
+            (float(match.group(1)), float(match.group(2)), match.string)
             for match in (_BIN_COLUMN_PATTERN.search(column) for column in dataframe.columns)
             if match is not None
         )
         if not bin_columns:
             return None
-        bin_edges = np.array([[start, stop] for start, stop in bin_columns], dtype=np.float64)
+        bin_edges = np.array([[start, stop] for start, stop, _ in bin_columns], dtype=np.float64)
         binned_value = np.stack(
-            [dataframe[value_template.format(start, stop)].to_numpy(dtype=np.float64) for start, stop in bin_columns],
+            [dataframe[column].to_numpy(dtype=np.float64) for _, _, column in bin_columns],
             axis=1,
         )
         binned_error = np.stack(
-            [dataframe[error_template.format(start, stop)].to_numpy(dtype=np.float64) for start, stop in bin_columns],
+            [
+                dataframe[column.replace("bin_(", "bin_err_(", 1)].to_numpy(dtype=np.float64)
+                for _, _, column in bin_columns
+            ],
             axis=1,
         )
         return dict(bin_edges=bin_edges, binned_value=binned_value, binned_error=binned_error)
+
+    @staticmethod
+    def _partition_peak_auc_index(index):
+        """Split a peak_AUC_*.h5 DataFrame index into ``(trial_rows, bin_rows, mean_row)``.
+
+        ``trial_rows`` is a sorted list of ``(onset_time: float, row_label)``; ``bin_rows`` a sorted list
+        of ``(start: float, stop: float, row_label)``; ``mean_row`` the single ``..._mean`` label. Bin rows
+        are session-id-prefixed labels like ``..._bin_(0-3)`` (integer "# of trials" binning) or
+        ``..._bin_(0.0-2.0)`` (decimal "Time (min)" binning); both are routed to ``bin_rows`` rather than
+        crashing the trial-onset parse. Bin edges are assumed non-negative.
+        """
+        mean_row = None
+        trial_rows: list[tuple[float, str]] = []
+        bin_rows: list[tuple[float, float, str]] = []
+        for index_value in index:
+            row = str(index_value)
+            bin_match = _BIN_COLUMN_PATTERN.search(row)
+            if bin_match is not None:
+                bin_rows.append((float(bin_match.group(1)), float(bin_match.group(2)), row))
+            elif row.endswith("mean"):
+                mean_row = row
+            else:
+                trial_rows.append((float(row.rsplit("_", 1)[-1]), row))
+        trial_rows.sort()
+        bin_rows.sort()
+        return trial_rows, bin_rows, mean_row
 
     def _build_peak_auc(
         self, ndx_guppy, entries: list[dict], peak_auc_metadata: dict, region_reference, event_reference, bin_basis: str
@@ -1260,20 +1293,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             event_name = entry["event"]
             dataframe = pandas.read_hdf(entry["path"])
 
-            mean_row = None
-            trial_rows: list[tuple[float, str]] = []
-            bin_rows: list[tuple[int, int, str]] = []
-            for index_value in dataframe.index:
-                row = str(index_value)
-                bin_match = _BIN_COLUMN_PATTERN.search(row)
-                if bin_match is not None:
-                    bin_rows.append((int(bin_match.group(1)), int(bin_match.group(2)), row))
-                elif row.endswith("mean"):
-                    mean_row = row
-                else:
-                    trial_rows.append((float(row.rsplit("_", 1)[-1]), row))
-            trial_rows.sort()
-            bin_rows.sort()
+            trial_rows, bin_rows, mean_row = self._partition_peak_auc_index(dataframe.index)
 
             def matrix(metric_prefix: str, rows: list[str]) -> np.ndarray:
                 return np.array(

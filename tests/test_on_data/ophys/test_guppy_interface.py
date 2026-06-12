@@ -35,7 +35,7 @@ def _column_parses_as_float(column: str) -> bool:
     return True
 
 
-_BIN_COLUMN_PATTERN = re.compile(r"^bin_\((\d+)-(\d+)\)$")
+_BIN_COLUMN_PATTERN = re.compile(r"^bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
 _PREFIX_TO_TRACE_TYPE = dict(cntrl_sig_fit="control_fit", dff="dff", z_score="z_score")
 
 GUPPY_DATA_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_63_207-181030-103332"
@@ -450,14 +450,16 @@ class TestGuppyInterface:
                 onset_values.extend(float(column) for column in trial_columns)
                 mean_blocks.append(source["mean"].to_numpy(dtype=np.float64))
                 bin_columns = sorted(
-                    (int(match.group(1)), int(match.group(2)))
+                    (float(match.group(1)), float(match.group(2)), match.string)
                     for match in (_BIN_COLUMN_PATTERN.match(column) for column in source.columns)
                     if match is not None
                 )
                 if bin_columns:
-                    bin_edges_blocks.append(np.array([[start, stop] for start, stop in bin_columns], dtype=np.float64))
+                    bin_edges_blocks.append(
+                        np.array([[start, stop] for start, stop, _ in bin_columns], dtype=np.float64)
+                    )
                     binned_mean_blocks.append(
-                        np.stack([source[f"bin_({a}-{b})"].to_numpy(dtype=np.float64) for a, b in bin_columns], axis=1)
+                        np.stack([source[column].to_numpy(dtype=np.float64) for _, _, column in bin_columns], axis=1)
                     )
             np.testing.assert_array_equal(cross_correlation.trials[:], np.concatenate(trials_blocks, axis=1))
             np.testing.assert_array_equal(cross_correlation.trial_onset_times[:], np.array(onset_values))
