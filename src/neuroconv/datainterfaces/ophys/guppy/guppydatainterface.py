@@ -730,8 +730,8 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        fiber_photometry_table_region_indices: dict[str, list[int]],
         *,
+        fiber_photometry_table_region_indices: dict[str, list[int]],
         stub_test: bool = False,
     ) -> None:
         """
