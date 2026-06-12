@@ -81,6 +81,14 @@ Suite2p Segmentation
 Fiber Photometry
 ================
 
+GuPPy
+-----
+.. automodule:: neuroconv.datainterfaces.ophys.guppy.guppydatainterface
+
 TDT Fiber Photometry
 --------------------
 .. automodule:: neuroconv.datainterfaces.ophys.tdt_fp.tdtfiberphotometrydatainterface
+
+TDT Fiber Photometry + GuPPy
+----------------------------
+.. automodule:: neuroconv.datainterfaces.ophys.guppy.tdtfiberphotometryguppyconverter

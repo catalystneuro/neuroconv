@@ -100,6 +100,7 @@ Fiber Photometry
     :maxdepth: 1
 
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    TDT Fiber Photometry + GuPPy <fiberphotometry/tdt_guppy>
 
 Behavior
 --------
@@ -115,6 +116,7 @@ Behavior
     SLEAP <behavior/sleap>
     Videos <behavior/video>
     MedPC <behavior/medpc>
+    TDT Events <behavior/tdt_events>
 
 
 Image
