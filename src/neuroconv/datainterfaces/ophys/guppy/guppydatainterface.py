@@ -124,7 +124,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         assert (
             parameters_file_path.is_file()
         ), f"GuPPyParamtersUsed.json not found in {folder_path}; this does not look like a GuPPy output folder."
-        with open(parameters_file_path, "r") as parameters_file:
+        with open(parameters_file_path, "r", encoding="utf-8") as parameters_file:
             guppy_parameters = json.load(parameters_file)
 
         cross_correlations = self._discover_cross_correlations(folder_path=folder_path, regions=regions)
@@ -176,7 +176,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
 
     @staticmethod
     def _discover_regions(stores_list_path: Path) -> list[str]:
-        rows = stores_list_path.read_text().strip().splitlines()
+        rows = stores_list_path.read_text(encoding="utf-8").strip().splitlines()
         assert len(rows) >= 2, f"storesList.csv at {stores_list_path} must have at least two rows."
         semantic_names = [name.strip() for name in rows[1].split(",")]
         return [name[len("signal_") :] for name in semantic_names if name.startswith("signal_")]
@@ -191,7 +191,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         ``signal_<region>`` and ``control_<region>`` stores participate; behavioral stores
         (``port_entries``, nose pokes, ...) are ignored.
         """
-        rows = stores_list_path.read_text().strip().splitlines()
+        rows = stores_list_path.read_text(encoding="utf-8").strip().splitlines()
         assert len(rows) >= 2, f"storesList.csv at {stores_list_path} must have at least two rows."
         store_names = [name.strip() for name in rows[0].split(",")]
         semantic_names = [name.strip() for name in rows[1].split(",")]
@@ -219,7 +219,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         ``LNRW`` -> ``rewarded_nose_pokes``). Stores present in the TDT tank but absent from
         ``storesList.csv`` were not used by GuPPy and are excluded.
         """
-        rows = stores_list_path.read_text().strip().splitlines()
+        rows = stores_list_path.read_text(encoding="utf-8").strip().splitlines()
         assert len(rows) >= 2, f"storesList.csv at {stores_list_path} must have at least two rows."
         store_names = [name.strip() for name in rows[0].split(",")]
         semantic_names = [name.strip() for name in rows[1].split(",")]
