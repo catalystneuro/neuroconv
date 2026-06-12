@@ -39,6 +39,9 @@
 * Removed --no-quarantine from wine install. [PR #1699](https://github.com/catalystneuro/neuroconv/pull/1699)
 
 ## Features
+* Added `GuppyInterface` for converting [GuPPy](https://github.com/LernerLab/GuPPy) processed fiber photometry outputs, depending on the [`ndx-guppy`](https://github.com/catalystneuro/ndx-guppy) extension. [PR #965](https://github.com/catalystneuro/neuroconv/pull/965)
+* Added `TDTEventsInterface` for converting discrete events (epocs) from a TDT tank folder, depending on the `ndx-events` extension. [PR #965](https://github.com/catalystneuro/neuroconv/pull/965)
+* Added `TDTFiberPhotometryGuppyConverter` to bundle raw TDT fiber photometry acquisition, raw events, and GuPPy-derived outputs into a single conversion. [PR #965](https://github.com/catalystneuro/neuroconv/pull/965)
 * Added `XClustSortingInterface` for converting XClust (.CEL) spike sorting data, using the `XClustSortingExtractor` from SpikeInterface. [PR #1691](https://github.com/catalystneuro/neuroconv/pull/1691)
 * Added `IntanStimInterface` for converting electrical stimulation current data from Intan RHS2000 systems. Stimulation channels (one per amplifier channel, named `{channel}_STIM`) are written as a `TimeSeries` with `unit="A"` (Amperes), with the conversion factor derived automatically from `stim_step_size` in the .rhs file header. [PR #1711](https://github.com/catalystneuro/neuroconv/pull/1711)
 * Added a `saved_files_are_split` parameter to `IntanRecordingInterface`, `IntanAnalogInterface`, and `IntanStimInterface` to support Intan RHX recordings saved with the "create a new save file every N minutes" option. When enabled, all sibling `.rhd`/`.rhs` files in the session folder are concatenated in filename order. When disabled, the interface warns if sibling rotation files are detected next to the one the user pointed at. [PR #1724](https://github.com/catalystneuro/neuroconv/pull/1724)

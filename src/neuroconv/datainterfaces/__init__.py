@@ -7,6 +7,7 @@ from .behavior.lightningpose.lightningposedatainterface import (
 )
 from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
+from .behavior.tdt_events.tdteventsdatainterface import TDTEventsInterface
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
@@ -105,6 +106,7 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
+from .ophys.guppy.guppydatainterface import GuppyInterface
 from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
@@ -184,6 +186,7 @@ interface_list = [
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
     TDTFiberPhotometryInterface,
+    GuppyInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
@@ -198,6 +201,7 @@ interface_list = [
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
     MedPCInterface,
+    TDTEventsInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
@@ -226,7 +230,12 @@ interfaces_by_category = dict(
         for interface in interface_list
         if "Segmentation" in interface.__name__
     },
-    fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
+    fiber_photometry={
+        "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+    },
+    processed_fiber_photometry={
+        "Guppy": GuppyInterface,
+    },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
@@ -246,6 +255,7 @@ interfaces_by_category = dict(
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
         MedPC=MedPCInterface,
+        TDTEvents=TDTEventsInterface,
     ),
     image=dict(
         Image=ImageInterface,
