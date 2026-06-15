@@ -1,6 +1,7 @@
 """Tests for VameInterface using VAME project output data."""
 
 import json
+import re
 import warnings
 from datetime import datetime
 
@@ -302,7 +303,7 @@ class TestVameInterfaceAutoDiscoverFilePathsWarnings:
             f"No motif label files were found for session '{session_name}' under '{session_vame_dir}'. "
             "Provide motif_labels_file_paths explicitly if the files are in a non-standard location."
         )
-        with pytest.warns(UserWarning, match=expected_message):
+        with pytest.warns(UserWarning, match=re.escape(expected_message)):
             VameInterface(
                 file_path=str(CONFIG_PATH),
                 session_name=session_name,
