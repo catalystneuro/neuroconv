@@ -8,6 +8,29 @@ from pynwb.image import GrayscaleImage, RGBAImage, RGBImage
 from neuroconv.datainterfaces.image.imageinterface import ImageInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
+MODE_CONFIGS = {
+    "1": {"channels": 1, "dtype": np.uint8, "max_val": 1},
+    "L": {"channels": 1, "dtype": np.uint8, "max_val": 255},
+    "P": {"channels": 1, "dtype": np.uint8, "max_val": 255},
+    "RGB": {"channels": 3, "dtype": np.uint8, "max_val": 255},
+    "RGBA": {"channels": 4, "dtype": np.uint8, "max_val": 255},
+    "CMYK": {"channels": 4, "dtype": np.uint8, "max_val": 255},
+    "YCbCr": {"channels": 3, "dtype": np.uint8, "max_val": 255},
+    "LAB": {"channels": 3, "dtype": np.uint8, "max_val": 255},
+    "HSV": {"channels": 3, "dtype": np.uint8, "max_val": 255},
+    "I": {"channels": 1, "dtype": np.int32, "max_val": 2**31 - 1},
+    "F": {"channels": 1, "dtype": np.float32, "max_val": 1.0},
+    "LA": {"channels": 2, "dtype": np.uint8, "max_val": 255},
+    "PA": {"channels": 2, "dtype": np.uint8, "max_val": 255},
+    "RGBX": {"channels": 4, "dtype": np.uint8, "max_val": 255},
+    "RGBa": {"channels": 4, "dtype": np.uint8, "max_val": 255},
+    "La": {"channels": 2, "dtype": np.uint8, "max_val": 255},
+    "I;16": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
+    "I;16L": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
+    "I;16B": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
+    "I;16N": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
+}
+
 
 def generate_random_images(
     num_images, width=256, height=256, mode="RGB", seed=None, output_dir_path="generated_images", format="PNG"
@@ -33,31 +56,8 @@ def generate_random_images(
     format : str
         Output format: 'PNG', 'JPEG', 'TIFF', 'BMP', 'WEBP', etc. (default: 'PNG')
     """
-    mode_configs = {
-        "1": {"channels": 1, "dtype": np.uint8, "max_val": 1},
-        "L": {"channels": 1, "dtype": np.uint8, "max_val": 255},
-        "P": {"channels": 1, "dtype": np.uint8, "max_val": 255},
-        "RGB": {"channels": 3, "dtype": np.uint8, "max_val": 255},
-        "RGBA": {"channels": 4, "dtype": np.uint8, "max_val": 255},
-        "CMYK": {"channels": 4, "dtype": np.uint8, "max_val": 255},
-        "YCbCr": {"channels": 3, "dtype": np.uint8, "max_val": 255},
-        "LAB": {"channels": 3, "dtype": np.uint8, "max_val": 255},
-        "HSV": {"channels": 3, "dtype": np.uint8, "max_val": 255},
-        "I": {"channels": 1, "dtype": np.int32, "max_val": 2**31 - 1},
-        "F": {"channels": 1, "dtype": np.float32, "max_val": 1.0},
-        "LA": {"channels": 2, "dtype": np.uint8, "max_val": 255},
-        "PA": {"channels": 2, "dtype": np.uint8, "max_val": 255},
-        "RGBX": {"channels": 4, "dtype": np.uint8, "max_val": 255},
-        "RGBa": {"channels": 4, "dtype": np.uint8, "max_val": 255},
-        "La": {"channels": 2, "dtype": np.uint8, "max_val": 255},
-        "I;16": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
-        "I;16L": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
-        "I;16B": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
-        "I;16N": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
-    }
-
-    if mode not in mode_configs:
-        raise ValueError(f"Mode must be one of {list(mode_configs.keys())}")
+    if mode not in MODE_CONFIGS:
+        raise ValueError(f"Mode must be one of {list(MODE_CONFIGS.keys())}")
 
     rng = np.random.default_rng(seed)
     output_dir_path = Path(output_dir_path)
@@ -67,7 +67,7 @@ def generate_random_images(
         if file.is_file():
             file.unlink()
 
-    config = mode_configs[mode]
+    config = MODE_CONFIGS[mode]
     format_ext = format.lower()
 
     for i in range(num_images):
@@ -119,6 +119,7 @@ class TestRGBImageInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 5
             for image in images_container.images.values():
                 assert isinstance(image, RGBImage)
+                assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
 
 
 @pytest.mark.parametrize("format", ["PNG", "JPEG", "TIFF"])
@@ -148,6 +149,7 @@ class TestGrayscaleImageInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 5
             for image in images_container.images.values():
                 assert isinstance(image, GrayscaleImage)
+                assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
 
 
 @pytest.mark.parametrize("format", ["PNG", "TIFF"])  # JPEG doesn't support RGBA
@@ -177,6 +179,7 @@ class TestRGBAImageInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 5
             for image in images_container.images.values():
                 assert isinstance(image, RGBAImage)
+                assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
 
 
 @pytest.mark.parametrize("format", ["PNG", "TIFF"])  # JPEG doesn't support LA
@@ -206,6 +209,7 @@ class TestLAtoRGBAImageInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 5
             for image in images_container.images.values():
                 assert isinstance(image, RGBAImage)
+                assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
                 # Verify the data shape is correct for RGBA (height, width, 4)
                 assert image.data.shape[-1] == 4
                 # Verify R, G, B channels are equal (since they come from L channel)
@@ -240,6 +244,7 @@ class TestI16GrayscaleImageInterface(DataInterfaceTestMixin):
             assert len(images_container.images) == 5
             for image in images_container.images.values():
                 assert isinstance(image, GrayscaleImage)
+                assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
 
 
 class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):
