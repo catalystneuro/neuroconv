@@ -116,6 +116,10 @@ lightningpose = [
 medpc = [
     "ndx-events==0.2.2",
 ]
+tdt_events = [
+    "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
+    "ndx-events==0.2.2",
+]
 behavior = [
     "neuroconv[sleap]",
     "neuroconv[audio]",
@@ -124,6 +128,7 @@ behavior = [
     "neuroconv[video]",
     "neuroconv[lightningpose]",
     "neuroconv[medpc]",
+    "neuroconv[tdt_events]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
 ]
 

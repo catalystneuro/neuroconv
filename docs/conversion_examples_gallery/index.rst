@@ -115,6 +115,7 @@ Behavior
     SLEAP <behavior/sleap>
     Videos <behavior/video>
     MedPC <behavior/medpc>
+    TDT Events <behavior/tdt_events>
 
 
 Image
