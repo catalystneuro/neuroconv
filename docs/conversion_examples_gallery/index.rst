@@ -21,6 +21,7 @@ Recording
     Biocam <recording/biocam>
     Blackrock <recording/blackrock>
     European Data Format (EDF) <recording/edf>
+    EEGLAB <recording/eeglab>
     Intan <recording/intan>
     MaxOne <recording/maxwell>
     MCSRaw <recording/mcsraw>

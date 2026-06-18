@@ -172,6 +172,10 @@ edf = [
     "pyedflib>=0.1.36",
     "neuroconv[ecephys_minimal]",
 ]
+eeglab = [
+    "pymatreader>=0.0.32",
+    "neuroconv[ecephys_minimal]",
+]
 intan = [
     "neuroconv[ecephys_minimal]",
 ]
@@ -246,6 +250,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[blackrock]",
     "neuroconv[cellexplorer]",
     "neuroconv[edf]",
+    "neuroconv[eeglab]",
     "neuroconv[intan]",
     "neuroconv[kilosort]",
     "neuroconv[maxwell]",
