@@ -98,7 +98,9 @@ class TestEEGLABRecordingInterface:
             # Events are written to a TimeIntervals table.
             events = nwbfile.intervals["events"]
             assert list(events["label"][:]) == ["stim", "resp", "stim"]
-            np.testing.assert_allclose(events["start_time"][:], [0.0, 128.0 / SAMPLING_FREQUENCY, 256.0 / SAMPLING_FREQUENCY])
+            np.testing.assert_allclose(
+                events["start_time"][:], [0.0, 128.0 / SAMPLING_FREQUENCY, 256.0 / SAMPLING_FREQUENCY]
+            )
 
     def test_pair_and_inline_layouts_match(self, pair_set_path, inline_set_path):
         """Both EEGLAB layouts must produce equivalent recordings."""
@@ -124,9 +126,9 @@ class TestEEGLABRecordingInterface:
         epoch_start_time = -1.0
         rng = np.random.default_rng(seed=1)
         # Epoched EEGLAB data is a (n_channels, n_points, n_trials) tensor.
-        epoched_traces = (
-            rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, number_of_trials)) * 20.0
-        ).astype("float32")
+        epoched_traces = (rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, number_of_trials)) * 20.0).astype(
+            "float32"
+        )
         eeg = _make_eeg_struct(epoched_traces, trials=number_of_trials, with_events=False)
         eeg["xmin"] = epoch_start_time
         set_path = tmp_path / "epoched.set"
@@ -168,9 +170,9 @@ class TestEEGLABRecordingInterface:
         number_of_trials = 3
         epoch_start_time = -1.0
         rng = np.random.default_rng(seed=4)
-        epoched_traces = (
-            rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, number_of_trials)) * 20.0
-        ).astype("float32")
+        epoched_traces = (rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, number_of_trials)) * 20.0).astype(
+            "float32"
+        )
         eeg = _make_eeg_struct(epoched_traces, trials=number_of_trials, with_events=False)
         eeg["xmin"] = epoch_start_time
         # Two events: one time-locking event in epoch 1 and one in epoch 2 (1-based EEGLAB indices).
