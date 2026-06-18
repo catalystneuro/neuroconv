@@ -1,6 +1,9 @@
+import copy
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
@@ -407,3 +410,105 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 nwbfile=nwbfile,
                 metadata=metadata,
             )
+
+    def split_by_offset(self) -> list["BaseRecordingExtractorInterface"]:
+        """
+        Split this interface into one sub-interface per distinct channel offset.
+
+        NWB's ``ElectricalSeries`` stores a single scalar ``offset`` shared by all channels, so a
+        recording whose channels have heterogeneous offsets cannot be written to a single
+        ``ElectricalSeries``. This method partitions the channels by their offset value and returns
+        one interface per distinct offset, each restricted (via
+        :py:meth:`~spikeinterface.core.BaseRecording.select_channels`) to the channels that share
+        that offset. Each returned interface can therefore be written to its own NWB file.
+
+        Returns
+        -------
+        list of BaseRecordingExtractorInterface
+            One interface per distinct offset, ordered by offset value. If the recording has a
+            single (or no) distinct offset, a single-element list containing this interface is
+            returned unchanged.
+        """
+        from ...tools.spikeinterface import _group_channel_ids_by_offset
+
+        offset_to_channel_ids = _group_channel_ids_by_offset(recording=self.recording_extractor)
+
+        if len(offset_to_channel_ids) <= 1:
+            return [self]
+
+        sub_interfaces = []
+        for offset in sorted(offset_to_channel_ids):
+            channel_ids = offset_to_channel_ids[offset]
+            sub_interface = copy.copy(self)
+            sub_interface.recording_extractor = self.recording_extractor.select_channels(channel_ids=channel_ids)
+            sub_interface._number_of_segments = sub_interface.recording_extractor.get_num_segments()
+            sub_interfaces.append(sub_interface)
+
+        return sub_interfaces
+
+    def run_conversion_split_by_offset(
+        self,
+        nwbfile_path: FilePath,
+        metadata: dict | None = None,
+        overwrite: bool = False,
+        backend: Literal["hdf5", "zarr"] | None = None,
+        **conversion_options,
+    ) -> list[Path]:
+        """
+        Run the conversion, writing one NWB file per distinct channel offset.
+
+        This is a convenience wrapper around :py:meth:`split_by_offset` and
+        :py:meth:`run_conversion`. When the recording has heterogeneous offsets (which cannot be
+        represented in a single ``ElectricalSeries``), the channels are partitioned by offset and
+        each partition is written to its own NWB file. The output paths are derived from
+        ``nwbfile_path`` by inserting an ``_offset{index}`` suffix before the file extension
+        (e.g. ``recording.nwb`` -> ``recording_offset0.nwb``, ``recording_offset1.nwb``, ...).
+
+        When the recording has a single (or no) distinct offset, a single file is written to
+        ``nwbfile_path`` unchanged.
+
+        Parameters
+        ----------
+        nwbfile_path : FilePath
+            Base path used to derive the output file path(s). See above for the suffixing scheme.
+        metadata : dict, optional
+            Metadata dictionary used to create each NWBFile. The same metadata is used for every
+            output file.
+        overwrite : bool, default: False
+            Whether to overwrite existing files at the derived paths.
+        backend : {"hdf5", "zarr"}, optional
+            The type of backend to use when writing the files.
+        **conversion_options
+            Additional keyword arguments forwarded to each :py:meth:`run_conversion` call.
+
+        Returns
+        -------
+        list of pathlib.Path
+            The paths of the NWB files that were written.
+        """
+        sub_interfaces = self.split_by_offset()
+
+        if len(sub_interfaces) == 1:
+            sub_interfaces[0].run_conversion(
+                nwbfile_path=nwbfile_path,
+                metadata=metadata,
+                overwrite=overwrite,
+                backend=backend,
+                **conversion_options,
+            )
+            return [Path(nwbfile_path)]
+
+        base_path = Path(nwbfile_path)
+        written_paths = []
+        for index, sub_interface in enumerate(sub_interfaces):
+            split_path = base_path.parent / f"{base_path.stem}_offset{index}{base_path.suffix}"
+            sub_interface.run_conversion(
+                nwbfile_path=split_path,
+                metadata=metadata,
+                overwrite=overwrite,
+                backend=backend,
+                **conversion_options,
+            )
+            written_paths.append(split_path)
+
+        return written_paths
