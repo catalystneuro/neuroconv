@@ -15,6 +15,7 @@ from .spikeinterface import (
     _check_if_recording_traces_fit_into_memory,
     add_recording_metadata_to_nwbfile,
     _stub_recording,
+    _group_channel_ids_by_offset,
 )
 
 
