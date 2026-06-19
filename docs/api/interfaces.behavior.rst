@@ -32,3 +32,7 @@ Video
 MedPC
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.medpc.medpcdatainterface
+
+CSV Events
+----------
+.. automodule:: neuroconv.datainterfaces.behavior.csv_events.csveventsdatainterface

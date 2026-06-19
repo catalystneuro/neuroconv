@@ -115,6 +115,7 @@ Behavior
     SLEAP <behavior/sleap>
     Videos <behavior/video>
     MedPC <behavior/medpc>
+    CSV Events <behavior/csv_events>
 
 
 Image
