@@ -84,3 +84,7 @@ Fiber Photometry
 TDT Fiber Photometry
 --------------------
 .. automodule:: neuroconv.datainterfaces.ophys.tdt_fp.tdtfiberphotometrydatainterface
+
+CSV Fiber Photometry
+--------------------
+.. automodule:: neuroconv.datainterfaces.ophys.csv_fp.csvfiberphotometrydatainterface

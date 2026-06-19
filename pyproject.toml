@@ -349,6 +349,9 @@ tdt_fp = [
     "neuroconv[fiber_photometry]",
     "tdt",
 ]
+csv_fp = [
+    "neuroconv[fiber_photometry]",
+]
 thor = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
@@ -372,6 +375,7 @@ ophys = [
     "neuroconv[sima]",
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
+    "neuroconv[csv_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
@@ -394,7 +398,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst' --ignore=docs/conversion_examples_gallery/fiberphotometry/tdt_fp.rst" # TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
+addopts = "-ra --doctest-glob='*.rst' --ignore=docs/conversion_examples_gallery/fiberphotometry/tdt_fp.rst --ignore=docs/conversion_examples_gallery/fiberphotometry/csv_fp.rst" # TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
