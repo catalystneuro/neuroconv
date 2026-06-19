@@ -14,13 +14,13 @@ from neuroconv.utils import DeepDict
 
 class CSVFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     """
-    Data Interface for converting fiber photometry data from CSV files.
+    Data Interface for converting raw fiber photometry data from CSV files.
 
-    GuPPy can read raw fiber photometry recordings stored as CSV files, with one CSV per stream
-    (e.g. a signal channel, an isosbestic control channel). Each data CSV has three columns --
-    ``timestamps`` (seconds), ``data`` (fluorescence), and ``sampling_rate`` (populated only on the
-    first row) -- and is named after its stream (``<stream_name>.csv``). This interface reads those
-    CSV streams and parses them into the ndx-fiber-photometry format.
+    This CSV format is a raw acquisition format, with one CSV per stream (e.g. a signal channel, an
+    isosbestic control channel). Each data CSV has three columns -- ``timestamps`` (seconds),
+    ``data`` (fluorescence), and ``sampling_rate`` (populated only on the first row) -- and is named
+    after its stream (``<stream_name>.csv``). This interface reads those CSV streams and parses them
+    into the ndx-fiber-photometry format.
 
     Notes
     -----
@@ -227,7 +227,6 @@ class CSVFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             Source of timing information for the data, default = "original".
         """
         from ndx_fiber_photometry import (
-            CommandedVoltageSeries,
             FiberPhotometry,
             FiberPhotometryIndicators,
             FiberPhotometryResponseSeries,
@@ -341,30 +340,6 @@ class CSVFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         else:
             raise ValueError("At least one indicator must be specified in the metadata.")
 
-        # Commanded Voltage Series (CSV recordings normally have none; supported for parity with TDT)
-        for commanded_voltage_series_metadata in metadata["Ophys"]["FiberPhotometry"].get("CommandedVoltageSeries", []):
-            stream = self._read_stream(commanded_voltage_series_metadata["stream_name"], stub_test=stub_test)
-            data = stream["data"]
-            if timing_source == "aligned_timestamps":
-                timestamps = stream_name_to_timestamps[commanded_voltage_series_metadata["stream_name"]][: len(data)]
-                timing_kwargs = dict(timestamps=timestamps)
-            elif timing_source == "aligned_starting_time_and_rate":
-                starting_time, rate = stream_name_to_starting_time_and_rate[
-                    commanded_voltage_series_metadata["stream_name"]
-                ]
-                timing_kwargs = dict(starting_time=starting_time, rate=rate)
-            else:
-                timing_kwargs = dict(starting_time=float(stream["timestamps"][0]), rate=stream["rate"])
-            commanded_voltage_series = CommandedVoltageSeries(
-                name=commanded_voltage_series_metadata["name"],
-                description=commanded_voltage_series_metadata["description"],
-                data=data,
-                unit=commanded_voltage_series_metadata["unit"],
-                frequency=commanded_voltage_series_metadata["frequency"],
-                **timing_kwargs,
-            )
-            nwbfile.add_acquisition(commanded_voltage_series)
-
         # Fiber Photometry Table
         fiber_photometry_table = FiberPhotometryTable(
             name=metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]["name"],
@@ -400,8 +375,6 @@ class CSVFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 row_data["indicator"] = name_to_indicator[row_metadata["indicator"]]
             if "coordinates" in row_metadata:
                 row_data["coordinates"] = row_metadata["coordinates"]
-            if "commanded_voltage_series" in row_metadata:
-                row_data["commanded_voltage_series"] = nwbfile.acquisition[row_metadata["commanded_voltage_series"]]
             fiber_photometry_table.add_row(**row_data)
         fiber_photometry_table_metadata = FiberPhotometry(
             name="fiber_photometry",

@@ -7,9 +7,9 @@ Install NeuroConv with the additional dependencies necessary for reading CSV Fib
 
     pip install "neuroconv[csv_fp]"
 
-GuPPy can read raw fiber photometry recordings stored as CSV files, with one CSV per stream
-(e.g. a signal channel and an isosbestic control channel). Each data CSV has three columns --
-``timestamps``, ``data``, and ``sampling_rate`` -- and is named after its stream
+This CSV format is a raw acquisition format for fiber photometry recordings, with one CSV per
+stream (e.g. a signal channel and an isosbestic control channel). Each data CSV has three columns
+-- ``timestamps``, ``data``, and ``sampling_rate`` -- and is named after its stream
 (``<stream_name>.csv``).
 
 Specify the minimal metadata required for the conversion.
