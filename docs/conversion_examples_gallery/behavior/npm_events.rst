@@ -27,7 +27,7 @@ recording start. NPM recordings carry no embedded recording-start timestamp, so
 
     >>> from neuroconv.datainterfaces import NPMEventsInterface
 
-    >>> folder_path = f"{OPHYS_DATA_PATH}/fiber_photometry_datasets/NPM/sampleData_NPM_1"
+    >>> folder_path = f"{OPHYS_DATA_PATH}/fiber_photometry_datasets/NPM/sampleData_NPM_4"
 
     >>> interface = NPMEventsInterface(folder_path=folder_path, verbose=False)
     >>> metadata = interface.get_metadata()
