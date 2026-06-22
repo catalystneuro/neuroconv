@@ -11,19 +11,20 @@ from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterf
 from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_model
 from neuroconv.utils import DeepDict
 
+_TIME_UNIT_TO_DIVISOR = {"seconds": 1.0, "milliseconds": 1e3, "microseconds": 1e6}
 
-class NPMFiberPhotometryInterface(BaseTemporalAlignmentInterface):
-    """
-    Data Interface for converting raw fiber photometry data from Neurophotometrics (NPM) files.
 
-    The NPM format is a raw acquisition format that stores **interleaved** channels in a single
-    multi-column CSV: an isosbestic channel and one or more signal channels are multiplexed
-    row-by-row, distinguished either by a ``Flags``/``LedState`` column (newer files) or by a fixed
-    row-cycling order (older files). Each remaining column (e.g. ``G0``, ``Region0G``) is a region
-    of interest. This interface demultiplexes the raw file in memory into per-channel streams named
-    ``file{i}_chev{j}`` (isosbestic), ``file{i}_chod{j}``, and ``file{i}_chpr{j}`` (signal
-    channels), where ``i`` indexes the source file and ``j`` indexes the region column, and parses
-    them into the ndx-fiber-photometry format.
+class BaseNPMFiberPhotometryInterface(BaseTemporalAlignmentInterface):
+    """Shared machinery for the Neurophotometrics (NPM) fiber photometry interfaces.
+
+    NPM is a raw acquisition format that stores **interleaved** channels in a single multi-column
+    CSV: an isosbestic channel and one or more signal channels are multiplexed frame-by-frame, and
+    each remaining column (e.g. ``G0``, ``Region0G``) is a region of interest. Concrete subclasses
+    differ only in how files are discovered and how rows are assigned to channels (the two hooks
+    :meth:`_npm_data_file_paths` and :meth:`_read_and_demultiplex`); everything downstream -- the
+    in-memory demultiplexing into per-channel streams named ``file{i}_chev{j}`` (isosbestic) and
+    ``file{i}_chod{j}``/``file{i}_chpr{j}`` (signal channels), the temporal-alignment surface, and
+    the ndx-fiber-photometry assembly -- is shared here.
 
     Notes
     -----
@@ -33,55 +34,11 @@ class NPMFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     """
 
     keywords = ("fiber photometry",)
-    display_name = "NPMFiberPhotometry"
-    info = "Data Interface for converting fiber photometry data from Neurophotometrics files."
     associated_suffixes = ("csv",)
-
-    @validate_call
-    def __init__(
-        self,
-        folder_path: DirectoryPath,
-        *,
-        number_of_channels: int = 2,
-        timestamp_column_name: str | None = None,
-        time_unit: Literal["seconds", "milliseconds", "microseconds"] = "seconds",
-        verbose: bool = False,
-    ):
-        """Initialize the NPMFiberPhotometryInterface.
-
-        Parameters
-        ----------
-        folder_path : DirectoryPath
-            The path to the folder containing the raw NPM CSV file(s).
-        number_of_channels : int, optional
-            The number of interleaved channels expected in older (row-cycling) NPM files, default =
-            2. For newer files this is auto-detected from the ``Flags``/``LedState`` column and this
-            value is ignored.
-        timestamp_column_name : str, optional
-            When a file has multiple timestamp columns (e.g. both ``SystemTimestamp`` and
-            ``ComputerTimestamp``), the name of the column to use. If None (default), the first
-            timestamp-like column is used.
-        time_unit : {"seconds", "milliseconds", "microseconds"}, optional
-            The unit of the selected timestamp column for newer NPM files, default = "seconds".
-        verbose : bool, optional
-            Whether to print status messages, default = False.
-        """
-        super().__init__(
-            folder_path=folder_path,
-            number_of_channels=number_of_channels,
-            timestamp_column_name=timestamp_column_name,
-            time_unit=time_unit,
-            verbose=verbose,
-        )
-        self._decomposed_streams = None
-        # These imports assure that ndx_fiber_photometry and ndx_ophys_devices are in the global
-        # namespace when a pynwb.io object is created.
-        import ndx_fiber_photometry  # noqa: F401
-        import ndx_ophys_devices  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
         """
-        Get metadata for the NPMFiberPhotometryInterface.
+        Get metadata for the interface.
 
         ``NWBFile/session_start_time`` is intentionally left unset: NPM recordings carry no embedded
         recording-start timestamp, so it must be supplied by the user via editable metadata.
@@ -95,112 +52,23 @@ class NPMFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     # ------------------------------------------------------------------
-    # Demultiplexing (ported from GuPPy's NpmRecordingExtractor, self-contained)
+    # Hooks implemented by the concrete (modern / legacy) subclasses
     # ------------------------------------------------------------------
-    def _candidate_data_paths(self) -> list[Path]:
-        """Get the raw NPM data CSV paths in the folder.
+    def _npm_data_file_paths(self) -> list[Path]:
+        """Get the NPM photometry CSV paths in the folder."""
+        raise NotImplementedError("Subclasses must implement _npm_data_file_paths.")
 
-        Single-column ``timestamps`` CSVs (NPM event files / CSV TTLs) and 3-column
-        ``timestamps,data,sampling_rate`` CSVs (the pre-split CSV fiber photometry format) are
-        excluded -- those belong to the events and CSV fiber photometry interfaces respectively.
+    def _read_and_demultiplex(self, path: Path, file_index: int) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
+        """Read one raw NPM file and assign its rows to interleaved channels.
+
+        Returns the dataframe reduced to ``[timestamp, region columns...]`` and a mapping from
+        channel key (e.g. ``file0_chev``) to the row indices belonging to that channel.
         """
-        data_paths = []
-        for path in sorted(Path(self.source_data["folder_path"]).glob("*.csv")):
-            columns = [str(column).lower() for column in pd.read_csv(path, nrows=0).columns]
-            if len(columns) == 1:
-                continue
-            if len(columns) == 3 and columns == ["timestamps", "data", "sampling_rate"]:
-                continue
-            data_paths.append(path)
-        return data_paths
+        raise NotImplementedError("Subclasses must implement _read_and_demultiplex.")
 
-    @staticmethod
-    def _columns_are_numeric(dataframe: pd.DataFrame) -> bool:
-        """Return True if the column labels are numeric (i.e. the file has no text header row)."""
-        numeric_labels = []
-        for label in dataframe.columns:
-            try:
-                numeric_labels.append(float(label))
-            except (TypeError, ValueError):
-                pass
-        return len(numeric_labels) > 0
-
-    @classmethod
-    def _check_channels(cls, state: np.ndarray) -> tuple[int, np.ndarray]:
-        """Count the unique interleaved channel states in an NPM ``Flags``/``LedState`` column.
-
-        Only rows 2-11 are examined to skip potential startup artefacts (e.g. an all-LEDs-on first
-        frame).
-        """
-        state = state.astype(int)
-        unique_state = np.unique(state[2:12])
-        if unique_state.shape[0] > 3:
-            raise ValueError(
-                f"NPM file contains {unique_state.shape[0]} unique channel states ({unique_state.tolist()}), "
-                "but only 1-3 channels are supported."
-            )
-        return unique_state.shape[0], unique_state
-
-    @staticmethod
-    def _update_dataframe_with_timestamp_column(
-        dataframe: pd.DataFrame, timestamp_column_name: str | None
-    ) -> pd.DataFrame:
-        """Collapse multiple timestamp columns down to a single ``Timestamp`` column.
-
-        If the file has at most one timestamp-like column, it is returned unchanged. Otherwise the
-        selected column (``timestamp_column_name``, or the first timestamp-like column if None) is
-        kept as ``Timestamp`` at position 1 and the other timestamp columns are dropped.
-        """
-        timestamp_columns = [column for column in dataframe.columns if "timestamp" in str(column).lower()]
-        if len(timestamp_columns) <= 1:
-            return dataframe
-        selected_column = timestamp_column_name if timestamp_column_name is not None else timestamp_columns[0]
-        if selected_column not in timestamp_columns:
-            raise ValueError(
-                f"Provided timestamp_column_name '{selected_column}' not found in timestamp columns {timestamp_columns}."
-            )
-        selected_values = dataframe[selected_column].to_numpy()
-        dataframe = dataframe.drop(columns=timestamp_columns)
-        dataframe.insert(1, "Timestamp", selected_values)
-        return dataframe
-
-    @classmethod
-    def _decide_indices(
-        cls, file_prefix: str, dataframe: pd.DataFrame, layout: str, number_of_channels: int = 2
-    ) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
-        """Determine the row indices belonging to each interleaved channel.
-
-        For older NPM layouts (``data_np``), rows are assumed to cycle through channels in order.
-        For newer layouts (``data_np_v2``), the ``Flags``/``LedState`` column assigns rows to
-        channels. Returns the (possibly column-reduced) DataFrame and a mapping from channel key
-        (e.g. ``file0_chev``) to the array of row indices for that channel.
-        """
-        channel_keys = [file_prefix + "chev", file_prefix + "chod", file_prefix + "chpr"]
-        if layout == "data_np":
-            indices = {
-                channel_keys[i]: np.arange(i, dataframe.shape[0], number_of_channels) for i in range(number_of_channels)
-            }
-            return dataframe, indices
-
-        columns_lower = np.char.lower(np.array(list(dataframe.columns), dtype=str))
-        if "flags" in columns_lower:
-            state_column = "Flags"
-        elif "ledstate" in columns_lower:
-            state_column = "LedState"
-        else:
-            raise ValueError(
-                "File type indicates a newer Neurophotometrics version but the columns do not contain a "
-                f"'Flags' or 'LedState' column. Found columns: {list(dataframe.columns)}."
-            )
-        state = np.array(dataframe[state_column])
-        number_of_channels, channel_states = cls._check_channels(state)
-        indices = {}
-        for i in range(number_of_channels):
-            first_occurrence = np.where(state == channel_states[i])[0]
-            indices[channel_keys[i]] = np.arange(first_occurrence[0], dataframe.shape[0], number_of_channels)
-        dataframe = dataframe.drop(["FrameCounter", state_column], axis=1)
-        return dataframe, indices
-
+    # ------------------------------------------------------------------
+    # Shared demultiplexing
+    # ------------------------------------------------------------------
     @staticmethod
     def _register_channel_name(
         stream_name: str, channel_key: str, chev_names: list[str], chod_names: list[str], chpr_names: list[str]
@@ -226,48 +94,13 @@ class NPMFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         if self._decomposed_streams is not None:
             return self._decomposed_streams
 
-        number_of_channels = self.source_data["number_of_channels"]
-        timestamp_column_name = self.source_data["timestamp_column_name"]
-        time_unit = self.source_data["time_unit"]
-
+        divisor = _TIME_UNIT_TO_DIVISOR[self.source_data["time_unit"]]
         streams: dict[str, dict] = {}
         chev_names: list[str] = []
         chod_names: list[str] = []
         chpr_names: list[str] = []
-        layouts: list[str] = []
-        for file_index, path in enumerate(self._candidate_data_paths()):
-            dataframe = pd.read_csv(path, index_col=False)
-            columns_are_numeric = self._columns_are_numeric(dataframe)
-            if columns_are_numeric:
-                dataframe = pd.read_csv(path, header=None, index_col=False)
-            columns = np.array(list(dataframe.columns), dtype=str)
-
-            # Determine the file layout (older row-cycling vs newer Flags/LedState; event vs data).
-            if len(columns) == 2:
-                layout = "event_or_data_np"
-            else:
-                layout = "data_np"
-            if (not columns_are_numeric) and (
-                "flags" in np.char.lower(columns) or "ledstate" in np.char.lower(columns)
-            ):
-                layout = layout + "_v2"
-            if layout == "event_or_data_np":
-                second_column = list(dataframe.iloc[:, 1])
-                all_float = all(isinstance(value, float) for value in second_column)
-                layout = "data_np" if (all_float and columns_are_numeric) else "event_np"
-            layouts.append(layout)
-
-            # Event files (2-column with a non-numeric type label) are handled by NPMEventsInterface.
-            if layout == "event_np":
-                continue
-
-            file_prefix = f"file{file_index}_"
-            if layout == "data_np":
-                dataframe, indices = self._decide_indices(file_prefix, dataframe, layout, number_of_channels)
-            else:
-                dataframe = self._update_dataframe_with_timestamp_column(dataframe, timestamp_column_name)
-                dataframe, indices = self._decide_indices(file_prefix, dataframe, layout)
-
+        for file_index, path in enumerate(self._npm_data_file_paths()):
+            dataframe, indices = self._read_and_demultiplex(path, file_index)
             for channel_key, row_indices in indices.items():
                 timestamps = np.asarray(dataframe.iloc[:, 0].to_numpy()[row_indices], dtype=float)
                 for column_index in range(1, dataframe.shape[1]):
@@ -278,39 +111,30 @@ class NPMFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                     }
                     self._register_channel_name(stream_name, channel_key, chev_names, chod_names, chpr_names)
 
-        # Normalize timestamps relative to the chev reference and compute per-channel sampling rates.
-        if "data_np_v2" in layouts:
-            divisor = {"seconds": 1.0, "milliseconds": 1e3, "microseconds": 1e6}[time_unit]
-        elif "data_np" in layouts:
-            divisor = 1000.0
-        else:
-            divisor = None
-
-        if divisor is not None:
-            region_lengths = {len(names) for names in (chev_names, chod_names, chpr_names) if len(names) > 0}
-            if len(region_lengths) > 1:
-                raise ValueError(
-                    "Number of channel files must be the same for all regions. Found per-region counts: "
-                    f"chev={len(chev_names)}, chod={len(chod_names)}, chpr={len(chpr_names)}."
-                )
-            # Each chev channel is normalized to its own first raw timestamp; the paired chod/chpr
-            # channels borrow chev's normalized timestamps and sampling rate. Interleaving can leave
-            # a chod/chpr channel one sample longer than its chev, so the borrowing channels' data is
-            # truncated to the chev length to keep every stream's data and timestamps the same size.
-            for channel_index in range(len(chev_names)):
-                chev_stream = streams[chev_names[channel_index]]
-                chev_timestamps = (chev_stream["timestamps"] - chev_stream["timestamps"][0]) / divisor
-                sampling_rate = chev_timestamps.shape[0] / (chev_timestamps[-1] - chev_timestamps[0])
-                number_of_samples = chev_timestamps.shape[0]
-                chev_stream["timestamps"] = chev_timestamps
-                chev_stream["data"] = chev_stream["data"][:number_of_samples]
-                chev_stream["rate"] = sampling_rate
-                for borrowing_names in (chod_names, chpr_names):
-                    if channel_index < len(borrowing_names):
-                        borrowing_stream = streams[borrowing_names[channel_index]]
-                        borrowing_stream["timestamps"] = chev_timestamps
-                        borrowing_stream["data"] = borrowing_stream["data"][:number_of_samples]
-                        borrowing_stream["rate"] = sampling_rate
+        region_lengths = {len(names) for names in (chev_names, chod_names, chpr_names) if len(names) > 0}
+        if len(region_lengths) > 1:
+            raise ValueError(
+                "Number of channel files must be the same for all regions. Found per-region counts: "
+                f"chev={len(chev_names)}, chod={len(chod_names)}, chpr={len(chpr_names)}."
+            )
+        # Each chev channel is normalized to its own first raw timestamp; the paired chod/chpr
+        # channels borrow chev's normalized timestamps and sampling rate. Interleaving can leave a
+        # chod/chpr channel one sample longer than its chev, so the borrowing channels' data is
+        # truncated to the chev length to keep every stream's data and timestamps the same size.
+        for channel_index in range(len(chev_names)):
+            chev_stream = streams[chev_names[channel_index]]
+            chev_timestamps = (chev_stream["timestamps"] - chev_stream["timestamps"][0]) / divisor
+            sampling_rate = chev_timestamps.shape[0] / (chev_timestamps[-1] - chev_timestamps[0])
+            number_of_samples = chev_timestamps.shape[0]
+            chev_stream["timestamps"] = chev_timestamps
+            chev_stream["data"] = chev_stream["data"][:number_of_samples]
+            chev_stream["rate"] = sampling_rate
+            for borrowing_names in (chod_names, chpr_names):
+                if channel_index < len(borrowing_names):
+                    borrowing_stream = streams[borrowing_names[channel_index]]
+                    borrowing_stream["timestamps"] = chev_timestamps
+                    borrowing_stream["data"] = borrowing_stream["data"][:number_of_samples]
+                    borrowing_stream["rate"] = sampling_rate
 
         self._decomposed_streams = streams
         return streams
@@ -649,3 +473,237 @@ class NPMFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 **timing_kwargs,
             )
             nwbfile.add_acquisition(fiber_photometry_response_series)
+
+
+class NPMFiberPhotometryInterface(BaseNPMFiberPhotometryInterface):
+    """
+    Data Interface for converting raw fiber photometry data from modern Neurophotometrics (NPM) files.
+
+    The modern NPM format is a header-bearing CSV whose channel multiplexing is driven by a
+    ``LedState``/``Flags`` column: each row belongs to whichever excitation LED was on, and the
+    interface uses that column to demultiplex the interleaved channels across the region columns
+    (e.g. ``G0``, ``Region0G``). Files are positively identified by the presence of that column.
+
+    For the older header-less NPM format (rows interleaved by a fixed cycling order, no
+    ``LedState``/``Flags`` column), use ``NPMLegacyFiberPhotometryInterface`` instead.
+    """
+
+    display_name = "NPMFiberPhotometry"
+    info = "Data Interface for converting fiber photometry data from modern Neurophotometrics files."
+
+    @validate_call
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        *,
+        timestamp_column_name: str | None = None,
+        time_unit: Literal["seconds", "milliseconds", "microseconds"] = "seconds",
+        verbose: bool = False,
+    ):
+        """Initialize the NPMFiberPhotometryInterface.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            The path to the folder containing the raw NPM CSV file(s).
+        timestamp_column_name : str, optional
+            When a file has multiple timestamp columns (e.g. both ``SystemTimestamp`` and
+            ``ComputerTimestamp``), the name of the column to use. If None (default), the first
+            timestamp-like column is used.
+        time_unit : {"seconds", "milliseconds", "microseconds"}, optional
+            The unit of the selected timestamp column, default = "seconds".
+        verbose : bool, optional
+            Whether to print status messages, default = False.
+        """
+        super().__init__(
+            folder_path=folder_path,
+            timestamp_column_name=timestamp_column_name,
+            time_unit=time_unit,
+            verbose=verbose,
+        )
+        self._decomposed_streams = None
+        # These imports assure that ndx_fiber_photometry and ndx_ophys_devices are in the global
+        # namespace when a pynwb.io object is created.
+        import ndx_fiber_photometry  # noqa: F401
+        import ndx_ophys_devices  # noqa: F401
+
+    def _npm_data_file_paths(self) -> list[Path]:
+        """Get the modern NPM photometry CSV paths in the folder.
+
+        A modern NPM photometry file is positively identified by a ``LedState`` or ``Flags`` column
+        -- the channel-state column that drives the interleaving and is the defining structural
+        feature of the format. Event CSVs and pre-split CSV-format streams do not have it.
+        """
+        data_paths = []
+        for path in sorted(Path(self.source_data["folder_path"]).glob("*.csv")):
+            columns = [str(column).lower() for column in pd.read_csv(path, nrows=0).columns]
+            if "ledstate" in columns or "flags" in columns:
+                data_paths.append(path)
+        return data_paths
+
+    def _read_and_demultiplex(self, path: Path, file_index: int) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
+        dataframe = pd.read_csv(path, index_col=False)
+        dataframe = self._update_dataframe_with_timestamp_column(dataframe, self.source_data["timestamp_column_name"])
+        return self._decide_indices(f"file{file_index}_", dataframe)
+
+    @staticmethod
+    def _update_dataframe_with_timestamp_column(
+        dataframe: pd.DataFrame, timestamp_column_name: str | None
+    ) -> pd.DataFrame:
+        """Collapse multiple timestamp columns down to a single ``Timestamp`` column.
+
+        If the file has at most one timestamp-like column, it is returned unchanged. Otherwise the
+        selected column (``timestamp_column_name``, or the first timestamp-like column if None) is
+        kept as ``Timestamp`` at position 1 and the other timestamp columns are dropped.
+        """
+        timestamp_columns = [column for column in dataframe.columns if "timestamp" in str(column).lower()]
+        if len(timestamp_columns) <= 1:
+            return dataframe
+        selected_column = timestamp_column_name if timestamp_column_name is not None else timestamp_columns[0]
+        if selected_column not in timestamp_columns:
+            raise ValueError(
+                f"Provided timestamp_column_name '{selected_column}' not found in timestamp columns {timestamp_columns}."
+            )
+        selected_values = dataframe[selected_column].to_numpy()
+        dataframe = dataframe.drop(columns=timestamp_columns)
+        dataframe.insert(1, "Timestamp", selected_values)
+        return dataframe
+
+    @classmethod
+    def _decide_indices(cls, file_prefix: str, dataframe: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
+        """Assign rows to interleaved channels using the ``Flags``/``LedState`` column.
+
+        Returns the dataframe reduced to ``[Timestamp, region columns...]`` (the ``FrameCounter`` and
+        state columns dropped) and a mapping from channel key to that channel's row indices.
+        """
+        channel_keys = [file_prefix + "chev", file_prefix + "chod", file_prefix + "chpr"]
+        columns_lower = np.char.lower(np.array(list(dataframe.columns), dtype=str))
+        if "flags" in columns_lower:
+            state_column = "Flags"
+        elif "ledstate" in columns_lower:
+            state_column = "LedState"
+        else:
+            raise ValueError(
+                "Modern NPM files must contain a 'Flags' or 'LedState' column. "
+                f"Found columns: {list(dataframe.columns)}."
+            )
+        state = np.array(dataframe[state_column])
+        number_of_channels, channel_states = cls._check_channels(state)
+        indices = {}
+        for i in range(number_of_channels):
+            first_occurrence = np.where(state == channel_states[i])[0]
+            indices[channel_keys[i]] = np.arange(first_occurrence[0], dataframe.shape[0], number_of_channels)
+        dataframe = dataframe.drop(["FrameCounter", state_column], axis=1)
+        return dataframe, indices
+
+    @classmethod
+    def _check_channels(cls, state: np.ndarray) -> tuple[int, np.ndarray]:
+        """Identify the distinct interleaved channel states in the ``Flags``/``LedState`` column.
+
+        The number of channels is the number of distinct steady-state values. Only rows 2-11 are
+        examined so a startup/calibration frame (an all-LEDs-on first frame, e.g. ``LedState`` 7 or
+        ``Flags`` 16) does not register as an extra channel.
+
+        NPM recordings are limited here to 1-3 channels. This is inherited from GuPPy, which names the
+        interleaved channels ``chev``/``chod``/``chpr`` -- three names for the (at most three)
+        excitation LEDs of current Neurophotometrics systems (415 nm isosbestic + up to two signal
+        colors). There is no fundamental reason for the cap; if you have a recording with more than
+        three channels, please open an issue on NeuroConv and we can generalize the naming.
+        """
+        state = state.astype(int)
+        unique_state = np.unique(state[2:12])
+        if unique_state.shape[0] > 3:
+            raise ValueError(
+                f"NPM file contains {unique_state.shape[0]} unique channel states ({unique_state.tolist()}), "
+                "but only 1-3 channels are currently supported (a GuPPy-inherited limit -- the chev/chod/chpr "
+                "channel names). If you need more channels, please open an issue: "
+                "https://github.com/catalystneuro/neuroconv/issues."
+            )
+        return unique_state.shape[0], unique_state
+
+
+class NPMLegacyFiberPhotometryInterface(BaseNPMFiberPhotometryInterface):
+    """
+    Data Interface for converting raw fiber photometry data from legacy Neurophotometrics (NPM) files.
+
+    The legacy NPM format is a header-less CSV: the first column is the timestamp and the remaining
+    columns are region-of-interest values, with the interleaved channels stored in a fixed
+    row-cycling order (row ``i`` belongs to channel ``i % number_of_channels``). Because the file
+    has no header, there is no ``LedState``/``Flags`` column to key on; the user specifies how many
+    channels were interleaved via ``number_of_channels``.
+
+    For the modern header-bearing NPM format (with a ``LedState``/``Flags`` column), use
+    ``NPMFiberPhotometryInterface`` instead.
+    """
+
+    display_name = "NPMLegacyFiberPhotometry"
+    info = "Data Interface for converting fiber photometry data from legacy (header-less) Neurophotometrics files."
+
+    @validate_call
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        *,
+        number_of_channels: int = 2,
+        time_unit: Literal["seconds", "milliseconds", "microseconds"] = "milliseconds",
+        verbose: bool = False,
+    ):
+        """Initialize the NPMLegacyFiberPhotometryInterface.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            The path to the folder containing the raw legacy NPM CSV file(s).
+        number_of_channels : int, optional
+            The number of interleaved channels (rows cycle through the channels in order), default =
+            2. Limited to 1-3, the GuPPy-inherited chev/chod/chpr channel names (see
+            ``NPMFiberPhotometryInterface._check_channels``).
+        time_unit : {"seconds", "milliseconds", "microseconds"}, optional
+            The unit of the (first-column) timestamps, default = "milliseconds" (legacy NPM
+            timestamps are in milliseconds).
+        verbose : bool, optional
+            Whether to print status messages, default = False.
+        """
+        if not 1 <= number_of_channels <= 3:
+            raise ValueError(
+                f"number_of_channels must be 1-3, got {number_of_channels} (a GuPPy-inherited limit -- the "
+                "chev/chod/chpr channel names). If you need more channels, please open an issue: "
+                "https://github.com/catalystneuro/neuroconv/issues."
+            )
+        super().__init__(
+            folder_path=folder_path,
+            number_of_channels=number_of_channels,
+            time_unit=time_unit,
+            verbose=verbose,
+        )
+        self._decomposed_streams = None
+        # These imports assure that ndx_fiber_photometry and ndx_ophys_devices are in the global
+        # namespace when a pynwb.io object is created.
+        import ndx_fiber_photometry  # noqa: F401
+        import ndx_ophys_devices  # noqa: F401
+
+    def _npm_data_file_paths(self) -> list[Path]:
+        """Get the legacy NPM photometry CSV paths in the folder.
+
+        A legacy NPM photometry file is a header-less, all-numeric CSV with more than two columns (a
+        timestamp column plus two or more interleaved region columns). Header-bearing files (the
+        modern NPM format), single-/two-column event files, and three-column CSV-format streams are
+        therefore not picked up here.
+        """
+        data_paths = []
+        for path in sorted(Path(self.source_data["folder_path"]).glob("*.csv")):
+            first_row = pd.read_csv(path, header=None, nrows=1)
+            if first_row.shape[1] <= 2:
+                continue
+            if pd.to_numeric(first_row.iloc[0], errors="coerce").notna().all():
+                data_paths.append(path)
+        return data_paths
+
+    def _read_and_demultiplex(self, path: Path, file_index: int) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
+        dataframe = pd.read_csv(path, header=None)
+        number_of_channels = self.source_data["number_of_channels"]
+        channel_keys = [f"file{file_index}_chev", f"file{file_index}_chod", f"file{file_index}_chpr"]
+        indices = {
+            channel_keys[i]: np.arange(i, dataframe.shape[0], number_of_channels) for i in range(number_of_channels)
+        }
+        return dataframe, indices

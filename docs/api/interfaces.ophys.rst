@@ -87,4 +87,8 @@ TDT Fiber Photometry
 
 NPM Fiber Photometry
 --------------------
-.. automodule:: neuroconv.datainterfaces.ophys.npm_fp.npmfiberphotometrydatainterface
+.. autoclass:: neuroconv.datainterfaces.ophys.npm_fp.npmfiberphotometrydatainterface.NPMFiberPhotometryInterface
+
+NPM Legacy Fiber Photometry
+---------------------------
+.. autoclass:: neuroconv.datainterfaces.ophys.npm_fp.npmfiberphotometrydatainterface.NPMLegacyFiberPhotometryInterface
