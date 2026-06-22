@@ -1,0 +1,102 @@
+NWBFile:
+  # NPM recordings carry no embedded recording-start timestamp, so it must be supplied here.
+  session_start_time: "2024-02-12T12:01:36-07:00"
+
+Ophys:
+  FiberPhotometry:
+    OpticalFiberModels:
+      - name: optical_fiber_model
+        description: Fiber optic implant model specifications.
+        manufacturer: Neurophotometrics
+        model_number: Fiber Optic Implant
+        numerical_aperture: 0.48
+        core_diameter_in_um: 400.0
+
+    OpticalFibers:
+      - name: optical_fiber
+        description: Fiber optic implant placed above the target region.
+        model: optical_fiber_model
+        serial_number: "OF001"
+        fiber_insertion:
+          depth_in_mm: 2.8
+          insertion_position_ap_in_mm: 0.8
+          insertion_position_ml_in_mm: 1.5
+          insertion_position_dv_in_mm: 2.8
+          position_reference: bregma
+          hemisphere: right
+
+    ExcitationSourceModels:
+      - name: excitation_source_model
+        description: Connectorized LED model specifications.
+        manufacturer: Neurophotometrics
+        model_number: Connectorized LED
+        source_type: LED
+        excitation_mode: one-photon
+        wavelength_range_in_nm: [400.0, 470.0]
+
+    ExcitationSources:
+      - name: excitation_source_calcium_signal
+        description: 470nm LED for the calcium-dependent signal channel.
+        model: excitation_source_model
+        power_in_W: 0.001
+      - name: excitation_source_isosbestic_control
+        description: 415nm LED for the isosbestic control channel.
+        model: excitation_source_model
+        power_in_W: 0.001
+
+    PhotodetectorModels:
+      - name: photodetector_model
+        description: CMOS camera sensor specifications.
+        manufacturer: Neurophotometrics
+        model_number: FP3002 CMOS Sensor
+        detector_type: photodiode
+        wavelength_range_in_nm: [400.0, 700.0]
+        gain: 1.0e+10
+        gain_unit: V/W
+
+    Photodetectors:
+      - name: photodetector
+        description: CMOS sensor recording the emitted fluorescence.
+        model: photodetector_model
+        serial_number: "PD001"
+
+    FiberPhotometryIndicators:
+      - name: green_fluorophore
+        description: GCaMP7b indicator for fiber photometry experiments.
+        manufacturer: Addgene
+        label: GCaMP7b
+
+    FiberPhotometryTable:
+      name: fiber_photometry_table
+      description: Fiber photometry system metadata table for the Neurophotometrics recording.
+      rows:
+        - name: "0"
+          location: region
+          excitation_wavelength_in_nm: 470.0
+          emission_wavelength_in_nm: 525.0
+          indicator: green_fluorophore
+          optical_fiber: optical_fiber
+          excitation_source: excitation_source_calcium_signal
+          photodetector: photodetector
+        - name: "1"
+          location: region
+          excitation_wavelength_in_nm: 415.0
+          emission_wavelength_in_nm: 525.0
+          indicator: green_fluorophore
+          optical_fiber: optical_fiber
+          excitation_source: excitation_source_isosbestic_control
+          photodetector: photodetector
+
+    FiberPhotometryResponseSeries:
+      - name: calcium_signal
+        description: The fluorescence from the calcium-dependent signal channel (LedState 2).
+        stream_name: file0_chod1
+        unit: a.u.
+        fiber_photometry_table_region: [0]
+        fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the calcium signal.
+      - name: isosbestic_control
+        description: The fluorescence from the isosbestic control channel (LedState 1).
+        stream_name: file0_chev1
+        unit: a.u.
+        fiber_photometry_table_region: [1]
+        fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the isosbestic control.
