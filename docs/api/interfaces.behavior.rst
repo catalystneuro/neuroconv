@@ -32,3 +32,7 @@ Video
 MedPC
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.medpc.medpcdatainterface
+
+NPM Events
+----------
+.. automodule:: neuroconv.datainterfaces.behavior.npm_events.npmeventsdatainterface
