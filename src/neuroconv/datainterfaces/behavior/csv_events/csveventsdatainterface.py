@@ -170,7 +170,11 @@ class CSVEventsInterface(BaseDataInterface):
 
         for event_dict in events_metadata:
             file_name = event_dict["file_name"]
-            timestamps = pd.read_csv(self._event_csv_path(file_name))["timestamps"].to_numpy()
+            # float_precision="round_trip" uses an exact, platform-independent float parser; pandas's
+            # default C parser rounds the final ULP differently across platforms (Linux/Windows vs macOS).
+            timestamps = pd.read_csv(self._event_csv_path(file_name), float_precision="round_trip")[
+                "timestamps"
+            ].to_numpy()
             if len(timestamps) == 0:
                 continue
             events = ndx_events.Events(
