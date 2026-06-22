@@ -145,7 +145,7 @@ supplied explicitly in the metadata.
     >>> from neuroconv.datainterfaces import NPMFiberPhotometryInterface
     >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
 
-    >>> folder_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM" / "sampleData_NPM_1"
+    >>> folder_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM" / "sampleData_NPM_4"
     >>> LOCAL_PATH = Path(".") # Path to neuroconv
 
     >>> interface = NPMFiberPhotometryInterface(folder_path=folder_path, verbose=False)

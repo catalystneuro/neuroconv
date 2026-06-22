@@ -294,19 +294,23 @@ class NPMFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                     f"chev={len(chev_names)}, chod={len(chod_names)}, chpr={len(chpr_names)}."
                 )
             # Each chev channel is normalized to its own first raw timestamp; the paired chod/chpr
-            # channels borrow chev's normalized timestamps and sampling rate.
+            # channels borrow chev's normalized timestamps and sampling rate. Interleaving can leave
+            # a chod/chpr channel one sample longer than its chev, so the borrowing channels' data is
+            # truncated to the chev length to keep every stream's data and timestamps the same size.
             for channel_index in range(len(chev_names)):
                 chev_stream = streams[chev_names[channel_index]]
                 chev_timestamps = (chev_stream["timestamps"] - chev_stream["timestamps"][0]) / divisor
                 sampling_rate = chev_timestamps.shape[0] / (chev_timestamps[-1] - chev_timestamps[0])
+                number_of_samples = chev_timestamps.shape[0]
                 chev_stream["timestamps"] = chev_timestamps
+                chev_stream["data"] = chev_stream["data"][:number_of_samples]
                 chev_stream["rate"] = sampling_rate
-                if channel_index < len(chod_names):
-                    streams[chod_names[channel_index]]["timestamps"] = chev_timestamps
-                    streams[chod_names[channel_index]]["rate"] = sampling_rate
-                if channel_index < len(chpr_names):
-                    streams[chpr_names[channel_index]]["timestamps"] = chev_timestamps
-                    streams[chpr_names[channel_index]]["rate"] = sampling_rate
+                for borrowing_names in (chod_names, chpr_names):
+                    if channel_index < len(borrowing_names):
+                        borrowing_stream = streams[borrowing_names[channel_index]]
+                        borrowing_stream["timestamps"] = chev_timestamps
+                        borrowing_stream["data"] = borrowing_stream["data"][:number_of_samples]
+                        borrowing_stream["rate"] = sampling_rate
 
         self._decomposed_streams = streams
         return streams
