@@ -13,6 +13,8 @@ except ImportError:
     from setup_paths import OPHYS_DATA_PATH
 
 NPM_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM" / "sampleData_NPM_4"
+# The legacy session's event file uses a numeric label column (all value 1).
+NPM_NUMERIC_LABEL_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM" / "sampleData_NPM_5"
 
 # Onset times (in the raw Timestamp time base, seconds) and their type labels from
 # PagCeAVgatFear_1442_ts0.csv. The second column holds boolean True/False annotations, which split
@@ -21,6 +23,20 @@ EXPECTED_VALUE_TO_TIMESTAMPS = {
     "True": [24233.706688, 24348.892736, 24440.805728, 24558.94976, 24656.243808],
     "False": [24261.742688, 24376.91072, 24468.843712, 24586.99376, 24684.305792],
 }
+
+# Onset times from PagCeAVgatFear_1512_ts0.csv, whose label column is the numeric code 1.
+EXPECTED_NUMERIC_LABEL_TIMESTAMPS = [
+    40436705.7152,
+    40464720.704,
+    40543575.7568,
+    40571615.3472,
+    40637574.912,
+    40665630.9248,
+    40736289.344,
+    40764337.088,
+    40845146.112,
+    40873157.056,
+]
 
 
 class TestNPMEventsInterface:
@@ -32,6 +48,14 @@ class TestNPMEventsInterface:
         """Auto-discovery picks the two-column event CSV; the multi-column raw signal CSV is
         excluded (it belongs to the fiber photometry interface)."""
         assert [path.name for path in interface._event_file_paths()] == ["PagCeAVgatFear_1442_ts0.csv"]
+
+    def test_numeric_label_event_file(self):
+        """A two-column event file with a numeric label column is discovered and split by value."""
+        interface = NPMEventsInterface(folder_path=NPM_NUMERIC_LABEL_FOLDER)
+        assert [path.name for path in interface._event_file_paths()] == ["PagCeAVgatFear_1512_ts0.csv"]
+        original_timestamps = interface.get_original_timestamps()
+        assert list(original_timestamps) == ["1"]
+        np.testing.assert_allclose(original_timestamps["1"], EXPECTED_NUMERIC_LABEL_TIMESTAMPS, rtol=1e-12)
 
     def test_get_metadata_does_not_set_session_start_time(self, interface):
         metadata = interface.get_metadata()

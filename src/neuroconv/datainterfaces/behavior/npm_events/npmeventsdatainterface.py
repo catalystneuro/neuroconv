@@ -75,11 +75,15 @@ class NPMEventsInterface(BaseTemporalAlignmentInterface):
 
     @staticmethod
     def _is_npm_event_file(path: Path) -> bool:
-        """Return True if ``path`` is a two-column NPM event CSV (timestamp, non-numeric label)."""
-        probe = pd.read_csv(path, header=None, nrows=5)
-        if probe.shape[1] != 2:
-            return False
-        return not np.issubdtype(probe.iloc[:, 1].dtype, np.number)
+        """Return True if ``path`` is a two-column NPM event CSV (timestamp, label).
+
+        NPM event files are header-less two-column CSVs. The label column may be a string
+        (``whitenoise``), a boolean (``True``/``False``), or a numeric code (``1``/``3``) -- all are
+        treated uniformly as labels. The two-column shape positively distinguishes them from the
+        single-column CSV-format TTLs, the three-column CSV-format streams, and the multi-column NPM
+        photometry files.
+        """
+        return pd.read_csv(path, header=None, nrows=5).shape[1] == 2
 
     def _event_file_paths(self) -> list[Path]:
         """Get the raw NPM event CSV path(s) to read."""
