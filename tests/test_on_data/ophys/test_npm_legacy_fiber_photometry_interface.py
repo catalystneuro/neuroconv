@@ -35,7 +35,9 @@ EXPECTED_FIRST_VALUES = {
 class TestNPMLegacyFiberPhotometryInterface:
     @pytest.fixture
     def interface(self):
-        return NPMLegacyFiberPhotometryInterface(folder_path=NPM_FOLDER, verbose=False)
+        return NPMLegacyFiberPhotometryInterface(
+            folder_path=NPM_FOLDER, number_of_channels=2, time_unit="milliseconds", verbose=False
+        )
 
     @pytest.fixture
     def metadata(self, interface):
@@ -47,7 +49,7 @@ class TestNPMLegacyFiberPhotometryInterface:
 
     def test_too_many_channels_raises(self):
         with pytest.raises(ValueError, match="1-3"):
-            NPMLegacyFiberPhotometryInterface(folder_path=NPM_FOLDER, number_of_channels=4)
+            NPMLegacyFiberPhotometryInterface(folder_path=NPM_FOLDER, number_of_channels=4, time_unit="milliseconds")
 
     def test_get_metadata_does_not_set_session_start_time(self, interface):
         """NPM recordings carry no embedded start time, so the interface must not invent one."""

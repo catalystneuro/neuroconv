@@ -644,8 +644,8 @@ class NPMLegacyFiberPhotometryInterface(BaseNPMFiberPhotometryInterface):
         self,
         folder_path: DirectoryPath,
         *,
-        number_of_channels: int = 2,
-        time_unit: Literal["seconds", "milliseconds", "microseconds"] = "milliseconds",
+        number_of_channels: int,
+        time_unit: Literal["seconds", "milliseconds", "microseconds"],
         verbose: bool = False,
     ):
         """Initialize the NPMLegacyFiberPhotometryInterface.
@@ -654,13 +654,14 @@ class NPMLegacyFiberPhotometryInterface(BaseNPMFiberPhotometryInterface):
         ----------
         folder_path : DirectoryPath
             The path to the folder containing the raw legacy NPM CSV file(s).
-        number_of_channels : int, optional
-            The number of interleaved channels (rows cycle through the channels in order), default =
-            2. Limited to 1-3, the GuPPy-inherited chev/chod/chpr channel names (see
+        number_of_channels : int
+            The number of interleaved channels (rows cycle through the channels in order). Required:
+            the header-less legacy format carries no channel-state column to infer it from. Limited
+            to 1-3, the GuPPy-inherited chev/chod/chpr channel names (see
             ``NPMFiberPhotometryInterface._check_channels``).
-        time_unit : {"seconds", "milliseconds", "microseconds"}, optional
-            The unit of the (first-column) timestamps, default = "milliseconds" (legacy NPM
-            timestamps are in milliseconds).
+        time_unit : {"seconds", "milliseconds", "microseconds"}
+            The unit of the (first-column) timestamps. Required: the header-less legacy format gives
+            no way to infer it (legacy NPM timestamps are typically in milliseconds).
         verbose : bool, optional
             Whether to print status messages, default = False.
         """

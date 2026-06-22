@@ -149,8 +149,11 @@ supplied explicitly in the metadata.
     >>> folder_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM" / "sampleData_NPM_5"
     >>> LOCAL_PATH = Path(".") # Path to neuroconv
 
-    >>> # number_of_channels is the count of interleaved channels (rows cycle through them in order).
-    >>> interface = NPMLegacyFiberPhotometryInterface(folder_path=folder_path, number_of_channels=2, verbose=False)
+    >>> # number_of_channels (rows cycle through the channels in order) and time_unit are required:
+    >>> # the header-less legacy format gives no way to infer them.
+    >>> interface = NPMLegacyFiberPhotometryInterface(
+    ...     folder_path=folder_path, number_of_channels=2, time_unit="milliseconds", verbose=False
+    ... )
     >>> metadata = interface.get_metadata()
     >>> # NPM recordings have no embedded start time, so it must be set explicitly.
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
