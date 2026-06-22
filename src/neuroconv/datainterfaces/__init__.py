@@ -6,6 +6,7 @@ from .behavior.lightningpose.lightningposedatainterface import (
     LightningPoseDataInterface,
 )
 from .behavior.medpc.medpcdatainterface import MedPCInterface
+from .behavior.npm_events.npmeventsdatainterface import NPMEventsInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
@@ -198,6 +199,7 @@ interface_list = [
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
     MedPCInterface,
+    NPMEventsInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
@@ -246,6 +248,7 @@ interfaces_by_category = dict(
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
         MedPC=MedPCInterface,
+        NPMEvents=NPMEventsInterface,
     ),
     image=dict(
         Image=ImageInterface,

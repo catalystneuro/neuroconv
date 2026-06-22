@@ -115,6 +115,7 @@ Behavior
     SLEAP <behavior/sleap>
     Videos <behavior/video>
     MedPC <behavior/medpc>
+    NPM Events <behavior/npm_events>
 
 
 Image
