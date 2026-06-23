@@ -1677,10 +1677,11 @@ def add_recording_as_spatial_series_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
     metadata_key: str = "SpatialSeries",
-    write_as: Literal["acquisition", "processing"] = "acquisition",
+    parent_container: Literal["acquisition", "processing"] = "acquisition",
     iterator_type: str = "v2",
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
+    write_as: Literal["acquisition", "processing"] | None = None,
 ):
     """
     Adds traces from recording object as SpatialSeries to an NWBFile object.
@@ -1710,7 +1711,7 @@ def add_recording_as_spatial_series_to_nwbfile(
         Where the metadata_key is used to look up metadata in the metadata dictionary.
     metadata_key : str, default: 'SpatialSeries'
         The entry in SpatialSeries metadata to use.
-    write_as : {'acquisition', 'processing'}, default: 'acquisition'
+    parent_container : {'acquisition', 'processing'}, default: 'acquisition'
         Where to save the spatial series data:
         - 'acquisition': Save in nwbfile.acquisition
         - 'processing': Save in a processing module under 'behavior'
@@ -1724,12 +1725,23 @@ def add_recording_as_spatial_series_to_nwbfile(
         Set to True to always write timestamps explicitly.
         By default (False), the function checks if timestamps are uniformly sampled,
         and if so, stores data using a regular sampling rate.
+    write_as : {'acquisition', 'processing'}, optional
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
 
 
     """
-    # Validate write_as parameter
-    if write_as not in ["acquisition", "processing"]:
-        raise ValueError(f"write_as must be 'acquisition' or 'processing', got '{write_as}'")
+    if write_as is not None:
+        warnings.warn(
+            "The 'write_as' parameter of add_recording_as_spatial_series_to_nwbfile is deprecated and will be "
+            "removed on or after December 2026. Use 'parent_container' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        parent_container = write_as
+
+    # Validate parent_container parameter
+    if parent_container not in ["acquisition", "processing"]:
+        raise ValueError(f"parent_container must be 'acquisition' or 'processing', got '{parent_container}'")
 
     # Handle multiple segments
     number_of_segments = recording.get_num_segments()
@@ -1740,7 +1752,7 @@ def add_recording_as_spatial_series_to_nwbfile(
             metadata=metadata,
             metadata_key=metadata_key,
             segment_index=segment_index,
-            write_as=write_as,
+            parent_container=parent_container,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
@@ -1753,7 +1765,7 @@ def _add_spatial_series_segment_to_nwbfile(
     segment_index: int,
     metadata: dict | None = None,
     metadata_key: str = "SpatialSeries",
-    write_as: Literal["acquisition", "processing"] = "acquisition",
+    parent_container: Literal["acquisition", "processing"] = "acquisition",
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
@@ -1829,9 +1841,9 @@ def _add_spatial_series_segment_to_nwbfile(
     spatial_series = pynwb.behavior.SpatialSeries(**series_kwargs)
 
     # Add to nwbfile
-    if write_as == "acquisition":
+    if parent_container == "acquisition":
         nwbfile.add_acquisition(spatial_series)
-    elif write_as == "processing":
+    elif parent_container == "processing":
         # Create or get behavior processing module
         behavior_module = get_module(
             nwbfile=nwbfile,

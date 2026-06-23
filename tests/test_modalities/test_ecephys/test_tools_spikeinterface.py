@@ -1493,7 +1493,7 @@ class TestAddSpatialSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            write_as="processing",
+            parent_container="processing",
             iterator_type=None,
         )
 
