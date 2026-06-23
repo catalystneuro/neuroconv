@@ -7,7 +7,7 @@ This guide provides instructions for annotating discrete-event data (TTL lines, 
 
 Events metadata in NWB files describes the output **event tables** and, per interface, the **columns** written into them: each column's name, its value vocabulary (``labels`` and ``meanings`` for a categorical column), and which table it lands in.
 
-The format has two levels: a global ``EventTables`` block (the output tables, shared across interfaces) and, under each interface's ``metadata_key``, an ``event_columns`` block with one entry per column. Each column names the table it fills via ``table_metadata_key``, so grouping (within or across interfaces) is expressed by where the columns point. Each column is keyed by its ``event_type_id``, the source format's own handle for that event stream (a TDT store like ``PtAB``, a NIDQ line like ``XD0``). By default each column gets its own table: ``get_metadata()`` seeds one ``EventTables`` entry per column (named after its ``event_type_id``) and points the column at it, so the simple cases work with no edits, and you only add ``EventTables`` entries to pool several columns into one.
+The format has two levels: a global ``EventTables`` block (the output tables, shared across interfaces) and, under each interface's ``metadata_key``, an ``event_columns`` block with one entry per column. Each column names the table it fills via ``table_metadata_key``, so grouping (within or across interfaces) is expressed by where the columns point. Each column is keyed by its ``event_type_id``, the source format's own id for that event stream (a TDT store like ``PtAB``, a NIDQ line like ``XD0``). By default each column gets its own table: ``get_metadata()`` seeds one ``EventTables`` entry per column (named after its ``event_type_id``) and points the column at it, so the simple cases work with no edits, and you only add ``EventTables`` entries to pool several columns into one. (The metadata block is ``EventTables``; each entry is written to the file as one ``EventsTable`` object.)
 
 
 How to Annotate a Single Events Interface
@@ -22,7 +22,7 @@ In the simplest case one interface reads one source. Start by constructing the i
     interface = TDTEventsInterface(folder_path="path/to/tank", metadata_key="behavioral_session")
     nwbfile = interface.create_nwbfile()
 
-For a tank with two epoc stores, ``PtAB`` (port-entry codes) and ``PC0_`` (a reward marker), this writes one table per store, **named after the store**, with the raw values written as-is and no value labels:
+For a tank with two epoc stores, ``PtAB`` (port-entry codes) and ``PC0_`` (a reward marker), this writes one ``EventsTable`` per store, **named after the store**, with the raw values written as-is and no value labels:
 
 .. code-block:: text
 
@@ -44,7 +44,7 @@ For a tank with two epoc stores, ``PtAB`` (port-entry codes) and ``PC0_`` (a rew
     | ...         |
     +-------------+
 
-This is already correct: every event, every timestamp, every raw value is preserved. What it lacks is *meaning*: the table and column are named ``PtAB``, and the code ``64959`` has no human label. Annotation adds those, and annotation is just editing the dict the interface seeds. Print it to see the handles, the seeded defaults, and the value vocabularies discovered from the data:
+This is already correct: every event, every timestamp, every raw value is preserved. What it lacks is *meaning*: the table and column are named ``PtAB``, and the code ``64959`` has no human label. Annotation adds those, and annotation is just editing the dict the interface seeds. Print it to see the event streams it found (each keyed by its ``event_type_id``), the seeded defaults, and the value vocabularies discovered from the data:
 
 .. code-block:: python
 
@@ -85,10 +85,10 @@ It returns roughly this (values illustrative):
         },
     }
 
-What each field is, and what ``get_metadata()`` fills versus leaves to you:
+What each field is, and what ``get_metadata()`` seeds versus leaves to you:
 
-- **The** ``metadata_key`` **block** (``"behavioral_session"``) holds this interface's columns. Named by the ``metadata_key`` you passed (or a source-derived default); it exists so two interfaces' handles never collide.
-- ``event_columns``: one entry per event stream the interface found (``PtAB``, ``PC0_``). **The interface fills these in**; you edit the discovered ones, you do not add columns. The key is the ``event_type_id``.
+- **The** ``metadata_key`` **block** (``"behavioral_session"``) holds this interface's columns. Named by the ``metadata_key`` you passed (or a source-derived default); it exists so identical ``event_type_id`` s from two interfaces never collide.
+- ``event_columns``: one entry per event stream the interface found (``PtAB``, ``PC0_``). **The interface seeds these**; you edit the discovered ones, you do not add columns. The key is the ``event_type_id``.
 - ``column_name``: the column's human-readable name. **Seeded to the** ``event_type_id``; rename it (``"port_entry"``).
 - ``column_categories``: present only for a code-like field with several values. **The keys are the raw values the hardware emitted** (``64959/65023/65535``), discovered from the data; ``labels`` (display text) and ``meanings`` (descriptions) are **seeded blank for you to fill in**. Omit the whole block to make the column continuous (a plain numeric column).
 - ``table_metadata_key`` **and its** ``EventTables`` **entry**: the column's output table. **Seeded to its own** ``event_type_id`` (one table per column). Change it only to pool columns (next section).
@@ -150,7 +150,7 @@ Still within one interface. First, see the default. With no pooling edits, each 
     | ...       | ...        |        | ...       |
     +-----------+------------+        +-----------+
 
-That is fine when the streams are genuinely separate kinds of event. But often several of a tank's stores belong **together**: say the ``port_entry`` codes and the ``reward`` marker are both behavioral events you want in one table. Pooling is one edit: point each column's ``table_metadata_key`` at a shared ``EventTables`` entry.
+That is fine when the event streams are genuinely separate kinds of event. But often several of a tank's stores belong **together**: say the ``port_entry`` codes and the ``reward`` marker are both behavioral events you want in one table. Pooling is one edit: point each column's ``table_metadata_key`` at a shared ``EventTables`` entry.
 
 .. code-block:: python
 
@@ -171,7 +171,7 @@ That is fine when the streams are genuinely separate kinds of event. But often s
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
 
-Both columns now land in one ``BehavioralEvents`` table. Because the two streams have *different* timestamps (a port entry and a reward happen at different moments), pooling them gives a **wide** table: one column per stream, with a value only in the rows where that stream fired and blanks elsewhere:
+Both columns now land in one ``BehavioralEvents`` table. Because the two event streams have *different* timestamps (a port entry and a reward happen at different moments), pooling them gives a **wide** table: one column per event stream, with a value only in the rows where that event stream fired and blanks elsewhere:
 
 .. code-block:: text
 
@@ -186,7 +186,7 @@ Both columns now land in one ``BehavioralEvents`` table. Because the two streams
     | ...         | ...          | ...      |
     +-------------+--------------+----------+
 
-That sparse, wide shape is the natural result of pooling streams that do not share rows. Reshaping it into a **tidy** table (one row per event, the stream identity moved into an ``event_type`` column) is a separate conversion option, not part of the metadata. Pooling columns from *different* interfaces works exactly the same way and is shown next; the only difference is the columns live under different ``metadata_key`` s.
+That sparse, wide shape is the natural result of pooling event streams that do not share rows. Reshaping it into a **tidy** table (one row per event, the event stream's identity moved into an ``event_type`` column) is a separate conversion option, not part of the metadata. Pooling columns from *different* interfaces works exactly the same way and is shown next; the only difference is the columns live under different ``metadata_key`` s.
 
 
 How to Annotate Multiple Events Interfaces
@@ -232,6 +232,6 @@ So far each column keeps its own default table, giving separate tables per inter
     converter.run_conversion(nwbfile_path="session.nwb", metadata=metadata)
     # -> one BehavioralEvents table holding the reward and lick columns from the two interfaces.
 
-As with single-interface pooling, the result is a wide table (one column per source, sparse across rows since the streams have different timestamps); the tidy reshape is a separate conversion option.
+As with single-interface pooling, the result is a wide table (one column per source, sparse across rows since the event streams have different timestamps); the tidy reshape is a separate conversion option.
 
 If you have a use case not covered here, please open an issue at `NeuroConv GitHub Issues <https://github.com/catalystneuro/neuroconv/issues>`_.
