@@ -28,7 +28,7 @@ and no value labels:
 
 .. code-block:: text
 
-    PtAB  (EventsTable in /acquisition; table and column both named after the store's event_type_id)
+    PtAB  (EventsTable in /events; table and column both named after the store's event_type_id)
     ┌───────────┬───────┐
     │ timestamp │  PtAB │   <- column named after the event_type_id; raw codes, no MeaningsTable
     ├───────────┼───────┤
@@ -133,9 +133,9 @@ description. The descriptions become a ``MeaningsTable`` that is **contained in 
 .. code-block:: python
 
     column["column_categories"]["meanings"] = {
-        64959: "left choice",
-        65023: "center choice",
-        65535: "right choice",
+        64959: "Subject chose the left port",
+        65023: "Subject chose the center port",
+        65535: "Subject chose the right port",
     }
 
 The ``choice`` column is unchanged; the events table now holds a ``choice_meanings`` MeaningsTable
@@ -153,13 +153,13 @@ describing each value:
     └───────────┴────────┘
        meanings_tables/
        choice_meanings  (MeaningsTable, describes the choice column)
-       ┌────────┬───────────────┐
-       │ value  │ meaning       │
-       ├────────┼───────────────┤
-       │ left   │ left choice   │
-       │ center │ center choice │
-       │ right  │ right choice  │
-       └────────┴───────────────┘
+       ┌────────┬───────────────────────────────┐
+       │ value  │ meaning                       │
+       ├────────┼───────────────────────────────┤
+       │ left   │ Subject chose the left port   │
+       │ center │ Subject chose the center port │
+       │ right  │ Subject chose the right port  │
+       └────────┴───────────────────────────────┘
 
 **Rename or describe the output table.** Each column writes to the table named by its
 ``table_metadata_key``, seeded to a per-column entry in ``EventTables``. Edit that entry to rename or
@@ -185,13 +185,13 @@ The table is now named ``Choices``. The final state is the events table with its
     └───────────┴────────┘
        meanings_tables/
        choice_meanings  (MeaningsTable)
-       ┌────────┬───────────────┐
-       │ value  │ meaning       │
-       ├────────┼───────────────┤
-       │ left   │ left choice   │
-       │ center │ center choice │
-       │ right  │ right choice  │
-       └────────┴───────────────┘
+       ┌────────┬───────────────────────────────┐
+       │ value  │ meaning                       │
+       ├────────┼───────────────────────────────┤
+       │ left   │ Subject chose the left port   │
+       │ center │ Subject chose the center port │
+       │ right  │ Subject chose the right port  │
+       └────────┴───────────────────────────────┘
 
 **Apply the edits.** Pass the edited metadata to the conversion:
 
@@ -206,10 +206,10 @@ legible.
 
 **Write a continuous (numeric) column.** When a column carries a self-describing measurement rather
 than codes (e.g. a TDT ``Freq`` store of stimulus frequencies in Hz), omit ``column_categories``
-entirely and the raw numbers are written as a
-plain numeric column. Carry the unit in the ``column_name`` (e.g. ``"frequency_hz"``). A bare marker
-like ``PC0_`` is the same idea with no values at all: with no ``column_categories`` it is already a
-timestamps-only column and needs no edit of this kind.
+entirely and the raw numbers are written as a plain numeric column. Carry the unit in the
+``column_name`` (e.g. ``"frequency_hz"``). A bare marker like ``PC0_`` is the same idea with no values
+at all: with no ``column_categories`` it is already a timestamps-only column and needs no edit of this
+kind.
 
 
 .. _annotate_events_shared_table:
@@ -253,29 +253,37 @@ Point each event type's ``table_metadata_key`` at one shared ``EventTables`` ent
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
 
-Both event types now land in one ``BehavioralEvents`` table. Because the two streams have *different*
-timestamps (a choice and a reward happen at different moments), one table is **wide**: one column per
-event stream, with a value only in the rows where that stream fired and blanks elsewhere:
+Both event types now land in one ``BehavioralEvents`` table, one row per event, ordered by
+``timestamp``. Because the rows come from different event types, the shared table carries an
+``event_type`` column naming each row's type, and each event type contributes only the value columns
+it carries: the choice event type adds a ``choice`` column, while the reward marker is a bare
+timestamp and adds no value column. A reward row is therefore identified by ``event_type = "reward"``
+with the ``choice`` cell empty:
 
 .. code-block:: text
 
     BehavioralEvents  (EventsTable)
-    ┌───────────┬────────┬────────┐
-    │ timestamp │ choice │ reward │
-    ├───────────┼────────┼────────┤
-    │     8.500 │        │   X    │   <- a reward event: only the reward column is set
-    │    12.084 │ left   │        │   <- a choice event: only the choice column is set
-    │    13.553 │ right  │        │
-    │    19.310 │        │   X    │
-    │       ... │ ...    │  ...   │
-    └───────────┴────────┴────────┘
+    ┌───────────┬────────────┬────────┐
+    │ timestamp │ event_type │ choice │
+    ├───────────┼────────────┼────────┤
+    │     8.500 │ reward     │        │   <- a bare marker: identified by event_type, no choice value
+    │    12.084 │ choice     │ left   │
+    │    13.553 │ choice     │ right  │
+    │    19.310 │ reward     │        │
+    │       ... │ ...        │ ...    │
+    └───────────┴────────────┴────────┘
 
-The ``choice`` column keeps its ``choice_meanings`` MeaningsTable, now contained in
-``BehavioralEvents``. That sparse, wide shape is the natural result of one table whose event streams
-do not share rows. Reshaping it into a **tidy** table (one row per event, the event stream's identity
-moved into an ``event_type`` column) is a separate conversion option, not part of the metadata.
-Putting columns from *different* interfaces into one table works exactly the same way and is shown
-next; the only difference is the columns live under different ``metadata_key`` s.
+The ``event_type`` column is what makes sharing a table safe: without it a bare marker (which adds no
+value column) would be an all-blank row, indistinguishable from any other, and its identity would be
+lost. With it, every row knows its type regardless of which value columns it fills. The ``choice``
+column keeps its ``choice_meanings`` MeaningsTable, now contained in ``BehavioralEvents``.
+
+By default each event type stays in its own table (no ``event_type`` column needed, since the table
+*is* the type); you share a table when the grouping is worth it, and the writer adds the
+``event_type`` column to keep the rows distinguishable.
+
+Putting event types from *different* interfaces into one table works exactly the same way and is
+shown next; the only difference is the columns live under different ``metadata_key`` s.
 
 
 How to Annotate Multiple Events Interfaces
@@ -327,11 +335,26 @@ interface can route into it.
     metadata["Events"]["nidq"]["event_columns"]["XD1"]["table_metadata_key"] = "behavior"
 
     converter.run_conversion(nwbfile_path="session.nwb", metadata=metadata)
-    # -> one BehavioralEvents table holding the reward and lick columns from the two interfaces.
 
-As with a single-interface shared table, the result is a wide table (one column per source, sparse across
-rows since the event streams have different timestamps); the tidy reshape is a separate conversion
-option.
+Both event types land in one ``BehavioralEvents`` table. As with sharing within a single interface,
+the shared table carries an ``event_type`` column naming each row's type, and each type contributes
+only the value columns it has. Both ``reward`` and ``lick`` here are bare markers (timestamps only,
+no value), so they add no value column at all, the table is just timestamps tagged by type:
+
+.. code-block:: text
+
+    BehavioralEvents  (EventsTable)
+    ┌───────────┬────────────┐
+    │ timestamp │ event_type │
+    ├───────────┼────────────┤
+    │     8.500 │ reward     │   <- from the TDT interface
+    │    11.200 │ lick       │   <- from the NIDQ interface
+    │    19.310 │ reward     │
+    │       ... │ ...        │
+    └───────────┴────────────┘
+
+If a shared type did carry a value (e.g. a labeled choice), it would add its own column, filled only
+on its rows, exactly as in the single-interface case above.
 
 If you have a use case not covered here, please open an issue at `NeuroConv GitHub Issues
 <https://github.com/catalystneuro/neuroconv/issues>`_.
