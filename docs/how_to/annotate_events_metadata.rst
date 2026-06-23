@@ -8,8 +8,8 @@ markers) using NeuroConv's dict-based events metadata format. For the structure 
 metadata dict and what each field means, see :ref:`events_metadata_structure`.
 
 
-How to Annotate a Single Events Interface
------------------------------------------
+How to Annotate Events from a Single Interface
+----------------------------------------------
 
 In the simplest case one interface reads one source. Start by constructing the interface and
 converting with no metadata editing at all: the interface extracts everything needed for a faithful
@@ -157,8 +157,8 @@ themselves; it makes them legible. A bare marker (``PC0_``) is unchanged by this
 ``MeaningsTable``.
 
 
-How to Share One Table Across Several Columns
----------------------------------------------
+How to Write Multiple Event Types to a Single EventsTable
+---------------------------------------------------------
 
 Still within one interface. First, see the default. With no sharing edits, each event stream keeps
 the table ``get_metadata()`` seeded for it, one table per ``event_type_id``, so the two-store tank

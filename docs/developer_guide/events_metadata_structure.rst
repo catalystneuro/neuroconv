@@ -11,10 +11,11 @@ decisions behind the format.
 A discrete event is a timestamp with an optional payload (a code, a category, a measurement),
 produced by an acquisition system such as a TDT store, a NIDQ line, or a marker channel. A single
 source file may contain more than one **event type** (a licking behavior, a frame start, a photodiode
-turning on), so an interface can expose multiple event types. And an experiment may record events
-with several acquisition systems at once, so a conversion can run multiple events interfaces
-together. The purpose of the events metadata dict is to let you specify the data and metadata of all
-those recording configurations.
+turning on), so an interface can expose multiple event types. The source format (or its reader)
+identifies each event type by an **event_type_id**, a label or a numeric code such as a TDT store
+name (``PtAB``) or a NIDQ line (``XD0``). And an experiment may record events with several
+acquisition systems at once, so a conversion can run multiple events interfaces together. The purpose of the events metadata dict is to let the user specify how the data and metadata is
+written under such various configurations.
 
 For user-facing instructions on annotating events, see :ref:`annotate_events_metadata`.
 
@@ -31,9 +32,7 @@ The events metadata system follows the same core principles as the ophys and ece
    interfaces run in one conversion without their metadata clashing (and is consistent with the rest
    of the NeuroConv metadata). Within each interface there is one ``event_metadata_key`` per event
    type (one for licking, another for frame start), which lets every event type be referenced and
-   customized individually. Each ``event_metadata_key`` defaults to that event type's
-   ``event_type_id`` (the acquisition system's own id for it, e.g. the TDT store ``PtAB`` or the
-   NIDQ line ``XD0``).
+   customized individually. Each ``event_metadata_key`` defaults to its ``event_type_id``.
 
    .. code-block:: python
 
@@ -57,11 +56,6 @@ The events metadata system follows the same core principles as the ophys and ece
    Finally, events are written to tables, and each table is identified by a ``table_metadata_key``.
    That key gives every output table an identity so tables can be referenced without clashing; on
    each event column (above) it indicates which table that event is written into.
-
-   The events extracted from each interface are nested inside ``event_columns``. This makes it
-   concrete that they are written as columns of an events table, and it reserves the per-interface
-   block so another kind of per-interface data could be added alongside the columns in the future
-   without reshaping the dict.
 
 2. **EventTables are a top-level entry, one table per event type by default.** Each output table's
    name and description are specified at the top level of ``metadata["Events"]``, under the reserved
@@ -185,12 +179,17 @@ Its **role is disambiguation across interfaces**: every interface's columns live
 store ``PtAB``, two boards both with a line ``XD0``) and never collide, because the full address
 includes the namespace: ``metadata["Events"][metadata_key]["event_columns"][...]``.
 
+An interface's event types are nested inside an ``event_columns`` block (rather than sitting directly
+under the ``metadata_key``). This makes it concrete that they are written as columns of an events
+table, and it reserves the per-interface block so another kind of per-interface data could be added
+alongside the columns in the future without reshaping the dict.
+
 
 The event_metadata_key
 ----------------------
 
 Inside an interface's block, each event type (one event column) is keyed by an
-``event_metadata_key``, which defaults to the ``event_type_id``. It is **what you use to reach and
+``event_metadata_key``, which defaults to its ``event_type_id``. It is **what you use to reach and
 edit one event type's metadata**, and one entry holds everything about that event type's column:
 
 .. code-block:: python
@@ -225,12 +224,7 @@ The column's value vocabulary is ``column_categories``:
   map each raw value to a description (the ``MeaningsTable``, at the NWBEP001 migration). Both are
   optional.
 - **Absence means not categorical.** Omit ``column_categories`` and a numeric column is continuous
-  (raw values written as a plain numeric column) and a string column is free-text. A continuous
-  column's unit currently rides in the ``column_name`` (e.g. ``frequency_hz``), pending an upstream
-  ``unit`` attribute on numeric ``VectorData``.
-
-``column_categories`` is the format-agnostic generalization of NIDQ's ``labels_map``. It is durable
-across the writer migration: ``LabeledEvents.labels`` now, a ``MeaningsTable`` later.
+  (raw values written as a plain numeric column) and a string column is free-text.
 
 .. _events_handling_tables:
 
