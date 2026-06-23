@@ -97,7 +97,7 @@ The events metadata system follows the same core principles as the ophys and ece
 
    When the data is categorical, the raw values the source emits can be remapped here, via ``labels``,
    to something more meaningful for the end user, and ``meanings`` supplies a description per value
-   (which becomes the ``MeaningsTable``). The column itself ends up in the ``EventTable`` keyed by
+   (which becomes the ``MeaningsTable``). The column itself ends up in the ``EventsTable`` keyed by
    that event's ``table_metadata_key``.
 
 Metadata Structure Overview
@@ -238,11 +238,22 @@ Multiple values per event
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When one event type carries more than one value (a structured payload, e.g. an event tagged with
-both a code and a text), the dict represents it as **one** ``event_columns`` **entry per field**, all
-under the **same** ``event_metadata_key``. Each field is named and described independently (its own
-``column_name`` / ``description`` / ``column_categories``); because the fields share the event's
-timestamps they sit on the same rows, becoming side-by-side columns of one table (this is the
-multi-column table from Principle 2). The common single-field case is just the N=1 instance.
+both a code and a text), each field becomes **its own** ``event_columns`` **entry**, with its own
+``event_metadata_key`` (the field name when the source provides one, otherwise a numeric index). The
+entries are joined by sharing the **same** ``table_metadata_key``, so they are written as
+side-by-side columns of one table (this is the multi-column table from Principle 2). Because the
+fields come from the same event they share its timestamps, so those columns sit on the same rows.
+
+.. code-block:: python
+
+    # one event type, two fields -> two entries, same table
+    "event_columns": {
+        "marker": {"column_name": "marker", "table_metadata_key": "textmark"},
+        "text":   {"column_name": "text",   "table_metadata_key": "textmark"},
+    }
+
+Each field is named and described independently (its own ``column_name`` / ``description`` /
+``column_categories``). The common single-field case is just the N=1 instance: one entry, one column.
 
 
 .. _events_handling_tables:
@@ -256,10 +267,10 @@ The third key, ``table_metadata_key``, identifies an output table. Unlike the ot
 
 The tables themselves live in the global ``EventTables`` block. ``EventTables`` is the only reserved
 key under ``metadata["Events"]`` (every other top-level key is an interface ``metadata_key``). Each
-entry's ``table_name`` is the NWB object name (CamelCase); the entry's key is its
-``table_metadata_key``, a plain id. The written object is version-specific: an ``ndx-events`` 0.2.x
-container (``Events`` / ``LabeledEvents``) on the interim writer, a native ``EventsTable`` after the
-NWBEP001 migration. Only the writer changes; this metadata contract does not.
+entry's ``table_name`` is the NWB object name (CamelCase) of the output ``EventsTable``; the entry's
+key is its ``table_metadata_key``, a plain id used only to reference the table from columns. This
+metadata contract is fixed; the object the writer produces from it is covered in the migration
+section below.
 
 A column joins a table by naming it in its ``table_metadata_key`` field. This is the third and last
 key, and the full path from an ``event_type_id`` to an output table runs through all three:
