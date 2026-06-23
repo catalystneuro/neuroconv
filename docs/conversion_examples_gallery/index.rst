@@ -100,6 +100,8 @@ Fiber Photometry
     :maxdepth: 1
 
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    NPM Fiber Photometry <fiberphotometry/npm_fp>
+    NPM Legacy Fiber Photometry <fiberphotometry/npm_legacy_fp>
 
 Behavior
 --------

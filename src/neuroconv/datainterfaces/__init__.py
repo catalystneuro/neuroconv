@@ -98,6 +98,10 @@ from .ophys.micromanagertiff.micromanagertiffdatainterface import (
 )
 from .ophys.minian.miniandatainterface import MinianSegmentationInterface
 from .ophys.miniscope.miniscopeimagingdatainterface import MiniscopeImagingInterface
+from .ophys.npm_fp.npmfiberphotometrydatainterface import (
+    NPMFiberPhotometryInterface,
+    NPMLegacyFiberPhotometryInterface,
+)
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageImagingInterface,
@@ -184,6 +188,8 @@ interface_list = [
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
     TDTFiberPhotometryInterface,
+    NPMFiberPhotometryInterface,
+    NPMLegacyFiberPhotometryInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
@@ -226,7 +232,11 @@ interfaces_by_category = dict(
         for interface in interface_list
         if "Segmentation" in interface.__name__
     },
-    fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
+    fiber_photometry={
+        "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+        "NPMFiberPhotometry": NPMFiberPhotometryInterface,
+        "NPMLegacyFiberPhotometry": NPMLegacyFiberPhotometryInterface,
+    },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
