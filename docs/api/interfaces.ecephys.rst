@@ -41,6 +41,10 @@ European Data Format (EDF) Analog
 ----------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.edf.edfanaloginterface
 
+EEGLAB Recording
+----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.eeglab.eeglabdatainterface
+
 Intan Amplifier
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intandatainterface
