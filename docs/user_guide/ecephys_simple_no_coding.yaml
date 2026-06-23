@@ -1,0 +1,28 @@
+metadata:
+  NWBFile:
+    lab: My Lab
+    institution: My Institution
+data_interfaces:
+  - SpikeGLXRecordingInterface
+
+
+experiments:
+
+  some_task:
+    metadata:
+      NWBFile:
+        session_description: Subject performing some task.
+
+    sessions:
+      - nwbfile_name: my_example_spikeglx_data_no_coding
+        source_data:
+          SpikeGLXRecordingInterface:
+            file_path: /shared/catalystneuro/ephy_testing_data/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin
+        conversion_options:
+          SpikeGLXRecordingInterface:
+            stub_test: True
+        metadata:
+          NWBFile:
+            session_start_time: "2020-10-09T21:19:09+00:00"
+          Subject:
+            subject_id: "Sub-001"
