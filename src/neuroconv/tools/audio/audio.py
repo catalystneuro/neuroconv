@@ -13,9 +13,10 @@ def add_acoustic_waveform_series(
     rate: float,
     metadata: dict,
     starting_time: float = 0.0,
-    parent_container: Literal["stimulus", "acquisition"] = "stimulus",
-    iterator_options: dict | None = None,
     write_as: Literal["stimulus", "acquisition"] | None = None,
+    iterator_options: dict | None = None,
+    *,
+    parent_container: Literal["stimulus", "acquisition"] = "stimulus",
 ) -> NWBFile:
     """
 
