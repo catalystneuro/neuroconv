@@ -29,22 +29,22 @@ and no value labels:
 .. code-block:: text
 
     PtAB  (EventsTable in /acquisition; table and column both named after the store's event_type_id)
-    +-------------+--------------+
-    | timestamp   | PtAB         |     <- column named after the event_type_id; raw codes, no MeaningsTable
-    +-------------+--------------+
-    | 12.084      | 64959        |
-    | 13.553      | 65535        |
-    | ...         | ...          |
-    +-------------+--------------+
+    ┌───────────┬───────┐
+    │ timestamp │  PtAB │   <- column named after the event_type_id; raw codes, no MeaningsTable
+    ├───────────┼───────┤
+    │    12.084 │ 64959 │
+    │    13.553 │ 65535 │
+    │       ... │   ... │
+    └───────────┴───────┘
 
     PC0_  (EventsTable; a bare marker, so timestamps only)
-    +-------------+
-    | timestamp   |
-    +-------------+
-    |  8.500      |
-    | 19.310      |
-    | ...         |
-    +-------------+
+    ┌───────────┐
+    │ timestamp │
+    ├───────────┤
+    │     8.500 │
+    │    19.310 │
+    │       ... │
+    └───────────┘
 
 This is already correct: every event, every timestamp, every raw value is preserved. What it lacks
 is *meaning*: the table and column are named ``PtAB``, and the code ``64959`` has no human label.
@@ -84,7 +84,7 @@ It returns roughly this (values illustrative):
         },
         # EventTables is seeded with one default entry per column (each named after its event_type_id),
         # since each column's table_metadata_key defaults to its own table. Shown so you can
-        # rename or describe them; you only add entries to pool columns (see the next section).
+        # rename or describe them; you only add entries when several columns should share one table (see the next section).
         "EventTables": {
             "PtAB": {"table_name": "PtAB", "description": "Events from TDT epoc store 'PtAB'."},
             "PC0_": {"table_name": "PC0_", "description": "Events from TDT epoc store 'PC0_'."},
@@ -106,8 +106,8 @@ What each field is, and what ``get_metadata()`` seeds versus leaves to you:
   (display text) and ``meanings`` (descriptions) are **seeded blank for you to fill in**. Omit the
   whole block to make the column continuous (a plain numeric column).
 - ``table_metadata_key`` **and its** ``EventTables`` **entry**: the column's output table. **Seeded
-  to its own** ``event_type_id`` (one table per column). Change it only to pool columns (next
-  section).
+  to its own** ``event_type_id`` (one table per column). Change it only to make columns share a
+  table (next section).
 
 Now edit: rename the column and curate its vocabulary, then convert again.
 
@@ -139,13 +139,13 @@ compare this to the bare output from the first run above:
 .. code-block:: text
 
     PortEntries  (EventsTable in /acquisition; table_name now "PortEntries", was "PtAB")
-    +-------------+--------------+
-    | timestamp   | port_entry   |     <- column_name now "port_entry", was "PtAB"
-    +-------------+--------------+
-    | 12.084      | 64959        |     <- raw codes unchanged; meaning now attached via the table below
-    | 13.553      | 65535        |
-    | ...         | ...          |
-    +-------------+--------------+
+    ┌───────────┬────────────┐
+    │ timestamp │ port_entry │   <- column_name now "port_entry", was "PtAB"
+    ├───────────┼────────────┤
+    │    12.084 │      64959 │   <- raw codes unchanged; meaning now attached via the table below
+    │    13.553 │      65535 │
+    │       ... │        ... │
+    └───────────┴────────────┘
             port_entry  ->  MeaningsTable   { 64959: "left port entry",
                                               65023: "center port entry",
                                               65535: "right port entry" }   (from column_categories.meanings)
@@ -157,27 +157,27 @@ themselves; it makes them legible. A bare marker (``PC0_``) is unchanged by this
 ``MeaningsTable``.
 
 
-How to Pool Several Columns into One Table
-------------------------------------------
+How to Share One Table Across Several Columns
+---------------------------------------------
 
-Still within one interface. First, see the default. With no pooling edits, each event stream keeps
+Still within one interface. First, see the default. With no sharing edits, each event stream keeps
 the table ``get_metadata()`` seeded for it, one table per ``event_type_id``, so the two-store tank
 from above writes **two separate tables**:
 
 .. code-block:: text
 
     PortEntries  (EventsTable)        PC0_  (EventsTable)
-    +-----------+------------+        +-----------+
-    | timestamp | port_entry |        | timestamp |
-    +-----------+------------+        +-----------+
-    | 12.084    | 64959      |        |  8.500    |
-    | 13.553    | 65535      |        | 19.310    |
-    | ...       | ...        |        | ...       |
-    +-----------+------------+        +-----------+
+    ┌───────────┬────────────┐        ┌───────────┐
+    │ timestamp │ port_entry │        │ timestamp │
+    ├───────────┼────────────┤        ├───────────┤
+    │    12.084 │      64959 │        │     8.500 │
+    │    13.553 │      65535 │        │    19.310 │
+    │       ... │        ... │        │       ... │
+    └───────────┴────────────┘        └───────────┘
 
 That is fine when the event streams are genuinely separate kinds of event. But often several of a
 tank's stores belong **together**: say the ``port_entry`` codes and the ``reward`` marker are both
-behavioral events you want in one table. Pooling is one edit: point each column's
+behavioral events you want in one table. Sharing is one edit: point each column's
 ``table_metadata_key`` at a shared ``EventTables`` entry.
 
 .. code-block:: python
@@ -187,7 +187,7 @@ behavioral events you want in one table. Pooling is one edit: point each column'
     # Define the shared table once (or reuse a seeded entry and rename it).
     metadata["Events"]["EventTables"]["behavior"] = {
         "table_name": "BehavioralEvents",
-        "description": "Port entries and rewards, pooled.",
+        "description": "Port entries and rewards in one shared table.",
     }
 
     # Point both columns at it instead of their own default tables.
@@ -200,27 +200,28 @@ behavioral events you want in one table. Pooling is one edit: point each column'
     nwbfile = interface.create_nwbfile(metadata=metadata)
 
 Both columns now land in one ``BehavioralEvents`` table. Because the two event streams have
-*different* timestamps (a port entry and a reward happen at different moments), pooling them gives a
-**wide** table: one column per event stream, with a value only in the rows where that event stream
+*different* timestamps (a port entry and a reward happen at different moments), sharing a table gives
+a **wide** table: one column per event stream, with a value only in the rows where that event stream
 fired and blanks elsewhere:
 
 .. code-block:: text
 
     BehavioralEvents  (EventsTable in /acquisition)
-    +-------------+--------------+----------+
-    | timestamp   | port_entry   | reward   |
-    +-------------+--------------+----------+
-    |  8.500      |              |   X      |     <- a reward event: only the reward column is set
-    | 12.084      | 64959        |          |     <- a port entry: only port_entry is set
-    | 13.553      | 65535        |          |
-    | 19.310      |              |   X      |
-    | ...         | ...          | ...      |
-    +-------------+--------------+----------+
+    ┌───────────┬────────────┬────────┐
+    │ timestamp │ port_entry │ reward │
+    ├───────────┼────────────┼────────┤
+    │     8.500 │            │      X │   <- a reward event: only the reward column is set
+    │    12.084 │      64959 │        │   <- a port entry: only port_entry is set
+    │    13.553 │      65535 │        │
+    │    19.310 │            │      X │
+    │       ... │        ... │    ... │
+    └───────────┴────────────┴────────┘
 
-That sparse, wide shape is the natural result of pooling event streams that do not share rows.
-Reshaping it into a **tidy** table (one row per event, the event stream's identity moved into an
-``event_type`` column) is a separate conversion option, not part of the metadata. Pooling columns
-from *different* interfaces works exactly the same way and is shown next; the only difference is the
+That sparse, wide shape is the natural result of a shared table whose event streams do not share
+rows. Reshaping it into a **tidy** table (one row per event, the event stream's identity moved into
+an ``event_type`` column) is a separate conversion option, not part of the metadata. Sharing a table
+across columns from *different* interfaces works exactly the same way and is shown next; the only
+difference is the
 columns live under different ``metadata_key`` s.
 
 
@@ -252,8 +253,8 @@ interface's ``event_columns`` block so those identical ids never clash.
     metadata["Events"]["tdt"]["event_columns"]["PtAB"]["column_name"] = "port_entry"
     metadata["Events"]["nidq"]["event_columns"]["XD0"]["column_name"] = "camera_frame"
 
-So far each column keeps its own default table, giving separate tables per interface. Pooling
-**across** interfaces works exactly like pooling within one (above): point each column's
+So far each column keeps its own default table, giving separate tables per interface. Sharing a
+table **across** interfaces works exactly like sharing within one (above): point each column's
 ``table_metadata_key`` at a shared ``EventTables`` entry. The only difference is the columns live
 under different ``metadata_key`` s; the shared ``EventTables`` block is global, so columns from any
 interface can route into it.
@@ -263,7 +264,7 @@ interface can route into it.
     # A shared table for events from both interfaces.
     metadata["Events"]["EventTables"]["behavior"] = {
         "table_name": "BehavioralEvents",
-        "description": "Rewards (TDT) and licks (NIDQ), pooled across interfaces.",
+        "description": "Rewards (TDT) and licks (NIDQ) sharing one table across interfaces.",
     }
 
     # A TDT reward marker and a NIDQ lick line, routed into the one shared table.
@@ -275,7 +276,7 @@ interface can route into it.
     converter.run_conversion(nwbfile_path="session.nwb", metadata=metadata)
     # -> one BehavioralEvents table holding the reward and lick columns from the two interfaces.
 
-As with single-interface pooling, the result is a wide table (one column per source, sparse across
+As with a single-interface shared table, the result is a wide table (one column per source, sparse across
 rows since the event streams have different timestamps); the tidy reshape is a separate conversion
 option.
 
