@@ -11,14 +11,17 @@ decisions behind the format.
 A discrete event is a timestamp with an optional payload (a code, a category, a measurement),
 produced by an acquisition system such as a TDT store, a NIDQ line, or a marker channel. A single
 source file may contain more than one **event type** (a licking behavior, a frame start, a photodiode
-turning on), so an interface can expose multiple event types. The source format (or its reader)
-identifies each event type by an **event_type_id**, a label or a numeric code such as a TDT store
-name (``PtAB``) or a NIDQ line (``XD0``). And an experiment may record events with several
-acquisition systems at once, so a conversion can run multiple events interfaces together. The purpose of the events metadata dict is to let the user specify how the data and metadata is
-written under such various configurations.
+turning on), so an interface can expose multiple event types; and an experiment may record events
+with several acquisition systems at once, so a conversion can run multiple events interfaces
+together. The purpose of the events metadata dict is to let the user specify how the data and
+metadata is written under such various configurations.
 
 For user-facing instructions on annotating events, see :ref:`annotate_events_metadata`.
 
+Throughout this document, ``event_type_id`` means whatever the source format (or its reader) uses to
+identify a type of event (licking, a camera frame onset, a reward). It may be a human-readable
+label, an internal numeric code, or a store or line name (e.g. a TDT store ``PtAB``, a NIDQ line
+``XD0``); its form varies by format.
 
 Design Principles
 -----------------
@@ -26,13 +29,11 @@ Design Principles
 The events metadata system follows the same core principles as the ophys and ecephys systems (see
 :ref:`ophys_metadata_structure`), specialized to discrete events:
 
-1. **Dictionary-Based Organization.** Everything related to events is written under
-   ``metadata["Events"]`` and uses a dict-based organization at every level. All the event types
-   coming from one interface live under the same namespace, its ``metadata_key``, which lets several
-   interfaces run in one conversion without their metadata clashing (and is consistent with the rest
-   of the NeuroConv metadata). Within each interface there is one ``event_metadata_key`` per event
-   type (one for licking, another for frame start), which lets every event type be referenced and
-   customized individually. Each ``event_metadata_key`` defaults to its ``event_type_id``.
+1. **Dictionary-Based Organization.** Everything lives under ``metadata["Events"]``, dict-keyed at
+   every level: each interface is namespaced by its ``metadata_key``, each event type within it by
+   its ``event_metadata_key`` (defaulting to the source's ``event_type_id``), and each column names
+   the output table it joins via ``table_metadata_key``. Keying every level lets several interfaces
+   run in one conversion without clashing, and is consistent with the rest of the NeuroConv metadata.
 
    .. code-block:: python
 
@@ -42,55 +43,29 @@ The events metadata system follows the same core principles as the ophys and ece
                    "licking": {                          # an event type, keyed by its event_metadata_key
                        "column_name": "lick",
                        "description": "Lick detections.",
-                       "table_metadata_key": "behavior",
+                       "table_metadata_key": "behavior",   # the table this event is written into
                    },
                    "frame_start": {                      # a second event type in the same interface
                        "column_name": "frame_start",
                        "description": "Imaging frame-start pulses.",
-                       "table_metadata_key": "frame_start",   # write this event into this table
+                       "table_metadata_key": "frame_start",
                    },
                },
            },
        }
 
-   Finally, events are written to tables, and each table is identified by a ``table_metadata_key``.
-   That key gives every output table an identity so tables can be referenced without clashing; on
-   each event column (above) it indicates which table that event is written into.
-
-2. **EventTables are a top-level entry, one table per event type by default.** Each output table's
-   name and description are specified at the top level of ``metadata["Events"]``, under the reserved
-   ``EventTables`` key, separate from any interface's block:
-
-   .. code-block:: python
-
-       metadata["Events"]["EventTables"] = {
-           "behavior":    {"table_name": "BehavioralEvents", "description": "Licking events."},
-           "frame_start": {"table_name": "FrameStart",       "description": "Imaging frame-start pulses."},
-       }
-
-   ``EventTables`` is shared across interfaces: because it sits at the top level and not under any
-   ``metadata_key``, a column from any interface can route into any table. By default every event
-   type creates its own single-column table, so a single interface may write more than one table.
-   Two cases put several columns in one table: an explicit **share** (point columns at the same
-   ``table_metadata_key``), and the one **exception** where it happens automatically, an event type
-   with a multi-value payload. Both are detailed in :ref:`The table_metadata_key
+   The three keys are detailed in :ref:`The metadata_key Parameter <events_metadata_key_param>`,
+   :ref:`The event_metadata_key <events_event_metadata_key>`, and :ref:`The table_metadata_key
    <events_handling_tables>`.
 
-3. **Categorical labels and the MeaningsTable** are controlled through the event column entry,
-   ``metadata["Events"][metadata_key]["event_columns"][event_metadata_key]["column_categories"]``:
+2. **EventTables are top-level and shared.** Output tables are declared in a global ``EventTables``
+   block at the top level of ``metadata["Events"]`` (not under any interface), so a column from any
+   interface can route into any table. By default each event type gets its own table. See
+   :ref:`The table_metadata_key <events_handling_tables>`.
 
-   .. code-block:: python
-
-       column = metadata["Events"]["behavioral_session"]["event_columns"]["licking"]
-       column["column_categories"] = {
-           "labels":   {1: "left", 2: "right"},                 # remap each raw source value for display
-           "meanings": {1: "left lick", 2: "right lick"},       # a description per value (the MeaningsTable)
-       }
-
-   When the data is categorical, the raw values the source emits can be remapped here, via ``labels``,
-   to something more meaningful for the end user, and ``meanings`` supplies a description per value
-   (which becomes the ``MeaningsTable``). The column itself ends up in the ``EventsTable`` keyed by
-   that event's ``table_metadata_key``.
+3. **Categorical values and the MeaningsTable.** A categorical column's value vocabulary , the
+   ``labels`` shown for each raw value and the ``meanings`` that become a ``MeaningsTable`` , is set
+   per column via ``column_categories``. See :ref:`The event_metadata_key <events_event_metadata_key>`.
 
 Metadata Structure Overview
 ---------------------------
@@ -155,6 +130,8 @@ values are real: ``PtAB`` port codes and the constant-value ``PC0_`` marker are 
     }
 
 
+.. _events_metadata_key_param:
+
 The metadata_key Parameter
 --------------------------
 
@@ -184,6 +161,8 @@ under the ``metadata_key``). This makes it concrete that they are written as col
 table, and it reserves the per-interface block so another kind of per-interface data could be added
 alongside the columns in the future without reshaping the dict.
 
+
+.. _events_event_metadata_key:
 
 The event_metadata_key
 ----------------------
@@ -220,8 +199,7 @@ The column's value vocabulary is ``column_categories``:
 - **Presence means categorical.** ``column_categories = {labels, meanings}`` declares the column's
   values. The **keys of both maps are the raw values the source emits** (a TDT strobe value, a
   decoded code, a line state, e.g. the port codes ``64959/65023/65535`` above). ``labels`` map each
-  raw value to the cell text written now (the interim ``LabeledEvents.labels``), and ``meanings``
-  map each raw value to a description (the ``MeaningsTable``, at the NWBEP001 migration). Both are
+  raw value to a display label, and ``meanings`` map each raw value to a description. Both are
   optional.
 - **Absence means not categorical.** Omit ``column_categories`` and a numeric column is continuous
   (raw values written as a plain numeric column) and a string column is free-text.
@@ -235,59 +213,50 @@ The third key, ``table_metadata_key``, identifies an output table. Unlike the ot
 *nest* the columns under them), this one is a **reference**: each event column names, in its
 ``table_metadata_key`` field, the table it is written into.
 
-The tables themselves live in the global ``EventTables`` block. ``EventTables`` is the only reserved
+The tables themselves are declared in the global ``EventTables`` block, at the top level of
+``metadata["Events"]`` (separate from any interface's block):
+
+.. code-block:: python
+
+    metadata["Events"]["EventTables"] = {
+        "behavior":    {"table_name": "BehavioralEvents", "description": "Licking events."},
+        "frame_start": {"table_name": "FrameStart",       "description": "Imaging frame-start pulses."},
+    }
+
+``EventTables`` is the only reserved
 key under ``metadata["Events"]`` (every other top-level key is an interface ``metadata_key``). Each
 entry's ``table_name`` is the NWB object name (CamelCase) of the output ``EventsTable``; the entry's
 key is its ``table_metadata_key``, a plain id used only to reference the table from columns. This
 metadata contract is fixed; the object the writer produces from it is covered in the migration
 section below.
 
-A column joins a table by naming it in its ``table_metadata_key`` field. This is the third and last
-key, and the full path from an ``event_type_id`` to an output table runs through all three:
-
-.. code-block:: text
-
-    metadata["Events"]
-        |
-        |-- "tdt_session"                 <- metadata_key       (which interface's block)
-        |     `-- "event_columns"
-        |           `-- "PtAB"            <- event_metadata_key (which column; = the event_type_id)
-        |                 |-- "column_name": "port_entry"
-        |                 `-- "table_metadata_key": "port_entries"  --,
-        |                                                             |  (the join: this column
-        `-- "EventTables"                                            |   names the table it enters)
-              `-- "port_entries"          <- table_metadata_key  <---'
-                    |-- "table_name": "PortEntries"   (the NWB object name)
-                    `-- "description": ...
-
-The first two keys are *containment* (the column lives inside the interface's block); the third is a
-*reference* (the column points sideways to a global table). That one reference is the whole sharing
-mechanism. Unlike ophys ``MicroscopySeries`` (which carries ``imaging_plane_metadata_key`` to point
-at its plane), an ``EventTables`` entry does **not** list its member columns; each column names the
-table it joins. The relationship is many-to-one, so the link lives on the column, not the table.
-Because ``EventTables`` is global (not nested under any ``metadata_key``), a column from any
-interface can route into any table, which is the cross-interface sharing mechanism.
-
 By default ``get_metadata()`` seeds one ``table_metadata_key`` per event type, so each event type
 gets its own table and the common cases need no edits. To put several event types in one table
 instead, **share by linking**: point each column's ``table_metadata_key`` at one shared
-``EventTables`` entry (define it if it is not a seeded default). The same edit shares a table across
+``EventTables`` entry (define it if it is not a seeded default); see
+:ref:`annotate_events_shared_table` for a worked example. The same edit shares a table across
 interfaces, since the table block is global. Because the shared types have different timestamps, the
-result is a **wide, non-tidy table** (one column per type, sparse across rows); reshaping it into a
-tidy table (one row per event, the type in an ``event_type`` column) is a separate conversion
-option, not part of this metadata. See :ref:`annotate_events_metadata` for the worked example.
+result is a **wide, non-tidy table** (one column per type, sparse across rows). Reshaping it into a
+tidy form (one row per event, the type in an ``event_type`` column) is out of scope for this
+metadata.
 
 .. _events_multi_value:
 
-The exception: multiple values per event
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Handling events with multiple values per event
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Sharing is usually the user *choosing* to put several event types in one table. There is one case
-where several columns share a table **automatically**: an event type with a multi-value payload (a
-structured event, e.g. one tagged with both a code and a text). Each field becomes **its own**
-``event_columns`` entry, with its own ``event_metadata_key`` (the field name when the source
-provides one, otherwise a numeric index), and the entries are seeded with the **same**
-``table_metadata_key`` so they are written as side-by-side columns of one table:
+In most acquisition systems an event is either a **pure timestamp** (a bare marker, e.g. a TTL pulse
+or a reward) or a timestamp with a **single value** (a code or label, e.g. a port code). Both write
+straightforwardly. Every event table has a built-in ``timestamp`` column, so a pure timestamp needs
+no value column at all, it is just an ``EventsTable`` with its ``timestamp`` column and nothing else
+(one ``event_columns`` entry, no ``column_categories``). A single value adds one value column
+alongside ``timestamp`` (one ``event_columns`` entry, one value column).
+
+Some events, though, carry **more than one value per occurrence** (a structured payload, e.g. a
+Spike2 TextMark tagged with both a numeric ``marker`` code and a ``text`` string). Here each field
+becomes **its own** ``event_columns`` entry, with its own ``event_metadata_key`` (the field name
+when the source provides one, otherwise a numeric index), and the entries are seeded with the
+**same** ``table_metadata_key`` so they are written as side-by-side columns of one table:
 
 .. code-block:: python
 
@@ -297,11 +266,11 @@ provides one, otherwise a numeric index), and the entries are seeded with the **
         "text":   {"column_name": "text",   "table_metadata_key": "textmark"},
     }
 
-Unlike a user-chosen shared table, the fields come from the *same* event, so they share its
-timestamps and the columns sit on the same rows, the table is tidy by construction, not
-wide-and-sparse. Each field is named
-and described independently (its own ``column_name`` / ``description`` / ``column_categories``). The
-common single-field case is just the N=1 instance: one entry, one column.
+This is the one case where several columns share a table **automatically** rather than by user
+choice. And unlike a user-chosen shared table, the fields come from the *same* event, so they share
+its timestamps and the columns sit on the same rows, the table is tidy by construction, not
+wide-and-sparse. Each field is named and described independently (its own ``column_name`` /
+``description`` / ``column_categories``).
 
 
 When Objects Are Created
