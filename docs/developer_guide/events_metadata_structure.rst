@@ -215,7 +215,7 @@ The fields:
   ``VectorData`` description in the output table (default: a generic description naming the source).
 - ``column_categories`` , the column's value vocabulary (see below); present only for a categorical
   column.
-- ``table_metadata_key`` , which output table the column joins (see :ref:`Handling Tables
+- ``table_metadata_key`` , which output table the column joins (see :ref:`The table_metadata_key
   <events_handling_tables>`).
 
 The column's value vocabulary is ``column_categories``:
@@ -237,23 +237,25 @@ across the writer migration: ``LabeledEvents.labels`` now, a ``MeaningsTable`` l
 Multiple values per event
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An event can carry more than one value (a structured payload, e.g. an event tagged with both a code
-and a text). The convention: ``get_metadata()`` returns **one** ``event_columns`` **entry per
-field**, all under the **same** ``event_metadata_key`` (one event type). The fields share the
-event's timestamps, so they sit on the same rows, one row per event, the fields side by side as
-columns of one table. Each field is named and described independently (its own ``column_name`` /
-``column_categories``), but they are never split into separate objects per value, and by default
-they route to one table together (see :ref:`the next section <events_handling_tables>`). The common
-single-field case is just the N=1 instance: one field, one column.
+When one event type carries more than one value (a structured payload, e.g. an event tagged with
+both a code and a text), the dict represents it as **one** ``event_columns`` **entry per field**, all
+under the **same** ``event_metadata_key``. Each field is named and described independently (its own
+``column_name`` / ``description`` / ``column_categories``); because the fields share the event's
+timestamps they sit on the same rows, becoming side-by-side columns of one table (this is the
+multi-column table from Principle 2). The common single-field case is just the N=1 instance.
 
 
 .. _events_handling_tables:
 
-Handling Tables
----------------
+The table_metadata_key
+----------------------
 
-Output tables live in the global ``EventTables`` block. ``EventTables`` is the only reserved key
-under ``metadata["Events"]`` (every other top-level key is an interface ``metadata_key``). Each
+The third key, ``table_metadata_key``, identifies an output table. Unlike the other two keys (which
+*nest* the columns under them), this one is a **reference**: each event column names, in its
+``table_metadata_key`` field, the table it is written into.
+
+The tables themselves live in the global ``EventTables`` block. ``EventTables`` is the only reserved
+key under ``metadata["Events"]`` (every other top-level key is an interface ``metadata_key``). Each
 entry's ``table_name`` is the NWB object name (CamelCase); the entry's key is its
 ``table_metadata_key``, a plain id. The written object is version-specific: an ``ndx-events`` 0.2.x
 container (``Events`` / ``LabeledEvents``) on the interim writer, a native ``EventsTable`` after the
@@ -328,8 +330,8 @@ single shared configuration hold all output tables for a project, with the per-s
 code setting ``table_metadata_key`` references to choose which columns merge where.
 
 
-Migration: the current writer versus the target
-------------------------------------------------
+Migration: from ndx-events 0.2.x to fully released NWBEP001
+-----------------------------------------------------------
 
 The metadata contract above is the **target**, shaped for the native NWBEP001 ``EventsTable``. The
 interim writer runs against ``ndx-events`` 0.2.x, which is far less expressive, so part of the
@@ -342,7 +344,8 @@ label legend), ignoring the richer payload:
 
 - A categorical column (``column_categories`` present) becomes a ``LabeledEvents``: the raw values
   are recoded to dense ints in ``LabeledEvents.data``, and ``labels`` become
-  ``LabeledEvents.labels``.
+  ``LabeledEvents.labels``. The ``meanings`` entry has no native home yet, so it is appended to the
+  object ``description`` as a stopgap.
 - A bare marker (no ``column_categories``) becomes an ``Events`` (timestamps only).
 
 Metadata used now, and how its meaning shifts at migration:
@@ -357,11 +360,14 @@ Metadata used now, and how its meaning shifts at migration:
    * - ``column_name``
      - the **object name** of the per-column ``LabeledEvents``/``Events`` (each column is its own container)
      - a real **column** in a shared ``EventsTable``
+   * - ``description``
+     - the per-column object's ``description`` (with ``meanings`` appended to it as a stopgap, see below)
+     - the column's ``VectorData`` description in the shared ``EventsTable``
    * - ``column_categories.labels``
      - ``LabeledEvents.labels`` (the string legend)
      - the categorical column's cell values
    * - ``column_categories.meanings``
-     - **appended to the object** ``description`` as a stopgap (no table for them yet)
+     - **appended to the column's** ``description`` as a stopgap (no table for them yet)
      - a real ``MeaningsTable`` linked to the column
    * - ``table_metadata_key``
      - **inert**: each column is its own container, so merging several columns into one table is a no-op (the routing is recorded but not realized)
