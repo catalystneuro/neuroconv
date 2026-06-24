@@ -74,7 +74,7 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         self,
         folder_path: DirectoryPath,
         *,
-        event_names: list[str] | None = None,
+        exclude_events: list[str] | None = None,
         metadata_key: str = "TDTEvents",
         verbose: bool = False,
     ):
@@ -84,9 +84,8 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         ----------
         folder_path : DirectoryPath
             The path to the folder containing the TDT data.
-        event_names : list[str], optional
-            The names of the TDT epocs to store as events. If None (default), every epoc in the
-            tank is stored.
+        exclude_events : list[str], optional
+            The names of the TDT epocs to skip. If None (default), every epoc in the tank is stored.
         metadata_key : str, default: "TDTEvents"
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
             Override it when multiple TDT events interfaces are used in the same conversion so their
@@ -96,7 +95,7 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         """
         super().__init__(
             folder_path=folder_path,
-            event_names=event_names,
+            exclude_events=exclude_events,
             verbose=verbose,
         )
         self.metadata_key = metadata_key
@@ -119,10 +118,9 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         metadata["NWBFile"]["session_start_time"] = session_start_datetime.isoformat()
 
         epocs = self.load(evtype=["epocs"]).epocs
-        event_names = self.source_data["event_names"]
-        if event_names is None:
-            event_names = list(epocs.keys())
-        for epoc_name in event_names:
+        exclude_events = self.source_data["exclude_events"] or []
+        included_events = [epoc_name for epoc_name in epocs.keys() if epoc_name not in exclude_events]
+        for epoc_name in included_events:
             data = np.asarray(epocs[epoc_name].data)
             column = {
                 "column_name": epoc_name,

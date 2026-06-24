@@ -85,16 +85,16 @@ class TestTDTEventsInterface:
         expected = datetime(2020, 7, 21, 17, 2, 24, 999999, tzinfo=timezone.utc).isoformat()
         assert metadata["NWBFile"]["session_start_time"] == expected
 
-    def test_default_event_names_lists_all_epocs(self, interface):
+    def test_default_lists_all_epocs(self, interface):
         event_columns = interface.get_metadata()["Events"]["TDTEvents"]["event_columns"]
         assert set(event_columns.keys()) == set(EPOC_NAME_TO_LENGTH)
         for epoc_name, column in event_columns.items():
             assert column["column_name"] == epoc_name
 
-    def test_selected_event_names(self):
-        interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, event_names=["PrtR", "RNPS"])
+    def test_exclude_events(self):
+        interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, exclude_events=["LNRW", "LNnR"])
         event_columns = interface.get_metadata()["Events"]["TDTEvents"]["event_columns"]
-        assert list(event_columns.keys()) == ["PrtR", "RNPS"]
+        assert set(event_columns.keys()) == {"PrtR", "RNPS"}
 
     def test_metadata_key_default_and_override(self):
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH)
@@ -149,7 +149,7 @@ class TestTDTEventsStrobeInterface:
 
     @pytest.fixture
     def interface(self):
-        return TDTEventsInterface(folder_path=STROBE_TANK_PATH, event_names=["PAB_"])
+        return TDTEventsInterface(folder_path=STROBE_TANK_PATH, exclude_events=["Vid1", "Tick"])
 
     def test_metadata_seeds_strobe_labels(self, interface):
         column = interface.get_metadata()["Events"]["TDTEvents"]["event_columns"]["PAB_"]
@@ -158,7 +158,7 @@ class TestTDTEventsStrobeInterface:
         assert column["description"] == "Onset times of the TDT epoc 'PAB_', labeled by strobe value."
 
     def test_counter_store_has_no_labels(self):
-        interface = TDTEventsInterface(folder_path=STROBE_TANK_PATH, event_names=["Tick"])
+        interface = TDTEventsInterface(folder_path=STROBE_TANK_PATH, exclude_events=["PAB_", "Vid1"])
         column = interface.get_metadata()["Events"]["TDTEvents"]["event_columns"]["Tick"]
         assert "column_categories" not in column
 

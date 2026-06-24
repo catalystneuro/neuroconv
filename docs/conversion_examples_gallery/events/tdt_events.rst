@@ -16,8 +16,8 @@ Each selected epoc is written as an ``ndx_events.Events`` object (onset timestam
 
     >>> folder_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_63_207-181030-103332"
 
-    >>> # event_names selects which TDT epocs to store; omit it to store every epoc in the tank
-    >>> interface = TDTEventsInterface(folder_path=folder_path, event_names=["PrtN", "LNRW"], verbose=False)
+    >>> # exclude_events drops specific TDT epocs; omit it to store every epoc in the tank
+    >>> interface = TDTEventsInterface(folder_path=folder_path, exclude_events=["PrtN", "LNRW"], verbose=False)
 
     >>> # Extract what metadata we can from the source files (session_start_time is read from the tank)
     >>> metadata = interface.get_metadata()
