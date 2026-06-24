@@ -113,8 +113,7 @@ class TestTDTEventsInterface:
         metadata = interface.get_metadata()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-        behavior_module = nwbfile.processing["behavior"]
-        prtr_events = behavior_module.data_interfaces["PrtR"]
+        prtr_events = nwbfile.acquisition["PrtR"]
         assert isinstance(prtr_events, ndx_events.Events)
         assert len(prtr_events.timestamps) == 49
 
@@ -140,7 +139,7 @@ class TestTDTEventsInterface:
 
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
             read_nwbfile = io.read()
-            read_events = read_nwbfile.processing["behavior"].data_interfaces["LNnR"]
+            read_events = read_nwbfile.acquisition["LNnR"]
             assert isinstance(read_events, ndx_events.Events)
             assert len(read_events.timestamps) == 1457
 
@@ -167,7 +166,7 @@ class TestTDTEventsStrobeInterface:
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        pab_events = nwbfile.processing["behavior"].data_interfaces["PAB_"]
+        pab_events = nwbfile.acquisition["PAB_"]
         assert isinstance(pab_events, ndx_events.LabeledEvents)
         # labels are ordered by numeric code; data indexes into them, recovering [16, 2064, 0, 16, 2064].
         assert pab_events.labels == ["0", "16", "2064"]
@@ -184,7 +183,7 @@ class TestTDTEventsStrobeInterface:
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
             io.write(nwbfile)
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_events = io.read().processing["behavior"].data_interfaces["PAB_"]
+            read_events = io.read().acquisition["PAB_"]
             assert isinstance(read_events, ndx_events.LabeledEvents)
             assert list(read_events.labels) == ["none", "left", "right"]
             np.testing.assert_array_equal(read_events.data, [1, 2, 0, 1, 2])

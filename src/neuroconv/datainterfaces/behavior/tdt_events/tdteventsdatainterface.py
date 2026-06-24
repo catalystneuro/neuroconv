@@ -5,7 +5,7 @@ from pydantic import DirectoryPath, validate_call
 from pynwb.file import NWBFile
 
 from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.tools import get_package, nwb_helpers
+from neuroconv.tools import get_package
 from neuroconv.utils import DeepDict
 
 from ...ophys.tdt_fp._tdt_mixin import TDTLoadMixin
@@ -51,7 +51,9 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
 
     The TDT tank stores discrete events as epocs (e.g. camera TTL pulses, port entries, nose pokes).
     This interface reads those epocs via ``tdt.read_block`` and writes each selected epoc as an
-    ``ndx_events.Events`` object (onset timestamps only) into a behavior ProcessingModule.
+    ``ndx_events.Events`` object (onset timestamps only) into ``nwbfile.acquisition``. Acquisition is
+    used because TDT epocs are raw acquired markers (TTLs, strobes, sync pulses) whose interpretation
+    is not necessarily behavioral.
 
     Most epoc stores are onset-type epocs whose ``data`` array is a meaningless incrementing counter,
     so only the onsets are written (as ``ndx_events.Events``). A store whose ``data`` carries real
@@ -186,12 +188,6 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
             "Each Events object must have a unique name."
         )
 
-        behavior_module = nwb_helpers.get_module(
-            nwbfile=nwbfile,
-            name="behavior",
-            description="Discrete events extracted from TDT epocs.",
-        )
-
         tdt_photometry = self.load(evtype=["epocs"])
         available_epocs = list(tdt_photometry.epocs.keys())
         for epoc_name, event_dict in events_metadata.items():
@@ -236,4 +232,4 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
                     data=label_keys,
                     labels=labels,
                 )
-            behavior_module.add(events)
+            nwbfile.add_acquisition(events)
