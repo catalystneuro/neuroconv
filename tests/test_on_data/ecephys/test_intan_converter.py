@@ -102,7 +102,7 @@ class TestMetadataMerging:
         metadata = converter.get_metadata()
         ecephys = metadata["Ecephys"]
 
-        assert ecephys["intan_amplifier"]["name"] == "IntanAmplifier"
+        assert ecephys["intan_amplifier"]["name"] == "ElectricalSeries"
         assert ecephys["ElectricalSeriesRaw"] == {
             "name": "ElectricalSeriesRaw",
             "description": "Raw acquisition traces.",
@@ -158,7 +158,7 @@ class TestFullConversion:
         nwbfile = read_nwb(nwbfile_path)
 
         # Amplifier traces in acquisition (name = es_key = "electrical_series").
-        assert "IntanAmplifier" in nwbfile.acquisition
+        assert "ElectricalSeries" in nwbfile.acquisition
         # ADC in/out as TimeSeries in acquisition (name from stream_info, PascalCase).
         assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
         assert "TimeSeriesIntanADCOutput" in nwbfile.acquisition
@@ -179,7 +179,7 @@ class TestFullConversion:
 
         nwbfile = read_nwb(nwbfile_path)
 
-        assert "IntanAmplifier" in nwbfile.acquisition
+        assert "ElectricalSeries" in nwbfile.acquisition
         assert "TimeSeriesIntanAuxiliary" in nwbfile.acquisition
         assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
         assert list(nwbfile.devices.keys()) == ["Intan"]
@@ -196,7 +196,7 @@ class TestFullConversion:
 
         nwbfile = read_nwb(nwbfile_path)
 
-        assert "IntanAmplifier" in nwbfile.acquisition
+        assert "ElectricalSeries" in nwbfile.acquisition
         assert "TimeSeriesIntanADCInput" in nwbfile.acquisition
         assert "TimeSeriesIntanADCOutput" in nwbfile.acquisition
         assert "TimeSeriesIntanDC" in nwbfile.acquisition
@@ -216,5 +216,5 @@ class TestFullConversion:
 
         nwbfile = read_nwb(nwbfile_path)
 
-        assert "IntanAmplifier" in nwbfile.acquisition
+        assert "ElectricalSeries" in nwbfile.acquisition
         assert list(nwbfile.devices.keys()) == ["Intan"]
