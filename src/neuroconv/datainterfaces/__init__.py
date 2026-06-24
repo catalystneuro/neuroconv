@@ -80,6 +80,7 @@ from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
+from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
 
 # Ophys
 from .ophys.brukertiff.brukertiffdatainterface import (
@@ -165,6 +166,7 @@ interface_list = [
     XClustSortingInterface,
     # Icephys
     AbfInterface,
+    AxonIntracellularInterface,
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
@@ -234,7 +236,7 @@ interfaces_by_category = dict(
         IntanAnalog=IntanAnalogInterface,
         IntanStim=IntanStimInterface,
     ),
-    icephys=dict(Abf=AbfInterface),
+    icephys=dict(Abf=AbfInterface, AxonIntracellular=AxonIntracellularInterface),
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
