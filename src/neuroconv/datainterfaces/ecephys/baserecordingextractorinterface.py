@@ -50,6 +50,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        *,
         metadata_key: str | None = None,
         **source_data,
     ):
