@@ -116,57 +116,58 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         Metadata Structure
         ------------------
-        The metadata is organized in a hierarchical structure:
+        With ``use_new_metadata_format=True`` the metadata follows the unified, dict-based layout: a
+        shared top-level ``Devices`` registry plus the pose registries nested under
+        ``metadata["Behavior"]["Pose"]``, cross-referenced by key.
 
         .. code-block:: python
 
             metadata = {
-                "PoseEstimation": {
-                    "Skeletons": {
-                        "skeleton_name": {
-                            "name": "SkeletonPoseEstimationDeepLabCut_SubjectName",
-                            "nodes": ["bodypart1", "bodypart2", ...],  # List of keypoints/bodyparts
-                            "edges": [[0, 1], [1, 2], ...],  # Connections between nodes (optional)
-                            "subject": "subject_name"  # Links the skeleton to the subject
-                        }
-                    },
-                    "Devices": {
-                        "device_name": {
-                            "name": "CameraPoseEstimationDeepLabCut",
-                            "description": "Camera used for behavioral recording and pose estimation."
-                        }
-                    },
-                    "PoseEstimationContainers": {
-                        "pose_estimation_metadata_key": {
-                            "name": "PoseEstimationDeepLabCut",
-                            "description": "2D keypoint coordinates estimated using DeepLabCut.",
-                            "source_software": "DeepLabCut",
-                            "devices": ["device_name"],  # References to devices
-                            "PoseEstimationSeries": {
-                                "PoseEstimationSeriesBodyPart1": {
-                                    "name": "bodypart1",
-                                    "description": "Keypoint bodypart1.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network."
-                                },
-                                "PoseEstimationSeriesBodyPart2": {
-                                    "name": "bodypart2",
-                                    "description": "Keypoint bodypart2.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network."
-                                }
-                                # And so on for each bodypart
-                            }
-                        }
+                "Devices": {
+                    "deep_lab_cut_metadata_key": {  # registry key (snake_case, never written to the file)
+                        "name": "CameraPoseEstimationDeepLabCut",
+                        "description": "Camera used for behavioral recording and pose estimation.",
                     }
-                }
+                },
+                "Behavior": {
+                    "Pose": {
+                        "Skeletons": {
+                            "deep_lab_cut_metadata_key": {
+                                "name": "SkeletonPoseEstimationDeepLabCut_SubjectName",
+                                "nodes": ["bodypart1", "bodypart2", ...],  # keypoints/bodyparts
+                                "edges": [[0, 1], [1, 2], ...],  # connections between nodes (optional)
+                                "subject": "subject_name",  # links the skeleton to the subject
+                            }
+                        },
+                        "PoseEstimations": {
+                            "deep_lab_cut_metadata_key": {  # keyed by metadata_key
+                                "name": "PoseEstimationDeepLabCut",
+                                "source_software": "DeepLabCut",
+                                "scorer": "...",
+                                "dimensions": [[height, width]],
+                                "original_videos": ["path/to/video.mp4"],
+                                "device_metadata_key": "deep_lab_cut_metadata_key",  # -> metadata["Devices"]
+                                "skeleton_metadata_key": "deep_lab_cut_metadata_key",  # -> Behavior.Pose.Skeletons
+                                "PoseEstimationSeries": {
+                                    "bodypart1": {"name": "PoseEstimationSeriesBodypart1"},
+                                    "bodypart2": {"name": "PoseEstimationSeriesBodypart2"},
+                                    # one entry per bodypart; the dict key is the bodypart name
+                                },
+                            }
+                        },
+                    }
+                },
             }
+
+        The registry key (``deep_lab_cut_metadata_key`` above) is an internal handle that never appears in
+        the NWB file; rename NWB objects through their ``name`` fields instead. ``get_metadata`` emits only
+        values extracted from the DeepLabCut source plus the object ``name``s; per-series defaults
+        (``description``, ``unit``, ``reference_frame``, ``confidence_definition``) are applied by the writer
+        at write time, so set them here only to override.
 
         The metadata can be customized by:
 
-        #. Calling get_metadata() to retrieve the default metadata
+        #. Calling ``get_metadata(use_new_metadata_format=True)`` to retrieve the default metadata
         #. Modifying the returned dictionary as needed
         #. Passing the modified metadata to add_to_nwbfile() or run_conversion()
 
