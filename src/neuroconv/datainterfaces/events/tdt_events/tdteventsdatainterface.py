@@ -124,18 +124,20 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
             event_names = list(epocs.keys())
         for epoc_name in event_names:
             data = np.asarray(epocs[epoc_name].data)
-            entry = {
-                "name": epoc_name,
+            column = {
+                "column_name": epoc_name,
                 "description": f"Onset times of the TDT epoc '{epoc_name}'.",
             }
             # A non-counter ``data`` array is a real strobe: seed an editable label per code so the
             # store is written as LabeledEvents and the user can rename the codes (e.g. 16 -> "left").
             if len(data) > 0 and not _data_is_counter(data):
-                entry["description"] = f"Onset times of the TDT epoc '{epoc_name}', labeled by strobe value."
-                entry["labels"] = {
-                    _normalize_strobe_value(value): str(_normalize_strobe_value(value)) for value in np.unique(data)
+                column["description"] = f"Onset times of the TDT epoc '{epoc_name}', labeled by strobe value."
+                column["column_categories"] = {
+                    "labels": {
+                        _normalize_strobe_value(value): str(_normalize_strobe_value(value)) for value in np.unique(data)
+                    }
                 }
-            metadata["Events"][self.metadata_key][epoc_name] = entry
+            metadata["Events"][self.metadata_key]["event_columns"][epoc_name] = column
         return metadata
 
     def get_metadata_schema(self) -> dict:
@@ -152,14 +154,26 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
             "type": "object",
             "additionalProperties": {  # keyed by metadata_key
                 "type": "object",
-                "additionalProperties": {  # keyed by epoc store name (event_type_id)
-                    "type": "object",
-                    "required": ["name", "description"],
-                    "properties": {
-                        "name": {"type": "string"},
-                        "description": {"type": "string"},
-                        # Present only for strobe stores: maps each raw strobe code to a display label.
-                        "labels": {"type": "object", "additionalProperties": {"type": "string"}},
+                "properties": {
+                    "event_columns": {
+                        "type": "object",
+                        "additionalProperties": {  # keyed by epoc store name (event_type_id)
+                            "type": "object",
+                            "required": ["column_name", "description"],
+                            "properties": {
+                                "column_name": {"type": "string"},
+                                "description": {"type": "string"},
+                                # Present only for strobe stores: the column's value vocabulary.
+                                "column_categories": {
+                                    "type": "object",
+                                    "properties": {
+                                        # maps each raw strobe code to a display label
+                                        "labels": {"type": "object", "additionalProperties": {"type": "string"}},
+                                        "meanings": {"type": "object", "additionalProperties": {"type": "string"}},
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
             },
@@ -174,23 +188,24 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         nwbfile : NWBFile
             The NWB file to add the events to.
         metadata : dict
-            Metadata dictionary. Each entry in ``metadata["Events"][metadata_key]`` is keyed by the
-            TDT epoc store name (``event_type_id``) and holds the output object's ``name`` and
-            ``description``. A strobe store additionally holds a ``labels`` map (raw code -> display
-            label) and is written as ``LabeledEvents``; other stores are written as ``Events``.
+            Metadata dictionary. Each entry in ``metadata["Events"][metadata_key]["event_columns"]``
+            is keyed by the TDT epoc store name (``event_type_id``) and holds the output object's
+            ``column_name`` and ``description``. A strobe store additionally holds a
+            ``column_categories["labels"]`` map (raw code -> display label) and is written as
+            ``LabeledEvents``; other stores are written as ``Events``.
         """
         ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events==0.2.2")
 
-        events_metadata = metadata["Events"][self.metadata_key]
-        event_object_names = [event_dict["name"] for event_dict in events_metadata.values()]
+        event_columns = metadata["Events"][self.metadata_key]["event_columns"]
+        event_object_names = [column["column_name"] for column in event_columns.values()]
         assert len(event_object_names) == len(set(event_object_names)), (
-            f"Duplicate Events 'name' values found in metadata: {event_object_names}. "
+            f"Duplicate Events 'column_name' values found in metadata: {event_object_names}. "
             "Each Events object must have a unique name."
         )
 
         tdt_photometry = self.load(evtype=["epocs"])
         available_epocs = list(tdt_photometry.epocs.keys())
-        for epoc_name, event_dict in events_metadata.items():
+        for epoc_name, column in event_columns.items():
             assert (
                 epoc_name in available_epocs
             ), f"Epoc '{epoc_name}' not found in the TDT tank. Available epocs: {available_epocs}."
@@ -212,22 +227,23 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
             if _data_is_counter(data):
                 # The data is a meaningless counter, so the onsets carry all the information.
                 events = ndx_events.Events(
-                    name=event_dict["name"],
-                    description=event_dict["description"],
+                    name=column["column_name"],
+                    description=column["description"],
                     timestamps=onset,
                 )
             else:
                 # The data is a real strobe: write it as LabeledEvents, one label per code. The label
-                # vocabulary is the editable ``labels`` map seeded by ``get_metadata`` (raw code ->
-                # display label), ordered by the numeric code so the integer label keys are stable.
-                labels_map = event_dict["labels"]
+                # vocabulary is the editable ``column_categories["labels"]`` map seeded by
+                # ``get_metadata`` (raw code -> display label), ordered by the numeric code so the
+                # integer label keys are stable.
+                labels_map = column["column_categories"]["labels"]
                 sorted_values = sorted(labels_map, key=lambda value: float(value))
                 labels = [labels_map[value] for value in sorted_values]
                 value_to_index = {float(value): index for index, value in enumerate(sorted_values)}
                 label_keys = np.array([value_to_index[float(value)] for value in data], dtype=np.uint32)
                 events = ndx_events.LabeledEvents(
-                    name=event_dict["name"],
-                    description=event_dict["description"],
+                    name=column["column_name"],
+                    description=column["description"],
                     timestamps=onset,
                     data=label_keys,
                     labels=labels,
