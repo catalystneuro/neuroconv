@@ -9,6 +9,7 @@ import pynwb
 from pydantic import FilePath
 
 from ..nwb_helpers import add_device_from_metadata
+from ...utils import get_conversion_from_unit
 
 response_classes = dict(
     voltage_clamp=pynwb.icephys.VoltageClampSeries,
@@ -116,37 +117,6 @@ def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tu
         msg = ".\n\n WARNING - get_command_traces() only works for AxonIO interface."
         e.args = (str(e) + msg,)
         return e
-
-
-def get_conversion_from_unit(unit: str) -> float:
-    """
-    Get conversion (to Volt or Ampere) from unit in string format.
-
-    Parameters
-    ----------
-    unit : str
-        Unit as string. E.g. pA, mV, uV, etc...
-
-    Returns
-    -------
-    float
-        The conversion factor to convert to Ampere or Volt.
-        For example, for 'pA' returns 1e-12 to convert to Ampere.
-    """
-    if unit in ["pA", "pV"]:
-        conversion = 1e-12
-    elif unit in ["nA", "nV"]:
-        conversion = 1e-9
-    elif unit in ["uA", "uV"]:
-        conversion = 1e-6
-    elif unit in ["mA", "mV"]:
-        conversion = 1e-3
-    elif unit in ["A", "V"]:
-        conversion = 1.0
-    else:
-        conversion = 1.0
-        warnings.warn("No valid units found for traces in the current file. Gain is set to 1, but this might be wrong.")
-    return float(conversion)
 
 
 def get_nwb_metadata(neo_reader, metadata: dict = None) -> dict:
