@@ -9,6 +9,7 @@ converters can still be combined into a parent converter for a dataset).
 from ..datainterfaces.behavior.lightningpose.lightningposeconverter import (
     LightningPoseConverter,
 )
+from ..datainterfaces.icephys.axon.axonintracellularconverter import AxonIntracellularConverter
 from ..datainterfaces.ecephys.sortedrecordinginterface import SortedRecordingConverter
 from ..datainterfaces.ecephys.spikeglx.sorted_spikeglx_converter import SortedSpikeGLXConverter
 from ..datainterfaces.ecephys.openephys.openephysbinaryconverter import OpenEphysBinaryConverter
@@ -20,6 +21,7 @@ from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
 from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConverter
 
 converter_list = [
+    AxonIntracellularConverter,
     LightningPoseConverter,
     OpenEphysBinaryConverter,
     SpikeGLXConverterPipe,
