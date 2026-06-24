@@ -22,8 +22,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         Initialize and return the extractor instance for recording interfaces.
 
-        Extends the base implementation to also remove the 'es_key' and 'metadata_key'
-        parameters which are specific to the recording interface, not the extractor.
+        Extends the base implementation to also remove the 'es_key' parameter
+        which is specific to the recording interface, not the extractor.
         Also adds 'all_annotations=True' to ensure all metadata is loaded.
 
         Parameters
@@ -59,12 +59,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         verbose : bool, default: False
             If True, will print out additional information.
         es_key : str, default: "ElectricalSeries"
-            The key of this ElectricalSeries in the metadata dictionary. Used by the old
-            list-based metadata format.
+            The key of this ElectricalSeries in the metadata dictionary.
         metadata_key : str, optional
-            Identity of this interface's ElectricalSeries in the dict-based metadata format,
-            used as the key under ``metadata["Ecephys"]["ElectricalSeries"]``. Defaults to the
-            value of ``es_key``.
+            Key of this interface's ElectricalSeries in the dict-based metadata format.
+            Defaults to the value of ``es_key``.
         source_data : dict
             The key-value pairs of extractor-specific arguments.
 
@@ -131,57 +129,42 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
-        """
-        Compile metadata for the RecordingExtractor.
-
-        Parameters
-        ----------
-        use_new_metadata_format : bool, default: False
-            When False, returns the old list-based metadata format (``Ecephys.Device`` and
-            ``Ecephys.ElectrodeGroup`` as lists, the ElectricalSeries under ``es_key``).
-            When True, returns the dict-based format: a top-level ``Devices`` registry,
-            ``Ecephys.ElectrodeGroups`` keyed by channel-group identity (each linked to its
-            device via ``device_metadata_key``), and ``Ecephys.ElectricalSeries`` keyed by
-            ``metadata_key``.
-        """
         metadata = super().get_metadata()
 
-        if not use_new_metadata_format:
-            from ...tools.spikeinterface.spikeinterface import _get_group_name
-
-            channel_groups_array = _get_group_name(recording=self.recording_extractor)
-            unique_channel_groups = (
-                set(channel_groups_array) if channel_groups_array is not None else ["ElectrodeGroup"]
-            )
-            electrode_metadata = [
-                dict(name=str(group_id), description="no description", location="unknown", device="DeviceEcephys")
-                for group_id in unique_channel_groups
-            ]
-
-            metadata["Ecephys"] = dict(
-                Device=[dict(name="DeviceEcephys", description="no description")],
-                ElectrodeGroup=electrode_metadata,
-            )
-
+        if use_new_metadata_format:
+            # Dict-based format: emit only the ElectricalSeries entry keyed by ``metadata_key`` (which
+            # also marks the metadata as dict-based, so the pipeline dispatches to the new path). The
+            # default device and electrode groups are left to the pipeline, which creates a default
+            # device and synthesizes one group per channel-group from the recording's ``group`` properties.
+            metadata["Ecephys"] = dict()
             if self.es_key is not None:
-                metadata["Ecephys"][self.es_key] = dict(
-                    name=self.es_key, description=f"Acquisition traces for the {self.es_key}."
-                )
+                metadata["Ecephys"]["ElectricalSeries"] = {
+                    self.metadata_key: dict(
+                        name=self.metadata_key,
+                        description=f"Acquisition traces for the {self.metadata_key}.",
+                    )
+                }
 
             return metadata
 
-        # Dict-based format: emit only the ElectricalSeries entry keyed by ``metadata_key`` (which
-        # also marks the metadata as dict-based, so the pipeline dispatches to the new path). The
-        # default device and electrode groups are left to the pipeline, which creates a default
-        # device and synthesizes one group per channel-group from the recording's ``group`` properties.
-        metadata["Ecephys"] = dict()
+        from ...tools.spikeinterface.spikeinterface import _get_group_name
+
+        channel_groups_array = _get_group_name(recording=self.recording_extractor)
+        unique_channel_groups = set(channel_groups_array) if channel_groups_array is not None else ["ElectrodeGroup"]
+        electrode_metadata = [
+            dict(name=str(group_id), description="no description", location="unknown", device="DeviceEcephys")
+            for group_id in unique_channel_groups
+        ]
+
+        metadata["Ecephys"] = dict(
+            Device=[dict(name="DeviceEcephys", description="no description")],
+            ElectrodeGroup=electrode_metadata,
+        )
+
         if self.es_key is not None:
-            metadata["Ecephys"]["ElectricalSeries"] = {
-                self.metadata_key: dict(
-                    name=self.metadata_key,
-                    description=f"Acquisition traces for the {self.metadata_key}.",
-                )
-            }
+            metadata["Ecephys"][self.es_key] = dict(
+                name=self.es_key, description=f"Acquisition traces for the {self.es_key}."
+            )
 
         return metadata
 
