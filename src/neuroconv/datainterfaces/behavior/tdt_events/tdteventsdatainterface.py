@@ -10,6 +10,31 @@ from neuroconv.utils import DeepDict
 
 from ...ophys.tdt_fp._tdt_mixin import TDTLoadMixin
 
+_NEW_ISSUE_URL = "https://github.com/catalystneuro/neuroconv/issues/new"
+
+
+def _offset_is_synthesized(onset: np.ndarray, offset: np.ndarray) -> bool:
+    """Return whether the epoc's ``offset`` array is a synthesized fill rather than real falling edges.
+
+    TDT fills onset-only epocs with ``offset = np.append(onset[1:], inf)`` (see ``tdt/TDTbin2py.py``,
+    where ``header.stores[var_name].offset = np.append(ts[1:], np.inf)``). A genuine paired
+    "buddy" offset store overwrites this with real falling-edge timestamps, which cannot reproduce
+    ``offset[i] == onset[i + 1]`` for every ``i``. Detecting the fill is therefore an exact
+    structural check, not a tolerance heuristic.
+    """
+    return len(offset) > 0 and np.isinf(offset[-1]) and np.array_equal(offset[:-1], onset[1:])
+
+
+def _data_is_counter(data: np.ndarray) -> bool:
+    """Return whether the epoc's ``data`` array is a meaningless incrementing index.
+
+    Onset-only epocs store a sequential counter (``0..N-1`` or ``1..N``) as their ``data``; a real
+    strobe carries meaningful codes (e.g. the ``[16, 2064, 0]`` cycle of the ``PAB_`` store) that do
+    not form an arithmetic sequence.
+    """
+    n = len(data)
+    return n > 0 and np.array_equal(data, np.arange(data[0], data[0] + n))
+
 
 class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
     """Data Interface for converting discrete events (epocs) from a TDT output folder.
@@ -17,6 +42,12 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
     The TDT tank stores discrete events as epocs (e.g. camera TTL pulses, port entries, nose pokes).
     This interface reads those epocs via ``tdt.read_block`` and writes each selected epoc as an
     ``ndx_events.Events`` object (onset timestamps only) into a behavior ProcessingModule.
+
+    Every epoc store in all available TDT data is an onset-type epoc: its ``offset`` array is a
+    synthesized fill (``offset[i] == onset[i + 1]``, last value ``inf``) and its ``data`` array is a
+    meaningless incrementing counter, so the onsets are the only informative content. Epocs that
+    instead carry real offset (STROFF) durations or meaningful strobe values are not supported yet;
+    the interface detects them and raises ``NotImplementedError`` pointing to a feature request.
     """
 
     keywords = ("behavior", "events", "TDT")
@@ -30,6 +61,7 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         folder_path: DirectoryPath,
         *,
         event_names: list[str] | None = None,
+        metadata_key: str = "TDTEvents",
         verbose: bool = False,
     ):
         """Initialize the TDTEventsInterface.
@@ -41,6 +73,10 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         event_names : list[str], optional
             The names of the TDT epocs to store as events. If None (default), every epoc in the
             tank is stored.
+        metadata_key : str, default: "TDTEvents"
+            The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
+            Override it when multiple TDT events interfaces are used in the same conversion so their
+            metadata does not collide.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
@@ -49,6 +85,7 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
             event_names=event_names,
             verbose=verbose,
         )
+        self.metadata_key = metadata_key
         # This import is to assure that ndx_events is in the global namespace when a pynwb.io object is created
         import ndx_events  # noqa: F401
 
@@ -70,14 +107,11 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         event_names = self.source_data["event_names"]
         if event_names is None:
             event_names = list(self.load(evtype=["epocs"]).epocs.keys())
-        metadata["Behavior"]["TDTEvents"]["Events"] = [
-            {
-                "epoc_name": epoc_name,
+        for epoc_name in event_names:
+            metadata["Events"][self.metadata_key][epoc_name] = {
                 "name": epoc_name,
                 "description": f"Onset times of the TDT epoc '{epoc_name}'.",
             }
-            for epoc_name in event_names
-        ]
         return metadata
 
     def get_metadata_schema(self) -> dict:
@@ -90,26 +124,16 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
             The metadata schema for this interface.
         """
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Behavior"] = {
+        metadata_schema["properties"]["Events"] = {
             "type": "object",
-            "properties": {
-                "TDTEvents": {
+            "additionalProperties": {  # keyed by metadata_key
+                "type": "object",
+                "additionalProperties": {  # keyed by epoc store name (event_type_id)
                     "type": "object",
+                    "required": ["name", "description"],
                     "properties": {
-                        "module_name": {"type": "string"},
-                        "module_description": {"type": "string"},
-                        "Events": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "required": ["epoc_name", "name", "description"],
-                                "properties": {
-                                    "epoc_name": {"type": "string"},
-                                    "name": {"type": "string"},
-                                    "description": {"type": "string"},
-                                },
-                            },
-                        },
+                        "name": {"type": "string"},
+                        "description": {"type": "string"},
                     },
                 },
             },
@@ -124,38 +148,53 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         nwbfile : NWBFile
             The NWB file to add the events to.
         metadata : dict
-            Metadata dictionary. Each entry in ``metadata["Behavior"]["TDTEvents"]["Events"]`` maps a
-            TDT epoc (``epoc_name``) to an ``Events`` object's ``name`` and ``description``.
+            Metadata dictionary. Each entry in ``metadata["Events"][metadata_key]`` is keyed by the
+            TDT epoc store name (``event_type_id``) and maps to an ``Events`` object's ``name`` and
+            ``description``.
         """
         ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events==0.2.2")
 
-        events_metadata = metadata["Behavior"]["TDTEvents"]["Events"]
-        event_object_names = [event_dict["name"] for event_dict in events_metadata]
+        events_metadata = metadata["Events"][self.metadata_key]
+        event_object_names = [event_dict["name"] for event_dict in events_metadata.values()]
         assert len(event_object_names) == len(set(event_object_names)), (
             f"Duplicate Events 'name' values found in metadata: {event_object_names}. "
             "Each Events object must have a unique name."
         )
 
-        module_name = metadata["Behavior"]["TDTEvents"].get("module_name", "behavior")
-        module_description = metadata["Behavior"]["TDTEvents"].get(
-            "module_description", "Discrete events extracted from TDT epocs."
-        )
         behavior_module = nwb_helpers.get_module(
             nwbfile=nwbfile,
-            name=module_name,
-            description=module_description,
+            name="behavior",
+            description="Discrete events extracted from TDT epocs.",
         )
 
         tdt_photometry = self.load(evtype=["epocs"])
         available_epocs = list(tdt_photometry.epocs.keys())
-        for event_dict in events_metadata:
-            epoc_name = event_dict["epoc_name"]
+        for epoc_name, event_dict in events_metadata.items():
             assert (
                 epoc_name in available_epocs
             ), f"Epoc '{epoc_name}' not found in the TDT tank. Available epocs: {available_epocs}."
-            onset = np.asarray(tdt_photometry.epocs[epoc_name].onset)
+            epoc = tdt_photometry.epocs[epoc_name]
+            onset = np.asarray(epoc.onset)
+            offset = np.asarray(epoc.offset)
+            data = np.asarray(epoc.data)
             if len(onset) == 0:
                 continue
+
+            if not _offset_is_synthesized(onset, offset):
+                raise NotImplementedError(
+                    f"The TDT epoc '{epoc_name}' carries real offset (STROFF) durations, which "
+                    "TDTEventsInterface does not support yet (only onset timestamps are written). "
+                    f"Please request support by opening an issue: {_NEW_ISSUE_URL}?title="
+                    "TDTEventsInterface:+support+epocs+with+real+offset+(STROFF)+durations"
+                )
+            if not _data_is_counter(data):
+                raise NotImplementedError(
+                    f"The TDT epoc '{epoc_name}' carries meaningful strobe values, which "
+                    "TDTEventsInterface does not support yet (only onset timestamps are written). "
+                    f"Please request support by opening an issue: {_NEW_ISSUE_URL}?title="
+                    "TDTEventsInterface:+support+epocs+with+strobe+values"
+                )
+
             events = ndx_events.Events(
                 name=event_dict["name"],
                 description=event_dict["description"],
