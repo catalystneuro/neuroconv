@@ -7,7 +7,7 @@ Install NeuroConv with the additional dependencies necessary for reading `Tucker
 
     pip install "neuroconv[tdt_events]"
 
-Convert discrete TDT events (epocs such as port entries or nose pokes) to NWB using :py:class:`~neuroconv.datainterfaces.behavior.tdt_events.tdteventsdatainterface.TDTEventsInterface`.
+Convert discrete TDT events (epocs such as port entries or nose pokes) to NWB using :py:class:`~neuroconv.datainterfaces.events.tdt_events.tdteventsdatainterface.TDTEventsInterface`.
 Each selected epoc is written as an ``ndx_events.Events`` object (onset timestamps) into ``nwbfile.acquisition``.
 
 .. code-block:: python

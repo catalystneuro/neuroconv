@@ -8,7 +8,7 @@ from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import TDTEventsInterface
-from neuroconv.datainterfaces.behavior.tdt_events.tdteventsdatainterface import (
+from neuroconv.datainterfaces.events.tdt_events.tdteventsdatainterface import (
     _data_is_counter,
     _offset_is_synthesized,
 )

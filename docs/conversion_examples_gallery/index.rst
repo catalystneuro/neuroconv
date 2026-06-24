@@ -115,7 +115,15 @@ Behavior
     SLEAP <behavior/sleap>
     Videos <behavior/video>
     MedPC <behavior/medpc>
-    TDT Events <behavior/tdt_events>
+
+
+Events
+------
+
+.. toctree::
+    :maxdepth: 1
+
+    TDT Events <events/tdt_events>
 
 
 Image

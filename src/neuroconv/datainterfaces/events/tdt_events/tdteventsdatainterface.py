@@ -64,7 +64,7 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
     interface detects them and raises ``NotImplementedError`` pointing to a feature request.
     """
 
-    keywords = ("behavior", "events", "TDT")
+    keywords = ("events", "TDT")
     display_name = "TDTEvents"
     info = "Data Interface for converting discrete events (epocs) from TDT files."
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
