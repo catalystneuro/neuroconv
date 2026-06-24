@@ -18,9 +18,13 @@ try:
 except ImportError:
     from setup_paths import OPHYS_DATA_PATH
 
-TDT_TANK_PATH = str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed")
+TDT_DATA_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT"
+TDT_TANK_PATH = str(TDT_DATA_PATH / "Photo_249_391-200721-120136_stubbed")
 # Epoc onset lengths in the Photo_249 stubbed tank.
 EPOC_NAME_TO_LENGTH = {"PrtR": 49, "RNPS": 11, "LNRW": 50, "LNnR": 1457}
+
+# A stubbed tank with a real strobe store, ``PAB_``: 5 events with codes [16, 2064, 0, 16, 2064].
+STROBE_TANK_PATH = str(TDT_DATA_PATH / "Photometry-161823_stubbed")
 
 
 class _FakeEpoc:
@@ -125,16 +129,6 @@ class TestTDTEventsInterface:
         with pytest.raises(NotImplementedError, match=r"real offset.*issues/new"):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
-    def test_meaningful_strobe_raises(self, interface, monkeypatch):
-        # Synthesized offset (passes the offset check) but a non-counter strobe -> unsupported.
-        fake_block = _FakeBlock(
-            {"PrtR": _FakeEpoc(np.array([1.0, 2.0, 3.0]), np.array([2.0, 3.0, np.inf]), np.array([16.0, 2064.0, 0.0]))}
-        )
-        monkeypatch.setattr(interface, "load", lambda **kwargs: fake_block)
-        metadata = {"Events": {"TDTEvents": {"PrtR": {"name": "PrtR", "description": "d"}}}}
-        with pytest.raises(NotImplementedError, match=r"strobe.*issues/new"):
-            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
-
     def test_round_trip(self, interface, tmp_path):
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
@@ -149,3 +143,48 @@ class TestTDTEventsInterface:
             read_events = read_nwbfile.processing["behavior"].data_interfaces["LNnR"]
             assert isinstance(read_events, ndx_events.Events)
             assert len(read_events.timestamps) == 1457
+
+
+class TestTDTEventsStrobeInterface:
+    """Covers the ``PAB_`` strobe store in the Photometry-161823 stubbed tank."""
+
+    @pytest.fixture
+    def interface(self):
+        return TDTEventsInterface(folder_path=STROBE_TANK_PATH, event_names=["PAB_"])
+
+    def test_metadata_seeds_strobe_labels(self, interface):
+        entry = interface.get_metadata()["Events"]["TDTEvents"]["PAB_"]
+        # The PAB_ store's three distinct codes are seeded as an editable raw-code -> label map.
+        assert entry["labels"] == {0: "0", 16: "16", 2064: "2064"}
+        assert entry["description"] == "Onset times of the TDT epoc 'PAB_', labeled by strobe value."
+
+    def test_counter_store_has_no_labels(self):
+        interface = TDTEventsInterface(folder_path=STROBE_TANK_PATH, event_names=["Tick"])
+        entry = interface.get_metadata()["Events"]["TDTEvents"]["Tick"]
+        assert "labels" not in entry
+
+    def test_add_to_nwbfile_writes_labeled_events(self, interface):
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        pab_events = nwbfile.processing["behavior"].data_interfaces["PAB_"]
+        assert isinstance(pab_events, ndx_events.LabeledEvents)
+        # labels are ordered by numeric code; data indexes into them, recovering [16, 2064, 0, 16, 2064].
+        assert pab_events.labels == ["0", "16", "2064"]
+        np.testing.assert_array_equal(pab_events.data, [1, 2, 0, 1, 2])
+        assert len(pab_events.timestamps) == 5
+
+    def test_user_relabeling_round_trip(self, interface, tmp_path):
+        metadata = interface.get_metadata()
+        metadata["Events"]["TDTEvents"]["PAB_"]["labels"] = {0: "none", 16: "left", 2064: "right"}
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        nwbfile_path = tmp_path / "test_tdt_strobe.nwb"
+        with NWBHDF5IO(nwbfile_path, mode="w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(nwbfile_path, mode="r") as io:
+            read_events = io.read().processing["behavior"].data_interfaces["PAB_"]
+            assert isinstance(read_events, ndx_events.LabeledEvents)
+            assert list(read_events.labels) == ["none", "left", "right"]
+            np.testing.assert_array_equal(read_events.data, [1, 2, 0, 1, 2])

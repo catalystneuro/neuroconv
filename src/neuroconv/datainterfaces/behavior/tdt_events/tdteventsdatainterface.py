@@ -36,6 +36,16 @@ def _data_is_counter(data: np.ndarray) -> bool:
     return n > 0 and np.array_equal(data, np.arange(data[0], data[0] + n))
 
 
+def _normalize_strobe_value(value: float) -> int | float:
+    """Normalize a raw strobe value to a clean scalar for use as a label-map key.
+
+    Strobe codes are integer-valued floats in the TDT data (e.g. ``16.0``); cast those to ``int`` so
+    the seeded ``labels`` map reads as ``{16: "16"}`` rather than ``{16.0: "16.0"}``.
+    """
+    value = float(value)
+    return int(value) if value.is_integer() else value
+
+
 class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
     """Data Interface for converting discrete events (epocs) from a TDT output folder.
 
@@ -43,11 +53,13 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
     This interface reads those epocs via ``tdt.read_block`` and writes each selected epoc as an
     ``ndx_events.Events`` object (onset timestamps only) into a behavior ProcessingModule.
 
-    Every epoc store in all available TDT data is an onset-type epoc: its ``offset`` array is a
-    synthesized fill (``offset[i] == onset[i + 1]``, last value ``inf``) and its ``data`` array is a
-    meaningless incrementing counter, so the onsets are the only informative content. Epocs that
-    instead carry real offset (STROFF) durations or meaningful strobe values are not supported yet;
-    the interface detects them and raises ``NotImplementedError`` pointing to a feature request.
+    Most epoc stores are onset-type epocs whose ``data`` array is a meaningless incrementing counter,
+    so only the onsets are written (as ``ndx_events.Events``). A store whose ``data`` carries real
+    strobe codes (e.g. the ``PAB_`` store's ``[16, 2064, 0]`` cycle) is written as an
+    ``ndx_events.LabeledEvents`` instead, with the codes as per-event labels. The ``offset`` array of
+    an onset-type epoc is a synthesized fill (``offset[i] == onset[i + 1]``, last value ``inf``) and
+    is not written; epocs that carry real offset (STROFF) durations are not supported yet, and the
+    interface detects them and raises ``NotImplementedError`` pointing to a feature request.
     """
 
     keywords = ("behavior", "events", "TDT")
@@ -104,14 +116,24 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         session_start_datetime = datetime.fromtimestamp(start_timestamp, tz=timezone.utc)
         metadata["NWBFile"]["session_start_time"] = session_start_datetime.isoformat()
 
+        epocs = self.load(evtype=["epocs"]).epocs
         event_names = self.source_data["event_names"]
         if event_names is None:
-            event_names = list(self.load(evtype=["epocs"]).epocs.keys())
+            event_names = list(epocs.keys())
         for epoc_name in event_names:
-            metadata["Events"][self.metadata_key][epoc_name] = {
+            data = np.asarray(epocs[epoc_name].data)
+            entry = {
                 "name": epoc_name,
                 "description": f"Onset times of the TDT epoc '{epoc_name}'.",
             }
+            # A non-counter ``data`` array is a real strobe: seed an editable label per code so the
+            # store is written as LabeledEvents and the user can rename the codes (e.g. 16 -> "left").
+            if len(data) > 0 and not _data_is_counter(data):
+                entry["description"] = f"Onset times of the TDT epoc '{epoc_name}', labeled by strobe value."
+                entry["labels"] = {
+                    _normalize_strobe_value(value): str(_normalize_strobe_value(value)) for value in np.unique(data)
+                }
+            metadata["Events"][self.metadata_key][epoc_name] = entry
         return metadata
 
     def get_metadata_schema(self) -> dict:
@@ -134,6 +156,8 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
                     "properties": {
                         "name": {"type": "string"},
                         "description": {"type": "string"},
+                        # Present only for strobe stores: maps each raw strobe code to a display label.
+                        "labels": {"type": "object", "additionalProperties": {"type": "string"}},
                     },
                 },
             },
@@ -149,8 +173,9 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
             The NWB file to add the events to.
         metadata : dict
             Metadata dictionary. Each entry in ``metadata["Events"][metadata_key]`` is keyed by the
-            TDT epoc store name (``event_type_id``) and maps to an ``Events`` object's ``name`` and
-            ``description``.
+            TDT epoc store name (``event_type_id``) and holds the output object's ``name`` and
+            ``description``. A strobe store additionally holds a ``labels`` map (raw code -> display
+            label) and is written as ``LabeledEvents``; other stores are written as ``Events``.
         """
         ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events==0.2.2")
 
@@ -187,17 +212,28 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
                     f"Please request support by opening an issue: {_NEW_ISSUE_URL}?title="
                     "TDTEventsInterface:+support+epocs+with+real+offset+(STROFF)+durations"
                 )
-            if not _data_is_counter(data):
-                raise NotImplementedError(
-                    f"The TDT epoc '{epoc_name}' carries meaningful strobe values, which "
-                    "TDTEventsInterface does not support yet (only onset timestamps are written). "
-                    f"Please request support by opening an issue: {_NEW_ISSUE_URL}?title="
-                    "TDTEventsInterface:+support+epocs+with+strobe+values"
-                )
 
-            events = ndx_events.Events(
-                name=event_dict["name"],
-                description=event_dict["description"],
-                timestamps=onset,
-            )
+            if _data_is_counter(data):
+                # The data is a meaningless counter, so the onsets carry all the information.
+                events = ndx_events.Events(
+                    name=event_dict["name"],
+                    description=event_dict["description"],
+                    timestamps=onset,
+                )
+            else:
+                # The data is a real strobe: write it as LabeledEvents, one label per code. The label
+                # vocabulary is the editable ``labels`` map seeded by ``get_metadata`` (raw code ->
+                # display label), ordered by the numeric code so the integer label keys are stable.
+                labels_map = event_dict["labels"]
+                sorted_values = sorted(labels_map, key=lambda value: float(value))
+                labels = [labels_map[value] for value in sorted_values]
+                value_to_index = {float(value): index for index, value in enumerate(sorted_values)}
+                label_keys = np.array([value_to_index[float(value)] for value in data], dtype=np.uint32)
+                events = ndx_events.LabeledEvents(
+                    name=event_dict["name"],
+                    description=event_dict["description"],
+                    timestamps=onset,
+                    data=label_keys,
+                    labels=labels,
+                )
             behavior_module.add(events)
