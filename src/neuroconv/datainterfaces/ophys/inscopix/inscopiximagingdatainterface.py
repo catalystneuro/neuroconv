@@ -6,25 +6,77 @@ from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import DeepDict
 
 
-def is_file_multiplane(file_path):
+def _read_isxd_json_metadata_tail(file_path) -> dict:
     """
-    Hacky check for 'multiplane' keyword in the file.
-    Reads line by line to avoid memory issues with large files.
-    If found, raises NotImplementedError.
-    This is NOT a proper ISX API method—just a string search.
+    Read the JSON metadata tail stored at the END of an .isxd file.
+
+    The .isxd container stores its metadata as a JSON block at the end of the
+    file (the "metadata tail"), not at the start; isxcore confusingly names the
+    reader `readJsonHeaderAtEnd`. This is distinct from the per-frame
+    header/footer lines that bracket each frame's pixels in the body. The
+    on-disk layout, from byte 0 to EOF, is: frame data block, then the UTF-8
+    JSON tail, then a NUL byte, then an 8-byte little-endian uint64 holding the
+    JSON length. So to read it we seek 8 bytes from EOF for the size, then back
+    size+1+8 bytes for the start of the JSON payload.
+
+    We read this directly from disk (rather than going through the pyisx C
+    API) because pyisx's `Movie.get_acquisition_info()` only surfaces a
+    curated subset of the JSON, and the `extraProperties.microscope.multiplane`
+    block we use to detect multiplane recordings lives in the full metadata
+    tail rather than that subset.
     """
-    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-        for line in f:
-            if "multiplane" in line:
-                raise NotImplementedError(
-                    f"Multiplane ISXD file detected (found 'multiplane' in file).\n"
-                    f"This is a hacky check (not an official ISX API method) and may not be robust.\n"
-                    f"Proper separation logic is not yet implemented in roiextractors.\n"
-                    f"Loading as 2D would result in incorrect data interpretation.\n\n"
-                    f"Please open an issue at:\n"
-                    f"https://github.com/catalystneuro/roiextractors/issues\n\n"
-                    f"Reference: https://github.com/inscopix/pyisx/issues/36"
-                )
+    import json
+
+    # The tail is self-locating: the final 8 bytes are a little-endian uint64
+    # holding the JSON length. Read that length, then seek back
+    # json_length + 1 (the NUL separator) + 8 (the length field itself) from EOF
+    # to land on the first byte of the JSON payload.
+    with open(file_path, "rb") as file_handle:
+        file_handle.seek(-8, 2)
+        json_length = int.from_bytes(file_handle.read(8), "little")
+        file_handle.seek(-(json_length + 1 + 8), 2)
+        payload = file_handle.read(json_length).decode("utf-8")
+    return json.loads(payload)
+
+
+def is_file_multiplane(file_path) -> bool:
+    """
+    Return whether an .isxd file is a multiplane recording.
+
+    Multiplane recordings are not yet supported by the interface and are
+    rejected; the single-plane case (also the default when the plane count
+    cannot be determined) loads normally.
+    """
+    import warnings
+
+    # Detect multiplane from the `microscope.multiplane.enabled` flag in the
+    # JSON metadata tail. IDPS (the acquisition software) writes this flag to
+    # record whether multiplane mode was enabled for the recording.
+    #
+    # We trust this configured flag rather than reading per-frame
+    # electronic-focus (efocus) values: for raw acquisition files the two agree
+    # by construction (enabling multiplane is what makes the lens cycle), so the
+    # flag suffices. An efocus reader would only add value for derived/processed
+    # files whose inherited flag no longer matches their frames, which was not
+    # shown to be a real input.
+    metadata_tail = _read_isxd_json_metadata_tail(file_path)
+    microscope = (metadata_tail.get("extraProperties") or {}).get("microscope") or {}
+    multiplane_block = microscope.get("multiplane")
+    if multiplane_block is not None:
+        return bool(multiplane_block.get("enabled"))
+
+    # No `microscope.multiplane` block: an older file, or one rewritten by
+    # isx.Movie.write (which drops the whole extraProperties tree). We cannot
+    # tell, so assume single-plane and warn.
+    warnings.warn(
+        f"Could not determine plane count for {file_path}: the file has no "
+        "`microscope.multiplane` block in its JSON metadata (its extraProperties may have "
+        "been stripped, e.g. by isx.Movie.write). Proceeding as single-plane. If this is a "
+        "multiplane recording the resulting NWB file will be incorrect; please report such "
+        "files at https://github.com/catalystneuro/neuroconv/issues.",
+        stacklevel=2,
+    )
+    return False
 
 
 class InscopixImagingInterface(BaseImagingExtractorInterface):
@@ -64,10 +116,17 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         Raises
         ------
         NotImplementedError
-            If the file contains multiplane configuration that is not yet supported.
+            If the file is a multiplane recording, which roiextractors cannot
+            yet separate into per-plane series.
         """
-        # Check for multiplane configuration before proceeding
-        is_file_multiplane(file_path)
+        if is_file_multiplane(file_path):
+            raise NotImplementedError(
+                f"Multiplane ISXD file detected at {file_path}.\n"
+                f"roiextractors cannot yet separate the per-plane frames; loading as 2D would "
+                f"interleave focal planes into one time series.\n"
+                f"Track support at https://github.com/catalystneuro/roiextractors/issues "
+                f"and the upstream pyisx wrapper gap at https://github.com/inscopix/pyisx/issues/36."
+            )
 
         if metadata_key is None:
             metadata_key = "inscopix_imaging"
