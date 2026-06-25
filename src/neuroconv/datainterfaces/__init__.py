@@ -1,7 +1,5 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
-from .behavior.dannce.danncedatainterface import DANNCEInterface
-from .behavior.dannce.sdanncedatainterface import SDANNCEInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
