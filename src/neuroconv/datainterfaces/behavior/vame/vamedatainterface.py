@@ -403,6 +403,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 run_key: dict(
                     name=f"MotifSeries{run_key.capitalize()}",
                     description="VAME behavioral motif labels.",
+                    algorithm=run_key,
                 )
                 for run_key in self._motif_labels_file_paths
             }
@@ -412,6 +413,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 run_key: dict(
                     name=f"CommunitySeries{run_key.capitalize()}",
                     description="VAME community labels grouping motifs into higher-level behavioral states.",
+                    algorithm=run_key,
                     motif_series_key=(
                         run_key if self._motif_labels_file_paths and run_key in self._motif_labels_file_paths else None
                     ),

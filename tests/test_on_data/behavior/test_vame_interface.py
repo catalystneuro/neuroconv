@@ -70,6 +70,7 @@ class TestVameInterfaceMinimal(DataInterfaceTestMixin):
         assert project_meta["name"] == "VAMEProject"
         assert "MotifSeries" in project_meta
         assert "kmeans" in project_meta["MotifSeries"]
+        assert project_meta["MotifSeries"]["kmeans"]["algorithm"] == "kmeans"
         assert "LatentSpaceSeries" not in project_meta
         assert "CommunitySeries" not in project_meta
 
@@ -104,9 +105,11 @@ class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
         project_meta = metadata["Behavior"]["VAMEProjects"]["VAMEProject"]
         assert project_meta["name"] == "VAMEProject"
         assert "kmeans" in project_meta["MotifSeries"]
+        assert project_meta["MotifSeries"]["kmeans"]["algorithm"] == "kmeans"
         assert "30 dimensions" in project_meta["LatentSpaceSeries"]["description"]
         assert "kmeans" in project_meta["CommunitySeries"]
         assert project_meta["CommunitySeries"]["kmeans"]["motif_series_key"] == "kmeans"
+        assert project_meta["CommunitySeries"]["kmeans"]["algorithm"] == "kmeans"
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
