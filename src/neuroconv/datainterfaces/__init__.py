@@ -194,8 +194,6 @@ interface_list = [
     ExternalVideoInterface,
     InternalVideoInterface,
     AudioInterface,
-    DANNCEInterface,
-    SDANNCEInterface,
     DeepLabCutInterface,
     SLEAPInterface,
     MiniscopeBehaviorInterface,
@@ -247,8 +245,6 @@ interfaces_by_category = dict(
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
-        DANNCE=DANNCEInterface,
-        SDANNCE=SDANNCEInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
