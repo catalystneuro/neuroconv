@@ -585,7 +585,12 @@ class VameInterface(BaseTemporalAlignmentInterface):
         pose_estimation = None
         pose_estimation_key = vame_metadata.get("pose_estimation_metadata_key")
         if pose_estimation_key is not None:
-            pose_estimation = self._get_pose_estimation(nwbfile, pose_estimation_key)
+            pose_estimations_registry = default_metadata.get("Behavior", {}).get("Pose", {}).get("PoseEstimations", {})
+            if pose_estimation_key in pose_estimations_registry:
+                pose_container_name = pose_estimations_registry[pose_estimation_key].get("name", pose_estimation_key)
+            else:
+                pose_container_name = pose_estimation_key
+            pose_estimation = self._get_pose_estimation(nwbfile, pose_container_name)
 
         vame_project_kwargs = dict(
             name=project_name,

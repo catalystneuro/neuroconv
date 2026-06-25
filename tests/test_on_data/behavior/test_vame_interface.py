@@ -475,8 +475,6 @@ class TestVameInterfacePoseEstimationLink:
         aligned_timestamps = np.arange(10, dtype=float)
         interface.set_aligned_timestamps(aligned_timestamps)
 
-        # Create a PoseEstimation where the registry key ("DLC") differs from the container
-        # name ("PoseEstimationDeepLabCut"), mirroring how DeepLabCutInterface works.
         pose_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0, metadata_key="DLC")
         pose_interface.set_aligned_timestamps(aligned_timestamps)
         pose_meta = pose_interface.get_metadata()
@@ -485,8 +483,6 @@ class TestVameInterfacePoseEstimationLink:
         nwbfile = mock_NWBFile()
         pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_meta)
 
-        # Point VAME at the registry key ("DLC") and include the Pose metadata so VameInterface
-        # can resolve the actual container name.
         vame_metadata = interface.get_metadata()
         vame_metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = "DLC"
         vame_metadata["Behavior"]["Pose"] = pose_meta["Behavior"]["Pose"]
