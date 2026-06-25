@@ -26,3 +26,10 @@ Each selected epoc is written as an ``ndx_events.Events`` object (onset timestam
 
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
+
+.. seealso::
+
+    Other TDT data interfaces:
+
+    - :doc:`../recording/tdt` to convert TDT extracellular electrophysiology recordings.
+    - :doc:`../fiberphotometry/tdt_fp` to convert TDT fiber photometry signals.
