@@ -21,8 +21,8 @@ RHS_FILE_PER_SIGNAL = INTAN_PATH / "intan_fps_rhs_test_240329_091536" / "info.rh
 SPLIT_FOLDER = INTAN_PATH / "test_tetrode_240502_162925"
 
 
-class TestStreamDiscovery:
-    """`get_streams` parses the file header to enumerate present streams."""
+class TestStreamDiscoveryAndRouting:
+    """`get_streams` enumerates header streams; `__init__` routes the present ones to sub-interfaces."""
 
     def test_rhs_traditional_streams(self):
         streams = IntanConverter.get_streams(file_path=RHS_TRADITIONAL)
@@ -32,25 +32,21 @@ class TestStreamDiscovery:
         # Digital streams are present in the header but unrouted.
         assert "USB board digital input channel" in streams
 
-
-class TestAutoDiscoveryRouting:
-    """`__init__` instantiates a sub-interface for every routed stream that's present."""
-
-    def test_rhs_traditional_routing(self):
-        converter = IntanConverter(file_path=RHS_TRADITIONAL)
-        keys = set(converter.data_interface_objects.keys())
-        # Digital streams present in header but skipped (no IntanDigitalInterface yet).
-        assert keys == {"Recording", "AnalogADCInput", "AnalogADCOutput", "Stim"}
-
-    def test_rhd_file_per_signal_routing(self):
-        converter = IntanConverter(file_path=RHD_FILE_PER_SIGNAL)
-        keys = set(converter.data_interface_objects.keys())
-        assert keys == {"Recording", "AnalogAuxiliary", "AnalogADCInput"}
-
-    def test_rhs_file_per_signal_routing(self):
-        converter = IntanConverter(file_path=RHS_FILE_PER_SIGNAL)
-        keys = set(converter.data_interface_objects.keys())
-        assert keys == {"Recording", "AnalogADCInput", "AnalogADCOutput", "AnalogDC", "Stim"}
+    @pytest.mark.parametrize(
+        "file_path, expected_keys",
+        [
+            # RHS traditional: digital streams present in the header are skipped (no IntanDigitalInterface yet).
+            (RHS_TRADITIONAL, {"Recording", "AnalogADCInput", "AnalogADCOutput", "Stim"}),
+            # Only fixture exercising the auxiliary stream.
+            (RHD_FILE_PER_SIGNAL, {"Recording", "AnalogAuxiliary", "AnalogADCInput"}),
+            # Only fixture exercising the DC Amplifier stream.
+            (RHS_FILE_PER_SIGNAL, {"Recording", "AnalogADCInput", "AnalogADCOutput", "AnalogDC", "Stim"}),
+        ],
+        ids=["rhs_traditional", "rhd_file_per_signal", "rhs_file_per_signal"],
+    )
+    def test_routing(self, file_path, expected_keys):
+        converter = IntanConverter(file_path=file_path)
+        assert set(converter.data_interface_objects.keys()) == expected_keys
 
 
 class TestMetadataMerging:
