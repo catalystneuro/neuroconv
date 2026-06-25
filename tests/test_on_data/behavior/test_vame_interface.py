@@ -241,6 +241,19 @@ class TestVameInterfaceAutoDiscoverFilePaths(DataInterfaceTestMixin):
             assert len(project.community_series) == 1
 
 
+class TestVameInterfaceGetAvailableSessions:
+    """VameInterface.get_available_sessions reads session names from config.yaml."""
+
+    def test_returns_session_names_from_config(self):
+        sessions = VameInterface.get_available_sessions(str(CONFIG_PATH))
+        assert isinstance(sessions, list)
+        assert _SESSION_STEM in sessions
+
+    def test_returns_empty_list_when_field_absent(self, tmp_path):
+        config_path = _write_minimal_config(tmp_path)
+        assert VameInterface.get_available_sessions(str(config_path)) == []
+
+
 class TestVameInterfaceAutoDiscoverFilePathsWarnings:
     """Warning conditions in _autodiscover_file_paths."""
 

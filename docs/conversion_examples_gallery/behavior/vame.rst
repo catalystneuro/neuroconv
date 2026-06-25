@@ -45,6 +45,9 @@ When a key in ``community_labels_file_paths`` matches a key in ``motif_labels_fi
 ``get_metadata`` automatically sets ``motif_series_key`` so each ``CommunitySeries`` is
 linked to its corresponding ``MotifSeries``. No extra metadata wiring is needed.
 
+Use :py:meth:`~neuroconv.datainterfaces.behavior.vame.vamedatainterface.VameInterface.get_available_sessions`
+to list the session names recorded in ``config.yaml``.
+
 .. code-block:: python
 
     >>> from datetime import datetime
@@ -53,7 +56,10 @@ linked to its corresponding ``MotifSeries``. No extra metadata wiring is needed.
     >>> from neuroconv.datainterfaces import VameInterface
 
     >>> project = BEHAVIOR_DATA_PATH / "vame" / "my_vame_project"
-    >>> session = "Session001_DPI1DLC_resnet50_MLOF_PASC_Inhibitor_Cohort3Mar10shuffle1_700000"
+
+    >>> # Discover available session names from config.yaml
+    >>> sessions = VameInterface.get_available_sessions(project / "config.yaml")
+    >>> session = sessions[0]
 
     >>> interface = VameInterface(
     ...     file_path=project / "config.yaml",

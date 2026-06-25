@@ -457,6 +457,24 @@ class VameInterface(BaseTemporalAlignmentInterface):
         self._timestamps = np.asarray(aligned_timestamps)
 
     @staticmethod
+    def get_available_sessions(file_path: FilePath) -> list[str]:
+        """Return the session names listed in a VAME ``config.yaml`` project file.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the VAME ``config.yaml`` project file.
+
+        Returns
+        -------
+        list[str]
+            Session names from the ``session_names`` field of the config, or an empty list
+            if that field is absent.
+        """
+        config = load_dict_from_file(file_path)
+        return list(config.get("session_names", []))
+
+    @staticmethod
     def _get_pose_estimation(nwbfile: NWBFile, name: str):
         pose_estimation_containers = {
             obj.name: obj for obj in nwbfile.objects.values() if type(obj).__name__ == "PoseEstimation"
