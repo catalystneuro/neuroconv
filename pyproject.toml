@@ -116,6 +116,9 @@ lightningpose = [
 medpc = [
     "ndx-events==0.2.2",
 ]
+vame = [
+    "ndx-vame==0.3.1",
+]
 behavior = [
     "neuroconv[sleap]",
     "neuroconv[audio]",
@@ -124,6 +127,7 @@ behavior = [
     "neuroconv[video]",
     "neuroconv[lightningpose]",
     "neuroconv[medpc]",
+    "neuroconv[vame]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
 ]
 
@@ -140,7 +144,10 @@ events = [
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
     "spikeinterface>=0.104.0",
-    "neo>=0.14.3",
+    # TODO: remove the neo<0.14.5 cap once a SpikeInterface release stops passing the
+    # `load_sync_channel` kwarg to neo's SpikeGLXRawIO (already removed on SpikeInterface main, PR #4560).
+    # neo 0.14.5 removed that parameter, which breaks released SpikeInterface for SpikeGLX/NIDQ.
+    "neo>=0.14.3,<0.14.5",
 ]
 alphaomega = [
     "neuroconv[ecephys_minimal]",
