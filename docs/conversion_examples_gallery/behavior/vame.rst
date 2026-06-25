@@ -72,6 +72,8 @@ to list the session names recorded in ``config.yaml``.
     ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
     ...     session_description="Open-field behavioral recording segmented with VAME.",
     ... )
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
 
 Explicit file paths take precedence over auto-discovered ones, so you can override
