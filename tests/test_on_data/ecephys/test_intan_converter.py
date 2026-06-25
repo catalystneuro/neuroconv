@@ -48,6 +48,16 @@ class TestStreamDiscoveryAndRouting:
         converter = IntanConverter(file_path=file_path)
         assert set(converter.data_interface_objects.keys()) == expected_keys
 
+    def test_exclude_stim_stream(self):
+        converter = IntanConverter(file_path=RHS_TRADITIONAL, exclude_streams=["Stim channel"])
+        keys = set(converter.data_interface_objects.keys())
+        assert "Stim" not in keys
+        assert "Recording" in keys
+
+    def test_exclude_unknown_stream_raises(self):
+        with pytest.raises(ValueError, match="not present"):
+            IntanConverter(file_path=RHS_TRADITIONAL, exclude_streams=["bogus stream"])
+
 
 class TestMetadataMerging:
     """Multiple sub-interfaces merge into a single coherent metadata dict."""
@@ -97,20 +107,6 @@ class TestMetadataMerging:
         expected_device = {"name": "Intan", "description": "RHD Recording System", "manufacturer": "Intan"}
         assert metadata["Devices"] == [expected_device]
         assert metadata["Ecephys"]["Device"] == [expected_device]
-
-
-class TestExcludeStreams:
-    """`exclude_streams` subtracts named streams from auto-discovery."""
-
-    def test_exclude_stim_stream(self):
-        converter = IntanConverter(file_path=RHS_TRADITIONAL, exclude_streams=["Stim channel"])
-        keys = set(converter.data_interface_objects.keys())
-        assert "Stim" not in keys
-        assert "Recording" in keys
-
-    def test_exclude_unknown_stream_raises(self):
-        with pytest.raises(ValueError, match="not present"):
-            IntanConverter(file_path=RHS_TRADITIONAL, exclude_streams=["bogus stream"])
 
 
 class TestFullConversion:
