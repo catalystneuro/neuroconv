@@ -116,36 +116,6 @@ to retrieve the auto-populated defaults, then edit specific fields before conver
     ... )
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
-The same information can be provided as a YAML file and loaded with
-:py:func:`~neuroconv.utils.load_dict_from_file`:
-
-.. code-block:: yaml
-
-    Behavior:
-      VAMEProjects:
-        VAMEProject:
-          name: VAMEKmeans15
-          MotifSeries:
-            kmeans:
-              name: MotifSeriesKmeans
-              description: "k-means motif labels (15 clusters) for the open-field test session."
-              algorithm: kmeans
-          LatentSpaceSeries:
-            name: LatentSpaceSeries
-            description: "VAME latent-space embeddings (30 dimensions per frame)."
-          CommunitySeries:
-            kmeans:
-              name: CommunitySeriesKmeans
-              description: "Community labels grouping kmeans motifs into higher-level behavioral states."
-              motif_series_key: kmeans
-
-.. code-block:: python
-
-    >>> from neuroconv.utils import load_dict_from_file, dict_deep_update
-    >>> file_metadata = load_dict_from_file("/path/to/metadata.yaml")  # doctest: +SKIP
-    >>> metadata = dict_deep_update(interface.get_metadata(), file_metadata)  # doctest: +SKIP
-    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)  # doctest: +SKIP
-
 
 Temporal alignment
 ~~~~~~~~~~~~~~~~~~
