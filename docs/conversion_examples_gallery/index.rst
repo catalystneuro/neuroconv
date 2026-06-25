@@ -114,6 +114,7 @@ Behavior
     LightningPose <behavior/lightningpose>
     Neuralynx NVT <behavior/neuralynx_nvt>
     SLEAP <behavior/sleap>
+    VAME <behavior/vame>
     Videos <behavior/video>
     MedPC <behavior/medpc>
 
