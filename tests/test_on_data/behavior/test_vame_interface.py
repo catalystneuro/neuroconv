@@ -119,7 +119,10 @@ class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
                 project.motif_series["MotifSeriesKmeans"].data[:],
                 np.load(MOTIF_LABELS_PATH).astype(np.int32),
             )
-            assert_array_equal(project.latent_space_series.data[:], np.load(LATENT_VECTORS_PATH).astype(np.float32))
+            assert_array_equal(
+                project.latent_space_series.data[:],
+                np.load(LATENT_VECTORS_PATH).astype(np.float32),
+            )
             assert_array_equal(
                 project.community_series["CommunitySeriesKmeans"].data[:],
                 np.load(COMMUNITY_LABELS_PATH).astype(np.int32),
@@ -237,8 +240,86 @@ class TestVameInterfaceAutoDiscoverFilePaths(DataInterfaceTestMixin):
                 project.motif_series["MotifSeriesHmm"].data[:],
                 np.load(HMM_LABELS_PATH).astype(np.int32),
             )
-            assert_array_equal(project.latent_space_series.data[:], np.load(LATENT_VECTORS_PATH).astype(np.float32))
+            assert_array_equal(
+                project.latent_space_series.data[:],
+                np.load(LATENT_VECTORS_PATH).astype(np.float32),
+            )
             assert len(project.community_series) == 1
+
+
+class TestVameInterfaceEthogram:
+    """The curated ndx-ethogram products (EthogramBouts + Ethogram) derived from each MotifSeries."""
+
+    interface_kwargs = dict(
+        file_path=str(CONFIG_PATH),
+        motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
+        community_labels_file_paths={"kmeans": str(COMMUNITY_LABELS_PATH)},
+        sampling_frequency_hz=30.0,
+    )
+
+    def _add_to_nwbfile(self, **add_kwargs):
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata(), **add_kwargs)
+        return nwbfile.processing["behavior"]
+
+    def test_metadata_has_ethogram_entries(self):
+        project_meta = VameInterface(**self.interface_kwargs).get_metadata()["Behavior"]["VAMEProjects"]["VAMEProject"]
+        assert project_meta["EthogramBouts"]["kmeans"]["name"] == "VAMEProjectEthogramBoutsKmeans"
+        assert project_meta["Ethogram"]["kmeans"]["name"] == "VAMEProjectEthogramKmeans"
+
+    def test_bouts_are_motif_labels_run_length_encoded(self):
+        bouts = self._add_to_nwbfile()["VAMEProjectEthogramBoutsKmeans"]
+        labels = np.load(MOTIF_LABELS_PATH).astype(np.int32)
+        run_starts = np.concatenate(([0], np.flatnonzero(np.diff(labels)) + 1))
+        # One row per maximal run; the label is that run's motif id as text.
+        assert len(bouts) == len(run_starts)
+        assert list(bouts["label"][:]) == [str(int(labels[index])) for index in run_starts]
+        # Gapless, strictly increasing single-label partition.
+        start_times = np.asarray(bouts["start_time"][:])
+        stop_times = np.asarray(bouts["stop_time"][:])
+        assert np.all(np.diff(start_times) > 0)
+        assert np.allclose(stop_times[:-1], start_times[1:])
+        assert bouts.labeling_method == "automated"
+        assert bouts.source_software.startswith("VAME")
+
+    def test_catalogue_covers_full_cluster_space_with_community_category(self):
+        catalogue = self._add_to_nwbfile()["VAMEProjectEthogramKmeans"]
+        assert len(catalogue) == 15  # n_clusters from config, including motifs absent this session.
+        assert catalogue.exclusive
+        assert list(catalogue["behavior"][:]) == [str(index) for index in range(15)]
+        assert [int(code) for code in catalogue["native_code"][:]] == list(range(15))
+        # category = the modal community per motif, matching an independent computation.
+        motif_labels = np.load(MOTIF_LABELS_PATH)
+        community_labels = np.load(COMMUNITY_LABELS_PATH)
+        for motif_id in range(15):
+            frames = motif_labels == motif_id
+            expected_category = ""
+            if frames.any():
+                values, counts = np.unique(community_labels[frames], return_counts=True)
+                expected_category = str(int(values[counts.argmax()]))
+            assert catalogue["category"][motif_id] == expected_category
+
+    def test_bouts_link_to_source_motif_series_and_catalogue(self):
+        behavior = self._add_to_nwbfile()
+        bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
+        assert bouts.source is behavior["VAMEProject"].motif_series["MotifSeriesKmeans"]
+        assert bouts.ethogram is behavior["VAMEProjectEthogramKmeans"]
+
+    def test_roundtrip_preserves_bouts_and_catalogue(self, tmp_path):
+        interface = VameInterface(**self.interface_kwargs)
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1).astimezone()
+        path = tmp_path / "vame_ethogram.nwb"
+        interface.run_conversion(nwbfile_path=str(path), metadata=metadata, overwrite=True)
+        labels = np.load(MOTIF_LABELS_PATH).astype(np.int32)
+        expected_runs = len(np.flatnonzero(np.diff(labels))) + 1
+        with NWBHDF5IO(path=str(path), mode="r", load_namespaces=True) as io:
+            behavior = io.read().processing["behavior"]
+            bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
+            assert len(bouts) == expected_runs
+            assert bouts.source.name == "MotifSeriesKmeans"
+            assert behavior["VAMEProjectEthogramKmeans"].exclusive
 
 
 class TestVameInterfaceGetAvailableSessions:
@@ -276,7 +357,10 @@ class TestVameInterfaceAutoDiscoverFilePathsWarnings:
 
     def test_warns_when_vame_version_too_old(self, tmp_path):
         config_path = _write_minimal_config(
-            tmp_path, vame_version="0.10.0", segmentation_algorithms=["kmeans"], n_clusters=15
+            tmp_path,
+            vame_version="0.10.0",
+            segmentation_algorithms=["kmeans"],
+            n_clusters=15,
         )
         expected_message = (
             f"VAME version 0.10.0 is older than {VameInterface._AUTODISCOVER_MIN_VAME_VERSION}. "
@@ -299,7 +383,11 @@ class TestVameInterfaceAutoDiscoverFilePathsWarnings:
             "is missing from config.yaml. Provide file paths explicitly."
         )
         with pytest.warns(UserWarning, match=expected_message):
-            VameInterface(file_path=str(config_path), session_name="my_session", sampling_frequency_hz=30.0)
+            VameInterface(
+                file_path=str(config_path),
+                session_name="my_session",
+                sampling_frequency_hz=30.0,
+            )
 
     def test_warns_when_n_clusters_missing(self, tmp_path):
         # segmentation_algorithms present but n_clusters absent
@@ -309,7 +397,11 @@ class TestVameInterfaceAutoDiscoverFilePathsWarnings:
             "is missing from config.yaml. Provide file paths explicitly."
         )
         with pytest.warns(UserWarning, match=expected_message):
-            VameInterface(file_path=str(config_path), session_name="my_session", sampling_frequency_hz=30.0)
+            VameInterface(
+                file_path=str(config_path),
+                session_name="my_session",
+                sampling_frequency_hz=30.0,
+            )
 
     def test_warns_when_no_motif_files_found(self):
         # Valid config, but the requested session does not exist under results/.
@@ -574,7 +666,10 @@ class TestVameInterfacesInConverter:
                 project_a.motif_series["MotifSeriesHmm"].data[:],
                 np.load(HMM_LABELS_PATH).astype(np.int32),
             )
-            assert_array_equal(project_a.latent_space_series.data[:], np.load(LATENT_VECTORS_PATH).astype(np.float32))
+            assert_array_equal(
+                project_a.latent_space_series.data[:],
+                np.load(LATENT_VECTORS_PATH).astype(np.float32),
+            )
             assert len(project_a.community_series) == 1
 
             project_b = behavior["ProjectB"]

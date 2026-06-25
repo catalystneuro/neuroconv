@@ -263,7 +263,11 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 UserWarning,
                 stacklevel=3,
             )
-            return motif_labels_file_paths, latent_vectors_file_path, community_labels_file_paths
+            return (
+                motif_labels_file_paths,
+                latent_vectors_file_path,
+                community_labels_file_paths,
+            )
 
         project_dir = file_path.parent
         session_vame_dir = project_dir / "results" / session_name / "VAME"
@@ -308,7 +312,11 @@ class VameInterface(BaseTemporalAlignmentInterface):
             if discovered:
                 community_labels_file_paths = discovered
 
-        return motif_labels_file_paths, latent_vectors_file_path, community_labels_file_paths
+        return (
+            motif_labels_file_paths,
+            latent_vectors_file_path,
+            community_labels_file_paths,
+        )
 
     def get_metadata_schema(self) -> dict:
         from ....utils import get_base_schema
@@ -320,7 +328,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
             "properties": {
                 "name": {"type": "string", "description": "Name of the MotifSeries."},
                 "description": {"type": "string"},
-                "algorithm": {"type": ["string", "null"], "description": "The algorithm used for motif detection."},
+                "algorithm": {
+                    "type": ["string", "null"],
+                    "description": "The algorithm used for motif detection.",
+                },
             },
             "required": ["name"],
             "additionalProperties": False,
@@ -328,7 +339,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
         community_entry_schema = {
             "type": "object",
             "properties": {
-                "name": {"type": "string", "description": "Name of the CommunitySeries."},
+                "name": {
+                    "type": "string",
+                    "description": "Name of the CommunitySeries.",
+                },
                 "description": {"type": "string"},
                 "algorithm": {
                     "type": ["string", "null"],
@@ -342,14 +356,29 @@ class VameInterface(BaseTemporalAlignmentInterface):
             "required": ["name"],
             "additionalProperties": False,
         }
+        named_entry_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+            },
+            "required": ["name"],
+            "additionalProperties": False,
+        }
         vame_project_schema = {
             "type": "object",
             "properties": {
-                "name": {"type": "string", "description": "Name of the VAMEProject group in the NWB file."},
+                "name": {
+                    "type": "string",
+                    "description": "Name of the VAMEProject group in the NWB file.",
+                },
                 "LatentSpaceSeries": {
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string", "description": "Name of the LatentSpaceSeries."},
+                        "name": {
+                            "type": "string",
+                            "description": "Name of the LatentSpaceSeries.",
+                        },
                         "description": {"type": "string"},
                     },
                     "required": ["name"],
@@ -364,6 +393,16 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     "type": "object",
                     "properties": {},
                     "additionalProperties": community_entry_schema,
+                },
+                "EthogramBouts": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": named_entry_schema,
+                },
+                "Ethogram": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": named_entry_schema,
                 },
                 "pose_estimation_metadata_key": {
                     "type": ["string", "null"],
@@ -404,6 +443,25 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     name=f"MotifSeries{run_key.capitalize()}",
                     description="VAME behavioral motif labels.",
                     algorithm=run_key,
+                )
+                for run_key in self._motif_labels_file_paths
+            }
+            # Curated ndx-ethogram products derived from each MotifSeries: a run-length-encoded
+            # EthogramBouts timeline plus its Ethogram catalogue (one of each per motif run).
+            # Names are prefixed with the project key (metadata_key) because these live flat in the
+            # behavior module (unlike the nested MotifSeries) and must stay unique when several
+            # VAME projects share one NWB file.
+            vame_project_metadata["EthogramBouts"] = {
+                run_key: dict(
+                    name=f"{self._metadata_key}EthogramBouts{run_key.capitalize()}",
+                    description="VAME behavioral motifs as run-length-encoded bouts.",
+                )
+                for run_key in self._motif_labels_file_paths
+            }
+            vame_project_metadata["Ethogram"] = {
+                run_key: dict(
+                    name=f"{self._metadata_key}Ethogram{run_key.capitalize()}",
+                    description="VAME motif catalogue (coding scheme): one row per motif id.",
                 )
                 for run_key in self._motif_labels_file_paths
             }
@@ -492,6 +550,62 @@ class VameInterface(BaseTemporalAlignmentInterface):
             "runs before VameInterface."
         )
 
+    def _add_ethogram_for_run(
+        self,
+        *,
+        behavior_module,
+        run_key: str,
+        motif_series,
+        motif_data: np.ndarray,
+        community_data: np.ndarray | None,
+        timestamps: np.ndarray,
+        frame_period: float,
+        pose_estimation,
+        bouts_metadata: dict | None,
+        catalogue_metadata: dict | None,
+    ) -> None:
+        """Derive and add a curated ``EthogramBouts`` + ``Ethogram`` catalogue for one motif run.
+
+        Thin VAME-specific adapter over the tool-agnostic
+        :func:`neuroconv.tools.behavior.build_ethogram_from_labels`: it supplies VAME's names,
+        provenance, full motif label space (``n_clusters``), and the per-frame community labels that
+        become the catalogue's ``category`` column.
+        """
+        if bouts_metadata is None or catalogue_metadata is None:
+            return
+        from ....tools.behavior import build_ethogram_from_labels
+
+        n_clusters = self._vame_config.get("n_clusters")
+        vame_version = str(self._vame_config.get("vame_version", "")).strip()
+        parameters = json.dumps(
+            dict(
+                n_clusters=n_clusters,
+                time_window=self._vame_config.get("time_window"),
+                algorithm=run_key,
+            )
+        )
+        bouts, catalogue = build_ethogram_from_labels(
+            labels=motif_data,
+            timestamps=timestamps,
+            frame_period=frame_period,
+            bouts_name=bouts_metadata["name"],
+            bouts_description=bouts_metadata["description"],
+            labeling_method="automated",
+            source_software=f"VAME {vame_version}" if vame_version else "VAME",
+            parameters=parameters,
+            source=motif_series,
+            source_pose=pose_estimation,
+            catalogue_name=catalogue_metadata["name"],
+            catalogue_description=catalogue_metadata["description"],
+            class_ids=range(int(n_clusters)) if n_clusters is not None else None,
+            class_definition="VAME unsupervised motif; the cluster id has no a-priori meaning.",
+            category_labels=community_data,
+            exclusive=True,  # VAME motifs are a single-label partition.
+        )
+        if catalogue is not None:
+            behavior_module.add(catalogue)
+        behavior_module.add(bouts)
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -523,6 +637,13 @@ class VameInterface(BaseTemporalAlignmentInterface):
               already present in the NWB file to soft-link from the ``VAMEProject``.
         stub_test : bool, default False
             If ``True``, only the first 100 frames of each data array are written.
+
+        Notes
+        -----
+        For each motif run this also writes a curated ``ndx-ethogram`` product derived from the
+        per-frame ``MotifSeries``: an ``EthogramBouts`` table (the motif labels run-length-encoded
+        into one row per bout) and its ``Ethogram`` catalogue. The faithful ``MotifSeries`` is kept;
+        the bouts link back to it via ``source``.
         """
         from ndx_vame import (
             CommunitySeries,
@@ -559,10 +680,12 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
         # MotifSeries — one per run key
         motif_series_objects = {}
+        motif_data_by_run = {}
         motif_series_metadata = vame_metadata.get("MotifSeries", {})
         for run_key, file_path in (self._motif_labels_file_paths or {}).items():
             motif_meta = dict(motif_series_metadata.get(run_key, {}))
             motif_data = np.load(file_path)[:n_frames].astype(np.int32)
+            motif_data_by_run[run_key] = motif_data
             motif_kwargs: dict = dict(data=motif_data, **motif_meta, **timing_kwargs)
             if latent_series is not None:
                 motif_kwargs["latent_space_series"] = latent_series
@@ -570,11 +693,13 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
         # CommunitySeries — one per run key, optionally linked to a MotifSeries
         community_series_objects = {}
+        community_data_by_run = {}
         community_series_meta = vame_metadata.get("CommunitySeries", {})
         for run_key, file_path in (self._community_labels_file_paths or {}).items():
             community_meta = dict(community_series_meta.get(run_key, {}))
             motif_series_key = community_meta.pop("motif_series_key", None)
             community_data = np.load(file_path)[:n_frames].astype(np.int32)
+            community_data_by_run[run_key] = community_data
             community_kwargs: dict = dict(data=community_data, **community_meta, **timing_kwargs)
             linked_motif = motif_series_objects.get(motif_series_key) if motif_series_key else None
             if linked_motif is not None:
@@ -611,3 +736,22 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
         behavior_module = get_module(nwbfile, name="behavior", description="processed behavioral data")
         behavior_module.add(vame_project)
+
+        # Curated ndx-ethogram products derived from each MotifSeries (kept alongside the faithful series).
+        if motif_series_objects:
+            frame_period = 1.0 / rate if rate is not None else float(np.median(np.diff(timestamps)))
+            ethogram_bouts_metadata = vame_metadata.get("EthogramBouts", {})
+            ethogram_catalogue_metadata = vame_metadata.get("Ethogram", {})
+            for run_key, motif_series in motif_series_objects.items():
+                self._add_ethogram_for_run(
+                    behavior_module=behavior_module,
+                    run_key=run_key,
+                    motif_series=motif_series,
+                    motif_data=motif_data_by_run[run_key],
+                    community_data=community_data_by_run.get(run_key),
+                    timestamps=timestamps,
+                    frame_period=frame_period,
+                    pose_estimation=pose_estimation,
+                    bouts_metadata=ethogram_bouts_metadata.get(run_key),
+                    catalogue_metadata=ethogram_catalogue_metadata.get(run_key),
+                )
