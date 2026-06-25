@@ -103,19 +103,33 @@ VAME metadata lives under ``metadata["Behavior"]["VAMEProjects"][metadata_key]``
 in ``motif_labels_file_paths`` / ``community_labels_file_paths``).
 
 Call :py:meth:`~neuroconv.datainterfaces.behavior.vame.vamedatainterface.VameInterface.get_metadata`
-to retrieve the auto-populated defaults, then edit specific fields before conversion:
+to retrieve the auto-populated defaults, then use
+:py:func:`~neuroconv.utils.dict_deep_update` to update the defaults before conversion:
 
 .. code-block:: python
 
-    >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"].update(
-    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
-    ...     session_description="Open-field behavioral recording segmented with VAME.",
-    ... )
-    >>> metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["name"] = "VAMEKmeans15"
-    >>> metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["MotifSeries"]["kmeans"]["description"] = (
-    ...     "k-means motif labels (15 clusters) for the open-field test session."
-    ... )
+    >>> from neuroconv.utils import dict_deep_update
+
+    >>> custom_metadata = {
+    ...     "NWBFile": {
+    ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...         "session_description": "Open-field behavioral recording segmented with VAME.",
+    ...     },
+    ...     "Subject": dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D"),
+    ...     "Behavior": {
+    ...         "VAMEProjects": {
+    ...             "VAMEProject": {
+    ...                 "name": "VAMEKmeans15",
+    ...                 "MotifSeries": {
+    ...                     "kmeans": {
+    ...                         "description": "k-means motif labels (15 clusters) for the open-field test session.",
+    ...                     },
+    ...                 },
+    ...             },
+    ...         },
+    ...     },
+    ... }
+    >>> metadata = dict_deep_update(interface.get_metadata(), custom_metadata)
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
 
@@ -213,34 +227,30 @@ Each instance gets its own metadata entry and its own ``VAMEProject`` group:
     ...     )
     ... )
 
-The metadata YAML for this multi-run converter looks like:
-
-.. code-block:: yaml
-
-    Behavior:
-      VAMEProjects:
-        VAMEProjectA:
-          name: VAMEProjectA
-          MotifSeries:
-            kmeans:
-              name: MotifSeriesKmeans
-              description: "k-means motif labels (15 clusters)."
-              algorithm: kmeans
-        VAMEProjectB:
-          name: VAMEProjectB
-          MotifSeries:
-            hmm:
-              name: MotifSeriesHmm
-              description: "HMM motif labels (15 states)."
-              algorithm: hmm
-
 .. code-block:: python
 
-    >>> metadata = converter.get_metadata()
-    >>> metadata["NWBFile"].update(
-    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
-    ...     session_description="Multi-project VAME behavioral segmentation.",
-    ... )
+    >>> custom_metadata = {
+    ...     "NWBFile": {
+    ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...         "session_description": "Multi-project VAME behavioral segmentation.",
+    ...     },
+    ...     "Subject": dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D"),
+    ...     "Behavior": {
+    ...         "VAMEProjects": {
+    ...             "VAMEProjectA": {
+    ...                 "MotifSeries": {
+    ...                     "kmeans": {"description": "k-means motif labels (15 clusters)."},
+    ...                 },
+    ...             },
+    ...             "VAMEProjectB": {
+    ...                 "MotifSeries": {
+    ...                     "hmm": {"description": "HMM motif labels (15 states)."},
+    ...                 },
+    ...             },
+    ...         },
+    ...     },
+    ... }
+    >>> metadata = dict_deep_update(converter.get_metadata(), custom_metadata)
     >>> converter.run_conversion(
     ...     nwbfile_path=path_to_save_nwbfile,
     ...     metadata=metadata,
