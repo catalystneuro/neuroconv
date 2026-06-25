@@ -259,6 +259,11 @@ def fill_defaults(schema: dict[str, Any], defaults: dict[str, Any], overwrite: b
     if properties_reference not in schema and "patternProperties" in schema:
         properties_reference = "patternProperties"
 
+    # A schema node constrained only by additionalProperties (e.g. an object keyed by a dynamic
+    # metadata_key, as in TDTEventsInterface) has no named properties to attach defaults to.
+    if properties_reference not in schema:
+        return
+
     for key, val in schema[properties_reference].items():
         if key in defaults:
             if val["type"] == "object":

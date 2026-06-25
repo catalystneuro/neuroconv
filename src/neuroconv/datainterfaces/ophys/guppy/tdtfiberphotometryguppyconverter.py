@@ -5,7 +5,7 @@ from pynwb import NWBFile
 
 from .guppydatainterface import GuppyInterface
 from ..tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
-from ...behavior.tdt_events.tdteventsdatainterface import TDTEventsInterface
+from ...events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 from ....nwbconverter import ConverterPipe
 
 
@@ -14,9 +14,9 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
 
     Combines the three parts of a GuPPy session: :class:`TDTFiberPhotometryInterface` (raw acquisition
     traces added to ``nwbfile.acquisition`` via the ``ndx-fiber-photometry`` extension),
-    :class:`TDTEventsInterface` (raw discrete events/epocs added to a ``behavior`` ProcessingModule
-    via the ``ndx-events`` extension), and :class:`GuppyInterface` (derived traces, transient tables,
-    and cross-correlations added to a ``fiber_photometry`` ProcessingModule).
+    :class:`TDTEventsInterface` (raw discrete events/epocs added to ``nwbfile.acquisition`` via the
+    ``ndx-events`` extension), and :class:`GuppyInterface` (derived traces, transient tables, and
+    cross-correlations added to a ``fiber_photometry`` ProcessingModule).
 
     GuPPy and TDT share a single origin (recording start = ``session_start_time``): GuPPy emits
     timestamps in seconds since recording start, the same clock the raw TDT streams use. No
@@ -57,7 +57,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         ``storesList.csv`` -- i.e. only the epocs GuPPy actually processed -- each given the
         human-readable name from that file (e.g. the ``PrtN`` store becomes the ``port_entries``
         Events object). Stores present in the tank but absent from ``storesList.csv`` (and the
-        fiber signal/control stores) are excluded.
+        fiber signal/control stores) are excluded by ``get_metadata``.
         """
         tdt_interface = TDTFiberPhotometryInterface(folder_path=tdt_folder_path, verbose=verbose)
         guppy_interface = GuppyInterface(
@@ -65,13 +65,10 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             verbose=verbose,
         )
         # Store only the behavioral event stores GuPPy listed in storesList.csv, named with the
-        # human-readable semantic names from that file (applied in get_metadata).
+        # human-readable semantic names from that file (the selection and renaming happen in
+        # get_metadata, since add_to_nwbfile only writes the epocs left in event_columns).
         self._event_store_to_event_name = guppy_interface.event_store_to_event_name
-        events_interface = TDTEventsInterface(
-            folder_path=tdt_folder_path,
-            event_names=list(self._event_store_to_event_name.keys()),
-            verbose=verbose,
-        )
+        events_interface = TDTEventsInterface(folder_path=tdt_folder_path, verbose=verbose)
         super().__init__(
             data_interfaces={
                 "TDTFiberPhotometry": tdt_interface,
@@ -89,15 +86,21 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         # The TDT side adds a FiberPhotometry lab_meta_data object named "fiber_photometry";
         # rename the GuPPy ProcessingModule to avoid colliding with that name during NWB write.
         metadata["Ophys"]["Guppy"]["ProcessingModule"]["name"] = "guppy"
-        # Name each raw TDT event with the human-readable name GuPPy recorded in storesList.csv
-        # (e.g. the "PrtN" store becomes the "port_entries" Events object).
-        for event in metadata["Behavior"]["TDTEvents"]["Events"]:
-            event_name = self._event_store_to_event_name.get(event["epoc_name"])
-            if event_name is not None:
-                event["name"] = event_name
-                event["description"] = (
-                    f"Onset times of the '{event_name}' behavioral events (from TDT store '{event['epoc_name']}')."
-                )
+        # Keep only the behavioral event stores GuPPy listed in storesList.csv and rename each to the
+        # human-readable name GuPPy recorded there (e.g. the "PrtN" store becomes the "port_entries"
+        # Events object). add_to_nwbfile only writes the epocs left in event_columns, so dropping the
+        # others here excludes the unprocessed tank stores from acquisition.
+        metadata_key = self.data_interface_objects["TDTEvents"].metadata_key
+        event_columns = metadata["Events"][metadata_key]["event_columns"]
+        renamed_event_columns = {}
+        for epoc_name, event_name in self._event_store_to_event_name.items():
+            column = event_columns[epoc_name]
+            column["column_name"] = event_name
+            column["description"] = (
+                f"Onset times of the '{event_name}' behavioral events (from TDT store '{epoc_name}')."
+            )
+            renamed_event_columns[epoc_name] = column
+        metadata["Events"][metadata_key]["event_columns"] = renamed_event_columns
         return metadata
 
     def get_metadata_schema(self) -> dict:

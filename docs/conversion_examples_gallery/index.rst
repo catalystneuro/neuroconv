@@ -117,7 +117,6 @@ Behavior
     VAME <behavior/vame>
     Videos <behavior/video>
     MedPC <behavior/medpc>
-    TDT Events <behavior/tdt_events>
 
 
 Events

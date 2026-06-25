@@ -7,7 +7,6 @@ from .behavior.lightningpose.lightningposedatainterface import (
 )
 from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
-from .behavior.tdt_events.tdteventsdatainterface import TDTEventsInterface
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface

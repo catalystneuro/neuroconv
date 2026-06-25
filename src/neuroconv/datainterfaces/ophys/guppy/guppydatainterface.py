@@ -1036,13 +1036,11 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         return regions_table
 
     def _add_events_table(self, ndx_guppy, processing_module, nwbfile: NWBFile):
-        """Build and add the GuppyEventsTable, optionally referencing behavior Events objects by name."""
-        behavior_objects = {}
-        if "behavior" in nwbfile.processing:
-            behavior_objects = dict(nwbfile.processing["behavior"].data_interfaces)
+        """Build and add the GuppyEventsTable, optionally referencing acquisition Events objects by name."""
+        acquisition_objects = dict(nwbfile.acquisition)
 
         name_to_store = {event_name: store for store, event_name in self.event_store_to_event_name.items()}
-        event_references = [behavior_objects.get(event_name) for event_name in self.event_names]
+        event_references = [acquisition_objects.get(event_name) for event_name in self.event_names]
         include_event_references = len(event_references) > 0 and all(
             reference is not None for reference in event_references
         )

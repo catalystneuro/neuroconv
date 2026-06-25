@@ -25,10 +25,6 @@ SLEAP
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.sleap.sleapdatainterface
 
-TDT Events
-----------
-.. automodule:: neuroconv.datainterfaces.behavior.tdt_events.tdteventsdatainterface
-
 Video
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.video.videodatainterface
