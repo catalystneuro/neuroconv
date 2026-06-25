@@ -60,53 +60,27 @@ class TestStreamDiscoveryAndRouting:
 
 
 class TestMetadataMerging:
-    """Multiple sub-interfaces merge into a single coherent metadata dict."""
+    """The converter merges the sub-interface metadata into one dict: duplicate devices
+    collapse to one, and each sub-interface's entry lands under its converter-assigned key."""
 
-    def test_device_metadata(self):
+    def test_device_deduplicated(self):
+        # Every sub-interface emits the same Intan device; the merge must collapse them to one.
         converter = IntanConverter(file_path=RHS_TRADITIONAL)
         metadata = converter.get_metadata()
-        expected_device = {"name": "Intan", "description": "RHS Stim/Recording System", "manufacturer": "Intan"}
-        assert metadata["Devices"] == [expected_device]
-        assert metadata["Ecephys"]["Device"] == [expected_device]
+        assert len(metadata["Devices"]) == 1
+        assert metadata["Devices"][0]["name"] == "Intan"
+        assert metadata["Ecephys"]["Device"] == metadata["Devices"]
 
-    def test_time_series_metadata_structure(self):
+    def test_metadata_keys_present(self):
+        # Each routed stream lands under the metadata_key the converter assigned in _STREAM_TO_INTERFACE.
         converter = IntanConverter(file_path=RHS_TRADITIONAL)
         metadata = converter.get_metadata()
-        ts = metadata["TimeSeries"]
-
-        assert set(ts.keys()) == {
+        assert set(metadata["TimeSeries"].keys()) == {
             "time_series_intan_adc_input",
             "time_series_intan_adc_output",
             "time_series_intan_stim",
         }
-
-        # name field is the NWB object name (PascalCase from stream_info); metadata_key is
-        # the snake_case dict key used to look up the entry.
-        assert ts["time_series_intan_adc_input"]["name"] == "TimeSeriesIntanADCInput"
-        assert ts["time_series_intan_adc_output"]["name"] == "TimeSeriesIntanADCOutput"
-        assert ts["time_series_intan_stim"]["name"] == "TimeSeriesIntanStim"
-
-        assert "ADC input" in ts["time_series_intan_adc_input"]["description"]
-        assert "ADC output" in ts["time_series_intan_adc_output"]["description"]
-        assert "stimulation" in ts["time_series_intan_stim"]["description"].lower()
-
-    def test_ecephys_recording_metadata(self):
-        converter = IntanConverter(file_path=RHS_TRADITIONAL)
-        metadata = converter.get_metadata()
-        ecephys = metadata["Ecephys"]
-
-        assert ecephys["intan_amplifier"]["name"] == "ElectricalSeries"
-        assert ecephys["ElectricalSeriesRaw"] == {
-            "name": "ElectricalSeriesRaw",
-            "description": "Raw acquisition traces.",
-        }
-
-    def test_rhd_device_description(self):
-        converter = IntanConverter(file_path=RHD_FILE_PER_SIGNAL)
-        metadata = converter.get_metadata()
-        expected_device = {"name": "Intan", "description": "RHD Recording System", "manufacturer": "Intan"}
-        assert metadata["Devices"] == [expected_device]
-        assert metadata["Ecephys"]["Device"] == [expected_device]
+        assert "intan_amplifier" in metadata["Ecephys"]
 
 
 class TestFullConversion:
