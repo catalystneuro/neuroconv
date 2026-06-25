@@ -30,6 +30,7 @@ Recording
     OpenEphys <recording/openephys>
     Plexon <recording/plexon>
     Plexon2 <recording/plexon2>
+    Pinnacle PVFS <recording/pvfs>
     Spike2 <recording/spike2>
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>

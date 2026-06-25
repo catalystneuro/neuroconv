@@ -12,6 +12,7 @@ from ..datainterfaces.behavior.lightningpose.lightningposeconverter import (
 from ..datainterfaces.ecephys.sortedrecordinginterface import SortedRecordingConverter
 from ..datainterfaces.ecephys.spikeglx.sorted_spikeglx_converter import SortedSpikeGLXConverter
 from ..datainterfaces.ecephys.openephys.openephysbinaryconverter import OpenEphysBinaryConverter
+from ..datainterfaces.ecephys.pvfs.pvfsconverter import PvfsConverter
 from ..datainterfaces.ecephys.spikeglx.spikeglxconverter import SpikeGLXConverterPipe
 from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
     BrukerTiffMultiPlaneConverter,
@@ -22,6 +23,7 @@ from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConvert
 converter_list = [
     LightningPoseConverter,
     OpenEphysBinaryConverter,
+    PvfsConverter,
     SpikeGLXConverterPipe,
     BrukerTiffMultiPlaneConverter,
     BrukerTiffSinglePlaneConverter,
