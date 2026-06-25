@@ -466,6 +466,36 @@ class TestVameInterfacePoseEstimationLink:
         assert project.pose_estimation is not None
         assert project.pose_estimation.name == pose_estimation_name
 
+    def test_links_pose_estimation_when_key_and_name_differ(self):
+        """Registry key and NWB container name can differ — VameInterface resolves via Pose registry."""
+        interface = VameInterface(
+            file_path=str(CONFIG_PATH),
+            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
+        )
+        aligned_timestamps = np.arange(10, dtype=float)
+        interface.set_aligned_timestamps(aligned_timestamps)
+
+        # Create a PoseEstimation where the registry key ("DLC") differs from the container
+        # name ("PoseEstimationDeepLabCut"), mirroring how DeepLabCutInterface works.
+        pose_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0, metadata_key="DLC")
+        pose_interface.set_aligned_timestamps(aligned_timestamps)
+        pose_meta = pose_interface.get_metadata()
+        pose_meta["Behavior"]["Pose"]["PoseEstimations"]["DLC"]["name"] = "PoseEstimationDeepLabCut"
+
+        nwbfile = mock_NWBFile()
+        pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_meta)
+
+        # Point VAME at the registry key ("DLC") and include the Pose metadata so VameInterface
+        # can resolve the actual container name.
+        vame_metadata = interface.get_metadata()
+        vame_metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = "DLC"
+        vame_metadata["Behavior"]["Pose"] = pose_meta["Behavior"]["Pose"]
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
+
+        project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
+        assert project.pose_estimation is not None
+        assert project.pose_estimation.name == "PoseEstimationDeepLabCut"
+
 
 class TestVameInterfaceGetPoseEstimation:
     """Static method _get_pose_estimation raises informative errors."""
