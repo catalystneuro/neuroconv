@@ -75,7 +75,7 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         folder_path: DirectoryPath,
         *,
         exclude_events: list[str] | None = None,
-        metadata_key: str = "TDTEvents",
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """Initialize the TDTEventsInterface.
@@ -86,10 +86,9 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
             The path to the folder containing the TDT data.
         exclude_events : list[str], optional
             The names of the TDT epocs to skip. If None (default), every epoc in the tank is stored.
-        metadata_key : str, default: "TDTEvents"
+        metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
-            Override it when multiple TDT events interfaces are used in the same conversion so their
-            metadata does not collide.
+            If None (default), ``"tdt_events"`` is used.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
@@ -98,7 +97,7 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
             exclude_events=exclude_events,
             verbose=verbose,
         )
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "tdt_events"
         # This import is to assure that ndx_events is in the global namespace when a pynwb.io object is created
         import ndx_events  # noqa: F401
 

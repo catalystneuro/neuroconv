@@ -86,19 +86,19 @@ class TestTDTEventsInterface:
         assert metadata["NWBFile"]["session_start_time"] == expected
 
     def test_default_lists_all_epocs(self, interface):
-        event_columns = interface.get_metadata()["Events"]["TDTEvents"]["event_columns"]
+        event_columns = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]
         assert set(event_columns.keys()) == set(EPOC_NAME_TO_LENGTH)
         for epoc_name, column in event_columns.items():
             assert column["column_name"] == epoc_name
 
     def test_exclude_events(self):
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, exclude_events=["LNRW", "LNnR"])
-        event_columns = interface.get_metadata()["Events"]["TDTEvents"]["event_columns"]
+        event_columns = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]
         assert set(event_columns.keys()) == {"PrtR", "RNPS"}
 
     def test_metadata_key_default_and_override(self):
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH)
-        assert set(interface.get_metadata()["Events"].keys()) == {"TDTEvents"}
+        assert set(interface.get_metadata()["Events"].keys()) == {"tdt_events"}
 
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, metadata_key="my_tank")
         events_metadata = interface.get_metadata()["Events"]
@@ -124,7 +124,7 @@ class TestTDTEventsInterface:
             {"PrtR": _FakeEpoc(np.array([1.0, 2.0, 3.0]), np.array([1.5, 2.5, 3.5]), np.array([1.0, 2.0, 3.0]))}
         )
         monkeypatch.setattr(interface, "load", lambda **kwargs: fake_block)
-        metadata = {"Events": {"TDTEvents": {"event_columns": {"PrtR": {"column_name": "PrtR", "description": "d"}}}}}
+        metadata = {"Events": {"tdt_events": {"event_columns": {"PrtR": {"column_name": "PrtR", "description": "d"}}}}}
         with pytest.raises(NotImplementedError, match=r"real offset.*issues/new"):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
@@ -152,14 +152,14 @@ class TestTDTEventsStrobeInterface:
         return TDTEventsInterface(folder_path=STROBE_TANK_PATH, exclude_events=["Vid1", "Tick"])
 
     def test_metadata_seeds_strobe_labels(self, interface):
-        column = interface.get_metadata()["Events"]["TDTEvents"]["event_columns"]["PAB_"]
+        column = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]["PAB_"]
         # The PAB_ store's three distinct codes are seeded as an editable raw-code -> label map.
         assert column["column_categories"]["labels"] == {0: "0", 16: "16", 2064: "2064"}
         assert column["description"] == "Onset times of the TDT epoc 'PAB_', labeled by strobe value."
 
     def test_counter_store_has_no_labels(self):
         interface = TDTEventsInterface(folder_path=STROBE_TANK_PATH, exclude_events=["PAB_", "Vid1"])
-        column = interface.get_metadata()["Events"]["TDTEvents"]["event_columns"]["Tick"]
+        column = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]["Tick"]
         assert "column_categories" not in column
 
     def test_add_to_nwbfile_writes_labeled_events(self, interface):
@@ -175,7 +175,7 @@ class TestTDTEventsStrobeInterface:
 
     def test_user_relabeling_round_trip(self, interface, tmp_path):
         metadata = interface.get_metadata()
-        column = metadata["Events"]["TDTEvents"]["event_columns"]["PAB_"]
+        column = metadata["Events"]["tdt_events"]["event_columns"]["PAB_"]
         column["column_categories"]["labels"] = {0: "none", 16: "left", 2064: "right"}
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
