@@ -81,6 +81,10 @@ Suite2p Segmentation
 Fiber Photometry
 ================
 
+Doric Fiber Photometry
+----------------------
+.. automodule:: neuroconv.datainterfaces.ophys.doric.doricfiberphotometrydatainterface
+
 TDT Fiber Photometry
 --------------------
 .. automodule:: neuroconv.datainterfaces.ophys.tdt_fp.tdtfiberphotometrydatainterface
