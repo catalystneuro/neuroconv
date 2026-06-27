@@ -14,7 +14,7 @@ from tqdm import tqdm
 from .video_utils import VideoCaptureContext, VideoDataChunkIterator
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
-from ....tools.nwb_helpers import get_module
+from ....tools.nwb_helpers import _add_device_to_nwbfile, get_module
 from ....utils import (
     DeepDict,
     dict_deep_update,
@@ -376,12 +376,17 @@ class InternalVideoInterface(BaseDataInterface):
         # device_metadata_key; fall back to a (deprecated) nested "device" dict for back-compat.
         device_metadata_key = image_series_kwargs.pop("device_metadata_key", None)
         legacy_device_kwargs = image_series_kwargs.pop("device", None)
-        device_kwargs = None
+        device_metadata = None
         if device_metadata_key is not None:
-            devices_metadata = deepcopy(metadata).get("Devices", None)
-            if devices_metadata is None or device_metadata_key not in devices_metadata:
-                devices_metadata = deepcopy(self.get_metadata()["Devices"])
-            device_kwargs = devices_metadata.get(device_metadata_key)
+            # Strict resolution against the top-level Devices registry: a missing/typo'd key raises.
+            # (metadata is a DeepDict that auto-creates missing keys, so membership is checked explicitly.)
+            devices_metadata = deepcopy(metadata).get("Devices") or deepcopy(self.get_metadata()["Devices"])
+            if device_metadata_key not in devices_metadata:
+                raise KeyError(
+                    f"device_metadata_key '{device_metadata_key}' was not found in metadata['Devices'] "
+                    f"(available keys: {list(devices_metadata)})."
+                )
+            device_metadata = devices_metadata[device_metadata_key]
         elif legacy_device_kwargs is not None:
             warnings.warn(
                 "Passing the camera device nested under the video metadata entry is deprecated and will be "
@@ -390,15 +395,10 @@ class InternalVideoInterface(BaseDataInterface):
                 FutureWarning,
                 stacklevel=2,
             )
-            device_kwargs = legacy_device_kwargs
+            device_metadata = legacy_device_kwargs
 
-        if device_kwargs is not None:
-            if device_kwargs["name"] in nwbfile.devices:
-                device = nwbfile.devices[device_kwargs["name"]]
-            else:
-                device = Device(**device_kwargs)
-                nwbfile.add_device(device)
-            image_series_kwargs["device"] = device
+        if device_metadata is not None:
+            image_series_kwargs["device"] = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
 
         # The 70 size is an estimation of the total size of the video file in memory
         uncompressed_estimate = file_path.stat().st_size * 70

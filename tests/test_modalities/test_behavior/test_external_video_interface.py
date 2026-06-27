@@ -385,6 +385,24 @@ def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starti
         assert nwbfile.acquisition["Video test1"].device is None
 
 
+def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """A device_metadata_key with no matching Devices entry raises instead of silently dropping the device."""
+    timestamps = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+    metadata["Behavior"]["ExternalVideos"]["video_test1"]["device_metadata_key"] = "missing_camera"
+
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    with pytest.raises(KeyError):
+        nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_options,
+            metadata=metadata,
+        )
+
+
 def test_invalid_device_metadata(nwb_converter, nwbfile_path, metadata):
     """Test that an error is raised when the device metadata is invalid."""
     # Setup interface with timing information to allow conversion
