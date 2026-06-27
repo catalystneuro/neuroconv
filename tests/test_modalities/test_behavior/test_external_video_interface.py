@@ -55,11 +55,11 @@ def nwb_converter(video_files):
     source_data = dict(
         Video1=dict(
             file_paths=video_files[0:2],
-            video_name="Video test1",
+            metadata_key="video_test1",
         ),
         Video2=dict(
             file_paths=[video_files[2]],
-            video_name="Video test3",
+            metadata_key="video_test3",
         ),
     )
     return VideoTestNWBConverter(source_data=source_data)
@@ -291,18 +291,22 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
     """Test adding to NWBFile with custom metadata."""
     metadata_copy = deepcopy(metadata)
     custom_metadata = {
+        "Devices": {
+            "custom_device": {
+                "name": "CustomDevice",
+                "description": "Custom device description",
+            },
+        },
         "Behavior": {
             "ExternalVideos": {
-                "Video test1": {
+                "video_test1": {  # snake_case key
+                    "name": "CustomVideo",  # CamelCase ImageSeries name, distinct from the key
                     "description": "Custom description",
                     "unit": "CustomUnit",
-                    "device": {
-                        "name": "CustomDevice",
-                        "description": "Custom device description",
-                    },
+                    "device_metadata_key": "custom_device",
                 }
             }
-        }
+        },
     }
     metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
 
@@ -320,10 +324,10 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
 
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
-        assert nwbfile.acquisition["Video test1"].description == "Custom description"
-        assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
+        assert nwbfile.acquisition["CustomVideo"].description == "Custom description"
+        assert nwbfile.acquisition["CustomVideo"].unit == "CustomUnit"
         assert nwbfile.devices["CustomDevice"].description == "Custom device description"
-        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["CustomDevice"]
+        assert nwbfile.acquisition["CustomVideo"].device == nwbfile.devices["CustomDevice"]
 
 
 def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
@@ -363,7 +367,7 @@ def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starti
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
     interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
 
-    metadata["Behavior"]["ExternalVideos"]["Video test1"].pop("device")  # Remove device from metadata
+    metadata["Behavior"]["ExternalVideos"]["video_test1"].pop("device_metadata_key")  # Unlink the device
 
     # Run conversion with multiple cameras
     conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
@@ -389,7 +393,7 @@ def test_invalid_device_metadata(nwb_converter, nwbfile_path, metadata):
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
 
     # Modify metadata to have invalid device information
-    metadata["Behavior"]["ExternalVideos"]["Video test1"]["device"] = {"description": "missing required name"}
+    metadata["Behavior"]["ExternalVideos"]["video_test1"]["device"] = {"description": "missing required name"}
 
     from jsonschema import ValidationError
 

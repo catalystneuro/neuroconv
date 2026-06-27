@@ -39,6 +39,7 @@ class InternalVideoInterface(BaseDataInterface):
         file_path: FilePath,
         verbose: bool = False,
         *,
+        metadata_key: str | None = None,
         video_name: str | None = None,
     ):
         """
@@ -53,51 +54,68 @@ class InternalVideoInterface(BaseDataInterface):
             The path to the video file.
         verbose : bool, optional
             If True, display verbose output. Defaults to False.
-        video_name : str, optional
-            The name of this video as it will appear in the ImageSeries.
-            Defaults to f"Video {file_path.stem}" if not provided.
-
-            This key is essential when multiple video streams are present in a single experiment.
-            The associated metadata should be a nested dictionary structure, where each key
-            corresponds to a video name, and each value is a dictionary containing metadata for that video:
+        metadata_key : str, optional
+            Snake_case key that identifies this video's entry under
+            ``metadata["Behavior"]["InternalVideos"]`` and is used for cross-component linking. Defaults
+            to ``f"video_{file_path.stem}"`` if not provided. The ImageSeries name is the entry's
+            ``name`` field (a human-readable name, defaulting to ``f"Video {file_path.stem}"``, kept
+            distinct from the key), so multiple video streams in one experiment each get a unique entry:
 
             ```
             metadata["Behavior"]["InternalVideos"] = {
-                "InternalVideo1": dict(description="description 1.", unit="Frames", **video1_metadata),
-                "InternalVideo2": dict(description="description 2.", unit="Frames", **video2_metadata),
+                # key is the metadata_key (address); "name" is the ImageSeries name (distinct)
+                "back_camera": dict(name="BackCamera", description="description 1.", unit="Frames"),
+                "side_camera": dict(name="SideCamera", description="description 2.", unit="Frames"),
                 ...
             }
             ```
 
-            Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
+            Each entry corresponds to a separate InternalVideoInterface and ImageSeries. Note that
             metadata["Behavior"]["InternalVideos"] is specific to the InternalVideoInterface.
+        video_name : str, optional
+            Convenience for setting the ImageSeries ``name`` (the entry's ``name`` field) without
+            editing the metadata dict. Defaults to ``f"Video {file_path.stem}"``. An explicit
+            ``name`` in the metadata passed to ``add_to_nwbfile`` takes precedence over this.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
-        self.verbose = verbose
         file_path = Path(file_path)
+        self.verbose = verbose
         self._timestamps = None
         self._starting_time = None
-        self.video_name = video_name if video_name else f"Video {Path(file_path).stem}"
-        self._default_device_name = f"{self.video_name} Camera Device"
+        # metadata_key is the registry key (for cross-component linking); the ImageSeries name is
+        # kept distinct and is never derived from the key. Name precedence: explicit video_name, else
+        # a stem-based default. video_name is retained as a back-compat convenience.
+        self.metadata_key = metadata_key if metadata_key else f"video_{Path(file_path).stem}"
+        self._default_name = video_name if video_name else f"Video {Path(file_path).stem}"
+        self._default_device_metadata_key = f"{self.metadata_key}_camera"
+        self._default_device_name = f"{self._default_name} Camera Device"
         super().__init__(file_path=file_path)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         image_series_metadata_schema = get_schema_from_hdmf_class(ImageSeries)
         # TODO: in future PR, add 'exclude' option to get_schema_from_hdmf_class to bypass this popping
-        exclude = ["format", "conversion", "starting_time", "rate", "name"]
+        exclude = ["format", "conversion", "starting_time", "rate"]
         for key in exclude:
             image_series_metadata_schema["properties"].pop(key)
             if key in image_series_metadata_schema["required"]:
                 image_series_metadata_schema["required"].remove(key)
         device_metadata_schema = get_schema_from_hdmf_class(Device)
+        # The camera Device lives at top-level metadata["Devices"], referenced from the video entry
+        # by ``device_metadata_key``. A nested ``device`` dict is still accepted for back-compat.
+        image_series_metadata_schema["properties"]["device_metadata_key"] = {"type": "string"}
         image_series_metadata_schema["properties"]["device"] = device_metadata_schema
+        metadata_schema["properties"]["Devices"] = {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": device_metadata_schema,
+        }
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"]["required"].append("InternalVideos")
         metadata_schema["properties"]["Behavior"]["properties"]["InternalVideos"] = {
             "type": "object",
-            "properties": {self.video_name: image_series_metadata_schema},
-            "required": [self.video_name],
+            "properties": {self.metadata_key: image_series_metadata_schema},
+            "required": [self.metadata_key],
             "additionalProperties": True,
         }
         return metadata_schema
@@ -105,15 +123,22 @@ class InternalVideoInterface(BaseDataInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         video_metadata = {
+            "Devices": {
+                self._default_device_metadata_key: dict(
+                    name=self._default_device_name,
+                    description="Video camera used for recording.",
+                ),
+            },
             "Behavior": {
                 "InternalVideos": {
-                    self.video_name: dict(
+                    self.metadata_key: dict(
+                        name=self._default_name,
                         description="Video recorded by camera.",
                         unit="Frames",
-                        device=dict(name=self._default_device_name, description="Video camera used for recording."),
+                        device_metadata_key=self._default_device_metadata_key,
                     )
                 }
-            }
+            },
         }
         return dict_deep_update(metadata, video_metadata)
 
@@ -225,29 +250,34 @@ class InternalVideoInterface(BaseDataInterface):
         metadata : dict, optional
             Dictionary of metadata information such as name and description of the video, as well as
             device information for the camera that captured the video. The keys must correspond to
-            the video_name specified in the constructor.
+            the metadata_key specified in the constructor.
             Should be organized as follows::
 
                 metadata = dict(
+                    Devices=dict(
+                        internal_video_camera=dict(name="CameraName", description="Camera description", ...),
+                    ),
                     Behavior=dict(
                         InternalVideos=dict(
-                            InternalVideo=dict(
+                            internal_video=dict(
+                                name="InternalVideo",
                                 description="Description of the video..",
-                                device=dict(name="Camera name", description="Camera description", ...),
+                                device_metadata_key="internal_video_camera",
                                 ...,
                             )
                         )
-                    )
+                    ),
                 )
 
             The InternalVideo section may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
 
-            The device section may contain most keywords normally accepted by a Device
-            (https://pynwb.readthedocs.io/en/stable/pynwb.device.html#pynwb.device.Device).
-
-            The device will be created and linked to the ImageSeries, establishing a connection between
-            the video data and the camera that captured it.
+            The camera is a top-level ``metadata["Devices"]`` entry (most keywords accepted by a Device,
+            https://pynwb.readthedocs.io/en/stable/pynwb.device.html#pynwb.device.Device), referenced from
+            the video entry by ``device_metadata_key``; it is created and linked to the ImageSeries,
+            establishing a connection between the video data and the camera that captured it. Passing the
+            camera nested under the video entry as ``device=dict(...)`` is still accepted but deprecated
+            (removal on or after December 2026).
         stub_test : bool, default: False
             If ``True``, truncates the write operation for fast testing.
         buffer_data : bool, default: True
@@ -337,11 +367,30 @@ class InternalVideoInterface(BaseDataInterface):
         # Be sure to copy metadata at this step to avoid mutating in-place
         videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("InternalVideos", None)
         # If no metadata is provided use the default metadata
-        if videos_metadata is None or self.video_name not in videos_metadata:
+        if videos_metadata is None or self.metadata_key not in videos_metadata:
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["InternalVideos"])
-        image_series_kwargs = videos_metadata[self.video_name]
-        image_series_kwargs["name"] = self.video_name
-        device_kwargs = image_series_kwargs.pop("device", None)
+        image_series_kwargs = videos_metadata[self.metadata_key]
+        image_series_kwargs.setdefault("name", self._default_name)
+
+        # Resolve the camera Device: prefer the top-level Devices registry referenced by
+        # device_metadata_key; fall back to a (deprecated) nested "device" dict for back-compat.
+        device_metadata_key = image_series_kwargs.pop("device_metadata_key", None)
+        legacy_device_kwargs = image_series_kwargs.pop("device", None)
+        device_kwargs = None
+        if device_metadata_key is not None:
+            devices_metadata = deepcopy(metadata).get("Devices", None)
+            if devices_metadata is None or device_metadata_key not in devices_metadata:
+                devices_metadata = deepcopy(self.get_metadata()["Devices"])
+            device_kwargs = devices_metadata.get(device_metadata_key)
+        elif legacy_device_kwargs is not None:
+            warnings.warn(
+                "Passing the camera device nested under the video metadata entry is deprecated and will be "
+                "removed on or after December 2026. Use a top-level metadata['Devices'][key] entry referenced "
+                "by 'device_metadata_key' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            device_kwargs = legacy_device_kwargs
 
         if device_kwargs is not None:
             if device_kwargs["name"] in nwbfile.devices:
