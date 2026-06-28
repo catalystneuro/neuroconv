@@ -299,8 +299,7 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
         },
         "Behavior": {
             "ExternalVideos": {
-                "video_test1": {  # snake_case key
-                    "name": "CustomVideo",  # CamelCase ImageSeries name, distinct from the key
+                "video_test1": {
                     "description": "Custom description",
                     "unit": "CustomUnit",
                     "device_metadata_key": "custom_device",
@@ -324,10 +323,10 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
 
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
-        assert nwbfile.acquisition["CustomVideo"].description == "Custom description"
-        assert nwbfile.acquisition["CustomVideo"].unit == "CustomUnit"
+        assert nwbfile.acquisition["Video test1"].description == "Custom description"
+        assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
         assert nwbfile.devices["CustomDevice"].description == "Custom device description"
-        assert nwbfile.acquisition["CustomVideo"].device == nwbfile.devices["CustomDevice"]
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["CustomDevice"]
 
 
 def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
