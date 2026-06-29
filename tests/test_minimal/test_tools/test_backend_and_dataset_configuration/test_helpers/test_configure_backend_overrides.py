@@ -3,13 +3,13 @@
 from pathlib import Path
 from typing import Literal
 
-import numcodecs
 import numpy as np
 import pytest
 from hdmf.common import DynamicTable, VectorData
 from hdmf.data_utils import DataChunkIterator
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
+from zarr.codecs import GzipCodec
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
@@ -72,7 +72,9 @@ def test_simple_time_series_override(
             assert written_data.compression == "gzip"
             assert written_data.compression_opts == higher_gzip_level
         elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=5)
+            assert len(written_data.compressors) > 0
+            assert isinstance(written_data.compressors[0], GzipCodec)
+            assert written_data.compressors[0].level == 5
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -114,4 +116,6 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
             assert written_data.compression == "gzip"
             assert written_data.compression_opts == higher_gzip_level
         elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=5)
+            assert len(written_data.compressors) > 0
+            assert isinstance(written_data.compressors[0], GzipCodec)
+            assert written_data.compressors[0].level == 5

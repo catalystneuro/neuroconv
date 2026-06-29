@@ -86,9 +86,8 @@ ZARR_COMPRESSION_EXPECTED = {
     "bz2": "bz2",
     "zlib": "zlib",
     "zstd": "zstd",
-    "jenkins_lookup3": "jenkinslookup3",  # Note: the underscores removed in string representation
-    "delta": None,  # TODO, implement a test for this, requires dtype parameter
-    "categorize": None,  # TODO, implement a test for this, requires labels and dtype parameters
+    "lz4": "lz4",
+    "shuffle": "shuffle",
 }
 
 
@@ -267,12 +266,12 @@ class TestGlobalCompressionZarr:
         dataset1 = zarr_group["acquisition/TestTimeSeries1/data"]
         dataset2 = zarr_group["acquisition/TestTimeSeries2/data"]
 
-        # Verify that compression is applied
-        assert dataset1.compressor is not None
-        assert dataset2.compressor is not None
+        # Verify that compression is applied (zarr v3: .compressors is a tuple)
+        assert len(dataset1.compressors) > 0
+        assert len(dataset2.compressors) > 0
         # Check that the compressor name matches the expected compression method
-        assert expected_compression in str(dataset1.compressor).lower()
-        assert expected_compression in str(dataset2.compressor).lower()
+        assert expected_compression in str(dataset1.compressors[0]).lower()
+        assert expected_compression in str(dataset2.compressors[0]).lower()
 
     def test_global_compression_with_options(self, tmp_path):
         """Test applying global compression method with options using backend configuration."""
@@ -306,17 +305,19 @@ class TestGlobalCompressionZarr:
         dataset1 = zarr_group["acquisition/TestTimeSeries1/data"]
         dataset2 = zarr_group["acquisition/TestTimeSeries2/data"]
 
-        # Verify that compression is applied
-        assert dataset1.compressor is not None
-        assert dataset2.compressor is not None
+        # Verify that compression is applied (zarr v3: .compressors is a tuple)
+        assert len(dataset1.compressors) > 0
+        assert len(dataset2.compressors) > 0
         # Check that the compressor name matches the expected compression method
-        assert "gzip" in str(dataset1.compressor).lower()
-        assert "gzip" in str(dataset2.compressor).lower()
+        assert "gzip" in str(dataset1.compressors[0]).lower()
+        assert "gzip" in str(dataset2.compressors[0]).lower()
         # Check that compression level is applied (for gzip compressor)
-        if hasattr(dataset1.compressor, "level"):
-            assert dataset1.compressor.level == 6
-        if hasattr(dataset2.compressor, "level"):
-            assert dataset2.compressor.level == 6
+        compressor1 = dataset1.compressors[0]
+        compressor2 = dataset2.compressors[0]
+        if hasattr(compressor1, "level"):
+            assert compressor1.level == 6
+        if hasattr(compressor2, "level"):
+            assert compressor2.level == 6
 
     def test_global_compression_invalid_method(self, tmp_path):
         """Test that invalid compression method raises error when using apply_global_compression."""

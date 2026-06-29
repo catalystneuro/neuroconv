@@ -65,7 +65,10 @@ def configure_backend(
             # we wrap each neurodata_object in a DataChunkIterator in order to support changes to the I/O settings.
             # For more detail, see https://github.com/hdmf-dev/hdmf/issues/1170.
             data_chunk_iterator_class = DataChunkIterator
-            data_chunk_iterator_kwargs = dict(buffer_size=math.prod(dataset_configuration.buffer_shape))
+            data_chunk_iterator_kwargs = dict(
+                buffer_size=math.prod(dataset_configuration.buffer_shape),
+                dtype=dataset_configuration.dtype,
+            )
 
         # Table columns
         if isinstance(neurodata_object, Data):

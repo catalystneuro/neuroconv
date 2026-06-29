@@ -4,7 +4,7 @@ from io import StringIO
 from unittest.mock import patch
 
 import pytest
-from numcodecs import GZip
+from zarr.codecs import GzipCodec
 
 from neuroconv.tools.nwb_helpers import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
@@ -121,7 +121,7 @@ acquisition/TestElectricalSeries/data
 def test_zarr_dataset_configuration_print_with_filter_options():
     """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
-        filter_methods=["blosc"], filter_options=[dict(clevel=5)]
+        filter_methods=["delta"], filter_options=[dict(dtype="<i4")]
     )
 
     with patch("sys.stdout", new=StringIO()) as out:
@@ -142,8 +142,8 @@ acquisition/TestElectricalSeries/data
 
   compression method : gzip
 
-  filter methods : ['blosc']
-  filter options : [{'clevel': 5}]
+  filter methods : ['delta']
+  filter options : [{'dtype': '<i4'}]
 
 """
     assert out.getvalue() == expected_print
@@ -158,7 +158,7 @@ def test_zarr_dataset_configuration_repr():
         "ZarrDatasetIOConfiguration(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
         "location_in_file='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
         "full_shape=(1800000, 384), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
-        "compression_options=None, filter_methods=None, filter_options=None)"
+        "compression_options=None, filter_methods=None, filter_options=None, shard_shape=None)"
     )
     assert repr(zarr_dataset_configuration) == expected_repr
 
@@ -206,9 +206,10 @@ def test_default_compression_is_always_available():
 def test_get_data_io_kwargs():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration()
 
-    assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GZip(level=1), filters=None
-    )
+    result = zarr_dataset_configuration.get_data_io_kwargs()
+    assert result["chunks"] == (78125, 64)
+    assert result["filters"] is None
+    assert isinstance(result["compressor"], GzipCodec)
 
 
 def test_zarr_dataset_io_configuration_schema():

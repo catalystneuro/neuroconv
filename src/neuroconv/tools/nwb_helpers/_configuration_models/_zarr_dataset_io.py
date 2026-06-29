@@ -2,42 +2,31 @@
 
 from typing import Any, Literal
 
-import numcodecs
-import zarr
 from hdmf import Container
-from pydantic import Field, InstanceOf, model_validator
+from pydantic import Field, InstanceOf, PositiveInt, model_validator
 from typing_extensions import Self
+from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
+from zarr.codecs import BloscCodec, GzipCodec, ZstdCodec
+from zarr.codecs.numcodecs import BZ2, LZ4, LZMA, Shuffle, Zlib
 
 from ._base_dataset_io import DatasetIOConfiguration
 
-_base_zarr_codecs = set(zarr.codec_registry.keys())
-_lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
+# Curated mapping of string names to zarr v3 BytesBytesCodec classes.
+# Prefer native zarr codecs where available; fall back to numcodecs wrappers otherwise.
+AVAILABLE_ZARR_COMPRESSION_METHODS: dict[str, type[BytesBytesCodec]] = {
+    "gzip": GzipCodec,
+    "blosc": BloscCodec,
+    "zstd": ZstdCodec,
+    "bz2": BZ2,
+    "lzma": LZMA,
+    "zlib": Zlib,
+    "lz4": LZ4,
+    "shuffle": Shuffle,
+}
 
-# These filters do nothing for us, or are things that ought to be implemented at lower HDMF levels
-# or indirectly using HDMF data structures
-_excluded_zarr_codecs = set(
-    (
-        "json2",  # no data savings
-        "pickle",  # no data savings
-        "vlen-utf8",  # enforced by HDMF
-        "vlen-array",  # enforced by HDMF
-        "vlen-bytes",  # enforced by HDMF
-        "msgpack2",  # think more on if we want to include this for variable length string datasets
-        "adler32",  # checksum
-        "crc32",  # checksum
-        "fixedscaleoffset",  # enforced indirectly by HDMF/PyNWB data types
-        "base64",  # unsure what this would ever be used for
-        "n5_wrapper",  # different data format
-        "pcodec",  # is erroneously imported before numcodecs 0.15, see https://numcodecs.readthedocs.io/en/stable/release.html?utm_source=chatgpt.com#id9
-    )
-)
-
-# Forbidding lossy codecs for now, but they could be allowed in the future with warnings?
-# (Users can always initialize and pass explicitly via code)
-_available_zarr_codecs = set(_base_zarr_codecs - _lossy_zarr_codecs - _excluded_zarr_codecs)
-
-AVAILABLE_ZARR_COMPRESSION_METHODS = {
-    codec_name: zarr.codec_registry[codec_name] for codec_name in _available_zarr_codecs
+# Curated mapping of string names to zarr v3 ArrayArrayCodec classes for filters.
+AVAILABLE_ZARR_FILTER_METHODS: dict[str, type[ArrayArrayCodec]] = {
+    "delta": __import__("zarr.codecs.numcodecs", fromlist=["Delta"]).Delta,
 }
 
 
@@ -45,34 +34,41 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
     compression_method: (
-        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec] | None
+        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[BytesBytesCodec] | None
     ) = Field(
-        default="gzip",  # TODO: would like this to be 'auto'
+        default="gzip",
         description=(
             "The specified compression method to apply to this dataset. "
             "Can be either a string that matches an available method on your system, "
-            "or an instantiated numcodec.Codec object."
+            "or an instantiated zarr BytesBytesCodec object (e.g. zarr.codecs.GzipCodec(level=5)). "
             "Set to `None` to disable compression."
         ),
     )
-    # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
-    # Looks like they'll have to be hand-typed however... Can try parsing the numpy docstrings - no annotation typing.
     compression_options: dict[str, Any] | None = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
-    filter_methods: (
-        list[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec]] | None
-    ) = Field(
-        default=None,
-        description=(
-            "The ordered collection of filtering methods to apply to this dataset prior to compression. "
-            "Each element can be either a string that matches an available method on your system, "
-            "or an instantiated numcodec.Codec object."
-            "Set to `None` to disable filtering."
-        ),
+    filter_methods: list[Literal[tuple(AVAILABLE_ZARR_FILTER_METHODS.keys())] | InstanceOf[ArrayArrayCodec]] | None = (
+        Field(
+            default=None,
+            description=(
+                "The ordered collection of filtering methods to apply to this dataset prior to compression. "
+                "Each element can be either a string that matches an available method on your system, "
+                "or an instantiated zarr ArrayArrayCodec object (e.g. zarr.codecs.numcodecs.Delta()). "
+                "Set to `None` to disable filtering."
+            ),
+        )
     )
     filter_options: list[dict[str, Any]] | None = Field(
         default=None, description="The optional parameters to use for each specified filter method."
+    )
+    shard_shape: tuple[PositiveInt, ...] | None = Field(
+        default=None,
+        description=(
+            "The specified shape to use for sharding the dataset. "
+            "Each shard contains one or more chunks. When set, each axis must be >= the corresponding "
+            "chunk_shape axis, and chunk axes must evenly divide shard axes. "
+            "Set to `None` to disable sharding (default)."
+        ),
     )
 
     def __str__(self) -> str:  # Inherited docstring from parent. noqa: D105
@@ -83,6 +79,8 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             string += f"\n  filter options : {self.filter_options}"
         if self.filter_methods is not None or self.filter_options is not None:
             string += "\n"
+        if self.shard_shape is not None:
+            string += f"\n  shard shape : {self.shard_shape}\n"
 
         return string
 
@@ -109,6 +107,31 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
 
         return values
 
+    @model_validator(mode="after")
+    def validate_shard_shape(self) -> Self:
+        if self.shard_shape is None or self.chunk_shape is None:
+            return self
+
+        if len(self.shard_shape) != len(self.chunk_shape):
+            raise ValueError(
+                f"Length of shard_shape ({len(self.shard_shape)}) does not match "
+                f"chunk_shape ({len(self.chunk_shape)}) for dataset at location '{self.location_in_file}'!"
+            )
+
+        if any(shard_axis < chunk_axis for shard_axis, chunk_axis in zip(self.shard_shape, self.chunk_shape)):
+            raise ValueError(
+                f"Some dimensions of the shard_shape {self.shard_shape} are smaller than the "
+                f"chunk_shape {self.chunk_shape} for dataset at location '{self.location_in_file}'!"
+            )
+
+        if any(shard_axis % chunk_axis != 0 for shard_axis, chunk_axis in zip(self.shard_shape, self.chunk_shape)):
+            raise ValueError(
+                f"Some dimensions of the chunk_shape {self.chunk_shape} do not evenly divide the "
+                f"shard_shape {self.shard_shape} for dataset at location '{self.location_in_file}'!"
+            )
+
+        return self
+
     def get_data_io_kwargs(self) -> dict[str, Any]:
         filters = None
         if self.filter_methods:
@@ -116,14 +139,14 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             all_filter_options = self.filter_options or [dict() for _ in self.filter_methods]
             for filter_method, filter_options in zip(self.filter_methods, all_filter_options):
                 if isinstance(filter_method, str):
-                    filters.append(zarr.codec_registry[filter_method](**filter_options))
-                elif isinstance(filter_method, numcodecs.abc.Codec):
+                    filters.append(AVAILABLE_ZARR_FILTER_METHODS[filter_method](**filter_options))
+                elif isinstance(filter_method, ArrayArrayCodec):
                     filters.append(filter_method)
 
         if isinstance(self.compression_method, str):
             compression_options = self.compression_options or dict()
-            compressor = zarr.codec_registry[self.compression_method](**compression_options)
-        if isinstance(self.compression_method, numcodecs.abc.Codec):
+            compressor = AVAILABLE_ZARR_COMPRESSION_METHODS[self.compression_method](**compression_options)
+        elif isinstance(self.compression_method, BytesBytesCodec):
             compressor = self.compression_method
         elif self.compression_method is None:
             compressor = False
@@ -155,8 +178,13 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             neurodata_object=neurodata_object,
             dataset_name=dataset_name,
         )
-        compression_method = getattr(neurodata_object, dataset_name).compressor
-        filter_methods = getattr(neurodata_object, dataset_name).filters
+        dataset = getattr(neurodata_object, dataset_name)
+        # zarr v3: .compressors is a tuple of BytesBytesCodec; take first or None
+        compressors = dataset.compressors
+        compression_method = compressors[0] if compressors else None
+        # zarr v3: .filters is a tuple of ArrayArrayCodec
+        filters = dataset.filters
+        filter_methods = list(filters) if filters else None
         return cls(
             **kwargs,
             compression_method=compression_method,

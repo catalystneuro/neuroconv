@@ -20,6 +20,7 @@ from ._configuration_models._hdf5_dataset_io import (
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
 from ._configuration_models._zarr_dataset_io import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
+    AVAILABLE_ZARR_FILTER_METHODS,
     ZarrDatasetIOConfiguration,
 )
 from ._configure_backend import configure_backend
@@ -38,6 +39,7 @@ from ._metadata_and_file_helpers import (
 __all__ = [
     "AVAILABLE_HDF5_COMPRESSION_METHODS",
     "AVAILABLE_ZARR_COMPRESSION_METHODS",
+    "AVAILABLE_ZARR_FILTER_METHODS",
     "BACKEND_CONFIGURATIONS",
     "DATASET_IO_CONFIGURATIONS",
     "BACKEND_NWB_IO",
