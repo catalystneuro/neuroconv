@@ -1243,23 +1243,17 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min:
         """Test that multiplane ISXD files raise NotImplementedError with proper message."""
         from neuroconv.datainterfaces import InscopixImagingInterface
 
-        interface_kwargs = dict(
-            file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
-        )
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
 
-        # Test that initialization raises NotImplementedError
         with pytest.raises(NotImplementedError) as exc_info:
-            InscopixImagingInterface(**interface_kwargs)
+            InscopixImagingInterface(file_path=file_path)
 
-        # Verify the error message contains expected information
         expected_message = (
-            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
-            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
-            "Proper separation logic is not yet implemented in roiextractors.\n"
-            "Loading as 2D would result in incorrect data interpretation.\n\n"
-            "Please open an issue at:\n"
-            "https://github.com/catalystneuro/roiextractors/issues\n\n"
-            "Reference: https://github.com/inscopix/pyisx/issues/36"
+            f"Multiplane ISXD file detected at {file_path}.\n"
+            "roiextractors cannot yet separate the per-plane frames; loading as 2D would "
+            "interleave focal planes into one time series.\n"
+            "Track support at https://github.com/catalystneuro/roiextractors/issues "
+            "and the upstream pyisx wrapper gap at https://github.com/inscopix/pyisx/issues/36."
         )
         assert str(exc_info.value) == expected_message
 
@@ -1267,63 +1261,80 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min:
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMultiplaneMovie:
-    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
+    """Test InscopixImagingInterface with multiplane_movie.isxd (multiplane file that should raise NotImplementedError)."""
 
     def test_multiplane_not_implemented_error(self):
         """Test that multiplane ISXD files raise NotImplementedError with proper message."""
         from neuroconv.datainterfaces import InscopixImagingInterface
 
-        interface_kwargs = dict(
-            file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "multiplane_movie.isxd")
-        )
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "multiplane_movie.isxd")
 
-        # Test that initialization raises NotImplementedError
         with pytest.raises(NotImplementedError) as exc_info:
-            InscopixImagingInterface(**interface_kwargs)
+            InscopixImagingInterface(file_path=file_path)
 
-        # Verify the error message contains expected information
         expected_message = (
-            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
-            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
-            "Proper separation logic is not yet implemented in roiextractors.\n"
-            "Loading as 2D would result in incorrect data interpretation.\n\n"
-            "Please open an issue at:\n"
-            "https://github.com/catalystneuro/roiextractors/issues\n\n"
-            "Reference: https://github.com/inscopix/pyisx/issues/36"
+            f"Multiplane ISXD file detected at {file_path}.\n"
+            "roiextractors cannot yet separate the per-plane frames; loading as 2D would "
+            "interleave focal planes into one time series.\n"
+            "Track support at https://github.com/catalystneuro/roiextractors/issues "
+            "and the upstream pyisx wrapper gap at https://github.com/inscopix/pyisx/issues/36."
         )
         assert str(exc_info.value) == expected_message
 
 
 @skip_on_python_313
 @skip_on_darwin_arm64
-class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames:
-    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
+class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with dual_color_movie_with_dropped_frames.isxd (single-plane file with rich acquisition metadata)."""
 
-    def test_multiplane_not_implemented_error(self):
-        """Test that multiplane ISXD files raise NotImplementedError with proper message."""
-        from neuroconv.datainterfaces import InscopixImagingInterface
+    data_interface_cls = InscopixImagingInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd")
+    )
+    optical_series_name = "OnePhotonSeries"
 
-        interface_kwargs = dict(
-            file_path=str(
-                OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd"
-            )
-        )
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        nwbfile = metadata["NWBFile"]
+        assert nwbfile["session_start_time"] == datetime(2020, 9, 17, 15, 47, 22, 847000)
+        assert nwbfile["session_id"] == "Session 20200917-093000"
 
-        # Test that initialization raises NotImplementedError
-        with pytest.raises(NotImplementedError) as exc_info:
-            InscopixImagingInterface(**interface_kwargs)
+        device = metadata["Ophys"]["Device"][0]
+        assert device["name"] == "Dual Color"
+        assert device["description"] == "Inscopix Microscope (Serial: FA-1234567, Software: 1.5.0)"
 
-        # Verify the error message contains expected information
-        expected_message = (
-            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
-            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
-            "Proper separation logic is not yet implemented in roiextractors.\n"
-            "Loading as 2D would result in incorrect data interpretation.\n\n"
-            "Please open an issue at:\n"
-            "https://github.com/catalystneuro/roiextractors/issues\n\n"
-            "Reference: https://github.com/inscopix/pyisx/issues/36"
-        )
-        assert str(exc_info.value) == expected_message
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane["device"] == "Dual Color"
+        assert "Exposure Time (ms): 79" in imaging_plane["description"]
+        assert "Gain: 2" in imaging_plane["description"]
+        assert "Focus: 30" in imaging_plane["description"]
+
+        ops = metadata["Ophys"]["OnePhotonSeries"][0]
+        assert ops["dimension"] == [288, 480]
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 9, 17, 15, 47, 22, 847000)
+        assert metadata["NWBFile"]["session_id"] == "Session 20200917-093000"
+
+        assert metadata["Devices"] == {
+            metadata_key: {
+                "name": "Dual Color",
+                "description": "Inscopix Microscope (Serial: FA-1234567, Software: 1.5.0)",
+            }
+        }
+        assert metadata["Ophys"] == {
+            "MicroscopySeries": {
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                    "exposure_time_ms": 79,
+                    "microscope_gain": 2,
+                    "microscope_focus": 30,
+                },
+            },
+        }
 
 
 @skip_on_python_313

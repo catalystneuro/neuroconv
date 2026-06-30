@@ -11,6 +11,7 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
+from .behavior.vame.vamedatainterface import VameInterface
 from .behavior.video.externalvideointerface import ExternalVideoInterface
 from .behavior.video.internalvideointerface import InternalVideoInterface
 
@@ -81,6 +82,7 @@ from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
+from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
 
 # Ophys
 from .ophys.brukertiff.brukertiffdatainterface import (
@@ -116,6 +118,9 @@ from .image.imageinterface import ImageInterface
 # Text
 from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
+
+# Events
+from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
     # Ecephys
@@ -166,6 +171,7 @@ interface_list = [
     XClustSortingInterface,
     # Icephys
     AbfInterface,
+    AxonIntracellularInterface,
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
@@ -200,11 +206,14 @@ interface_list = [
     LightningPoseDataInterface,
     MedPCInterface,
     CSVEventsInterface,
+    VameInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
     # Image
     ImageInterface,
+    # Events
+    TDTEventsInterface,
 ]
 
 interfaces_by_category = dict(
@@ -236,7 +245,7 @@ interfaces_by_category = dict(
         IntanAnalog=IntanAnalogInterface,
         IntanStim=IntanStimInterface,
     ),
-    icephys=dict(Abf=AbfInterface),
+    icephys=dict(Abf=AbfInterface, AxonIntracellular=AxonIntracellularInterface),
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
@@ -245,6 +254,7 @@ interfaces_by_category = dict(
         FicTrac=FicTracDataInterface,
         LightningPose=LightningPoseDataInterface,
         CSVEvents=CSVEventsInterface,
+        Vame=VameInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
@@ -252,5 +262,8 @@ interfaces_by_category = dict(
     ),
     image=dict(
         Image=ImageInterface,
+    ),
+    events=dict(
+        TDTEvents=TDTEventsInterface,
     ),
 )

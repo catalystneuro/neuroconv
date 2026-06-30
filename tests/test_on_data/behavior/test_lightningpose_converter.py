@@ -81,21 +81,17 @@ class TestLightningPoseConverter(TestCase):
             Behavior=dict(
                 PoseEstimation=cls.pose_estimation_metadata,
                 ExternalVideos={
-                    "original_video_name": dict(
+                    "original_video": dict(
+                        name="original_video_name",
                         description="The original video used for pose estimation.",
                         unit="Frames",
-                        device=dict(
-                            name="original_video_name Camera Device",
-                            description="Video camera used for recording.",
-                        ),
+                        device_metadata_key="original_video_camera",
                     ),
-                    "labeled_video_name": dict(
+                    "labeled_video": dict(
+                        name="labeled_video_name",
                         description="The video recorded by camera with the pose estimation labels.",
                         unit="Frames",
-                        device=dict(
-                            name="labeled_video_name Camera Device",
-                            description="Video camera used for recording.",
-                        ),
+                        device_metadata_key="labeled_video_camera",
                     ),
                 },
             )
