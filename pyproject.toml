@@ -41,7 +41,7 @@ dependencies = [
     "h5py>=3.9.0",
     "hdmf>=4.1.1",
     "hdmf_zarr>=0.11",
-    "pynwb>=3.0.0",
+    "pynwb>=4.0.0",
     "pydantic>=2.0",
     "typing_extensions>=4.1.0",
     "psutil>=5.8.0",
@@ -89,7 +89,7 @@ text = [
 
 ## Behavior
 audio = [
-    "ndx-sound>=0.2.2",
+    "ndx-sound>=0.2.3",  # 0.2.3 fixes the starting_time dtype so the spec resolves under hdmf>=6
     "scipy", # for scipy.io.wavfile
 ]
 sleap = [
