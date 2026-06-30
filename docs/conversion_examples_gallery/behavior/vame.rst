@@ -42,7 +42,7 @@ directory. Algorithms and ``n_clusters`` are read directly from ``config.yaml``,
 ``kmeans`` and ``hmm`` runs end up in one ``VAMEProject`` group automatically.
 
 When a key in ``community_labels_file_paths`` matches a key in ``motif_labels_file_paths``,
-``get_metadata`` automatically sets ``motif_series_key`` so each ``CommunitySeries`` is
+``get_metadata`` automatically sets ``motif_series_metadata_key`` so each ``CommunitySeries`` is
 linked to its corresponding ``MotifSeries``. No extra metadata wiring is needed.
 
 Use :py:meth:`~neuroconv.datainterfaces.behavior.vame.vamedatainterface.VameInterface.get_available_sessions`
@@ -95,12 +95,14 @@ individual paths while still relying on auto-discovery for the rest:
 Specifying Metadata
 ~~~~~~~~~~~~~~~~~~~
 
-VAME metadata lives under ``metadata["Behavior"]["VAMEProjects"][metadata_key]``, where
-``metadata_key`` defaults to ``"VAMEProject"`` and matches the name of the
-``VAMEProject`` group written to the NWB file.
+VAME metadata lives in flat registries under ``metadata["Behavior"]["Vame"]``: a
+``VameProjects`` registry for the container, plus ``MotifSeries``, ``CommunitySeries``, and
+``LatentSpaceSeries`` registries for the series, each linking back to its project via
+``vame_project_metadata_key``. ``metadata_key`` defaults to ``"VAMEProject"`` and sets both the
+``VameProjects`` entry key and the default ``VAMEProject`` group name written to the NWB file.
 
-``MotifSeries`` and ``CommunitySeries`` are dicts keyed by the run name (the same key used
-in ``motif_labels_file_paths`` / ``community_labels_file_paths``).
+Series keys are project-prefixed and type-distinct (for example ``"VAMEProject_motif_kmeans"``)
+so that several projects can share one NWB file without colliding.
 
 Call :py:meth:`~neuroconv.datainterfaces.behavior.vame.vamedatainterface.VameInterface.get_metadata`
 to retrieve the auto-populated defaults, then use
@@ -117,13 +119,13 @@ to retrieve the auto-populated defaults, then use
     ...     },
     ...     "Subject": dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D"),
     ...     "Behavior": {
-    ...         "VAMEProjects": {
-    ...             "VAMEProject": {
-    ...                 "name": "VAMEKmeans15",
-    ...                 "MotifSeries": {
-    ...                     "kmeans": {
-    ...                         "description": "k-means motif labels (15 clusters) for the open-field test session.",
-    ...                     },
+    ...         "Vame": {
+    ...             "VameProjects": {
+    ...                 "VAMEProject": {"name": "VAMEKmeans15"},
+    ...             },
+    ...             "MotifSeries": {
+    ...                 "VAMEProject_motif_kmeans": {
+    ...                     "description": "k-means motif labels (15 clusters) for the open-field test session.",
     ...                 },
     ...             },
     ...         },
@@ -189,7 +191,7 @@ or :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPI
     ...     )
     ... )
     >>> metadata = converter.get_metadata()  # doctest: +SKIP
-    >>> metadata["Behavior"]["VAMEProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = (  # doctest: +SKIP
+    >>> metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = (  # doctest: +SKIP
     ...     "PoseEstimationDeepLabCut"
     ... )
     >>> converter.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)  # doctest: +SKIP
@@ -236,16 +238,10 @@ Each instance gets its own metadata entry and its own ``VAMEProject`` group:
     ...     },
     ...     "Subject": dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D"),
     ...     "Behavior": {
-    ...         "VAMEProjects": {
-    ...             "VAMEProjectA": {
-    ...                 "MotifSeries": {
-    ...                     "kmeans": {"description": "k-means motif labels (15 clusters)."},
-    ...                 },
-    ...             },
-    ...             "VAMEProjectB": {
-    ...                 "MotifSeries": {
-    ...                     "hmm": {"description": "HMM motif labels (15 states)."},
-    ...                 },
+    ...         "Vame": {
+    ...             "MotifSeries": {
+    ...                 "VAMEProjectA_motif_kmeans": {"description": "k-means motif labels (15 clusters)."},
+    ...                 "VAMEProjectB_motif_hmm": {"description": "HMM motif labels (15 states)."},
     ...             },
     ...         },
     ...     },

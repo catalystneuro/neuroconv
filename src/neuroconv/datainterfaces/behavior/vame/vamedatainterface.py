@@ -24,44 +24,50 @@ class VameInterface(BaseTemporalAlignmentInterface):
     labels to NWB using the ``ndx-vame`` extension.
 
     The NWB container name and all series descriptions are controlled via the metadata dict
-    under ``metadata["Behavior"]["VAMEProjects"][metadata_key]``.
+    under ``metadata["Behavior"]["Vame"]``.
 
     Metadata Structure
     ------------------
-    The metadata is organized in a hierarchical structure:
+    The container and its series live in separate, flat registries under ``metadata["Behavior"]["Vame"]``
+    (one registry per type), following the unified metadata pattern used elsewhere in NeuroConv: each
+    series links *up* to its ``VAMEProject`` via ``vame_project_metadata_key`` rather than being nested
+    inside it. Series keys are project-prefixed so several projects can share one NWB file.
 
     .. code-block:: python
 
         metadata = {
             "Behavior": {
-                "VAMEProjects": {
-                    "VAMEProject": {            # keyed by metadata_key (default "VAMEProject")
-                        "name": "VAMEProject",
-                        "LatentSpaceSeries": {  # optional — one per project, shared across runs
+                "Vame": {
+                    "VameProjects": {
+                        "VAMEProject": {                       # keyed by metadata_key (default "VAMEProject")
+                            "name": "VAMEProject",
+                            "pose_estimation_metadata_key": "DLC",  # optional, -> Behavior/Pose/PoseEstimations
+                        }
+                    },
+                    "MotifSeries": {
+                        "VAMEProject_motif_kmeans": {
+                            "name": "MotifSeriesKmeans",
+                            "description": "VAME behavioral motif labels.",
+                            "algorithm": "kmeans",
+                            "vame_project_metadata_key": "VAMEProject",
+                            "latent_space_metadata_key": "VAMEProject_latent_space",  # optional
+                        },
+                    },
+                    "CommunitySeries": {
+                        "VAMEProject_community_kmeans": {
+                            "name": "CommunitySeriesKmeans",
+                            "description": "VAME community labels ...",
+                            "vame_project_metadata_key": "VAMEProject",
+                            "motif_series_metadata_key": "VAMEProject_motif_kmeans",  # -> MotifSeries
+                        },
+                    },
+                    "LatentSpaceSeries": {                     # optional — one per project, shared across runs
+                        "VAMEProject_latent_space": {
                             "name": "LatentSpaceSeries",
                             "description": "VAME latent-space embeddings (30 dimensions per frame).",
+                            "vame_project_metadata_key": "VAMEProject",
                         },
-                        "MotifSeries": {        # keyed by run name supplied at construction
-                            "kmeans": {
-                                "name": "MotifSeriesKmeans",
-                                "description": "VAME behavioral motif labels.",
-                                "algorithm": "kmeans",
-                            },
-                            "hmm": {
-                                "name": "MotifSeriesHmm",
-                                "description": "VAME behavioral motif labels.",
-                                "algorithm": "hmm",
-                            },
-                        },
-                        "CommunitySeries": {    # keyed by run name; links to MotifSeries via key
-                            "kmeans": {
-                                "name": "CommunitySeriesKmeans",
-                                "description": "VAME community labels ...",
-                                "motif_series_key": "kmeans",  # cross-ref to MotifSeries["kmeans"]
-                            },
-                        },
-                        "pose_estimation_metadata_key": "PoseEstimation",  # cross-ref to Behavior/PoseEstimation
-                    }
+                    },
                 }
             }
         }
@@ -74,11 +80,11 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
     Notes
     -----
-    - ``motif_series_key`` in a ``CommunitySeries`` entry is automatically set to the matching
-      run key when the same key exists in ``motif_labels_file_paths``.
-    - ``pose_estimation_metadata_key`` must name a ``PoseEstimation`` container that is already
-      present in the NWB file when :meth:`add_to_nwbfile` is called (i.e. the pose estimation
-      interface must run first).
+    - ``motif_series_metadata_key`` in a ``CommunitySeries`` entry is automatically set to the matching
+      run's ``MotifSeries`` key when the same run exists in ``motif_labels_file_paths``.
+    - ``pose_estimation_metadata_key`` must name a ``PoseEstimation`` entry (in
+      ``Behavior/Pose/PoseEstimations``) whose container is already present in the NWB file when
+      :meth:`add_to_nwbfile` is called (i.e. the pose estimation interface must run first).
     - To store results from two completely separate VAME model
     trainings, create two ``VameInterface`` instances with different ``metadata_key`` values and
     wrap them in an :class:`~neuroconv.NWBConverter`.
@@ -178,8 +184,9 @@ class VameInterface(BaseTemporalAlignmentInterface):
             Video acquisition rate in Hz (frames per second). Required when not providing aligned
             timestamps via :meth:`set_aligned_timestamps`.
         metadata_key : str, default "VAMEProject"
-            Key used to look up this interface's metadata inside
-            ``metadata["Behavior"]["VAMEProjects"][metadata_key]``. Change this when storing
+            Key of this interface's ``VAMEProject`` entry in
+            ``metadata["Behavior"]["Vame"]["VameProjects"]`` (also the prefix of its series keys).
+            Change this when storing
             results from multiple VAME projects in the same NWB file so each project
             has a unique metadata entry and ``VAMEProject`` container.
         verbose : bool, default False
@@ -318,11 +325,42 @@ class VameInterface(BaseTemporalAlignmentInterface):
             community_labels_file_paths,
         )
 
+    # Default metadata keys for this interface's flat series registries. They are project-prefixed
+    # (and type-distinct) so several VAME projects can share one NWB file without key collisions, and
+    # are derived consistently here so get_metadata and add_to_nwbfile agree on the addresses.
+    def _motif_series_key(self, run_key: str) -> str:
+        return f"{self._metadata_key}_motif_{run_key}"
+
+    def _community_series_key(self, run_key: str) -> str:
+        return f"{self._metadata_key}_community_{run_key}"
+
+    def _latent_space_series_key(self) -> str:
+        return f"{self._metadata_key}_latent_space"
+
     def get_metadata_schema(self) -> dict:
         from ....utils import get_base_schema
 
         metadata_schema = super().get_metadata_schema()
 
+        # The VAME series live in flat, addressable registries under Behavior/Vame (one per type),
+        # each linking UP to its VAMEProject container via vame_project_metadata_key. This mirrors the
+        # unified metadata pattern used by ophys/ecephys (flat series registries + *_metadata_key links)
+        # rather than nesting the series inside the container.
+        vame_project_schema = {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the VAMEProject group in the NWB file.",
+                },
+                "pose_estimation_metadata_key": {
+                    "type": ["string", "null"],
+                    "description": "Key of a PoseEstimation entry (in Behavior/Pose/PoseEstimations) to link to.",
+                },
+            },
+            "required": ["name"],
+            "additionalProperties": False,
+        }
         motif_entry_schema = {
             "type": "object",
             "properties": {
@@ -332,6 +370,14 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     "type": ["string", "null"],
                     "description": "The algorithm used for motif detection.",
                 },
+                "vame_project_metadata_key": {
+                    "type": ["string", "null"],
+                    "description": "Key of the VAMEProject (in Behavior/Vame/VameProjects) this series nests under.",
+                },
+                "latent_space_metadata_key": {
+                    "type": ["string", "null"],
+                    "description": "Key of the LatentSpaceSeries (in Behavior/Vame/LatentSpaceSeries) to link to.",
+                },
             },
             "required": ["name"],
             "additionalProperties": False,
@@ -339,18 +385,32 @@ class VameInterface(BaseTemporalAlignmentInterface):
         community_entry_schema = {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Name of the CommunitySeries.",
-                },
+                "name": {"type": "string", "description": "Name of the CommunitySeries."},
                 "description": {"type": "string"},
                 "algorithm": {
                     "type": ["string", "null"],
                     "description": "The algorithm used for community clustering.",
                 },
-                "motif_series_key": {
+                "vame_project_metadata_key": {
                     "type": ["string", "null"],
-                    "description": "Key into MotifSeries that this CommunitySeries links to.",
+                    "description": "Key of the VAMEProject (in Behavior/Vame/VameProjects) this series nests under.",
+                },
+                "motif_series_metadata_key": {
+                    "type": ["string", "null"],
+                    "description": "Key of the MotifSeries (in Behavior/Vame/MotifSeries) this series links to.",
+                },
+            },
+            "required": ["name"],
+            "additionalProperties": False,
+        }
+        latent_entry_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Name of the LatentSpaceSeries."},
+                "description": {"type": "string"},
+                "vame_project_metadata_key": {
+                    "type": ["string", "null"],
+                    "description": "Key of the VAMEProject (in Behavior/Vame/VameProjects) this series nests under.",
                 },
             },
             "required": ["name"],
@@ -365,61 +425,42 @@ class VameInterface(BaseTemporalAlignmentInterface):
             "required": ["name"],
             "additionalProperties": False,
         }
-        vame_project_schema = {
+        # Curated ndx-ethogram entry: lives in the shared top-level Behavior/Ethograms registry, not
+        # under Behavior/Vame, because the curated layer is producer-agnostic.
+        ethogram_entry_schema = {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Name of the VAMEProject group in the NWB file.",
-                },
-                "LatentSpaceSeries": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "Name of the LatentSpaceSeries.",
-                        },
-                        "description": {"type": "string"},
-                    },
-                    "required": ["name"],
-                    "additionalProperties": False,
-                },
-                "MotifSeries": {
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": motif_entry_schema,
-                },
-                "CommunitySeries": {
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": community_entry_schema,
-                },
-                "EthogramBouts": {
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": named_entry_schema,
-                },
-                "Ethogram": {
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": named_entry_schema,
-                },
-                "pose_estimation_metadata_key": {
-                    "type": ["string", "null"],
-                    "description": ("Name of a PoseEstimation container already present in the NWB file to link to."),
-                },
+                "EthogramBouts": named_entry_schema,
+                "Ethogram": named_entry_schema,
             },
-            "required": ["name"],
             "additionalProperties": False,
         }
 
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"]["properties"] = {
-            "VAMEProjects": {
+            "Vame": {
+                "type": "object",
+                "properties": {
+                    "VameProjects": {"type": "object", "properties": {}, "additionalProperties": vame_project_schema},
+                    "MotifSeries": {"type": "object", "properties": {}, "additionalProperties": motif_entry_schema},
+                    "CommunitySeries": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": community_entry_schema,
+                    },
+                    "LatentSpaceSeries": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": latent_entry_schema,
+                    },
+                },
+                "additionalProperties": False,
+            },
+            "Ethograms": {
                 "type": "object",
                 "properties": {},
-                "additionalProperties": vame_project_schema,
-            }
+                "additionalProperties": ethogram_entry_schema,
+            },
         }
 
         return metadata_schema
@@ -427,59 +468,74 @@ class VameInterface(BaseTemporalAlignmentInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
-        vame_project_metadata: dict = dict(name=self._metadata_key)
+        # The container and its series live in separate, flat registries under Behavior/Vame; each
+        # series links UP to its project via vame_project_metadata_key (the unified metadata pattern).
+        vame_metadata: dict = {"VameProjects": {self._metadata_key: dict(name=self._metadata_key)}}
 
+        latent_key = None
         if self._latent_vectors_file_path is not None:
             zdims = self._vame_config.get("zdims")
             dims_info = f" ({zdims} dimensions per frame)" if zdims else ""
-            vame_project_metadata["LatentSpaceSeries"] = dict(
-                name="LatentSpaceSeries",
-                description=f"VAME latent-space embeddings{dims_info}.",
-            )
+            latent_key = self._latent_space_series_key()
+            vame_metadata["LatentSpaceSeries"] = {
+                latent_key: dict(
+                    name="LatentSpaceSeries",
+                    description=f"VAME latent-space embeddings{dims_info}.",
+                    vame_project_metadata_key=self._metadata_key,
+                )
+            }
 
         if self._motif_labels_file_paths is not None:
-            vame_project_metadata["MotifSeries"] = {
-                run_key: dict(
+            vame_metadata["MotifSeries"] = {
+                self._motif_series_key(run_key): dict(
                     name=f"MotifSeries{run_key.capitalize()}",
                     description="VAME behavioral motif labels.",
                     algorithm=run_key,
-                )
-                for run_key in self._motif_labels_file_paths
-            }
-            # Curated ndx-ethogram products derived from each MotifSeries: a run-length-encoded
-            # EthogramBouts timeline plus its Ethogram catalogue (one of each per motif run).
-            # Names are prefixed with the project key (metadata_key) because these live flat in the
-            # behavior module (unlike the nested MotifSeries) and must stay unique when several
-            # VAME projects share one NWB file.
-            vame_project_metadata["EthogramBouts"] = {
-                run_key: dict(
-                    name=f"{self._metadata_key}EthogramBouts{run_key.capitalize()}",
-                    description="VAME behavioral motifs as run-length-encoded bouts.",
-                )
-                for run_key in self._motif_labels_file_paths
-            }
-            vame_project_metadata["Ethogram"] = {
-                run_key: dict(
-                    name=f"{self._metadata_key}Ethogram{run_key.capitalize()}",
-                    description="VAME motif catalogue (coding scheme): one row per motif id.",
+                    vame_project_metadata_key=self._metadata_key,
+                    latent_space_metadata_key=latent_key,
                 )
                 for run_key in self._motif_labels_file_paths
             }
 
         if self._community_labels_file_paths is not None:
-            vame_project_metadata["CommunitySeries"] = {
-                run_key: dict(
+            vame_metadata["CommunitySeries"] = {
+                self._community_series_key(run_key): dict(
                     name=f"CommunitySeries{run_key.capitalize()}",
                     description="VAME community labels grouping motifs into higher-level behavioral states.",
                     algorithm=run_key,
-                    motif_series_key=(
-                        run_key if self._motif_labels_file_paths and run_key in self._motif_labels_file_paths else None
+                    vame_project_metadata_key=self._metadata_key,
+                    motif_series_metadata_key=(
+                        self._motif_series_key(run_key)
+                        if self._motif_labels_file_paths and run_key in self._motif_labels_file_paths
+                        else None
                     ),
                 )
                 for run_key in self._community_labels_file_paths
             }
 
-        metadata["Behavior"]["VAMEProjects"] = {self._metadata_key: vame_project_metadata}
+        metadata["Behavior"]["Vame"] = vame_metadata
+
+        # Curated ndx-ethogram products derived from each MotifSeries live in a shared, top-level
+        # Behavior/Ethograms registry (not nested under the VAME project) because the curated layer is
+        # producer-agnostic: other segmenters (keypoint-MoSeq, B-SOiD, a standalone EthogramInterface)
+        # populate the same registry. Each entry bundles the run-length-encoded EthogramBouts timeline
+        # and its Ethogram catalogue (one of each per motif run). The entry key and the object names are
+        # prefixed with the project key (metadata_key) so several VAME projects can share one NWB file
+        # without collision.
+        if self._motif_labels_file_paths is not None:
+            metadata["Behavior"]["Ethograms"] = {
+                f"{self._metadata_key}_{run_key}": dict(
+                    EthogramBouts=dict(
+                        name=f"{self._metadata_key}EthogramBouts{run_key.capitalize()}",
+                        description="VAME behavioral motifs as run-length-encoded bouts.",
+                    ),
+                    Ethogram=dict(
+                        name=f"{self._metadata_key}Ethogram{run_key.capitalize()}",
+                        description="VAME motif catalogue (coding scheme): one row per motif id.",
+                    ),
+                )
+                for run_key in self._motif_labels_file_paths
+            }
 
         return metadata
 
@@ -615,8 +671,8 @@ class VameInterface(BaseTemporalAlignmentInterface):
     ) -> None:
         """Write VAME outputs to an NWBFile as a ``VAMEProject`` container.
 
-        The container name and all series descriptions are taken from
-        ``metadata["Behavior"]["VAMEProjects"][metadata_key]``. Call :meth:`get_metadata` to
+        The container name and all series descriptions are taken from the flat registries under
+        ``metadata["Behavior"]["Vame"]``. Call :meth:`get_metadata` to
         inspect the defaults and override specific fields before conversion.
 
         Parameters
@@ -624,17 +680,20 @@ class VameInterface(BaseTemporalAlignmentInterface):
         nwbfile : NWBFile
             Target NWB file.
         metadata : dict, optional
-            Metadata dictionary. VAME-specific fields live under
-            ``metadata["Behavior"]["VAMEProjects"][metadata_key]`` and include:
+            Metadata dictionary. VAME-specific fields live in flat registries under
+            ``metadata["Behavior"]["Vame"]``:
 
-            - ``"name"`` – name of the ``VAMEProject`` group.
-            - ``"LatentSpaceSeries"`` – dict with ``name`` and ``description``.
-            - ``"MotifSeries"`` – dict of run_key → ``{name, description, algorithm}``.
-            - ``"CommunitySeries"`` – dict of run_key →
-              ``{name, description, algorithm, motif_series_key}``.
-              ``motif_series_key`` cross-references a key in ``MotifSeries``.
-            - ``"pose_estimation_metadata_key"`` – name of a ``PoseEstimation`` container
-              already present in the NWB file to soft-link from the ``VAMEProject``.
+            - ``"VameProjects"`` – dict of project key → ``{name, pose_estimation_metadata_key}``.
+              ``pose_estimation_metadata_key`` references a ``PoseEstimation`` entry whose container is
+              already present in the NWB file (the pose interface must run first).
+            - ``"MotifSeries"`` – dict of series key →
+              ``{name, description, algorithm, vame_project_metadata_key, latent_space_metadata_key}``.
+            - ``"CommunitySeries"`` – dict of series key →
+              ``{name, description, algorithm, vame_project_metadata_key, motif_series_metadata_key}``.
+            - ``"LatentSpaceSeries"`` – dict of series key →
+              ``{name, description, vame_project_metadata_key}``.
+
+            Each series links to its project via ``vame_project_metadata_key``.
         stub_test : bool, default False
             If ``True``, only the first 100 frames of each data array are written.
 
@@ -656,8 +715,9 @@ class VameInterface(BaseTemporalAlignmentInterface):
         if metadata is not None:
             default_metadata.deep_update(metadata)
 
-        vame_metadata = default_metadata["Behavior"]["VAMEProjects"][self._metadata_key]
-        project_name = vame_metadata["name"]
+        vame_metadata = default_metadata["Behavior"]["Vame"]
+        project_metadata = vame_metadata["VameProjects"][self._metadata_key]
+        project_name = project_metadata["name"]
 
         n_frames = min(100, len(self.get_timestamps())) if stub_test else None
 
@@ -671,44 +731,56 @@ class VameInterface(BaseTemporalAlignmentInterface):
             timing_kwargs["rate"] = float(rate)
             timing_kwargs["starting_time"] = timestamps[0]
 
+        # This interface owns exactly its own project's series, so it resolves each series entry from
+        # the flat Behavior/Vame registries by the key it derives from its own run data, dropping the
+        # link fields (resolved here in code) before passing the rest as ndx-vame kwargs.
+        latent_registry = vame_metadata.get("LatentSpaceSeries", {})
+        motif_registry = vame_metadata.get("MotifSeries", {})
+        community_registry = vame_metadata.get("CommunitySeries", {})
+
         # LatentSpaceSeries (optional, shared across algorithm runs)
         latent_series = None
-        latent_series_metadata = vame_metadata.get("LatentSpaceSeries")
+        latent_series_metadata = latent_registry.get(self._latent_space_series_key())
         if self._latent_vectors_file_path is not None and latent_series_metadata is not None:
+            latent_meta = dict(latent_series_metadata)
+            latent_meta.pop("vame_project_metadata_key", None)
             latent_data = np.load(self._latent_vectors_file_path)[:n_frames].astype(np.float32)
-            latent_series = LatentSpaceSeries(data=latent_data, **latent_series_metadata, **timing_kwargs)
+            latent_series = LatentSpaceSeries(data=latent_data, **latent_meta, **timing_kwargs)
 
-        # MotifSeries — one per run key
-        motif_series_objects = {}
+        # MotifSeries — one per run key, keyed by its flat-registry metadata key
+        motif_series_objects = {}  # motif metadata key -> object
         motif_data_by_run = {}
-        motif_series_metadata = vame_metadata.get("MotifSeries", {})
         for run_key, file_path in (self._motif_labels_file_paths or {}).items():
-            motif_meta = dict(motif_series_metadata.get(run_key, {}))
+            motif_key = self._motif_series_key(run_key)
+            motif_meta = dict(motif_registry.get(motif_key, {}))
+            motif_meta.pop("vame_project_metadata_key", None)
+            motif_meta.pop("latent_space_metadata_key", None)
             motif_data = np.load(file_path)[:n_frames].astype(np.int32)
             motif_data_by_run[run_key] = motif_data
             motif_kwargs: dict = dict(data=motif_data, **motif_meta, **timing_kwargs)
             if latent_series is not None:
                 motif_kwargs["latent_space_series"] = latent_series
-            motif_series_objects[run_key] = MotifSeries(**motif_kwargs)
+            motif_series_objects[motif_key] = MotifSeries(**motif_kwargs)
 
-        # CommunitySeries — one per run key, optionally linked to a MotifSeries
+        # CommunitySeries — one per run key, optionally linked to a MotifSeries by metadata key
         community_series_objects = {}
         community_data_by_run = {}
-        community_series_meta = vame_metadata.get("CommunitySeries", {})
         for run_key, file_path in (self._community_labels_file_paths or {}).items():
-            community_meta = dict(community_series_meta.get(run_key, {}))
-            motif_series_key = community_meta.pop("motif_series_key", None)
+            community_key = self._community_series_key(run_key)
+            community_meta = dict(community_registry.get(community_key, {}))
+            community_meta.pop("vame_project_metadata_key", None)
+            motif_link_key = community_meta.pop("motif_series_metadata_key", None)
             community_data = np.load(file_path)[:n_frames].astype(np.int32)
             community_data_by_run[run_key] = community_data
             community_kwargs: dict = dict(data=community_data, **community_meta, **timing_kwargs)
-            linked_motif = motif_series_objects.get(motif_series_key) if motif_series_key else None
+            linked_motif = motif_series_objects.get(motif_link_key) if motif_link_key else None
             if linked_motif is not None:
                 community_kwargs["motif_series"] = linked_motif
-            community_series_objects[run_key] = CommunitySeries(**community_kwargs)
+            community_series_objects[community_key] = CommunitySeries(**community_kwargs)
 
         # Optional link to an upstream PoseEstimation container
         pose_estimation = None
-        pose_estimation_key = vame_metadata.get("pose_estimation_metadata_key")
+        pose_estimation_key = project_metadata.get("pose_estimation_metadata_key")
         if pose_estimation_key is not None:
             pose_estimations_registry = default_metadata.get("Behavior", {}).get("Pose", {}).get("PoseEstimations", {})
             if pose_estimation_key in pose_estimations_registry:
@@ -737,12 +809,16 @@ class VameInterface(BaseTemporalAlignmentInterface):
         behavior_module = get_module(nwbfile, name="behavior", description="processed behavioral data")
         behavior_module.add(vame_project)
 
-        # Curated ndx-ethogram products derived from each MotifSeries (kept alongside the faithful series).
+        # Curated ndx-ethogram products derived from each MotifSeries (kept alongside the faithful
+        # series). Resolved from the shared top-level Behavior/Ethograms registry, keyed by
+        # f"{metadata_key}_{run_key}". The source MotifSeries is wired directly (this interface holds
+        # the object), so no source_metadata_key resolution is needed.
         if motif_series_objects:
             frame_period = 1.0 / rate if rate is not None else float(np.median(np.diff(timestamps)))
-            ethogram_bouts_metadata = vame_metadata.get("EthogramBouts", {})
-            ethogram_catalogue_metadata = vame_metadata.get("Ethogram", {})
-            for run_key, motif_series in motif_series_objects.items():
+            ethograms_metadata = default_metadata["Behavior"].get("Ethograms", {})
+            for run_key in self._motif_labels_file_paths:
+                motif_series = motif_series_objects[self._motif_series_key(run_key)]
+                ethogram_metadata = ethograms_metadata.get(f"{self._metadata_key}_{run_key}")
                 self._add_ethogram_for_run(
                     behavior_module=behavior_module,
                     run_key=run_key,
@@ -752,6 +828,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     timestamps=timestamps,
                     frame_period=frame_period,
                     pose_estimation=pose_estimation,
-                    bouts_metadata=ethogram_bouts_metadata.get(run_key),
-                    catalogue_metadata=ethogram_catalogue_metadata.get(run_key),
+                    bouts_metadata=ethogram_metadata.get("EthogramBouts") if ethogram_metadata else None,
+                    catalogue_metadata=ethogram_metadata.get("Ethogram") if ethogram_metadata else None,
                 )
