@@ -165,7 +165,7 @@ def test_configuration_on_dynamic_table(tmp_path, backend: Literal["hdf5", "zarr
         assert dataset_configuration.compression_method is None
 
         if backend == "hdf5":
-            assert dataset_configuration.chunk_shape is None
+            assert dataset_configuration.chunk_shape == (3,)
             assert dataset_configuration.compression_options == dict(compression_opts=None)
         elif backend == "zarr":
             assert dataset_configuration.chunk_shape == (3,)
@@ -244,7 +244,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         assert dataset_configuration.buffer_shape == (5,)
         if backend == "hdf5":
             assert dataset_configuration.compression_method is None
-            assert dataset_configuration.chunk_shape is None
+            assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compression_options == dict(compression_opts=None)
         elif backend == "zarr":
             assert dataset_configuration.compression_method == compressor
@@ -264,7 +264,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         assert dataset_configuration.buffer_shape == (2,)
         if backend == "hdf5":
             assert dataset_configuration.compression_method is None
-            assert dataset_configuration.chunk_shape is None
+            assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compression_options == dict(compression_opts=None)
         elif backend == "zarr":
             assert dataset_configuration.compression_method == compressor
@@ -284,7 +284,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         assert dataset_configuration.buffer_shape == (15, 3)
         if backend == "hdf5":
             assert dataset_configuration.compression_method is None
-            assert dataset_configuration.chunk_shape is None
+            assert dataset_configuration.chunk_shape == (15, 3)
             assert dataset_configuration.compression_options == dict(compression_opts=None)
         elif backend == "zarr":
             assert dataset_configuration.compression_method == compressor
@@ -304,7 +304,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         assert dataset_configuration.buffer_shape == (5,)
         if backend == "hdf5":
             assert dataset_configuration.compression_method is None
-            assert dataset_configuration.chunk_shape is None
+            assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compression_options == dict(compression_opts=None)
         elif backend == "zarr":
             assert dataset_configuration.compression_method == compressor
@@ -324,7 +324,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         assert dataset_configuration.buffer_shape == (2,)
         if backend == "hdf5":
             assert dataset_configuration.compression_method is None
-            assert dataset_configuration.chunk_shape is None
+            assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compression_options == dict(compression_opts=None)
         elif backend == "zarr":
             assert dataset_configuration.compression_method == compressor
@@ -364,7 +364,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         if backend == "hdf5":
             assert dataset_configuration.compression_method is None
             assert dataset_configuration.compression_options == dict(compression_opts=None)
-            assert dataset_configuration.chunk_shape is None
+            assert dataset_configuration.chunk_shape == (2,)
         elif backend == "zarr":
             assert dataset_configuration.compression_method == compressor
             assert dataset_configuration.compression_options is None
@@ -403,7 +403,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         if backend == "hdf5":
             assert dataset_configuration.compression_method is None
             assert dataset_configuration.compression_options == dict(compression_opts=None)
-            assert dataset_configuration.chunk_shape is None
+            assert dataset_configuration.chunk_shape == (2,)
         elif backend == "zarr":
             assert dataset_configuration.compression_method == compressor
             assert dataset_configuration.compression_options is None
