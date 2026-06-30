@@ -89,7 +89,9 @@ text = [
 
 ## Behavior
 audio = [
-    "ndx-sound>=0.2.2",
+    # TEMPORARY: install ndx-sound from git for the float64 starting_time fix (hdmf>=6 compatibility).
+    # Revert to "ndx-sound>=<released version>" once that fix is published to PyPI.
+    "ndx-sound @ git+https://github.com/catalystneuro/ndx-sound.git@main",
     "scipy", # for scipy.io.wavfile
 ]
 sleap = [
