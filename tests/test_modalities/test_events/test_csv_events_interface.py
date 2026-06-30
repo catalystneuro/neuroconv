@@ -7,22 +7,9 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import CSVEventsInterface
 
-try:
-    from ..setup_paths import OPHYS_DATA_PATH
-except ImportError:
-    from setup_paths import OPHYS_DATA_PATH
-
-CSV_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "CSV" / "sample_data_csv_1"
-SAMPLE_TTL_FILE = CSV_FOLDER / "Sample_TTL.csv"
-
-# Onset times in Sample_TTL.csv (a single-column ``timestamps`` event file).
-EXPECTED_TTL_TIMESTAMPS = [
-    139.238440990448,
-    190.68911623954773,
-    270.35009026527405,
-    330.88094210624695,
-    410.86189556121826,
-]
+# A single-type event file: a single ``timestamps`` column written as one Events object named after
+# the file stem ("ttl").
+SINGLE_TYPE_TIMESTAMPS = [1.5, 2.5, 3.5, 4.5]
 
 # A two-type event file: onset times tagged by a "kind" label. Written as one LabeledEvents with
 # the onsets in file order plus a per-event code into the label vocabulary. Labels are ordered by
@@ -35,8 +22,15 @@ EXPECTED_LABELS = ["a", "b"]
 
 class TestCSVEventsInterface:
     @pytest.fixture
-    def interface(self):
-        return CSVEventsInterface(file_path=SAMPLE_TTL_FILE, timestamps_column="timestamps", event_type_column=None)
+    def single_type_file(self, tmp_path):
+        file_path = tmp_path / "ttl.csv"
+        lines = ["timestamps"] + [str(value) for value in SINGLE_TYPE_TIMESTAMPS]
+        file_path.write_text("\n".join(lines) + "\n")
+        return file_path
+
+    @pytest.fixture
+    def interface(self, single_type_file):
+        return CSVEventsInterface(file_path=single_type_file, timestamps_column="timestamps", event_type_column=None)
 
     @pytest.fixture
     def two_type_file(self, tmp_path):
@@ -52,10 +46,10 @@ class TestCSVEventsInterface:
         file_path.write_text("\n".join(lines) + "\n")
         return file_path
 
-    def test_event_type_column_is_required(self):
+    def test_event_type_column_is_required(self, single_type_file):
         """event_type_column has no default, so omitting it is an error."""
         with pytest.raises(ValidationError):
-            CSVEventsInterface(file_path=SAMPLE_TTL_FILE, timestamps_column="timestamps")
+            CSVEventsInterface(file_path=single_type_file, timestamps_column="timestamps")
 
     def test_get_metadata_does_not_set_session_start_time(self, interface):
         metadata = interface.get_metadata()
@@ -66,8 +60,8 @@ class TestCSVEventsInterface:
 
     def test_single_type_metadata_keyed_by_file_stem(self, interface):
         event_columns = interface.get_metadata()["Events"]["csv_events"]["event_columns"]
-        assert list(event_columns) == ["Sample_TTL"]
-        assert event_columns["Sample_TTL"]["column_name"] == "Sample_TTL"
+        assert list(event_columns) == ["ttl"]
+        assert event_columns["ttl"]["column_name"] == "ttl"
 
     def test_labeled_metadata_keyed_by_file_stem(self, two_type_file):
         interface = CSVEventsInterface(
@@ -82,9 +76,9 @@ class TestCSVEventsInterface:
         metadata = interface.get_metadata()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-        ttl_events = nwbfile.acquisition["Sample_TTL"]
+        ttl_events = nwbfile.acquisition["ttl"]
         assert isinstance(ttl_events, ndx_events.Events)
-        assert list(ttl_events.timestamps[:]) == EXPECTED_TTL_TIMESTAMPS
+        assert list(ttl_events.timestamps[:]) == SINGLE_TYPE_TIMESTAMPS
 
     def test_event_type_column_writes_labeled_events(self, two_type_file):
         interface = CSVEventsInterface(file_path=two_type_file, timestamps_column="onset", event_type_column="kind")
@@ -121,6 +115,6 @@ class TestCSVEventsInterface:
 
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
             read_nwbfile = io.read()
-            read_events = read_nwbfile.acquisition["Sample_TTL"]
+            read_events = read_nwbfile.acquisition["ttl"]
             assert isinstance(read_events, ndx_events.Events)
-            assert list(read_events.timestamps[:]) == EXPECTED_TTL_TIMESTAMPS
+            assert list(read_events.timestamps[:]) == SINGLE_TYPE_TIMESTAMPS

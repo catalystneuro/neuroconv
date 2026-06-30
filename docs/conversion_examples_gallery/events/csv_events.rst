@@ -24,9 +24,14 @@ supplied explicitly in the metadata.
     >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
 
+    >>> import pandas as pd
+
     >>> from neuroconv.datainterfaces import CSVEventsInterface
 
-    >>> file_path = f"{OPHYS_DATA_PATH}/fiber_photometry_datasets/CSV/sample_data_csv_1/Sample_TTL.csv"
+    >>> # This format is just a CSV; here we write a small example event file with a single
+    >>> # ``timestamps`` column holding the event onset times (seconds).
+    >>> file_path = output_folder / "ttl.csv"
+    >>> pd.DataFrame({"timestamps": [1.5, 2.5, 3.5, 4.5]}).to_csv(file_path, index=False)
 
     >>> interface = CSVEventsInterface(
     ...     file_path=file_path, timestamps_column="timestamps", event_type_column=None, verbose=False
