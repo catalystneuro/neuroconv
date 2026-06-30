@@ -80,7 +80,6 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         file_path : FilePath
             Path to either a rhd or a rhs file. When ``saved_files_are_split=True``, this is
             any single file in the session folder; its parent directory is scanned for siblings.
-
         verbose : bool, default: False
             Verbose
         es_key : str, default: "ElectricalSeries"
@@ -164,7 +163,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         electrode_group_metadata = ecephys_metadata["ElectrodeGroup"]
         for electrode_group in electrode_group_metadata:
             electrode_group["device"] = intan_device["name"]
-        # Add electrodes and electrode groups
+
+        ecephys_metadata[self.es_key]["name"] = "ElectricalSeries"
         ecephys_metadata.update(
             ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="Raw acquisition traces."),
         )

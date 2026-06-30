@@ -60,6 +60,7 @@ class LightningPoseConverter(BaseDataInterface):
         self.data_interface_objects = dict(
             OriginalVideo=ExternalVideoInterface(
                 file_paths=[original_video_file_path],
+                metadata_key="original_video",
                 video_name=self.original_video_name,
             ),
             PoseEstimation=LightningPoseDataInterface(
@@ -72,6 +73,7 @@ class LightningPoseConverter(BaseDataInterface):
             self.labeled_video_name = image_series_labeled_video_name or "ImageSeriesLabeledVideo"
             self.data_interface_objects["LabeledVideo"] = ExternalVideoInterface(
                 file_paths=[labeled_video_file_path],
+                metadata_key="labeled_video",
                 video_name=self.labeled_video_name,
             )
 
@@ -79,7 +81,7 @@ class LightningPoseConverter(BaseDataInterface):
         metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         original_videos_metadata = original_video_interface.get_metadata()
-        original_videos_metadata["Behavior"]["ExternalVideos"][self.original_video_name].update(
+        original_videos_metadata["Behavior"]["ExternalVideos"]["original_video"].update(
             description="The original video used for pose estimation.",
         )
         metadata = dict_deep_update(metadata, original_videos_metadata)
@@ -87,7 +89,7 @@ class LightningPoseConverter(BaseDataInterface):
         if "LabeledVideo" in self.data_interface_objects:
             labeled_video_interface = self.data_interface_objects["LabeledVideo"]
             labeled_videos_metadata = labeled_video_interface.get_metadata()
-            labeled_videos_metadata["Behavior"]["ExternalVideos"][self.labeled_video_name].update(
+            labeled_videos_metadata["Behavior"]["ExternalVideos"]["labeled_video"].update(
                 description="The video recorded by camera with the pose estimation labels.",
             )
             metadata = dict_deep_update(metadata, labeled_videos_metadata)

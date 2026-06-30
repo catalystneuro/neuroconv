@@ -55,11 +55,11 @@ def nwb_converter(video_files):
     source_data = dict(
         Video1=dict(
             file_paths=video_files[0:2],
-            video_name="Video test1",
+            metadata_key="video_test1",
         ),
         Video2=dict(
             file_paths=[video_files[2]],
-            video_name="Video test3",
+            metadata_key="video_test3",
         ),
     )
     return VideoTestNWBConverter(source_data=source_data)
@@ -291,18 +291,21 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
     """Test adding to NWBFile with custom metadata."""
     metadata_copy = deepcopy(metadata)
     custom_metadata = {
+        "Devices": {
+            "custom_device": {
+                "name": "CustomDevice",
+                "description": "Custom device description",
+            },
+        },
         "Behavior": {
             "ExternalVideos": {
-                "Video test1": {
+                "video_test1": {
                     "description": "Custom description",
                     "unit": "CustomUnit",
-                    "device": {
-                        "name": "CustomDevice",
-                        "description": "Custom device description",
-                    },
+                    "device_metadata_key": "custom_device",
                 }
             }
-        }
+        },
     }
     metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
 
@@ -363,7 +366,7 @@ def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starti
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
     interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
 
-    metadata["Behavior"]["ExternalVideos"]["Video test1"].pop("device")  # Remove device from metadata
+    metadata["Behavior"]["ExternalVideos"]["video_test1"].pop("device_metadata_key")  # Unlink the device
 
     # Run conversion with multiple cameras
     conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
@@ -381,6 +384,24 @@ def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starti
         assert nwbfile.acquisition["Video test1"].device is None
 
 
+def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """A device_metadata_key with no matching Devices entry raises instead of silently dropping the device."""
+    timestamps = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+    metadata["Behavior"]["ExternalVideos"]["video_test1"]["device_metadata_key"] = "missing_camera"
+
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    with pytest.raises(KeyError):
+        nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_options,
+            metadata=metadata,
+        )
+
+
 def test_invalid_device_metadata(nwb_converter, nwbfile_path, metadata):
     """Test that an error is raised when the device metadata is invalid."""
     # Setup interface with timing information to allow conversion
@@ -389,7 +410,7 @@ def test_invalid_device_metadata(nwb_converter, nwbfile_path, metadata):
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
 
     # Modify metadata to have invalid device information
-    metadata["Behavior"]["ExternalVideos"]["Video test1"]["device"] = {"description": "missing required name"}
+    metadata["Behavior"]["ExternalVideos"]["video_test1"]["device"] = {"description": "missing required name"}
 
     from jsonschema import ValidationError
 
