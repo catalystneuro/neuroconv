@@ -57,11 +57,11 @@ def nwb_converter(video_files):
     source_data = dict(
         Video1=dict(
             file_path=video_files[0],
-            video_name="Video test1",
+            metadata_key="video_test1",
         ),
         Video2=dict(
             file_path=video_files[1],
-            video_name="Video test2",
+            metadata_key="video_test2",
         ),
     )
     return VideoTestNWBConverter(source_data=source_data)
@@ -274,18 +274,21 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
     """Test adding to NWBFile with custom metadata."""
     metadata_copy = deepcopy(metadata)
     custom_metadata = {
+        "Devices": {
+            "custom_device": {
+                "name": "CustomDevice",
+                "description": "Custom device description",
+            },
+        },
         "Behavior": {
             "InternalVideos": {
-                "Video test1": {
+                "video_test1": {
                     "description": "Custom description",
                     "unit": "CustomUnit",
-                    "device": {
-                        "name": "CustomDevice",
-                        "description": "Custom device description",
-                    },
+                    "device_metadata_key": "custom_device",
                 }
             }
-        }
+        },
     }
     metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
 
@@ -333,7 +336,7 @@ def test_device_propagation(nwb_converter, nwbfile_path, metadata):
 
 def test_no_device(nwb_converter, nwbfile_path, metadata):
     """Test that no device is created when the metadata doesn't have a device."""
-    metadata["Behavior"]["InternalVideos"]["Video test1"].pop("device")  # Remove device from metadata
+    metadata["Behavior"]["InternalVideos"]["video_test1"].pop("device_metadata_key")  # Unlink the device
 
     # Run conversion
     nwb_converter.run_conversion(
@@ -349,10 +352,21 @@ def test_no_device(nwb_converter, nwbfile_path, metadata):
         assert nwbfile.acquisition["Video test1"].device is None
 
 
+def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metadata):
+    """A device_metadata_key with no matching Devices entry raises instead of silently dropping the device."""
+    metadata["Behavior"]["InternalVideos"]["video_test1"]["device_metadata_key"] = "missing_camera"
+    with pytest.raises(KeyError):
+        nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+        )
+
+
 def test_invalid_device_metadata(nwb_converter, nwbfile_path, metadata):
     """Test that an error is raised when the device metadata is invalid."""
     # Modify metadata to have invalid device information
-    metadata["Behavior"]["InternalVideos"]["Video test1"]["device"] = {"description": "missing required name"}
+    metadata["Behavior"]["InternalVideos"]["video_test1"]["device"] = {"description": "missing required name"}
 
     from jsonschema import ValidationError
 

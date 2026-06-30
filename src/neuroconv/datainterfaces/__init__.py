@@ -10,6 +10,7 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
+from .behavior.vame.vamedatainterface import VameInterface
 from .behavior.video.externalvideointerface import ExternalVideoInterface
 from .behavior.video.internalvideointerface import InternalVideoInterface
 
@@ -117,6 +118,9 @@ from .image.imageinterface import ImageInterface
 from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
+# Events
+from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
+
 interface_list = [
     # Ecephys
     NeuralynxRecordingInterface,
@@ -200,11 +204,14 @@ interface_list = [
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
     MedPCInterface,
+    VameInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
     # Image
     ImageInterface,
+    # Events
+    TDTEventsInterface,
 ]
 
 interfaces_by_category = dict(
@@ -244,6 +251,7 @@ interfaces_by_category = dict(
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
         LightningPose=LightningPoseDataInterface,
+        Vame=VameInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
@@ -251,5 +259,8 @@ interfaces_by_category = dict(
     ),
     image=dict(
         Image=ImageInterface,
+    ),
+    events=dict(
+        TDTEvents=TDTEventsInterface,
     ),
 )
