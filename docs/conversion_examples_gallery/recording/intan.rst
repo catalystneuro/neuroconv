@@ -33,6 +33,35 @@ Traditional format also offers an option to "create a new save file every N minu
 which splits one session across several rotated ``.rhd``/``.rhs`` files in the same
 folder. For that case, see :ref:`intan-split-files` below.
 
+Converting all streams in one call
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Most Intan recordings contain more than one stream: the main amplifier plus some
+combination of ADC inputs/outputs, auxiliary, DC amplifier, and stimulation.
+:py:class:`~neuroconv.converters.IntanConverter` parses the file header,
+discovers which streams are present, and routes each one to the appropriate
+sub-interface, so a single call writes them all to NWB.
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from neuroconv.converters import IntanConverter
+    >>>
+    >>> file_path = f"{ECEPHY_DATA_PATH}/intan/rhs_stim_data_single_file_format/intanTestFile.rhs"
+    >>> converter = IntanConverter(file_path=file_path, verbose=False)
+    >>>
+    >>> metadata = converter.get_metadata()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+To inspect what streams are in a file before constructing the converter, use
+``IntanConverter.get_streams(file_path=...)``.
+
 Intan Amplifier Data Conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

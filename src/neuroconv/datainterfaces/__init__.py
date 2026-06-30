@@ -118,6 +118,9 @@ from .image.imageinterface import ImageInterface
 from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
+# Events
+from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
+
 interface_list = [
     # Ecephys
     NeuralynxRecordingInterface,
@@ -207,6 +210,8 @@ interface_list = [
     ExcelTimeIntervalsInterface,
     # Image
     ImageInterface,
+    # Events
+    TDTEventsInterface,
 ]
 
 interfaces_by_category = dict(
@@ -254,5 +259,8 @@ interfaces_by_category = dict(
     ),
     image=dict(
         Image=ImageInterface,
+    ),
+    events=dict(
+        TDTEvents=TDTEventsInterface,
     ),
 )
