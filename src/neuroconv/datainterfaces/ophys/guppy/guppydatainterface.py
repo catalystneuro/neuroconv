@@ -52,7 +52,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
     that pairs GuPPy with an acquisition interface (see ``TDTFiberPhotometryGuppyConverter``).
 
     The behavioral ``Events`` object reference on ``GuppyEventsTable`` is the one optional outward link --
-    populated when the events live in the NWBFile's ``behavior`` module, omitted otherwise.
+    populated when the events live in the NWBFile's ``acquisition``, omitted otherwise.
 
     All products are placed in a ``ProcessingModule`` (default name ``fiber_photometry``).
     """
