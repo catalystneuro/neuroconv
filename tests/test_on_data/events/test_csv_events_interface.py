@@ -37,16 +37,19 @@ class TestCSVEventsInterface:
         assert metadata["NWBFile"].get("session_start_time") is None
 
     def test_default_event_metadata(self, interface):
-        events_metadata = interface.get_metadata()["Behavior"]["CSVEvents"]["Events"]
-        assert len(events_metadata) == 1
-        event = events_metadata[0]
-        assert event["file_name"] == "Sample_TTL"
-        assert event["name"] == "Sample_TTL"
+        event_columns = interface.get_metadata()["Events"]["csv_events"]["event_columns"]
+        assert list(event_columns) == ["Sample_TTL"]
+        assert event_columns["Sample_TTL"]["column_name"] == "Sample_TTL"
 
-    def test_selected_event_names(self):
-        interface = CSVEventsInterface(folder_path=CSV_FOLDER, event_names=["Sample_TTL"])
-        events_metadata = interface.get_metadata()["Behavior"]["CSVEvents"]["Events"]
-        assert [event["file_name"] for event in events_metadata] == ["Sample_TTL"]
+    def test_exclude_events(self):
+        interface = CSVEventsInterface(folder_path=CSV_FOLDER, exclude_events=["Sample_TTL"])
+        event_columns = interface.get_metadata()["Events"]["csv_events"]["event_columns"]
+        assert dict(event_columns) == {}
+
+    def test_metadata_key(self):
+        interface = CSVEventsInterface(folder_path=CSV_FOLDER, metadata_key="my_events")
+        event_columns = interface.get_metadata()["Events"]["my_events"]["event_columns"]
+        assert list(event_columns) == ["Sample_TTL"]
 
     def test_metadata_schema_is_valid(self, interface):
         Draft7Validator.check_schema(interface.get_metadata_schema())
@@ -56,8 +59,7 @@ class TestCSVEventsInterface:
         metadata = interface.get_metadata()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-        behavior_module = nwbfile.processing["behavior"]
-        ttl_events = behavior_module.data_interfaces["Sample_TTL"]
+        ttl_events = nwbfile.acquisition["Sample_TTL"]
         assert isinstance(ttl_events, ndx_events.Events)
         assert list(ttl_events.timestamps[:]) == EXPECTED_TTL_TIMESTAMPS
 
@@ -72,6 +74,6 @@ class TestCSVEventsInterface:
 
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
             read_nwbfile = io.read()
-            read_events = read_nwbfile.processing["behavior"].data_interfaces["Sample_TTL"]
+            read_events = read_nwbfile.acquisition["Sample_TTL"]
             assert isinstance(read_events, ndx_events.Events)
             assert list(read_events.timestamps[:]) == EXPECTED_TTL_TIMESTAMPS

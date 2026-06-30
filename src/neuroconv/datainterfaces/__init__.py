@@ -5,7 +5,6 @@ from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
     LightningPoseDataInterface,
 )
-from .behavior.csv_events.csveventsdatainterface import CSVEventsInterface
 from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
@@ -120,6 +119,7 @@ from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 # Events
+from .events.csv_events.csveventsdatainterface import CSVEventsInterface
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
@@ -205,7 +205,6 @@ interface_list = [
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
     MedPCInterface,
-    CSVEventsInterface,
     VameInterface,
     # Text
     CsvTimeIntervalsInterface,
@@ -213,6 +212,7 @@ interface_list = [
     # Image
     ImageInterface,
     # Events
+    CSVEventsInterface,
     TDTEventsInterface,
 ]
 
@@ -253,7 +253,6 @@ interfaces_by_category = dict(
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
         LightningPose=LightningPoseDataInterface,
-        CSVEvents=CSVEventsInterface,
         Vame=VameInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
@@ -264,6 +263,7 @@ interfaces_by_category = dict(
         Image=ImageInterface,
     ),
     events=dict(
+        CSVEvents=CSVEventsInterface,
         TDTEvents=TDTEventsInterface,
     ),
 )

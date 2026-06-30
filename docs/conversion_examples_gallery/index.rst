@@ -116,7 +116,6 @@ Behavior
     VAME <behavior/vame>
     Videos <behavior/video>
     MedPC <behavior/medpc>
-    CSV Events <behavior/csv_events>
 
 
 Events
@@ -125,6 +124,7 @@ Events
 .. toctree::
     :maxdepth: 1
 
+    CSV Events <events/csv_events>
     TDT Events <events/tdt_events>
 
 

@@ -12,7 +12,8 @@ Install NeuroConv with the additional dependencies necessary for reading CSV eve
     pip install "neuroconv[csv_events]"
 
 Convert CSV event data to NWB using
-:py:class:`~neuroconv.datainterfaces.behavior.csv_events.csveventsdatainterface.CSVEventsInterface`.
+:py:class:`~neuroconv.datainterfaces.events.csv_events.csveventsdatainterface.CSVEventsInterface`.
+Each event stream is written as an ``ndx_events.Events`` object (onset timestamps) into ``nwbfile.acquisition``.
 
 CSV recordings carry no embedded recording-start timestamp, so ``session_start_time`` must be
 supplied explicitly in the metadata.
