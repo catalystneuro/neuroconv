@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from pydantic import DirectoryPath, validate_call
+from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
 from neuroconv.basedatainterface import BaseDataInterface
@@ -11,14 +11,26 @@ from neuroconv.utils import DeepDict
 
 
 class CSVEventsInterface(BaseDataInterface):
-    """Data Interface for converting discrete events (TTLs) from CSV files.
+    """Data Interface for converting discrete events from a single CSV file.
 
-    This CSV format is a raw acquisition format, with one CSV per event stream. Each event CSV has a
-    single ``timestamps`` column holding the onset times (seconds) of a discrete event (e.g. a TTL
-    pulse train), and is named after its stream (``<event_name>.csv``). This interface reads those
-    event CSVs and writes each as an ``ndx_events.Events`` object (onset timestamps only) into
+    This is a general-purpose CSV events reader: the caller points at one CSV file and names the
+    column holding the event onset times (``timestamps_column``) and, optionally, the column that
+    tells the event types apart (``event_type_column``). The file is written into
     ``nwbfile.acquisition``. Acquisition is used because these CSV streams are raw acquired markers
     (TTLs, sync pulses) whose interpretation is not necessarily behavioral.
+
+    Two layouts are supported:
+
+    - **A single event type** (``event_type_column=None``): every row is one occurrence of the same
+      event, and the file becomes one ``ndx_events.Events`` object (onset timestamps only) named
+      after the file stem.
+    - **Several event types in one file** (``event_type_column`` set): each row carries a label in
+      that column, and the file becomes one ``ndx_events.LabeledEvents`` object named after the file
+      stem -- the onset timestamps plus a per-event integer code into the label vocabulary. This
+      mirrors how ``TDTEventsInterface`` writes a labeled (strobe) store.
+
+    Columns other than ``timestamps_column`` and ``event_type_column`` are ignored; only onset
+    timestamps (and, for the labeled case, the event labels) are written.
 
     Notes
     -----
@@ -28,15 +40,16 @@ class CSVEventsInterface(BaseDataInterface):
 
     keywords = ("events", "CSV")
     display_name = "CSVEvents"
-    info = "Data Interface for converting discrete events (TTLs) from CSV files."
+    info = "Data Interface for converting discrete events from a single CSV file."
     associated_suffixes = ("csv",)
 
     @validate_call
     def __init__(
         self,
-        folder_path: DirectoryPath,
+        file_path: FilePath,
         *,
-        exclude_events: list[str] | None = None,
+        timestamps_column: str | int,
+        event_type_column: str | int | None,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -44,11 +57,17 @@ class CSVEventsInterface(BaseDataInterface):
 
         Parameters
         ----------
-        folder_path : DirectoryPath
-            The path to the folder containing the per-stream event CSV files.
-        exclude_events : list[str], optional
-            The names (file stems) of the event CSVs to skip. If None (default), every single-column
-            event CSV in the folder is stored.
+        file_path : FilePath
+            The path to the CSV file holding the events.
+        timestamps_column : str or int
+            The column holding the event onset times (seconds). A column name for a CSV with a header
+            row, or a positional index (0-based) for a header-less CSV.
+        event_type_column : str, int, or None
+            The column, if any, that names the type of each event. Pass a column name or index when
+            the file holds several event types told apart by that column, so that the file is written
+            as a single ``LabeledEvents`` with one label per distinct value. Pass None when the file
+            is a single event type with no such column, in which case the file is written as a plain
+            ``Events`` named after the file stem.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
             If None (default), ``"csv_events"`` is used.
@@ -56,30 +75,31 @@ class CSVEventsInterface(BaseDataInterface):
             Whether to print status messages, default = False.
         """
         super().__init__(
-            folder_path=folder_path,
-            exclude_events=exclude_events,
+            file_path=file_path,
+            timestamps_column=timestamps_column,
+            event_type_column=event_type_column,
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "csv_events"
         # This import is to assure that ndx_events is in the global namespace when a pynwb.io object is created
         import ndx_events  # noqa: F401
 
-    def _event_csv_path(self, event_name: str) -> Path:
-        """Get the path to the CSV file backing the given event."""
-        return Path(self.source_data["folder_path"]) / f"{event_name}.csv"
+    def _read_timestamps_and_labels(self) -> tuple[np.ndarray, np.ndarray | None]:
+        """Read the onset timestamps and, when ``event_type_column`` is set, the per-event labels.
 
-    def _get_event_names(self) -> list[str]:
-        """Get the names (file stems) of the event CSVs (single ``timestamps`` column) in the folder.
-
-        Data CSVs (with a ``data`` column, e.g. fiber photometry signal/control streams) are
-        excluded -- those belong to a separate fiber photometry interface.
+        Both arrays are in file order (the labeled case is written as a single ``LabeledEvents``, so
+        the rows are not grouped). Returns ``(timestamps, None)`` when there is no event-type column.
         """
-        event_names = []
-        for path in sorted(Path(self.source_data["folder_path"]).glob("*.csv")):
-            columns = [column.lower() for column in pd.read_csv(path, nrows=0).columns]
-            if columns == ["timestamps"]:
-                event_names.append(path.stem)
-        return event_names
+        timestamps_column = self.source_data["timestamps_column"]
+        event_type_column = self.source_data["event_type_column"]
+        # An int column specifier means a header-less file (positional columns); a str means a header row.
+        header = None if isinstance(timestamps_column, int) else 0
+        # float_precision="round_trip" uses an exact, platform-independent float parser; pandas's
+        # default C parser rounds the final ULP differently across platforms (Linux/Windows vs macOS).
+        dataframe = pd.read_csv(self.source_data["file_path"], header=header, float_precision="round_trip")
+        timestamps = dataframe[timestamps_column].to_numpy()
+        labels = None if event_type_column is None else dataframe[event_type_column].to_numpy()
+        return timestamps, labels
 
     def get_metadata(self) -> DeepDict:
         """
@@ -95,13 +115,21 @@ class CSVEventsInterface(BaseDataInterface):
         """
         metadata = super().get_metadata()
 
-        exclude_events = self.source_data["exclude_events"] or []
-        included_events = [event_name for event_name in self._get_event_names() if event_name not in exclude_events]
-        for event_name in included_events:
-            metadata["Events"][self.metadata_key]["event_columns"][event_name] = {
-                "column_name": event_name,
-                "description": f"Onset times of the '{event_name}' events from CSV.",
-            }
+        _, labels = self._read_timestamps_and_labels()
+        file_stem = Path(self.source_data["file_path"]).stem
+        column = {
+            "column_name": file_stem,
+            "description": f"Onset times of the '{file_stem}' events from CSV.",
+        }
+        if labels is not None:
+            event_type_column = self.source_data["event_type_column"]
+            column["description"] = (
+                f"Onset times of the '{file_stem}' events from CSV, labeled by the " f"'{event_type_column}' column."
+            )
+            # A label per distinct value (first-appearance order), seeding LabeledEvents. The map is
+            # raw value -> display label; the user can rename the display labels in editable metadata.
+            column["column_categories"] = {"labels": {str(value): str(value) for value in pd.unique(labels)}}
+        metadata["Events"][self.metadata_key]["event_columns"][file_stem] = column
         return metadata
 
     def get_metadata_schema(self) -> dict:
@@ -121,12 +149,21 @@ class CSVEventsInterface(BaseDataInterface):
                 "properties": {
                     "event_columns": {
                         "type": "object",
-                        "additionalProperties": {  # keyed by event CSV file stem (event_type_id)
+                        "additionalProperties": {  # keyed by event-type id (the file stem)
                             "type": "object",
                             "required": ["column_name", "description"],
                             "properties": {
                                 "column_name": {"type": "string"},
                                 "description": {"type": "string"},
+                                # Present only for a labeled file: the column's value vocabulary.
+                                "column_categories": {
+                                    "type": "object",
+                                    "properties": {
+                                        # maps each raw label value to a display label
+                                        "labels": {"type": "object", "additionalProperties": {"type": "string"}},
+                                        "meanings": {"type": "object", "additionalProperties": {"type": "string"}},
+                                    },
+                                },
                             },
                         },
                     },
@@ -136,16 +173,18 @@ class CSVEventsInterface(BaseDataInterface):
         return metadata_schema
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
-        """Add the selected event CSVs to the NWBFile as ``ndx_events.Events`` objects.
+        """Add the events to the NWBFile as an ``ndx_events.Events`` or ``LabeledEvents`` object.
 
         Parameters
         ----------
         nwbfile : NWBFile
             The NWB file to add the events to.
         metadata : dict
-            Metadata dictionary. Each entry in ``metadata["Events"][metadata_key]["event_columns"]``
-            is keyed by the event CSV file stem (``event_type_id``) and holds the output ``Events``
-            object's ``column_name`` and ``description``.
+            Metadata dictionary. The single entry in
+            ``metadata["Events"][metadata_key]["event_columns"]`` holds the output object's
+            ``column_name`` and ``description``. A ``column_categories["labels"]`` map (raw value ->
+            display label) marks the file as labeled and is written as ``LabeledEvents``; its absence
+            writes a plain ``Events``.
         """
         ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events==0.2.2")
 
@@ -156,17 +195,28 @@ class CSVEventsInterface(BaseDataInterface):
             "Each Events object must have a unique name."
         )
 
-        for file_name, column in event_columns.items():
-            # float_precision="round_trip" uses an exact, platform-independent float parser; pandas's
-            # default C parser rounds the final ULP differently across platforms (Linux/Windows vs macOS).
-            timestamps = pd.read_csv(self._event_csv_path(file_name), float_precision="round_trip")[
-                "timestamps"
-            ].to_numpy()
+        timestamps, labels = self._read_timestamps_and_labels()
+        for column in event_columns.values():
             if len(timestamps) == 0:
                 continue
-            events = ndx_events.Events(
-                name=column["column_name"],
-                description=column["description"],
-                timestamps=np.asarray(timestamps),
-            )
+            if "column_categories" in column:
+                # Labeled file -> LabeledEvents. The vocabulary order is the insertion order of the
+                # editable labels map seeded by get_metadata (first appearance in the file).
+                labels_map = column["column_categories"]["labels"]
+                vocabulary = list(labels_map)
+                value_to_index = {value: index for index, value in enumerate(vocabulary)}
+                data = np.array([value_to_index[str(label)] for label in labels], dtype=np.uint32)
+                events = ndx_events.LabeledEvents(
+                    name=column["column_name"],
+                    description=column["description"],
+                    timestamps=np.asarray(timestamps),
+                    data=data,
+                    labels=[labels_map[value] for value in vocabulary],
+                )
+            else:
+                events = ndx_events.Events(
+                    name=column["column_name"],
+                    description=column["description"],
+                    timestamps=np.asarray(timestamps),
+                )
             nwbfile.add_acquisition(events)
