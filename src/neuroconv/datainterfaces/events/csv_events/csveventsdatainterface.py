@@ -15,9 +15,7 @@ class CSVEventsInterface(BaseDataInterface):
 
     This is a general-purpose CSV events reader: the caller points at one CSV file and names the
     column holding the event onset times (``timestamps_column``) and, optionally, the column that
-    tells the event types apart (``event_type_column``). The file is written into
-    ``nwbfile.acquisition``. Acquisition is used because these CSV streams are raw acquired markers
-    (TTLs, sync pulses) whose interpretation is not necessarily behavioral.
+    tells the event types apart (``event_type_column``).
 
     Two layouts are supported:
 
