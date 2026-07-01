@@ -135,14 +135,26 @@ supplied explicitly in the metadata.
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from pathlib import Path
     >>> from zoneinfo import ZoneInfo
+
+    >>> import numpy as np
+    >>> import pandas as pd
 
     >>> from neuroconv.datainterfaces import CSVFiberPhotometryInterface
     >>> from neuroconv.utils import dict_deep_update, load_dict_from_file
 
-    >>> folder_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "CSV" / "sample_data_csv_1"
-    >>> LOCAL_PATH = Path(".") # Path to neuroconv
+    >>> # This format is just per-stream CSVs; here we write small example signal and control
+    >>> # channels with ``timestamps``, ``data``, and ``sampling_rate`` (set on the first row only).
+    >>> folder_path = output_folder
+    >>> sampling_rate = 100.0
+    >>> num_samples = 150
+    >>> timestamps = np.arange(num_samples) / sampling_rate
+    >>> sampling_rate_column = np.full(num_samples, np.nan)
+    >>> sampling_rate_column[0] = sampling_rate
+    >>> signal = pd.DataFrame({"timestamps": timestamps, "data": np.linspace(0.1, 1.0, num_samples), "sampling_rate": sampling_rate_column})
+    >>> signal.to_csv(folder_path / "Sample_Signal_Channel.csv", index=False)
+    >>> control = pd.DataFrame({"timestamps": timestamps, "data": np.linspace(0.5, 1.4, num_samples), "sampling_rate": sampling_rate_column})
+    >>> control.to_csv(folder_path / "Sample_Control_Channel.csv", index=False)
 
     >>> interface = CSVFiberPhotometryInterface(folder_path=folder_path, verbose=False)
     >>> metadata = interface.get_metadata()
