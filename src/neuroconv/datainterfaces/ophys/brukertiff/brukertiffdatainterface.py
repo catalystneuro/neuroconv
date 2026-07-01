@@ -17,8 +17,9 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
     which handles single-plane, volumetric, and multi-channel data through a single class.
     Volumetric data is exposed as a 4D series.
 
-    Channels are identified by zero-indexed strings (``"0"``, ``"1"``, ...). When the data
-    contains multiple channels, ``channel_name`` is required.
+    Channels are identified by name (e.g. ``"Ch1"``, ``"Ch2"``); use
+    :meth:`get_available_channels` to list them. When the data contains multiple channels,
+    ``channel_name`` is required.
 
     The interface emits metadata in the new dict-based format keyed by ``metadata_key``,
     populating ``Devices``, ``Ophys.ImagingPlanes``, and ``Ophys.MicroscopySeries``.
@@ -55,7 +56,13 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
 
     @classmethod
     def get_available_channels(cls, folder_path: DirectoryPath) -> list[str]:
-        """Return the channel names available in the Bruker dataset.
+        """Return the channel names available in the Bruker dataset, in acquisition order.
+
+        Channel names are read from the Bruker configuration ``.xml`` (the ``channelName``
+        attribute of each ``<File>`` element), which is authoritative and present for every
+        PrairieView version. This mirrors ``BrukerTiffImagingExtractor`` and avoids the OME-XML
+        path, which fails on PrairieView 5.8+ ``BinaryOnly`` packaging where the ``.ome.tif``
+        files carry no ``<Pixels>`` block.
 
         Parameters
         ----------
@@ -65,17 +72,20 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         Returns
         -------
         list[str]
-            Zero-indexed channel name strings (e.g., ``["0"]`` for single-channel data,
-            ``["0", "1"]`` for dual-channel).
+            Channel labels in acquisition order (e.g. ``["Ch1", "Ch2"]``).
         """
-        from roiextractors.extractors.tiffimagingextractors.ometiffimagingextractor import (
-            OMETiffImagingExtractor,
-        )
+        from xml.etree import ElementTree
 
-        ome_files = sorted(Path(folder_path).glob("*.ome.tif"))
-        if not ome_files:
-            raise FileNotFoundError(f"No .ome.tif files found in '{folder_path}'.")
-        return OMETiffImagingExtractor.get_available_channel_names(ome_files[0])
+        folder_path = Path(folder_path)
+        xml_file_path = folder_path / f"{folder_path.name}.xml"
+        if not xml_file_path.is_file():
+            raise FileNotFoundError(f"Bruker XML configuration file not found at '{xml_file_path}'.")
+
+        xml_root = ElementTree.parse(xml_file_path).getroot()
+        channel_number_to_name = {
+            int(elem.attrib["channel"]): elem.attrib["channelName"] for elem in xml_root.iter("File")
+        }
+        return [channel_number_to_name[number] for number in sorted(channel_number_to_name)]
 
     @validate_call
     def __init__(
@@ -134,7 +144,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
             device_entry["description"] = device_description
         metadata["Devices"] = {self.metadata_key: device_entry}
 
-        channel_suffix = f"Ch{self.channel_name}" if self.channel_name is not None else ""
+        channel_suffix = self.channel_name if self.channel_name is not None else ""
         imaging_plane_name = f"ImagingPlane{channel_suffix}"
         photon_series_name = f"TwoPhotonSeries{channel_suffix}"
         is_volumetric = self.imaging_extractor.get_num_planes() > 1

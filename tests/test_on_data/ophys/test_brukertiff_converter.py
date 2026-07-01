@@ -101,9 +101,6 @@ class TestBrukerTiffConverterVolumetric(TestCase):
         self.assertEqual(photon_series.data.shape[0], self.stub_samples)
 
 
-# TODO(roiextractors#XXX): re-enable once OMETiffImagingExtractor handles Bruker BinaryOnly
-# companion-OME files. The dual-color fixture references a missing ``.companion.ome``.
-@pytest.mark.skip(reason="Dual-color Bruker fixture uses OME BinaryOnly companion files not yet supported")
 class TestBrukerTiffConverterMultiChannel(TestCase):
     """BrukerTiffConverter on multi-channel single-plane data: one acquisition per channel."""
 

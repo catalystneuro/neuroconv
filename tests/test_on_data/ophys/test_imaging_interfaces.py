@@ -538,10 +538,6 @@ class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixi
             assert two_photon_series.data.shape == (5, 64, 64, 2)
 
 
-# TODO(roiextractors#XXX): re-enable once OMETiffImagingExtractor handles Bruker
-# BinaryOnly companion-OME files. The dual-color fixture references a missing
-# ``.companion.ome`` and currently fails parse_ome_metadata.
-@pytest.mark.skip(reason="Dual-color Bruker fixture uses OME BinaryOnly companion files not yet supported")
 class TestBrukerTiffImagingInterfaceDualColor(ImagingExtractorInterfaceTestMixin):
     """Tests the unified BrukerTiffImagingInterface against multi-channel single-plane data."""
 
@@ -550,8 +546,9 @@ class TestBrukerTiffImagingInterfaceDualColor(ImagingExtractorInterfaceTestMixin
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
         ),
-        channel_name="0",
+        channel_name="Ch1",
     )
+    optical_series_name = "TwoPhotonSeriesCh1"
     save_directory = OUTPUT_PATH
 
 
