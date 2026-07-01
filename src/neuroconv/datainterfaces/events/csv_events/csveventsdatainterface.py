@@ -14,21 +14,21 @@ class CSVEventsInterface(BaseDataInterface):
     """Data Interface for converting discrete events from a single CSV file.
 
     This is a general-purpose CSV events reader: the caller points at one CSV file and names the
-    column holding the event onset times (``timestamps_column``) and, optionally, the column that
+    column holding the event timestamps (``timestamps_column``) and, optionally, the column that
     tells the event types apart (``event_type_column``).
 
     Two layouts are supported:
 
     - **A single event type** (``event_type_column=None``): every row is one occurrence of the same
-      event, and the file becomes one ``ndx_events.Events`` object (onset timestamps only) named
+      event, and the file becomes one ``ndx_events.Events`` object named
       after the file stem.
     - **Several event types in one file** (``event_type_column`` set): each row carries a label in
       that column, and the file becomes one ``ndx_events.LabeledEvents`` object named after the file
-      stem -- the onset timestamps plus a per-event integer code into the label vocabulary. This
+      stem -- the timestamps plus a per-event integer code into the label vocabulary. This
       mirrors how ``TDTEventsInterface`` writes a labeled (strobe) store.
 
-    Columns other than ``timestamps_column`` and ``event_type_column`` are ignored; only onset
-    timestamps (and, for the labeled case, the event labels) are written.
+    Columns other than ``timestamps_column`` and ``event_type_column`` are ignored; only timestamps
+    (and, for the labeled case, the event labels) are written.
 
     Notes
     -----
@@ -58,7 +58,7 @@ class CSVEventsInterface(BaseDataInterface):
         file_path : FilePath
             The path to the CSV file holding the events.
         timestamps_column : str or int
-            The column holding the event onset times (seconds). A column name for a CSV with a header
+            The column holding the event timestamps (seconds). A column name for a CSV with a header
             row, or a positional index (0-based) for a header-less CSV.
         event_type_column : str, int, or None
             The column, if any, that names the type of each event. Pass a column name or index when
@@ -83,7 +83,7 @@ class CSVEventsInterface(BaseDataInterface):
         import ndx_events  # noqa: F401
 
     def _read_timestamps_and_labels(self) -> tuple[np.ndarray, np.ndarray | None]:
-        """Read the onset timestamps and, when ``event_type_column`` is set, the per-event labels.
+        """Read the timestamps and, when ``event_type_column`` is set, the per-event labels.
 
         Both arrays are in file order (the labeled case is written as a single ``LabeledEvents``, so
         the rows are not grouped). Returns ``(timestamps, None)`` when there is no event-type column.
@@ -117,12 +117,12 @@ class CSVEventsInterface(BaseDataInterface):
         file_stem = Path(self.source_data["file_path"]).stem
         column = {
             "column_name": file_stem,
-            "description": f"Onset times of the '{file_stem}' events from CSV.",
+            "description": f"Timestamps of the '{file_stem}' events from CSV.",
         }
         if labels is not None:
             event_type_column = self.source_data["event_type_column"]
             column["description"] = (
-                f"Onset times of the '{file_stem}' events from CSV, labeled by the " f"'{event_type_column}' column."
+                f"Timestamps of the '{file_stem}' events from CSV, labeled by the " f"'{event_type_column}' column."
             )
             # A label per distinct value (first-appearance order), seeding LabeledEvents. The map is
             # raw value -> display label; the user can rename the display labels in editable metadata.
