@@ -270,7 +270,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
 
 
 # ---------------------------------------------------------------------------
-# Deprecated interfaces. Will be removed on or after November 2026.
+# Deprecated interfaces. Will be removed on or after January 2027.
 # Use BrukerTiffImagingInterface instead.
 # ---------------------------------------------------------------------------
 
@@ -360,7 +360,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
         """
         warnings.warn(
-            "BrukerTiffMultiPlaneImagingInterface is deprecated and will be removed on or after November 2026. "
+            "BrukerTiffMultiPlaneImagingInterface is deprecated and will be removed on or after January 2027. "
             "Use BrukerTiffImagingInterface instead.",
             FutureWarning,
             stacklevel=2,
@@ -591,7 +591,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
         """
         warnings.warn(
-            "BrukerTiffSinglePlaneImagingInterface is deprecated and will be removed on or after November 2026. "
+            "BrukerTiffSinglePlaneImagingInterface is deprecated and will be removed on or after January 2027. "
             "Use BrukerTiffImagingInterface instead.",
             FutureWarning,
             stacklevel=2,

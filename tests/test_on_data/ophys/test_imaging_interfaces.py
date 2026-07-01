@@ -553,7 +553,7 @@ class TestBrukerTiffImagingInterfaceDualColor(ImagingExtractorInterfaceTestMixin
 
 
 # ---------------------------------------------------------------------------
-# Deprecated interfaces. Will be removed on or after November 2026.
+# Deprecated interfaces. Will be removed on or after January 2027.
 # These tests exercise the deprecated wrappers and assert the FutureWarning is emitted.
 # ---------------------------------------------------------------------------
 
