@@ -105,6 +105,7 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
 )
+from .ophys.csv_fp.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
 from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
@@ -189,6 +190,7 @@ interface_list = [
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
+    CSVFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
@@ -235,7 +237,10 @@ interfaces_by_category = dict(
         for interface in interface_list
         if "Segmentation" in interface.__name__
     },
-    fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
+    fiber_photometry={
+        "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+        "CSVFiberPhotometry": CSVFiberPhotometryInterface,
+    },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,

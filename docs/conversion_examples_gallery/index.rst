@@ -100,6 +100,7 @@ Fiber Photometry
     :maxdepth: 1
 
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    CSV Fiber Photometry <fiberphotometry/csv_fp>
 
 Behavior
 --------
