@@ -416,6 +416,15 @@ class ExternalVideoInterface(BaseDataInterface):
                 rate = video.get_video_fps()
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
 
+        # pynwb>=4 requires num_samples on an external ImageSeries when timing is rate-based, because the
+        # empty data array cannot convey the frame count. Sum the frame count across the external video files.
+        if "rate" in image_series_kwargs:
+            num_samples = 0
+            for file_path in file_paths:
+                with VideoCaptureContext(file_path=str(file_path)) as video:
+                    num_samples += video.get_video_frame_count()
+            image_series_kwargs.update(num_samples=num_samples)
+
         if self._number_of_files > 1 and starting_frames is None:
             raise TypeError("Multiple paths were specified for the ImageSeries, but no starting_frames were specified!")
         elif starting_frames is not None and len(starting_frames) != self._number_of_files:

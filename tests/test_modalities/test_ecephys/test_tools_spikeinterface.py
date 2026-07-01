@@ -2304,9 +2304,9 @@ class TestWriteSortingAnalyzer(TestCase):
         # check electrode regions of units
         for row in self.nwbfile.units.id:
             if row < len(self.analyzer_recless.unit_ids):
-                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
+                np.testing.assert_array_equal(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
             else:
-                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
+                np.testing.assert_array_equal(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
 
         # reset original channel groups
         self.analyzer_recless_recording.set_channel_groups(original_channel_groups)
@@ -2362,9 +2362,9 @@ class TestWriteSortingAnalyzer(TestCase):
         # check electrode regions of units
         for row in self.nwbfile.units.id:
             if row < len(self.analyzer_recless.unit_ids):
-                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
+                np.testing.assert_array_equal(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
             else:
-                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
+                np.testing.assert_array_equal(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
 
         # reset original channel groups
         self.single_segment_analyzer.recording.set_channel_groups(original_channel_groups)
