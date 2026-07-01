@@ -58,7 +58,7 @@ Intracellular electrophysiology
 .. toctree::
     :maxdepth: 1
 
-    Axon Binary File (ABF) <recording/abf>
+    Axon Binary Format (ABF) <recording/abf>
 
 Optical physiology
 ------------------
@@ -114,8 +114,18 @@ Behavior
     LightningPose <behavior/lightningpose>
     Neuralynx NVT <behavior/neuralynx_nvt>
     SLEAP <behavior/sleap>
+    VAME <behavior/vame>
     Videos <behavior/video>
     MedPC <behavior/medpc>
+
+
+Events
+------
+
+.. toctree::
+    :maxdepth: 1
+
+    TDT Events <events/tdt_events>
 
 
 Image

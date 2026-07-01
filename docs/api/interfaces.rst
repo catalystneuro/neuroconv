@@ -8,4 +8,5 @@ Interfaces
     interfaces.icephys
     interfaces.ophys
     interfaces.behavior
+    interfaces.events
     interfaces.text

@@ -92,6 +92,7 @@ class TestImportStructure(TestCase):
             "ophys",
             "text",
             "image",
+            "events",
             # Exposed attributes
             "interface_list",
             "interfaces_by_category",

@@ -332,6 +332,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
@@ -346,6 +347,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         seed: int = 0,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
         set_probe: bool = False,
     ):
         # Handle deprecated positional arguments
@@ -394,6 +396,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             seed=seed,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
         )
 
         self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
@@ -406,7 +409,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             probe.set_contact_ids(contact_ids)
             self.recording_extractor = self.recording_extractor.set_probe(probe, group_mode="by_probe")
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Get metadata for the recording interface.
 
@@ -415,7 +418,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         dict
             The metadata dictionary containing NWBFile metadata with session start time.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata

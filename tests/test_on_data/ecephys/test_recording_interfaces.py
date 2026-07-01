@@ -54,7 +54,7 @@ class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "alphaomega" / "mpx_map_version4"))
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 11, 19, 15, 23, 15)
 
 
@@ -63,7 +63,7 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axon" / "File_axon_1.abf"))
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Check that session_start_time is extracted from ABF file
         assert "session_start_time" in metadata["NWBFile"]
 
@@ -332,7 +332,7 @@ class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert len(metadata["Ecephys"]["Device"]) == 1
         assert metadata["Ecephys"]["Device"][0]["name"] == "DeviceEcephys"
         assert metadata["Ecephys"]["Device"][0]["description"] == "Recorded using Maxwell version '20190530'."
@@ -349,7 +349,7 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "mearec" / "mearec_test_10s.h5"))
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert len(metadata["Ecephys"]["Device"]) == 1
         assert metadata["Ecephys"]["Device"][0]["name"] == "Neuronexus-32"
         assert metadata["Ecephys"]["Device"][0]["description"] == "The ecephys device for the MEArec recording."
@@ -378,7 +378,7 @@ class TestNeuralynxRecordingInterfaceV574:
 
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         file_metadata = metadata["NWBFile"]
         assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 2, 16, 17, 56, 4)
         assert metadata["NWBFile"]["session_id"] == "d8ba8eef-8d11-4cdc-86dc-05f50d4ba13d"
@@ -419,7 +419,7 @@ class TestNeuralynxRecordingInterfaceV563:
 
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         file_metadata = metadata["NWBFile"]
         assert file_metadata["session_start_time"] == datetime(2016, 11, 28, 21, 50, 33, 322000)
         assert '"FileType": "CSC"' in file_metadata["notes"]
@@ -438,7 +438,7 @@ class TestNeuralynxRecordingInterfaceV540:
     interface_kwargs = (dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.4.0" / "original_data")),)
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         file_metadata = metadata["NWBFile"]
         assert file_metadata["session_start_time"] == datetime(2001, 1, 1, 0, 0)
         assert '"recording_closed": "2001-01-01 00:00:00"' in file_metadata["notes"]
@@ -459,7 +459,7 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         file_metadata = metadata["NWBFile"]
 
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 2, 26, 15, 46, 52)
@@ -527,7 +527,7 @@ class TestOpenEphysBinaryRecordingInterfaceVersion0_4_4(RecordingExtractorInterf
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"))
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 2, 15, 17, 20, 4)
 
 
@@ -539,7 +539,7 @@ class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream1(RecordingExtract
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 24, 15, 46, 56)
 
 
@@ -551,7 +551,7 @@ class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream2(RecordingExtract
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 24, 15, 46, 56)
 
 
@@ -570,7 +570,7 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 10, 52, 24)
 
 
@@ -599,7 +599,7 @@ class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"))
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2018, 10, 3, 13, 16, 50)
 
 
@@ -720,7 +720,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 3, 10, 35, 10)
         assert metadata["Ecephys"]["Device"][-1] == dict(
             name="NeuropixelsImec0",
@@ -737,7 +737,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 1, 3, 11, 51, 51)
         assert metadata["Ecephys"]["Device"][-1] == dict(
             name="NeuropixelsImec0",
@@ -792,7 +792,7 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
 
 
@@ -822,7 +822,7 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    def check_extracted_metadata(self, metadata: dict):
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 20, 15, 59, 39)
 
 
