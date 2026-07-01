@@ -100,6 +100,7 @@ Fiber Photometry
     :maxdepth: 1
 
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    TDT Fiber Photometry + GuPPy <fiberphotometry/tdt_guppy>
 
 Behavior
 --------
