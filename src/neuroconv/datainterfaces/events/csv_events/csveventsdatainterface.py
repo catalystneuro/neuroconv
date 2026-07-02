@@ -87,6 +87,8 @@ class CSVEventsInterface(BaseDataInterface):
 
         Both arrays are in file order (the labeled case is written as a single ``LabeledEvents``, so
         the rows are not grouped). Returns ``(timestamps, None)`` when there is no event-type column.
+        Rows whose timestamp is missing (``NaN``) are dropped, since ``ndx_events`` has no
+        representation for a missing timestamp.
         """
         timestamps_column = self.source_data["timestamps_column"]
         event_type_column = self.source_data["event_type_column"]
@@ -97,6 +99,11 @@ class CSVEventsInterface(BaseDataInterface):
         dataframe = pd.read_csv(self.source_data["file_path"], header=header, float_precision="round_trip")
         timestamps = dataframe[timestamps_column].to_numpy()
         labels = None if event_type_column is None else dataframe[event_type_column].to_numpy()
+        # Drop rows with a missing timestamp, keeping the labels aligned.
+        valid = ~np.isnan(timestamps)
+        timestamps = timestamps[valid]
+        if labels is not None:
+            labels = labels[valid]
         return timestamps, labels
 
     def get_metadata(self) -> DeepDict:

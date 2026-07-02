@@ -46,6 +46,20 @@ class TestCSVEventsInterface:
         file_path.write_text("\n".join(lines) + "\n")
         return file_path
 
+    @pytest.fixture
+    def single_type_file_with_nans(self, tmp_path):
+        # Rows 2 and 4 have an empty timestamps cell, parsed by pandas as NaN and dropped.
+        file_path = tmp_path / "ttl.csv"
+        file_path.write_text("timestamps\n1.5\n\n3.5\n\n5.5\n")
+        return file_path
+
+    @pytest.fixture
+    def two_type_file_with_nans(self, tmp_path):
+        # The "b" rows have an empty onset cell (NaN) and are dropped along with their labels.
+        file_path = tmp_path / "events.csv"
+        file_path.write_text("onset,kind\n1.0,a\n,b\n3.0,a\n,b\n5.0,a\n")
+        return file_path
+
     def test_event_type_column_is_required(self, single_type_file):
         """event_type_column has no default, so omitting it is an error."""
         with pytest.raises(ValidationError):
@@ -103,6 +117,31 @@ class TestCSVEventsInterface:
         assert list(labeled.timestamps[:]) == EXPECTED_LABELED_TIMESTAMPS
         assert list(labeled.data[:]) == EXPECTED_LABELED_DATA
         assert list(labeled.labels) == EXPECTED_LABELS
+
+    def test_missing_timestamps_are_dropped(self, single_type_file_with_nans):
+        interface = CSVEventsInterface(
+            file_path=single_type_file_with_nans, timestamps_column="timestamps", event_type_column=None
+        )
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        ttl_events = nwbfile.acquisition["ttl"]
+        assert list(ttl_events.timestamps[:]) == [1.5, 3.5, 5.5]
+
+    def test_missing_timestamps_drop_labels_in_step(self, two_type_file_with_nans):
+        interface = CSVEventsInterface(
+            file_path=two_type_file_with_nans, timestamps_column="onset", event_type_column="kind"
+        )
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        labeled = nwbfile.acquisition["events"]
+        # Only the three "a" rows survive; "b" never appears in the vocabulary.
+        assert list(labeled.timestamps[:]) == [1.0, 3.0, 5.0]
+        assert list(labeled.data[:]) == [0, 0, 0]
+        assert list(labeled.labels) == ["a"]
 
     def test_round_trip(self, interface, tmp_path):
         nwbfile = mock_NWBFile()
