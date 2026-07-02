@@ -146,7 +146,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         stub_samples: int = 100,
         include_background_segmentation: bool = True,
         include_roi_centroids: bool = True,
-        include_roi_acceptance: bool = False,
+        include_roi_acceptance: Optional[bool] = None,
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
@@ -192,6 +192,16 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
             iterator_options = positional_values.get("iterator_options", iterator_options)
 
+        if include_roi_acceptance is not None:
+            warnings.warn(
+                "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
+                "written automatically as a column on the PlaneSegmentation table whenever the "
+                "segmentation extractor exposes acceptance/rejection through its property system. "
+                "This parameter will be removed on or after November 2026.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
@@ -199,7 +209,6 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             stub_samples=stub_samples,
             include_background_segmentation=include_background_segmentation,
             include_roi_centroids=include_roi_centroids,
-            include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,

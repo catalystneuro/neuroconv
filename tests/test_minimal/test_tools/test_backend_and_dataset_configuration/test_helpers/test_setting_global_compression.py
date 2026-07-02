@@ -54,46 +54,27 @@ def get_hdf5_filter_info(dataset):
     return dcpl.get_filter(0)
 
 
-# Mapping of compression method names to their expected HDF5 filter IDs and descriptions
-# See the gist https://gist.github.com/h-mayorquin/d6ea547f8061c9658011bb66edf9789d for details on how to generate
-# this mapping.
+# Mapping of compression method names to their expected HDF5 filter IDs.
+# The numeric filter ID is a stable identifier registered with The HDF Group, so it is safe to assert on.
+# We deliberately do not assert on the filter's free-text description string: it is internal HDF5 metadata
+# that neuroconv never consumes or surfaces, and upstream (hdf5plugin) can reword it across releases.
 HDF5_COMPRESSION_EXPECTED = {
     # Built-in HDF5 compression methods - these show up in both compression attribute and filter pipeline
-    "gzip": {"compression_attribute": "gzip", "filter_id": 1, "filter_description": "deflate"},
-    "lzf": {"compression_attribute": "lzf", "filter_id": 32000, "filter_description": "lzf"},
-    "szip": {"compression_attribute": "szip", "filter_id": 4, "filter_description": "szip"},
+    "gzip": {"compression_attribute": "gzip", "filter_id": 1},
+    "lzf": {"compression_attribute": "lzf", "filter_id": 32000},
+    "szip": {"compression_attribute": "szip", "filter_id": 4},
     # Advanced compression methods from hdf5plugin - these only show up in filter pipeline
-    "Bitshuffle": {
-        "compression_attribute": None,
-        "filter_id": 32008,
-        "filter_description": "bitshuffle; see https://github.com/kiyo-masui/bitshuffle",
-    },
-    "Blosc": {"compression_attribute": None, "filter_id": 32001, "filter_description": "blosc"},
-    "Blosc2": {"compression_attribute": None, "filter_id": 32026, "filter_description": "blosc2"},
-    "BZip2": {"compression_attribute": None, "filter_id": 307, "filter_description": "bzip2"},
-    "FciDecomp": {"compression_attribute": None, "filter_id": 32018, "filter_description": "HDF5 JPEG-LS filter"},
-    "LZ4": {
-        "compression_attribute": None,
-        "filter_id": 32004,
-        "filter_description": "HDF5 lz4 filter; see http://www.hdfgroup.org/services/contributions.html",
-    },
-    "Sperr": {"compression_attribute": None, "filter_id": 32028, "filter_description": "H5Z-SPERR"},
-    "SZ": {
-        "compression_attribute": None,
-        "filter_id": 32017,
-        "filter_description": "SZ compressor/decompressor for floating-point data.",
-    },
-    "SZ3": {
-        "compression_attribute": None,
-        "filter_id": 32024,
-        "filter_description": "SZ3 compressor/decompressor for floating-point data.",
-    },
-    "Zfp": {"compression_attribute": None, "filter_id": 32013, "filter_description": "H5Z-ZFP-1.1.1 (ZFP-1.0.1)"},
-    "Zstd": {
-        "compression_attribute": None,
-        "filter_id": 32015,
-        "filter_description": "Zstandard compression: http://www.zstd.net",
-    },
+    "Bitshuffle": {"compression_attribute": None, "filter_id": 32008},
+    "Blosc": {"compression_attribute": None, "filter_id": 32001},
+    "Blosc2": {"compression_attribute": None, "filter_id": 32026},
+    "BZip2": {"compression_attribute": None, "filter_id": 307},
+    "FciDecomp": {"compression_attribute": None, "filter_id": 32018},
+    "LZ4": {"compression_attribute": None, "filter_id": 32004},
+    "Sperr": {"compression_attribute": None, "filter_id": 32028},
+    "SZ": {"compression_attribute": None, "filter_id": 32017},
+    "SZ3": {"compression_attribute": None, "filter_id": 32024},
+    "Zfp": {"compression_attribute": None, "filter_id": 32013},
+    "Zstd": {"compression_attribute": None, "filter_id": 32015},
 }
 
 # Mapping of compression method names to their expected Zarr compressor class names
@@ -176,30 +157,21 @@ class TestGlobalCompressionHDF5:
 
                 # Check filter pipeline for all compression methods
                 expected_filter_id = expected["filter_id"]
-                expected_filter_description = expected["filter_description"]
 
                 # Use our helper function to inspect the filter pipeline
                 filter_info1 = get_hdf5_filter_info(dataset1)
                 filter_info2 = get_hdf5_filter_info(dataset2)
 
-                # Extract filter ID and description from the filter info tuple
+                # Extract the filter ID from the filter info tuple
                 actual_filter_id1 = filter_info1[0]
-                actual_filter_description1 = filter_info1[3].decode("utf-8")
                 assert (
                     actual_filter_id1 == expected_filter_id
                 ), f"Expected filter ID {expected_filter_id} but got {actual_filter_id1} for dataset1"
-                assert (
-                    actual_filter_description1 == expected_filter_description
-                ), f"Expected filter description '{expected_filter_description}' but got '{actual_filter_description1}' for dataset1"
 
                 actual_filter_id2 = filter_info2[0]
-                actual_filter_description2 = filter_info2[3].decode("utf-8")
                 assert (
                     actual_filter_id2 == expected_filter_id
                 ), f"Expected filter ID {expected_filter_id} but got {actual_filter_id2} for dataset2"
-                assert (
-                    actual_filter_description2 == expected_filter_description
-                ), f"Expected filter description '{expected_filter_description}' but got '{actual_filter_description2}' for dataset2"
             else:
                 # For compression methods that don't work properly, we just verify the file was created
                 # The compression may be None or fallback to a default method

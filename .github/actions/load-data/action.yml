@@ -13,70 +13,61 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Get ephy_testing_data current head hash
+    - name: Install and configure AWS CLI
+      shell: bash
+      run: |
+        pip install awscli
+        aws configure set aws_access_key_id "${{ inputs.aws-access-key-id }}"
+        aws configure set aws_secret_access_key "${{ inputs.aws-secret-access-key }}"
+
+    - name: Compute ephys cache key from S3 listing
       id: ephys
       shell: bash
       run: |
-        HASH=$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)
-        echo "HASH_EPHY_DATASET=$HASH" >> $GITHUB_OUTPUT
+        # Hash the listing of every object under the dataset prefix on S3.
+        # Any file added, removed, or re-uploaded changes the listing and
+        # therefore the cache key, so CI picks up data updates automatically
+        # without contacting gin.
+        LIST_HASH=$(aws s3 ls --recursive "${{ inputs.s3-gin-bucket }}/ephy_testing_data/" | sha256sum | cut -d' ' -f1)
+        echo "DATASET_VERSION=$LIST_HASH" >> $GITHUB_OUTPUT
 
     - name: Cache ephys dataset
       uses: actions/cache@v5
       id: cache-ephys-datasets
       with:
         path: ./ephy_testing_data
-        key: ephys-datasets-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+        key: ephys-datasets-${{ steps.ephys.outputs.DATASET_VERSION }}
         enableCrossOsArchive: true
 
-    - name: Get ophys_testing_data current head hash
+    - name: Compute ophys cache key from S3 listing
       id: ophys
       shell: bash
       run: |
-        HASH=$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)
-        echo "HASH_OPHYS_DATASET=$HASH" >> $GITHUB_OUTPUT
+        LIST_HASH=$(aws s3 ls --recursive "${{ inputs.s3-gin-bucket }}/ophys_testing_data/" | sha256sum | cut -d' ' -f1)
+        echo "DATASET_VERSION=$LIST_HASH" >> $GITHUB_OUTPUT
 
     - name: Cache ophys dataset
       uses: actions/cache@v5
       id: cache-ophys-datasets
       with:
         path: ./ophys_testing_data
-        key: ophys-datasets-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+        key: ophys-datasets-${{ steps.ophys.outputs.DATASET_VERSION }}
         enableCrossOsArchive: true
 
-    - name: Get behavior_testing_data current head hash
+    - name: Compute behavior cache key from S3 listing
       id: behavior
       shell: bash
       run: |
-        HASH=$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)
-        echo "HASH_BEHAVIOR_DATASET=$HASH" >> $GITHUB_OUTPUT
+        LIST_HASH=$(aws s3 ls --recursive "${{ inputs.s3-gin-bucket }}/behavior_testing_data/" | sha256sum | cut -d' ' -f1)
+        echo "DATASET_VERSION=$LIST_HASH" >> $GITHUB_OUTPUT
 
     - name: Cache behavior dataset
       uses: actions/cache@v5
       id: cache-behavior-datasets
       with:
         path: ./behavior_testing_data
-        key: behavior-datasets-${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
+        key: behavior-datasets-${{ steps.behavior.outputs.DATASET_VERSION }}
         enableCrossOsArchive: true
-
-    - name: Determine if downloads are required
-      id: download-check
-      shell: bash  # Added shell property
-      run: |
-        if [[ "${{ steps.cache-ephys-datasets.outputs.cache-hit }}" != 'true' || \
-              "${{ steps.cache-ophys-datasets.outputs.cache-hit }}" != 'true' || \
-              "${{ steps.cache-behavior-datasets.outputs.cache-hit }}" != 'true' ]]; then
-          echo "DOWNLOAD_REQUIRED=true" >> $GITHUB_OUTPUT
-        else
-          echo "DOWNLOAD_REQUIRED=false" >> $GITHUB_OUTPUT
-        fi
-
-    - if: ${{ steps.download-check.outputs.DOWNLOAD_REQUIRED == 'true' }}
-      name: Install and configure AWS CLI
-      shell: bash
-      run: |
-        pip install awscli
-        aws configure set aws_access_key_id "${{ inputs.aws-access-key-id }}"
-        aws configure set aws_secret_access_key "${{ inputs.aws-secret-access-key }}"
 
     - if: ${{ steps.cache-ephys-datasets.outputs.cache-hit != 'true' }}
       name: Download ephys dataset from S3

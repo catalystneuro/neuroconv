@@ -30,7 +30,7 @@ To follow this convention use the
 
     >>> LOCAL_PATH = Path(".") # Path to neuroconv
     >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
-    >>> interface = ExternalVideoInterface(file_paths=[video_file_path], verbose=False, video_name="MyExternalVideo")
+    >>> interface = ExternalVideoInterface(file_paths=[video_file_path], verbose=False, metadata_key="my_external_video")
 
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -59,7 +59,7 @@ To follow this convention use the
 
     >>> LOCAL_PATH = Path(".") # Path to neuroconv
     >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
-    >>> interface = InternalVideoInterface(file_path=video_file_path, verbose=False, video_name="MyInternalVideo")
+    >>> interface = InternalVideoInterface(file_path=video_file_path, verbose=False, metadata_key="my_internal_video")
 
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -86,17 +86,21 @@ use the following structure:
 .. code-block:: python
 
     >>> video_metadata = {
+    ...     "Devices": {
+    ...         "my_camera": {  # snake_case key
+    ...             "name": "MyCamera",  # CamelCase NWB object name (distinct from the key)
+    ...             "description": "My description of the camera",
+    ...         },
+    ...     },
     ...     "Behavior": {
     ...         "ExternalVideos": {
-    ...             "MyExternalVideo": {  # This should match the video_name used in the interface
+    ...             "my_external_video": {  # snake_case key; matches metadata_key in the interface
+    ...                 "name": "MyExternalVideo",  # CamelCase ImageSeries name (distinct from the key)
     ...                 "description": "My description of the video data",
-    ...                 "device": {
-    ...                     "name": "MyCamera",
-    ...                     "description": "My description of the camera",
-    ...                 },
+    ...                 "device_metadata_key": "my_camera",  # references the snake_case Devices key
     ...             }
     ...         }
-    ...     }
+    ...     },
     ... }
 
 This metadata can then be easily incorporated into the conversion by updating the metadata dictionary.
@@ -109,7 +113,7 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> from neuroconv.datainterfaces import ExternalVideoInterface
     >>> from neuroconv.utils import dict_deep_update
     >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
-    >>> interface = ExternalVideoInterface(file_paths=[video_file_path], verbose=False, video_name="MyExternalVideo")
+    >>> interface = ExternalVideoInterface(file_paths=[video_file_path], verbose=False, metadata_key="my_external_video")
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
@@ -126,17 +130,21 @@ Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideod
 .. code-block:: python
 
     >>> video_metadata = {
+    ...     "Devices": {
+    ...         "my_camera": {  # snake_case key
+    ...             "name": "MyCamera",  # CamelCase NWB object name (distinct from the key)
+    ...             "description": "My description of the camera",
+    ...         },
+    ...     },
     ...     "Behavior": {
     ...         "InternalVideos": {
-    ...             "MyInternalVideo": {  # This should match the video_name used in the interface
+    ...             "my_internal_video": {  # snake_case key; matches metadata_key in the interface
+    ...                 "name": "MyInternalVideo",  # CamelCase ImageSeries name (distinct from the key)
     ...                 "description": "My description of the video data",
-    ...                 "device": {
-    ...                     "name": "MyCamera",
-    ...                     "description": "My description of the camera",
-    ...                 },
+    ...                 "device_metadata_key": "my_camera",  # references the snake_case Devices key
     ...             }
     ...         }
-    ...     }
+    ...     },
     ... }
     >>>
     >>> from datetime import datetime
@@ -145,7 +153,7 @@ Similarly for :py:class:`~neuroconv.datainterfaces.behavior.video.internalvideod
     >>> from neuroconv.datainterfaces import InternalVideoInterface
     >>> from neuroconv.utils import dict_deep_update
     >>> video_file_path = BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi"
-    >>> interface = InternalVideoInterface(file_path=video_file_path, verbose=False, video_name="MyInternalVideo")
+    >>> interface = InternalVideoInterface(file_path=video_file_path, verbose=False, metadata_key="my_internal_video")
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
