@@ -143,6 +143,22 @@ class TestCSVEventsInterface:
         assert list(labeled.data[:]) == [0, 0, 0]
         assert list(labeled.labels) == ["a"]
 
+    def test_non_numeric_timestamps_are_dropped(self, tmp_path):
+        # A stray header artifact and a garbage token in the timestamps column coerce to NaN and are
+        # dropped along with their labels; the surviving 'None'/'null' labels stay literal.
+        file_path = tmp_path / "reward.csv"
+        file_path.write_text("onset,reward\n1.0,small\nbad,None\n3.0,null\n---,large\n5.0,small\n")
+        interface = CSVEventsInterface(file_path=file_path, timestamps_column="onset", event_type_column="reward")
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        labeled = nwbfile.acquisition["reward"]
+        # Rows 'bad' and '---' drop out; 'None' and 'large' never enter the vocabulary.
+        assert list(labeled.timestamps[:]) == [1.0, 3.0, 5.0]
+        assert list(labeled.labels) == ["small", "null"]
+        assert list(labeled.data[:]) == [0, 1, 0]
+
     def test_na_like_label_tokens_are_read_literally(self, tmp_path):
         # 'None', 'NA', 'null' and a blank cell are real, distinct category values here; the default
         # keep_default_na=False must keep them apart instead of collapsing them into one nan label.
