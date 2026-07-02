@@ -143,6 +143,21 @@ class TestCSVEventsInterface:
         assert list(labeled.data[:]) == [0, 0, 0]
         assert list(labeled.labels) == ["a"]
 
+    def test_na_like_label_tokens_are_read_literally(self, tmp_path):
+        # 'None', 'NA', 'null' and a blank cell are real, distinct category values here; the default
+        # keep_default_na=False must keep them apart instead of collapsing them into one nan label.
+        file_path = tmp_path / "reward.csv"
+        file_path.write_text("onset,reward\n1.0,small\n2.0,None\n3.0,NA\n4.0,null\n5.0,\n6.0,large\n")
+        interface = CSVEventsInterface(file_path=file_path, timestamps_column="onset", event_type_column="reward")
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        labeled = nwbfile.acquisition["reward"]
+        assert list(labeled.timestamps[:]) == [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+        assert list(labeled.labels) == ["small", "None", "NA", "null", "", "large"]
+        assert list(labeled.data[:]) == [0, 1, 2, 3, 4, 5]
+
     def test_read_kwargs_forwarded_to_read_csv(self, tmp_path):
         # A ';' separator with ',' as the decimal mark: only reachable through read_kwargs.
         file_path = tmp_path / "ttl.csv"

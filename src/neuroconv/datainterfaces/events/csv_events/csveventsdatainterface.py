@@ -73,8 +73,9 @@ class CSVEventsInterface(BaseDataInterface):
         read_kwargs : dict, optional
             Additional keyword arguments forwarded to ``pandas.read_csv``, used to handle format
             quirks such as ``sep``, ``encoding``, ``decimal``, or ``skiprows``. Any value given here
-            overrides the interface's own defaults (``header`` and ``float_precision``). Default is
-            None.
+            overrides the interface's own defaults (``header``, ``float_precision``, and
+            ``keep_default_na=False`` -- the latter keeps label tokens such as ``'None'``, ``'NA'``,
+            or ``'null'`` from collapsing into a single missing label). Default is None.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
@@ -103,10 +104,20 @@ class CSVEventsInterface(BaseDataInterface):
         header = None if isinstance(timestamps_column, int) else 0
         # float_precision="round_trip" uses an exact, platform-independent float parser; pandas's
         # default C parser rounds the final ULP differently across platforms (Linux/Windows vs macOS).
-        # Caller-supplied read_kwargs override these defaults.
-        read_kwargs = {"header": header, "float_precision": "round_trip", **self._read_kwargs}
+        # keep_default_na=False reads label tokens ('None', 'NA', 'null', a blank cell, ...) literally
+        # instead of collapsing them all into a single NaN label. Caller-supplied read_kwargs override
+        # these defaults.
+        read_kwargs = {
+            "header": header,
+            "float_precision": "round_trip",
+            "keep_default_na": False,
+            **self._read_kwargs,
+        }
         dataframe = pd.read_csv(self.source_data["file_path"], **read_kwargs)
-        timestamps = dataframe[timestamps_column].to_numpy()
+        # Coerce the timestamps column to numbers directly: keep_default_na=False leaves a blank
+        # timestamp cell as the literal '', so recover the missing values here (blank or non-numeric
+        # -> NaN) independent of the na settings the label column relies on.
+        timestamps = pd.to_numeric(dataframe[timestamps_column], errors="coerce").to_numpy(dtype="float64")
         labels = None if event_type_column is None else dataframe[event_type_column].to_numpy()
         # Drop rows with a missing timestamp, keeping the labels aligned.
         valid = ~np.isnan(timestamps)
