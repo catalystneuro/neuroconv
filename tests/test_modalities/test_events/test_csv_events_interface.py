@@ -48,9 +48,11 @@ class TestCSVEventsInterface:
 
     @pytest.fixture
     def single_type_file_with_nans(self, tmp_path):
-        # Rows 2 and 4 have an empty timestamps cell, parsed by pandas as NaN and dropped.
+        # Rows 2 and 4 have an empty timestamps cell, parsed by pandas as NaN and dropped. The cells
+        # are quoted ("") so pandas reads them as empty-string values rather than skipping them as
+        # blank lines (skip_blank_lines drops a bare empty line before it ever becomes a NaN row).
         file_path = tmp_path / "ttl.csv"
-        file_path.write_text("timestamps\n1.5\n\n3.5\n\n5.5\n")
+        file_path.write_text('timestamps\n1.5\n""\n3.5\n""\n5.5\n')
         return file_path
 
     @pytest.fixture
