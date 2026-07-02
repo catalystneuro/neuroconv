@@ -117,10 +117,3 @@ need each z-plane as its own ``TwoPhotonSeries`` (one ``ImagingPlane`` per plane
 case until a ``plane_index`` selector is added to ``BrukerTiffImagingExtractor`` in
 roiextractors; once that lands, the same per-plane output will be expressible through the
 unified interface composed via :py:class:`~neuroconv.ConverterPipe`.
-
-**Deprecated interfaces and converters**
-
-The legacy :py:class:`~neuroconv.datainterfaces.BrukerTiffSinglePlaneImagingInterface`,
-:py:class:`~neuroconv.datainterfaces.BrukerTiffMultiPlaneImagingInterface` and
-:py:class:`~neuroconv.converters.BrukerTiffSinglePlaneConverter` are deprecated and will be
-removed on or after November 2026. Use ``BrukerTiffImagingInterface`` instead.
