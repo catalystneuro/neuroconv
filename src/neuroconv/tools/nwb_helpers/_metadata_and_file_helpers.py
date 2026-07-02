@@ -19,9 +19,9 @@ from . import (
     configure_backend,
     get_default_backend_configuration,
 )
+from ..ontology import add_species_external_resource, validate_species
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
-from ..ontology import add_species_external_resource, validate_species
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
