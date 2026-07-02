@@ -3,7 +3,7 @@ CSV Events data conversion
 
 :py:class:`~neuroconv.datainterfaces.events.csv_events.csveventsdatainterface.CSVEventsInterface`
 is a general-purpose reader for discrete events (e.g. TTL pulses) stored in a CSV file. You point it
-at one CSV and name the column that holds the event onset times (``timestamps_column``). Pass
+at one CSV and name the column that holds the event timestamps in seconds (``timestamps_column``). Pass
 ``event_type_column=None`` when the file is a single event type, in which case it is written as an
 ``ndx_events.Events`` object named after the file stem. When the file holds several event types told
 apart by a label column, name that column with ``event_type_column`` and the file is written as an
@@ -29,7 +29,7 @@ supplied explicitly in the metadata.
     >>> from neuroconv.datainterfaces import CSVEventsInterface
 
     >>> # This format is just a CSV; here we write a small example event file with a single
-    >>> # ``timestamps`` column holding the event onset times (seconds).
+    >>> # ``timestamps`` column holding the event timestamps (seconds).
     >>> file_path = output_folder / "ttl.csv"
     >>> pd.DataFrame({"timestamps": [1.5, 2.5, 3.5, 4.5]}).to_csv(file_path, index=False)
 

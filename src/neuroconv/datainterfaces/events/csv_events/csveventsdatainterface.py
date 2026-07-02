@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -14,8 +15,8 @@ class CSVEventsInterface(BaseDataInterface):
     """Data Interface for converting discrete events from a single CSV file.
 
     This is a general-purpose CSV events reader: the caller points at one CSV file and names the
-    column holding the event timestamps (``timestamps_column``) and, optionally, the column that
-    tells the event types apart (``event_type_column``).
+    column holding the event timestamps in seconds (``timestamps_column``) and, optionally, the
+    column that tells the event types apart (``event_type_column``).
 
     Two layouts are supported:
 
@@ -121,6 +122,14 @@ class CSVEventsInterface(BaseDataInterface):
         labels = None if event_type_column is None else dataframe[event_type_column].to_numpy()
         # Drop rows with a missing timestamp, keeping the labels aligned.
         valid = ~np.isnan(timestamps)
+        number_dropped = int((~valid).sum())
+        if number_dropped > 0:
+            file_path = self.source_data["file_path"]
+            warnings.warn(
+                f"Dropped {number_dropped} row(s) with a missing timestamp from '{file_path}'.",
+                UserWarning,
+                stacklevel=2,
+            )
         timestamps = timestamps[valid]
         if labels is not None:
             labels = labels[valid]

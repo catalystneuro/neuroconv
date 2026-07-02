@@ -129,6 +129,13 @@ class TestCSVEventsInterface:
         ttl_events = nwbfile.acquisition["ttl"]
         assert list(ttl_events.timestamps[:]) == [1.5, 3.5, 5.5]
 
+    def test_missing_timestamps_emit_warning(self, two_type_file_with_nans):
+        interface = CSVEventsInterface(
+            file_path=two_type_file_with_nans, timestamps_column="onset", event_type_column="kind"
+        )
+        with pytest.warns(UserWarning, match="Dropped 2 row"):
+            interface.get_metadata()
+
     def test_missing_timestamps_drop_labels_in_step(self, two_type_file_with_nans):
         interface = CSVEventsInterface(
             file_path=two_type_file_with_nans, timestamps_column="onset", event_type_column="kind"
