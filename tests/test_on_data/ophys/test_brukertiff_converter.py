@@ -133,6 +133,66 @@ class TestBrukerTiffConverterMultiChannel(TestCase):
         self.assertEqual(len(nwbfile.imaging_planes), 2)
 
 
+class TestBrukerTiffConverterDisjoint(TestCase):
+    """BrukerTiffConverter disjoint mode writes one 2D TwoPhotonSeries + ImagingPlane per depth plane.
+
+    Also asserts equivalence with the deprecated ``BrukerTiffMultiPlaneConverter`` it replaces: the
+    per-plane data and each plane's focal-depth ``origin_coords`` must match.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.folder_path = str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        )
+        cls.test_dir = Path(tempfile.mkdtemp())
+        cls.stub_samples = 2
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        try:
+            shutil.rmtree(cls.test_dir)
+        except PermissionError:
+            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
+
+    def test_disjoint_matches_deprecated_converter(self):
+        converter = BrukerTiffConverter(folder_path=self.folder_path, plane_separation_type="disjoint")
+        interface_names = list(converter.data_interface_objects.keys())
+        self.assertEqual(interface_names, ["BrukerImaging_plane0", "BrukerImaging_plane1"])
+
+        new_path = str(self.test_dir / "disjoint_new.nwb")
+        converter.run_conversion(
+            nwbfile_path=new_path,
+            conversion_options={name: dict(stub_test=True, stub_samples=self.stub_samples) for name in interface_names},
+        )
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            old_converter = BrukerTiffMultiPlaneConverter(
+                folder_path=self.folder_path, plane_separation_type="disjoint"
+            )
+        old_path = str(self.test_dir / "disjoint_old.nwb")
+        old_converter.run_conversion(nwbfile_path=old_path, stub_test=True, stub_samples=self.stub_samples)
+
+        with NWBHDF5IO(new_path) as io_new, NWBHDF5IO(old_path) as io_old:
+            nwbfile_new = io_new.read()
+            nwbfile_old = io_old.read()
+
+            self.assertEqual(list(nwbfile_new.acquisition.keys()), ["TwoPhotonSeriesPlane0", "TwoPhotonSeriesPlane1"])
+            self.assertEqual(len(nwbfile_new.imaging_planes), 2)
+
+            # Old converter names planes by the Bruker stream index; match by acquisition order.
+            new_series = [nwbfile_new.acquisition[f"TwoPhotonSeriesPlane{index}"] for index in range(2)]
+            old_series = [nwbfile_old.acquisition[f"TwoPhotonSeriesCh2{index:06d}"] for index in (1, 2)]
+
+            for new_two_photon_series, old_two_photon_series in zip(new_series, old_series):
+                assert_array_equal(new_two_photon_series.data[:], old_two_photon_series.data[:])
+                assert_array_equal(
+                    new_two_photon_series.imaging_plane.origin_coords[:],
+                    old_two_photon_series.imaging_plane.origin_coords[:],
+                )
+
+
 class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -140,7 +200,9 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
         )
         cls.converter_kwargs = dict(folder_path=cls.folder_path, plane_separation_type="disjoint")
-        cls.converter = BrukerTiffMultiPlaneConverter(**cls.converter_kwargs)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            cls.converter = BrukerTiffMultiPlaneConverter(**cls.converter_kwargs)
         cls.test_dir = Path(tempfile.mkdtemp())
 
         cls.photon_series_names = ["TwoPhotonSeriesCh2000001", "TwoPhotonSeriesCh2000002"]
@@ -167,6 +229,10 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
 
         with pytest.raises(ValidationError, match="Input should be 'disjoint' or 'contiguous'"):
             BrukerTiffMultiPlaneConverter(folder_path=self.folder_path, plane_separation_type="test")
+
+    def test_deprecation_warning(self):
+        with pytest.warns(FutureWarning, match="deprecated"):
+            BrukerTiffMultiPlaneConverter(folder_path=self.folder_path, plane_separation_type="disjoint")
 
     def test_run_conversion_add_conversion_options(self):
         nwbfile_path = str(self.test_dir / "test_brukertiff_converter_conversion_options.nwb")
@@ -219,7 +285,9 @@ class TestBrukerTiffMultiPlaneConverterContiguousPlaneCase(TestCase):
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
         )
         cls.converter_kwargs = dict(folder_path=cls.folder_path, plane_separation_type="contiguous")
-        cls.converter = BrukerTiffMultiPlaneConverter(**cls.converter_kwargs)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            cls.converter = BrukerTiffMultiPlaneConverter(**cls.converter_kwargs)
         cls.test_dir = Path(tempfile.mkdtemp())
 
         cls.photon_series_name = "TwoPhotonSeries"

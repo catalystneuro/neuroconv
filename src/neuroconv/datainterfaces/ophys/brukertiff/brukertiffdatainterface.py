@@ -93,6 +93,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         folder_path: DirectoryPath,
         *,
         channel_name: str | None = None,
+        plane_index: int | None = None,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -102,26 +103,53 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         folder_path : DirectoryPath
             Folder containing Bruker .ome.tif files and the matching configuration .xml.
         channel_name : str, optional
-            Zero-indexed channel name (e.g. ``"0"``, ``"1"``). Required when the data has more
-            than one channel. Use :meth:`get_available_channels` to see what is available.
+            Channel name (e.g. ``"Ch1"``, ``"Ch2"``). Required when the data has more than one
+            channel. Use :meth:`get_available_channels` to see what is available.
+        plane_index : int, optional
+            Select a single depth plane of a volumetric acquisition and write it as a 2D
+            ``TwoPhotonSeries`` (the "disjoint" layout, one series and one imaging plane per
+            depth). When ``None`` (default), volumetric data is written as a single 4D series.
         metadata_key : str, optional
             Metadata key for this interface. When ``None``, defaults to ``"bruker_tiff_imaging"``,
-            with a channel suffix when ``channel_name`` is provided
-            (e.g. ``"bruker_tiff_imaging_0"``).
+            with a channel suffix when ``channel_name`` is provided and a plane suffix when
+            ``plane_index`` is provided (e.g. ``"bruker_tiff_imaging_Ch1_plane0"``).
         verbose : bool, default: False
         """
         if metadata_key is None:
             metadata_key = "bruker_tiff_imaging"
             if channel_name is not None:
                 metadata_key = f"{metadata_key}_{channel_name}"
+            if plane_index is not None:
+                metadata_key = f"{metadata_key}_plane{plane_index}"
 
         self.channel_name = channel_name
+        self.plane_index = plane_index
         super().__init__(
             folder_path=folder_path,
             channel_name=channel_name,
             verbose=verbose,
             metadata_key=metadata_key,
         )
+
+        # The base builds the full extractor. Keep a reference to it for Bruker XML metadata, and
+        # expose only the selected plane's pixel data via ``select_plane`` (roiextractors>=0.9.0).
+        # The single-plane view does not carry the Bruker-specific attributes ``_bruker_xml_metadata``
+        # / ``_xml_root`` that ``get_metadata`` reads, so those go through ``self._bruker_extractor``.
+        # TODO(roiextractors#578): once the extractor exposes a public per-plane ``metadata``
+        # attribute, drop this reference and read plane metadata directly off ``self.imaging_extractor``.
+        self._full_imaging_extractor = self.imaging_extractor
+        if plane_index is not None:
+            self.imaging_extractor = self.imaging_extractor.select_plane(plane_index)
+
+    @property
+    def _bruker_extractor(self):
+        """Extractor carrying the Bruker configuration XML.
+
+        Always the full (unsliced) extractor: the ``select_plane`` view does not proxy
+        ``_bruker_xml_metadata`` / ``_xml_root``. Collapses to ``self.imaging_extractor`` once
+        roiextractors exposes per-plane metadata (roiextractors#578).
+        """
+        return self._full_imaging_extractor
 
     def get_metadata(self) -> DeepDict:
         """Return metadata in the new dict-based format only.
@@ -132,7 +160,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         """
         metadata = super().get_metadata(use_new_metadata_format=True)
 
-        bruker_xml_metadata = self.imaging_extractor._bruker_xml_metadata
+        bruker_xml_metadata = self._bruker_extractor._bruker_xml_metadata
 
         if "date" in bruker_xml_metadata:
             metadata["NWBFile"]["session_start_time"] = dateparse(bruker_xml_metadata["date"])
@@ -144,10 +172,12 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
             device_entry["description"] = device_description
         metadata["Devices"] = {self.metadata_key: device_entry}
 
-        channel_suffix = self.channel_name if self.channel_name is not None else ""
-        imaging_plane_name = f"ImagingPlane{channel_suffix}"
-        photon_series_name = f"TwoPhotonSeries{channel_suffix}"
-        is_volumetric = self.imaging_extractor.get_num_planes() > 1
+        name_suffix = self.channel_name if self.channel_name is not None else ""
+        if self.plane_index is not None:
+            name_suffix = f"{name_suffix}Plane{self.plane_index}"
+        imaging_plane_name = f"ImagingPlane{name_suffix}"
+        photon_series_name = f"TwoPhotonSeries{name_suffix}"
+        is_volumetric = self.imaging_extractor.is_volumetric
 
         sampling_frequency = float(self.imaging_extractor.get_sampling_frequency())
         frame_shape = self.imaging_extractor.get_frame_shape()  # (num_rows, num_columns)
@@ -206,7 +236,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         values in primitive lists (e.g. ``[7.09e-05, 7.09e-05]`` -> ``[7.09e-05]``)
         when NWBConverter merges per-interface metadata.
         """
-        bruker_xml_metadata = self.imaging_extractor._bruker_xml_metadata
+        bruker_xml_metadata = self._bruker_extractor._bruker_xml_metadata
         microns_per_pixel = bruker_xml_metadata["micronsPerPixel"]
         x_size_meters = float(microns_per_pixel[0]["XAxis"]) / 1e6
         y_size_meters = float(microns_per_pixel[1]["YAxis"]) / 1e6
@@ -215,16 +245,24 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
 
         grid_spacing: tuple[float, ...] = (y_size_meters, x_size_meters)
         field_of_view: tuple[float, ...] = (y_size_meters * frame_shape[1], x_size_meters * frame_shape[0])
-        if is_volumetric and len(origin_coords) == 3:
-            z_plane_spacing_meters = abs(origin_coords[-1]) / 1e6
-            grid_spacing = grid_spacing + (z_plane_spacing_meters,)
-            field_of_view = field_of_view + (z_plane_spacing_meters,)
+        if is_volumetric:
+            depths = self._determine_plane_depths(xml_root=self._bruker_extractor._xml_root)
+            if len(depths) >= 2:
+                # grid_spacing z is the inter-plane step; field_of_view z is the total depth extent.
+                step_meters = abs(depths[1] - depths[0]) / 1e6
+                extent_meters = abs(depths[-1] - depths[0]) / 1e6
+                grid_spacing = grid_spacing + (step_meters,)
+                field_of_view = field_of_view + (extent_meters,)
 
         return grid_spacing, tuple(origin_coords), field_of_view
 
     def _determine_position_current(self, is_volumetric: bool) -> list[float]:
-        """Return [y, x] (planar) or [y, x, z] (volumetric) microscope-frame positions in micrometers."""
-        xml_root = self.imaging_extractor._xml_root
+        """Return [y, x] (planar) or [y, x, z] (volumetric) microscope-frame positions in micrometers.
+
+        When this interface is pinned to a single depth plane (``plane_index`` is set), the z value
+        is that plane's own focal position, so each disjoint ``ImagingPlane`` gets its true depth.
+        """
+        xml_root = self._bruker_extractor._xml_root
         default_position_element = xml_root.find(".//PVStateValue[@key='positionCurrent']")
         if default_position_element is None:
             return [0.0, 0.0]
@@ -238,39 +276,62 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
             for sub_indexed_value in sub_indexed_values:
                 position_values.append(float(sub_indexed_value.attrib["value"]))
 
+        if self.plane_index is not None:
+            depths = self._determine_plane_depths(xml_root=xml_root)
+            if self.plane_index < len(depths):
+                position_values.append(depths[self.plane_index])
+            return position_values
+
         if not is_volumetric:
             return position_values
 
-        # Volumetric: derive a Z spacing from the swing of the changing z-axis device across frames.
-        frame_elements = xml_root.findall(".//Frame")
-        default_z_values_element = default_position_element.find("./SubindexedValues[@index='ZAxis']")
+        # Volumetric (contiguous): the imaging plane's origin z is the first plane's focal depth.
+        depths = self._determine_plane_depths(xml_root=xml_root)
+        if depths:
+            position_values.append(depths[0])
+        return position_values
+
+    def _determine_plane_depths(self, xml_root) -> list[float]:
+        """Return the ordered, unique focal depths (micrometers) of the acquisition's z-planes.
+
+        The active z device is read from ``zDevice`` (a piezo stage, an electrically tunable lens,
+        etc.); its ``positionCurrent`` is collected across frames and the distinct depths are
+        returned in acquisition order, matching ``select_plane``'s plane ordering. When ``zDevice``
+        is absent, falls back to the z sub-device whose value moves away from the reference.
+        """
+        z_device_element = xml_root.find(".//PVStateValue[@key='zDevice']")
+        z_device_index = int(z_device_element.attrib["value"]) if z_device_element is not None else None
+
+        default_z_element = xml_root.find(".//PVStateValue[@key='positionCurrent']/SubindexedValues[@index='ZAxis']")
         default_z_values = (
-            [float(v.attrib["value"]) for v in default_z_values_element] if default_z_values_element is not None else []
+            [float(v.attrib["value"]) for v in default_z_element] if default_z_element is not None else []
         )
 
-        z_plane_values: list[float] = []
-        for frame in frame_elements:
-            position_element = frame.find(".//PVStateValue[@key='positionCurrent']")
-            if position_element is None:
-                continue
-            z_values_element = position_element.find("./SubindexedValues[@index='ZAxis']")
+        ordered_depths: list[float] = []
+        for frame in xml_root.findall(".//Frame"):
+            z_values_element = frame.find(".//PVStateValue[@key='positionCurrent']/SubindexedValues[@index='ZAxis']")
             if z_values_element is None:
                 continue
-            for device_index, sub_indexed_value in enumerate(z_values_element):
-                z_value = float(sub_indexed_value.attrib["value"])
-                if device_index < len(default_z_values) and default_z_values[device_index] != z_value:
-                    z_plane_values.append(z_value)
+            z_values = [float(v.attrib["value"]) for v in z_values_element]
+            if z_device_index is not None and z_device_index < len(z_values):
+                depth = z_values[z_device_index]
+            else:
+                moving = [
+                    z
+                    for index, z in enumerate(z_values)
+                    if index >= len(default_z_values) or default_z_values[index] != z
+                ]
+                if not moving:
+                    continue
+                depth = moving[0]
+            if depth not in ordered_depths:
+                ordered_depths.append(depth)
 
-        if z_plane_values:
-            z_value = abs(z_plane_values[0] - z_plane_values[-1]) if len(z_plane_values) > 1 else z_plane_values[0]
-        else:
-            z_value = 0.0
-        position_values.append(z_value)
-        return position_values
+        return ordered_depths
 
 
 # ---------------------------------------------------------------------------
-# Deprecated interfaces. Will be removed on or after January 2027.
+# Deprecated interfaces. Will be removed on or after December 2026.
 # Use BrukerTiffImagingInterface instead.
 # ---------------------------------------------------------------------------
 
@@ -360,7 +421,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
         """
         warnings.warn(
-            "BrukerTiffMultiPlaneImagingInterface is deprecated and will be removed on or after January 2027. "
+            "BrukerTiffMultiPlaneImagingInterface is deprecated and will be removed on or after December 2026. "
             "Use BrukerTiffImagingInterface instead.",
             FutureWarning,
             stacklevel=2,
@@ -591,7 +652,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
         """
         warnings.warn(
-            "BrukerTiffSinglePlaneImagingInterface is deprecated and will be removed on or after January 2027. "
+            "BrukerTiffSinglePlaneImagingInterface is deprecated and will be removed on or after December 2026. "
             "Use BrukerTiffImagingInterface instead.",
             FutureWarning,
             stacklevel=2,

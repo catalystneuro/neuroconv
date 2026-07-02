@@ -510,7 +510,7 @@ class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixi
             ],
             "grid_spacing": (1.1078125e-06, 1.1078125e-06, 0.00026),
             "grid_spacing_unit": "meters",
-            "origin_coords": (56.215, 14.927, 260.0),
+            "origin_coords": (56.215, 14.927, -130.0),
             "origin_coords_unit": "micrometers",
         }
         expected_microscopy_series = {
@@ -552,8 +552,22 @@ class TestBrukerTiffImagingInterfaceDualColor(ImagingExtractorInterfaceTestMixin
     save_directory = OUTPUT_PATH
 
 
+class TestBrukerTiffImagingInterfaceDisjointPlane(ImagingExtractorInterfaceTestMixin):
+    """Unified interface pinned to a single depth plane of a volumetric acquisition (disjoint layout)."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        ),
+        plane_index=0,
+    )
+    optical_series_name = "TwoPhotonSeriesPlane0"
+    save_directory = OUTPUT_PATH
+
+
 # ---------------------------------------------------------------------------
-# Deprecated interfaces. Will be removed on or after January 2027.
+# Deprecated interfaces. Will be removed on or after December 2026.
 # These tests exercise the deprecated wrappers and assert the FutureWarning is emitted.
 # ---------------------------------------------------------------------------
 
