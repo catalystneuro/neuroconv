@@ -49,6 +49,7 @@ class CSVEventsInterface(BaseDataInterface):
         timestamps_column: str | int,
         event_type_column: str | int | None,
         metadata_key: str | None = None,
+        read_kwargs: dict | None = None,
         verbose: bool = False,
     ):
         """Initialize the CSVEventsInterface.
@@ -69,6 +70,11 @@ class CSVEventsInterface(BaseDataInterface):
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
             If None (default), ``"csv_events"`` is used.
+        read_kwargs : dict, optional
+            Additional keyword arguments forwarded to ``pandas.read_csv``, used to handle format
+            quirks such as ``sep``, ``encoding``, ``decimal``, or ``skiprows``. Any value given here
+            overrides the interface's own defaults (``header`` and ``float_precision``). Default is
+            None.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
@@ -79,6 +85,7 @@ class CSVEventsInterface(BaseDataInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "csv_events"
+        self._read_kwargs = read_kwargs or dict()
         # This import is to assure that ndx_events is in the global namespace when a pynwb.io object is created
         import ndx_events  # noqa: F401
 
@@ -96,7 +103,9 @@ class CSVEventsInterface(BaseDataInterface):
         header = None if isinstance(timestamps_column, int) else 0
         # float_precision="round_trip" uses an exact, platform-independent float parser; pandas's
         # default C parser rounds the final ULP differently across platforms (Linux/Windows vs macOS).
-        dataframe = pd.read_csv(self.source_data["file_path"], header=header, float_precision="round_trip")
+        # Caller-supplied read_kwargs override these defaults.
+        read_kwargs = {"header": header, "float_precision": "round_trip", **self._read_kwargs}
+        dataframe = pd.read_csv(self.source_data["file_path"], **read_kwargs)
         timestamps = dataframe[timestamps_column].to_numpy()
         labels = None if event_type_column is None else dataframe[event_type_column].to_numpy()
         # Drop rows with a missing timestamp, keeping the labels aligned.

@@ -143,6 +143,24 @@ class TestCSVEventsInterface:
         assert list(labeled.data[:]) == [0, 0, 0]
         assert list(labeled.labels) == ["a"]
 
+    def test_read_kwargs_forwarded_to_read_csv(self, tmp_path):
+        # A ';' separator with ',' as the decimal mark: only reachable through read_kwargs.
+        file_path = tmp_path / "ttl.csv"
+        file_path.write_text("onset;kind\n1,5;a\n2,5;b\n")
+        interface = CSVEventsInterface(
+            file_path=file_path,
+            timestamps_column="onset",
+            event_type_column="kind",
+            read_kwargs={"sep": ";", "decimal": ","},
+        )
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        labeled = nwbfile.acquisition["ttl"]
+        assert list(labeled.timestamps[:]) == [1.5, 2.5]
+        assert list(labeled.labels) == ["a", "b"]
+
     def test_round_trip(self, interface, tmp_path):
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
