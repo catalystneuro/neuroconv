@@ -9,7 +9,7 @@ Install NeuroConv with the additional dependencies necessary for reading Bruker 
 
 The unified :py:class:`~neuroconv.datainterfaces.BrukerTiffImagingInterface` reads Bruker
 Prairie View OME-TIFF folders. It handles single-plane, volumetric, and multi-channel data
-through a single class. Channels are identified by zero-indexed strings (``"0"``, ``"1"``, ...);
+through a single class. Channels are identified by name (e.g. ``"Ch1"``, ``"Ch2"``);
 volumetric data is exposed as a 4D series.
 
 **Convert a single-plane single-channel acquisition**
@@ -32,7 +32,7 @@ volumetric data is exposed as a 4D series.
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 **Convert a volumetric acquisition**
 
@@ -54,7 +54,7 @@ written as a single ``TwoPhotonSeries`` with the per-volume sampling rate.
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 **Convert a multi-channel acquisition (recommended convenience path)**
 
@@ -78,7 +78,7 @@ Single-channel folders pass through unchanged.
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 **Convert a multi-channel acquisition (manual composition)**
 
@@ -95,9 +95,9 @@ with a :py:class:`~neuroconv.ConverterPipe`. Each interface gets its own auto-su
     >>> from neuroconv.datainterfaces import BrukerTiffImagingInterface
     >>>
     >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
-    >>> interface_ch0 = BrukerTiffImagingInterface(folder_path=folder_path, channel_name="0")
-    >>> interface_ch1 = BrukerTiffImagingInterface(folder_path=folder_path, channel_name="1")
-    >>> converter = ConverterPipe(data_interfaces=dict(channel_0=interface_ch0, channel_1=interface_ch1))
+    >>> interface_ch1 = BrukerTiffImagingInterface(folder_path=folder_path, channel_name="Ch1")
+    >>> interface_ch2 = BrukerTiffImagingInterface(folder_path=folder_path, channel_name="Ch2")
+    >>> converter = ConverterPipe(data_interfaces=dict(channel_1=interface_ch1, channel_2=interface_ch2))
     >>>
     >>> metadata = converter.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
@@ -106,14 +106,28 @@ with a :py:class:`~neuroconv.ConverterPipe`. Each interface gets its own auto-su
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-**Disjoint per-plane output (`BrukerTiffMultiPlaneConverter`)**
+**Disjoint per-plane volumetric output**
 
-The unified interface writes volumetric data as a single 4D ``TwoPhotonSeries``. If you
-need each z-plane as its own ``TwoPhotonSeries`` (one ``ImagingPlane`` per plane),
-:py:class:`~neuroconv.converters.BrukerTiffMultiPlaneConverter` with
-``plane_separation_type="disjoint"`` remains the only path. It is kept available for this
-case until a ``plane_index`` selector is added to ``BrukerTiffImagingExtractor`` in
-roiextractors; once that lands, the same per-plane output will be expressible through the
-unified interface composed via :py:class:`~neuroconv.ConverterPipe`.
+By default volumetric data is written as a single 4D ``TwoPhotonSeries``. To instead write each
+z-plane as its own 2D ``TwoPhotonSeries`` and ``ImagingPlane`` (the "disjoint" layout, where each
+plane carries its own focal depth), pass ``plane_separation_type="disjoint"`` to
+:py:class:`~neuroconv.converters.BrukerTiffConverter`.
+
+.. code-block:: python
+
+    >>> from zoneinfo import ZoneInfo
+    >>> from neuroconv.converters import BrukerTiffConverter
+    >>>
+    >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+    >>> converter = BrukerTiffConverter(folder_path=folder_path, plane_separation_type="disjoint")
+    >>>
+    >>> metadata = converter.get_metadata()
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"]
+    >>> tzinfo = ZoneInfo("US/Pacific")
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
