@@ -163,7 +163,7 @@ class CSVEventsInterface(BaseDataInterface):
             # A label per distinct value (first-appearance order), seeding LabeledEvents. The map is
             # raw value -> display label; the user can rename the display labels in editable metadata.
             column["column_categories"] = {"labels": {str(value): str(value) for value in pd.unique(labels)}}
-        metadata["Events"][self.metadata_key]["event_types"][file_stem] = column
+        metadata["Events"][self.metadata_key]["event_columns"][file_stem] = column
         return metadata
 
     def get_metadata_schema(self) -> dict:
@@ -181,7 +181,7 @@ class CSVEventsInterface(BaseDataInterface):
             "additionalProperties": {  # keyed by metadata_key
                 "type": "object",
                 "properties": {
-                    "event_types": {
+                    "event_columns": {
                         "type": "object",
                         "additionalProperties": {  # keyed by event-type id (the file stem)
                             "type": "object",
@@ -215,22 +215,22 @@ class CSVEventsInterface(BaseDataInterface):
             The NWB file to add the events to.
         metadata : dict
             Metadata dictionary. The single entry in
-            ``metadata["Events"][metadata_key]["event_types"]`` holds the output object's
+            ``metadata["Events"][metadata_key]["event_columns"]`` holds the output object's
             ``column_name`` and ``description``. A ``column_categories["labels"]`` map (raw value ->
             display label) marks the file as labeled and is written as ``LabeledEvents``; its absence
             writes a plain ``Events``.
         """
         ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events==0.2.2")
 
-        event_types = metadata["Events"][self.metadata_key]["event_types"]
-        event_object_names = [column["column_name"] for column in event_types.values()]
+        event_columns = metadata["Events"][self.metadata_key]["event_columns"]
+        event_object_names = [column["column_name"] for column in event_columns.values()]
         assert len(event_object_names) == len(set(event_object_names)), (
             f"Duplicate Events 'column_name' values found in metadata: {event_object_names}. "
             "Each Events object must have a unique name."
         )
 
         timestamps, labels = self._read_timestamps_and_labels()
-        for column in event_types.values():
+        for column in event_columns.values():
             if len(timestamps) == 0:
                 continue
             if "column_categories" in column:

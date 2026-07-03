@@ -75,17 +75,17 @@ class TestCSVEventsInterface:
         Draft7Validator.check_schema(interface.get_metadata_schema())
 
     def test_single_type_metadata_keyed_by_file_stem(self, interface):
-        event_types = interface.get_metadata()["Events"]["csv_events"]["event_types"]
-        assert list(event_types) == ["ttl"]
-        assert event_types["ttl"]["column_name"] == "ttl"
+        event_columns = interface.get_metadata()["Events"]["csv_events"]["event_columns"]
+        assert list(event_columns) == ["ttl"]
+        assert event_columns["ttl"]["column_name"] == "ttl"
 
     def test_labeled_metadata_keyed_by_file_stem(self, two_type_file):
         interface = CSVEventsInterface(
             file_path=two_type_file, timestamps_column="onset", event_type_column="kind", metadata_key="my_events"
         )
-        event_types = interface.get_metadata()["Events"]["my_events"]["event_types"]
-        assert list(event_types) == ["events"]
-        assert event_types["events"]["column_categories"]["labels"] == {"a": "a", "b": "b"}
+        event_columns = interface.get_metadata()["Events"]["my_events"]["event_columns"]
+        assert list(event_columns) == ["events"]
+        assert event_columns["events"]["column_categories"]["labels"] == {"a": "a", "b": "b"}
 
     def test_single_type_writes_one_events_object(self, interface):
         nwbfile = mock_NWBFile()
