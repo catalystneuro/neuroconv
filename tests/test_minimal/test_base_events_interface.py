@@ -15,11 +15,11 @@ class TestMockEventsInterface:
         interface = MockEventsInterface()
         Draft7Validator.check_schema(interface.get_metadata_schema())
 
-        # The Events block nests event_columns under the metadata_key, with the global EventTables
+        # The Events block nests event_types under the metadata_key, with the global EventTables
         # alongside it. metadata_key defaults to "mock_events" and is overridable.
         events_metadata = interface.get_metadata()["Events"]
         assert set(events_metadata.keys()) == {"mock_events", "EventTables"}
-        assert set(events_metadata["mock_events"]["event_columns"].keys()) == {"events"}
+        assert set(events_metadata["mock_events"]["event_types"].keys()) == {"events"}
 
         overridden = MockEventsInterface(metadata_key="my_events").get_metadata()["Events"]
         assert set(overridden.keys()) == {"my_events", "EventTables"}
@@ -83,7 +83,7 @@ class TestMockEventsInterface:
             "Events": {
                 "EventTables": {"events": {"table_name": "Choices", "description": "Trial choices."}},
                 "mock_events": {
-                    "event_columns": {
+                    "event_types": {
                         "events": {
                             "table_metadata_key": "events",
                             "columns": {
@@ -120,11 +120,11 @@ class TestMockEventsInterface:
         assert value_to_meaning["GO"] == "A go outcome."
 
     def test_declaring_a_column_for_a_missing_payload_field_errors(self):
-        # A columns entry whose field_source_id is absent from the data payload is a mismatch and must
+        # A columns entry whose field_id is absent from the data payload is a mismatch and must
         # fail with a clear message.
         interface = MockEventsInterface(event_payload="timestamps only")
         metadata = interface.get_metadata()
-        metadata["Events"]["mock_events"]["event_columns"]["events"]["columns"]["ghost"] = {"column_name": "ghost"}
+        metadata["Events"]["mock_events"]["event_types"]["events"]["columns"]["ghost"] = {"column_name": "ghost"}
         expected_error = "Event type 'events' declares a column for payload field 'ghost', but its payload has no such field (has [])."
         with pytest.raises(AssertionError, match=re.escape(expected_error)):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
@@ -139,7 +139,7 @@ class TestMockEventsInterface:
             "Events": {
                 "EventTables": {"events_0": {"table_name": "Events0", "description": "Mock events."}},
                 "mock_events": {
-                    "event_columns": {
+                    "event_types": {
                         "events_0": {
                             "table_metadata_key": "events_0",
                             "columns": {
@@ -201,7 +201,7 @@ class TestMockEventsInterface:
             "Events": {
                 "EventTables": {"events_0": {"table_name": "Events0", "description": "Mock events."}},
                 "mock_events": {
-                    "event_columns": {
+                    "event_types": {
                         "events_0": {"table_metadata_key": "events_0", "columns": {}},
                         "events_1": {"table_metadata_key": "events_0", "columns": {}},
                     }
@@ -233,7 +233,7 @@ class TestMockEventsInterface:
             "Events": {
                 "EventTables": {"events_0": {"table_name": "Events0", "description": "Mock events."}},
                 "mock_events": {
-                    "event_columns": {
+                    "event_types": {
                         "events_0": {
                             "table_metadata_key": "events_0",
                             "columns": {"outcome": {"column_name": "outcome_0"}},
@@ -262,7 +262,7 @@ class TestMockEventsInterface:
                     "events_1": {"table_name": "Events", "description": "Mock events."},
                 },
                 "mock_events": {
-                    "event_columns": {
+                    "event_types": {
                         "events_0": {"table_metadata_key": "events_0", "columns": {}},
                         "events_1": {"table_metadata_key": "events_1", "columns": {}},
                     }

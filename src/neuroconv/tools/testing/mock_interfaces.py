@@ -277,7 +277,7 @@ class MockEventsInterface(BaseEventsInterface):
         Parameters
         ----------
         metadata_key : str, optional
-            The key under ``metadata["Events"]`` namespacing this interface's ``event_columns``.
+            The key under ``metadata["Events"]`` namespacing this interface's ``event_types``.
             If None (default), ``"mock_events"`` is used.
         num_event_types : int, optional
             How many event types (streams) to generate, by default 1. Each gets its own id and, by
@@ -337,7 +337,7 @@ class MockEventsInterface(BaseEventsInterface):
                     "column_name": f"amplitude{suffix}",
                     "description": "The amplitude of each event.",
                 }
-            metadata["Events"][self.metadata_key]["event_columns"][event_type_id] = {
+            metadata["Events"][self.metadata_key]["event_types"][event_type_id] = {
                 "table_metadata_key": event_type_id,
                 "columns": columns,
             }
