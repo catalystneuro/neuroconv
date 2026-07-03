@@ -124,6 +124,7 @@ Events
 .. toctree::
     :maxdepth: 1
 
+    CSV Events <events/csv_events>
     TDT Events <events/tdt_events>
 
 
