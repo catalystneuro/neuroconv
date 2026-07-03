@@ -165,7 +165,7 @@ def test_fill_defaults_skips_additional_properties_node():
             ),
         ),
     )
-    defaults = dict(Events=dict(tdt_events=dict(event_columns=dict())))
+    defaults = dict(Events=dict(tdt_events=dict(event_types=dict())))
 
     fill_defaults(schema, defaults)
 

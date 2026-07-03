@@ -277,7 +277,7 @@ class MockEventsInterface(BaseEventsInterface):
         Parameters
         ----------
         metadata_key : str, optional
-            The key under ``metadata["Events"]`` namespacing this interface's ``event_columns``.
+            The key under ``metadata["Events"]`` namespacing this interface's ``event_types``.
             If None (default), ``"mock_events"`` is used.
         num_event_types : int, optional
             How many event types (streams) to generate, by default 1. Each gets its own id and, by
@@ -305,7 +305,7 @@ class MockEventsInterface(BaseEventsInterface):
         super().__init__(verbose=verbose)
         self.metadata_key = metadata_key or "mock_events"
 
-    def _event_type_ids(self) -> list[str]:
+    def _event_type_source_ids(self) -> list[str]:
         # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
         # their tables and column names) stay unique.
         if self._num_event_types == 1:
@@ -316,10 +316,13 @@ class MockEventsInterface(BaseEventsInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
 
-        for index, event_type_id in enumerate(self._event_type_ids()):
+        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
             suffix = "" if self._num_event_types == 1 else f"_{index}"
             table_name = "Events" if self._num_event_types == 1 else f"Events{index}"
-            metadata["Events"]["EventTables"][event_type_id] = {"table_name": table_name, "description": "Mock events."}
+            metadata["Events"]["EventTables"][event_type_source_id] = {
+                "table_name": table_name,
+                "description": "Mock events.",
+            }
             columns = {}
             if self._event_payload != "timestamps only":
                 # A categorical value column with an editable label -> meaning vocabulary.
@@ -337,8 +340,8 @@ class MockEventsInterface(BaseEventsInterface):
                     "column_name": f"amplitude{suffix}",
                     "description": "The amplitude of each event.",
                 }
-            metadata["Events"][self.metadata_key]["event_columns"][event_type_id] = {
-                "table_metadata_key": event_type_id,
+            metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
+                "table_metadata_key": event_type_source_id,
                 "columns": columns,
             }
         return metadata
@@ -346,7 +349,7 @@ class MockEventsInterface(BaseEventsInterface):
     def _load_event_data_dict(self) -> dict[str, _EventInternalClass]:
         duration = 0.05 if self._event_extent == "event with duration" else None
         event_data = {}
-        for index, event_type_id in enumerate(self._event_type_ids()):
+        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
             # Stagger timestamps across types so pooling several into one table interleaves in time.
             timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
             durations = np.full(self._num_events, duration) if duration is not None else None
@@ -355,7 +358,9 @@ class MockEventsInterface(BaseEventsInterface):
                 payload["outcome"] = np.arange(self._num_events) % 2  # alternating go / no_go
             if self._event_payload == "multi value":
                 payload["amplitude"] = np.arange(self._num_events, dtype="float64")
-            event_data[event_type_id] = _EventInternalClass(timestamps=timestamps, durations=durations, payload=payload)
+            event_data[event_type_source_id] = _EventInternalClass(
+                timestamps=timestamps, durations=durations, payload=payload
+            )
         return event_data
 
 

@@ -86,17 +86,17 @@ class TestTDTEventsInterface:
         assert metadata["NWBFile"]["session_start_time"] == expected
 
     def test_default_lists_all_epocs(self, interface):
-        event_columns = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]
-        assert set(event_columns.keys()) == set(EPOC_NAME_TO_LENGTH)
-        for epoc_name, column in event_columns.items():
+        event_types = interface.get_metadata()["Events"]["tdt_events"]["event_types"]
+        assert set(event_types.keys()) == set(EPOC_NAME_TO_LENGTH)
+        for epoc_name, column in event_types.items():
             # Photo_249 stores are all counters (timestamp-only), so no value columns.
             assert column["table_metadata_key"] == epoc_name
             assert column["columns"] == {}
 
     def test_exclude_events(self):
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, exclude_events=["LNRW", "LNnR"])
-        event_columns = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]
-        assert set(event_columns.keys()) == {"PrtR", "RNPS"}
+        event_types = interface.get_metadata()["Events"]["tdt_events"]["event_types"]
+        assert set(event_types.keys()) == {"PrtR", "RNPS"}
 
     def test_metadata_key_default_and_override(self):
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH)
@@ -109,7 +109,7 @@ class TestTDTEventsInterface:
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, metadata_key="my_tank")
         events_metadata = interface.get_metadata()["Events"]
         assert set(events_metadata.keys()) == {"my_tank", "EventTables"}
-        assert set(events_metadata["my_tank"]["event_columns"].keys()) == set(EPOC_NAME_TO_LENGTH)
+        assert set(events_metadata["my_tank"]["event_types"].keys()) == set(EPOC_NAME_TO_LENGTH)
 
     def test_metadata_schema_is_valid(self, interface):
         Draft7Validator.check_schema(interface.get_metadata_schema())
@@ -139,9 +139,7 @@ class TestTDTEventsInterface:
         monkeypatch.setattr(interface, "load", lambda **kwargs: fake_block)
         # The raise happens in _load_event_data_dict (before any columns are read), so this metadata
         # is never consumed; kept as a well-formed Shape-B entry for consistency.
-        metadata = {
-            "Events": {"tdt_events": {"event_columns": {"PrtR": {"table_metadata_key": "PrtR", "columns": {}}}}}
-        }
+        metadata = {"Events": {"tdt_events": {"event_types": {"PrtR": {"table_metadata_key": "PrtR", "columns": {}}}}}}
         with pytest.raises(NotImplementedError, match=r"real offset.*issues/new"):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
@@ -170,7 +168,7 @@ class TestTDTEventsStrobeInterface:
 
     def test_metadata_seeds_strobe_labels(self, interface):
         metadata = interface.get_metadata()
-        column = metadata["Events"]["tdt_events"]["event_columns"]["PAB_"]
+        column = metadata["Events"]["tdt_events"]["event_types"]["PAB_"]
         # The PAB_ store gets one categorical 'strobe' column (keyed by its payload field); the three
         # distinct codes are seeded as an editable raw-code -> label map.
         strobe = column["columns"]["strobe"]
@@ -184,7 +182,7 @@ class TestTDTEventsStrobeInterface:
 
     def test_counter_store_has_no_labels(self):
         interface = TDTEventsInterface(folder_path=STROBE_TANK_PATH, exclude_events=["PAB_", "Vid1"])
-        column = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]["Tick"]
+        column = interface.get_metadata()["Events"]["tdt_events"]["event_types"]["Tick"]
         assert column["columns"] == {}
 
     def test_add_to_nwbfile_writes_labeled_events(self, interface):
@@ -199,7 +197,7 @@ class TestTDTEventsStrobeInterface:
 
     def test_user_relabeling_round_trip(self, interface, tmp_path):
         metadata = interface.get_metadata()
-        column = metadata["Events"]["tdt_events"]["event_columns"]["PAB_"]
+        column = metadata["Events"]["tdt_events"]["event_types"]["PAB_"]
         column["columns"]["strobe"]["column_categories"]["labels"] = {0: "none", 16: "left", 2064: "right"}
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)

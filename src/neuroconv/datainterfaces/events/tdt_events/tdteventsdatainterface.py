@@ -143,7 +143,7 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
                 "table_name": epoc_name,
                 "description": table_description,
             }
-            metadata["Events"][self.metadata_key]["event_columns"][epoc_name] = column
+            metadata["Events"][self.metadata_key]["event_types"][epoc_name] = column
         return metadata
 
     def _load_event_data_dict(self) -> dict[str, _EventInternalClass]:
