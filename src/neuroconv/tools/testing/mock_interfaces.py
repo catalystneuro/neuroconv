@@ -17,6 +17,10 @@ from ...datainterfaces.ecephys.baserecordingextractorinterface import (
 from ...datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
+from ...datainterfaces.events.baseeventsinterface import (
+    BaseEventsInterface,
+    _EventInternalClass,
+)
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -241,6 +245,118 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
         for timestamp in self.get_timestamps():
             table.add_row(event_time=timestamp)
         nwbfile.add_acquisition(table)
+
+
+class MockEventsInterface(BaseEventsInterface):
+    """A configurable mock events interface for exercising the ``EventsTable`` writer without a real
+    acquisition format.
+
+    Generates ``num_event_types`` synthetic event types, each keyed by its own id (``"events"`` for a
+    single type, else ``"events_0" .. "events_{N-1}"``) and, by default, its own table. Their shape is
+    set by two taxonomy axes describing the generated *data*: ``event_extent`` (point vs event with
+    duration) and ``event_payload`` (timestamps only / a single categorical value / a multi-value
+    struct); both apply to every type. Timestamps are staggered across types so pooling several into
+    one table interleaves in time. Data is deterministic (no ``seed`` needed). Everything else a test
+    exercises, renaming a column, merging types into one table (repoint their ``table_metadata_key``),
+    dropping the meanings map, lives in the returned metadata and is driven by editing it, not by a
+    constructor flag.
+    """
+
+    def __init__(
+        self,
+        *,
+        metadata_key: str | None = None,
+        num_event_types: int = 1,
+        num_events: int = 4,
+        event_extent: Literal["point event", "event with duration"] = "point event",
+        event_payload: Literal["timestamps only", "single value", "multi value"] = "timestamps only",
+        verbose: bool = False,
+    ):
+        """Initialize a mock events interface.
+
+        Parameters
+        ----------
+        metadata_key : str, optional
+            The key under ``metadata["Events"]`` namespacing this interface's ``event_columns``.
+            If None (default), ``"mock_events"`` is used.
+        num_event_types : int, optional
+            How many event types (streams) to generate, by default 1. Each gets its own id and, by
+            default, its own table; a test merges them by repointing their ``table_metadata_key`` at a
+            shared table.
+        num_events : int, optional
+            Number of events (timestamps) generated per event type, by default 4.
+        event_extent : {"point event", "event with duration"}, optional
+            The temporal extent of the generated events (the taxonomy's Extent axis). ``"point event"``
+            (default) generates timestamp-only events; ``"event with duration"`` gives each event a
+            duration, so the writer adds a ``duration`` column. Applies to every event type.
+        event_payload : {"timestamps only", "single value", "multi value"}, optional
+            The payload carried per event (the taxonomy's Payload axis). ``"timestamps only"``
+            (default) is a timestamp-only event with no value column; ``"single value"`` carries one
+            categorical field (a labeled column with a ``MeaningsTable``); ``"multi value"`` carries a
+            two-field struct that fans into two columns on the same rows (a categorical ``outcome``
+            plus a numeric ``amplitude``). Applies to every event type.
+        verbose : bool, optional
+            Whether to print status messages, by default False.
+        """
+        self._num_event_types = num_event_types
+        self._num_events = num_events
+        self._event_extent = event_extent
+        self._event_payload = event_payload
+        super().__init__(verbose=verbose)
+        self.metadata_key = metadata_key or "mock_events"
+
+    def _event_type_ids(self) -> list[str]:
+        # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
+        # their tables and column names) stay unique.
+        if self._num_event_types == 1:
+            return ["events"]
+        return [f"events_{index}" for index in range(self._num_event_types)]
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+
+        for index, event_type_id in enumerate(self._event_type_ids()):
+            suffix = "" if self._num_event_types == 1 else f"_{index}"
+            table_name = "Events" if self._num_event_types == 1 else f"Events{index}"
+            metadata["Events"]["EventTables"][event_type_id] = {"table_name": table_name, "description": "Mock events."}
+            columns = {}
+            if self._event_payload != "timestamps only":
+                # A categorical value column with an editable label -> meaning vocabulary.
+                columns["outcome"] = {
+                    "column_name": f"outcome{suffix}",
+                    "description": "The outcome of each event.",
+                    "column_categories": {
+                        "labels": {0: "go", 1: "no_go"},
+                        "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                    },
+                }
+            if self._event_payload == "multi value":
+                # A second, non-categorical (numeric) field: written as raw values, no MeaningsTable.
+                columns["amplitude"] = {
+                    "column_name": f"amplitude{suffix}",
+                    "description": "The amplitude of each event.",
+                }
+            metadata["Events"][self.metadata_key]["event_columns"][event_type_id] = {
+                "table_metadata_key": event_type_id,
+                "columns": columns,
+            }
+        return metadata
+
+    def _load_event_data_dict(self) -> dict[str, _EventInternalClass]:
+        duration = 0.05 if self._event_extent == "event with duration" else None
+        event_data = {}
+        for index, event_type_id in enumerate(self._event_type_ids()):
+            # Stagger timestamps across types so pooling several into one table interleaves in time.
+            timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
+            durations = np.full(self._num_events, duration) if duration is not None else None
+            payload = {}
+            if self._event_payload != "timestamps only":
+                payload["outcome"] = np.arange(self._num_events) % 2  # alternating go / no_go
+            if self._event_payload == "multi value":
+                payload["amplitude"] = np.arange(self._num_events, dtype="float64")
+            event_data[event_type_id] = _EventInternalClass(timestamps=timestamps, durations=durations, payload=payload)
+        return event_data
 
 
 class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
