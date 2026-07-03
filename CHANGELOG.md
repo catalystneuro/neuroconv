@@ -47,7 +47,7 @@
 
 ## Features
 * Added `CSVEventsInterface` for converting discrete events from a CSV file into `ndx-events` objects. [PR #1755](https://github.com/catalystneuro/neuroconv/pull/1755)
-* Added `TDTEventsInterface` for converting discrete events (epocs) from a TDT tank folder, depending on the `ndx-events` extension. [PR #1751](https://github.com/catalystneuro/neuroconv/pull/1751) [PR #1775](https://github.com/catalystneuro/neuroconv/pull/1775)
+* Added `TDTEventsInterface` for converting discrete events (epocs) from a TDT tank folder. [PR #1751](https://github.com/catalystneuro/neuroconv/pull/1751) [PR #1775](https://github.com/catalystneuro/neuroconv/pull/1775)
 * Added `BaseEventsInterface`, a shared base for events interfaces that writes native `pynwb` 4.0 `EventsTable` objects into `nwbfile.events`. [PR #1774](https://github.com/catalystneuro/neuroconv/pull/1774)
 * Added `MockEventsInterface` for exercising the events writer across payload shapes (timestamp-only, single categorical value, multi-field struct) without acquisition data. [PR #1774](https://github.com/catalystneuro/neuroconv/pull/1774)
 * Added `VameInterface` for converting VAME behavioral segmentation data to NWB using the `ndx-vame` extension. Writes per-frame motif labels (`MotifSeries`), optional latent-space embeddings (`LatentSpaceSeries`), optional community labels (`CommunitySeries`), and serializes the VAME project config as JSON. [PR #1737](https://github.com/catalystneuro/neuroconv/pull/1737)
