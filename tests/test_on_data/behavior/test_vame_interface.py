@@ -592,6 +592,32 @@ class TestVameInterfacePoseEstimationLink:
         assert project.pose_estimation is not None
         assert project.pose_estimation.name == "PoseEstimationDeepLabCut"
 
+    def test_ethogram_bouts_link_to_source_pose(self):
+        """Each EthogramBouts links to the project's PoseEstimation via source_pose."""
+        interface = VameInterface(
+            file_path=str(CONFIG_PATH),
+            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
+        )
+        aligned_timestamps = np.arange(10, dtype=float)
+        interface.set_aligned_timestamps(aligned_timestamps)
+
+        pose_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
+        pose_interface.set_aligned_timestamps(aligned_timestamps)
+        pose_metadata = pose_interface.get_metadata()
+        nwbfile = mock_NWBFile()
+        pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_metadata)
+        pose_key = pose_interface.metadata_key
+
+        vame_metadata = interface.get_metadata()
+        vame_metadata["Behavior"]["Pose"] = pose_metadata["Behavior"]["Pose"]
+        vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = pose_key
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
+
+        behavior = nwbfile.processing["behavior"]
+        pose_estimation = behavior.data_interfaces["VAMEProject"].pose_estimation
+        assert pose_estimation is not None
+        assert behavior["VAMEProjectEthogramBoutsKmeans"].source_pose is pose_estimation
+
 
 class TestVameInterfaceVideoLink:
     """add_to_nwbfile links each EthogramBouts to an existing video ImageSeries via source_video."""
