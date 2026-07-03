@@ -42,6 +42,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                         "VAMEProject": {                       # keyed by metadata_key (default "VAMEProject")
                             "name": "VAMEProject",
                             "pose_estimation_metadata_key": "DLC",  # optional, -> Behavior/Pose/PoseEstimations
+                            "video_metadata_key": "video_0",   # optional, -> Behavior/InternalVideos|ExternalVideos
                         }
                     },
                     "MotifSeries": {
@@ -85,9 +86,19 @@ class VameInterface(BaseTemporalAlignmentInterface):
     - ``pose_estimation_metadata_key`` must name a ``PoseEstimation`` entry (in
       ``Behavior/Pose/PoseEstimations``) whose container is already present in the NWB file when
       :meth:`add_to_nwbfile` is called (i.e. the pose estimation interface must run first).
-    - To store results from two completely separate VAME model
-    trainings, create two ``VameInterface`` instances with different ``metadata_key`` values and
-    wrap them in an :class:`~neuroconv.NWBConverter`.
+    - ``video_metadata_key`` optionally names a video entry (in ``Behavior/InternalVideos`` or
+      ``Behavior/ExternalVideos``) whose ``ImageSeries`` is already present in the NWB file; each
+      ``EthogramBouts`` links to it via ``source_video`` (the video interface must run first).
+    - Everything inside a single VAME project links to the same pose estimation and the same video:
+      ``pose_estimation_metadata_key`` and ``video_metadata_key`` live on the ``VameProjects`` entry
+      (not on the per-run series), so every ``MotifSeries`` / ``CommunitySeries`` and every derived
+      ``EthogramBouts`` in that project shares one ``PoseEstimation`` and one ``ImageSeries``. These
+      keys are single-valued by design: a VAME project is one aligned session with a single pose
+      source. This assumes a single-camera ``PoseEstimation``; a multi-camera project would point the
+      same single key at an aggregate multi-camera pose container rather than needing multiple links.
+    - To store two completely separate VAME trainings in the same file, create two ``VameInterface``
+      instances with different ``metadata_key`` values and wrap them in an
+      :class:`~neuroconv.NWBConverter`.
     """
 
     display_name = "VAME"
@@ -357,6 +368,11 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     "type": ["string", "null"],
                     "description": "Key of a PoseEstimation entry (in Behavior/Pose/PoseEstimations) to link to.",
                 },
+                "video_metadata_key": {
+                    "type": ["string", "null"],
+                    "description": "Key of a video entry (in Behavior/InternalVideos or Behavior/ExternalVideos) "
+                    "whose ImageSeries the ethogram bouts link to via source_video.",
+                },
             },
             "required": ["name"],
             "additionalProperties": False,
@@ -606,6 +622,21 @@ class VameInterface(BaseTemporalAlignmentInterface):
             "runs before VameInterface."
         )
 
+    @staticmethod
+    def _get_image_series(nwbfile: NWBFile, name: str):
+        image_series = {obj.name: obj for obj in nwbfile.objects.values() if type(obj).__name__ == "ImageSeries"}
+        if name in image_series:
+            return image_series[name]
+        if image_series:
+            raise ValueError(
+                f"No ImageSeries named '{name}' was found in the NWB file. "
+                f"Available ImageSeries: {list(image_series)}."
+            )
+        raise ValueError(
+            f"No ImageSeries named '{name}' was found in the NWB file. "
+            "No ImageSeries exist in the file — ensure the video interface runs before VameInterface."
+        )
+
     def _add_ethogram_for_run(
         self,
         *,
@@ -617,6 +648,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         timestamps: np.ndarray,
         frame_period: float,
         pose_estimation,
+        source_video,
         bouts_metadata: dict | None,
         catalogue_metadata: dict | None,
     ) -> None:
@@ -651,6 +683,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
             parameters=parameters,
             source=motif_series,
             source_pose=pose_estimation,
+            source_video=source_video,
             catalogue_name=catalogue_metadata["name"],
             catalogue_description=catalogue_metadata["description"],
             class_ids=range(int(n_clusters)) if n_clusters is not None else None,
@@ -683,9 +716,12 @@ class VameInterface(BaseTemporalAlignmentInterface):
             Metadata dictionary. VAME-specific fields live in flat registries under
             ``metadata["Behavior"]["Vame"]``:
 
-            - ``"VameProjects"`` – dict of project key → ``{name, pose_estimation_metadata_key}``.
+            - ``"VameProjects"`` – dict of project key →
+              ``{name, pose_estimation_metadata_key, video_metadata_key}``.
               ``pose_estimation_metadata_key`` references a ``PoseEstimation`` entry whose container is
-              already present in the NWB file (the pose interface must run first).
+              already present in the NWB file (the pose interface must run first); ``video_metadata_key``
+              optionally references a video entry (in ``Behavior/InternalVideos`` or
+              ``Behavior/ExternalVideos``) whose ``ImageSeries`` the ethogram bouts link to.
             - ``"MotifSeries"`` – dict of series key →
               ``{name, description, algorithm, vame_project_metadata_key, latent_space_metadata_key}``.
             - ``"CommunitySeries"`` – dict of series key →
@@ -789,6 +825,19 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 pose_container_name = pose_estimation_key
             pose_estimation = self._get_pose_estimation(nwbfile, pose_container_name)
 
+        # Optional link to an upstream video ImageSeries (internal or external video interface). The
+        # registry entry's "name" is the ImageSeries name; fall back to the key itself if unregistered.
+        source_video = None
+        video_key = project_metadata.get("video_metadata_key")
+        if video_key is not None:
+            behavior_metadata = default_metadata.get("Behavior", {})
+            videos_registry = {
+                **behavior_metadata.get("InternalVideos", {}),
+                **behavior_metadata.get("ExternalVideos", {}),
+            }
+            image_series_name = videos_registry.get(video_key, {}).get("name", video_key)
+            source_video = self._get_image_series(nwbfile, image_series_name)
+
         vame_project_kwargs = dict(
             name=project_name,
             vame_config=json.dumps(self._vame_config),
@@ -828,6 +877,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     timestamps=timestamps,
                     frame_period=frame_period,
                     pose_estimation=pose_estimation,
+                    source_video=source_video,
                     bouts_metadata=ethogram_metadata.get("EthogramBouts") if ethogram_metadata else None,
                     catalogue_metadata=ethogram_metadata.get("Ethogram") if ethogram_metadata else None,
                 )

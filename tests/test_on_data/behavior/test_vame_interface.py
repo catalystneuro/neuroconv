@@ -592,6 +592,41 @@ class TestVameInterfacePoseEstimationLink:
         assert project.pose_estimation.name == "PoseEstimationDeepLabCut"
 
 
+class TestVameInterfaceVideoLink:
+    """add_to_nwbfile links each EthogramBouts to an existing video ImageSeries via source_video."""
+
+    def test_ethogram_bouts_link_to_video_resolved_through_registry(self):
+        """video_metadata_key resolves through the video registry (key differs from ImageSeries name)."""
+        from pynwb.image import ImageSeries
+
+        interface = VameInterface(
+            file_path=str(CONFIG_PATH),
+            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
+        )
+        interface.set_aligned_timestamps(np.arange(10, dtype=float))
+
+        # An ImageSeries whose name differs from its registry key must already be in the file.
+        nwbfile = mock_NWBFile()
+        image_series = ImageSeries(
+            name="BehaviorCameraVideo",
+            external_file=["behavior.mp4"],
+            format="external",
+            starting_frame=[0],
+            rate=30.0,
+            num_samples=10,
+            unit="n.a.",
+        )
+        nwbfile.add_acquisition(image_series)
+
+        vame_metadata = interface.get_metadata()
+        vame_metadata["Behavior"]["ExternalVideos"] = {"my_video": {"name": "BehaviorCameraVideo"}}
+        vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["video_metadata_key"] = "my_video"
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
+
+        bouts = nwbfile.processing["behavior"]["VAMEProjectEthogramBoutsKmeans"]
+        assert bouts.source_video is image_series
+
+
 class TestVameInterfaceGetPoseEstimation:
     """Static method _get_pose_estimation raises informative errors."""
 
