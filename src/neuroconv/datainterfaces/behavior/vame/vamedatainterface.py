@@ -809,24 +809,35 @@ class VameInterface(BaseTemporalAlignmentInterface):
             community_data = np.load(file_path)[:n_frames].astype(np.int32)
             community_data_by_run[run_key] = community_data
             community_kwargs: dict = dict(data=community_data, **community_meta, **timing_kwargs)
-            linked_motif = motif_series_objects.get(motif_link_key) if motif_link_key else None
-            if linked_motif is not None:
-                community_kwargs["motif_series"] = linked_motif
+            if motif_link_key is not None:
+                if motif_link_key not in motif_series_objects:
+                    raise ValueError(
+                        f"motif_series_metadata_key '{motif_link_key}' on CommunitySeries "
+                        f"'{community_key}' does not match any MotifSeries in this project. "
+                        f"Available MotifSeries keys: {list(motif_series_objects)}."
+                    )
+                community_kwargs["motif_series"] = motif_series_objects[motif_link_key]
             community_series_objects[community_key] = CommunitySeries(**community_kwargs)
 
-        # Optional link to an upstream PoseEstimation container
+        # Optional link to an upstream PoseEstimation container, resolved strictly through the
+        # Behavior/Pose/PoseEstimations registry. The key is a registry address, not the object name,
+        # so it must be registered; there is no name fallback.
         pose_estimation = None
         pose_estimation_key = project_metadata.get("pose_estimation_metadata_key")
         if pose_estimation_key is not None:
             pose_estimations_registry = default_metadata.get("Behavior", {}).get("Pose", {}).get("PoseEstimations", {})
-            if pose_estimation_key in pose_estimations_registry:
-                pose_container_name = pose_estimations_registry[pose_estimation_key].get("name", pose_estimation_key)
-            else:
-                pose_container_name = pose_estimation_key
+            if pose_estimation_key not in pose_estimations_registry:
+                raise ValueError(
+                    f"pose_estimation_metadata_key '{pose_estimation_key}' was not found in "
+                    f"metadata['Behavior']['Pose']['PoseEstimations']. Available keys: "
+                    f"{list(pose_estimations_registry)}."
+                )
+            pose_container_name = pose_estimations_registry[pose_estimation_key]["name"]
             pose_estimation = self._get_pose_estimation(nwbfile, pose_container_name)
 
-        # Optional link to an upstream video ImageSeries (internal or external video interface). The
-        # registry entry's "name" is the ImageSeries name; fall back to the key itself if unregistered.
+        # Optional link to an upstream video ImageSeries (internal or external video interface),
+        # resolved strictly through the Behavior/InternalVideos + Behavior/ExternalVideos registries.
+        # The key is a registry address, not the object name, so it must be registered; no fallback.
         source_video = None
         video_key = project_metadata.get("video_metadata_key")
         if video_key is not None:
@@ -835,7 +846,13 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 **behavior_metadata.get("InternalVideos", {}),
                 **behavior_metadata.get("ExternalVideos", {}),
             }
-            image_series_name = videos_registry.get(video_key, {}).get("name", video_key)
+            if video_key not in videos_registry:
+                raise ValueError(
+                    f"video_metadata_key '{video_key}' was not found in "
+                    f"metadata['Behavior']['InternalVideos'] or metadata['Behavior']['ExternalVideos']. "
+                    f"Available keys: {list(videos_registry)}."
+                )
+            image_series_name = videos_registry[video_key]["name"]
             source_video = self._get_image_series(nwbfile, image_series_name)
 
         vame_project_kwargs = dict(

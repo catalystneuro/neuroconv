@@ -549,21 +549,22 @@ class TestVameInterfacePoseEstimationLink:
         # Build NWB file with a PoseEstimation container already present
         pose_estimation_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
         pose_estimation_interface.set_aligned_timestamps(aligned_timestamps)
+        pose_metadata = pose_estimation_interface.get_metadata()
         nwbfile = mock_NWBFile()
-        pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_estimation_interface.get_metadata())
+        pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_metadata)
 
-        # The PoseEstimation container name in the metadata
-        pose_estimation_name = pose_estimation_interface.metadata_key  # default is "PoseEstimation"
+        pose_key = pose_estimation_interface.metadata_key
+        pose_container_name = pose_metadata["Behavior"]["Pose"]["PoseEstimations"][pose_key]["name"]
 
         vame_metadata = interface.get_metadata()
-        vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"][
-            "pose_estimation_metadata_key"
-        ] = pose_estimation_name
+        # The pose registry must be present for the key to resolve (strict lookup, no name fallback).
+        vame_metadata["Behavior"]["Pose"] = pose_metadata["Behavior"]["Pose"]
+        vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = pose_key
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 
         project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
         assert project.pose_estimation is not None
-        assert project.pose_estimation.name == pose_estimation_name
+        assert project.pose_estimation.name == pose_container_name
 
     def test_links_pose_estimation_when_key_and_name_differ(self):
         """Registry key and NWB container name can differ — VameInterface resolves via Pose registry."""
@@ -625,6 +626,48 @@ class TestVameInterfaceVideoLink:
 
         bouts = nwbfile.processing["behavior"]["VAMEProjectEthogramBoutsKmeans"]
         assert bouts.source_video is image_series
+
+
+class TestVameInterfaceStrictKeyResolution:
+    """Unregistered *_metadata_key values raise, rather than silently falling back or dropping."""
+
+    def _interface(self):
+        interface = VameInterface(
+            file_path=str(CONFIG_PATH),
+            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
+        )
+        interface.set_aligned_timestamps(np.arange(10, dtype=float))
+        return interface
+
+    def test_unregistered_pose_key_raises(self):
+        interface = self._interface()
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = "not_a_key"
+        with pytest.raises(ValueError, match="pose_estimation_metadata_key 'not_a_key' was not found"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
+
+    def test_unregistered_video_key_raises(self):
+        interface = self._interface()
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["video_metadata_key"] = "not_a_key"
+        with pytest.raises(ValueError, match="video_metadata_key 'not_a_key' was not found"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
+
+    def test_unmatched_community_motif_link_raises(self):
+        interface = VameInterface(
+            file_path=str(CONFIG_PATH),
+            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
+            community_labels_file_paths={"kmeans": str(COMMUNITY_LABELS_PATH)},
+        )
+        interface.set_aligned_timestamps(np.arange(10, dtype=float))
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        community_key = next(iter(metadata["Behavior"]["Vame"]["CommunitySeries"]))
+        metadata["Behavior"]["Vame"]["CommunitySeries"][community_key]["motif_series_metadata_key"] = "not_a_key"
+        with pytest.raises(ValueError, match="motif_series_metadata_key 'not_a_key'"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
 
 
 class TestVameInterfaceGetPoseEstimation:
