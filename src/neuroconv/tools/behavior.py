@@ -2,10 +2,10 @@
 
 import numpy as np
 
-from .signal_processing import run_length_encode_labels
+from .signal_processing import _run_length_encode_labels
 
 
-def build_ethogram_from_labels(
+def _build_ethogram_from_labels(
     *,
     labels: np.ndarray,
     timestamps: np.ndarray,
@@ -110,7 +110,7 @@ def build_ethogram_from_labels(
         source_video=source_video,
         ethogram=catalogue,
     )
-    for start_time, stop_time, label in run_length_encode_labels(labels, timestamps, frame_period):
+    for start_time, stop_time, label in _run_length_encode_labels(labels, timestamps, frame_period):
         bouts.add_row(start_time=start_time, stop_time=stop_time, label=str(label))
 
     return bouts, catalogue

@@ -655,13 +655,13 @@ class VameInterface(BaseTemporalAlignmentInterface):
         """Derive and add a curated ``EthogramBouts`` + ``Ethogram`` catalogue for one motif run.
 
         Thin VAME-specific adapter over the tool-agnostic
-        :func:`neuroconv.tools.behavior.build_ethogram_from_labels`: it supplies VAME's names,
+        ``neuroconv.tools.behavior._build_ethogram_from_labels``: it supplies VAME's names,
         provenance, full motif label space (``n_clusters``), and the per-frame community labels that
         become the catalogue's ``category`` column.
         """
         if bouts_metadata is None or catalogue_metadata is None:
             return
-        from ....tools.behavior import build_ethogram_from_labels
+        from ....tools.behavior import _build_ethogram_from_labels
 
         n_clusters = self._vame_config.get("n_clusters")
         vame_version = str(self._vame_config.get("vame_version", "")).strip()
@@ -672,7 +672,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 algorithm=run_key,
             )
         )
-        bouts, catalogue = build_ethogram_from_labels(
+        bouts, catalogue = _build_ethogram_from_labels(
             labels=motif_data,
             timestamps=timestamps,
             frame_period=frame_period,

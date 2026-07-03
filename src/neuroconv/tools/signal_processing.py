@@ -61,7 +61,7 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = Non
     return falling_frames
 
 
-def run_length_encode_labels(
+def _run_length_encode_labels(
     labels: np.ndarray,
     timestamps: np.ndarray,
     frame_period: float | None = None,
