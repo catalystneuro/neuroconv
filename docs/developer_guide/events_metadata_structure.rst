@@ -31,24 +31,24 @@ The events metadata system follows the same core principles as the ophys and ece
 
 1. **Dictionary-Based Organization.** Everything lives under ``metadata["Events"]``, dict-keyed at
    every level: each interface is namespaced by its ``metadata_key``, each event type within it by
-   its ``event_metadata_key`` (defaulting to the source's ``event_type_id``), and each column names
-   the output table it joins via ``table_metadata_key``. Keying every level lets several interfaces
+   its ``event_metadata_key`` (defaulting to the source's ``event_type_id``) under an ``event_types``
+   block, and each event type names the output table it joins via ``table_metadata_key``. Keying every level lets several interfaces
    run in one conversion without clashing, and is consistent with the rest of the NeuroConv metadata.
 
    .. code-block:: python
 
        metadata["Events"] = {
            "behavioral_session": {                       # an interface, keyed by its metadata_key
-               "event_columns": {
+               "event_types": {
                    "licking": {                          # an event type, keyed by its event_metadata_key
-                       "column_name": "lick",
-                       "description": "Lick detections.",
-                       "table_metadata_key": "behavior",   # the table this event is written into
+                       "table_metadata_key": "behavior",   # the table this event type is written into
+                       "columns": {                      # value columns, keyed by field_source_id
+                           "port": {"column_name": "lick", "description": "Lick detections."},
+                       },
                    },
                    "frame_start": {                      # a second event type in the same interface
-                       "column_name": "frame_start",
-                       "description": "Imaging frame-start pulses.",
                        "table_metadata_key": "frame_start",
+                       "columns": {},                    # a bare marker: timestamps only
                    },
                },
            },
@@ -59,8 +59,8 @@ The events metadata system follows the same core principles as the ophys and ece
    <events_handling_tables>`.
 
 2. **EventTables are top-level and shared.** Output tables are declared in a global ``EventTables``
-   block at the top level of ``metadata["Events"]`` (not under any interface), so a column from any
-   interface can route into any table. By default each event type gets its own table. See
+   block at the top level of ``metadata["Events"]`` (not under any interface), so any event type from
+   any interface can route into any table. By default each event type gets its own table. See
    :ref:`The table_metadata_key <events_handling_tables>`.
 
 3. **Categorical values and the MeaningsTable.** A categorical column's value vocabulary , the
@@ -94,36 +94,37 @@ values are real: ``PtAB`` port codes and the constant-value ``PC0_`` marker are 
         },
 
         "tdt_session": {                              # interface 1 (a TDT tank), keyed by its metadata_key
-            "event_columns": {
+            "event_types": {
                 "PtAB": {                             # one entry per event_type_id (a TDT epoc store code)
-                    "column_name": "port_entry",
-                    "description": "Nose-poke port entry, coded by port.",
-                    "column_categories": {
-                        # keys are the raw strobe values the hardware latched (TDT port codes)
-                        "labels":   {64959: "left", 65023: "center", 65535: "right"},
-                        "meanings": {64959: "left port entry", 65023: "center port entry", 65535: "right port entry"},
+                    "table_metadata_key": "port_entries",   # this event type is written to this table
+                    "columns": {
+                        "strobe": {                   # one value column, keyed by field_source_id
+                            "column_name": "port_entry",
+                            "description": "Nose-poke port entry, coded by port.",
+                            "column_categories": {
+                                # keys are the raw strobe values the hardware latched (TDT port codes)
+                                "labels":   {64959: "left", 65023: "center", 65535: "right"},
+                                "meanings": {64959: "left port entry", 65023: "center port entry", 65535: "right port entry"},
+                            },
+                        },
                     },
-                    "table_metadata_key": "port_entries",   # this column is written to this table
                 },
                 "PC0_": {                             # a second store: a bare marker (constant strobe value 1.0)
-                    "column_name": "reward",
-                    "description": "Reward delivery.",
-                    "table_metadata_key": "behavior",       # this column is written to this table
+                    "table_metadata_key": "behavior",       # this event type is written to this table
+                    "columns": {},                    # timestamps only
                 },
             },
         },
 
         "nidq_session": {                            # interface 2 (a SpikeGLX NIDQ stream)
-            "event_columns": {
+            "event_types": {
                 "XD1": {                              # a digital line read as a bare marker
-                    "column_name": "lick",
-                    "description": "Lick spout contact.",
-                    "table_metadata_key": "behavior",       # this column is written to this table
+                    "table_metadata_key": "behavior",       # this event type is written to this table
+                    "columns": {},
                 },
                 "XD0": {
-                    "column_name": "camera_frame",
-                    "description": "Camera exposure pulse.",
-                    "table_metadata_key": "camera_frames",  # this column is written to this table
+                    "table_metadata_key": "camera_frames",  # this event type is written to this table
+                    "columns": {},
                 },
             },
         },
@@ -135,7 +136,7 @@ values are real: ``PtAB`` port codes and the constant-value ``PC0_`` marker are 
 The metadata_key Parameter
 --------------------------
 
-Events interfaces accept a ``metadata_key`` string parameter that selects the interface's ``event_columns``
+Events interfaces accept a ``metadata_key`` string parameter that selects the interface's ``event_types``
 block. It is **keyword-only** and defaults to ``None``.
 
 .. code-block:: python
@@ -154,12 +155,11 @@ value lets the caller pick a stable, readable name, or deliberately reuse a key.
 Its **role is disambiguation across interfaces**: every interface's columns live under its own
 ``metadata_key``, so two interfaces can expose the same ``event_type_id`` (two tanks both with a
 store ``PtAB``, two boards both with a line ``XD0``) and never collide, because the full address
-includes the namespace: ``metadata["Events"][metadata_key]["event_columns"][...]``.
+includes the namespace: ``metadata["Events"][metadata_key]["event_types"][...]``.
 
-An interface's event types are nested inside an ``event_columns`` block (rather than sitting directly
-under the ``metadata_key``). This makes it concrete that they are written as columns of an events
-table, and it reserves the per-interface block so another kind of per-interface data could be added
-alongside the columns in the future without reshaping the dict.
+An interface's event types are nested inside an ``event_types`` block (rather than sitting directly
+under the ``metadata_key``), which reserves the per-interface block so another kind of per-interface
+data could be added alongside the event types in the future without reshaping the dict.
 
 
 .. _events_event_metadata_key:
@@ -167,32 +167,41 @@ alongside the columns in the future without reshaping the dict.
 The event_metadata_key
 ----------------------
 
-Inside an interface's block, each event type (one event column) is keyed by an
-``event_metadata_key``, which defaults to its ``event_type_id``. It is **what you use to reach and
-edit one event type's metadata**, and one entry holds everything about that event type's column:
+Inside an interface's ``event_types`` block, each event type is keyed by an ``event_metadata_key``,
+which defaults to its ``event_type_id``. It is **what you use to reach and edit one event type's
+metadata**, and its entry holds the type's table routing and its value columns:
 
 .. code-block:: python
 
-    metadata["Events"]["behavioral_session"]["event_columns"]["licking"] = {
-        "column_name": "lick",                  # the column header in the output table
-        "description": "Lick detections, left or right port.",
-        "column_categories": {                  # present only for a categorical column
-            "labels":   {1: "left", 2: "right"},
-            "meanings": {1: "left lick", 2: "right lick"},
+    metadata["Events"]["behavioral_session"]["event_types"]["licking"] = {
+        "table_metadata_key": "behavior",       # which table this event type is written into
+        "columns": {                            # value columns, keyed by field_source_id
+            "port": {
+                "column_name": "lick",          # the column header in the output table
+                "description": "Lick detections, left or right port.",
+                "column_categories": {          # present only for a categorical column
+                    "labels":   {1: "left", 2: "right"},
+                    "meanings": {1: "left lick", 2: "right lick"},
+                },
+            },
         },
-        "table_metadata_key": "behavior",       # which table this column is written into
     }
 
-The fields:
+An entry holds two fields:
 
-- ``column_name`` , the column header in the output table (default: the source's label if it carries
-  one, else the ``event_type_id``).
-- ``description`` , a free-text description of the event type, written as the column's
-  ``VectorData`` description in the output table (default: a generic description naming the source).
+- ``table_metadata_key`` , which output table the event type is written into (see :ref:`The
+  table_metadata_key <events_handling_tables>`).
+- ``columns`` , the value columns of the event type, keyed by ``field_source_id``. The absence of the column entry indicates
+ a timestamps-only event whereas column is used for events with payload.
+
+Each column entry holds:
+
+- ``column_name`` , the column header in the output table (default: the source's field label if it
+  carries one, else the ``field_source_id``).
+- ``description`` , a free-text description of the column, written as its ``VectorData`` description
+  in the output table (default: a generic description naming the source).
 - ``column_categories`` , the column's value vocabulary (see below); present only for a categorical
   column.
-- ``table_metadata_key`` , which output table the column joins (see :ref:`The table_metadata_key
-  <events_handling_tables>`).
 
 The column's value vocabulary is ``column_categories``:
 
@@ -232,13 +241,13 @@ section below.
 
 By default ``get_metadata()`` seeds one ``table_metadata_key`` per event type, so each event type
 gets its own table and the common cases need no edits. To put several event types in one table
-instead, **share by linking**: point each column's ``table_metadata_key`` at one shared
+instead, **share by linking**: point each one's ``table_metadata_key`` at one shared
 ``EventTables`` entry (define it if it is not a seeded default); see
 :ref:`annotate_events_shared_table` for a worked example. The same edit shares a table across
-interfaces, since the table block is global. Because the shared types have different timestamps, the
-result is a **wide, non-tidy table** (one column per type, sparse across rows). Reshaping it into a
-tidy form (one row per event, the type in an ``event_type`` column) is out of scope for this
-metadata.
+interfaces, since the table block is global. The writer then pools the shared types' events into one
+**time-sorted** table and adds an ``event_type`` discriminator column naming each row's event type,
+so a bare marker (which adds no value column) keeps its identity; each event type contributes only
+the value columns it carries, filled on its own rows and empty on the others.
 
 .. _events_multi_value:
 
@@ -249,27 +258,27 @@ In most acquisition systems an event is either a **pure timestamp** (a bare mark
 or a reward) or a timestamp with a **single value** (a code or label, e.g. a port code). Both write
 straightforwardly. Every event table has a built-in ``timestamp`` column, so a pure timestamp needs
 no value column at all, it is just an ``EventsTable`` with its ``timestamp`` column and nothing else
-(one ``event_columns`` entry, no ``column_categories``). A single value adds one value column
-alongside ``timestamp`` (one ``event_columns`` entry, one value column).
+(empty ``columns``). A single value adds one value column alongside ``timestamp`` (one ``columns``
+entry).
 
 Some events, though, carry **more than one value per occurrence** (a structured payload, e.g. a
-Spike2 TextMark tagged with both a numeric ``marker`` code and a ``text`` string). Here each field
-becomes **its own** ``event_columns`` entry, with its own ``event_metadata_key`` (the field name
-when the source provides one, otherwise a numeric index), and the entries are seeded with the
-**same** ``table_metadata_key`` so they are written as side-by-side columns of one table:
+Spike2 TextMark tagged with both a numeric ``marker`` code and a ``text`` string). Here each field is
+its own ``columns`` entry, keyed by its ``field_source_id`` (the field name when the source provides
+one, otherwise a numeric index), all under the one event type:
 
 .. code-block:: python
 
-    # one event type, two fields -> two entries, same table
-    "event_columns": {
-        "marker": {"column_name": "marker", "table_metadata_key": "textmark"},
-        "text":   {"column_name": "text",   "table_metadata_key": "textmark"},
+    # one event type, two fields -> two columns on one table
+    "TextMark": {
+        "table_metadata_key": "textmark",
+        "columns": {
+            "marker": {"column_name": "marker"},
+            "text":   {"column_name": "text"},
+        },
     }
 
-This is the one case where several columns share a table **automatically** rather than by user
-choice. And unlike a user-chosen shared table, the fields come from the *same* event, so they share
-its timestamps and the columns sit on the same rows, the table is tidy by construction, not
-wide-and-sparse. Each field is named and described independently (its own ``column_name`` /
+Because the fields come from the *same* event, they share its timestamps and the columns sit on the
+same rows of one table. Each field is named and described independently (its own ``column_name`` /
 ``description`` / ``column_categories``).
 
 
@@ -296,70 +305,3 @@ Table keys are independent of any interface's ``metadata_key``: a ``table_metada
 time by whichever column first references it. As with the ophys shared-YAML workflow, this lets a
 single shared configuration hold all output tables for a project, with the per-session conversion
 code setting ``table_metadata_key`` references to choose which columns share which table.
-
-
-Migration: from ndx-events 0.2.x to fully released NWBEP001
------------------------------------------------------------
-
-The metadata contract above is the **target**, shaped for the native NWBEP001 ``EventsTable``. The
-interim writer runs against ``ndx-events`` 0.2.x, which is far less expressive, so part of the
-contract is exercised today and part is forward-looking. Only the writer changes at migration; this
-metadata dict never does.
-
-**What the current (ndx-events 0.2.x) writer does.** It writes **one container per column** into
-``/acquisition``, not a shared table, and keeps only what 0.2.x can represent (timestamps and a
-label legend), ignoring the richer payload:
-
-- A categorical column (``column_categories`` present) becomes a ``LabeledEvents``: the raw values
-  are recoded to dense ints in ``LabeledEvents.data``, and ``labels`` become
-  ``LabeledEvents.labels``. The ``meanings`` entry has no native home yet, so it is appended to the
-  object ``description`` as a stopgap.
-- A bare marker (no ``column_categories``) becomes an ``Events`` (timestamps only).
-
-Metadata used now, and how its meaning shifts at migration:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 20 40 40
-
-   * - field
-     - now (``ndx-events`` 0.2.x)
-     - at migration (NWBEP001 ``EventsTable``)
-   * - ``column_name``
-     - the **object name** of the per-column ``LabeledEvents``/``Events`` (each column is its own container)
-     - a real **column** in a shared ``EventsTable``
-   * - ``description``
-     - the per-column object's ``description`` (with ``meanings`` appended to it as a stopgap, see below)
-     - the column's ``VectorData`` description in the shared ``EventsTable``
-   * - ``column_categories.labels``
-     - ``LabeledEvents.labels`` (the string legend)
-     - the categorical column's cell values
-   * - ``column_categories.meanings``
-     - **appended to the column's** ``description`` as a stopgap (no table for them yet)
-     - a real ``MeaningsTable`` linked to the column
-   * - ``table_metadata_key``
-     - **inert**: each column is its own container, so sharing one table across several columns is a no-op (the routing is recorded but not realized)
-     - selects the shared ``EventsTable`` the column joins (real table sharing)
-
-Forward-looking parts (in the contract, but not meaningful on 0.2.x):
-
-- **Table sharing.** ``table_metadata_key`` directing several columns into one table has no effect
-  on 0.2.x (there is no shared table; columns stay separate containers). It is recorded for the
-  future and becomes real at migration.
-- ``meanings`` **as a MeaningsTable.** Today they only ride along in the object ``description``
-  text.
-- **Durations.** ``LabeledEvents``/``Events`` have no duration slot, so durated events are written
-  as onsets only; a ``DurationVectorData`` column appears at migration.
-- **Continuous payloads.** 0.2.x has no flat numeric-per-event column: ``Events`` carries no values
-  and ``LabeledEvents.data`` holds only unsigned-integer indices into the text ``labels`` (the spec
-  dtype of ``labels`` is ``text``). So a continuous column (e.g. a frequency in Hz) is written as a
-  ``LabeledEvents`` with **its values stringified**, one label per distinct value. This is lossy and
-  semantically off (a measurement written as if it were a category), but the value is *present in the
-  file* and recoverable, which is preferable to dropping it. The typed value is also kept on the
-  internal representation, so at migration the same conversion writes it as a real numeric column in
-  the ``EventsTable`` (no string round-trip needed).
-
-At the NWBEP001 migration the per-column containers collapse into the columns and rows of shared
-``EventsTable`` s, ``meanings`` graduate to ``MeaningsTable`` s, durations and continuous values get
-real columns, and ``table_metadata_key`` sharing finally produces single shared tables, all by
-swapping the writer, with the metadata dict unchanged.
