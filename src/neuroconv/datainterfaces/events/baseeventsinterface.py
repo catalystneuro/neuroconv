@@ -14,7 +14,7 @@ class _EventInternalClass:
 
     Format-agnostic; every event source maps into this, independent of both the source format and
     NWB. It holds the Extent (``timestamps`` and, for an interval type, ``durations``) and the
-    Payload (``payload``, a typed field-map). Interfaces return these keyed by ``event_type_id``
+    Payload (``payload``, a typed field-map). Interfaces return these keyed by ``event_type_source_id``
     (see :meth:`BaseEventsInterface._load_event_data_dict`), so the stream id is the dict key, not a
     field here.
 
@@ -26,7 +26,7 @@ class _EventInternalClass:
         The per-event durations, in seconds, for an interval (durative) event type; ``None`` for a
         point event type. Within an interval type, ``NaN`` marks an event whose offset is missing.
     payload : dict[str, numpy.ndarray]
-        A typed field-map of per-event values, keyed by ``field_id`` (the source's name for
+        A typed field-map of per-event values, keyed by ``field_source_id`` (the source's name for
         the field), kept in native dtype. Empty for a timestamp-only event type; one entry for a
         single value; several for a struct (multi-value) payload. Field names are scoped to their
         event type, so two streams may reuse the same field name.
@@ -55,13 +55,13 @@ class BaseEventsInterface(BaseDataInterface):
     The metadata has two levels. A global ``EventTables`` block declares each output table object
     (``table_name`` + ``description``, shared across interfaces). A per-interface ``event_types``
     block (under each ``metadata_key``) holds one entry per event type, keyed by its
-    ``event_type_id``: the entry names the table it enters (``table_metadata_key``) and holds a
-    ``columns`` map, keyed by ``field_id`` (a payload field), where each column carries its
+    ``event_type_source_id``: the entry names the table it enters (``table_metadata_key``) and holds a
+    ``columns`` map, keyed by ``field_source_id`` (a payload field), where each column carries its
     output ``column_name`` and optional ``column_categories`` (relabelling + meanings). A single value
     gives one column, a struct payload several (they share the event's rows), a timestamp-only type
     an empty ``columns``. ``table_metadata_key`` is the grouping knob: it defaults to one table per
     event type; pointing several event types at one table pools their events, and the writer then adds
-    an ``event_type`` discriminator column naming each row's ``event_type_id``. This structure
+    an ``event_type`` discriminator column naming each row's ``event_type_source_id``. This structure
     is documented in the events taxonomy and PR #1759
     (https://github.com/catalystneuro/neuroconv/pull/1759).
 
@@ -71,16 +71,16 @@ class BaseEventsInterface(BaseDataInterface):
     keywords = ("events",)
 
     def _load_event_data_dict(self) -> dict[str, _EventInternalClass]:
-        """Return the internal event representation, keyed by ``event_type_id``.
+        """Return the internal event representation, keyed by ``event_type_source_id``.
 
         Returns
         -------
         dict[str, _EventInternalClass]
-            Maps each ``event_type_id`` (the source's own handle for an event type, e.g. a TDT
+            Maps each ``event_type_source_id`` (the source's own handle for an event type, e.g. a TDT
             epoc name) to its :class:`_EventInternalClass` (timestamps, optional durations, typed
             payload field-map). The writer joins this to the metadata by key: the ``event_types``
-            entry keyed by the same ``event_type_id``, and each of its ``columns`` keyed by a
-            ``field_id`` in this record's ``payload``.
+            entry keyed by the same ``event_type_source_id``, and each of its ``columns`` keyed by a
+            ``field_source_id`` in this record's ``payload``.
         """
         raise NotImplementedError("Event interfaces must implement `_load_event_data_dict`.")
 
@@ -114,7 +114,7 @@ class BaseEventsInterface(BaseDataInterface):
             "additionalProperties": {
                 "type": "object",
                 "properties": {
-                    # One entry per event type, keyed by event_type_id.
+                    # One entry per event type, keyed by event_type_source_id.
                     "event_types": {
                         "type": "object",
                         "additionalProperties": {
@@ -123,7 +123,7 @@ class BaseEventsInterface(BaseDataInterface):
                             "properties": {
                                 # which (global) EventTables entry this type's rows fill -> grouping
                                 "table_metadata_key": {"type": "string"},
-                                # value columns, keyed by field_id (a payload field); {} = timestamp-only
+                                # value columns, keyed by field_source_id (a payload field); {} = timestamp-only
                                 "columns": {
                                     "type": "object",
                                     "additionalProperties": {
@@ -165,14 +165,14 @@ class BaseEventsInterface(BaseDataInterface):
         """Write the events as ``pynwb.event.EventsTable`` objects inside ``nwbfile.events``.
 
         Each ``event_types`` entry is one event type; the writer joins it to the loaded data by key
-        (``event_type_id``), and each of its ``columns`` to a payload field (``field_id``).
+        (``event_type_source_id``), and each of its ``columns`` to a payload field (``field_source_id``).
         Event types are grouped by ``table_metadata_key``. Within a table, the columns of one event
         type share the same rows (a struct payload fans into several columns); several event types
         pooled into one table are written long and time-sorted, with an ``event_type`` discriminator
-        naming each row's ``event_type_id`` and each type's columns filled only on its own rows.
+        naming each row's ``event_type_source_id`` and each type's columns filled only on its own rows.
         A categorical column writes display labels plus a ``MeaningsTable`` when meanings are supplied;
         any other column writes raw values. Two columns writing the same ``column_name`` into one table
-        raise, as does a declared column whose ``field_id`` is absent from the payload.
+        raise, as does a declared column whose ``field_source_id`` is absent from the payload.
 
         Parameters
         ----------
@@ -191,13 +191,13 @@ class BaseEventsInterface(BaseDataInterface):
         event_types = events_metadata[self.metadata_key]["event_types"]
 
         # Group the event types by the table they route to.
-        event_type_ids_by_table = {}
-        for event_type_id, entry in event_types.items():
-            event_type_ids_by_table.setdefault(entry["table_metadata_key"], []).append(event_type_id)
+        event_type_source_ids_by_table = {}
+        for event_type_source_id, entry in event_types.items():
+            event_type_source_ids_by_table.setdefault(entry["table_metadata_key"], []).append(event_type_source_id)
 
         # Each table_metadata_key becomes one EventsTable object, so their table_names must be unique.
         table_metadata_keys_by_name = {}
-        for table_metadata_key in event_type_ids_by_table:
+        for table_metadata_key in event_type_source_ids_by_table:
             table_name = event_tables_metadata[table_metadata_key]["table_name"]
             table_metadata_keys_by_name.setdefault(table_name, []).append(table_metadata_key)
         collisions = {name: keys for name, keys in table_metadata_keys_by_name.items() if len(keys) > 1}
@@ -206,24 +206,26 @@ class BaseEventsInterface(BaseDataInterface):
             "Each EventsTable must have a unique name; give these table_metadata_key entries distinct table_name values."
         )
 
-        for table_metadata_key, event_type_ids in event_type_ids_by_table.items():
+        for table_metadata_key, event_type_source_ids in event_type_source_ids_by_table.items():
             # More than one event type pooled into one table is a merge, told apart by an event_type
             # column. A single event type (however many columns it fans into) needs no discriminator.
-            is_merge = len(event_type_ids) > 1
-            has_duration = any(event_data[event_type_id].durations is not None for event_type_id in event_type_ids)
+            is_merge = len(event_type_source_ids) > 1
+            has_duration = any(
+                event_data[event_type_source_id].durations is not None for event_type_source_id in event_type_source_ids
+            )
 
-            rows = []  # (timestamp, event_type_id, duration_or_nan, {column_name: cell})
+            rows = []  # (timestamp, event_type_source_id, duration_or_nan, {column_name: cell})
             column_specs = {}  # column_name -> column_spec (the value columns to attach)
-            for event_type_id in event_type_ids:
-                event = event_data[event_type_id]
-                columns = event_types[event_type_id].get("columns", {})
+            for event_type_source_id in event_type_source_ids:
+                event = event_data[event_type_source_id]
+                columns = event_types[event_type_source_id].get("columns", {})
 
-                # Resolve this event type's columns once: (field_id, column_name, labels_map).
+                # Resolve this event type's columns once: (field_source_id, column_name, labels_map).
                 resolved_columns = []
-                for field_id, column_spec in columns.items():
-                    assert field_id in event.payload, (
-                        f"Event type '{event_type_id}' declares a column for payload field "
-                        f"'{field_id}', but its payload has no such field (has {sorted(event.payload)})."
+                for field_source_id, column_spec in columns.items():
+                    assert field_source_id in event.payload, (
+                        f"Event type '{event_type_source_id}' declares a column for payload field "
+                        f"'{field_source_id}', but its payload has no such field (has {sorted(event.payload)})."
                     )
                     column_name = column_spec["column_name"]
                     assert column_name not in column_specs, (
@@ -231,15 +233,15 @@ class BaseEventsInterface(BaseDataInterface):
                         f"'{table_metadata_key}'. Give each event column a unique column_name."
                     )
                     column_specs[column_name] = column_spec
-                    resolved_columns.append((field_id, column_name, self._labels_map(column_spec)))
+                    resolved_columns.append((field_source_id, column_name, self._labels_map(column_spec)))
 
                 for index, timestamp in enumerate(event.timestamps):
                     cells = {}
-                    for field_id, column_name, labels_map in resolved_columns:
-                        value = event.payload[field_id][index]
+                    for field_source_id, column_name, labels_map in resolved_columns:
+                        value = event.payload[field_source_id][index]
                         cells[column_name] = labels_map[str(value)] if labels_map is not None else value
                     duration = float(event.durations[index]) if event.durations is not None else np.nan
-                    rows.append((float(timestamp), event_type_id, duration, cells))
+                    rows.append((float(timestamp), event_type_source_id, duration, cells))
 
             # Pooled types concatenate in blocks; sort by timestamp for a true chronological timeline
             # (a no-op for a single type, whose onsets are already ordered).
@@ -250,7 +252,7 @@ class BaseEventsInterface(BaseDataInterface):
             # Only the native EventsTable columns go through add_event: timestamp, plus duration when any
             # pooled type has one. Every derived column (the event_type discriminator and the value
             # columns) is attached full-length afterwards.
-            for timestamp, _event_type_id, duration, _cells in rows:
+            for timestamp, _event_type_source_id, duration, _cells in rows:
                 event_kwargs = {"timestamp": timestamp}
                 if has_duration:
                     event_kwargs["duration"] = duration
@@ -262,7 +264,7 @@ class BaseEventsInterface(BaseDataInterface):
                 table.add_column(
                     name="event_type",
                     description="The event type of each event.",
-                    data=[event_type_id for _, event_type_id, _, _ in rows],
+                    data=[event_type_source_id for _, event_type_source_id, _, _ in rows],
                 )
 
             # Attach each value column full-length, filling rows from other types, plus a MeaningsTable

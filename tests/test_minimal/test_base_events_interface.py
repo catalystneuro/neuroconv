@@ -120,7 +120,7 @@ class TestMockEventsInterface:
         assert value_to_meaning["GO"] == "A go outcome."
 
     def test_declaring_a_column_for_a_missing_payload_field_errors(self):
-        # A columns entry whose field_id is absent from the data payload is a mismatch and must
+        # A columns entry whose field_source_id is absent from the data payload is a mismatch and must
         # fail with a clear message.
         interface = MockEventsInterface(event_payload="timestamps only")
         metadata = interface.get_metadata()
