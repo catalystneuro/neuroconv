@@ -18,7 +18,7 @@ metadata is written under such various configurations.
 
 For user-facing instructions on annotating events, see :ref:`annotate_events_metadata`.
 
-Throughout this document, ``event_type_id`` means whatever the source format (or its reader) uses to
+Throughout this document, ``event_type_source_id`` means whatever the source format (or its reader) uses to
 identify a type of event (licking, a camera frame onset, a reward). It may be a human-readable
 label, an internal numeric code, or a store or line name (e.g. a TDT store ``PtAB``, a NIDQ line
 ``XD0``); its form varies by format.
@@ -31,7 +31,7 @@ The events metadata system follows the same core principles as the ophys and ece
 
 1. **Dictionary-Based Organization.** Everything lives under ``metadata["Events"]``, dict-keyed at
    every level: each interface is namespaced by its ``metadata_key``, each event type within it by
-   its ``event_metadata_key`` (defaulting to the source's ``event_type_id``) under an ``event_types``
+   its ``event_metadata_key`` (defaulting to the source's ``event_type_source_id``) under an ``event_types``
    block, and each event type names the output table it joins via ``table_metadata_key``. Keying every level lets several interfaces
    run in one conversion without clashing, and is consistent with the rest of the NeuroConv metadata.
 
@@ -42,7 +42,7 @@ The events metadata system follows the same core principles as the ophys and ece
                "event_types": {
                    "licking": {                          # an event type, keyed by its event_metadata_key
                        "table_metadata_key": "behavior",   # the table this event type is written into
-                       "columns": {                      # value columns, keyed by field_id
+                       "columns": {                      # value columns, keyed by field_source_id
                            "port": {"column_name": "lick", "description": "Lick detections."},
                        },
                    },
@@ -95,10 +95,10 @@ values are real: ``PtAB`` port codes and the constant-value ``PC0_`` marker are 
 
         "tdt_session": {                              # interface 1 (a TDT tank), keyed by its metadata_key
             "event_types": {
-                "PtAB": {                             # one entry per event_type_id (a TDT epoc store code)
+                "PtAB": {                             # one entry per event_type_source_id (a TDT epoc store code)
                     "table_metadata_key": "port_entries",   # this event type is written to this table
                     "columns": {
-                        "strobe": {                   # one value column, keyed by field_id
+                        "strobe": {                   # one value column, keyed by field_source_id
                             "column_name": "port_entry",
                             "description": "Nose-poke port entry, coded by port.",
                             "column_categories": {
@@ -153,7 +153,7 @@ keys with zero configuration. This is more robust than a hardcoded default (a fi
 value lets the caller pick a stable, readable name, or deliberately reuse a key.
 
 Its **role is disambiguation across interfaces**: every interface's columns live under its own
-``metadata_key``, so two interfaces can expose the same ``event_type_id`` (two tanks both with a
+``metadata_key``, so two interfaces can expose the same ``event_type_source_id`` (two tanks both with a
 store ``PtAB``, two boards both with a line ``XD0``) and never collide, because the full address
 includes the namespace: ``metadata["Events"][metadata_key]["event_types"][...]``.
 
@@ -168,14 +168,14 @@ The event_metadata_key
 ----------------------
 
 Inside an interface's ``event_types`` block, each event type is keyed by an ``event_metadata_key``,
-which defaults to its ``event_type_id``. It is **what you use to reach and edit one event type's
+which defaults to its ``event_type_source_id``. It is **what you use to reach and edit one event type's
 metadata**, and its entry holds the type's table routing and its value columns:
 
 .. code-block:: python
 
     metadata["Events"]["behavioral_session"]["event_types"]["licking"] = {
         "table_metadata_key": "behavior",       # which table this event type is written into
-        "columns": {                            # value columns, keyed by field_id
+        "columns": {                            # value columns, keyed by field_source_id
             "port": {
                 "column_name": "lick",          # the column header in the output table
                 "description": "Lick detections, left or right port.",
@@ -191,13 +191,13 @@ An entry holds two fields:
 
 - ``table_metadata_key`` , which output table the event type is written into (see :ref:`The
   table_metadata_key <events_handling_tables>`).
-- ``columns`` , the value columns of the event type, keyed by ``field_id``. The absence of the column entry indicates
+- ``columns`` , the value columns of the event type, keyed by ``field_source_id``. The absence of the column entry indicates
  a timestamps-only event whereas column is used for events with payload.
 
 Each column entry holds:
 
 - ``column_name`` , the column header in the output table (default: the source's field label if it
-  carries one, else the ``field_id``).
+  carries one, else the ``field_source_id``).
 - ``description`` , a free-text description of the column, written as its ``VectorData`` description
   in the output table (default: a generic description naming the source).
 - ``column_categories`` , the column's value vocabulary (see below); present only for a categorical
@@ -263,7 +263,7 @@ entry).
 
 Some events, though, carry **more than one value per occurrence** (a structured payload, e.g. a
 Spike2 TextMark tagged with both a numeric ``marker`` code and a ``text`` string). Here each field is
-its own ``columns`` entry, keyed by its ``field_id`` (the field name when the source provides
+its own ``columns`` entry, keyed by its ``field_source_id`` (the field name when the source provides
 one, otherwise a numeric index), all under the one event type:
 
 .. code-block:: python
@@ -286,22 +286,22 @@ When Objects Are Created
 ------------------------
 
 The ``EventTables`` *entries* exist in the metadata dict from the start: ``get_metadata()`` seeds
-one default entry per column (Principle 5), and the user may add more. The NWB table *objects* are
+one default entry per event type, and the user may add more. The NWB table *objects* are
 created from those entries at ``add_to_nwbfile`` time. The rules mirror the ophys/ecephys pipelines:
 
-1. **Only referenced tables are written.** An ``EventTables`` entry that no column points at is not
-   turned into an object. The default entries are always referenced (each seeded column points at
+1. **Only referenced tables are written.** An ``EventTables`` entry that no event type points at is not
+   turned into an object. The default entries are always referenced (each seeded event type points at
    its own), so they are written; this rule prunes the *extra* entries a shared configuration may
    predefine but a given session does not use.
 2. **Defaults are seeded, not conjured.** ``get_metadata()`` already put one ``EventTables`` entry
-   per column and set each column's ``table_metadata_key`` to it, so a zero-config run produces one
-   table per column with no write-time invention. (To rename or describe a default table, edit its
+   per event type and set each event type's ``table_metadata_key`` to it, so a zero-config run produces one
+   table per event type with no write-time invention. (To rename or describe a default table, edit its
    seeded ``EventTables`` entry; the user never has to create the default ones.)
-3. **Shared tables are created once.** When several columns point at one ``table_metadata_key``, the
-   table is created by whichever interface writes first, and later columns append to it.
+3. **Shared tables are created once.** When several event types point at one ``table_metadata_key``, the
+   table is created by whichever interface writes first, and later event types append to it.
 
 Table keys are independent of any interface's ``metadata_key``: a ``table_metadata_key`` such as
 ``"behavior"`` need not match any interface's key. No interface owns a table; it is created at write
-time by whichever column first references it. As with the ophys shared-YAML workflow, this lets a
+time by whichever event type first references it. As with the ophys shared-YAML workflow, this lets a
 single shared configuration hold all output tables for a project, with the per-session conversion
-code setting ``table_metadata_key`` references to choose which columns share which table.
+code setting ``table_metadata_key`` references to choose which event types share which table.

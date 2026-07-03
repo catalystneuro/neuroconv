@@ -28,9 +28,9 @@ and no value labels:
 
 .. code-block:: text
 
-    PtAB  (EventsTable in /events; the table is named after the store's event_type_id)
+    PtAB  (EventsTable in /events; the table is named after the store's event_type_source_id)
     ┌───────────┬────────┐
-    │ timestamp │ strobe │   <- the value column, named after its field_id; raw codes, no MeaningsTable
+    │ timestamp │ strobe │   <- the value column, named after its field_source_id; raw codes, no MeaningsTable
     ├───────────┼────────┤
     │    12.084 │  64959 │
     │    13.553 │  65535 │
@@ -52,7 +52,7 @@ Annotation supplies that, and it is just editing the dict ``get_metadata()`` see
 edits that dict; apply the ones you need, then pass the result to ``create_nwbfile``.
 
 **Inspect what the interface extracted.** Print the seeded dict to see the event types the
-interface found (each keyed by its ``event_type_id``), the seeded defaults, and the value
+interface found (each keyed by its ``event_type_source_id``), the seeded defaults, and the value
 vocabularies discovered from the data:
 
 .. code-block:: python
@@ -65,11 +65,11 @@ vocabularies discovered from the data:
     {
         "behavioral_session": {                   # the interface's metadata_key
             "event_types": {
-                "PtAB": {                         # one entry per event type found (its event_type_id)
+                "PtAB": {                         # one entry per event type found (its event_type_source_id)
                     "table_metadata_key": "PtAB",  # seeded to its own table
-                    "columns": {                  # value columns, keyed by field_id
+                    "columns": {                  # value columns, keyed by field_source_id
                         "strobe": {               # the strobe value field
-                            "column_name": "strobe",   # seeded to the field_id
+                            "column_name": "strobe",   # seeded to the field_source_id
                             "column_categories": {     # discovered vocabulary; labels/meanings for you to edit
                                 "labels":   {64959: "64959", 65023: "65023", 65535: "65535"},
                                 "meanings": {64959: "", 65023: "", 65535: ""},
@@ -90,7 +90,7 @@ vocabularies discovered from the data:
     }
 
 **Rename an event column.** ``column_name`` is the column header in the output table, seeded to the
-``field_id``. Reach the value column through its event type and rename it:
+``field_source_id``. Reach the value column through its event type and rename it:
 
 .. code-block:: python
 
@@ -297,7 +297,7 @@ How to Annotate Multiple Events Interfaces
 
 A single conversion often runs several event interfaces, here a TDT tank and a SpikeGLX NIDQ stream,
 wired together in an ``NWBConverter``. Each interface gets its own ``metadata_key``, and that key is
-what keeps them apart: two sources can expose the **same** ``event_type_id`` (two tanks both with a
+what keeps them apart: two sources can expose the **same** ``event_type_source_id`` (two tanks both with a
 store ``PtAB``, two boards both with a line ``XD0``), and the ``metadata_key`` namespaces each
 interface's ``event_types`` block so those identical ids never clash.
 
@@ -315,7 +315,7 @@ interface's ``event_types`` block so those identical ids never clash.
     converter = NWBConverter(data_interfaces={"tdt": tdt_interface, "nidq": nidq_interface})
     metadata = converter.get_metadata()
 
-    # Each interface's event types live under its own metadata_key, so identical event_type_ids
+    # Each interface's event types live under its own metadata_key, so identical event_type_source_ids
     # from different interfaces never collide: metadata["Events"]["tdt"] vs ["nidq"].
     metadata["Events"]["tdt"]["event_types"]["PtAB"]["columns"]["strobe"]["column_name"] = "choice"
     # XD0 is a bare marker (no value column); name it by renaming its table instead.
