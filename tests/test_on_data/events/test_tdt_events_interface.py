@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 
-import ndx_events
 import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
 from pynwb import NWBHDF5IO
+from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import TDTEventsInterface
@@ -89,7 +89,9 @@ class TestTDTEventsInterface:
         event_columns = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]
         assert set(event_columns.keys()) == set(EPOC_NAME_TO_LENGTH)
         for epoc_name, column in event_columns.items():
-            assert column["column_name"] == epoc_name
+            # Photo_249 stores are all counters (timestamp-only), so no value columns.
+            assert column["table_metadata_key"] == epoc_name
+            assert column["columns"] == {}
 
     def test_exclude_events(self):
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, exclude_events=["LNRW", "LNnR"])
@@ -98,11 +100,15 @@ class TestTDTEventsInterface:
 
     def test_metadata_key_default_and_override(self):
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH)
-        assert set(interface.get_metadata()["Events"].keys()) == {"tdt_events"}
+        # "EventTables" is the reserved global block; the rest are the per-interface metadata_keys.
+        assert set(interface.get_metadata()["Events"].keys()) == {
+            "tdt_events",
+            "EventTables",
+        }
 
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, metadata_key="my_tank")
         events_metadata = interface.get_metadata()["Events"]
-        assert set(events_metadata.keys()) == {"my_tank"}
+        assert set(events_metadata.keys()) == {"my_tank", "EventTables"}
         assert set(events_metadata["my_tank"]["event_columns"].keys()) == set(EPOC_NAME_TO_LENGTH)
 
     def test_metadata_schema_is_valid(self, interface):
@@ -113,18 +119,29 @@ class TestTDTEventsInterface:
         metadata = interface.get_metadata()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-        prtr_events = nwbfile.acquisition["PrtR"]
-        assert isinstance(prtr_events, ndx_events.Events)
-        assert len(prtr_events.timestamps) == 49
+        prtr_events = nwbfile.get_events_table("PrtR")
+        assert isinstance(prtr_events, EventsTable)
+        assert prtr_events.colnames == ("timestamp",)
+        assert len(prtr_events) == 49
 
     def test_real_offset_raises(self, interface, monkeypatch):
         # A real (buddy) offset store has falling edges strictly inside each interval, so the
         # synthesized-fill check fails and the unsupported case raises.
         fake_block = _FakeBlock(
-            {"PrtR": _FakeEpoc(np.array([1.0, 2.0, 3.0]), np.array([1.5, 2.5, 3.5]), np.array([1.0, 2.0, 3.0]))}
+            {
+                "PrtR": _FakeEpoc(
+                    np.array([1.0, 2.0, 3.0]),
+                    np.array([1.5, 2.5, 3.5]),
+                    np.array([1.0, 2.0, 3.0]),
+                )
+            }
         )
         monkeypatch.setattr(interface, "load", lambda **kwargs: fake_block)
-        metadata = {"Events": {"tdt_events": {"event_columns": {"PrtR": {"column_name": "PrtR", "description": "d"}}}}}
+        # The raise happens in _load_event_data_dict (before any columns are read), so this metadata
+        # is never consumed; kept as a well-formed Shape-B entry for consistency.
+        metadata = {
+            "Events": {"tdt_events": {"event_columns": {"PrtR": {"table_metadata_key": "PrtR", "columns": {}}}}}
+        }
         with pytest.raises(NotImplementedError, match=r"real offset.*issues/new"):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
@@ -139,9 +156,9 @@ class TestTDTEventsInterface:
 
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
             read_nwbfile = io.read()
-            read_events = read_nwbfile.acquisition["LNnR"]
-            assert isinstance(read_events, ndx_events.Events)
-            assert len(read_events.timestamps) == 1457
+            read_events = read_nwbfile.get_events_table("LNnR")
+            assert isinstance(read_events, EventsTable)
+            assert len(read_events) == 1457
 
 
 class TestTDTEventsStrobeInterface:
@@ -152,31 +169,38 @@ class TestTDTEventsStrobeInterface:
         return TDTEventsInterface(folder_path=STROBE_TANK_PATH, exclude_events=["Vid1", "Tick"])
 
     def test_metadata_seeds_strobe_labels(self, interface):
-        column = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]["PAB_"]
-        # The PAB_ store's three distinct codes are seeded as an editable raw-code -> label map.
-        assert column["column_categories"]["labels"] == {0: "0", 16: "16", 2064: "2064"}
-        assert column["description"] == "Onset times of the TDT epoc 'PAB_', labeled by strobe value."
+        metadata = interface.get_metadata()
+        column = metadata["Events"]["tdt_events"]["event_columns"]["PAB_"]
+        # The PAB_ store gets one categorical 'strobe' column (keyed by its payload field); the three
+        # distinct codes are seeded as an editable raw-code -> label map.
+        strobe = column["columns"]["strobe"]
+        assert strobe["column_categories"]["labels"] == {0: "0", 16: "16", 2064: "2064"}
+        assert strobe["column_name"] == "strobe"
+        assert column["table_metadata_key"] == "PAB_"
+        # The table object carries the description; it defaults to one table per store.
+        table = metadata["Events"]["EventTables"]["PAB_"]
+        assert table["table_name"] == "PAB_"
+        assert table["description"] == "Onset times of the TDT epoc 'PAB_', labeled by strobe value."
 
     def test_counter_store_has_no_labels(self):
         interface = TDTEventsInterface(folder_path=STROBE_TANK_PATH, exclude_events=["PAB_", "Vid1"])
         column = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]["Tick"]
-        assert "column_categories" not in column
+        assert column["columns"] == {}
 
     def test_add_to_nwbfile_writes_labeled_events(self, interface):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        pab_events = nwbfile.acquisition["PAB_"]
-        assert isinstance(pab_events, ndx_events.LabeledEvents)
-        # labels are ordered by numeric code; data indexes into them, recovering [16, 2064, 0, 16, 2064].
-        assert pab_events.labels == ["0", "16", "2064"]
-        np.testing.assert_array_equal(pab_events.data, [1, 2, 0, 1, 2])
-        assert len(pab_events.timestamps) == 5
+        pab_events = nwbfile.get_events_table("PAB_")
+        assert isinstance(pab_events, EventsTable)
+        assert len(pab_events) == 5
+        # The categorical 'strobe' column carries the per-event strobe codes [16, 2064, 0, 16, 2064].
+        assert list(pab_events["strobe"][:]) == ["16", "2064", "0", "16", "2064"]
 
     def test_user_relabeling_round_trip(self, interface, tmp_path):
         metadata = interface.get_metadata()
         column = metadata["Events"]["tdt_events"]["event_columns"]["PAB_"]
-        column["column_categories"]["labels"] = {0: "none", 16: "left", 2064: "right"}
+        column["columns"]["strobe"]["column_categories"]["labels"] = {0: "none", 16: "left", 2064: "right"}
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
@@ -184,7 +208,13 @@ class TestTDTEventsStrobeInterface:
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
             io.write(nwbfile)
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_events = io.read().acquisition["PAB_"]
-            assert isinstance(read_events, ndx_events.LabeledEvents)
-            assert list(read_events.labels) == ["none", "left", "right"]
-            np.testing.assert_array_equal(read_events.data, [1, 2, 0, 1, 2])
+            read_events = io.read().get_events_table("PAB_")
+            assert isinstance(read_events, EventsTable)
+            # Codes [16, 2064, 0, 16, 2064] map through the user's relabeling.
+            assert list(read_events["strobe"][:]) == [
+                "left",
+                "right",
+                "none",
+                "left",
+                "right",
+            ]

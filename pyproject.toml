@@ -134,7 +134,6 @@ behavior = [
 ## Events
 tdt_events = [
     "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
-    "ndx-events==0.2.2",
 ]
 events = [
     "neuroconv[tdt_events]",
