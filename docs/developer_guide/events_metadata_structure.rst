@@ -42,7 +42,7 @@ The events metadata system follows the same core principles as the ophys and ece
                "event_types": {
                    "licking": {                          # an event type, keyed by its event_metadata_key
                        "table_metadata_key": "behavior",   # the table this event type is written into
-                       "columns": {                      # value columns, keyed by field_source_id
+                       "columns": {                      # value columns, keyed by field_id
                            "port": {"column_name": "lick", "description": "Lick detections."},
                        },
                    },
@@ -98,7 +98,7 @@ values are real: ``PtAB`` port codes and the constant-value ``PC0_`` marker are 
                 "PtAB": {                             # one entry per event_type_id (a TDT epoc store code)
                     "table_metadata_key": "port_entries",   # this event type is written to this table
                     "columns": {
-                        "strobe": {                   # one value column, keyed by field_source_id
+                        "strobe": {                   # one value column, keyed by field_id
                             "column_name": "port_entry",
                             "description": "Nose-poke port entry, coded by port.",
                             "column_categories": {
@@ -175,7 +175,7 @@ metadata**, and its entry holds the type's table routing and its value columns:
 
     metadata["Events"]["behavioral_session"]["event_types"]["licking"] = {
         "table_metadata_key": "behavior",       # which table this event type is written into
-        "columns": {                            # value columns, keyed by field_source_id
+        "columns": {                            # value columns, keyed by field_id
             "port": {
                 "column_name": "lick",          # the column header in the output table
                 "description": "Lick detections, left or right port.",
@@ -191,13 +191,13 @@ An entry holds two fields:
 
 - ``table_metadata_key`` , which output table the event type is written into (see :ref:`The
   table_metadata_key <events_handling_tables>`).
-- ``columns`` , the value columns of the event type, keyed by ``field_source_id``. The absence of the column entry indicates
+- ``columns`` , the value columns of the event type, keyed by ``field_id``. The absence of the column entry indicates
  a timestamps-only event whereas column is used for events with payload.
 
 Each column entry holds:
 
 - ``column_name`` , the column header in the output table (default: the source's field label if it
-  carries one, else the ``field_source_id``).
+  carries one, else the ``field_id``).
 - ``description`` , a free-text description of the column, written as its ``VectorData`` description
   in the output table (default: a generic description naming the source).
 - ``column_categories`` , the column's value vocabulary (see below); present only for a categorical
@@ -263,7 +263,7 @@ entry).
 
 Some events, though, carry **more than one value per occurrence** (a structured payload, e.g. a
 Spike2 TextMark tagged with both a numeric ``marker`` code and a ``text`` string). Here each field is
-its own ``columns`` entry, keyed by its ``field_source_id`` (the field name when the source provides
+its own ``columns`` entry, keyed by its ``field_id`` (the field name when the source provides
 one, otherwise a numeric index), all under the one event type:
 
 .. code-block:: python
