@@ -21,6 +21,7 @@ from .tools.nwb_helpers._metadata_and_file_helpers import (
     _resolve_backend,
     configure_and_write_nwbfile,
 )
+from .tools.ontology import add_brain_region_external_resources
 from .utils import (
     get_json_schema_from_method_signature,
     load_dict_from_file,
@@ -151,6 +152,10 @@ class BaseDataInterface(ABC):
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
+        # Annotate mouse brain-region locations with Allen Mouse Brain Atlas references (in-file
+        # HERD). Runs after data is added so the electrodes table and imaging planes exist.
+        add_brain_region_external_resources(nwbfile, metadata=metadata)
+
         return nwbfile
 
     @abstractmethod
@@ -267,6 +272,7 @@ class BaseDataInterface(ABC):
         """
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
+            add_brain_region_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
 

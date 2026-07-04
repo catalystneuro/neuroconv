@@ -25,6 +25,7 @@ and synchronize data across multiple sources.
   csvs
   expand_path
   species_ontology
+  brain_region_ontology
   backend_configuration
   linking_sorted_data
   yaml
