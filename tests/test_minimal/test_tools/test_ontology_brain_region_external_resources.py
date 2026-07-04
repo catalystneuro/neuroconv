@@ -22,9 +22,7 @@ def _make_nwbfile(species="Mus musculus", with_subject=True) -> NWBFile:
 
 def _add_electrodes(nwbfile: NWBFile, locations) -> None:
     device = nwbfile.create_device(name="probe")
-    group = nwbfile.create_electrode_group(
-        name="group0", description="d", location="unknown", device=device
-    )
+    group = nwbfile.create_electrode_group(name="group0", description="d", location="unknown", device=device)
     for index, location in enumerate(locations):
         nwbfile.add_electrode(location=location, group=group, id=index)
 

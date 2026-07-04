@@ -223,9 +223,7 @@ def get_brain_region_term(location: str) -> BrainRegionTerm | None:
     return None
 
 
-def brain_region_term_from_identifier(
-    identifier: str | int, *, acronym: str = "", name: str = ""
-) -> BrainRegionTerm:
+def brain_region_term_from_identifier(identifier: str | int, *, acronym: str = "", name: str = "") -> BrainRegionTerm:
     """
     Build a :class:`BrainRegionTerm` from a user-supplied MBA identifier.
 
