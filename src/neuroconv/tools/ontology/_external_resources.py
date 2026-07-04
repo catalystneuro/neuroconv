@@ -12,10 +12,14 @@ The reference is stored in-file under ``/general/external_resources``, which req
 
 from pynwb import NWBFile, get_type_map
 
-from ._brain_regions import brain_region_term_from_identifier, get_brain_region_term
+from ._brain_regions import get_brain_region_term
 from ._species import get_species_term
 
-__all__ = ["add_brain_region_external_resources", "add_species_external_resource"]
+__all__ = [
+    "BrainRegionAnnotationMixin",
+    "add_brain_region_external_resources",
+    "add_species_external_resource",
+]
 
 
 def _species_already_annotated(herd, subject) -> bool:
@@ -89,11 +93,13 @@ def _subject_is_mouse(nwbfile: NWBFile) -> bool:
 
 
 def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
-    """Parse ``metadata["BrainRegions"]`` into a ``{location string: BrainRegionTerm}`` mapping.
+    """Parse ``metadata["BrainRegions"]`` into ``{location string: [(entity_id, entity_uri), ...]}``.
 
-    The metadata value maps a location string to an Allen Mouse Brain Atlas identifier, given
-    either as a bare id / CURIE / URI string (``"MBA:382"``) or as a dict with an ``mba_id``
-    (or ``id`` / ``curie``) key and optional ``acronym`` / ``name``.
+    Each brain area maps to one or more ontology terms, each given as a ``dict`` with an ``id``
+    (a CURIE such as ``"MBA:382"`` or ``"UBERON:0003881"``) and a resolvable ``uri``. A single
+    ``dict`` or a list of them is accepted, so one area can be annotated with several ontologies
+    (e.g. both MBA and UBERON). This representation is ontology-agnostic, so it applies to any
+    species, not just mouse.
     """
     if not isinstance(metadata, dict):
         return {}
@@ -103,30 +109,38 @@ def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
 
     mapping = {}
     for location, value in raw_mapping.items():
-        if isinstance(value, dict):
-            identifier = value.get("mba_id", value.get("id", value.get("curie")))
-            if identifier is None:
-                continue
-            term = brain_region_term_from_identifier(
-                identifier, acronym=value.get("acronym", ""), name=value.get("name", "")
-            )
-        else:
-            term = brain_region_term_from_identifier(value)
-        mapping[location] = term
+        terms = value if isinstance(value, list) else [value]
+        entities = []
+        for term in terms:
+            if not isinstance(term, dict):
+                raise TypeError(
+                    f"Each metadata['BrainRegions'] term must be a dict with 'id' and 'uri' keys; "
+                    f"got {type(term).__name__} for brain area {location!r}."
+                )
+            entity_id = term.get("id")
+            entity_uri = term.get("uri")
+            if not entity_id or not entity_uri:
+                raise ValueError(
+                    f"Each metadata['BrainRegions'] term for brain area {location!r} must define "
+                    "both 'id' and 'uri'."
+                )
+            entities.append((str(entity_id), str(entity_uri)))
+        mapping[location] = entities
     return mapping
 
 
 def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
-    """Collect ``(container, attribute, reference_object, location string)`` tuples to annotate.
+    """Collect ``(container, attribute, relative_path, location string)`` tuples to annotate.
 
     Covers the electrodes table ``location`` column (ecephys), each ``ElectrodeGroup.location``,
     and each ``ImagingPlane.location`` (ophys). Duplicate location strings within the electrodes
     column are collapsed to one reference per column.
 
-    ``reference_object`` is the object whose ``object_id`` HERD records for the reference: the
-    ``location`` column (a ``VectorData``) for the electrodes table, and the container itself for
-    the scalar ``location`` attribute of an electrode group or imaging plane. It is used to detect
-    references that already exist (idempotency).
+    ``container`` is the object HERD records the reference against (the ``location`` column, a
+    ``VectorData``, for the electrodes table; the group / plane itself otherwise). ``attribute``
+    and ``relative_path`` are how that value is addressed for :meth:`HERD.add_ref` /
+    :meth:`HERD.get_key` -- ``None`` / ``""`` for the standalone column, and ``"location"`` for the
+    scalar attribute of a group or plane.
     """
     sites = []
 
@@ -134,57 +148,69 @@ def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
     if electrodes is not None and "location" in electrodes.colnames:
         location_column = electrodes["location"]
         for location in dict.fromkeys(location_column.data):  # unique, order-preserving
-            sites.append((electrodes, "location", location_column, location))
+            sites.append((location_column, None, "", location))
 
     for electrode_group in nwbfile.electrode_groups.values():
-        sites.append((electrode_group, "location", electrode_group, electrode_group.location))
+        sites.append((electrode_group, "location", "location", electrode_group.location))
 
     for imaging_plane in nwbfile.imaging_planes.values():
-        sites.append((imaging_plane, "location", imaging_plane, imaging_plane.location))
+        sites.append((imaging_plane, "location", "location", imaging_plane.location))
 
     return sites
 
 
-def _existing_object_key_pairs(herd) -> set:
-    """The ``(object_id, key)`` pairs already present in ``herd`` (for idempotency)."""
+def _existing_external_resource_refs(herd) -> set:
+    """The ``(object_id, key, entity_id)`` references already present in ``herd`` (idempotency)."""
     if len(herd.entities[:]) == 0:
         return set()
     dataframe = herd.to_dataframe()
-    return set(zip(dataframe["object_id"].tolist(), dataframe["key"].tolist()))
+    return set(zip(dataframe["object_id"].tolist(), dataframe["key"].tolist(), dataframe["entity_id"].tolist()))
+
+
+def _find_existing_key(herd, container, relative_path: str, key_string: str):
+    """Return the ``Key`` already recorded for ``(container, relative_path, key_string)``, or ``None``."""
+    try:
+        key = herd.get_key(key_string, container=container, relative_path=relative_path)
+    except ValueError:
+        return None
+    if isinstance(key, list):
+        return key[0] if key else None
+    return key
 
 
 def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None = None) -> int:
     """
-    Annotate anatomical ``location`` fields with Allen Mouse Brain Atlas entities via HERD.
+    Annotate anatomical ``location`` fields with brain-region ontology entities via HERD.
 
-    For a mouse subject, resolves each ``location`` string on the electrodes table, electrode
-    groups, and imaging planes to an Allen Mouse Brain Atlas (MBA) term and attaches a
-    machine-readable reference (stored in-file under ``/general/external_resources``). Each
-    location is resolved first against the ``metadata["BrainRegions"]`` mapping (if provided) and
-    then against the offline lookup of common structures, so unrecognized regions can be annotated
-    by defining the mapping in metadata.
+    Resolves each ``location`` string on the electrodes table, electrode groups, and imaging planes
+    to one or more ontology terms and attaches machine-readable references (stored in-file under
+    ``/general/external_resources``). Each location is resolved by:
 
-    This is a no-op (returns ``0``) when the subject is not a mouse or no location is recognized.
+    1. the ``metadata["BrainRegions"]`` mapping, if it provides an entry (this takes precedence and
+       is ontology-agnostic, so it applies to any species and may map one area to several terms,
+       e.g. both MBA and UBERON); then
+    2. the offline Allen Mouse Brain Atlas lookup, **only when the subject is a mouse**.
+
+    Locations resolving to neither are left untouched. This is a no-op (returns ``0``) when the
+    subject is not a mouse and no metadata mapping is provided.
 
     Parameters
     ----------
     nwbfile : NWBFile
         The file whose anatomical locations should be annotated. Modified in place.
     metadata : dict, optional
-        Conversion metadata. ``metadata["BrainRegions"]`` may map a location string to an MBA
-        identifier (a CURIE / bare id / URI, or a dict with an ``mba_id`` key and optional
-        ``acronym`` / ``name``). This mapping takes precedence over the offline lookup.
+        Conversion metadata. ``metadata["BrainRegions"]`` maps a brain area (location string) to a
+        term ``{"id": ..., "uri": ...}`` or a list of such terms.
 
     Returns
     -------
     int
         The number of external-resource references added.
     """
-    if not _subject_is_mouse(nwbfile):
-        return 0
-
     custom_mapping = _brain_region_mapping_from_metadata(metadata)
-    sites = _brain_region_annotation_sites(nwbfile)
+    is_mouse = _subject_is_mouse(nwbfile)
+    if not custom_mapping and not is_mouse:
+        return 0
 
     from hdmf.common import HERD
 
@@ -193,29 +219,71 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     if is_new_herd:
         herd = HERD(type_map=get_type_map())
 
-    already_annotated = _existing_object_key_pairs(herd)
+    already_annotated = _existing_external_resource_refs(herd)
     number_added = 0
-    for container, attribute, reference_object, location in sites:
+    for container, attribute, relative_path, location in _brain_region_annotation_sites(nwbfile):
         if not isinstance(location, str) or location.strip() == "":
             continue
-        term = custom_mapping.get(location) or get_brain_region_term(location)
-        if term is None:
+
+        entities = custom_mapping.get(location)
+        if entities is None and is_mouse:
+            term = get_brain_region_term(location)
+            entities = [(term.curie, term.entity_uri)] if term is not None else None
+        if not entities:
             continue
 
-        object_key_pair = (reference_object.object_id, location)
-        if object_key_pair in already_annotated:
-            continue
-
-        herd.add_ref(
-            container=container,
-            attribute=attribute,
-            key=location,
-            entity_id=term.curie,
-            entity_uri=term.entity_uri,
-        )
-        already_annotated.add(object_key_pair)
-        number_added += 1
+        # All terms for a given location share one HERD key; reuse the key object across the
+        # location's entities so a single object<->key link carries every ontology reference.
+        key = None
+        for entity_id, entity_uri in entities:
+            if (container.object_id, location, entity_id) in already_annotated:
+                continue
+            if key is None:
+                key = _find_existing_key(herd, container, relative_path, location)
+            if key is None:
+                herd.add_ref(
+                    container=container, attribute=attribute, key=location, entity_id=entity_id, entity_uri=entity_uri
+                )
+                key = herd.get_key(location, container=container, relative_path=relative_path)
+            else:
+                herd.add_ref(
+                    container=container, attribute=attribute, key=key, entity_id=entity_id, entity_uri=entity_uri
+                )
+            already_annotated.add((container.object_id, location, entity_id))
+            number_added += 1
 
     if number_added > 0 and is_new_herd:
         nwbfile.external_resources = herd
     return number_added
+
+
+class BrainRegionAnnotationMixin:
+    """Mixin that adds an overridable hook for brain-region ontology annotation.
+
+    ``BaseDataInterface`` and ``NWBConverter`` inherit this so a conversion can customize how
+    anatomical ``location`` fields are annotated with ontology references by overriding
+    :meth:`add_brain_region_external_resources` in a subclass (e.g. to support a different atlas,
+    annotate additional objects, or disable annotation entirely).
+    """
+
+    def add_brain_region_external_resources(self, nwbfile: NWBFile, metadata: dict | None = None) -> int:
+        """
+        Attach brain-region ontology references to ``nwbfile`` (HERD). Override to customize.
+
+        Called once the interface/converter data has been added to ``nwbfile``. The default
+        implementation delegates to
+        :func:`neuroconv.tools.ontology.add_brain_region_external_resources`.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The populated file to annotate, modified in place.
+        metadata : dict, optional
+            Conversion metadata (see the delegated function for the ``"BrainRegions"`` mapping).
+
+        Returns
+        -------
+        int
+            The number of external-resource references added.
+        """
+        return add_brain_region_external_resources(nwbfile, metadata=metadata)

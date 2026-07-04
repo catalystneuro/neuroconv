@@ -5,7 +5,6 @@ import pytest
 from neuroconv.tools.ontology import (
     MBA_TERMS,
     BrainRegionTerm,
-    brain_region_term_from_identifier,
     get_brain_region_term,
 )
 
@@ -64,25 +63,3 @@ class TestGetBrainRegionTerm:
     @pytest.mark.parametrize("location", [None, 382, ["CA1"]])
     def test_non_string_returns_none(self, location):
         assert get_brain_region_term(location) is None
-
-
-class TestBrainRegionTermFromIdentifier:
-    @pytest.mark.parametrize(
-        "identifier",
-        ["MBA:382", "382", 382, "https://purl.brain-bican.org/ontology/mbao/MBA_382"],
-    )
-    def test_parses_supported_identifier_forms(self, identifier):
-        term = brain_region_term_from_identifier(identifier)
-        assert term.mba_id == 382
-        assert term.curie == "MBA:382"
-        assert term.entity_uri == "https://purl.brain-bican.org/ontology/mbao/MBA_382"
-
-    def test_optional_acronym_and_name(self):
-        term = brain_region_term_from_identifier("MBA:382", acronym="CA1", name="Field CA1")
-        assert term.acronym == "CA1"
-        assert term.name == "Field CA1"
-
-    @pytest.mark.parametrize("identifier", ["MBA:abc", "not-an-id", "MBA:", ""])
-    def test_invalid_identifier_raises(self, identifier):
-        with pytest.raises(ValueError):
-            brain_region_term_from_identifier(identifier)

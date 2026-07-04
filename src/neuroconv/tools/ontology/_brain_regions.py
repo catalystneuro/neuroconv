@@ -17,7 +17,6 @@ from dataclasses import dataclass
 __all__ = [
     "MBA_TERMS",
     "BrainRegionTerm",
-    "brain_region_term_from_identifier",
     "get_brain_region_term",
 ]
 
@@ -221,44 +220,3 @@ def get_brain_region_term(location: str) -> BrainRegionTerm | None:
         return MBA_TERMS[acronym]
 
     return None
-
-
-def brain_region_term_from_identifier(identifier: str | int, *, acronym: str = "", name: str = "") -> BrainRegionTerm:
-    """
-    Build a :class:`BrainRegionTerm` from a user-supplied MBA identifier.
-
-    Used for the metadata-defined mapping, where a user annotates a location string that the
-    offline table does not recognize. Accepts a CURIE (``"MBA:382"``), a bare numeric id
-    (``"382"`` or ``382``), or the full MBA URI.
-
-    Parameters
-    ----------
-    identifier : str or int
-        The MBA identifier as a CURIE, bare numeric id, or full URI.
-    acronym : str, optional
-        Optional Allen acronym for the structure (metadata only).
-    name : str, optional
-        Optional human-readable name for the structure (metadata only).
-
-    Returns
-    -------
-    BrainRegionTerm
-
-    Raises
-    ------
-    ValueError
-        If ``identifier`` does not contain a numeric MBA id.
-    """
-    text = str(identifier).strip()
-    if "MBA_" in text:  # URI form, e.g. "https://purl.brain-bican.org/ontology/mbao/MBA_382"
-        text = text.rsplit("MBA_", 1)[1]
-    elif ":" in text:  # CURIE form, e.g. "MBA:382"
-        text = text.rsplit(":", 1)[1]
-
-    if not text.isdigit():
-        raise ValueError(
-            f"Could not parse a numeric Allen Mouse Brain Atlas id from {identifier!r}. "
-            "Expected a CURIE like 'MBA:382', a bare id like '382', or an MBA URI."
-        )
-
-    return BrainRegionTerm(acronym=acronym, mba_id=int(text), name=name)

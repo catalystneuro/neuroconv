@@ -22,7 +22,7 @@ from .tools.nwb_helpers import (
     make_nwbfile_from_metadata,
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
-from .tools.ontology import add_brain_region_external_resources
+from .tools.ontology import BrainRegionAnnotationMixin
 from .utils import (
     dict_deep_update,
     fill_defaults,
@@ -38,7 +38,7 @@ from .utils.json_schema import (
 )
 
 
-class NWBConverter:
+class NWBConverter(BrainRegionAnnotationMixin):
     """Primary class for all NWB conversion classes."""
 
     display_name: str | None = None
@@ -229,9 +229,9 @@ class NWBConverter:
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
 
-        # Annotate mouse brain-region locations with Allen Mouse Brain Atlas references (in-file
-        # HERD). Runs after data is added so the electrodes table and imaging planes exist.
-        add_brain_region_external_resources(nwbfile, metadata=metadata)
+        # Annotate brain-region locations with ontology references (in-file HERD). Runs after data
+        # is added so the electrodes table and imaging planes exist. Overridable (see the mixin).
+        self.add_brain_region_external_resources(nwbfile, metadata=metadata)
 
         return nwbfile
 
@@ -362,7 +362,7 @@ class NWBConverter:
         """
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
-            add_brain_region_external_resources(nwbfile, metadata=metadata)
+            self.add_brain_region_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
 

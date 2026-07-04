@@ -16,15 +16,17 @@ because the MBA vocabulary is mouse-specific; non-mouse subjects are left untouc
 How locations are resolved
 --------------------------
 
-Each distinct ``location`` string is resolved to an MBA term in two steps:
+Each distinct ``location`` string is resolved in two steps:
 
 1. **Metadata mapping (takes precedence).** If ``metadata["BrainRegions"]`` provides an entry for
-   the exact location string, that mapping is used. This is how you annotate a region the offline
-   lookup does not recognize, or override one it does.
-2. **Offline lookup.** Otherwise NeuroConv consults a small curated table of common mouse brain
-   structures, matching an exact Allen acronym (case-sensitive, e.g. ``"CA1"``, ``"VISp"``), a
-   canonical structure name (case-insensitive, e.g. ``"caudoputamen"``), or a common informal name
-   or abbreviation (e.g. ``"hippocampus"``, ``"V1"``).
+   the exact location string, those terms are used. The mapping is ontology-agnostic (each term is
+   an explicit ``id`` and ``uri``), so it applies to **any** species and can attach more than one
+   term to a region. This is how you annotate a region the offline lookup does not recognize, or
+   override one it does.
+2. **Offline lookup (mouse only).** Otherwise, for a mouse subject, NeuroConv consults a small
+   curated table of common mouse brain structures, matching an exact Allen acronym (case-sensitive,
+   e.g. ``"CA1"``, ``"VISp"``), a canonical structure name (case-insensitive, e.g.
+   ``"caudoputamen"``), or a common informal name or abbreviation (e.g. ``"hippocampus"``, ``"V1"``).
 
 Locations that resolve to neither (including the ``"unknown"`` placeholder) are left unannotated.
 
@@ -51,21 +53,57 @@ Defining the mapping in metadata
 --------------------------------
 
 When a location string is not recognized (a lab-specific label, a subregion outside the curated
-table, or a non-standard spelling), map it to an MBA identifier under ``metadata["BrainRegions"]``.
-The value may be a CURIE (``"MBA:382"``), a bare numeric id (``"382"``), the full MBA URI, or a
-dict with an ``mba_id`` key and optional ``acronym`` / ``name``:
+table, a non-standard spelling, or a non-mouse species), map it under ``metadata["BrainRegions"]``.
+Each brain area (the key) maps to an ontology term given as a dict with an ``id`` and a resolvable
+``uri``. Because the term is explicit rather than MBA-specific, this mapping generalizes to any
+ontology and any species:
 
 .. code-block:: python
 
     metadata["BrainRegions"] = {
-        "my recording site": "MBA:382",              # CURIE
-        "area X": {"mba_id": 385, "name": "V1"},     # explicit id with a label
+        "my recording site": {
+            "id": "MBA:382",
+            "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382",
+        },
     }
 
     interface.run_conversion(nwbfile_path="out.nwb", metadata=metadata)
 
-You can also use the mapping to override the offline lookup for a string it would otherwise resolve
-differently, since the metadata mapping takes precedence.
+To annotate one brain area with **several** ontologies (e.g. both the Allen atlas and UBERON), map
+it to a list of terms:
+
+.. code-block:: python
+
+    metadata["BrainRegions"] = {
+        "CA1": [
+            {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
+            {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
+        ],
+    }
+
+The metadata mapping takes precedence over the offline lookup, so you can also use it to override a
+string the mouse lookup would otherwise resolve differently.
+
+Customizing the annotation
+--------------------------
+
+The annotation runs through :meth:`add_brain_region_external_resources`, a method on both
+``BaseDataInterface`` and ``NWBConverter``. Override it in your interface or converter subclass to
+change or disable the behavior — for example to use a different atlas, annotate additional objects,
+or turn annotation off:
+
+.. code-block:: python
+
+    class MyConverter(NWBConverter):
+        def add_brain_region_external_resources(self, nwbfile, metadata=None):
+            return 0  # disable brain-region annotation
+
+    # or extend the default behavior:
+    class MyOtherConverter(NWBConverter):
+        def add_brain_region_external_resources(self, nwbfile, metadata=None):
+            number_added = super().add_brain_region_external_resources(nwbfile, metadata=metadata)
+            # ... attach additional references here ...
+            return number_added
 
 Using the lookup directly
 -------------------------
