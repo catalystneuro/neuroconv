@@ -16,7 +16,7 @@ from ._brain_regions import get_brain_region_term
 from ._species import get_species_term
 
 __all__ = [
-    "BrainRegionAnnotationMixin",
+    "OntologyAnnotationMixin",
     "add_brain_region_external_resources",
     "add_species_external_resource",
 ]
@@ -257,21 +257,42 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     return number_added
 
 
-class BrainRegionAnnotationMixin:
-    """Mixin that adds an overridable hook for brain-region ontology annotation.
+class OntologyAnnotationMixin:
+    """Mixin adding overridable hooks that annotate a written file with ontology references (HERD).
 
-    ``BaseDataInterface`` and ``NWBConverter`` inherit this so a conversion can customize how
-    anatomical ``location`` fields are annotated with ontology references by overriding
-    :meth:`add_brain_region_external_resources` in a subclass (e.g. to support a different atlas,
-    annotate additional objects, or disable annotation entirely).
+    ``BaseDataInterface`` and ``NWBConverter`` inherit this. Each hook is called once the
+    interface/converter data has been added to the file, and delegates to the corresponding
+    ``neuroconv.tools.ontology`` function by default. Override a method in a subclass to customize
+    or disable a particular annotation (e.g. use a different brain atlas, or turn off species
+    annotation).
     """
+
+    def add_species_external_resource(self, nwbfile: NWBFile, metadata: dict | None = None) -> bool:
+        """
+        Attach a species (NCBITaxon) reference for the subject to ``nwbfile`` (HERD).
+
+        Override to customize. The default implementation delegates to
+        :func:`neuroconv.tools.ontology.add_species_external_resource`.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The populated file to annotate, modified in place.
+        metadata : dict, optional
+            Conversion metadata (unused by the default implementation; available to overrides).
+
+        Returns
+        -------
+        bool
+            Whether a reference was added.
+        """
+        return add_species_external_resource(nwbfile)
 
     def add_brain_region_external_resources(self, nwbfile: NWBFile, metadata: dict | None = None) -> int:
         """
         Attach brain-region ontology references to ``nwbfile`` (HERD). Override to customize.
 
-        Called once the interface/converter data has been added to ``nwbfile``. The default
-        implementation delegates to
+        The default implementation delegates to
         :func:`neuroconv.tools.ontology.add_brain_region_external_resources`.
 
         Parameters

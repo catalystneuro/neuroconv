@@ -22,7 +22,7 @@ from .tools.nwb_helpers import (
     make_nwbfile_from_metadata,
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
-from .tools.ontology import BrainRegionAnnotationMixin
+from .tools.ontology import OntologyAnnotationMixin
 from .utils import (
     dict_deep_update,
     fill_defaults,
@@ -38,7 +38,7 @@ from .utils.json_schema import (
 )
 
 
-class NWBConverter(BrainRegionAnnotationMixin):
+class NWBConverter(OntologyAnnotationMixin):
     """Primary class for all NWB conversion classes."""
 
     display_name: str | None = None
@@ -229,8 +229,10 @@ class NWBConverter(BrainRegionAnnotationMixin):
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
 
-        # Annotate brain-region locations with ontology references (in-file HERD). Runs after data
-        # is added so the electrodes table and imaging planes exist. Overridable (see the mixin).
+        # Annotate the assembled file with ontology references (in-file HERD). Runs after data is
+        # added so the electrodes table and imaging planes exist. Both hooks are overridable
+        # (see OntologyAnnotationMixin).
+        self.add_species_external_resource(nwbfile, metadata=metadata)
         self.add_brain_region_external_resources(nwbfile, metadata=metadata)
 
         return nwbfile
@@ -362,6 +364,7 @@ class NWBConverter(BrainRegionAnnotationMixin):
         """
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+            self.add_species_external_resource(nwbfile, metadata=metadata)
             self.add_brain_region_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)

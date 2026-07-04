@@ -6,7 +6,7 @@ from ._brain_regions import (
     get_brain_region_term,
 )
 from ._external_resources import (
-    BrainRegionAnnotationMixin,
+    OntologyAnnotationMixin,
     add_brain_region_external_resources,
     add_species_external_resource,
 )
@@ -21,8 +21,8 @@ from ._species import (
 __all__ = [
     "MBA_TERMS",
     "SPECIES_TERMS",
-    "BrainRegionAnnotationMixin",
     "BrainRegionTerm",
+    "OntologyAnnotationMixin",
     "SpeciesTerm",
     "add_brain_region_external_resources",
     "add_species_external_resource",

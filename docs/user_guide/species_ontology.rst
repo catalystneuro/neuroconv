@@ -6,12 +6,15 @@ binomial Latin name (e.g. ``"Mus musculus"``) or a taxonomy URL. Consistent, sta
 values make files interoperable and allow downstream tools such as the
 `DANDI Archive <https://dandiarchive.org/>`_ to resolve the exact organism without guessing.
 
-NeuroConv helps with this in two complementary ways, both applied automatically by
-:py:func:`~neuroconv.tools.nwb_helpers.make_nwbfile_from_metadata` (and therefore by every
-conversion that builds an NWB file through it):
+NeuroConv helps with this in two complementary ways, both applied automatically by a conversion:
 
-1. A **non-blocking suggestion** when the species looks like a common name or a typo.
-2. A **machine-readable NCBITaxon annotation** attached in-file when the species is recognized.
+1. A **non-blocking suggestion** when the species looks like a common name or a typo, emitted while
+   the metadata is processed in
+   :py:func:`~neuroconv.tools.nwb_helpers.make_nwbfile_from_metadata`.
+2. A **machine-readable NCBITaxon annotation** attached in-file when the species is recognized,
+   applied at write time through the overridable ``add_species_external_resource`` hook on
+   ``BaseDataInterface`` / ``NWBConverter`` (see :doc:`brain_region_ontology` for the shared
+   annotation mixin).
 
 The lookup is a small, curated, offline table of common neuroscience species
 (:py:data:`~neuroconv.tools.ontology.SPECIES_TERMS`). It requires no network access and no extra

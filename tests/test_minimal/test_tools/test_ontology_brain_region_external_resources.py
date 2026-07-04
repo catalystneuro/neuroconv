@@ -250,14 +250,16 @@ class TestOverridableHook:
         metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
         return metadata
 
-    def test_default_hook_annotates_through_create_nwbfile(self):
+    def test_default_hooks_annotate_species_and_brain_region_through_create_nwbfile(self):
         interface = self._mouse_recording_interface(["CA1", "VISp"])
         nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
 
-        dataframe = nwbfile.external_resources.to_dataframe()
-        assert {"MBA:382", "MBA:385"}.issubset(set(dataframe["entity_id"].tolist()))
+        entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
+        # Species (NCBITaxon) and brain-region (MBA) references are both attached by the mixin.
+        assert "NCBITaxon:10090" in entity_ids
+        assert {"MBA:382", "MBA:385"}.issubset(entity_ids)
 
-    def test_subclass_can_override_hook(self):
+    def test_subclass_can_override_brain_region_hook(self):
         from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
         class NoBrainRegionInterface(MockRecordingInterface):
@@ -269,9 +271,27 @@ class TestOverridableHook:
         interface.recording_extractor.set_property("brain_area", ["CA1", "VISp"])
         nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
 
-        # No brain-region references were added; only the species reference remains.
-        dataframe = nwbfile.external_resources.to_dataframe()
-        assert not any(entity_id.startswith("MBA:") for entity_id in dataframe["entity_id"].tolist())
+        # No brain-region references were added, but the species reference still is.
+        entity_ids = nwbfile.external_resources.to_dataframe()["entity_id"].tolist()
+        assert not any(entity_id.startswith("MBA:") for entity_id in entity_ids)
+        assert "NCBITaxon:10090" in entity_ids
+
+    def test_subclass_can_override_species_hook(self):
+        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+        class NoSpeciesInterface(MockRecordingInterface):
+            def add_species_external_resource(self, nwbfile, metadata=None):
+                # Override to disable species annotation entirely.
+                return False
+
+        interface = NoSpeciesInterface(num_channels=2, durations=(0.1,))
+        interface.recording_extractor.set_property("brain_area", ["CA1", "VISp"])
+        nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
+
+        # No species reference was added, but the brain-region references still are.
+        entity_ids = nwbfile.external_resources.to_dataframe()["entity_id"].tolist()
+        assert not any(entity_id.startswith("NCBITaxon:") for entity_id in entity_ids)
+        assert {"MBA:382", "MBA:385"}.issubset(set(entity_ids))
 
 
 def _optical_channel():

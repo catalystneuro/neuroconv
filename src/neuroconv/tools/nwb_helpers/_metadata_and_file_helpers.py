@@ -19,7 +19,7 @@ from . import (
     configure_backend,
     get_default_backend_configuration,
 )
-from ..ontology import add_species_external_resource, validate_species
+from ..ontology import validate_species
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
 
@@ -142,10 +142,6 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
         nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["subject"])
 
     nwbfile = NWBFile(**nwbfile_kwargs)
-
-    # Attach a machine-readable NCBITaxon reference for the subject species (in-file HERD).
-    # No-op when there is no subject or the species is not recognized.
-    add_species_external_resource(nwbfile)
 
     return nwbfile
 

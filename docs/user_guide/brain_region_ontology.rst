@@ -87,10 +87,16 @@ string the mouse lookup would otherwise resolve differently.
 Customizing the annotation
 --------------------------
 
-The annotation runs through :meth:`add_brain_region_external_resources`, a method on both
-``BaseDataInterface`` and ``NWBConverter``. Override it in your interface or converter subclass to
-change or disable the behavior — for example to use a different atlas, annotate additional objects,
-or turn annotation off:
+Both ontology annotations are overridable methods provided by ``OntologyAnnotationMixin``, which
+``BaseDataInterface`` and ``NWBConverter`` inherit:
+
+- ``add_brain_region_external_resources(nwbfile, metadata=None)`` — anatomical locations (this page)
+- ``add_species_external_resource(nwbfile, metadata=None)`` — the subject species (see
+  :doc:`species_ontology`)
+
+Each runs at write time, once the interface/converter data has been added to the file. Override one
+in your interface or converter subclass to change or disable that annotation — for example to use a
+different atlas, annotate additional objects, or turn it off:
 
 .. code-block:: python
 
