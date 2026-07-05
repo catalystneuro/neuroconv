@@ -21,6 +21,7 @@ from .tools.nwb_helpers._metadata_and_file_helpers import (
     _resolve_backend,
     configure_and_write_nwbfile,
 )
+from .tools.ontology import OntologyAnnotationMixin
 from .utils import (
     get_json_schema_from_method_signature,
     load_dict_from_file,
@@ -29,7 +30,7 @@ from .utils.dict import DeepDict
 from .utils.json_schema import _NWBMetaDataEncoder, _NWBSourceDataEncoder
 
 
-class BaseDataInterface(ABC):
+class BaseDataInterface(OntologyAnnotationMixin, ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
     display_name: str | None = None
@@ -151,6 +152,12 @@ class BaseDataInterface(ABC):
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
+        # Annotate the assembled file with ontology references (in-file HERD). Runs after data is
+        # added so the electrodes table and imaging planes exist. Both hooks are overridable
+        # (see OntologyAnnotationMixin).
+        self.add_species_external_resource(nwbfile, metadata=metadata)
+        self.add_brain_region_external_resources(nwbfile, metadata=metadata)
+
         return nwbfile
 
     @abstractmethod
@@ -267,6 +274,8 @@ class BaseDataInterface(ABC):
         """
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
+            self.add_species_external_resource(nwbfile, metadata=metadata)
+            self.add_brain_region_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
 

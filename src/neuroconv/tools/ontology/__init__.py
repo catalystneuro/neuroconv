@@ -1,6 +1,16 @@
 """Tools for recommending standardized ontology terms for NWB metadata."""
 
-from ._external_resources import add_species_external_resource
+from ._brain_regions import (
+    HBA_TERMS,
+    MBA_TERMS,
+    BrainRegionTerm,
+    get_brain_region_term,
+)
+from ._external_resources import (
+    OntologyAnnotationMixin,
+    add_brain_region_external_resources,
+    add_species_external_resource,
+)
 from ._species import (
     SPECIES_TERMS,
     SpeciesTerm,
@@ -10,9 +20,15 @@ from ._species import (
 )
 
 __all__ = [
+    "HBA_TERMS",
+    "MBA_TERMS",
     "SPECIES_TERMS",
+    "BrainRegionTerm",
+    "OntologyAnnotationMixin",
     "SpeciesTerm",
+    "add_brain_region_external_resources",
     "add_species_external_resource",
+    "get_brain_region_term",
     "get_species_suggestion",
     "get_species_term",
     "validate_species",
