@@ -1,0 +1,305 @@
+id: https://neuroconv.readthedocs.io/termset/mousebrainatlas
+name: MouseBrainAtlas
+version: 0.0.1
+prefixes:
+  MBA: https://purl.brain-bican.org/ontology/mbao/MBA_
+imports:
+- linkml:types
+default_range: string
+enums:
+  BrainRegion:
+    permissible_values:
+      root:
+        description: root
+        meaning: MBA:997
+      grey:
+        description: Basic cell groups and regions
+        meaning: MBA:8
+      CH:
+        description: Cerebrum
+        meaning: MBA:567
+      BS:
+        description: Brain stem
+        meaning: MBA:343
+      CTX:
+        description: Cerebral cortex
+        meaning: MBA:688
+      CNU:
+        description: Cerebral nuclei
+        meaning: MBA:623
+      Isocortex:
+        description: Isocortex
+        meaning: MBA:315
+      MOp:
+        description: Primary motor area
+        meaning: MBA:985
+      MOs:
+        description: Secondary motor area
+        meaning: MBA:993
+      SSp:
+        description: Primary somatosensory area
+        meaning: MBA:322
+      SSs:
+        description: Supplemental somatosensory area
+        meaning: MBA:378
+      SSp-bfd:
+        description: Primary somatosensory area, barrel field
+        meaning: MBA:329
+      VISp:
+        description: Primary visual area
+        meaning: MBA:385
+      VISl:
+        description: Lateral visual area
+        meaning: MBA:409
+      VISal:
+        description: Anterolateral visual area
+        meaning: MBA:402
+      VISam:
+        description: Anteromedial visual area
+        meaning: MBA:394
+      VISpm:
+        description: posteromedial visual area
+        meaning: MBA:533
+      VISrl:
+        description: Rostrolateral visual area
+        meaning: MBA:417
+      VISpl:
+        description: Posterolateral visual area
+        meaning: MBA:425
+      VISpor:
+        description: Postrhinal area
+        meaning: MBA:312782628
+      AUDp:
+        description: Primary auditory area
+        meaning: MBA:1002
+      AUDd:
+        description: Dorsal auditory area
+        meaning: MBA:1011
+      ACAd:
+        description: Anterior cingulate area, dorsal part
+        meaning: MBA:39
+      ACAv:
+        description: Anterior cingulate area, ventral part
+        meaning: MBA:48
+      PL:
+        description: Prelimbic area
+        meaning: MBA:972
+      ILA:
+        description: Infralimbic area
+        meaning: MBA:44
+      ORBl:
+        description: Orbital area, lateral part
+        meaning: MBA:723
+      ORBm:
+        description: Orbital area, medial part
+        meaning: MBA:731
+      RSPd:
+        description: Retrosplenial area, dorsal part
+        meaning: MBA:879
+      RSPv:
+        description: Retrosplenial area, ventral part
+        meaning: MBA:886
+      AId:
+        description: Agranular insular area, dorsal part
+        meaning: MBA:104
+      TEa:
+        description: Temporal association areas
+        meaning: MBA:541
+      PERI:
+        description: Perirhinal area
+        meaning: MBA:922
+      ECT:
+        description: Ectorhinal area
+        meaning: MBA:895
+      GU:
+        description: Gustatory areas
+        meaning: MBA:1057
+      VISC:
+        description: Visceral area
+        meaning: MBA:677
+      PTLp:
+        description: Posterior parietal association areas
+        meaning: MBA:22
+      HPF:
+        description: Hippocampal formation
+        meaning: MBA:1089
+      HIP:
+        description: Hippocampal region
+        meaning: MBA:1080
+      CA1:
+        description: Field CA1
+        meaning: MBA:382
+      CA2:
+        description: Field CA2
+        meaning: MBA:423
+      CA3:
+        description: Field CA3
+        meaning: MBA:463
+      DG:
+        description: Dentate gyrus
+        meaning: MBA:726
+      SUB:
+        description: Subiculum
+        meaning: MBA:502
+      ProS:
+        description: Prosubiculum
+        meaning: MBA:484682470
+      POST:
+        description: Postsubiculum
+        meaning: MBA:1037
+      PRE:
+        description: Presubiculum
+        meaning: MBA:1084
+      PAR:
+        description: Parasubiculum
+        meaning: MBA:843
+      ENT:
+        description: Entorhinal area
+        meaning: MBA:909
+      ENTl:
+        description: Entorhinal area, lateral part
+        meaning: MBA:918
+      ENTm:
+        description: Entorhinal area, medial part, dorsal zone
+        meaning: MBA:926
+      OLF:
+        description: Olfactory areas
+        meaning: MBA:698
+      MOB:
+        description: Main olfactory bulb
+        meaning: MBA:507
+      PIR:
+        description: Piriform area
+        meaning: MBA:961
+      AON:
+        description: Anterior olfactory nucleus
+        meaning: MBA:159
+      BLA:
+        description: Basolateral amygdalar nucleus
+        meaning: MBA:295
+      CEA:
+        description: Central amygdalar nucleus
+        meaning: MBA:536
+      MEA:
+        description: Medial amygdalar nucleus
+        meaning: MBA:403
+      LA:
+        description: Lateral amygdalar nucleus
+        meaning: MBA:131
+      STR:
+        description: Striatum
+        meaning: MBA:477
+      CP:
+        description: Caudoputamen
+        meaning: MBA:672
+      ACB:
+        description: Nucleus accumbens
+        meaning: MBA:56
+      PAL:
+        description: Pallidum
+        meaning: MBA:803
+      LSr:
+        description: Lateral septal nucleus, rostral (rostroventral) part
+        meaning: MBA:258
+      TH:
+        description: Thalamus
+        meaning: MBA:549
+      VPM:
+        description: Ventral posteromedial nucleus of the thalamus
+        meaning: MBA:733
+      VPL:
+        description: Ventral posterolateral nucleus of the thalamus
+        meaning: MBA:718
+      VM:
+        description: Ventral medial nucleus of the thalamus
+        meaning: MBA:685
+      VAL:
+        description: Ventral anterior-lateral complex of the thalamus
+        meaning: MBA:629
+      MD:
+        description: Mediodorsal nucleus of thalamus
+        meaning: MBA:362
+      LGd:
+        description: Dorsal part of the lateral geniculate complex
+        meaning: MBA:170
+      LP:
+        description: Lateral posterior nucleus of the thalamus
+        meaning: MBA:218
+      PO:
+        description: Posterior complex of the thalamus
+        meaning: MBA:1020
+      RT:
+        description: Reticular nucleus of the thalamus
+        meaning: MBA:262
+      HY:
+        description: Hypothalamus
+        meaning: MBA:1097
+      LHA:
+        description: Lateral hypothalamic area
+        meaning: MBA:194
+      PVH:
+        description: Paraventricular hypothalamic nucleus
+        meaning: MBA:38
+      ZI:
+        description: Zona incerta
+        meaning: MBA:797
+      MB:
+        description: Midbrain
+        meaning: MBA:313
+      SCs:
+        description: Superior colliculus, sensory related
+        meaning: MBA:302
+      SCm:
+        description: Superior colliculus, motor related
+        meaning: MBA:294
+      IC:
+        description: Inferior colliculus
+        meaning: MBA:4
+      PAG:
+        description: Periaqueductal gray
+        meaning: MBA:795
+      VTA:
+        description: Ventral tegmental area
+        meaning: MBA:749
+      SNr:
+        description: Substantia nigra, reticular part
+        meaning: MBA:381
+      SNc:
+        description: Substantia nigra, compact part
+        meaning: MBA:374
+      RN:
+        description: Red nucleus
+        meaning: MBA:214
+      APN:
+        description: Anterior pretectal nucleus
+        meaning: MBA:215
+      MRN:
+        description: Midbrain reticular nucleus
+        meaning: MBA:128
+      P:
+        description: Pons
+        meaning: MBA:771
+      PB:
+        description: Parabrachial nucleus
+        meaning: MBA:867
+      PG:
+        description: Pontine gray
+        meaning: MBA:931
+      DR:
+        description: Dorsal nucleus raphe
+        meaning: MBA:872
+      LC:
+        description: Locus ceruleus
+        meaning: MBA:147
+      MY:
+        description: Medulla
+        meaning: MBA:354
+      NTS:
+        description: Nucleus of the solitary tract
+        meaning: MBA:651
+      IO:
+        description: Inferior olivary complex
+        meaning: MBA:83
+      CB:
+        description: Cerebellum
+        meaning: MBA:512

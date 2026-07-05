@@ -12,7 +12,7 @@ The reference is stored in-file under ``/general/external_resources``, which req
 
 from pynwb import NWBFile, get_type_map
 
-from ._brain_regions import get_brain_region_term
+from ._brain_regions import SUPPORTED_ATLAS_SPECIES, get_brain_region_term
 from ._species import get_species_term
 
 __all__ = [
@@ -83,13 +83,15 @@ def add_species_external_resource(nwbfile: NWBFile) -> bool:
     return True
 
 
-def _subject_is_mouse(nwbfile: NWBFile) -> bool:
-    """Whether the file's subject resolves to ``Mus musculus`` (via the species ontology)."""
+def _subject_atlas_species(nwbfile: NWBFile) -> str | None:
+    """Canonical species name if the subject has a supported brain atlas (mouse/human), else ``None``."""
     subject = getattr(nwbfile, "subject", None)
     if subject is None:
-        return False
-    species_term = get_species_term(subject.species)
-    return species_term is not None and species_term.canonical_name == "Mus musculus"
+        return None
+    species_term = get_species_term(getattr(subject, "species", None))
+    if species_term is None or species_term.canonical_name not in SUPPORTED_ATLAS_SPECIES:
+        return None
+    return species_term.canonical_name
 
 
 def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
@@ -189,10 +191,11 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     1. the ``metadata["BrainRegions"]`` mapping, if it provides an entry (this takes precedence and
        is ontology-agnostic, so it applies to any species and may map one area to several terms,
        e.g. both MBA and UBERON); then
-    2. the offline Allen Mouse Brain Atlas lookup, **only when the subject is a mouse**.
+    2. the offline Allen brain-atlas lookup for the subject's species -- the Allen Mouse Brain Atlas
+       for *Mus musculus* and the Allen Human Brain Atlas for *Homo sapiens*.
 
     Locations resolving to neither are left untouched. This is a no-op (returns ``0``) when the
-    subject is not a mouse and no metadata mapping is provided.
+    subject's species has no supported atlas and no metadata mapping is provided.
 
     Parameters
     ----------
@@ -208,8 +211,8 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
         The number of external-resource references added.
     """
     custom_mapping = _brain_region_mapping_from_metadata(metadata)
-    is_mouse = _subject_is_mouse(nwbfile)
-    if not custom_mapping and not is_mouse:
+    atlas_species = _subject_atlas_species(nwbfile)
+    if not custom_mapping and atlas_species is None:
         return 0
 
     from hdmf.common import HERD
@@ -226,8 +229,8 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
             continue
 
         entities = custom_mapping.get(location)
-        if entities is None and is_mouse:
-            term = get_brain_region_term(location)
+        if entities is None and atlas_species is not None:
+            term = get_brain_region_term(location, species=atlas_species)
             entities = [(term.curie, term.entity_uri)] if term is not None else None
         if not entities:
             continue

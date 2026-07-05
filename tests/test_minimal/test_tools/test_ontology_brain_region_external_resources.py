@@ -1,4 +1,4 @@
-"""Tests for attaching Allen Mouse Brain Atlas references (HERD) to NWB files."""
+"""Tests for attaching Allen brain-atlas references (mouse MBA / human HBA) via HERD."""
 
 from datetime import datetime
 
@@ -35,8 +35,9 @@ class TestNoOps:
         assert add_brain_region_external_resources(nwbfile) == 0
         assert nwbfile.external_resources is None
 
-    def test_non_mouse_subject_is_skipped(self):
-        nwbfile = _make_nwbfile(species="Homo sapiens")
+    def test_species_without_atlas_is_skipped(self):
+        # Rat has no offline atlas (only mouse and human are supported).
+        nwbfile = _make_nwbfile(species="Rattus norvegicus")
         _add_electrodes(nwbfile, ["CA1", "VISp"])
         assert add_brain_region_external_resources(nwbfile) == 0
         assert nwbfile.external_resources is None
@@ -76,6 +77,20 @@ class TestElectrodeAnnotation:
         nwbfile = _make_nwbfile(species="mouse")
         _add_electrodes(nwbfile, ["CA1"])
         assert add_brain_region_external_resources(nwbfile) == 1
+
+
+class TestHumanAtlasAnnotation:
+    def test_human_locations_are_annotated_with_hba(self):
+        nwbfile = _make_nwbfile(species="Homo sapiens")
+        _add_electrodes(nwbfile, ["CA1", "cerebral cortex", "unknown"])
+
+        assert add_brain_region_external_resources(nwbfile) == 2
+        dataframe = nwbfile.external_resources.to_dataframe()
+        by_key = dict(zip(dataframe["key"], dataframe["entity_id"]))
+        # Same "CA1" acronym resolves to the human atlas id, not the mouse one.
+        assert by_key == {"CA1": "HBA:12892", "cerebral cortex": "HBA:4008"}
+        uris = dict(zip(dataframe["key"], dataframe["entity_uri"]))
+        assert uris["CA1"] == "https://purl.brain-bican.org/ontology/hbao/HBA_12892"
 
 
 class TestElectrodeGroupAndImagingPlaneAnnotation:
@@ -165,18 +180,20 @@ class TestMetadataMapping:
         assert dataframe["key"].tolist() == ["CA1", "CA1"]
         assert sorted(dataframe["entity_id"].tolist()) == ["MBA:382", "UBERON:0003881"]
 
-    def test_metadata_mapping_applies_to_non_mouse_species(self):
-        # The explicit metadata mapping is ontology-agnostic and is not gated on species.
-        nwbfile = _make_nwbfile(species="Homo sapiens")
-        _add_electrodes(nwbfile, ["V1", "CA1"])
+    def test_metadata_mapping_applies_to_species_without_an_atlas(self):
+        # The explicit metadata mapping is ontology-agnostic and is not gated on species; a rat
+        # subject has no offline atlas, so only the metadata-defined region is annotated.
+        nwbfile = _make_nwbfile(species="Rattus norvegicus")
+        _add_electrodes(nwbfile, ["my region", "CA1"])
         metadata = {
-            "BrainRegions": {"V1": {"id": "UBERON:0002436", "uri": "http://purl.obolibrary.org/obo/UBERON_0002436"}}
+            "BrainRegions": {
+                "my region": {"id": "UBERON:0002436", "uri": "http://purl.obolibrary.org/obo/UBERON_0002436"}
+            }
         }
 
-        # Only the metadata-defined "V1" is annotated; "CA1" is not (offline lookup is mouse-only).
         assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
         dataframe = nwbfile.external_resources.to_dataframe()
-        assert dataframe["key"].tolist() == ["V1"]
+        assert dataframe["key"].tolist() == ["my region"]
         assert dataframe["entity_id"].tolist() == ["UBERON:0002436"]
 
     @pytest.mark.parametrize(

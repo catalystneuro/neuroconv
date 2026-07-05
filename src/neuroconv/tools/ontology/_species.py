@@ -15,6 +15,8 @@ import difflib
 import warnings
 from dataclasses import dataclass
 
+from ._term_sets import load_term_set
+
 __all__ = [
     "SPECIES_TERMS",
     "SpeciesTerm",
@@ -30,43 +32,13 @@ class SpeciesTerm:
 
     canonical_name: str
     ncbitaxon_id: str
-
-    @property
-    def entity_uri(self) -> str:
-        """Resolvable URI for the NCBITaxon entity (usable as a HERD ``entity_uri``)."""
-        taxon_number = self.ncbitaxon_id.split(":", 1)[1]
-        return f"http://purl.obolibrary.org/obo/NCBITaxon_{taxon_number}"
+    entity_uri: str  # resolvable URI for the NCBITaxon entity (usable as a HERD ``entity_uri``)
 
 
-# Canonical Latin binomial -> NCBITaxon identifier (CURIE) for common neuroscience species.
+# Canonical Latin binomial -> SpeciesTerm, from the curated species TermSet.
 SPECIES_TERMS: dict[str, SpeciesTerm] = {
-    canonical_name: SpeciesTerm(canonical_name=canonical_name, ncbitaxon_id=ncbitaxon_id)
-    for canonical_name, ncbitaxon_id in {
-        "Mus musculus": "NCBITaxon:10090",
-        "Rattus norvegicus": "NCBITaxon:10116",
-        "Homo sapiens": "NCBITaxon:9606",
-        "Macaca mulatta": "NCBITaxon:9544",
-        "Macaca fascicularis": "NCBITaxon:9541",
-        "Callithrix jacchus": "NCBITaxon:9483",
-        "Mustela putorius furo": "NCBITaxon:9669",
-        "Danio rerio": "NCBITaxon:7955",
-        "Drosophila melanogaster": "NCBITaxon:7227",
-        "Caenorhabditis elegans": "NCBITaxon:6239",
-        "Gallus gallus": "NCBITaxon:9031",
-        "Sus scrofa": "NCBITaxon:9823",
-        "Oryctolagus cuniculus": "NCBITaxon:9986",
-        "Cavia porcellus": "NCBITaxon:10141",
-        "Felis catus": "NCBITaxon:9685",
-        "Canis lupus familiaris": "NCBITaxon:9615",
-        "Ovis aries": "NCBITaxon:9940",
-        "Mesocricetus auratus": "NCBITaxon:10036",
-        "Monodelphis domestica": "NCBITaxon:13616",
-        "Taeniopygia guttata": "NCBITaxon:59729",
-        "Xenopus laevis": "NCBITaxon:8355",
-        "Ambystoma mexicanum": "NCBITaxon:8296",
-        "Carassius auratus": "NCBITaxon:7957",
-        "Apis mellifera": "NCBITaxon:7460",
-    }.items()
+    info.value: SpeciesTerm(canonical_name=info.value, ncbitaxon_id=info.curie, entity_uri=info.entity_uri)
+    for info in load_term_set("species.yaml").values()
 }
 
 

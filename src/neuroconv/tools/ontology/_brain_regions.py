@@ -1,21 +1,29 @@
-"""Lightweight, offline recognition of mouse brain regions as Allen Mouse Brain Atlas terms.
+"""Lightweight, offline recognition of brain regions as Allen brain-atlas terms.
 
 NWB stores an anatomical location as a free-text string (e.g. the ``location`` column of the
-electrodes table, ``ElectrodeGroup.location``, or ``ImagingPlane.location``). For the mouse, the
-Allen Mouse Brain Atlas (MBA) provides a standard controlled vocabulary of brain structures, each
-with a numeric identifier. Recognizing a location string as an MBA term lets NeuroConv attach a
-machine-readable reference (``MBA:<id>``) so downstream tools can resolve the exact structure.
+electrodes table, ``ElectrodeGroup.location``, or ``ImagingPlane.location``). The Allen brain
+atlases provide standard controlled vocabularies of brain structures per species: the Allen Mouse
+Brain Atlas (``MBA``) for mouse and the Allen Human Brain Atlas (``HBA``) for human. Recognizing a
+location string as an atlas term lets NeuroConv attach a machine-readable reference (``MBA:<id>`` /
+``HBA:<id>``) so downstream tools can resolve the exact structure.
 
-This is intentionally a small curated table of common neuroscience structures rather than a full
-ontology client: it runs offline, has no extra dependencies, and only resolves a term when it is
-confident. Identifiers and names below are taken from the Allen Mouse Brain CCFv3 structure graph
-and are registered in the Bioregistry under the ``MBA`` prefix (https://bioregistry.io/registry/mba).
+The lookup is species-specific because the same acronym denotes different structures across atlases
+(e.g. ``MB`` is the mouse midbrain but the human mammillary body). The terms live in the curated
+TermSet files ``term_sets/mouse_brain_atlas.yaml`` and ``term_sets/human_brain_atlas.yaml``
+(identifiers taken from the Allen structure graphs, registered in the Bioregistry under the ``MBA``
+https://bioregistry.io/registry/mba and ``HBA`` https://bioregistry.io/registry/hba prefixes). This
+module adds the offline resolution of a free-text location string to one of those terms.
 """
 
 from dataclasses import dataclass
 
+from ._species import get_species_term
+from ._term_sets import load_term_set
+
 __all__ = [
+    "HBA_TERMS",
     "MBA_TERMS",
+    "SUPPORTED_ATLAS_SPECIES",
     "BrainRegionTerm",
     "get_brain_region_term",
 ]
@@ -23,149 +31,16 @@ __all__ = [
 
 @dataclass(frozen=True)
 class BrainRegionTerm:
-    """An Allen Mouse Brain Atlas structure with its numeric MBA identifier."""
+    """An Allen brain-atlas structure and its ontology reference."""
 
     acronym: str
-    mba_id: int
     name: str
-
-    @property
-    def curie(self) -> str:
-        """The compact identifier for the structure (e.g. ``"MBA:382"``)."""
-        return f"MBA:{self.mba_id}"
-
-    @property
-    def entity_uri(self) -> str:
-        """Resolvable URI for the MBA entity (usable as a HERD ``entity_uri``)."""
-        return f"https://purl.brain-bican.org/ontology/mbao/MBA_{self.mba_id}"
+    curie: str  # entity CURIE, e.g. "MBA:382"
+    entity_uri: str  # resolvable entity URI (usable as a HERD ``entity_uri``)
 
 
-# Allen acronym -> (MBA numeric id, canonical name), from the CCFv3 structure graph.
-_ACRONYM_TO_ID_AND_NAME: dict[str, tuple[int, str]] = {
-    # Gross divisions
-    "root": (997, "root"),
-    "grey": (8, "Basic cell groups and regions"),
-    "CH": (567, "Cerebrum"),
-    "BS": (343, "Brain stem"),
-    "CTX": (688, "Cerebral cortex"),
-    "CNU": (623, "Cerebral nuclei"),
-    "Isocortex": (315, "Isocortex"),
-    # Isocortical areas
-    "MOp": (985, "Primary motor area"),
-    "MOs": (993, "Secondary motor area"),
-    "SSp": (322, "Primary somatosensory area"),
-    "SSs": (378, "Supplemental somatosensory area"),
-    "SSp-bfd": (329, "Primary somatosensory area, barrel field"),
-    "VISp": (385, "Primary visual area"),
-    "VISl": (409, "Lateral visual area"),
-    "VISal": (402, "Anterolateral visual area"),
-    "VISam": (394, "Anteromedial visual area"),
-    "VISpm": (533, "posteromedial visual area"),
-    "VISrl": (417, "Rostrolateral visual area"),
-    "VISpl": (425, "Posterolateral visual area"),
-    "VISpor": (312782628, "Postrhinal area"),
-    "AUDp": (1002, "Primary auditory area"),
-    "AUDd": (1011, "Dorsal auditory area"),
-    "ACAd": (39, "Anterior cingulate area, dorsal part"),
-    "ACAv": (48, "Anterior cingulate area, ventral part"),
-    "PL": (972, "Prelimbic area"),
-    "ILA": (44, "Infralimbic area"),
-    "ORBl": (723, "Orbital area, lateral part"),
-    "ORBm": (731, "Orbital area, medial part"),
-    "RSPd": (879, "Retrosplenial area, dorsal part"),
-    "RSPv": (886, "Retrosplenial area, ventral part"),
-    "AId": (104, "Agranular insular area, dorsal part"),
-    "TEa": (541, "Temporal association areas"),
-    "PERI": (922, "Perirhinal area"),
-    "ECT": (895, "Ectorhinal area"),
-    "GU": (1057, "Gustatory areas"),
-    "VISC": (677, "Visceral area"),
-    "PTLp": (22, "Posterior parietal association areas"),
-    # Hippocampal formation
-    "HPF": (1089, "Hippocampal formation"),
-    "HIP": (1080, "Hippocampal region"),
-    "CA1": (382, "Field CA1"),
-    "CA2": (423, "Field CA2"),
-    "CA3": (463, "Field CA3"),
-    "DG": (726, "Dentate gyrus"),
-    "SUB": (502, "Subiculum"),
-    "ProS": (484682470, "Prosubiculum"),
-    "POST": (1037, "Postsubiculum"),
-    "PRE": (1084, "Presubiculum"),
-    "PAR": (843, "Parasubiculum"),
-    "ENT": (909, "Entorhinal area"),
-    "ENTl": (918, "Entorhinal area, lateral part"),
-    "ENTm": (926, "Entorhinal area, medial part, dorsal zone"),
-    # Olfactory areas
-    "OLF": (698, "Olfactory areas"),
-    "MOB": (507, "Main olfactory bulb"),
-    "PIR": (961, "Piriform area"),
-    "AON": (159, "Anterior olfactory nucleus"),
-    # Cortical subplate / amygdala
-    "BLA": (295, "Basolateral amygdalar nucleus"),
-    "CEA": (536, "Central amygdalar nucleus"),
-    "MEA": (403, "Medial amygdalar nucleus"),
-    "LA": (131, "Lateral amygdalar nucleus"),
-    # Cerebral nuclei
-    "STR": (477, "Striatum"),
-    "CP": (672, "Caudoputamen"),
-    "ACB": (56, "Nucleus accumbens"),
-    "PAL": (803, "Pallidum"),
-    "LSr": (258, "Lateral septal nucleus, rostral (rostroventral) part"),
-    # Thalamus
-    "TH": (549, "Thalamus"),
-    "VPM": (733, "Ventral posteromedial nucleus of the thalamus"),
-    "VPL": (718, "Ventral posterolateral nucleus of the thalamus"),
-    "VM": (685, "Ventral medial nucleus of the thalamus"),
-    "VAL": (629, "Ventral anterior-lateral complex of the thalamus"),
-    "MD": (362, "Mediodorsal nucleus of thalamus"),
-    "LGd": (170, "Dorsal part of the lateral geniculate complex"),
-    "LP": (218, "Lateral posterior nucleus of the thalamus"),
-    "PO": (1020, "Posterior complex of the thalamus"),
-    "RT": (262, "Reticular nucleus of the thalamus"),
-    # Hypothalamus
-    "HY": (1097, "Hypothalamus"),
-    "LHA": (194, "Lateral hypothalamic area"),
-    "PVH": (38, "Paraventricular hypothalamic nucleus"),
-    "ZI": (797, "Zona incerta"),
-    # Midbrain
-    "MB": (313, "Midbrain"),
-    "SCs": (302, "Superior colliculus, sensory related"),
-    "SCm": (294, "Superior colliculus, motor related"),
-    "IC": (4, "Inferior colliculus"),
-    "PAG": (795, "Periaqueductal gray"),
-    "VTA": (749, "Ventral tegmental area"),
-    "SNr": (381, "Substantia nigra, reticular part"),
-    "SNc": (374, "Substantia nigra, compact part"),
-    "RN": (214, "Red nucleus"),
-    "APN": (215, "Anterior pretectal nucleus"),
-    "MRN": (128, "Midbrain reticular nucleus"),
-    # Hindbrain
-    "P": (771, "Pons"),
-    "PB": (867, "Parabrachial nucleus"),
-    "PG": (931, "Pontine gray"),
-    "DR": (872, "Dorsal nucleus raphe"),
-    "LC": (147, "Locus ceruleus"),
-    "MY": (354, "Medulla"),
-    "NTS": (651, "Nucleus of the solitary tract"),
-    "IO": (83, "Inferior olivary complex"),
-    # Cerebellum
-    "CB": (512, "Cerebellum"),
-}
-
-
-MBA_TERMS: dict[str, BrainRegionTerm] = {
-    acronym: BrainRegionTerm(acronym=acronym, mba_id=mba_id, name=name)
-    for acronym, (mba_id, name) in _ACRONYM_TO_ID_AND_NAME.items()
-}
-
-
-# Canonical name (lower-cased) -> acronym, so full names written into ``location`` also resolve.
-_NAME_TO_ACRONYM: dict[str, str] = {term.name.lower(): term.acronym for term in MBA_TERMS.values()}
-
-
-# Common informal names and abbreviations -> Allen acronym. Compared case-insensitively.
-_ALIAS_TO_ACRONYM: dict[str, str] = {
+# Common informal names and abbreviations -> Allen acronym, per atlas. Compared case-insensitively.
+_MBA_ALIAS_TO_ACRONYM: dict[str, str] = {
     "hippocampus": "HIP",
     "entorhinal cortex": "ENT",
     "primary visual cortex": "VISp",
@@ -183,40 +58,102 @@ _ALIAS_TO_ACRONYM: dict[str, str] = {
     "periaqueductal grey": "PAG",
 }
 
+_HBA_ALIAS_TO_ACRONYM: dict[str, str] = {
+    "hippocampus": "HiF",
+    "caudate": "Cd",
+    "midbrain": "MES",
+    "medulla": "MY",
+    "medulla oblongata": "MY",
+    "cingulate cortex": "CgG",
+    "locus coeruleus": "LC",
+}
 
-def get_brain_region_term(location: str) -> BrainRegionTerm | None:
+
+@dataclass(frozen=True)
+class _BrainAtlas:
+    """A curated, offline lookup of one species' brain-atlas terms."""
+
+    terms: dict[str, BrainRegionTerm]  # acronym -> term
+    name_to_acronym: dict[str, str]  # lower-cased canonical name -> acronym
+    alias_to_acronym: dict[str, str]  # lower-cased informal name -> acronym
+
+    def resolve(self, location: str) -> BrainRegionTerm | None:
+        """Resolve a location string to a term via exact acronym, canonical name, or alias."""
+        stripped = location.strip()
+        if stripped == "":
+            return None
+        # Exact acronym (case-sensitive: acronyms like "VISp"/"CgG" are case-specific).
+        if stripped in self.terms:
+            return self.terms[stripped]
+        lowered = stripped.lower()
+        acronym = self.name_to_acronym.get(lowered) or self.alias_to_acronym.get(lowered)
+        return self.terms.get(acronym) if acronym is not None else None
+
+
+def _build_atlas(term_set_file: str, alias_to_acronym: dict) -> _BrainAtlas:
+    terms = {
+        info.value: BrainRegionTerm(
+            acronym=info.value, name=info.description, curie=info.curie, entity_uri=info.entity_uri
+        )
+        for info in load_term_set(term_set_file).values()
+    }
+    name_to_acronym = {term.name.lower(): term.acronym for term in terms.values()}
+    return _BrainAtlas(terms=terms, name_to_acronym=name_to_acronym, alias_to_acronym=alias_to_acronym)
+
+
+_MBA_ATLAS = _build_atlas("mouse_brain_atlas.yaml", _MBA_ALIAS_TO_ACRONYM)
+_HBA_ATLAS = _build_atlas("human_brain_atlas.yaml", _HBA_ALIAS_TO_ACRONYM)
+
+# Canonical species binomial -> its brain atlas.
+_SPECIES_TO_ATLAS: dict[str, _BrainAtlas] = {
+    "Mus musculus": _MBA_ATLAS,
+    "Homo sapiens": _HBA_ATLAS,
+}
+
+#: Canonical species names for which an offline brain-atlas lookup is available.
+SUPPORTED_ATLAS_SPECIES: frozenset = frozenset(_SPECIES_TO_ATLAS)
+
+#: Acronym -> :class:`BrainRegionTerm` for the Allen Mouse Brain Atlas.
+MBA_TERMS: dict[str, BrainRegionTerm] = _MBA_ATLAS.terms
+#: Acronym -> :class:`BrainRegionTerm` for the Allen Human Brain Atlas.
+HBA_TERMS: dict[str, BrainRegionTerm] = _HBA_ATLAS.terms
+
+
+def _atlas_for_species(species: str | None) -> _BrainAtlas | None:
+    """Return the brain atlas for a species value (resolving common names), or ``None``."""
+    species_term = get_species_term(species)
+    canonical_name = species_term.canonical_name if species_term is not None else species
+    return _SPECIES_TO_ATLAS.get(canonical_name)
+
+
+def get_brain_region_term(location: str, species: str = "Mus musculus") -> BrainRegionTerm | None:
     """
-    Resolve a free-text location string to an Allen Mouse Brain Atlas term.
+    Resolve a free-text location string to an Allen brain-atlas term for a species.
 
     The lookup is high-precision: it matches an exact Allen acronym (case-sensitive, e.g.
-    ``"CA1"``), a canonical structure name (case-insensitive, e.g. ``"caudoputamen"``), or a
-    small set of common informal names and abbreviations (e.g. ``"hippocampus"``, ``"V1"``).
-    Anything it does not recognize returns ``None``.
+    ``"CA1"``), a canonical structure name (case-insensitive, e.g. ``"caudoputamen"``), or a small
+    set of common informal names and abbreviations (e.g. ``"hippocampus"``, ``"V1"``). Anything it
+    does not recognize returns ``None``.
+
+    The atlas is chosen from ``species``: ``"Mus musculus"`` (default) uses the Allen Mouse Brain
+    Atlas and ``"Homo sapiens"`` the Allen Human Brain Atlas. Common names (e.g. ``"mouse"``,
+    ``"human"``) are accepted. A species without a supported atlas returns ``None``.
 
     Parameters
     ----------
     location : str
         The anatomical location string as written to an NWB ``location`` field.
+    species : str, default: "Mus musculus"
+        The subject species selecting which atlas to resolve against.
 
     Returns
     -------
     BrainRegionTerm or None
-        The recognized MBA term, or ``None`` when the string cannot be resolved.
+        The recognized atlas term, or ``None`` when the string cannot be resolved.
     """
     if not isinstance(location, str):
         return None
-
-    stripped = location.strip()
-    if stripped == "":
+    atlas = _atlas_for_species(species)
+    if atlas is None:
         return None
-
-    # Exact Allen acronym (case-sensitive: acronyms like "VISp" and "MOp" are case-specific).
-    if stripped in MBA_TERMS:
-        return MBA_TERMS[stripped]
-
-    lowered = stripped.lower()
-    acronym = _NAME_TO_ACRONYM.get(lowered) or _ALIAS_TO_ACRONYM.get(lowered)
-    if acronym is not None:
-        return MBA_TERMS[acronym]
-
-    return None
+    return atlas.resolve(location)

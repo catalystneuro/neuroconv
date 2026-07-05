@@ -1,0 +1,194 @@
+id: https://neuroconv.readthedocs.io/termset/humanbrainatlas
+name: HumanBrainAtlas
+version: 0.0.1
+prefixes:
+  HBA: https://purl.brain-bican.org/ontology/hbao/HBA_
+imports:
+- linkml:types
+default_range: string
+enums:
+  BrainRegion:
+    permissible_values:
+      Tel:
+        description: telencephalon
+        meaning: HBA:4007
+      Cx:
+        description: cerebral cortex
+        meaning: HBA:4008
+      FL:
+        description: frontal lobe
+        meaning: HBA:4009
+      PL:
+        description: parietal lobe
+        meaning: HBA:4084
+      TL:
+        description: temporal lobe
+        meaning: HBA:4132
+      OL:
+        description: occipital lobe
+        meaning: HBA:4180
+      LL:
+        description: limbic lobe
+        meaning: HBA:4219
+      Ins:
+        description: insula
+        meaning: HBA:4268
+      DiE:
+        description: diencephalon
+        meaning: HBA:4391
+      MES:
+        description: mesencephalon
+        meaning: HBA:9001
+      MET:
+        description: metencephalon
+        meaning: HBA:4833
+      MY:
+        description: myelencephalon
+        meaning: HBA:9512
+      PrG:
+        description: precentral gyrus
+        meaning: HBA:4010
+      SFG:
+        description: superior frontal gyrus
+        meaning: HBA:4021
+      MFG:
+        description: middle frontal gyrus
+        meaning: HBA:4028
+      IFG:
+        description: inferior frontal gyrus
+        meaning: HBA:4035
+      GRe:
+        description: gyrus rectus
+        meaning: HBA:4047
+      PoG:
+        description: postcentral gyrus
+        meaning: HBA:4085
+      SMG:
+        description: supramarginal gyrus
+        meaning: HBA:4104
+      AnG:
+        description: angular gyrus
+        meaning: HBA:4111
+      PCu:
+        description: precuneus
+        meaning: HBA:4118
+      STG:
+        description: superior temporal gyrus
+        meaning: HBA:4133
+      MTG:
+        description: middle temporal gyrus
+        meaning: HBA:4140
+      ITG:
+        description: inferior temporal gyrus
+        meaning: HBA:4147
+      FuG:
+        description: fusiform gyrus
+        meaning: HBA:4156
+      Cun:
+        description: cuneus
+        meaning: HBA:4184
+      LiG:
+        description: lingual gyrus
+        meaning: HBA:4191
+      CgG:
+        description: cingulate gyrus
+        meaning: HBA:4220
+      PHG:
+        description: parahippocampal gyrus
+        meaning: HBA:4242
+      HiF:
+        description: hippocampal formation
+        meaning: HBA:4249
+      DG:
+        description: dentate gyrus
+        meaning: HBA:12891
+      CA1:
+        description: CA1 field
+        meaning: HBA:12892
+      CA2:
+        description: CA2 field
+        meaning: HBA:12893
+      CA3:
+        description: CA3 field
+        meaning: HBA:12894
+      CA4:
+        description: CA4 field
+        meaning: HBA:12895
+      S:
+        description: subiculum
+        meaning: HBA:12896
+      Cd:
+        description: caudate nucleus
+        meaning: HBA:4278
+      Pu:
+        description: putamen
+        meaning: HBA:4287
+      Acb:
+        description: nucleus accumbens
+        meaning: HBA:4290
+      GP:
+        description: globus pallidus
+        meaning: HBA:4293
+      BF:
+        description: basal forebrain
+        meaning: HBA:4300
+      Cl:
+        description: claustrum
+        meaning: HBA:4321
+      SptN:
+        description: septal nuclei
+        meaning: HBA:13002
+      SI:
+        description: substantia innominata
+        meaning: HBA:13003
+      Amg:
+        description: amygdala
+        meaning: HBA:4327
+      CeA:
+        description: central nucleus
+        meaning: HBA:4359
+      TH:
+        description: thalamus
+        meaning: HBA:4392
+      DT:
+        description: dorsal thalamus
+        meaning: HBA:4393
+      Hy:
+        description: hypothalamus
+        meaning: HBA:4540
+      MB:
+        description: mammillary body
+        meaning: HBA:12909
+      PIN:
+        description: pineal gland
+        meaning: HBA:4532
+      SN:
+        description: substantia nigra
+        meaning: HBA:9072
+      VTA:
+        description: ventral tegmental area
+        meaning: HBA:9066
+      RN:
+        description: red nucleus
+        meaning: HBA:9053
+      Pons:
+        description: pons
+        meaning: HBA:9131
+      LC:
+        description: locus ceruleus
+        meaning: HBA:9148
+      IO:
+        description: inferior olivary complex
+        meaning: HBA:9560
+      Cb:
+        description: cerebellum
+        meaning: HBA:4696
+      CbCx:
+        description: cerebellar cortex
+        meaning: HBA:4697
+      Dt:
+        description: dentate nucleus
+        meaning: HBA:12946
+      cc:
+        description: corpus callosum
+        meaning: HBA:9222

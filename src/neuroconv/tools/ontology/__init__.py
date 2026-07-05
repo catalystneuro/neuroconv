@@ -1,6 +1,7 @@
 """Tools for recommending standardized ontology terms for NWB metadata."""
 
 from ._brain_regions import (
+    HBA_TERMS,
     MBA_TERMS,
     BrainRegionTerm,
     get_brain_region_term,
@@ -19,6 +20,7 @@ from ._species import (
 )
 
 __all__ = [
+    "HBA_TERMS",
     "MBA_TERMS",
     "SPECIES_TERMS",
     "BrainRegionTerm",
