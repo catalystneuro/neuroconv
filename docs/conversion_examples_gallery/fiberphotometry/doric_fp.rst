@@ -24,7 +24,7 @@ whose name is built from its HDF5 path (relative to ``DataAcquisition``) with ``
     >>> stream_names = interface.get_stream_names()
     >>> print(stream_names)
     [...]
-    
+
 Specify the metadata required for the conversion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
