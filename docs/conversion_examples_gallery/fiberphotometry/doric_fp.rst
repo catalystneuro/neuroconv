@@ -131,7 +131,7 @@ Convert Doric Fiber Photometry data to NWB using
     >>> from neuroconv.datainterfaces import DoricFiberPhotometryInterface
     >>> from neuroconv.utils import dict_deep_update
 
-    >>> >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"
+    >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"
 
     >>> interface = DoricFiberPhotometryInterface(file_path=file_path, verbose=False)
 
