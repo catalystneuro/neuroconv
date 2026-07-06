@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -9,13 +10,13 @@ from ...basedatainterface import BaseDataInterface
 
 
 @dataclass
-class _EventInternalClass:
+class _EventsData:
     """One event type's occurrences: the IO-independent internal representation (events taxonomy, Layer 3).
 
     Format-agnostic; every event source maps into this, independent of both the source format and
     NWB. It holds the Extent (``timestamps`` and, for an interval type, ``durations``) and the
     Payload (``payload``, a typed field-map). Interfaces return these keyed by ``event_type_source_id``
-    (see :meth:`BaseEventsInterface._load_event_data_dict`), so the stream id is the dict key, not a
+    (see :meth:`BaseEventsInterface._get_events_data_dict`), so the stream id is the dict key, not a
     field here.
 
     Attributes
@@ -46,7 +47,7 @@ class BaseEventsInterface(BaseDataInterface):
     """Base interface for discrete-event data written as NWB ``EventsTable`` objects.
 
     Concrete event interfaces (e.g. :class:`.TDTEventsInterface`) read their format-specific source
-    and expose the events through :meth:`_load_event_data_dict` as :class:`_EventInternalClass`
+    and expose the events through :meth:`_get_events_data_dict` as :class:`_EventsData`
     records. This base owns the two pieces that do not depend on the source format: the shared
     ``Events`` metadata schema (:meth:`get_metadata_schema`) and the writer (:meth:`add_to_nwbfile`)
     that maps that internal representation, together with the metadata, into ``pynwb.event.EventsTable``
@@ -65,24 +66,38 @@ class BaseEventsInterface(BaseDataInterface):
     is documented in the events taxonomy and PR #1759
     (https://github.com/catalystneuro/neuroconv/pull/1759).
 
-    Subclasses must set ``self.metadata_key`` and implement :meth:`_load_event_data_dict`.
+    Subclasses must set ``self.metadata_key`` and implement :meth:`_get_events_data_dict`.
     """
 
     keywords = ("events",)
 
-    def _load_event_data_dict(self) -> dict[str, _EventInternalClass]:
+    def __init__(self, **source_data):
+        super().__init__(**source_data)
+        # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
+        # coerced once even though get_metadata, add_to_nwbfile, and alignment all read it.
+        self._events_data_dict = None
+
+    @abstractmethod
+    def _get_events_data_dict(self) -> dict[str, _EventsData]:
         """Return the internal event representation, keyed by ``event_type_source_id``.
+
+        Coerces the backend (a source file or an intermediate reader, e.g. the ``tdt`` reader) into
+        the standard representation on the first call, and returns the cached
+        ``self._events_data_dict`` on every call after. Subclasses own both the coercion and the
+        caching guard (see :class:`~neuroconv.tools.testing.mock_interfaces.MockEventsInterface` for
+        the reference implementation): return ``self._events_data_dict`` early when it is not
+        ``None``, otherwise build it, store it on ``self._events_data_dict``, and return it.
 
         Returns
         -------
-        dict[str, _EventInternalClass]
+        dict[str, _EventsData]
             Maps each ``event_type_source_id`` (the source's own handle for an event type, e.g. a TDT
-            epoc name) to its :class:`_EventInternalClass` (timestamps, optional durations, typed
+            epoc name) to its :class:`_EventsData` (timestamps, optional durations, typed
             payload field-map). The writer joins this to the metadata by key: the ``event_types``
             entry keyed by the same ``event_type_source_id``, and each of its ``columns`` keyed by a
             ``field_source_id`` in this record's ``payload``.
         """
-        raise NotImplementedError("Event interfaces must implement `_load_event_data_dict`.")
+        raise NotImplementedError("Event interfaces must implement `_get_events_data_dict`.")
 
     def get_metadata_schema(self) -> dict:
         """
@@ -184,7 +199,7 @@ class BaseEventsInterface(BaseDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
-        event_data = self._load_event_data_dict()
+        event_data = self._get_events_data_dict()
 
         events_metadata = metadata["Events"]
         event_tables_metadata = events_metadata["EventTables"]

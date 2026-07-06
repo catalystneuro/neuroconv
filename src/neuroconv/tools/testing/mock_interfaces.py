@@ -19,7 +19,7 @@ from ...datainterfaces.ecephys.basesortingextractorinterface import (
 )
 from ...datainterfaces.events.baseeventsinterface import (
     BaseEventsInterface,
-    _EventInternalClass,
+    _EventsData,
 )
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
@@ -346,9 +346,12 @@ class MockEventsInterface(BaseEventsInterface):
             }
         return metadata
 
-    def _load_event_data_dict(self) -> dict[str, _EventInternalClass]:
+    def _get_events_data_dict(self) -> dict[str, _EventsData]:
+        if self._events_data_dict is not None:
+            return self._events_data_dict
+
         duration = 0.05 if self._event_extent == "event with duration" else None
-        event_data = {}
+        events_data_dict = {}
         for index, event_type_source_id in enumerate(self._event_type_source_ids()):
             # Stagger timestamps across types so pooling several into one table interleaves in time.
             timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
@@ -358,10 +361,12 @@ class MockEventsInterface(BaseEventsInterface):
                 payload["outcome"] = np.arange(self._num_events) % 2  # alternating go / no_go
             if self._event_payload == "multi value":
                 payload["amplitude"] = np.arange(self._num_events, dtype="float64")
-            event_data[event_type_source_id] = _EventInternalClass(
+            events_data_dict[event_type_source_id] = _EventsData(
                 timestamps=timestamps, durations=durations, payload=payload
             )
-        return event_data
+
+        self._events_data_dict = events_data_dict
+        return self._events_data_dict
 
 
 class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
