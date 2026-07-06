@@ -449,6 +449,27 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     data_interface_cls: type[BaseRecordingExtractorInterface]
     is_lfp_interface: bool = False
 
+    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # when old list-based metadata format is removed
+    def test_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        self.check_extracted_metadata_old_list_format(metadata)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        """Override this method to make assertions about extracted metadata in old list-based format."""
+        pass
+
+    def test_get_metadata(self, setup_interface):
+        """Test get_metadata with the new dict-based format."""
+        import inspect
+
+        sig = inspect.signature(self.interface.get_metadata)
+        if "use_new_metadata_format" not in sig.parameters:
+            pytest.skip("Interface does not support use_new_metadata_format yet")
+
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        self.check_extracted_metadata(metadata)
+
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.core.testing import check_recordings_equal
         from spikeinterface.extractors.extractor_classes import NwbRecordingExtractor

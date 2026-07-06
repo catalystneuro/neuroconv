@@ -517,3 +517,10 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> nwbfile_path =  f"{path_to_save_nwbfile}"
     >>> # t1 and t2 are optional arguments to specify the start and end times for the conversion
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, t1=0.0, t2=1.0, overwrite=True)
+
+.. seealso::
+
+    Other TDT data interfaces:
+
+    - :doc:`../recording/tdt` to convert TDT extracellular electrophysiology recordings.
+    - :doc:`../events/tdt_events` to convert discrete TDT events (epocs such as port entries or nose pokes).
