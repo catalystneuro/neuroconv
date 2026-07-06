@@ -406,7 +406,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst'
+addopts = "-ra --doctest-glob='*.rst"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
