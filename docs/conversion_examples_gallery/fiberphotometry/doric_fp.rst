@@ -18,8 +18,8 @@ whose name is built from its HDF5 path (relative to ``DataAcquisition``) with ``
 
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import DoricFiberPhotometryInterface
-
-    >>> file_path = Path("path/to/your_recording.doric")
+    
+    >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"
     >>> interface = DoricFiberPhotometryInterface(file_path=file_path, verbose=False)
     >>> stream_names = interface.get_stream_names()
     >>> print(stream_names)  # e.g. ['BBC300_ROISignals_Series0001_CAM1EXC1_ROI01', ...]
@@ -130,7 +130,7 @@ Convert Doric Fiber Photometry data to NWB using
     >>> from neuroconv.datainterfaces import DoricFiberPhotometryInterface
     >>> from neuroconv.utils import dict_deep_update
 
-    >>> file_path = Path("path/to/your_recording.doric")
+    >>> >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"
 
     >>> interface = DoricFiberPhotometryInterface(file_path=file_path, verbose=False)
 
