@@ -1,5 +1,6 @@
 """Interface for Doric Neuroscience Studio fiber photometry data (.doric HDF5 files)."""
 
+import warnings
 from copy import deepcopy
 from datetime import datetime
 from typing import Literal
@@ -68,7 +69,10 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             try:
                 self._session_start_time = datetime.strptime(created_str, _DORIC_CREATED_FMT)
             except ValueError:
-                pass
+                warnings.warn(
+                    f"Could not parse 'Created' attribute from .doric file (got {created_str!r}). "
+                    f"Expected format: '{_DORIC_CREATED_FMT}'. Session start time will not be set automatically."
+                )
 
     # ------------------------------------------------------------------
     # Stream discovery
