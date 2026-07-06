@@ -22,8 +22,9 @@ whose name is built from its HDF5 path (relative to ``DataAcquisition``) with ``
     >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"
     >>> interface = DoricFiberPhotometryInterface(file_path=file_path, verbose=False)
     >>> stream_names = interface.get_stream_names()
-    >>> print(stream_names)  # e.g. ['BBC300_ROISignals_Series0001_CAM1EXC1_ROI01', ...]
-
+    >>> print(stream_names)  
+    [...]
+    
 Specify the metadata required for the conversion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
