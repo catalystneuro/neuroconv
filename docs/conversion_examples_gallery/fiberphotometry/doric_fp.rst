@@ -23,7 +23,8 @@ whose name is built from its HDF5 path (relative to ``DataAcquisition``) with ``
     >>> interface = DoricFiberPhotometryInterface(file_path=file_path, verbose=False)
     >>> stream_names = interface.get_stream_names()
     >>> print(stream_names)
-
+    [...]
+    
 Specify the metadata required for the conversion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
