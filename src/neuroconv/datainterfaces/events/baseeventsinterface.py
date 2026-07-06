@@ -267,7 +267,7 @@ class BaseEventsInterface(BaseDataInterface):
             # Only the native EventsTable columns go through add_event: timestamp, plus duration when any
             # pooled type has one. Every derived column (the event_type discriminator and the value
             # columns) is attached full-length afterwards.
-            for timestamp, _event_type_source_id, duration, _cells in rows:
+            for timestamp, _, duration, _ in rows:
                 event_kwargs = {"timestamp": timestamp}
                 if has_duration:
                     event_kwargs["duration"] = duration
