@@ -41,7 +41,7 @@ dependencies = [
     "h5py>=3.9.0",
     "hdmf>=4.1.1",
     "hdmf_zarr>=0.11",
-    "pynwb>=3.0.0",
+    "pynwb>=4.0.0",
     "pydantic>=2.0",
     "typing_extensions>=4.1.0",
     "psutil>=5.8.0",
@@ -89,7 +89,7 @@ text = [
 
 ## Behavior
 audio = [
-    "ndx-sound>=0.2.2",
+    "ndx-sound>=0.2.3",  # 0.2.3 fixes the starting_time dtype so the spec resolves under hdmf>=6
     "scipy", # for scipy.io.wavfile
 ]
 dannce = [
@@ -121,6 +121,9 @@ lightningpose = [
 medpc = [
     "ndx-events==0.2.2",
 ]
+vame = [
+    "ndx-vame==0.3.1",
+]
 behavior = [
     "neuroconv[sleap]",
     "neuroconv[audio]",
@@ -130,14 +133,28 @@ behavior = [
     "neuroconv[video]",
     "neuroconv[lightningpose]",
     "neuroconv[medpc]",
+    "neuroconv[vame]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
+]
+
+## Events
+csv_events = [
+    "ndx-events==0.2.2",
+]
+tdt_events = [
+    "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
+    "ndx-events==0.2.2",
+]
+events = [
+    "neuroconv[csv_events]",
+    "neuroconv[tdt_events]",
 ]
 
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.104.0",
-    "neo>=0.14.3",
+    "spikeinterface>=0.104.7",
+    "neo>=0.14.5",
 ]
 alphaomega = [
     "neuroconv[ecephys_minimal]",
@@ -226,7 +243,7 @@ whitematter = [
     "neuroconv[ecephys_minimal]",
 ]
 xclust = [
-    "spikeinterface>=0.103.1",
+    "neuroconv[ecephys_minimal]",
 ]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
@@ -351,6 +368,10 @@ suite2p = [
     "natsort",
     "neuroconv[ophys_minimal]",
 ]
+doric_fp = [
+    "neuroconv[fiber_photometry]",
+    "h5py>=3",
+]
 tdt_fp = [
     "neuroconv[fiber_photometry]",
     "tdt",
@@ -365,6 +386,7 @@ tiff = [
 ]
 ophys = [
     "neuroconv[brukertiff]",
+    "neuroconv[doric_fp]",
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
@@ -389,6 +411,7 @@ full = [
     "neuroconv[dandi]",
     "neuroconv[behavior]",
     "neuroconv[ecephys]",
+    "neuroconv[events]",
     "neuroconv[icephys]",
     "neuroconv[image]",
     "neuroconv[ophys]",
@@ -400,7 +423,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst' --ignore=docs/conversion_examples_gallery/fiberphotometry/tdt_fp.rst" # TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
+addopts = "-ra --doctest-glob='*.rst'"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
@@ -485,7 +508,7 @@ docs = [
     "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.104.0",  # Needed for the API documentation
+    "spikeinterface>=0.104.7",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
 ]
 

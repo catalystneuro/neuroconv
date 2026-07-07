@@ -150,6 +150,38 @@ def test_fill_defaults():
     compare_dicts(schema, correct_new_schema)
 
 
+def test_fill_defaults_skips_additional_properties_node():
+    """A node validated only by additionalProperties has no named properties to fill, so it is skipped.
+
+    Regression test: such a node (produced e.g. by TDTEventsInterface, whose Events block is keyed by a
+    dynamic metadata_key) used to raise ``KeyError: 'properties'`` when reached via a default value.
+    """
+    schema = dict(
+        type="object",
+        properties=dict(
+            Events=dict(
+                type="object",
+                additionalProperties=dict(type="object"),
+            ),
+        ),
+    )
+    defaults = dict(Events=dict(tdt_events=dict(event_columns=dict())))
+
+    fill_defaults(schema, defaults)
+
+    # The additionalProperties node is left untouched (no "default" injected, no error).
+    correct_new_schema = dict(
+        type="object",
+        properties=dict(
+            Events=dict(
+                type="object",
+                additionalProperties=dict(type="object"),
+            ),
+        ),
+    )
+    compare_dicts(schema, correct_new_schema)
+
+
 def test_load_metadata_from_file():
     m0 = dict(
         NWBFile=dict(
