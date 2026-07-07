@@ -19,7 +19,7 @@ from ...datainterfaces.ecephys.basesortingextractorinterface import (
 )
 from ...datainterfaces.events.baseeventsinterface import (
     BaseEventsInterface,
-    _EventInternalClass,
+    _EventsData,
 )
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
@@ -318,11 +318,6 @@ class MockEventsInterface(BaseEventsInterface):
 
         for index, event_type_source_id in enumerate(self._event_type_source_ids()):
             suffix = "" if self._num_event_types == 1 else f"_{index}"
-            table_name = "Events" if self._num_event_types == 1 else f"Events{index}"
-            metadata["Events"]["EventTables"][event_type_source_id] = {
-                "table_name": table_name,
-                "description": "Mock events.",
-            }
             columns = {}
             if self._event_payload != "timestamps only":
                 # A categorical value column with an editable label -> meaning vocabulary.
@@ -340,15 +335,21 @@ class MockEventsInterface(BaseEventsInterface):
                     "column_name": f"amplitude{suffix}",
                     "description": "The amplitude of each event.",
                 }
+            # No EventTables entry: a solo type names its own table from event_name (CamelCased). A merge
+            # test repoints these types' table_metadata_key at a shared key and declares the table there.
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
-                "table_metadata_key": event_type_source_id,
+                "event_name": event_type_source_id,
+                "event_description": "Mock events.",
                 "columns": columns,
             }
         return metadata
 
-    def _load_event_data_dict(self) -> dict[str, _EventInternalClass]:
+    def _get_events_data_dict(self) -> dict[str, _EventsData]:
+        if self._events_data_dict is not None:
+            return self._events_data_dict
+
         duration = 0.05 if self._event_extent == "event with duration" else None
-        event_data = {}
+        events_data_dict = {}
         for index, event_type_source_id in enumerate(self._event_type_source_ids()):
             # Stagger timestamps across types so pooling several into one table interleaves in time.
             timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
@@ -358,10 +359,15 @@ class MockEventsInterface(BaseEventsInterface):
                 payload["outcome"] = np.arange(self._num_events) % 2  # alternating go / no_go
             if self._event_payload == "multi value":
                 payload["amplitude"] = np.arange(self._num_events, dtype="float64")
-            event_data[event_type_source_id] = _EventInternalClass(
-                timestamps=timestamps, durations=durations, payload=payload
+            events_data_dict[event_type_source_id] = _EventsData(
+                event_type_source_id=event_type_source_id,
+                timestamps=timestamps,
+                durations=durations,
+                payload=payload,
             )
-        return event_data
+
+        self._events_data_dict = events_data_dict
+        return self._events_data_dict
 
 
 class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
