@@ -10,7 +10,7 @@ import pandas
 
 from neuroconv.datainterfaces.ophys.guppy.guppydatainterface import GuppyInterface
 
-SESSION = "Photo_63_207-181030-103332"
+SESSION = "Photo_249_391-200721-120136"
 
 
 class TestExtractBins:

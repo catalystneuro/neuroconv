@@ -11,16 +11,18 @@ from neuroconv.utils import dict_deep_update, load_dict_from_file
 
 from ..setup_paths import OPHYS_DATA_PATH
 
-# The real ~6 MB TDT tank is kept (session start time, stream names, and event epoc counts are all
-# asserted against it). The GuPPy output folder is generated on the fly instead of pulled from GIN;
-# its store/event names default to the tank's (Dv1A/Dv2A/Dv3B/Dv4B, PrtN/LNRW/LNnR), which is the
-# only coupling the converter requires.
-SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_63_207-181030-103332"
+# The GuPPy output folder is generated on the fly (see mock_guppy) rather than pulled from GIN. The
+# only real data kept is the small (~1 MB) Photo_249 stubbed TDT tank -- already shared by the TDT
+# fiber-photometry and events interface tests -- which supplies the authoritative session start
+# time, stream names, and event epoc counts. The generator's default store/event names
+# (Dv1A/Dv2A/Dv3B/Dv4B, LNRW/LNnR/PrtR) are exactly the ones this tank exposes, which is the only
+# coupling the converter requires.
+SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"
 FIBER_PHOTOMETRY_METADATA_FILE = Path(__file__).parent / "fiber_photometry_metadata.yaml"
 
 
 EXPECTED_REGIONS = ("dms", "dls")
-EXPECTED_TDT_SESSION_START_TIME = datetime(2018, 10, 30, 15, 33, 53, 999999, tzinfo=timezone.utc)
+EXPECTED_TDT_SESSION_START_TIME = datetime(2020, 7, 21, 17, 2, 24, 999999, tzinfo=timezone.utc)
 
 
 class TestTDTFiberPhotometryGuppyConverter:
@@ -38,13 +40,7 @@ class TestTDTFiberPhotometryGuppyConverter:
     @pytest.fixture
     def metadata(self, converter):
         editable_metadata = load_dict_from_file(FIBER_PHOTOMETRY_METADATA_FILE)
-        merged_metadata = dict_deep_update(converter.get_metadata(), editable_metadata)
-        # The Photo_63 fixture exposes Fi1r rather than Fi1d, so the YAML's CommandedVoltageSeries
-        # entries are dropped to keep the metadata consistent with the available TDT streams.
-        merged_metadata["Ophys"]["FiberPhotometry"].pop("CommandedVoltageSeries", None)
-        for row in merged_metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]["rows"]:
-            row.pop("commanded_voltage_series", None)
-        return merged_metadata
+        return dict_deep_update(converter.get_metadata(), editable_metadata)
 
     def test_construction_creates_all_interfaces(self, converter):
         assert set(converter.data_interface_objects) == {"TDTFiberPhotometry", "TDTEvents", "Guppy"}
@@ -139,12 +135,12 @@ class TestTDTFiberPhotometryGuppyConverter:
         """Only the storesList.csv behavioral event stores propagate, with human-readable names."""
         events_interface = converter.data_interface_objects["TDTEvents"]
         event_columns = converter.get_metadata()["Events"][events_interface.metadata_key]["event_columns"]
-        # storesList.csv lists LNRW, LNnR, PrtN as the (non-fiber) event stores; only those propagate.
+        # storesList.csv lists LNRW, LNnR, PrtR as the (non-fiber) event stores; only those propagate.
         epoc_name_to_event_name = {epoc_name: column["column_name"] for epoc_name, column in event_columns.items()}
         assert epoc_name_to_event_name == {
             "LNRW": "rewarded_nose_pokes",
             "LNnR": "unrewarded_nose_pokes",
-            "PrtN": "port_entries",
+            "PrtR": "port_entries",
         }
 
     def test_run_conversion_writes_tdt_events(self, converter, metadata, tmp_path):
@@ -160,18 +156,17 @@ class TestTDTFiberPhotometryGuppyConverter:
             nwbfile = io.read()
 
             # Only the storesList event stores are written to acquisition, with human-readable names.
-            # Onset counts come from the corresponding Photo_63 epocs (PrtN=5, LNnR=35, LNRW=2).
+            # Onset counts come from the corresponding Photo_249 epocs (PrtR=49, LNnR=1457, LNRW=50).
             expected_event_to_length = {
-                "port_entries": 5,
-                "unrewarded_nose_pokes": 35,
-                "rewarded_nose_pokes": 2,
+                "port_entries": 49,
+                "unrewarded_nose_pokes": 1457,
+                "rewarded_nose_pokes": 50,
             }
             for event_name, expected_length in expected_event_to_length.items():
                 events = nwbfile.acquisition[event_name]
                 assert events.neurodata_type == "Events"
                 assert len(events.timestamps) == expected_length
-            # Tank epocs absent from storesList.csv (PrtR, RNPS) are not propagated.
-            assert "PrtR" not in nwbfile.acquisition
+            # Tank epocs absent from storesList.csv (RNPS) are not propagated.
             assert "RNPS" not in nwbfile.acquisition
 
             # The GuPPy events registry's optional object reference resolves to those acquisition Events.

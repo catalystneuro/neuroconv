@@ -18,17 +18,18 @@ import h5py
 import numpy as np
 import pandas
 
-# Default topology mirrors the ``Photo_63_207-181030-103332`` fixture: two regions, three
-# behavioral events, two transient features, one cross-correlation pair. Keeping these defaults
-# lets the existing tests assert the same region/event/product counts they always have.
+# Default topology mirrors the ``Photo_249_391-200721-120136_stubbed`` TDT tank: two regions, three
+# behavioral events, two transient features, one cross-correlation pair. The store names
+# (Dv1A/Dv2A/Dv3B/Dv4B) and event epocs (LNRW/LNnR/PrtR) are the ones that tank actually exposes, so
+# ``TDTFiberPhotometryGuppyConverter`` can be driven against it with these defaults unchanged.
 _DEFAULT_REGION_TO_STORES = {
     "dms": {"signal": "Dv2A", "control": "Dv1A"},
     "dls": {"signal": "Dv4B", "control": "Dv3B"},
 }
 _DEFAULT_EVENT_STORE_TO_NAME = {
-    "PrtN": "port_entries",
     "LNRW": "rewarded_nose_pokes",
     "LNnR": "unrewarded_nose_pokes",
+    "PrtR": "port_entries",
 }
 _SESSION_ID = "mock_guppy_session"
 
@@ -70,7 +71,7 @@ def generate_mock_guppy_output_folder(
         the store names to match a real TDT tank (for the converter test).
     event_store_to_name : dict, optional
         ``{acquisition_store: event_name}`` for the behavioral events. Defaults to the three
-        ``PrtN``/``LNRW``/``LNnR`` events of the reference fixture.
+        ``LNRW``/``LNnR``/``PrtR`` epocs the Photo_249 tank exposes.
     features : tuple of str, optional
         Transient/PSTH/cross-correlation features to emit (``z_score``, ``dff``).
     trace_prefixes : tuple of str, optional

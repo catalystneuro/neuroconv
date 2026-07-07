@@ -71,7 +71,7 @@ class TestGuppyInterface:
 
     The fixture folder is produced on the fly by ``generate_mock_guppy_output_folder`` (a tiny,
     schema-faithful replica of a real GuPPy output), so these tests need no GIN data. The generator
-    defaults reproduce the ``Photo_63_207-181030-103332`` topology -- two regions, three events, two
+    defaults reproduce the ``Photo_249_391-200721-120136`` topology -- two regions, three events, two
     features -- so the expected region/event/product counts match a real two-region session.
     """
 
@@ -120,7 +120,7 @@ class TestGuppyInterface:
                     expected_event_store_to_event_name={
                         "LNRW": "rewarded_nose_pokes",
                         "LNnR": "unrewarded_nose_pokes",
-                        "PrtN": "port_entries",
+                        "PrtR": "port_entries",
                     },
                 ),
                 id="mock_isosbestic_two_regions",
