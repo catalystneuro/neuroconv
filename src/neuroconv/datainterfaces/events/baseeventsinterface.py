@@ -246,7 +246,10 @@ class BaseEventsInterface(BaseDataInterface):
                 table_name, description = _to_table_object_name(only["event_name"]), only["event_description"]
             else:
                 names = ", ".join(event_types[source_id]["event_name"] for source_id in event_type_source_ids)
-                table_name, description = _to_table_object_name(table_metadata_key), f"Events pooled from types: {names}."
+                table_name, description = (
+                    _to_table_object_name(table_metadata_key),
+                    f"Events pooled from types: {names}.",
+                )
 
             existing_table = nwbfile.events.get(table_name) if nwbfile.events is not None else None
             # A declared shared table, more than one type here, or a table another interface already wrote
@@ -418,4 +421,3 @@ def _to_table_object_name(name: str) -> str:
     rest and give ``"Ptab"``.
     """
     return to_camel_case(name) if ("_" in name or name.islower()) else name
-
