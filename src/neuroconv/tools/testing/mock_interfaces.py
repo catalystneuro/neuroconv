@@ -318,11 +318,6 @@ class MockEventsInterface(BaseEventsInterface):
 
         for index, event_type_source_id in enumerate(self._event_type_source_ids()):
             suffix = "" if self._num_event_types == 1 else f"_{index}"
-            table_name = "Events" if self._num_event_types == 1 else f"Events{index}"
-            metadata["Events"]["EventTables"][event_type_source_id] = {
-                "table_name": table_name,
-                "description": "Mock events.",
-            }
             columns = {}
             if self._event_payload != "timestamps only":
                 # A categorical value column with an editable label -> meaning vocabulary.
@@ -340,8 +335,11 @@ class MockEventsInterface(BaseEventsInterface):
                     "column_name": f"amplitude{suffix}",
                     "description": "The amplitude of each event.",
                 }
+            # No EventTables entry: a solo type names its own table from event_name (CamelCased). A merge
+            # test repoints these types' table_metadata_key at a shared key and declares the table there.
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
-                "table_metadata_key": event_type_source_id,
+                "event_name": event_type_source_id,
+                "event_description": "Mock events.",
                 "columns": columns,
             }
         return metadata
