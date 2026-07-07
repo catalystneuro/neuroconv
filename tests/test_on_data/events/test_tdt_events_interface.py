@@ -189,7 +189,7 @@ class TestTDTEventsStrobeInterface:
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        pab_events = nwbfile.get_events_table("PAB_")
+        pab_events = nwbfile.get_events_table("PAB")  # "PAB_" store, trailing padding "_" dropped
         assert isinstance(pab_events, EventsTable)
         assert len(pab_events) == 5
         # The categorical 'strobe' column carries the per-event strobe codes [16, 2064, 0, 16, 2064].
@@ -206,7 +206,7 @@ class TestTDTEventsStrobeInterface:
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
             io.write(nwbfile)
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_events = io.read().get_events_table("PAB_")
+            read_events = io.read().get_events_table("PAB")  # "PAB_" store -> "PAB" table (padding _ dropped)
             assert isinstance(read_events, EventsTable)
             # Codes [16, 2064, 0, 16, 2064] map through the user's relabeling.
             assert list(read_events["strobe"][:]) == [

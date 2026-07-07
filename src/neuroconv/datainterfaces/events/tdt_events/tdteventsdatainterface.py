@@ -119,11 +119,9 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
                 continue  # an epoc with no events is not a writable event type; skip it entirely
             is_strobe = not _data_is_counter(data)
 
-            # One EventsTable per epoc store. event_name defaults to the raw store name, which the writer
-            # keeps verbatim as the table's NWB object name (e.g. "PAB_", "PrtR"): the opaque store code
-            # is the faithful identifier, and CamelCasing it would be lossy (the user can rename via
-            # event_name). A counter store is timestamp-only (no columns); a real strobe gets one
-            # categorical 'strobe' column (keyed by its payload field) with an editable code -> label map.
+            # One EventsTable per epoc store; event_name defaults to the store name. A counter store is
+            # timestamp-only (no columns); a real strobe gets one categorical 'strobe' column (keyed by
+            # its payload field) with an editable code -> label map.
             event_description = f"Onset times of the TDT epoc '{epoc_name}'."
             entry = {"event_name": epoc_name, "event_description": event_description}
             if is_strobe:
