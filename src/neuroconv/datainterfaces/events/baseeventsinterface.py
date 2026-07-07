@@ -260,7 +260,9 @@ class BaseEventsInterface(BaseDataInterface):
                     "contributing interface writes it as a merged table."
                 )
 
-            table = existing_table if existing_table is not None else EventsTable(name=table_name, description=description)
+            table = (
+                existing_table if existing_table is not None else EventsTable(name=table_name, description=description)
+            )
             self._append_events_to_table(
                 table=table, metadata=metadata, event_type_source_ids=event_type_source_ids, is_merge=is_merge
             )

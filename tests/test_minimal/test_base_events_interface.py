@@ -375,7 +375,9 @@ class TestMockEventsInterface:
                 },
             }
         }
-        expected_error = "Two event columns write the same column_name 'outcome_0'. Give each event column a unique column_name."
+        expected_error = (
+            "Two event columns write the same column_name 'outcome_0'. Give each event column a unique column_name."
+        )
         with pytest.raises(AssertionError, match=re.escape(expected_error)):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
