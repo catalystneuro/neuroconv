@@ -44,7 +44,7 @@ def test_automatic_ember_upload(tmp_path, monkeypatch):
     # Some systems and setups (mostly CI) have trouble passing the env variable to the keyring; just mimic user input
     monkeypatch.setattr("getpass.getpass", lambda _: EMBER_API_KEY)
     monkeypatch.setattr("builtins.input", lambda _: EMBER_API_KEY)
-    automatic_dandi_upload(dandiset_id="000431", nwb_folder_path=nwb_folder_path, instance="ember")
+    automatic_dandi_upload(dandiset_id="000431", nwb_folder_path=nwb_folder_path, instance="ember", sandbox=True)
 
     # Restore the environment variable in case any other tests in this session need it
     if DANDI_API_KEY_PRESENT:
