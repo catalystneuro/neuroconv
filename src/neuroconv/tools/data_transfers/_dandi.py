@@ -79,7 +79,7 @@ def automatic_dandi_upload(
         url_base = "https://dandiarchive.org"
         dandi_instance = "dandi"
     elif instance == "ember" and sandbox:
-        url_base = "https://dandi-sandbox.emberarchive.org"
+        url_base = "https://dandi.sandbox.emberarchive.org"
         dandi_instance = "ember-dandi-sandbox"
     elif instance == "ember" and not sandbox:
         url_base = "https://dandi.emberarchive.org"
