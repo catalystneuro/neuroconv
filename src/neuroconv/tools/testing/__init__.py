@@ -8,6 +8,7 @@ from .mock_files import generate_path_expander_demo_ibl
 from .mock_guppy import generate_mock_guppy_output_folder
 from .mock_interfaces import (
     MockBehaviorEventInterface,
+    MockEventsInterface,
     MockSpikeGLXNIDQInterface,
     MockRecordingInterface,
     MockImagingInterface,

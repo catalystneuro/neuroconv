@@ -84,6 +84,9 @@ Fiber Photometry
 GuPPy
 -----
 .. automodule:: neuroconv.datainterfaces.ophys.guppy.guppydatainterface
+Doric Fiber Photometry
+----------------------
+.. automodule:: neuroconv.datainterfaces.ophys.doric.doricfiberphotometrydatainterface
 
 TDT Fiber Photometry
 --------------------

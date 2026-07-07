@@ -108,6 +108,7 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
 from .ophys.guppy.guppydatainterface import GuppyInterface
+from .ophys.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
 from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
@@ -120,6 +121,7 @@ from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 # Events
+from .events.csv_events.csveventsdatainterface import CSVEventsInterface
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
@@ -190,6 +192,7 @@ interface_list = [
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
+    DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
     GuppyInterface,
     MinianSegmentationInterface,
@@ -213,6 +216,7 @@ interface_list = [
     # Image
     ImageInterface,
     # Events
+    CSVEventsInterface,
     TDTEventsInterface,
 ]
 
@@ -239,6 +243,7 @@ interfaces_by_category = dict(
     },
     fiber_photometry={
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+        "DoricFiberPhotometry": DoricFiberPhotometryInterface,
     },
     processed_fiber_photometry={
         "Guppy": GuppyInterface,
@@ -269,6 +274,7 @@ interfaces_by_category = dict(
         Image=ImageInterface,
     ),
     events=dict(
+        CSVEvents=CSVEventsInterface,
         TDTEvents=TDTEventsInterface,
     ),
 )
