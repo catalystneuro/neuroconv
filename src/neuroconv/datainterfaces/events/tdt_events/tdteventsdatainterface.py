@@ -182,9 +182,7 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
             payload = {}
             if not _data_is_counter(data):
                 payload = {"strobe": np.array([_normalize_strobe_value(value) for value in data])}
-            events_data_dict[epoc_name] = _EventsData(
-                event_type_source_id=epoc_name, timestamps=onset, payload=payload
-            )
+            events_data_dict[epoc_name] = _EventsData(event_type_source_id=epoc_name, timestamps=onset, payload=payload)
 
         self._events_data_dict = events_data_dict
         return self._events_data_dict
