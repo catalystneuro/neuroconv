@@ -7,12 +7,14 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pandas
+from hdmf.backends.hdf5 import H5DataIO
 from hdmf.common import DynamicTableRegion
 from pydantic import DirectoryPath, validate_call
 from pynwb.core import VectorData
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.tools import get_package
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.utils import DeepDict
@@ -51,8 +53,9 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
     ``fiber_photometry_table_region_indices`` map (region -> table row indices) supplied by a converter
     that pairs GuPPy with an acquisition interface (see ``TDTFiberPhotometryGuppyConverter``).
 
-    The behavioral ``Events`` object reference on ``GuppyEventsTable`` is the one optional outward link --
-    populated when the events live in the NWBFile's ``acquisition``, omitted otherwise.
+    The ``EventsTable`` reference on ``GuppyEventsTable`` is the one optional outward link -- populated
+    when the behavioral events live in the NWBFile's ``events`` group (as ``pynwb.event.EventsTable``
+    objects), omitted otherwise.
 
     All products are placed in a ``ProcessingModule`` (default name ``fiber_photometry``).
     """
@@ -1035,12 +1038,36 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         processing_module.add(regions_table)
         return regions_table
 
-    def _add_events_table(self, ndx_guppy, processing_module, nwbfile: NWBFile):
-        """Build and add the GuppyEventsTable, optionally referencing acquisition Events objects by name."""
-        acquisition_objects = dict(nwbfile.acquisition)
+    @staticmethod
+    def _resolve_events_table(nwbfile: NWBFile, event_name: str):
+        """Return the pynwb EventsTable (in ``nwbfile.events``) holding this event's onsets, or None.
 
+        The events writer names a solo (one-type) table by the CamelCased event name
+        (``port_entries`` -> ``PortEntries``), so that is the primary lookup. If instead several
+        event types were merged into one table, that table carries an ``event_type`` discriminator
+        column; the fallback finds the table whose discriminator lists ``event_name``.
+        """
+        if nwbfile.events is None:
+            return None
+        table = nwbfile.events.get(_to_table_object_name(event_name))
+        if table is not None:
+            return table
+        for events_table in nwbfile.events.values():
+            if "event_type" in events_table.colnames and event_name in list(events_table["event_type"][:]):
+                return events_table
+        return None
+
+    def _add_events_table(self, ndx_guppy, processing_module, nwbfile: NWBFile):
+        """Build and add the GuppyEventsTable, optionally referencing the EventsTable objects that hold
+        each event's onset timestamps.
+
+        The behavioral events are written (by the events interface) as ``pynwb.event.EventsTable``
+        objects in ``nwbfile.events``. When every GuPPy event resolves to such a table, each registry
+        row references its table via the optional ``events`` column; otherwise (e.g. standalone GuPPy
+        with no acquisition events) the column is omitted.
+        """
         name_to_store = {event_name: store for store, event_name in self.event_store_to_event_name.items()}
-        event_references = [acquisition_objects.get(event_name) for event_name in self.event_names]
+        event_references = [self._resolve_events_table(nwbfile, event_name) for event_name in self.event_names]
         include_event_references = len(event_references) > 0 and all(
             reference is not None for reference in event_references
         )
@@ -1049,18 +1076,24 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             name="events",
             description="GuPPy behavioral events (one row per event GuPPy aligned to).",
         )
-        for event_name, reference in zip(self.event_names, event_references):
+        for event_name in self.event_names:
             store = name_to_store[event_name]
-            row_kwargs = dict(
+            events_table.add_row(
                 event_name=event_name,
                 event_description=(
                     f"Behavioral event '{event_name}' that GuPPy aligned to (acquisition store '{store}')."
                 ),
                 raw_store_name=store,
             )
-            if include_event_references:
-                row_kwargs["events"] = reference
-            events_table.add_row(**row_kwargs)
+        if include_event_references:
+            # TODO(hdmf#1532): drop the H5DataIO(maxshape=(None,)) wrapper once the upstream fix lands.
+            # An object-reference column whose targets are DynamicTables (EventsTable) otherwise makes
+            # hdmf infer a rank-3 maxshape and fail the write; declaring the 1-D maxshape sidesteps it.
+            events_table.add_column(
+                name="events",
+                description="Reference to the EventsTable (in nwbfile.events) holding this event's onset timestamps.",
+                data=H5DataIO(event_references, maxshape=(None,)),
+            )
         processing_module.add(events_table)
         return events_table
 

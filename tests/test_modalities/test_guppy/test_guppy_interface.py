@@ -6,7 +6,6 @@ import h5py
 import numpy as np
 import pandas
 import pytest
-from ndx_events import Events
 from ndx_fiber_photometry import (
     FiberPhotometry,
     FiberPhotometryIndicators,
@@ -20,9 +19,11 @@ from ndx_ophys_devices import (
     Photodetector,
 )
 from pynwb import NWBHDF5IO
+from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import GuppyInterface
+from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 
 
@@ -292,27 +293,31 @@ class TestGuppyInterface:
         # zscore_method is present in the fixture parameters file.
         assert parameters.zscore_method is not None
 
-    def test_events_registry_references_acquisition_objects(self, interface, case, linked_nwbfile, region_to_indices):
-        """When acquisition event objects exist in the file, the events registry resolves to them by name.
+    def test_events_registry_references_events_tables(self, interface, case, linked_nwbfile, region_to_indices):
+        """When EventsTables exist in the file, the events registry resolves to them by name.
 
-        Uses the ``ndx_events.Events`` type the TDT events interface writes into ``nwbfile.acquisition``;
-        the registry holds a generic object reference, so the lookup is by name.
+        The behavioral events are written (by the events interface) as ``pynwb.event.EventsTable``
+        objects in ``nwbfile.events``, one per event type, named by the CamelCased event name
+        (``port_entries`` -> ``PortEntries``). The registry's optional ``events`` column resolves each
+        row to its table.
         """
         if not interface.event_names:
             module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=True)
             assert "events" not in module["events"].colnames  # no optional object-reference column
             return
 
-        event_objects = {}
+        event_tables = {}
         for event_name in interface.event_names:
-            events = Events(name=event_name, description=event_name, timestamps=[0.0, 1.0])
-            linked_nwbfile.add_acquisition(events)
-            event_objects[event_name] = events
+            events_table = EventsTable(name=_to_table_object_name(event_name), description=event_name)
+            events_table.add_row(timestamp=0.0)
+            events_table.add_row(timestamp=1.0)
+            linked_nwbfile.add_events_table(events_table)
+            event_tables[event_name] = events_table
 
         module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=True)
         events_table = module["events"]
         for row_index, event_name in enumerate(events_table["event_name"].data):
-            assert events_table["events"][row_index] is event_objects[event_name]
+            assert events_table["events"][row_index] is event_tables[event_name]
 
     # ----------------------------------------------------------------- products land as ndx-guppy types
 

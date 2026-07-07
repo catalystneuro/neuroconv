@@ -6,6 +6,7 @@ import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv.converters import TDTFiberPhotometryGuppyConverter
+from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 from neuroconv.utils import dict_deep_update, load_dict_from_file
 
@@ -134,9 +135,9 @@ class TestTDTFiberPhotometryGuppyConverter:
     def test_events_derived_from_guppy_stores_list(self, converter):
         """Only the storesList.csv behavioral event stores propagate, with human-readable names."""
         events_interface = converter.data_interface_objects["TDTEvents"]
-        event_columns = converter.get_metadata()["Events"][events_interface.metadata_key]["event_columns"]
+        event_types = converter.get_metadata()["Events"][events_interface.metadata_key]["event_types"]
         # storesList.csv lists LNRW, LNnR, PrtR as the (non-fiber) event stores; only those propagate.
-        epoc_name_to_event_name = {epoc_name: column["column_name"] for epoc_name, column in event_columns.items()}
+        epoc_name_to_event_name = {epoc_name: entry["event_name"] for epoc_name, entry in event_types.items()}
         assert epoc_name_to_event_name == {
             "LNRW": "rewarded_nose_pokes",
             "LNnR": "unrewarded_nose_pokes",
@@ -155,26 +156,27 @@ class TestTDTFiberPhotometryGuppyConverter:
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
 
-            # Only the storesList event stores are written to acquisition, with human-readable names.
-            # Onset counts come from the corresponding Photo_249 epocs (PrtR=49, LNnR=1457, LNRW=50).
+            # Only the storesList event stores are written, each as an EventsTable in nwbfile.events
+            # named by the CamelCased event name. Onset counts come from the corresponding Photo_249
+            # epocs (PrtR=49, LNnR=1457, LNRW=50).
             expected_event_to_length = {
-                "port_entries": 49,
-                "unrewarded_nose_pokes": 1457,
-                "rewarded_nose_pokes": 50,
+                "PortEntries": 49,
+                "UnrewardedNosePokes": 1457,
+                "RewardedNosePokes": 50,
             }
-            for event_name, expected_length in expected_event_to_length.items():
-                events = nwbfile.acquisition[event_name]
-                assert events.neurodata_type == "Events"
-                assert len(events.timestamps) == expected_length
+            for table_name, expected_length in expected_event_to_length.items():
+                events = nwbfile.get_events_table(table_name)
+                assert events.neurodata_type == "EventsTable"
+                assert len(events) == expected_length
             # Tank epocs absent from storesList.csv (RNPS) are not propagated.
-            assert "RNPS" not in nwbfile.acquisition
+            assert "RNPS" not in nwbfile.events
 
-            # The GuPPy events registry's optional object reference resolves to those acquisition Events.
+            # The GuPPy events registry's optional object reference resolves to those EventsTables.
             events_table = nwbfile.processing["guppy"]["events"]
             registry_event_names = list(events_table["event_name"].data)
             for row_index, event_name in enumerate(registry_event_names):
                 referenced = events_table["events"][row_index]
-                assert referenced is nwbfile.acquisition[event_name]
+                assert referenced is nwbfile.get_events_table(_to_table_object_name(event_name))
 
     def test_derive_region_to_table_indices(self, converter, metadata):
         """The auto-join composes region -> store names -> stream_name -> table rows."""
