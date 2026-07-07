@@ -14,14 +14,18 @@ from ...utils import to_camel_case
 class _EventsData:
     """One event type's occurrences: the IO-independent internal representation (events taxonomy, Layer 3).
 
-    Format-agnostic; every event source maps into this, independent of both the source format and
-    NWB. It holds the Extent (``timestamps`` and, for an interval type, ``durations``) and the
-    Payload (``payload``, a typed field-map). Interfaces return these keyed by ``event_type_source_id``
-    (see :meth:`BaseEventsInterface._get_events_data_dict`), so the stream id is the dict key, not a
-    field here.
+    Format-agnostic; every event source maps into this, independent of both the source format and NWB.
+    Self-contained: it carries its own ``event_type_source_id`` (the type's identity) alongside the
+    Extent (``timestamps`` and, for an interval type, ``durations``) and the Payload (``payload``, a
+    typed field-map). :meth:`BaseEventsInterface._get_events_data_dict` returns these in a dict keyed by
+    ``event_type_source_id`` for convenient grouping; that key mirrors the object's own field.
 
     Attributes
     ----------
+    event_type_source_id : str
+        The source's own handle for this event type (e.g. a TDT epoc name), meaning-free. It is the join
+        key to the metadata ``event_types`` entry, whose ``event_name``/``event_description`` supply the
+        human-facing name and meaning.
     timestamps : numpy.ndarray
         The event onset times, in seconds.
     durations : numpy.ndarray or None
@@ -34,6 +38,7 @@ class _EventsData:
         event type, so two streams may reuse the same field name.
     """
 
+    event_type_source_id: str
     timestamps: np.ndarray
     durations: np.ndarray | None = None
     payload: dict[str, np.ndarray] = field(default_factory=dict)
@@ -220,7 +225,6 @@ class BaseEventsInterface(BaseDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
-        event_data = self._get_events_data_dict()
         events_metadata = metadata["Events"]
         event_tables_metadata = events_metadata.get("EventTables", {})
         event_types = events_metadata[self.metadata_key]["event_types"]
@@ -232,58 +236,58 @@ class BaseEventsInterface(BaseDataInterface):
             event_type_source_ids_by_table.setdefault(table_metadata_key, []).append(event_type_source_id)
 
         for table_metadata_key, event_type_source_ids in event_type_source_ids_by_table.items():
-            self._add_or_extend_events_table(
-                nwbfile=nwbfile,
-                table_metadata_key=table_metadata_key,
-                event_type_source_ids=event_type_source_ids,
-                event_types=event_types,
-                event_tables_metadata=event_tables_metadata,
-                event_data=event_data,
-            )
+            # Resolve the table name/description: a declared EventTables entry wins, else derive from the
+            # single solo type, else from the pooled types.
+            declared_entry = event_tables_metadata.get(table_metadata_key)
+            if declared_entry is not None:  # an EventTables entry always has the last word
+                table_name, description = declared_entry["table_name"], declared_entry["description"]
+            elif len(event_type_source_ids) == 1:
+                only = event_types[event_type_source_ids[0]]
+                table_name, description = to_camel_case(only["event_name"]), only["event_description"]
+            else:
+                names = ", ".join(event_types[source_id]["event_name"] for source_id in event_type_source_ids)
+                table_name, description = to_camel_case(table_metadata_key), f"Events pooled from types: {names}."
 
-    def _add_or_extend_events_table(
-        self,
-        *,
-        nwbfile: NWBFile,
-        table_metadata_key: str,
-        event_type_source_ids: list,
-        event_types: dict,
-        event_tables_metadata: dict,
-        event_data: dict,
+            existing_table = nwbfile.events.get(table_name) if nwbfile.events is not None else None
+            # A declared shared table, more than one type here, or a table another interface already wrote
+            # all mean this is a merge, which needs the event_type discriminator.
+            is_merge = declared_entry is not None or len(event_type_source_ids) > 1 or existing_table is not None
+            if existing_table is not None and "event_type" not in existing_table.colnames:
+                raise ValueError(
+                    f"An events table named '{table_name}' already exists but is a single-type table (it has "
+                    "no 'event_type' discriminator), so events cannot be merged into it. Give this interface's "
+                    "table a distinct name, or declare a shared EventTables entry with this table_name so every "
+                    "contributing interface writes it as a merged table."
+                )
+
+            table = existing_table if existing_table is not None else EventsTable(name=table_name, description=description)
+            self._append_events_to_table(
+                table=table, metadata=metadata, event_type_source_ids=event_type_source_ids, is_merge=is_merge
+            )
+            if existing_table is None:
+                nwbfile.add_events_table(table)
+
+            # Finalize: re-sort the table chronologically by permuting every full-length column in place
+            # (stable, so equal timestamps keep insertion order). Works while the columns are in-memory lists.
+            n = len(table.id)
+            order = list(np.argsort(np.asarray(table["timestamp"].data), kind="stable"))
+            if order != list(range(n)):
+                for column in table.columns:
+                    if len(column.data) == n:
+                        column.data[:] = [column.data[index] for index in order]
+
+    def _append_events_to_table(
+        self, *, table: EventsTable, metadata: dict, event_type_source_ids: list, is_merge: bool
     ) -> None:
-        """Create the ``EventsTable`` for one ``table_metadata_key``, or append to it if it already exists.
+        """Append this interface's events to ``table``, creating whatever columns that data needs.
 
-        Solo (one type, no EventTables entry): the object name is the type's ``event_name`` CamelCased and
-        the description is its ``event_description``. Merge (several types here, a declared EventTables
-        entry, or a table another interface already wrote): the ``event_type`` discriminator holds each
-        row's ``event_name`` and a MeaningsTable maps those to ``event_description``; the table's own
-        name/description come from the EventTables entry when given, else are derived. Appending backfills
-        this interface's new columns on the existing rows and fills the existing columns on the new rows,
-        then the table is re-sorted by timestamp.
+        Builds this interface's rows, ensures its value columns exist (backfilling rows already on the
+        table) with a ``MeaningsTable`` for any categorical column, sets up or extends the ``event_type``
+        discriminator and its ``MeaningsTable`` when merging, then adds the rows. The caller owns the
+        table's identity, registration, and final re-sort; this method only fills the table it is handed.
         """
-        # Resolve the table name/description: a declared EventTables entry wins, else derive from the
-        # single solo type, else from the pooled types.
-        declared_entry = event_tables_metadata.get(table_metadata_key)
-        if declared_entry is not None:  # an EventTables entry always has the last word
-            table_name, description = declared_entry["table_name"], declared_entry["description"]
-        elif len(event_type_source_ids) == 1:
-            only = event_types[event_type_source_ids[0]]
-            table_name, description = to_camel_case(only["event_name"]), only["event_description"]
-        else:
-            names = ", ".join(event_types[source_id]["event_name"] for source_id in event_type_source_ids)
-            table_name, description = to_camel_case(table_metadata_key), f"Events pooled from types: {names}."
-
-        existing_table = nwbfile.events.get(table_name) if nwbfile.events is not None else None
-        # A declared shared table, more than one type here, or a table another interface already wrote all
-        # mean this is a merge, which needs the event_type discriminator.
-        is_merge = declared_entry is not None or len(event_type_source_ids) > 1 or existing_table is not None
-        if existing_table is not None and "event_type" not in existing_table.colnames:
-            raise ValueError(
-                f"An events table named '{table_name}' already exists but is a single-type table (it has "
-                "no 'event_type' discriminator), so events cannot be merged into it. Give this interface's "
-                "table a distinct name, or declare a shared EventTables entry with this table_name so every "
-                "contributing interface writes it as a merged table."
-            )
+        event_types = metadata["Events"][self.metadata_key]["event_types"]
+        event_data = self._get_events_data_dict()
 
         # Flatten this interface's types into rows (timestamp, event_name, duration, cells) and collect the
         # value-column specs keyed by column_name.
@@ -314,22 +318,22 @@ class BaseEventsInterface(BaseDataInterface):
                 duration = float(event.durations[index]) if event.durations is not None else np.nan
                 rows.append((float(timestamp), event_name, duration, cells))
 
+        n_existing = len(table.id)
         has_duration = any(event_data[source_id].durations is not None for source_id in event_type_source_ids)
-        if existing_table is None:
-            table = EventsTable(name=table_name, description=description)
+        if n_existing == 0:  # a fresh table: this interface decides whether it carries durations
             table_has_duration = has_duration
-            if is_merge:
-                table.add_column(name="event_type", description="The event type of each event.", data=[])
         else:
-            table = existing_table
             table_has_duration = "duration" in table.colnames
             if has_duration and not table_has_duration:
                 raise ValueError(
-                    f"Cannot merge events with durations into the existing table '{table_name}', which has "
+                    f"Cannot merge events with durations into the existing table '{table.name}', which has "
                     "no duration column. Duration presence must be consistent across the types sharing a table."
                 )
 
-        n_existing = len(table.id)
+        # A fresh merged table needs the discriminator column before its MeaningsTable and rows.
+        if is_merge and "event_type" not in table.colnames:
+            table.add_column(name="event_type", description="The event type of each event.", data=[""] * n_existing)
+
         # Ensure each value column this interface writes exists, backfilling already-present rows, and
         # attach a MeaningsTable for a categorical column that supplies meanings.
         for column_name, column_spec in column_specs.items():
@@ -390,18 +394,6 @@ class BaseEventsInterface(BaseDataInterface):
                     existing = table[column_name].data
                     row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
             table.add_row(**row_kwargs)
-
-        if existing_table is None:
-            nwbfile.add_events_table(table)
-
-        # Re-sort chronologically by permuting every full-length column in place (stable, so equal
-        # timestamps keep insertion order). Works while the columns are in-memory lists.
-        n = len(table.id)
-        order = list(np.argsort(np.asarray(table["timestamp"].data), kind="stable"))
-        if order != list(range(n)):
-            for column in table.columns:
-                if len(column.data) == n:
-                    column.data[:] = [column.data[index] for index in order]
 
     @staticmethod
     def _labels_map(column_spec: dict) -> dict | None:

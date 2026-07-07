@@ -238,6 +238,50 @@ class TestMockEventsInterface:
         assert list(events["timestamp"][:]) == pytest.approx([0.1, 0.2, 0.3, 0.4])
         assert list(events["event_type"][:]) == ["left", "right", "left", "right"]
 
+    def test_merged_table_is_time_sorted(self):
+        # One interface with two event types. The mock staggers each type's timestamps so the types
+        # interleave in time, but each type is generated on its own: "events_0" (-> "left") fires at 0.1
+        # and 0.3, "events_1" (-> "right") at 0.2 and 0.4. The payload is timestamps-only, hence the empty
+        # "columns": {}.
+        interface = MockEventsInterface(num_event_types=2, num_events=2, event_payload="timestamps only")
+
+        # Each type on its own is chronological; the interleaving only appears once they are pooled.
+        events_data = interface._get_events_data_dict()
+        assert list(events_data["events_0"].timestamps) == pytest.approx([0.1, 0.3])
+        assert list(events_data["events_1"].timestamps) == pytest.approx([0.2, 0.4])
+        assert events_data["events_0"].payload == {}  # timestamps-only -> no value columns
+
+        metadata = {
+            "Events": {
+                "EventTables": {"pooled": {"table_name": "Pooled", "description": "Pooled events."}},
+                "mock_events": {
+                    "event_types": {
+                        "events_0": {
+                            "event_name": "left",
+                            "event_description": "Left events.",
+                            "table_metadata_key": "pooled",
+                        },
+                        "events_1": {
+                            "event_name": "right",
+                            "event_description": "Right events.",
+                            "table_metadata_key": "pooled",
+                        },
+                    }
+                },
+            }
+        }
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Pooled")
+        timestamps = list(events["timestamp"][:])
+        # The two types are appended as blocks, so the pre-sort order is [0.1, 0.3, 0.2, 0.4]; the
+        # end-of-write re-sort interleaves them into a single chronological timeline.
+        assert timestamps == pytest.approx([0.1, 0.2, 0.3, 0.4])
+        # Each row survived the sort as a unit: event_type still pairs "left" with 0.1/0.3 and "right"
+        # with 0.2/0.4 (a sort that moved only the timestamp column would break this).
+        assert list(events["event_type"][:]) == ["left", "right", "left", "right"]
+
     def test_merge_across_two_interfaces(self):
         # Two separate interface instances (distinct metadata_key) route their single type into one shared
         # table via the same table_metadata_key and a declared EventTables entry. The second interface

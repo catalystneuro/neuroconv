@@ -360,7 +360,10 @@ class MockEventsInterface(BaseEventsInterface):
             if self._event_payload == "multi value":
                 payload["amplitude"] = np.arange(self._num_events, dtype="float64")
             events_data_dict[event_type_source_id] = _EventsData(
-                timestamps=timestamps, durations=durations, payload=payload
+                event_type_source_id=event_type_source_id,
+                timestamps=timestamps,
+                durations=durations,
+                payload=payload,
             )
 
         self._events_data_dict = events_data_dict
