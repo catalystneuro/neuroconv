@@ -66,7 +66,8 @@ vocabularies discovered from the data:
         "behavioral_session": {                   # the interface's metadata_key
             "event_types": {
                 "PtAB": {                         # one entry per event type found (its event_type_source_id)
-                    "table_metadata_key": "PtAB",  # seeded to its own table
+                    "event_name": "PtAB",          # seeded to the source id; names its own table
+                    "event_description": "Events from TDT epoc store 'PtAB'.",
                     "columns": {                  # value columns, keyed by field_source_id
                         "strobe": {               # the strobe value field
                             "column_name": "strobe",   # seeded to the field_source_id
@@ -78,16 +79,17 @@ vocabularies discovered from the data:
                     },
                 },
                 "PC0_": {                         # constant value -> a bare marker (timestamps only)
-                    "table_metadata_key": "PC0_",
+                    "event_name": "PC0_",
+                    "event_description": "Events from TDT epoc store 'PC0_'.",
                     "columns": {},                # no value columns
                 },
             },
         },
-        "EventTables": {                          # one seeded table per event type; rename or describe here
-            "PtAB": {"table_name": "PtAB", "description": "Events from TDT epoc store 'PtAB'."},
-            "PC0_": {"table_name": "PC0_", "description": "Events from TDT epoc store 'PC0_'."},
-        },
     }
+
+There is no ``EventTables`` block: a solo event type names its own table from its ``event_name`` (here
+the seeded source ids ``PtAB``/``PC0_``), so ``EventTables`` appears only once you merge several event
+types into one shared table (shown further down).
 
 **Rename an event column.** ``column_name`` is the column header in the output table, seeded to the
 ``field_source_id``. Reach the value column through its event type and rename it:
@@ -165,14 +167,15 @@ describing each value:
        │ right  │ Subject chose the right port  │
        └────────┴───────────────────────────────┘
 
-**Rename or describe the output table.** Each event type writes to the table named by its
-``table_metadata_key``, seeded to a per-event-type entry in ``EventTables``. Edit that entry to rename or
-describe the table:
+**Rename or describe the output table.** A solo event type names its own table from its ``event_name``
+(CamelCased for the NWB object name) and ``event_description``. Edit those to rename or describe the
+table:
 
 .. code-block:: python
 
-    metadata["Events"]["EventTables"]["PtAB"]["table_name"] = "Choices"
-    metadata["Events"]["EventTables"]["PtAB"]["description"] = "Subject's choice (left, center, right)."
+    event_type = metadata["Events"]["behavioral_session"]["event_types"]["PtAB"]
+    event_type["event_name"] = "choices"                                  # table becomes "Choices"
+    event_type["event_description"] = "Subject's choice (left, center, right)."
 
 The table is now named ``Choices``. The final state is the events table with its contained
 ``choice_meanings`` MeaningsTable:
@@ -237,20 +240,22 @@ clean, separate tables**:
 
 That is fine when the events are genuinely separate kinds. But sometimes you want the different event
 types of one interface in **one** table, for semantic grouping or to simplify a downstream read.
-Point each event type's ``table_metadata_key`` at one shared ``EventTables`` entry:
+Point each event type's ``table_metadata_key`` at one shared ``EventTables`` entry, and give each a
+friendly ``event_name`` (it becomes the type's label in the shared table's ``event_type`` column):
 
 .. code-block:: python
 
-    # Continuing with the annotated metadata (the strobe column is renamed to "choice" and labeled).
+    # Continuing with the annotated metadata (PtAB's column renamed to "choice" and labeled, and its
+    # event_name set to "choices"). Give the reward marker a friendly name too.
+    event_types = metadata["Events"]["behavioral_session"]["event_types"]
+    event_types["PC0_"]["event_name"] = "reward"
+    event_types["PC0_"]["event_description"] = "Reward delivery."
 
-    # Define the shared table once.
+    # Define the shared table once, then point both event types at it instead of their own tables.
     metadata["Events"]["EventTables"]["behavior"] = {
         "table_name": "BehavioralEvents",
         "description": "Choices and rewards in one table.",
     }
-
-    # Point both event types at it instead of their own tables.
-    event_types = metadata["Events"]["behavioral_session"]["event_types"]
     event_types["PtAB"]["table_metadata_key"] = "behavior"   # the choice event type
     event_types["PC0_"]["table_metadata_key"] = "behavior"   # the reward marker
 
@@ -258,10 +263,10 @@ Point each event type's ``table_metadata_key`` at one shared ``EventTables`` ent
 
 Both event types now land in one ``BehavioralEvents`` table, one row per event, ordered by
 ``timestamp``. Because the rows come from different event types, the shared table carries an
-``event_type`` column naming each row's type by its ``event_metadata_key``, and each event type
-contributes only the value columns it carries: the ``PtAB`` event type adds a ``choice`` column,
-while the ``PC0_`` marker is a bare timestamp and adds no value column. A reward row is therefore
-identified by ``event_type = "PC0_"`` with the ``choice`` cell empty:
+``event_type`` column holding each row's ``event_name``, and each event type contributes only the
+value columns it carries: the choice event type adds a ``choice`` column, while the ``reward`` marker
+is a bare timestamp and adds no value column. A reward row is therefore identified by
+``event_type = "reward"`` with the ``choice`` cell empty:
 
 .. code-block:: text
 
@@ -269,24 +274,32 @@ identified by ``event_type = "PC0_"`` with the ``choice`` cell empty:
     ┌───────────┬────────────┬────────┐
     │ timestamp │ event_type │ choice │
     ├───────────┼────────────┼────────┤
-    │     8.500 │ PC0_       │        │   <- a bare marker: identified by event_type, no choice value
-    │    12.084 │ PtAB       │ left   │
-    │    13.553 │ PtAB       │ right  │
-    │    19.310 │ PC0_       │        │
+    │     8.500 │ reward     │        │   <- a bare marker: identified by event_type, no choice value
+    │    12.084 │ choices    │ left   │
+    │    13.553 │ choices    │ right  │
+    │    19.310 │ reward     │        │
     │       ... │ ...        │ ...    │
     └───────────┴────────────┴────────┘
+       meanings_tables/
+       event_type_meanings  (MeaningsTable, describes each event type)
+       ┌─────────┬─────────────────────────────────────────┐
+       │ value   │ meaning                                 │
+       ├─────────┼─────────────────────────────────────────┤
+       │ choices │ Subject's choice (left, center, right). │
+       │ reward  │ Reward delivery.                        │
+       └─────────┴─────────────────────────────────────────┘
 
 The ``event_type`` column is what makes sharing a table safe: without it a bare marker (which adds no
 value column) would be an all-blank row, indistinguishable from any other, and its identity would be
-lost. With it, every row knows its type regardless of which value columns it fills. The ``choice``
-column keeps its ``choice_meanings`` MeaningsTable, now contained in ``BehavioralEvents``. The
-``event_type`` value is each row's ``event_metadata_key`` (the source's own id, ``PtAB`` / ``PC0_``),
-not a renamable label; to have a bare marker read under a friendlier name, keep it in its own table
-(named via ``EventTables``) rather than merging.
+lost. With it, every row knows its type regardless of which value columns it fills. Each row's
+``event_type`` value is the type's ``event_name`` (``choices`` / ``reward``), and the column carries an
+``event_type_meanings`` MeaningsTable mapping each name to its ``event_description``, so the merged
+table documents its own types. The ``choice`` column keeps its ``choice_meanings`` MeaningsTable, now
+also contained in ``BehavioralEvents``.
 
 By default each event type stays in its own table (no ``event_type`` column needed, since the table
-*is* the type); you share a table when the grouping is worth it, and the writer adds the
-``event_type`` column to keep the rows distinguishable.
+*is* the type); you share a table when the grouping is worth it, and the writer adds the ``event_type``
+column (with its meanings) to keep the rows distinguishable and named.
 
 Putting event types from *different* interfaces into one table works exactly the same way and is
 shown next; the only difference is the columns live under different ``metadata_key`` s.
@@ -318,8 +331,8 @@ interface's ``event_types`` block so those identical ids never clash.
     # Each interface's event types live under its own metadata_key, so identical event_type_source_ids
     # from different interfaces never collide: metadata["Events"]["tdt"] vs ["nidq"].
     metadata["Events"]["tdt"]["event_types"]["PtAB"]["columns"]["strobe"]["column_name"] = "choice"
-    # XD0 is a bare marker (no value column); name it by renaming its table instead.
-    metadata["Events"]["EventTables"]["XD0"]["table_name"] = "CameraFrames"
+    # XD0 is a bare marker (no value column); name its table via event_name.
+    metadata["Events"]["nidq"]["event_types"]["XD0"]["event_name"] = "camera_frame"   # table -> "CameraFrame"
 
 So far each event type keeps its own default table, giving separate tables per interface. Sharing a
 table **across** interfaces works exactly like sharing within one (above): point each event type's
@@ -335,17 +348,23 @@ interface can route into it.
         "description": "Rewards (TDT) and licks (NIDQ) sharing one table across interfaces.",
     }
 
-    # A TDT reward marker and a NIDQ lick line, both bare markers, routed into the one shared table.
-    metadata["Events"]["tdt"]["event_types"]["PC0_"]["table_metadata_key"] = "behavior"
-    metadata["Events"]["nidq"]["event_types"]["XD1"]["table_metadata_key"] = "behavior"
+    # A TDT reward marker and a NIDQ lick line, both bare markers, routed into the one shared table,
+    # each given a friendly event_name that becomes its label in the event_type column.
+    reward = metadata["Events"]["tdt"]["event_types"]["PC0_"]
+    reward["event_name"], reward["event_description"] = "reward", "Reward delivery."
+    reward["table_metadata_key"] = "behavior"
+    lick = metadata["Events"]["nidq"]["event_types"]["XD1"]
+    lick["event_name"], lick["event_description"] = "lick", "Lick detection."
+    lick["table_metadata_key"] = "behavior"
 
     converter.run_conversion(nwbfile_path="session.nwb", metadata=metadata)
 
 Both event types land in one ``BehavioralEvents`` table. As with sharing within a single interface,
-the shared table carries an ``event_type`` column naming each row's type by its ``event_metadata_key``,
-and each type contributes only the value columns it has. Both ``PC0_`` and ``XD1`` here are bare
-markers (timestamps only, no value), so they add no value column at all, the table is just timestamps
-tagged by type:
+the shared table carries an ``event_type`` column holding each row's ``event_name`` (with an
+``event_type_meanings`` MeaningsTable built from the ``event_description`` s), and each type
+contributes only the value columns it has. Both ``reward`` and ``lick`` here are bare markers
+(timestamps only, no value), so they add no value column at all, the table is just timestamps tagged
+by type:
 
 .. code-block:: text
 
@@ -353,9 +372,9 @@ tagged by type:
     ┌───────────┬────────────┐
     │ timestamp │ event_type │
     ├───────────┼────────────┤
-    │     8.500 │ PC0_       │   <- from the TDT interface
-    │    11.200 │ XD1        │   <- from the NIDQ interface
-    │    19.310 │ PC0_       │
+    │     8.500 │ reward     │   <- from the TDT interface
+    │    11.200 │ lick       │   <- from the NIDQ interface
+    │    19.310 │ reward     │
     │       ... │ ...        │
     └───────────┴────────────┘
 
