@@ -23,8 +23,7 @@ from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import GuppyInterface
-
-from ..setup_paths import OPHYS_DATA_PATH
+from neuroconv.tools.testing import generate_mock_guppy_output_folder
 
 
 def _column_parses_as_float(column: str) -> bool:
@@ -37,8 +36,6 @@ def _column_parses_as_float(column: str) -> bool:
 
 _BIN_COLUMN_PATTERN = re.compile(r"^bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
 _PREFIX_TO_TRACE_TYPE = dict(cntrl_sig_fit="control_fit", dff="dff", z_score="z_score")
-
-GUPPY_DATA_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_63_207-181030-103332"
 
 
 def _resolve_regions(module, dynamic_table_region) -> list[str]:
@@ -70,13 +67,18 @@ def _group_by_condition(entries, key_fields, event_order):
 
 
 class TestGuppyInterface:
-    """Tests for the GuppyInterface against the standard GuPPy fixture set."""
+    """Tests for the GuppyInterface against a synthetically-generated GuPPy output folder.
+
+    The fixture folder is produced on the fly by ``generate_mock_guppy_output_folder`` (a tiny,
+    schema-faithful replica of a real GuPPy output), so these tests need no GIN data. The generator
+    defaults reproduce the ``Photo_63_207-181030-103332`` topology -- two regions, three events, two
+    features -- so the expected region/event/product counts match a real two-region session.
+    """
 
     @pytest.fixture(
         params=[
             pytest.param(
                 dict(
-                    folder_path=GUPPY_DATA_PATH / "Photo_63_207-181030-103332_output_1",
                     expected_regions=["dms", "dls"],
                     expected_traces={
                         "dms": ["cntrl_sig_fit", "dff", "z_score"],
@@ -121,15 +123,13 @@ class TestGuppyInterface:
                         "PrtN": "port_entries",
                     },
                 ),
-                id="tdt_isosbestic_two_regions",
+                id="mock_isosbestic_two_regions",
             ),
         ]
     )
-    def case(self, request):
+    def case(self, request, tmp_path):
         case = dict(request.param)
-        assert case[
-            "folder_path"
-        ].is_dir(), f"Test data missing at {case['folder_path']}. Place the GuPPy fixture set under {GUPPY_DATA_PATH}."
+        case["folder_path"] = generate_mock_guppy_output_folder(tmp_path / "guppy_output")
         return case
 
     @pytest.fixture
@@ -207,7 +207,7 @@ class TestGuppyInterface:
             assert metadata["NWBFile"]["session_start_time"] == case["expected_session_start_time"]
 
     def test_metadata_session_start_time_unset_when_time_rec_start_absent(self, case, tmp_path):
-        copied_folder = tmp_path / "guppy_output"
+        copied_folder = tmp_path / "guppy_output_copy"
         shutil.copytree(case["folder_path"], copied_folder)
         for region in case["expected_regions"]:
             with h5py.File(copied_folder / f"timeCorrection_{region}.hdf5", "r+") as time_correction_file:
@@ -531,7 +531,7 @@ class TestGuppyInterface:
             assert stop == pytest.approx(expected_stop)
 
     def test_cross_correlation_without_psth_bin_columns(self, case, tmp_path, linked_nwbfile, region_to_indices):
-        copied_folder = tmp_path / "guppy_output"
+        copied_folder = tmp_path / "guppy_output_copy"
         shutil.copytree(case["folder_path"], copied_folder)
         cross_correlation_folder = copied_folder / "cross_correlation_output"
         if cross_correlation_folder.is_dir():
@@ -631,7 +631,7 @@ class TestGuppyInterface:
     # ----------------------------------------------------------------- warnings / construction errors
 
     def test_missing_parameters_file_raises(self, case, tmp_path):
-        copied_folder = tmp_path / "guppy_output"
+        copied_folder = tmp_path / "guppy_output_copy"
         shutil.copytree(case["folder_path"], copied_folder)
         (copied_folder / "GuPPyParamtersUsed.json").unlink()
         with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):

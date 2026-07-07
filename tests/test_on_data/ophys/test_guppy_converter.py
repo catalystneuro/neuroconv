@@ -6,12 +6,16 @@ import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv.converters import TDTFiberPhotometryGuppyConverter
+from neuroconv.tools.testing import generate_mock_guppy_output_folder
 from neuroconv.utils import dict_deep_update, load_dict_from_file
 
 from ..setup_paths import OPHYS_DATA_PATH
 
+# The real ~6 MB TDT tank is kept (session start time, stream names, and event epoc counts are all
+# asserted against it). The GuPPy output folder is generated on the fly instead of pulled from GIN;
+# its store/event names default to the tank's (Dv1A/Dv2A/Dv3B/Dv4B, PrtN/LNRW/LNnR), which is the
+# only coupling the converter requires.
 SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_63_207-181030-103332"
-GUPPY_OUTPUT_FOLDER = SESSION_FOLDER / "Photo_63_207-181030-103332_output_1"
 FIBER_PHOTOMETRY_METADATA_FILE = Path(__file__).parent / "fiber_photometry_metadata.yaml"
 
 
@@ -21,10 +25,14 @@ EXPECTED_TDT_SESSION_START_TIME = datetime(2018, 10, 30, 15, 33, 53, 999999, tzi
 
 class TestTDTFiberPhotometryGuppyConverter:
     @pytest.fixture
-    def converter(self):
+    def guppy_output_folder(self, tmp_path):
+        return generate_mock_guppy_output_folder(tmp_path / "guppy_output")
+
+    @pytest.fixture
+    def converter(self, guppy_output_folder):
         return TDTFiberPhotometryGuppyConverter(
             tdt_folder_path=SESSION_FOLDER,
-            guppy_folder_path=GUPPY_OUTPUT_FOLDER,
+            guppy_folder_path=guppy_output_folder,
         )
 
     @pytest.fixture
