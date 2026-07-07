@@ -342,7 +342,65 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    # TODO: remove test_metadata and check_extracted_metadata_old_list_format when the old list
+    # format is removed (then check_extracted_metadata is the only metadata hook).
+    def test_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        self.check_extracted_metadata_old_list_format(metadata)
+
+    def test_get_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        self.check_extracted_metadata(metadata)
+
     def check_extracted_metadata(self, metadata: dict):
+        """The dict-based ("new") metadata shape, checked against a full expected dict.
+
+        The equality is strict: provenance-first means ``get_metadata`` emits only source-derived
+        values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
+        applied by the writer), so any extra emitted field would fail the comparison.
+        """
+        metadata_key = "deep_lab_cut_metadata_key"
+        bodyparts = ["snout", "leftear", "rightear", "tailbase"]
+
+        # The legacy top-level "PoseEstimation" block must be gone in the dict-based shape.
+        assert "PoseEstimation" not in metadata
+
+        expected_devices = {
+            metadata_key: {
+                "name": "CameraPoseEstimationDeepLabCut",
+                "description": "Camera used for behavioral recording and pose estimation.",
+            },
+        }
+
+        expected_pose_metadata = {
+            "Skeletons": {
+                metadata_key: {
+                    "name": "SkeletonPoseEstimationDeepLabCut_Ind1",
+                    "nodes": bodyparts,
+                    "edges": [],
+                    "subject": "ind1",
+                },
+            },
+            "PoseEstimations": {
+                metadata_key: {
+                    "name": "PoseEstimationDeepLabCut",
+                    "source_software": "DeepLabCut",
+                    "scorer": "DLC_resnet50_openfieldAug20shuffle1_30000",
+                    "dimensions": [[0, 0]],
+                    "original_videos": None,
+                    "device_metadata_key": metadata_key,
+                    "skeleton_metadata_key": metadata_key,
+                    "PoseEstimationSeries": {
+                        bodypart: {"name": f"PoseEstimationSeries{bodypart.capitalize()}"} for bodypart in bodyparts
+                    },
+                },
+            },
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Behavior"]["Pose"] == expected_pose_metadata
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Define expected values directly here
         expected_bodyparts = ["snout", "leftear", "rightear", "tailbase"]
         container_name = "PoseEstimationDeepLabCut"
@@ -540,6 +598,21 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
             skeleton = pose_estimation_container.skeleton
             assert skeleton.nodes[:].tolist() == ["snout", "leftear", "rightear", "tailbase"]
+
+    def test_conversion_new_metadata_format(self, setup_interface):
+        """Run the conversion with the dict-based ("new") metadata format and read it back.
+
+        The mixin's standard conversion checks only exercise the default (old) format; this runs
+        ``add_to_nwbfile`` with ``get_metadata(use_new_metadata_format=True)`` so the new-format write
+        path is covered, reusing ``check_read_nwb`` (the written NWB is the same for both formats).
+        This is a DLC-local prototype of the generic mixin coverage planned for all migrated
+        interfaces; remove it once the mixin runs the conversion checks in the new format too.
+        """
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        metadata["NWBFile"].update(session_start_time=datetime.now(timezone.utc))
+        nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_new_metadata_format.nwb")
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+        self.check_read_nwb(nwbfile_path=nwbfile_path)
 
     def test_subject_not_linked(self, setup_interface):
         """
