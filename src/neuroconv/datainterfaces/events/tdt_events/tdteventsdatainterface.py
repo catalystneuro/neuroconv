@@ -5,7 +5,7 @@ from pydantic import DirectoryPath, validate_call
 
 from neuroconv.utils import DeepDict
 
-from ..baseeventsinterface import BaseEventsInterface, _EventInternalClass
+from ..baseeventsinterface import BaseEventsInterface, _EventsData
 from ...ophys.tdt_fp._tdt_mixin import TDTLoadMixin
 
 _NEW_ISSUE_URL = "https://github.com/catalystneuro/neuroconv/issues/new"
@@ -119,48 +119,48 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
                 continue  # an epoc with no events is not a writable event type; skip it entirely
             is_strobe = not _data_is_counter(data)
 
-            # One EventsTable per epoc store; the table_metadata_key defaults to the store name. A
-            # counter store is timestamp-only (empty columns); a real strobe gets one categorical
-            # 'strobe' column (keyed by its payload field) with an editable code -> label map.
-            table_description = f"Onset times of the TDT epoc '{epoc_name}'."
-            column = {"table_metadata_key": epoc_name, "columns": {}}
+            # One EventsTable per epoc store. event_name defaults to the raw store name, which the writer
+            # keeps verbatim as the table's NWB object name (e.g. "PAB_", "PrtR"): the opaque store code
+            # is the faithful identifier, and CamelCasing it would be lossy (the user can rename via
+            # event_name). A counter store is timestamp-only (no columns); a real strobe gets one
+            # categorical 'strobe' column (keyed by its payload field) with an editable code -> label map.
+            event_description = f"Onset times of the TDT epoc '{epoc_name}'."
+            entry = {"event_name": epoc_name, "event_description": event_description}
             if is_strobe:
-                table_description = f"Onset times of the TDT epoc '{epoc_name}', labeled by strobe value."
-                column["columns"]["strobe"] = {
-                    "column_name": "strobe",
-                    "description": f"Strobe code for each '{epoc_name}' event.",
-                    "column_categories": {
-                        "labels": {
-                            _normalize_strobe_value(value): str(_normalize_strobe_value(value))
-                            for value in np.unique(data)
-                        }
-                    },
+                entry["event_description"] = f"Onset times of the TDT epoc '{epoc_name}', labeled by strobe value."
+                entry["columns"] = {
+                    "strobe": {
+                        "column_name": "strobe",
+                        "description": f"Strobe code for each '{epoc_name}' event.",
+                        "column_categories": {
+                            "labels": {
+                                _normalize_strobe_value(value): str(_normalize_strobe_value(value))
+                                for value in np.unique(data)
+                            }
+                        },
+                    }
                 }
-            # table_name defaults to the raw TDT store name (e.g. "PAB_", "PrtR") rather than the
-            # CamelCase NWB-object convention: the opaque store code is the faithful identifier and
-            # CamelCasing it would be lossy. The user can override it to a cleaner name.
-            metadata["Events"]["EventTables"][epoc_name] = {
-                "table_name": epoc_name,
-                "description": table_description,
-            }
-            metadata["Events"][self.metadata_key]["event_types"][epoc_name] = column
+            metadata["Events"][self.metadata_key]["event_types"][epoc_name] = entry
         return metadata
 
-    def _load_event_data_dict(self) -> dict[str, _EventInternalClass]:
-        """Build the internal event representation from the TDT epocs.
+    def _get_events_data_dict(self) -> dict[str, _EventsData]:
+        """Build the internal event representation from the TDT epocs, cached after the first call.
 
-        Each included epoc becomes one :class:`_EventInternalClass`: a counter epoc yields onset
-        timestamps only (a bare marker, empty payload), while a strobe epoc (real ``data`` codes)
-        carries the per-event codes under the ``"strobe"`` payload field, normalized to match the
-        ``column_categories["labels"]`` keys seeded by :meth:`get_metadata`. TDT epocs are point
-        events, so ``durations`` is left ``None``. An epoc carrying real offset (STROFF) durations is
-        not supported yet and raises ``NotImplementedError`` pointing to a feature request.
+        Each included epoc becomes one :class:`_EventsData`: a counter epoc yields onset timestamps only
+        (a bare marker, empty payload), while a strobe epoc (real ``data`` codes) carries the per-event
+        codes under the ``"strobe"`` payload field, normalized to match the ``column_categories["labels"]``
+        keys seeded by :meth:`get_metadata`. TDT epocs are point events, so ``durations`` is left
+        ``None``. An epoc carrying real offset (STROFF) durations is not supported yet and raises
+        ``NotImplementedError`` pointing to a feature request.
         """
+        if self._events_data_dict is not None:
+            return self._events_data_dict
+
         tdt_photometry = self.load(evtype=["epocs"])
         exclude_events = self.source_data["exclude_events"] or []
         included_events = [epoc_name for epoc_name in tdt_photometry.epocs.keys() if epoc_name not in exclude_events]
 
-        event_data = {}
+        events_data_dict = {}
         for epoc_name in included_events:
             epoc = tdt_photometry.epocs[epoc_name]
             onset = np.asarray(epoc.onset)
@@ -182,6 +182,9 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
             payload = {}
             if not _data_is_counter(data):
                 payload = {"strobe": np.array([_normalize_strobe_value(value) for value in data])}
-            event_data[epoc_name] = _EventInternalClass(timestamps=onset, payload=payload)
+            events_data_dict[epoc_name] = _EventsData(
+                event_type_source_id=epoc_name, timestamps=onset, payload=payload
+            )
 
-        return event_data
+        self._events_data_dict = events_data_dict
+        return self._events_data_dict

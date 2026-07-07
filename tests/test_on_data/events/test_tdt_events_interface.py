@@ -88,10 +88,10 @@ class TestTDTEventsInterface:
     def test_default_lists_all_epocs(self, interface):
         event_types = interface.get_metadata()["Events"]["tdt_events"]["event_types"]
         assert set(event_types.keys()) == set(EPOC_NAME_TO_LENGTH)
-        for epoc_name, column in event_types.items():
+        for epoc_name, entry in event_types.items():
             # Photo_249 stores are all counters (timestamp-only), so no value columns.
-            assert column["table_metadata_key"] == epoc_name
-            assert column["columns"] == {}
+            assert entry["event_name"] == epoc_name
+            assert entry.get("columns", {}) == {}
 
     def test_exclude_events(self):
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, exclude_events=["LNRW", "LNnR"])
@@ -100,15 +100,13 @@ class TestTDTEventsInterface:
 
     def test_metadata_key_default_and_override(self):
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH)
-        # "EventTables" is the reserved global block; the rest are the per-interface metadata_keys.
-        assert set(interface.get_metadata()["Events"].keys()) == {
-            "tdt_events",
-            "EventTables",
-        }
+        # No EventTables block is seeded: each store is a solo table named from its event_name, so
+        # metadata["Events"] holds only the per-interface metadata_key block.
+        assert set(interface.get_metadata()["Events"].keys()) == {"tdt_events"}
 
         interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, metadata_key="my_tank")
         events_metadata = interface.get_metadata()["Events"]
-        assert set(events_metadata.keys()) == {"my_tank", "EventTables"}
+        assert set(events_metadata.keys()) == {"my_tank"}
         assert set(events_metadata["my_tank"]["event_types"].keys()) == set(EPOC_NAME_TO_LENGTH)
 
     def test_metadata_schema_is_valid(self, interface):
@@ -137,9 +135,11 @@ class TestTDTEventsInterface:
             }
         )
         monkeypatch.setattr(interface, "load", lambda **kwargs: fake_block)
-        # The raise happens in _load_event_data_dict (before any columns are read), so this metadata
-        # is never consumed; kept as a well-formed Shape-B entry for consistency.
-        metadata = {"Events": {"tdt_events": {"event_types": {"PrtR": {"table_metadata_key": "PrtR", "columns": {}}}}}}
+        # The raise happens in _get_events_data_dict, so the value columns are never read; the entry just
+        # needs the required event_name/event_description to get past table-identity resolution.
+        metadata = {
+            "Events": {"tdt_events": {"event_types": {"PrtR": {"event_name": "PrtR", "event_description": "d"}}}}
+        }
         with pytest.raises(NotImplementedError, match=r"real offset.*issues/new"):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
@@ -174,16 +174,16 @@ class TestTDTEventsStrobeInterface:
         strobe = column["columns"]["strobe"]
         assert strobe["column_categories"]["labels"] == {0: "0", 16: "16", 2064: "2064"}
         assert strobe["column_name"] == "strobe"
-        assert column["table_metadata_key"] == "PAB_"
-        # The table object carries the description; it defaults to one table per store.
-        table = metadata["Events"]["EventTables"]["PAB_"]
-        assert table["table_name"] == "PAB_"
-        assert table["description"] == "Onset times of the TDT epoc 'PAB_', labeled by strobe value."
+        # The type names its own (solo) table from event_name and carries its description; no EventTables
+        # entry is seeded (the writer keeps the raw store name "PAB_" verbatim as the table object name).
+        assert column["event_name"] == "PAB_"
+        assert column["event_description"] == "Onset times of the TDT epoc 'PAB_', labeled by strobe value."
+        assert "EventTables" not in metadata["Events"]
 
     def test_counter_store_has_no_labels(self):
         interface = TDTEventsInterface(folder_path=STROBE_TANK_PATH, exclude_events=["PAB_", "Vid1"])
         column = interface.get_metadata()["Events"]["tdt_events"]["event_types"]["Tick"]
-        assert column["columns"] == {}
+        assert column.get("columns", {}) == {}
 
     def test_add_to_nwbfile_writes_labeled_events(self, interface):
         nwbfile = mock_NWBFile()

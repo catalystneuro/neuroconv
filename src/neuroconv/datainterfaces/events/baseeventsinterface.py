@@ -246,7 +246,10 @@ class BaseEventsInterface(BaseDataInterface):
                 table_name, description = _to_table_object_name(only["event_name"]), only["event_description"]
             else:
                 names = ", ".join(event_types[source_id]["event_name"] for source_id in event_type_source_ids)
-                table_name, description = _to_table_object_name(table_metadata_key), f"Events pooled from types: {names}."
+                table_name, description = (
+                    _to_table_object_name(table_metadata_key),
+                    f"Events pooled from types: {names}.",
+                )
 
             existing_table = nwbfile.events.get(table_name) if nwbfile.events is not None else None
             # A declared shared table, more than one type here, or a table another interface already wrote
@@ -412,10 +415,10 @@ def _to_table_object_name(name: str) -> str:
     """CamelCase a derived table name for use as an NWB object name, but keep an already-cased
     identifier verbatim so a raw source id is not mangled.
 
-    A snake_case or all-lowercase ``name`` is CamelCased (``port_entries`` -> ``PortEntries``); a name
-    that already carries mixed/upper casing and no underscore (a raw ``event_type_source_id`` like
-    ``PtAB`` or ``XD0``) is returned unchanged, because ``to_camel_case("PtAB")`` would lowercase the
-    rest and give ``"Ptab"``.
+    An all-lowercase ``name`` (a human snake_case name) is CamelCased (``port_entries`` ->
+    ``PortEntries``); a name that already carries any uppercase (a raw ``event_type_source_id`` like
+    ``PtAB``, ``XD0``, or a TDT store ``PAB_``) is returned unchanged, because ``to_camel_case`` would
+    otherwise lowercase the rest (``PtAB`` -> ``Ptab``) or drop a trailing underscore (``PAB_`` ->
+    ``PAB``).
     """
-    return to_camel_case(name) if ("_" in name or name.islower()) else name
-
+    return to_camel_case(name) if name.islower() else name
