@@ -124,6 +124,24 @@ class TestMockEventsInterface:
         value_to_meaning = dict(zip(meanings_table["value"][:], meanings_table["meaning"][:]))
         assert value_to_meaning["GO"] == "A go outcome."
 
+    def test_solo_table_name_casing(self):
+        # A solo table's object name derives from event_name: a snake_case or all-lowercase name is
+        # CamelCased, but a raw source id that already carries casing is kept verbatim rather than mangled
+        # (to_camel_case("PtAB") would give "Ptab").
+        interface = MockEventsInterface(event_payload="timestamps only")
+
+        snake = interface.get_metadata()
+        snake["Events"]["mock_events"]["event_types"]["events"]["event_name"] = "port_entries"
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=snake)
+        assert "PortEntries" in nwbfile.events
+
+        verbatim = interface.get_metadata()
+        verbatim["Events"]["mock_events"]["event_types"]["events"]["event_name"] = "PtAB"
+        other = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=other, metadata=verbatim)
+        assert "PtAB" in other.events
+
     def test_declaring_a_column_for_a_missing_payload_field_errors(self):
         # A columns entry whose field_source_id is absent from the data payload is a mismatch and must
         # fail with a clear message.
