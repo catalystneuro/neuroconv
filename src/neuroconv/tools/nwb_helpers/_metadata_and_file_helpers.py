@@ -19,6 +19,7 @@ from . import (
     configure_backend,
     get_default_backend_configuration,
 )
+from ..ontology import add_species_external_resource, validate_species
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
 
@@ -109,6 +110,13 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     schema_path = Path(__file__).resolve().parent.parent.parent / "schemas" / "base_metadata_schema.json"
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
     assert metadata is not None, "Metadata is required to create an NWBFile but metadata=None was passed."
+
+    # Recommend a standardized species term (non-blocking). Runs before schema validation so
+    # that common names (e.g. "mouse") surface a helpful suggestion even though the schema's
+    # binomial pattern will subsequently reject them.
+    if isinstance(metadata.get("Subject"), dict):
+        validate_species(metadata["Subject"].get("species"))
+
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
     nwbfile_kwargs = deepcopy(metadata["NWBFile"])
@@ -133,7 +141,13 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
             )
         nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["subject"])
 
-    return NWBFile(**nwbfile_kwargs)
+    nwbfile = NWBFile(**nwbfile_kwargs)
+
+    # Attach a machine-readable NCBITaxon reference for the subject species (in-file HERD).
+    # No-op when there is no subject or the species is not recognized.
+    add_species_external_resource(nwbfile)
+
+    return nwbfile
 
 
 def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: dict | None = None):
