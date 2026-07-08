@@ -665,7 +665,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ``FiberPhotometryResponseSeries``. If omitted, the deprecated multi-series behavior is
             used (see class docstring).
         metadata_key : str, optional
-            Key under ``metadata["Ophys"]["FiberPhotometry"]`` holding this interface's response-series
+            Key under ``metadata["FiberPhotometry"]`` holding this interface's response-series
             metadata. When ``None`` (default), it is generated from ``stream_names``.
         stream_indices : list of int, optional
             Column indices selecting which channels of the (column-stacked) stream data to keep.

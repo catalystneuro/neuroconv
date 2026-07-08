@@ -4,7 +4,7 @@ A ``BaseFiberPhotometryInterface`` writes exactly **one** ``FiberPhotometryRespo
 NWBFile, assembled from one or more input *streams* (atomic source signals, e.g. TDT stores or Doric
 datasets). All the shared containers (device models, devices, optical fibers, indicators, viral
 vectors/injections, the ``FiberPhotometryTable``, and any ``CommandedVoltageSeries``) live under
-``metadata["Ophys"]["FiberPhotometry"]`` as name-keyed lists and are built **once** per file — the
+``metadata["FiberPhotometry"]`` as name-keyed lists and are built **once** per file — the
 first interface to run assembles them from the (converter-merged) metadata and subsequent interfaces
 reuse them. Multiple response series therefore means multiple interfaces sharing one table, exactly
 like several ecephys recording interfaces sharing one electrodes table.
@@ -79,7 +79,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             The input stream(s) — atomic source signals (e.g. TDT stores) — whose samples are
             column-stacked into this interface's single ``FiberPhotometryResponseSeries``.
         metadata_key : str, optional
-            Key under ``metadata["Ophys"]["FiberPhotometry"]`` holding this interface's response-series
+            Key under ``metadata["FiberPhotometry"]`` holding this interface's response-series
             metadata. When ``None`` (default), it is generated from ``stream_names`` (e.g. stream
             ``"_405R"`` gives ``"fiber_photometry_405r"``), so multiple interfaces over different streams
             already get distinct keys. Pass an explicit value to override.
@@ -143,7 +143,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     # ------------------------------------------------------------------
 
     def get_metadata(self) -> DeepDict:
-        """Return the NWBFile basics combined with the default ``Ophys.FiberPhotometry`` scaffold.
+        """Return the NWBFile basics combined with the default top-level ``FiberPhotometry`` scaffold.
 
         The scaffold (built by :func:`get_default_fiber_photometry_metadata`) pre-fills required
         fields with sentinels — ``NaN`` for the required numeric wavelengths and
@@ -155,14 +155,10 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return dict_deep_update(metadata, default_fiber_photometry_metadata)
 
     def get_metadata_schema(self) -> dict:
-        """Return a permissive schema for the ``Ophys.FiberPhotometry`` metadata block."""
+        """Return a permissive schema for the top-level ``FiberPhotometry`` metadata block."""
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
-        metadata_schema["properties"]["Ophys"]["required"] = ["FiberPhotometry"]
-        metadata_schema["properties"]["Ophys"]["additionalProperties"] = True
-        metadata_schema["properties"]["Ophys"]["properties"] = dict(
-            FiberPhotometry=dict(type="object", additionalProperties=True)
-        )
+        metadata_schema["properties"]["FiberPhotometry"] = get_base_schema(tag="FiberPhotometry")
+        metadata_schema["properties"]["FiberPhotometry"]["additionalProperties"] = True
         return metadata_schema
 
     # ------------------------------------------------------------------
@@ -260,7 +256,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         from ndx_fiber_photometry import FiberPhotometryResponseSeries
 
         metadata = metadata or self.get_metadata()
-        fiber_photometry_metadata = metadata["Ophys"]["FiberPhotometry"]
+        fiber_photometry_metadata = metadata["FiberPhotometry"]
         self._warn_about_placeholder_metadata(fiber_photometry_metadata, strict=strict)
 
         def stub(array: np.ndarray) -> np.ndarray:

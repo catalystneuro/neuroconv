@@ -2,7 +2,7 @@
 
 ## Features
 * Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
-* Added `BaseFiberPhotometryInterface`, a single-series base class (one `FiberPhotometryResponseSeries` per interface, assembled from one or more input streams) that owns the shared NWB-writing and metadata logic: idempotent device/indicator/table construction, name-based `FiberPhotometryTable` region resolution, a standard scalar temporal-alignment API, and a runnable default metadata scaffold that warns about unset placeholder fields. Child interfaces implement only a small format-reading seam. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
+* Added `BaseFiberPhotometryInterface`, a single-series base class (one `FiberPhotometryResponseSeries` per interface, assembled from one or more input streams) that owns the shared NWB-writing and metadata logic: idempotent device/indicator/table construction, name-based `FiberPhotometryTable` region resolution, a standard scalar temporal-alignment API, and a runnable default metadata scaffold that warns about unset placeholder fields. Child interfaces implement only a small format-reading seam. Fiber photometry now has its own `datainterfaces.fiber_photometry` category (split out from `ophys`, mirroring the ecephys/icephys split), and single-series metadata lives at the top-level `metadata["FiberPhotometry"]` key rather than nested under `metadata["Ophys"]`. [PR #XXXX](https://github.com/catalystneuro/neuroconv/pull/XXXX)
 
 ## Removals, Deprecations and Changes
 * Bumped minimum `pynwb` version to `>=4.0.0`. [PR #1769](https://github.com/catalystneuro/neuroconv/pull/1769)

@@ -11,7 +11,7 @@ FIBER_PHOTOMETRY_PLACEHOLDER = "PLACEHOLDER"
 
 
 def get_default_fiber_photometry_metadata(metadata_key: str) -> dict:
-    """Return the default ``Ophys.FiberPhotometry`` metadata block for a single-series interface.
+    """Return the default top-level ``FiberPhotometry`` metadata block for a single-series interface.
 
     Mirrors the pattern of ``get_nwb_imaging_metadata``: the required fields are pre-filled with
     sentinels — ``NaN`` for the required numeric wavelengths and :data:`FIBER_PHOTOMETRY_PLACEHOLDER`
@@ -60,7 +60,7 @@ def get_default_fiber_photometry_metadata(metadata_key: str) -> dict:
         fiber_photometry_table_region=["row0"],
         fiber_photometry_table_region_description=placeholder,
     )
-    return dict(Ophys=dict(FiberPhotometry=fiber_photometry_metadata))
+    return dict(FiberPhotometry=fiber_photometry_metadata)
 
 
 def _assert_metadata_matches_existing(existing_object, metadata: dict, name: str) -> None:

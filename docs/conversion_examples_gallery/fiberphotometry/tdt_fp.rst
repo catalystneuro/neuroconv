@@ -113,7 +113,7 @@ Convert TDT Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Convert TDT Fiber Photometry data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.tdt_fp.tdtfiberphotometrydatainterface.TDTFiberPhotometryInterface`.
+:py:class:`~neuroconv.datainterfaces.fiber_photometry.tdt.tdtfiberphotometrydatainterface.TDTFiberPhotometryInterface`.
 
 .. code-block:: python
 
@@ -163,16 +163,18 @@ To ensure that the NWB file is fully annotated, specify the metadata using the f
 
 .. note::
 
-    For the single-series interface, three things differ from the block below (which predates the
+    For the single-series interface, four things differ from the block below (which predates the
     single-series refactor and is retained here as a field reference for the shared device, indicator,
     and virus sections):
 
+    * The metadata lives at the top-level key ``metadata["FiberPhotometry"]``, not nested under
+      ``metadata["Ophys"]``.
     * The input streams are selected via the ``stream_names`` constructor argument, so
       ``FiberPhotometryResponseSeries`` entries no longer carry a ``stream_name`` field.
     * Each ``FiberPhotometryTable`` row must include a ``name``; the response series references rows by
       those names via ``fiber_photometry_table_region`` (a list of row names, not integer indices).
     * A single interface writes one response series, supplied under
-      ``metadata["Ophys"]["FiberPhotometry"][metadata_key]`` (a dict), rather than a list of series.
+      ``metadata["FiberPhotometry"][metadata_key]`` (a dict), rather than a list of series.
 
 .. code-block:: python
 

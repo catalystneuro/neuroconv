@@ -120,7 +120,7 @@ Convert Doric Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Convert Doric Fiber Photometry data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.doric.doricfiberphotometrydatainterface.DoricFiberPhotometryInterface`.
+:py:class:`~neuroconv.datainterfaces.fiber_photometry.doric.doricfiberphotometrydatainterface.DoricFiberPhotometryInterface`.
 
 .. code-block:: python
 
