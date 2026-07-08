@@ -222,29 +222,45 @@ class TestEEGLABRecordingInterface:
         assert list(nwbfile.acquisition.keys()) == ["ElectricalSeries"]
         assert nwbfile.epochs is None
 
-    def test_subject_metadata_from_struct_and_bids(self, tmp_path, microvolt_traces):
+    def test_subject_id_from_eeg_subject_by_default(self, tmp_path, microvolt_traces):
+        """By default subject_id comes from EEG.subject and BIDS.pInfo demographics are NOT imported."""
         eeg = _make_eeg_struct(microvolt_traces)
         eeg["subject"] = "S07"
         eeg["BIDS"] = dict(pInfo=[["participant_id", "Gender", "Age"], ["S07", "F", 34]])
         set_path = tmp_path / "with_subject.set"
         savemat(str(set_path), {"EEG": eeg}, do_compression=True)
 
-        metadata = EEGLABRecordingInterface(file_path=set_path).get_metadata()
-        assert metadata["Subject"]["subject_id"] == "S07"
-        assert metadata["Subject"]["sex"] == "F"
-        assert metadata["Subject"]["age"] == "P34Y"
+        subject = EEGLABRecordingInterface(file_path=set_path).get_metadata()["Subject"]
+        assert subject["subject_id"] == "S07"
+        # pInfo demographics are opt-in, so sex/age are NOT read from BIDS (only the default sex).
+        assert subject["sex"] == "U"
+        assert "age" not in subject
 
-    def test_subject_metadata_partial_when_bids_empty(self, tmp_path, microvolt_traces):
-        """Only subject_id is set when Gender/Age are empty (as in real LSL-sourced files)."""
+    def test_bids_demographics_imported_when_opted_in(self, tmp_path, microvolt_traces):
+        eeg = _make_eeg_struct(microvolt_traces)
+        eeg["subject"] = "S07"
+        eeg["BIDS"] = dict(pInfo=[["participant_id", "Gender", "Age"], ["S07", "F", 34]])
+        set_path = tmp_path / "with_subject.set"
+        savemat(str(set_path), {"EEG": eeg}, do_compression=True)
+
+        interface = EEGLABRecordingInterface(file_path=set_path, import_bids_subject_metadata=True)
+        subject = interface.get_metadata()["Subject"]
+        assert subject["subject_id"] == "S07"
+        assert subject["sex"] == "F"
+        assert subject["age"] == "P34Y"
+
+    def test_opted_in_but_bids_empty_yields_only_subject_id(self, tmp_path, microvolt_traces):
+        """Opting in but with an empty pInfo (ds004588-style) still yields only subject_id + defaults."""
         eeg = _make_eeg_struct(microvolt_traces)
         eeg["subject"] = "S01"
         eeg["BIDS"] = dict(pInfo=[["participant_id", "Gender", "Age"], ["S1", np.array([]), np.array([])]])
         set_path = tmp_path / "partial_subject.set"
         savemat(str(set_path), {"EEG": eeg}, do_compression=True)
 
-        subject = EEGLABRecordingInterface(file_path=set_path).get_metadata()["Subject"]
-        # The real subject_id flows through; required fields are filled with defaults, and no fake age.
-        assert subject["subject_id"] == "S01"
+        subject = EEGLABRecordingInterface(
+            file_path=set_path, import_bids_subject_metadata=True
+        ).get_metadata()["Subject"]
+        assert subject["subject_id"] == "S01"  # from EEG.subject
         assert subject["sex"] == "U"
         assert subject["species"] == "Unknown species"
         assert "age" not in subject

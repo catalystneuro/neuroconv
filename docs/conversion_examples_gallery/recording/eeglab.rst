@@ -42,6 +42,12 @@ table, and the ``EEG.event`` markers are written to a ``TimeIntervals`` table na
     nwbfile_path = f"{path_to_save_nwbfile}"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
+``subject_id`` is read from ``EEG.subject`` automatically. To also import subject demographics
+(sex, age) from an in-struct ``EEG.BIDS.pInfo`` (present when the ``.set`` came through
+``pop_importbids``), construct the interface with ``import_bids_subject_metadata=True``. It is off by
+default because many BIDS datasets store no demographics there; the canonical source is the
+dataset-root ``participants.tsv``.
+
 To skip writing the event markers, pass ``write_events=False`` as a conversion option:
 
 .. code-block:: python

@@ -282,27 +282,32 @@ def _to_iso_age(value) -> "str | None":
 
 
 def _extract_subject_metadata(eeg_struct: dict) -> dict:
-    """Extract subject metadata from ``EEG.subject`` and the EEGLAB ``BIDS.pInfo`` table."""
-    subject_metadata = dict()
+    """Extract subject info from the ``.set`` struct.
 
+    Returns ``{"subject_id": <str|None>, "bids": {...}}`` where ``subject_id`` is the always-available
+    ``EEG.subject`` identity, and ``bids`` holds demographics parsed from ``EEG.BIDS.pInfo``. That
+    ``pInfo`` is just the ``participants.tsv`` header row plus this subject's row that ``pop_importbids``
+    copies into the ``.set``; it is only merged into the NWB Subject when the caller opts in (many BIDS
+    datasets, e.g. ds004588, have a ``participants.tsv`` with no demographics, so it adds nothing).
+    """
     subject = eeg_struct.get("subject")
     subject_id = _clean_cell(subject) if not isinstance(subject, str) else (subject.strip() or None)
-    if subject_id:
-        subject_metadata["subject_id"] = subject_id
 
+    bids_info = dict()
     bids = eeg_struct.get("BIDS")
     if isinstance(bids, dict):
         fields = _parse_bids_pinfo(bids.get("pInfo"))
-        if "subject_id" not in subject_metadata:
-            participant_id = _clean_cell(fields.get("participant_id"))
-            if participant_id:
-                subject_metadata["subject_id"] = participant_id
+        participant_id = _clean_cell(fields.get("participant_id"))
+        if participant_id:
+            bids_info["subject_id"] = participant_id
         sex = _map_sex(fields.get("Gender") if "Gender" in fields else fields.get("Sex"))
         if sex:
-            subject_metadata["sex"] = sex
+            bids_info["sex"] = sex
         age = _to_iso_age(fields.get("Age"))
         if age:
-            subject_metadata["age"] = age
+            bids_info["age"] = age
+
+    subject_metadata = dict(subject_id=subject_id, bids=bids_info)
 
     return subject_metadata
 
@@ -426,6 +431,10 @@ class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
     boundaries and time-locking event types are written to the NWB ``epochs`` table. In both cases
     ``EEG.event`` markers are written to a ``TimeIntervals`` table named ``"events"`` (disable with
     ``write_events=False``; disable the epochs table with ``write_epochs=False``).
+
+    ``subject_id`` is taken from ``EEG.subject``. Subject demographics from the in-struct
+    ``EEG.BIDS.pInfo`` (a copy of ``participants.tsv``) are read only when
+    ``import_bids_subject_metadata=True``; the canonical source is the dataset-root ``participants.tsv``.
     """
 
     display_name = "EEGLAB Recording"
@@ -446,10 +455,10 @@ class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
         return NumpyRecording
 
     def _initialize_extractor(self, interface_kwargs: dict):
-        """Read the EEGLAB file into a NumpyRecording, caching events, subject metadata, and epochs."""
-        recording, events, subject_metadata, epochs = _read_eeglab_recording(file_path=interface_kwargs["file_path"])
+        """Read the EEGLAB file into a NumpyRecording, caching events, subject info, and epochs."""
+        recording, events, subject_info, epochs = _read_eeglab_recording(file_path=interface_kwargs["file_path"])
         self._eeglab_events = events
-        self._eeglab_subject_metadata = subject_metadata
+        self._eeglab_subject_info = subject_info
         self._eeglab_epochs = epochs
         return recording
 
@@ -459,6 +468,7 @@ class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
         *,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        import_bids_subject_metadata: bool = False,
     ):
         """
         Load and prepare data for EEGLAB.
@@ -472,8 +482,15 @@ class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
             Allows verbose.
         es_key : str, default: "ElectricalSeries"
             Key for the ElectricalSeries metadata.
+        import_bids_subject_metadata : bool, default: False
+            If True, subject demographics (sex, age) are read from the ``EEG.BIDS.pInfo`` struct — the
+            per-subject copy of ``participants.tsv`` that ``pop_importbids`` stamps into the ``.set``.
+            Off by default: many BIDS datasets store no demographics there, and the canonical source is
+            the dataset-root ``participants.tsv``, better read by a BIDS-aware layer. ``subject_id`` is
+            always taken from ``EEG.subject`` regardless of this flag.
         """
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+        self._import_bids_subject_metadata = import_bids_subject_metadata
 
     @property
     def is_epoched(self) -> bool:
@@ -485,9 +502,20 @@ class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
         if self.es_key is not None:
             metadata["Ecephys"][self.es_key]["description"] = "EEG data imported from an EEGLAB dataset."
 
-        # Populate Subject when the .set carries any real subject info, filling the schema-required
-        # fields (subject_id, sex, species) with defaults so the metadata stays valid (cf. Inscopix).
-        subject_metadata = dict(getattr(self, "_eeglab_subject_metadata", dict()))
+        # subject_id comes from EEG.subject; BIDS.pInfo demographics only when opted in (see __init__).
+        info = getattr(self, "_eeglab_subject_info", dict())
+        subject_metadata = dict()
+        if info.get("subject_id"):
+            subject_metadata["subject_id"] = info["subject_id"]
+        if getattr(self, "_import_bids_subject_metadata", False):
+            for key, value in info.get("bids", dict()).items():
+                # a pInfo participant_id only fills subject_id when EEG.subject was empty
+                if key == "subject_id" and subject_metadata.get("subject_id"):
+                    continue
+                subject_metadata[key] = value
+
+        # Fill the schema-required fields (subject_id, sex, species) with defaults so metadata stays
+        # valid whenever any real subject info is present (cf. Inscopix).
         if subject_metadata:
             subject_metadata.setdefault("subject_id", "Unknown")
             subject_metadata.setdefault("species", "Unknown species")
