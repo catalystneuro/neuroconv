@@ -51,49 +51,42 @@ Other auxiliary signal channels should be excluded using the ``channels_to_skip`
 Handling Channels with Heterogeneous Offsets
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The NWB ``ElectricalSeries`` stores a single scalar ``offset`` that is shared by all of its channels.
-Some EDF files contain electrode channels whose physical-to-digital offsets differ from one another,
-which cannot be represented in a single ``ElectricalSeries``. In that case a normal ``run_conversion`` call
-raises ``ValueError: Recording extractors with heterogeneous offsets are not supported.``
+A single NWB ``ElectricalSeries`` stores one scalar ``offset`` shared by all of its channels.
+Some EDF files contain channels whose physical-to-digital offsets differ from one another (for example
+different electrode types digitized over different physical ranges), which cannot be represented in a
+single ``ElectricalSeries``. A normal ``run_conversion`` on such a file raises
+``ValueError: Recording extractors with heterogeneous offsets are not supported.``
 
-To convert such a file, use :py:meth:`~neuroconv.datainterfaces.ecephys.baserecordingextractorinterface.BaseRecordingExtractorInterface.run_conversion_split_by_offset`.
-It partitions the channels by their offset value and writes one NWB file per distinct offset. The output
-paths are derived from the given ``nwbfile_path`` by inserting an ``_offset{index}`` suffix
-(e.g. ``recording.nwb`` becomes ``recording_offset0.nwb``, ``recording_offset1.nwb``, ...). When all channels
-share the same offset, a single file is written to ``nwbfile_path`` unchanged.
+Use :py:meth:`~neuroconv.datainterfaces.ecephys.baserecordingextractorinterface.BaseRecordingExtractorInterface.split_by_offset`
+to partition the channels by offset. It returns one sub-interface per distinct offset (each restricted to
+the channels sharing that offset, and each with a distinct ``es_key``), using only the offsets in the file
+itself — no BIDS or other external metadata required. Combining the sub-interfaces in a ``ConverterPipe``
+then writes one ``ElectricalSeries`` per offset into a **single** NWB file, sharing one electrodes table
+and without rescaling the data. If the recording has a single offset, ``split_by_offset`` returns just the
+original interface.
 
 .. code-block:: python
 
     from zoneinfo import ZoneInfo
+    from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import EDFRecordingInterface
 
     file_path = f"{ECEPHY_DATA_PATH}/edf/heterogeneous_offsets.edf"
 
     interface = EDFRecordingInterface(file_path=file_path)
 
-    metadata = interface.get_metadata()
+    # One sub-interface per distinct channel offset (each with a distinct es_key)
+    sub_interfaces = interface.split_by_offset()
+    converter = ConverterPipe(data_interfaces={sub.es_key: sub for sub in sub_interfaces})
+
+    metadata = converter.get_metadata()
     session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     metadata["NWBFile"].update(session_start_time=session_start_time)
     metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
-    # Writes one NWB file per distinct channel offset and returns the written paths
+    # Writes one NWB file with one ElectricalSeries per distinct offset
     nwbfile_path = f"{path_to_save_nwbfile}"
-    written_paths = interface.run_conversion_split_by_offset(
-        nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True
-    )
-    print(f"Wrote: {written_paths}")
-
-If you need finer control over the per-file naming or metadata, call
-:py:meth:`~neuroconv.datainterfaces.ecephys.baserecordingextractorinterface.BaseRecordingExtractorInterface.split_by_offset`
-directly to obtain one sub-interface per offset and run the conversion on each yourself:
-
-.. code-block:: python
-
-    sub_interfaces = interface.split_by_offset()
-    for index, sub_interface in enumerate(sub_interfaces):
-        sub_interface.run_conversion(
-            nwbfile_path=f"recording_offset{index}.nwb", metadata=metadata, overwrite=True
-        )
+    converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 Converting Auxiliary EDF Channels as TimeSeries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

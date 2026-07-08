@@ -339,32 +339,22 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         sub_interfaces = interface.split_by_offset()
 
+        # One sub-interface per distinct offset, ordered by offset value, with distinct es_keys.
         assert len(sub_interfaces) == 3
-        # Ordered by offset value: 0.0, 1.0, 2.0
+        assert [sub.es_key for sub in sub_interfaces] == ["ElectricalSeries0", "ElectricalSeries1", "ElectricalSeries2"]
         assert list(sub_interfaces[0].recording_extractor.get_channel_ids()) == ["a", "b"]
         assert list(sub_interfaces[1].recording_extractor.get_channel_ids()) == ["c", "d"]
         assert list(sub_interfaces[2].recording_extractor.get_channel_ids()) == ["e"]
 
-        # Each sub-interface has a single, homogeneous offset
+        # Each sub-interface has a single, homogeneous offset.
         for sub_interface in sub_interfaces:
             assert len(set(sub_interface.recording_extractor.get_channel_offsets())) == 1
 
-        # The original interface is left untouched
+        # The original interface is left untouched.
         assert interface.recording_extractor.get_num_channels() == 5
 
-    def test_run_conversion_split_by_offset_single_file(self, setup_interface, tmp_path):
-        """With homogeneous offsets a single file is written at the given path."""
-        interface = self.interface
-        interface.recording_extractor.set_channel_offsets(offsets=[5.0, 5.0, 5.0, 5.0])
-        nwbfile_path = tmp_path / "recording.nwb"
-
-        written_paths = interface.run_conversion_split_by_offset(nwbfile_path=nwbfile_path, overwrite=True)
-
-        assert written_paths == [nwbfile_path]
-        assert nwbfile_path.exists()
-
-    def test_run_conversion_split_by_offset_multiple_files(self, tmp_path):
-        """With heterogeneous offsets one valid NWB file is written per distinct offset."""
+    def test_split_by_offset_combined_in_converter_pipe(self, tmp_path):
+        """The split sub-interfaces combine in a ConverterPipe to one file with one series per offset."""
         from pynwb import NWBHDF5IO
 
         interface = MockRecordingInterface(num_channels=5, durations=[0.100])
@@ -374,24 +364,24 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         interface.recording_extractor.set_channel_gains(gains=[1.0, 1.0, 1.0, 1.0, 1.0])
         interface.recording_extractor.set_channel_offsets(offsets=[0.0, 0.0, 1.0, 1.0, 2.0])
 
+        sub_interfaces = interface.split_by_offset()
+        converter = ConverterPipe(data_interfaces={sub.es_key: sub for sub in sub_interfaces})
+
         nwbfile_path = tmp_path / "recording.nwb"
-        written_paths = interface.run_conversion_split_by_offset(nwbfile_path=nwbfile_path, overwrite=True)
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
 
-        expected_paths = [
-            tmp_path / "recording_offset0.nwb",
-            tmp_path / "recording_offset1.nwb",
-            tmp_path / "recording_offset2.nwb",
-        ]
-        assert written_paths == expected_paths
-
+        expected_names = ["ElectricalSeries0", "ElectricalSeries1", "ElectricalSeries2"]
         expected_offsets = [0.0, 1.0, 2.0]
         expected_channel_counts = [2, 2, 1]
-        for path, expected_offset, expected_count in zip(expected_paths, expected_offsets, expected_channel_counts):
-            assert path.exists()
-            with NWBHDF5IO(path=str(path), mode="r") as io:
-                nwbfile = io.read()
-                electrical_series = nwbfile.acquisition["ElectricalSeries"]
-                # Offsets are stored in volts (micro-volt offset scaled by 1e-6)
+        with NWBHDF5IO(path=str(nwbfile_path), mode="r") as io:
+            nwbfile = io.read()
+            # One ElectricalSeries per distinct offset, all in the same file.
+            assert sorted(nwbfile.acquisition.keys()) == expected_names
+            # A single shared electrodes table holds every channel.
+            assert len(nwbfile.electrodes) == 5
+            for name, expected_offset, expected_count in zip(expected_names, expected_offsets, expected_channel_counts):
+                electrical_series = nwbfile.acquisition[name]
+                # Offsets are stored in volts (micro-volt offset scaled by 1e-6); no rescaling.
                 assert electrical_series.offset == expected_offset * 1e-6
                 assert electrical_series.data.shape[1] == expected_count
 
