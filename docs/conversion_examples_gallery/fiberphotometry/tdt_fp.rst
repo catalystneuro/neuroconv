@@ -151,7 +151,7 @@ Convert TDT Fiber Photometry data to NWB using
 
     Constructing ``TDTFiberPhotometryInterface`` without ``stream_names`` uses the deprecated
     multi-series behavior (writing every stream at once), which emits a ``DeprecationWarning`` and
-    will be removed on or after August 2026. Pass ``stream_names`` to use the single-series interface.
+    will be removed on or after January 2027. Pass ``stream_names`` to use the single-series interface.
 
 
 Specifying Metadata

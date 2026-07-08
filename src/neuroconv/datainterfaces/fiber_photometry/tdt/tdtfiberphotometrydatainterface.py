@@ -635,7 +635,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
     .. deprecated::
         Constructing without ``stream_names`` routes to the deprecated multi-series implementation,
-        which writes every stream at once and will be removed on or after August 2026. Pass
+        which writes every stream at once and will be removed on or after January 2027. Pass
         ``stream_names`` to use the single-series interface.
     """
 
@@ -675,7 +675,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         if stream_names is None:
             warnings.warn(
                 "Constructing TDTFiberPhotometryInterface without `stream_names` uses the deprecated "
-                "multi-series behavior, which will be removed on or after August 2026. Pass "
+                "multi-series behavior, which will be removed on or after January 2027. Pass "
                 "`stream_names=` to write a single FiberPhotometryResponseSeries "
                 "(see TDTFiberPhotometryInterface.get_available_streams).",
                 DeprecationWarning,
