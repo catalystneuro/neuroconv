@@ -1,6 +1,7 @@
 """Interface for Doric Neuroscience Studio fiber photometry data (.doric HDF5 files)."""
 
 import warnings
+from copy import deepcopy
 from datetime import datetime
 from typing import Literal
 
@@ -9,11 +10,7 @@ from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from neuroconv.tools.fiber_photometry import (
-    add_fiber_photometry_devices,
-    add_fiber_photometry_lab_metadata,
-    get_fiber_photometry_table_region,
-)
+from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_model
 from neuroconv.utils import DeepDict
 
 _DORIC_CREATED_FMT = "%a %b %d %H:%M:%S %Y"
@@ -324,7 +321,21 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ``"aligned_starting_time_and_rate"`` (use values set via
             :py:meth:`set_aligned_starting_time_and_rate`).
         """
-        from ndx_fiber_photometry import FiberPhotometryResponseSeries
+        from ndx_fiber_photometry import (
+            FiberPhotometry,
+            FiberPhotometryIndicators,
+            FiberPhotometryResponseSeries,
+            FiberPhotometryTable,
+            FiberPhotometryViruses,
+            FiberPhotometryVirusInjections,
+        )
+        from ndx_ophys_devices import (
+            FiberInsertion,
+            Indicator,
+            OpticalFiber,
+            ViralVector,
+            ViralVectorInjection,
+        )
 
         if stub_test:
             assert (
@@ -341,16 +352,121 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 timing_source == "original"
             ), "timing_source must be one of 'original', 'aligned_timestamps', or 'aligned_starting_time_and_rate'."
 
-        # Shared containers (devices, indicators, table) are built through the shared idempotent helpers.
-        fiber_photometry_metadata = metadata["FiberPhotometry"]
-        add_fiber_photometry_devices(nwbfile=nwbfile, fiber_photometry_metadata=fiber_photometry_metadata)
-        fiber_photometry_table = add_fiber_photometry_lab_metadata(
-            nwbfile=nwbfile, fiber_photometry_metadata=fiber_photometry_metadata
+        # ── Device models ────────────────────────────────────────────────────────
+        device_model_types = [
+            "OpticalFiberModel",
+            "ExcitationSourceModel",
+            "PhotodetectorModel",
+            "BandOpticalFilterModel",
+            "EdgeOpticalFilterModel",
+            "DichroicMirrorModel",
+        ]
+        for device_type in device_model_types:
+            for device_meta in metadata["FiberPhotometry"].get(device_type + "s", []):
+                add_ophys_device_model(nwbfile=nwbfile, device_metadata=device_meta, device_type=device_type)
+
+        # ── Devices ──────────────────────────────────────────────────────────────
+        device_types = [
+            "ExcitationSource",
+            "Photodetector",
+            "BandOpticalFilter",
+            "EdgeOpticalFilter",
+            "DichroicMirror",
+        ]
+        for device_type in device_types:
+            for device_meta in metadata["FiberPhotometry"].get(device_type + "s", []):
+                add_ophys_device(nwbfile=nwbfile, device_metadata=device_meta, device_type=device_type)
+
+        # ── Optical fibers (special case: each has a FiberInsertion) ─────────────
+        for optical_fiber_meta in metadata["FiberPhotometry"].get("OpticalFibers", []):
+            fiber_insertion = FiberInsertion(**optical_fiber_meta["fiber_insertion"])
+            of_meta = deepcopy(optical_fiber_meta)
+            of_meta["fiber_insertion"] = fiber_insertion
+            assert (
+                of_meta["model"] in nwbfile.device_models
+            ), f"Device model {of_meta['model']} not found in NWBFile device_models for {of_meta['name']}."
+            of_meta["model"] = nwbfile.device_models[of_meta["model"]]
+            nwbfile.add_device(OpticalFiber(**of_meta))
+
+        # ── Viral vectors, injections, and indicators ─────────────────────────────
+        name_to_viral_vector: dict[str, ViralVector] = {}
+        for vv_meta in metadata["FiberPhotometry"].get("FiberPhotometryViruses", []):
+            vv = ViralVector(**vv_meta)
+            name_to_viral_vector[vv.name] = vv
+        viruses = (
+            FiberPhotometryViruses(viral_vectors=list(name_to_viral_vector.values())) if name_to_viral_vector else None
         )
 
-        # This interface writes one response series per stream, each keyed by its metadata_key.
-        for series_metadata in fiber_photometry_metadata["FiberPhotometryResponseSeries"].values():
-            stream_name = series_metadata["stream_name"]
+        name_to_injection: dict[str, ViralVectorInjection] = {}
+        for inj_meta in metadata["FiberPhotometry"].get("FiberPhotometryVirusInjections", []):
+            inj_meta = deepcopy(inj_meta)
+            inj_meta["viral_vector"] = name_to_viral_vector[inj_meta["viral_vector"]]
+            inj = ViralVectorInjection(**inj_meta)
+            name_to_injection[inj.name] = inj
+        virus_injections = (
+            FiberPhotometryVirusInjections(viral_vector_injections=list(name_to_injection.values()))
+            if name_to_injection
+            else None
+        )
+
+        name_to_indicator: dict[str, Indicator] = {}
+        for ind_meta in metadata["FiberPhotometry"].get("FiberPhotometryIndicators", []):
+            if "viral_vector_injection" in ind_meta:
+                ind_meta = deepcopy(ind_meta)
+                ind_meta["viral_vector_injection"] = name_to_injection[ind_meta["viral_vector_injection"]]
+            ind = Indicator(**ind_meta)
+            name_to_indicator[ind.name] = ind
+        if not name_to_indicator:
+            raise ValueError("At least one indicator must be specified in the metadata.")
+        indicators = FiberPhotometryIndicators(indicators=list(name_to_indicator.values()))
+
+        # ── FiberPhotometryTable ──────────────────────────────────────────────────
+        table_meta = metadata["FiberPhotometry"]["FiberPhotometryTable"]
+        fiber_photometry_table = FiberPhotometryTable(
+            name=table_meta["name"],
+            description=table_meta["description"],
+        )
+        required_fields = [
+            "location",
+            "excitation_wavelength_in_nm",
+            "emission_wavelength_in_nm",
+            "indicator",
+            "optical_fiber",
+            "excitation_source",
+            "photodetector",
+        ]
+        device_fields = [
+            "optical_fiber",
+            "excitation_source",
+            "photodetector",
+            "dichroic_mirror",
+            "excitation_filter",
+            "emission_filter",
+        ]
+        for row_meta in table_meta["rows"]:
+            for field in required_fields:
+                assert field in row_meta, f"FiberPhotometryTable metadata row is missing required field '{field}'."
+            row_data = {f: nwbfile.devices[row_meta[f]] for f in device_fields if f in row_meta}
+            row_data["location"] = row_meta["location"]
+            row_data["excitation_wavelength_in_nm"] = row_meta["excitation_wavelength_in_nm"]
+            row_data["emission_wavelength_in_nm"] = row_meta["emission_wavelength_in_nm"]
+            row_data["indicator"] = name_to_indicator[row_meta["indicator"]]
+            if "coordinates" in row_meta:
+                row_data["coordinates"] = row_meta["coordinates"]
+            fiber_photometry_table.add_row(**row_data)
+
+        fp_lab_meta = FiberPhotometry(
+            name="fiber_photometry",
+            fiber_photometry_table=fiber_photometry_table,
+            fiber_photometry_viruses=viruses,
+            fiber_photometry_virus_injections=virus_injections,
+            fiber_photometry_indicators=indicators,
+        )
+        nwbfile.add_lab_meta_data(fp_lab_meta)
+
+        # ── FiberPhotometryResponseSeries ─────────────────────────────────────────
+        for series_meta in metadata["FiberPhotometry"]["FiberPhotometryResponseSeries"]:
+            stream_name = series_meta["stream_name"]
             data, file_timestamps = self._load_stream_array(stream_name, t1=t1, t2=t2)
 
             if timing_source == "aligned_timestamps":
@@ -361,18 +477,16 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             else:
                 timing_kwargs = dict(timestamps=file_timestamps)
 
-            region = get_fiber_photometry_table_region(
-                fiber_photometry_table=fiber_photometry_table,
-                table_rows_metadata=fiber_photometry_metadata["FiberPhotometryTable"]["rows"],
-                row_metadata_keys=series_metadata["fiber_photometry_table_region"],
-                description=series_metadata["fiber_photometry_table_region_description"],
+            region = fiber_photometry_table.create_fiber_photometry_table_region(
+                description=series_meta["fiber_photometry_table_region_description"],
+                region=series_meta["fiber_photometry_table_region"],
             )
             nwbfile.add_acquisition(
                 FiberPhotometryResponseSeries(
-                    name=series_metadata["name"],
-                    description=series_metadata["description"],
+                    name=series_meta["name"],
+                    description=series_meta["description"],
                     data=data,
-                    unit=series_metadata["unit"],
+                    unit=series_meta["unit"],
                     fiber_photometry_table_region=region,
                     **timing_kwargs,
                 )
