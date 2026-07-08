@@ -12,7 +12,8 @@ Child interfaces implement only the format-reading seam:
 
 * ``get_available_streams(...)`` — discover atomic source streams (a classmethod/staticmethod so a
   converter can be authored before construction).
-* ``_get_stream_data(stream_name, t1, t2)`` — return time-major ``(data, timestamps)`` for one stream.
+* ``_get_stream_data(stream_name, t1, t2)`` — return time-major data for one stream.
+* ``_get_stream_timestamps(stream_name, t1, t2)`` — return the timestamps for one stream.
 * ``get_metadata`` — enrich the base scaffold with whatever the format embeds (e.g. session start time).
 """
 
@@ -24,18 +25,19 @@ from pynwb.file import NWBFile
 
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...tools.fiber_photometry import (
+    FIBER_PHOTOMETRY_PLACEHOLDER,
     add_commanded_voltage_series,
     add_fiber_photometry_lab_metadata,
     add_ophys_device,
     add_ophys_device_model,
     add_optical_fibers,
+    get_default_fiber_photometry_metadata,
     get_fiber_photometry_table_region,
 )
-from ...utils import DeepDict, get_base_schema
+from ...utils import DeepDict, dict_deep_update, get_base_schema
+from ...utils.checks import calculate_regular_series_rate
 
-#: Sentinel written into required string metadata fields the user has not filled in. It is a distinct
-#: value from a deliberate ``"unknown"`` so an intentional "unknown" silences the placeholder warning.
-FIBER_PHOTOMETRY_PLACEHOLDER = "PLACEHOLDER"
+__all__ = ["BaseFiberPhotometryInterface", "FIBER_PHOTOMETRY_PLACEHOLDER"]
 
 _DEVICE_MODEL_TYPES = [
     "OpticalFiberModel",
@@ -63,7 +65,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self,
         *,
         stream_name: str | list[str],
-        metadata_key: str = "FiberPhotometryResponseSeries",
+        metadata_key: str = "default_metadata_key",
         verbose: bool = False,
         **source_data,
     ):
@@ -74,7 +76,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stream_name : str or list of str
             The atomic source stream(s) whose samples become this interface's single
             ``FiberPhotometryResponseSeries``. A list is column-stacked into one multi-channel series.
-        metadata_key : str, default: "FiberPhotometryResponseSeries"
+        metadata_key : str, default: "default_metadata_key"
             Key under ``metadata["Ophys"]["FiberPhotometry"]`` holding this interface's response-series
             metadata. Use distinct keys when combining multiple interfaces in one converter.
         verbose : bool, default: False
@@ -85,7 +87,6 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self.stream_names = [stream_name] if isinstance(stream_name, str) else list(stream_name)
         self.metadata_key = metadata_key
         self._aligned_timestamps: np.ndarray | None = None
-        self._aligned_starting_time_and_rate: tuple[float, float] | None = None
         super().__init__(verbose=verbose, stream_name=stream_name, **source_data)
         # Keep the ndx extensions registered so pynwb IO works correctly.
         import ndx_fiber_photometry  # noqa: F401
@@ -96,12 +97,19 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     # ------------------------------------------------------------------
 
     @abstractmethod
-    def _get_stream_data(self, *, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
-        """Return time-major ``(data, timestamps)`` for a single atomic source stream.
+    def _get_stream_data(self, *, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> np.ndarray:
+        """Return time-major data for a single atomic source stream.
 
-        ``data`` is shaped ``(num_samples,)`` or ``(num_samples, num_channels)``; ``timestamps`` is
-        shaped ``(num_samples,)``. ``t1``/``t2`` window the read (seconds, original clock; 0 means
-        start/end).
+        Shaped ``(num_samples,)`` or ``(num_samples, num_channels)``. ``t1``/``t2`` window the read
+        (seconds, original clock; 0 means start/end).
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _get_stream_timestamps(self, *, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> np.ndarray:
+        """Return the timestamps (shape ``(num_samples,)``) for a single atomic source stream.
+
+        ``t1``/``t2`` window the read (seconds, original clock; 0 means start/end).
         """
         raise NotImplementedError
 
@@ -111,8 +119,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
     def get_original_timestamps(self) -> np.ndarray:
         """Return the original (unaligned) timestamps of this interface's primary stream."""
-        _, timestamps = self._get_stream_data(stream_name=self.stream_names[0])
-        return timestamps
+        return self._get_stream_timestamps(stream_name=self.stream_names[0])
 
     def get_timestamps(self) -> np.ndarray:
         """Return aligned timestamps if set, otherwise the original timestamps."""
@@ -124,82 +131,21 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         """Replace this interface's timestamps with externally aligned values."""
         self._aligned_timestamps = np.asarray(aligned_timestamps)
 
-    def get_original_starting_time_and_rate(self) -> tuple[float, float]:
-        """Derive ``(starting_time_in_s, rate_in_Hz)`` from the original timestamps.
-
-        Children with an exactly known sampling rate should override this.
-        """
-        timestamps = self.get_original_timestamps()
-        starting_time = float(timestamps[0])
-        rate = float(1.0 / np.mean(np.diff(timestamps))) if len(timestamps) > 1 else float("nan")
-        return starting_time, rate
-
-    def get_starting_time_and_rate(self) -> tuple[float, float]:
-        """Return aligned ``(starting_time, rate)`` if set, otherwise the original."""
-        if self._aligned_starting_time_and_rate is not None:
-            return self._aligned_starting_time_and_rate
-        return self.get_original_starting_time_and_rate()
-
-    def set_aligned_starting_time_and_rate(self, aligned_starting_time_and_rate: tuple[float, float]) -> None:
-        """Set aligned ``(starting_time, rate)`` for this interface."""
-        self._aligned_starting_time_and_rate = aligned_starting_time_and_rate
-
     # ------------------------------------------------------------------
     # Metadata
     # ------------------------------------------------------------------
 
     def get_metadata(self) -> DeepDict:
-        """Return a full, editable default scaffold under ``metadata["Ophys"]["FiberPhotometry"]``.
+        """Return the NWBFile basics combined with the default ``Ophys.FiberPhotometry`` scaffold.
 
-        Required fields the user must supply are pre-filled with sentinels — ``NaN`` for the required
-        numeric wavelengths and :data:`FIBER_PHOTOMETRY_PLACEHOLDER` for required strings — so the
-        interface runs on zero user metadata. ``add_to_nwbfile`` warns about any surviving sentinel.
+        The scaffold (built by :func:`get_default_fiber_photometry_metadata`) pre-fills required
+        fields with sentinels — ``NaN`` for the required numeric wavelengths and
+        :data:`FIBER_PHOTOMETRY_PLACEHOLDER` for required strings — so the interface runs on zero
+        user metadata. ``add_to_nwbfile`` warns about any surviving sentinel.
         """
         metadata = super().get_metadata()
-        placeholder = FIBER_PHOTOMETRY_PLACEHOLDER
-        fiber_photometry_metadata = dict(
-            OpticalFiberModels=[
-                dict(name="optical_fiber_model", manufacturer=placeholder, numerical_aperture=float("nan"))
-            ],
-            OpticalFibers=[dict(name="optical_fiber", model="optical_fiber_model", fiber_insertion=dict())],
-            ExcitationSourceModels=[
-                dict(
-                    name="excitation_source_model",
-                    manufacturer=placeholder,
-                    source_type=placeholder,
-                    excitation_mode=placeholder,
-                )
-            ],
-            ExcitationSources=[dict(name="excitation_source", model="excitation_source_model")],
-            PhotodetectorModels=[dict(name="photodetector_model", manufacturer=placeholder, detector_type=placeholder)],
-            Photodetectors=[dict(name="photodetector", model="photodetector_model")],
-            FiberPhotometryIndicators=[dict(name="indicator", label=placeholder)],
-            FiberPhotometryTable=dict(
-                name="fiber_photometry_table",
-                description=placeholder,
-                rows=[
-                    dict(
-                        name="row0",
-                        location=placeholder,
-                        excitation_wavelength_in_nm=float("nan"),
-                        emission_wavelength_in_nm=float("nan"),
-                        indicator="indicator",
-                        optical_fiber="optical_fiber",
-                        excitation_source="excitation_source",
-                        photodetector="photodetector",
-                    )
-                ],
-            ),
-        )
-        fiber_photometry_metadata[self.metadata_key] = dict(
-            name=self.metadata_key,
-            description=placeholder,
-            unit="a.u.",
-            fiber_photometry_table_region=["row0"],
-            fiber_photometry_table_region_description=placeholder,
-        )
-        metadata["Ophys"] = dict(FiberPhotometry=fiber_photometry_metadata)
-        return metadata
+        default_fiber_photometry_metadata = get_default_fiber_photometry_metadata(metadata_key=self.metadata_key)
+        return dict_deep_update(metadata, default_fiber_photometry_metadata)
 
     def get_metadata_schema(self) -> dict:
         """Return a permissive schema for the ``Ophys.FiberPhotometry`` metadata block."""
@@ -216,22 +162,32 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     # NWB conversion
     # ------------------------------------------------------------------
 
-    def _read_response_data(self, t1: float = 0.0, t2: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
-        """Read and column-stack this interface's stream(s) into one time-major array + timestamps."""
+    def _read_response_data(self, t1: float = 0.0, t2: float = 0.0) -> np.ndarray:
+        """Read and column-stack this interface's stream(s) into one time-major data array."""
         arrays = []
-        timestamps = None
         for stream_name in self.stream_names:
-            data, stream_timestamps = self._get_stream_data(stream_name=stream_name, t1=t1, t2=t2)
-            data = np.asarray(data)
+            data = np.asarray(self._get_stream_data(stream_name=stream_name, t1=t1, t2=t2))
             if data.ndim == 1:
                 data = data[:, np.newaxis]
             arrays.append(data)
-            if timestamps is None:
-                timestamps = np.asarray(stream_timestamps)
         combined = np.concatenate(arrays, axis=1)
         if combined.shape[1] == 1:
             combined = combined[:, 0]
-        return combined, timestamps
+        return combined
+
+    @staticmethod
+    def _timing_kwargs_from_timestamps(timestamps: np.ndarray, always_write_timestamps: bool) -> dict:
+        """Return ``dict(starting_time=, rate=)`` when the timestamps are regular, else ``dict(timestamps=)``.
+
+        This is the standard NeuroConv pattern: regular series are written as ``starting_time`` + ``rate``
+        (via :func:`~neuroconv.utils.checks.calculate_regular_series_rate`), otherwise the full timestamps
+        array is written.
+        """
+        if not always_write_timestamps:
+            rate = calculate_regular_series_rate(series=timestamps)
+            if rate is not None:
+                return dict(starting_time=float(timestamps[0]), rate=float(rate))
+        return dict(timestamps=timestamps)
 
     def _warn_about_placeholder_metadata(self, fiber_photometry_metadata: dict, strict: bool) -> None:
         """Warn (or raise, if ``strict``) about required fields still holding placeholder sentinels."""
@@ -265,10 +221,15 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stub_test: bool = False,
         t1: float = 0.0,
         t2: float = 0.0,
-        timing_source: str = "original",
+        always_write_timestamps: bool = False,
         strict: bool = False,
     ) -> None:
         """Add this interface's ``FiberPhotometryResponseSeries`` (and, once, the shared containers).
+
+        The shared containers (devices, indicators, table, commanded voltage) are added through
+        idempotent helpers, so this method simply calls them; the first interface to run builds them
+        and subsequent interfaces reuse them. Timing is written as ``starting_time`` + ``rate`` when the
+        timestamps are regular, otherwise as an explicit timestamps array.
 
         Parameters
         ----------
@@ -282,8 +243,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             Start of the time window in seconds on the original clock (0 means start of recording).
         t2 : float, default: 0.0
             End of the time window in seconds on the original clock (0 means end of recording).
-        timing_source : {"original", "aligned_timestamps", "aligned_starting_time_and_rate"}
-            Which timing to write for the response series.
+        always_write_timestamps : bool, default: False
+            If True, always write an explicit timestamps array even when the series is regularly sampled.
         strict : bool, default: False
             If True, raise instead of warning when required metadata still holds placeholder sentinels.
         """
@@ -299,54 +260,49 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ), f"stub_test cannot be used with a specified t2 ({t2}). Use t2=0.0 for stub_test or set stub_test=False."
             t2 = t1 + 1.0
 
-        assert timing_source in (
-            "original",
-            "aligned_timestamps",
-            "aligned_starting_time_and_rate",
-        ), "timing_source must be one of 'original', 'aligned_timestamps', or 'aligned_starting_time_and_rate'."
+        # Shared containers — the helpers are idempotent, so these run unconditionally.
+        for device_type in _DEVICE_MODEL_TYPES:
+            for device_metadata in fiber_photometry_metadata.get(device_type + "s", []):
+                add_ophys_device_model(nwbfile=nwbfile, device_metadata=device_metadata, device_type=device_type)
+        for device_type in _DEVICE_TYPES:
+            for device_metadata in fiber_photometry_metadata.get(device_type + "s", []):
+                add_ophys_device(nwbfile=nwbfile, device_metadata=device_metadata, device_type=device_type)
+        add_optical_fibers(nwbfile=nwbfile, optical_fibers_metadata=fiber_photometry_metadata.get("OpticalFibers", []))
 
-        # Build the shared containers exactly once per file (first interface to run).
-        if "fiber_photometry" not in nwbfile.lab_meta_data:
-            for device_type in _DEVICE_MODEL_TYPES:
-                for device_metadata in fiber_photometry_metadata.get(device_type + "s", []):
-                    add_ophys_device_model(nwbfile=nwbfile, device_metadata=device_metadata, device_type=device_type)
-            for device_type in _DEVICE_TYPES:
-                for device_metadata in fiber_photometry_metadata.get(device_type + "s", []):
-                    add_ophys_device(nwbfile=nwbfile, device_metadata=device_metadata, device_type=device_type)
-            add_optical_fibers(
-                nwbfile=nwbfile, optical_fibers_metadata=fiber_photometry_metadata.get("OpticalFibers", [])
+        for commanded_voltage_metadata in fiber_photometry_metadata.get("CommandedVoltageSeries", []):
+            commanded_voltage_stream_name = commanded_voltage_metadata["stream_name"]
+            commanded_voltage_data = np.asarray(
+                self._get_stream_data(stream_name=commanded_voltage_stream_name, t1=t1, t2=t2)
+            )
+            index = commanded_voltage_metadata.get("index")
+            if index is not None and commanded_voltage_data.ndim == 2:
+                commanded_voltage_data = commanded_voltage_data[:, index]
+            commanded_voltage_timestamps = self._get_stream_timestamps(
+                stream_name=commanded_voltage_stream_name, t1=t1, t2=t2
+            )
+            add_commanded_voltage_series(
+                nwbfile=nwbfile,
+                name=commanded_voltage_metadata["name"],
+                description=commanded_voltage_metadata.get("description", ""),
+                data=commanded_voltage_data,
+                unit=commanded_voltage_metadata["unit"],
+                frequency=commanded_voltage_metadata["frequency"],
+                timing_kwargs=self._timing_kwargs_from_timestamps(
+                    commanded_voltage_timestamps, always_write_timestamps
+                ),
             )
 
-            for commanded_voltage_metadata in fiber_photometry_metadata.get("CommandedVoltageSeries", []):
-                commanded_voltage_data, commanded_voltage_timestamps = self._get_stream_data(
-                    stream_name=commanded_voltage_metadata["stream_name"], t1=t1, t2=t2
-                )
-                index = commanded_voltage_metadata.get("index")
-                if index is not None and np.asarray(commanded_voltage_data).ndim == 2:
-                    commanded_voltage_data = np.asarray(commanded_voltage_data)[:, index]
-                add_commanded_voltage_series(
-                    nwbfile=nwbfile,
-                    name=commanded_voltage_metadata["name"],
-                    description=commanded_voltage_metadata.get("description", ""),
-                    data=commanded_voltage_data,
-                    unit=commanded_voltage_metadata["unit"],
-                    frequency=commanded_voltage_metadata["frequency"],
-                    timing_kwargs=dict(timestamps=commanded_voltage_timestamps),
-                )
-
-            add_fiber_photometry_lab_metadata(nwbfile=nwbfile, fiber_photometry_metadata=fiber_photometry_metadata)
-
-        fiber_photometry_table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+        fiber_photometry_table = add_fiber_photometry_lab_metadata(
+            nwbfile=nwbfile, fiber_photometry_metadata=fiber_photometry_metadata
+        )
 
         # Add this interface's single response series.
-        data, original_timestamps = self._read_response_data(t1=t1, t2=t2)
-        if timing_source == "aligned_timestamps":
-            timing_kwargs = dict(timestamps=self.get_timestamps())
-        elif timing_source == "aligned_starting_time_and_rate":
-            starting_time, rate = self.get_starting_time_and_rate()
-            timing_kwargs = dict(starting_time=starting_time, rate=rate)
+        data = self._read_response_data(t1=t1, t2=t2)
+        if self._aligned_timestamps is not None:
+            timestamps = self._aligned_timestamps
         else:
-            timing_kwargs = dict(timestamps=original_timestamps)
+            timestamps = self._get_stream_timestamps(stream_name=self.stream_names[0], t1=t1, t2=t2)
+        timing_kwargs = self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps)
 
         series_metadata = fiber_photometry_metadata[self.metadata_key]
         table_region = get_fiber_photometry_table_region(

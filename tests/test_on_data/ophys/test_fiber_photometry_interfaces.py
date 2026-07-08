@@ -952,8 +952,10 @@ class TestTDTFiberPhotometryInterfaceSingleStream(FiberPhotometryInterfaceTestMi
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
-            assert "Signal" in nwbfile.acquisition
-            response_series = nwbfile.acquisition["Signal"]
+            # The response series is named by its metadata (default "FiberPhotometryResponseSeries"),
+            # while "Signal" is this interface's metadata_key.
+            assert "FiberPhotometryResponseSeries" in nwbfile.acquisition
+            response_series = nwbfile.acquisition["FiberPhotometryResponseSeries"]
             assert response_series.data.shape[0] > 0
             assert "fiber_photometry" in nwbfile.lab_meta_data
             table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
@@ -961,6 +963,7 @@ class TestTDTFiberPhotometryInterfaceSingleStream(FiberPhotometryInterfaceTestMi
 
     def check_extracted_metadata(self, metadata: dict):
         assert "session_start_time" in metadata["NWBFile"]
+        # "Signal" is the metadata_key under which this interface's response-series metadata lives.
         assert "Signal" in metadata["Ophys"]["FiberPhotometry"]
 
     def test_get_available_streams(self):

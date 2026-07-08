@@ -567,7 +567,7 @@ class _TDTFiberPhotometryInterfaceSingleStream(TDTLoadMixin, BaseFiberPhotometry
         *,
         folder_path: DirectoryPath,
         stream_name: str | list[str],
-        metadata_key: str = "FiberPhotometryResponseSeries",
+        metadata_key: str = "default_metadata_key",
         stream_indices: list[int] | None = None,
         verbose: bool = False,
     ):
@@ -597,27 +597,26 @@ class _TDTFiberPhotometryInterfaceSingleStream(TDTLoadMixin, BaseFiberPhotometry
         """
         return stream_name[1:] if stream_name.startswith("_") else stream_name
 
-    def _get_stream_data(self, *, stream_name: str, t1: float = 0.0, t2: float = 0.0):
+    def _load_stream(self, stream_name: str, t1: float = 0.0, t2: float = 0.0):
         store_code = self._stream_name_to_store_code(stream_name)
         tdt_photometry = self.load(t1=t1, t2=t2, store=store_code)
-        stream = tdt_photometry.streams[stream_name]
+        return tdt_photometry.streams[stream_name]
+
+    def _get_stream_data(self, *, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> np.ndarray:
+        stream = self._load_stream(stream_name, t1=t1, t2=t2)
         data = np.asarray(stream.data)
         if data.ndim == 2:
             data = data.T  # TDT stores are (channels, samples); make time-major.
             if self.stream_indices is not None:
                 data = data[:, self.stream_indices]
+        return data
+
+    def _get_stream_timestamps(self, *, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> np.ndarray:
+        stream = self._load_stream(stream_name, t1=t1, t2=t2)
         rate = float(stream.fs)
         starting_time = float(stream.start_time)
-        num_samples = data.shape[0]
-        timestamps = starting_time + np.arange(num_samples) / rate
-        return data, timestamps
-
-    def get_original_starting_time_and_rate(self) -> tuple[float, float]:
-        primary_stream_name = self.stream_names[0]
-        store_code = self._stream_name_to_store_code(primary_stream_name)
-        tdt_photometry = self.load(t2=1.0, store=store_code)
-        stream = tdt_photometry.streams[primary_stream_name]
-        return float(stream.start_time), float(stream.fs)
+        num_samples = np.asarray(stream.data).shape[-1]
+        return starting_time + np.arange(num_samples) / rate
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -652,7 +651,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         folder_path: DirectoryPath,
         *,
         stream_name: str | list[str] | None = None,
-        metadata_key: str = "FiberPhotometryResponseSeries",
+        metadata_key: str = "default_metadata_key",
         stream_indices: list[int] | None = None,
         verbose: bool = False,
     ):
@@ -666,7 +665,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             The stream store(s) whose samples become this interface's single
             ``FiberPhotometryResponseSeries``. If omitted, the deprecated multi-stream behavior is
             used (see class docstring).
-        metadata_key : str, default: "FiberPhotometryResponseSeries"
+        metadata_key : str, default: "default_metadata_key"
             Key under ``metadata["Ophys"]["FiberPhotometry"]`` holding this interface's response-series
             metadata.
         stream_indices : list of int, optional

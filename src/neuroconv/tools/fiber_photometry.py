@@ -5,6 +5,63 @@ from pynwb import NWBFile
 
 from neuroconv.tools import get_package
 
+#: Sentinel written into required string metadata fields the user has not filled in. It is a distinct
+#: value from a deliberate ``"unknown"`` so an intentional "unknown" silences the placeholder warning.
+FIBER_PHOTOMETRY_PLACEHOLDER = "PLACEHOLDER"
+
+
+def get_default_fiber_photometry_metadata(metadata_key: str) -> dict:
+    """Return the default ``Ophys.FiberPhotometry`` metadata block for a single-stream interface.
+
+    Mirrors the pattern of ``get_nwb_imaging_metadata``: the required fields are pre-filled with
+    sentinels — ``NaN`` for the required numeric wavelengths and :data:`FIBER_PHOTOMETRY_PLACEHOLDER`
+    for required strings — so an interface runs on zero user metadata while ``add_to_nwbfile`` warns
+    about any surviving sentinel. ``metadata_key`` scopes this interface's response-series entry.
+    """
+    placeholder = FIBER_PHOTOMETRY_PLACEHOLDER
+    fiber_photometry_metadata = dict(
+        OpticalFiberModels=[
+            dict(name="optical_fiber_model", manufacturer=placeholder, numerical_aperture=float("nan"))
+        ],
+        OpticalFibers=[dict(name="optical_fiber", model="optical_fiber_model", fiber_insertion=dict())],
+        ExcitationSourceModels=[
+            dict(
+                name="excitation_source_model",
+                manufacturer=placeholder,
+                source_type=placeholder,
+                excitation_mode=placeholder,
+            )
+        ],
+        ExcitationSources=[dict(name="excitation_source", model="excitation_source_model")],
+        PhotodetectorModels=[dict(name="photodetector_model", manufacturer=placeholder, detector_type=placeholder)],
+        Photodetectors=[dict(name="photodetector", model="photodetector_model")],
+        FiberPhotometryIndicators=[dict(name="indicator", label=placeholder)],
+        FiberPhotometryTable=dict(
+            name="fiber_photometry_table",
+            description=placeholder,
+            rows=[
+                dict(
+                    name="row0",
+                    location=placeholder,
+                    excitation_wavelength_in_nm=float("nan"),
+                    emission_wavelength_in_nm=float("nan"),
+                    indicator="indicator",
+                    optical_fiber="optical_fiber",
+                    excitation_source="excitation_source",
+                    photodetector="photodetector",
+                )
+            ],
+        ),
+    )
+    fiber_photometry_metadata[metadata_key] = dict(
+        name="FiberPhotometryResponseSeries",
+        description=placeholder,
+        unit="a.u.",
+        fiber_photometry_table_region=["row0"],
+        fiber_photometry_table_region_description=placeholder,
+    )
+    return dict(Ophys=dict(FiberPhotometry=fiber_photometry_metadata))
+
 
 def _assert_metadata_matches_existing(existing_object, metadata: dict, name: str) -> None:
     """Raise if scalar fields in ``metadata`` disagree with an already-added NWB object.
@@ -22,7 +79,9 @@ def _assert_metadata_matches_existing(existing_object, metadata: dict, name: str
         existing_value = getattr(existing_object, key, None)
         if not isinstance(value, scalar_types) or not isinstance(existing_value, scalar_types):
             continue
-        if existing_value != value:
+        # A float is NaN iff it is not equal to itself; two NaN placeholders are not a real conflict.
+        both_nan = value != value and existing_value != existing_value
+        if existing_value != value and not both_nan:
             raise ValueError(
                 f"Conflicting fiber photometry metadata for '{name}': field '{key}' is "
                 f"{existing_value!r} on the already-added object but {value!r} in the new metadata. "
