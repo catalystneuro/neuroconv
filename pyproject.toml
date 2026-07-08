@@ -138,7 +138,6 @@ csv_events = [
 ]
 tdt_events = [
     "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
-    "ndx-events==0.2.2",
 ]
 events = [
     "neuroconv[csv_events]",
@@ -363,6 +362,10 @@ suite2p = [
     "natsort",
     "neuroconv[ophys_minimal]",
 ]
+doric_fp = [
+    "neuroconv[fiber_photometry]",
+    "h5py>=3",
+]
 tdt_fp = [
     "neuroconv[fiber_photometry]",
     "tdt",
@@ -377,6 +380,7 @@ tiff = [
 ]
 ophys = [
     "neuroconv[brukertiff]",
+    "neuroconv[doric_fp]",
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
@@ -413,7 +417,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst' --ignore=docs/conversion_examples_gallery/fiberphotometry/tdt_fp.rst" # TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
+addopts = "-ra --doctest-glob='*.rst'"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
