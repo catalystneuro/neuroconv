@@ -127,17 +127,30 @@ Convert TDT Fiber Photometry data to NWB using
     >>> folder_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"
     >>> LOCAL_PATH = Path(".") # Path to neuroconv
 
-    >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, verbose=False)
+    >>> # Discover the stream stores available in the TDT tank (callable before construction)
+    >>> available_streams = TDTFiberPhotometryInterface.get_available_streams(folder_path=folder_path)
+
+    >>> # Each interface writes a single FiberPhotometryResponseSeries from one stream. Combine multiple
+    >>> # interfaces (with distinct metadata_key values) in a converter to share one FiberPhotometryTable.
+    >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, stream_name="Dv1A", metadata_key="GCaMP", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
-    >>> metadata = dict_deep_update(metadata, fiber_photometry_metadata)
+    >>> # get_metadata() returns an editable scaffold; the required fiber photometry fields (excitation/
+    >>> # emission wavelengths, indicator, location, ...) are pre-filled with placeholder values that
+    >>> # should be replaced before archiving. add_to_nwbfile warns about any that remain unset.
 
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path =  f"{path_to_save_nwbfile}"
     >>> # t1 and t2 are optional arguments to specify the start and end times for the conversion
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, t1=0.0, t2=1.0)
+
+.. note::
+
+    Constructing ``TDTFiberPhotometryInterface`` without ``stream_name`` uses the deprecated
+    multi-stream behavior (writing every stream at once), which emits a ``DeprecationWarning`` and
+    will be removed on or after August 2026. Pass ``stream_name`` to use the single-stream interface.
 
 
 Specifying Metadata
@@ -146,6 +159,19 @@ Specifying Metadata
 The example above shows how to convert TDT Fiber Photometry data without specifying all the metadata,
 in which case the metadata will be automatically generated with default values.
 To ensure that the NWB file is fully annotated, specify the metadata using the format described below.
+
+.. note::
+
+    For the single-stream interface, three things differ from the block below (which predates the
+    single-stream refactor and is retained here as a field reference for the shared device, indicator,
+    and virus sections):
+
+    * The stream is selected via the ``stream_name`` constructor argument, so
+      ``FiberPhotometryResponseSeries`` entries no longer carry a ``stream_name`` field.
+    * Each ``FiberPhotometryTable`` row must include a ``name``; the response series references rows by
+      those names via ``fiber_photometry_table_region`` (a list of row names, not integer indices).
+    * A single interface writes one response series, supplied under
+      ``metadata["Ophys"]["FiberPhotometry"][metadata_key]`` (a dict), rather than a list of series.
 
 .. code-block:: python
 

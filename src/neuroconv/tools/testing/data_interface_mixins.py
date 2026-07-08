@@ -1660,3 +1660,18 @@ class DoricFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignme
             backend_configuration=backend_configuration,
             conversion_options=conversion_options,
         )
+
+
+class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """Shared tests for single-stream fiber photometry interfaces.
+
+    Because these interfaces have a standard scalar temporal-alignment API and run on the default
+    metadata scaffold, they reuse the stock ``DataInterfaceTestMixin`` / ``TemporalAlignmentMixin``
+    directly. This mixin only adds the fiber-photometry-specific check that a run on the default
+    (placeholder) metadata warns the user about unfilled required fields.
+    """
+
+    def test_default_metadata_warns_about_placeholders(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        with pytest.warns(UserWarning, match="placeholder"):
+            self.interface.create_nwbfile(metadata=metadata, stub_test=True)

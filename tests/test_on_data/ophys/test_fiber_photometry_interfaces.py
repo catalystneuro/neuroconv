@@ -13,8 +13,12 @@ from neuroconv.datainterfaces import (
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
 )
+from neuroconv.datainterfaces.ophys.tdt_fp.tdtfiberphotometrydatainterface import (
+    _TDTFiberPhotometryInterfaceMultiStream,
+)
 from neuroconv.tools.testing.data_interface_mixins import (
     DoricFiberPhotometryInterfaceMixin,
+    FiberPhotometryInterfaceTestMixin,
     TDTFiberPhotometryInterfaceMixin,
 )
 from neuroconv.utils import dict_deep_update, load_dict_from_file
@@ -26,7 +30,9 @@ except ImportError:
 
 
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
-    data_interface_cls = TDTFiberPhotometryInterface
+    # Tests the deprecated multi-stream implementation directly (the public TDTFiberPhotometryInterface
+    # now routes ``stream_name``-less construction here with a DeprecationWarning).
+    data_interface_cls = _TDTFiberPhotometryInterfaceMultiStream
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"),
     )
@@ -929,3 +935,39 @@ class TestDoricFiberPhotometryInterface(TestCase, DoricFiberPhotometryInterfaceM
         for name, (st, r) in aligned.items():
             assert retrieved[name][0] == st
             assert retrieved[name][1] == r
+
+
+class TestTDTFiberPhotometryInterfaceSingleStream(FiberPhotometryInterfaceTestMixin):
+    """Tests the new single-stream TDTFiberPhotometryInterface (one FiberPhotometryResponseSeries)."""
+
+    data_interface_cls = TDTFiberPhotometryInterface
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photometry-161823_stubbed"),
+        stream_name="_405R",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True)
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            assert "Signal" in nwbfile.acquisition
+            response_series = nwbfile.acquisition["Signal"]
+            assert response_series.data.shape[0] > 0
+            assert "fiber_photometry" in nwbfile.lab_meta_data
+            table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+            assert len(table) == 1
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert "session_start_time" in metadata["NWBFile"]
+        assert "Signal" in metadata["Ophys"]["FiberPhotometry"]
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(folder_path=self.interface_kwargs["folder_path"])
+        assert "_405R" in streams and "_490R" in streams
+
+    def test_stream_name_less_construction_routes_to_deprecated_multistream(self):
+        with pytest.warns(DeprecationWarning, match="stream_name"):
+            interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"])
+        assert isinstance(interface._delegate, _TDTFiberPhotometryInterfaceMultiStream)
