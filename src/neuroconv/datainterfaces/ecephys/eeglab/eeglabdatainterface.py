@@ -218,7 +218,9 @@ def _extract_events(
 
     def latency_to_time(index, latency):
         if is_epoched:
-            epoch_index = int(epoch_indices[index]) - 1 if epoch_indices is not None else int((latency - 1.0) // number_of_points)
+            epoch_index = (
+                int(epoch_indices[index]) - 1 if epoch_indices is not None else int((latency - 1.0) // number_of_points)
+            )
             within_epoch_sample = latency - epoch_index * number_of_points  # 1-based
             return epoch_onsets[epoch_index] + (within_epoch_sample - 1.0) / sampling_frequency
         return epoch_onsets[0] + (latency - 1.0) / sampling_frequency
@@ -372,9 +374,9 @@ def _read_eeglab_recording(file_path: FilePath):
         else None
     )
     if is_epoched:
-        epoch_onsets = [info["onset"] for info in epoch_info] if epoch_info is not None else [
-            epoch_start_time
-        ] * number_of_trials
+        epoch_onsets = (
+            [info["onset"] for info in epoch_info] if epoch_info is not None else [epoch_start_time] * number_of_trials
+        )
     else:
         epoch_onsets = [0.0]
 

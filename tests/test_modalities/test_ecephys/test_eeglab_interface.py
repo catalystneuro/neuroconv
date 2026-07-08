@@ -162,7 +162,9 @@ class TestEEGLABRecordingInterface:
         number_of_trials = 3
         xmin = -1.0
         rng = np.random.default_rng(seed=1)
-        traces = (rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, number_of_trials)) * 20.0).astype("float32")
+        traces = (rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, number_of_trials)) * 20.0).astype(
+            "float32"
+        )
         # Real (original-recording) latencies of each epoch's time-locking event — distinct and ordered.
         urevent_latencies = [129.0, 2000.0, 5000.0]
         set_path = tmp_path / "epoched.set"
@@ -202,7 +204,9 @@ class TestEEGLABRecordingInterface:
             events = nwbfile.intervals["events"]
             assert len(events) == number_of_trials
             np.testing.assert_allclose(
-                events["start_time"][:], [(latency - 1.0) / SAMPLING_FREQUENCY for latency in urevent_latencies], atol=1e-6
+                events["start_time"][:],
+                [(latency - 1.0) / SAMPLING_FREQUENCY for latency in urevent_latencies],
+                atol=1e-6,
             )
 
     def test_epoched_write_epochs_false(self, tmp_path):
@@ -257,9 +261,9 @@ class TestEEGLABRecordingInterface:
         set_path = tmp_path / "partial_subject.set"
         savemat(str(set_path), {"EEG": eeg}, do_compression=True)
 
-        subject = EEGLABRecordingInterface(
-            file_path=set_path, import_bids_subject_metadata=True
-        ).get_metadata()["Subject"]
+        subject = EEGLABRecordingInterface(file_path=set_path, import_bids_subject_metadata=True).get_metadata()[
+            "Subject"
+        ]
         assert subject["subject_id"] == "S01"  # from EEG.subject
         assert subject["sex"] == "U"
         assert subject["species"] == "Unknown species"
