@@ -65,7 +65,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self,
         *,
         stream_name: str | list[str],
-        metadata_key: str = "default_metadata_key",
+        metadata_key: str | None = None,
         verbose: bool = False,
         **source_data,
     ):
@@ -76,15 +76,20 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stream_name : str or list of str
             The atomic source stream(s) whose samples become this interface's single
             ``FiberPhotometryResponseSeries``. A list is column-stacked into one multi-channel series.
-        metadata_key : str, default: "default_metadata_key"
+        metadata_key : str, optional
             Key under ``metadata["Ophys"]["FiberPhotometry"]`` holding this interface's response-series
-            metadata. Use distinct keys when combining multiple interfaces in one converter.
+            metadata. When ``None`` (default), it is generated from ``stream_name`` (e.g. stream
+            ``"_405R"`` gives ``"fiber_photometry_405r"``), so multiple interfaces over different streams
+            already get distinct keys. Pass an explicit value to override.
         verbose : bool, default: False
             Whether to print status messages.
         **source_data
             Format-specific source arguments (e.g. ``folder_path`` or ``file_path``).
         """
         self.stream_names = [stream_name] if isinstance(stream_name, str) else list(stream_name)
+        if metadata_key is None:
+            stream_parts = [str(name).replace(" ", "_").strip("_").lower() for name in self.stream_names]
+            metadata_key = "_".join(["fiber_photometry", *stream_parts])
         self.metadata_key = metadata_key
         self._aligned_timestamps: np.ndarray | None = None
         super().__init__(verbose=verbose, stream_name=stream_name, **source_data)

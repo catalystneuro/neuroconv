@@ -567,7 +567,7 @@ class _TDTFiberPhotometryInterfaceSingleStream(TDTLoadMixin, BaseFiberPhotometry
         *,
         folder_path: DirectoryPath,
         stream_name: str | list[str],
-        metadata_key: str = "default_metadata_key",
+        metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
         verbose: bool = False,
     ):
@@ -651,7 +651,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         folder_path: DirectoryPath,
         *,
         stream_name: str | list[str] | None = None,
-        metadata_key: str = "default_metadata_key",
+        metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
         verbose: bool = False,
     ):
@@ -665,9 +665,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             The stream store(s) whose samples become this interface's single
             ``FiberPhotometryResponseSeries``. If omitted, the deprecated multi-stream behavior is
             used (see class docstring).
-        metadata_key : str, default: "default_metadata_key"
+        metadata_key : str, optional
             Key under ``metadata["Ophys"]["FiberPhotometry"]`` holding this interface's response-series
-            metadata.
+            metadata. When ``None`` (default), it is generated from ``stream_name``.
         stream_indices : list of int, optional
             Channel indices to select from a multi-channel stream store.
         verbose : bool, default: False

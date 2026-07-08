@@ -974,3 +974,9 @@ class TestTDTFiberPhotometryInterfaceSingleStream(FiberPhotometryInterfaceTestMi
         with pytest.warns(DeprecationWarning, match="stream_name"):
             interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"])
         assert isinstance(interface._delegate, _TDTFiberPhotometryInterfaceMultiStream)
+
+    def test_metadata_key_generated_from_stream_name(self):
+        # With no explicit metadata_key, it is derived from stream_name (as in ScanImage).
+        interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"], stream_name="_405R")
+        assert interface.metadata_key == "fiber_photometry_405r"
+        assert interface.metadata_key in interface.get_metadata()["Ophys"]["FiberPhotometry"]
