@@ -1663,7 +1663,7 @@ class DoricFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignme
 
 
 class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    """Shared tests for single-stream fiber photometry interfaces.
+    """Shared tests for single-series fiber photometry interfaces.
 
     Because these interfaces have a standard scalar temporal-alignment API and run on the default
     metadata scaffold, they reuse the stock ``DataInterfaceTestMixin`` / ``TemporalAlignmentMixin``

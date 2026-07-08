@@ -130,9 +130,10 @@ Convert TDT Fiber Photometry data to NWB using
     >>> # Discover the stream stores available in the TDT tank (callable before construction)
     >>> available_streams = TDTFiberPhotometryInterface.get_available_streams(folder_path=folder_path)
 
-    >>> # Each interface writes a single FiberPhotometryResponseSeries from one stream. Combine multiple
-    >>> # interfaces (with distinct metadata_key values) in a converter to share one FiberPhotometryTable.
-    >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, stream_name="Dv1A", metadata_key="GCaMP", verbose=False)
+    >>> # Each interface writes a single FiberPhotometryResponseSeries, assembled from one or more input
+    >>> # streams (TDT stores). Combine multiple interfaces (with distinct metadata_key values) in a
+    >>> # converter to share one FiberPhotometryTable.
+    >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, stream_names="Dv1A", metadata_key="GCaMP", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
     >>> # Add subject information (required for DANDI upload)
@@ -148,9 +149,9 @@ Convert TDT Fiber Photometry data to NWB using
 
 .. note::
 
-    Constructing ``TDTFiberPhotometryInterface`` without ``stream_name`` uses the deprecated
-    multi-stream behavior (writing every stream at once), which emits a ``DeprecationWarning`` and
-    will be removed on or after August 2026. Pass ``stream_name`` to use the single-stream interface.
+    Constructing ``TDTFiberPhotometryInterface`` without ``stream_names`` uses the deprecated
+    multi-series behavior (writing every stream at once), which emits a ``DeprecationWarning`` and
+    will be removed on or after August 2026. Pass ``stream_names`` to use the single-series interface.
 
 
 Specifying Metadata
@@ -162,11 +163,11 @@ To ensure that the NWB file is fully annotated, specify the metadata using the f
 
 .. note::
 
-    For the single-stream interface, three things differ from the block below (which predates the
-    single-stream refactor and is retained here as a field reference for the shared device, indicator,
+    For the single-series interface, three things differ from the block below (which predates the
+    single-series refactor and is retained here as a field reference for the shared device, indicator,
     and virus sections):
 
-    * The stream is selected via the ``stream_name`` constructor argument, so
+    * The input streams are selected via the ``stream_names`` constructor argument, so
       ``FiberPhotometryResponseSeries`` entries no longer carry a ``stream_name`` field.
     * Each ``FiberPhotometryTable`` row must include a ``name``; the response series references rows by
       those names via ``fiber_photometry_table_region`` (a list of row names, not integer indices).

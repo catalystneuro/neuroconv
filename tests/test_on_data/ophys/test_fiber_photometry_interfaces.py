@@ -14,7 +14,7 @@ from neuroconv.datainterfaces import (
     TDTFiberPhotometryInterface,
 )
 from neuroconv.datainterfaces.ophys.tdt_fp.tdtfiberphotometrydatainterface import (
-    _TDTFiberPhotometryInterfaceMultiStream,
+    _TDTFiberPhotometryInterfaceMultiSeries,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DoricFiberPhotometryInterfaceMixin,
@@ -30,9 +30,9 @@ except ImportError:
 
 
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
-    # Tests the deprecated multi-stream implementation directly (the public TDTFiberPhotometryInterface
-    # now routes ``stream_name``-less construction here with a DeprecationWarning).
-    data_interface_cls = _TDTFiberPhotometryInterfaceMultiStream
+    # Tests the deprecated multi-series implementation directly (the public TDTFiberPhotometryInterface
+    # now routes ``stream_names``-less construction here with a DeprecationWarning).
+    data_interface_cls = _TDTFiberPhotometryInterfaceMultiSeries
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"),
     )
@@ -937,13 +937,13 @@ class TestDoricFiberPhotometryInterface(TestCase, DoricFiberPhotometryInterfaceM
             assert retrieved[name][1] == r
 
 
-class TestTDTFiberPhotometryInterfaceSingleStream(FiberPhotometryInterfaceTestMixin):
-    """Tests the new single-stream TDTFiberPhotometryInterface (one FiberPhotometryResponseSeries)."""
+class TestTDTFiberPhotometryInterfaceSingleSeries(FiberPhotometryInterfaceTestMixin):
+    """Tests the new single-series TDTFiberPhotometryInterface (one FiberPhotometryResponseSeries)."""
 
     data_interface_cls = TDTFiberPhotometryInterface
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photometry-161823_stubbed"),
-        stream_name="_405R",
+        stream_names="_405R",
         metadata_key="Signal",
     )
     conversion_options = dict(stub_test=True)
@@ -970,13 +970,13 @@ class TestTDTFiberPhotometryInterfaceSingleStream(FiberPhotometryInterfaceTestMi
         streams = self.data_interface_cls.get_available_streams(folder_path=self.interface_kwargs["folder_path"])
         assert "_405R" in streams and "_490R" in streams
 
-    def test_stream_name_less_construction_routes_to_deprecated_multistream(self):
-        with pytest.warns(DeprecationWarning, match="stream_name"):
+    def test_stream_names_less_construction_routes_to_deprecated_multiseries(self):
+        with pytest.warns(DeprecationWarning, match="stream_names"):
             interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"])
-        assert isinstance(interface._delegate, _TDTFiberPhotometryInterfaceMultiStream)
+        assert isinstance(interface._delegate, _TDTFiberPhotometryInterfaceMultiSeries)
 
-    def test_metadata_key_generated_from_stream_name(self):
-        # With no explicit metadata_key, it is derived from stream_name (as in ScanImage).
-        interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"], stream_name="_405R")
+    def test_metadata_key_generated_from_stream_names(self):
+        # With no explicit metadata_key, it is derived from stream_names (as in ScanImage).
+        interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"], stream_names="_405R")
         assert interface.metadata_key == "fiber_photometry_405r"
         assert interface.metadata_key in interface.get_metadata()["Ophys"]["FiberPhotometry"]

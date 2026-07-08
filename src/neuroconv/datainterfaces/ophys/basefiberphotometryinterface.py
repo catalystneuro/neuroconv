@@ -1,8 +1,9 @@
-"""Base interface for single-stream fiber photometry data.
+"""Base interface for single-series fiber photometry data.
 
 A ``BaseFiberPhotometryInterface`` writes exactly **one** ``FiberPhotometryResponseSeries`` to an
-NWBFile. All the shared, cross-stream containers (device models, devices, optical fibers, indicators,
-viral vectors/injections, the ``FiberPhotometryTable``, and any ``CommandedVoltageSeries``) live under
+NWBFile, assembled from one or more input *streams* (atomic source signals, e.g. TDT stores or Doric
+datasets). All the shared containers (device models, devices, optical fibers, indicators, viral
+vectors/injections, the ``FiberPhotometryTable``, and any ``CommandedVoltageSeries``) live under
 ``metadata["Ophys"]["FiberPhotometry"]`` as name-keyed lists and are built **once** per file — the
 first interface to run assembles them from the (converter-merged) metadata and subsequent interfaces
 reuse them. Multiple response series therefore means multiple interfaces sharing one table, exactly
@@ -57,29 +58,29 @@ _DEVICE_TYPES = [
 
 
 class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
-    """Base class for single-stream fiber photometry interfaces (one ``FiberPhotometryResponseSeries``)."""
+    """Base class for single-series fiber photometry interfaces (one ``FiberPhotometryResponseSeries``)."""
 
     keywords = ("fiber photometry",)
 
     def __init__(
         self,
         *,
-        stream_name: str | list[str],
+        stream_names: str | list[str],
         metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
         verbose: bool = False,
         **source_data,
     ):
-        """Initialize a single-stream fiber photometry interface.
+        """Initialize a single-series fiber photometry interface.
 
         Parameters
         ----------
-        stream_name : str or list of str
-            The atomic source stream(s) whose samples become this interface's single
-            ``FiberPhotometryResponseSeries``. A list is column-stacked into one multi-channel series.
+        stream_names : str or list of str
+            The input stream(s) — atomic source signals (e.g. TDT stores) — whose samples are
+            column-stacked into this interface's single ``FiberPhotometryResponseSeries``.
         metadata_key : str, optional
             Key under ``metadata["Ophys"]["FiberPhotometry"]`` holding this interface's response-series
-            metadata. When ``None`` (default), it is generated from ``stream_name`` (e.g. stream
+            metadata. When ``None`` (default), it is generated from ``stream_names`` (e.g. stream
             ``"_405R"`` gives ``"fiber_photometry_405r"``), so multiple interfaces over different streams
             already get distinct keys. Pass an explicit value to override.
         stream_indices : list of int, optional
@@ -90,14 +91,14 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         **source_data
             Format-specific source arguments (e.g. ``folder_path`` or ``file_path``).
         """
-        self.stream_names = [stream_name] if isinstance(stream_name, str) else list(stream_name)
+        self.stream_names = [stream_names] if isinstance(stream_names, str) else list(stream_names)
         self.stream_indices = stream_indices
         if metadata_key is None:
             stream_parts = [str(name).replace(" ", "_").strip("_").lower() for name in self.stream_names]
             metadata_key = "_".join(["fiber_photometry", *stream_parts])
         self.metadata_key = metadata_key
         self._aligned_timestamps: np.ndarray | None = None
-        super().__init__(verbose=verbose, stream_name=stream_name, **source_data)
+        super().__init__(verbose=verbose, stream_names=stream_names, **source_data)
         # Keep the ndx extensions registered so pynwb IO works correctly.
         import ndx_fiber_photometry  # noqa: F401
         import ndx_ophys_devices  # noqa: F401

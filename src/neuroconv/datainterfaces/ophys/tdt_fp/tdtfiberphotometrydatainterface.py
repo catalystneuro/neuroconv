@@ -18,7 +18,7 @@ from ._tdt_mixin import TDTLoadMixin
 from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 
 
-class _TDTFiberPhotometryInterfaceMultiStream(TDTLoadMixin, BaseTemporalAlignmentInterface):
+class _TDTFiberPhotometryInterfaceMultiSeries(TDTLoadMixin, BaseTemporalAlignmentInterface):
     """
     Data Interface for converting fiber photometry data from a TDT output folder.
 
@@ -554,8 +554,8 @@ class _TDTFiberPhotometryInterfaceMultiStream(TDTLoadMixin, BaseTemporalAlignmen
             nwbfile.add_acquisition(fiber_photometry_response_series)
 
 
-class _TDTFiberPhotometryInterfaceSingleStream(TDTLoadMixin, BaseFiberPhotometryInterface):
-    """Single-stream TDT fiber photometry interface (writes one FiberPhotometryResponseSeries)."""
+class _TDTFiberPhotometryInterfaceSingleSeries(TDTLoadMixin, BaseFiberPhotometryInterface):
+    """Single-series TDT fiber photometry interface (writes one FiberPhotometryResponseSeries)."""
 
     display_name = "TDTFiberPhotometry"
     info = "Data Interface for converting fiber photometry data from TDT files."
@@ -566,14 +566,14 @@ class _TDTFiberPhotometryInterfaceSingleStream(TDTLoadMixin, BaseFiberPhotometry
         self,
         *,
         folder_path: DirectoryPath,
-        stream_name: str | list[str],
+        stream_names: str | list[str],
         metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
         verbose: bool = False,
     ):
         super().__init__(
             folder_path=folder_path,
-            stream_name=stream_name,
+            stream_names=stream_names,
             metadata_key=metadata_key,
             stream_indices=stream_indices,
             verbose=verbose,
@@ -628,14 +628,15 @@ class _TDTFiberPhotometryInterfaceSingleStream(TDTLoadMixin, BaseFiberPhotometry
 class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     """Data Interface for converting fiber photometry data from a TDT output folder.
 
-    Each interface writes a single ``FiberPhotometryResponseSeries``; use multiple interfaces (with
-    distinct ``metadata_key`` values) in a converter to write several series sharing one
-    ``FiberPhotometryTable``. Call :meth:`get_available_streams` to discover stream names.
+    Each interface writes a single ``FiberPhotometryResponseSeries``, assembled from one or more input
+    streams (TDT stores); use multiple interfaces (with distinct ``metadata_key`` values) in a converter
+    to write several series sharing one ``FiberPhotometryTable``. Call :meth:`get_available_streams` to
+    discover stream names.
 
     .. deprecated::
-        Constructing without ``stream_name`` routes to the deprecated multi-stream implementation,
+        Constructing without ``stream_names`` routes to the deprecated multi-series implementation,
         which writes every stream at once and will be removed on or after August 2026. Pass
-        ``stream_name`` to use the single-stream interface.
+        ``stream_names`` to use the single-series interface.
     """
 
     keywords = ("fiber photometry",)
@@ -648,7 +649,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self,
         folder_path: DirectoryPath,
         *,
-        stream_name: str | list[str] | None = None,
+        stream_names: str | list[str] | None = None,
         metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
         verbose: bool = False,
@@ -659,32 +660,32 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         ----------
         folder_path : DirectoryPath
             The path to the folder containing the TDT data.
-        stream_name : str or list of str, optional
-            The stream store(s) whose samples become this interface's single
-            ``FiberPhotometryResponseSeries``. If omitted, the deprecated multi-stream behavior is
+        stream_names : str or list of str, optional
+            The input stream(s) (TDT stores) whose samples are assembled into this interface's single
+            ``FiberPhotometryResponseSeries``. If omitted, the deprecated multi-series behavior is
             used (see class docstring).
         metadata_key : str, optional
             Key under ``metadata["Ophys"]["FiberPhotometry"]`` holding this interface's response-series
-            metadata. When ``None`` (default), it is generated from ``stream_name``.
+            metadata. When ``None`` (default), it is generated from ``stream_names``.
         stream_indices : list of int, optional
-            Channel indices to select from a multi-channel stream store.
+            Column indices selecting which channels of the (column-stacked) stream data to keep.
         verbose : bool, default: False
             Whether to print status messages.
         """
-        if stream_name is None:
+        if stream_names is None:
             warnings.warn(
-                "Constructing TDTFiberPhotometryInterface without `stream_name` uses the deprecated "
-                "multi-stream behavior, which will be removed on or after August 2026. Pass "
-                "`stream_name=` to write a single FiberPhotometryResponseSeries "
+                "Constructing TDTFiberPhotometryInterface without `stream_names` uses the deprecated "
+                "multi-series behavior, which will be removed on or after August 2026. Pass "
+                "`stream_names=` to write a single FiberPhotometryResponseSeries "
                 "(see TDTFiberPhotometryInterface.get_available_streams).",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            self._delegate = _TDTFiberPhotometryInterfaceMultiStream(folder_path=folder_path, verbose=verbose)
+            self._delegate = _TDTFiberPhotometryInterfaceMultiSeries(folder_path=folder_path, verbose=verbose)
         else:
-            self._delegate = _TDTFiberPhotometryInterfaceSingleStream(
+            self._delegate = _TDTFiberPhotometryInterfaceSingleSeries(
                 folder_path=folder_path,
-                stream_name=stream_name,
+                stream_names=stream_names,
                 metadata_key=metadata_key,
                 stream_indices=stream_indices,
                 verbose=verbose,
@@ -695,7 +696,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     @classmethod
     def get_available_streams(cls, folder_path: DirectoryPath) -> list[str]:
         """Return the names of the stream stores available in a TDT tank."""
-        return _TDTFiberPhotometryInterfaceSingleStream.get_available_streams(folder_path)
+        return _TDTFiberPhotometryInterfaceSingleSeries.get_available_streams(folder_path)
 
     def __getattr__(self, name: str):
         # Forward any attribute not defined on the router (load, get_events, stream_names, ...)

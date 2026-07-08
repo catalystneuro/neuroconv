@@ -11,7 +11,7 @@ FIBER_PHOTOMETRY_PLACEHOLDER = "PLACEHOLDER"
 
 
 def get_default_fiber_photometry_metadata(metadata_key: str) -> dict:
-    """Return the default ``Ophys.FiberPhotometry`` metadata block for a single-stream interface.
+    """Return the default ``Ophys.FiberPhotometry`` metadata block for a single-series interface.
 
     Mirrors the pattern of ``get_nwb_imaging_metadata``: the required fields are pre-filled with
     sentinels — ``NaN`` for the required numeric wavelengths and :data:`FIBER_PHOTOMETRY_PLACEHOLDER`
