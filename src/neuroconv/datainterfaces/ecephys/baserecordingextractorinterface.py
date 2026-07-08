@@ -1,3 +1,4 @@
+import copy
 from typing import Literal
 
 import numpy as np
@@ -443,3 +444,46 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 nwbfile=nwbfile,
                 metadata=metadata,
             )
+
+    def split_by_offset(self) -> list["BaseRecordingExtractorInterface"]:
+        """
+        Split this interface into one sub-interface per distinct channel offset.
+
+        A single NWB ``ElectricalSeries`` stores one scalar ``offset`` shared by all of its channels,
+        so a recording whose channels have heterogeneous offsets cannot be written to a single
+        ``ElectricalSeries`` (``add_to_nwbfile`` raises in that case). This method partitions the
+        channels by their offset value — using only the offsets present in the recording, independent
+        of any external (e.g. BIDS) metadata — and returns one interface per distinct offset, each
+        restricted (via :py:meth:`~spikeinterface.core.BaseRecording.select_channels`) to the channels
+        that share that offset.
+
+        Each sub-interface is given a distinct ``es_key`` (``{es_key}0``, ``{es_key}1``, ...), so the
+        returned interfaces can be combined in a :py:class:`~neuroconv.nwbconverter.ConverterPipe` to
+        write one ``ElectricalSeries`` per offset into a single NWB file, or converted individually.
+
+        Returns
+        -------
+        list of BaseRecordingExtractorInterface
+            One interface per distinct offset, ordered by offset value. If the recording has a single
+            (or no) distinct offset, a single-element list containing this interface is returned
+            unchanged.
+        """
+        from ...tools.spikeinterface import _group_channel_ids_by_offset
+
+        offset_to_channel_ids = _group_channel_ids_by_offset(recording=self.recording_extractor)
+
+        if len(offset_to_channel_ids) <= 1:
+            return [self]
+
+        width = int(np.ceil(np.log10(len(offset_to_channel_ids))))
+        sub_interfaces = []
+        for index, offset in enumerate(sorted(offset_to_channel_ids)):
+            sub_interface = copy.copy(self)
+            sub_interface.recording_extractor = self.recording_extractor.select_channels(
+                channel_ids=offset_to_channel_ids[offset]
+            )
+            sub_interface._number_of_segments = sub_interface.recording_extractor.get_num_segments()
+            sub_interface.es_key = f"{self.es_key}{index:0{width}}"
+            sub_interfaces.append(sub_interface)
+
+        return sub_interfaces

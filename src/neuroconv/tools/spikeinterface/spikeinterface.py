@@ -1425,15 +1425,25 @@ def _recording_traces_to_hdmf_iterator(
     return traces_as_iterator
 
 
-def _report_variable_offset(recording: BaseRecording) -> None:
+def _group_channel_ids_by_offset(recording: BaseRecording) -> dict:
     """
-    Helper function to report variable offsets per channel IDs.
-    Groups the different available offsets per channel IDs and raises a ValueError.
+    Group the channel IDs of a recording by their offset value.
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        A recording extractor from spikeinterface.
+
+    Returns
+    -------
+    dict
+        A dictionary mapping each distinct offset value to the list of channel IDs that share it.
+        The native Python types of the offsets and channel IDs are preserved (numpy scalars are
+        converted to their Python equivalents).
     """
     channel_offsets = recording.get_channel_offsets()
     channel_ids = recording.get_channel_ids()
 
-    # Group the different offsets per channel IDs
     offset_to_channel_ids = {}
     for offset, channel_id in zip(channel_offsets, channel_ids):
         offset = offset.item() if isinstance(offset, np.generic) else offset
@@ -1441,6 +1451,16 @@ def _report_variable_offset(recording: BaseRecording) -> None:
         if offset not in offset_to_channel_ids:
             offset_to_channel_ids[offset] = []
         offset_to_channel_ids[offset].append(channel_id)
+
+    return offset_to_channel_ids
+
+
+def _report_variable_offset(recording: BaseRecording) -> None:
+    """
+    Helper function to report variable offsets per channel IDs.
+    Groups the different available offsets per channel IDs and raises a ValueError.
+    """
+    offset_to_channel_ids = _group_channel_ids_by_offset(recording=recording)
 
     # Create a user-friendly message
     message_lines = ["Recording extractors with heterogeneous offsets are not supported."]

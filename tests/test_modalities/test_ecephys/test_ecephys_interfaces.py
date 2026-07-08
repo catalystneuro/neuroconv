@@ -319,6 +319,72 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         with pytest.raises(jsonschema.exceptions.ValidationError):
             interface.validate_metadata(metadata)
 
+    def test_split_by_offset_homogeneous(self, setup_interface):
+        """A recording with a single offset is returned unchanged as a one-element list."""
+        interface = self.interface
+        interface.recording_extractor.set_channel_offsets(offsets=[5.0, 5.0, 5.0, 5.0])
+
+        sub_interfaces = interface.split_by_offset()
+
+        assert sub_interfaces == [interface]
+
+    def test_split_by_offset_heterogeneous(self):
+        """A recording with heterogeneous offsets is split into one interface per distinct offset."""
+        interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+        interface.recording_extractor = interface.recording_extractor.rename_channels(
+            new_channel_ids=["a", "b", "c", "d", "e"]
+        )
+        interface.recording_extractor.set_channel_gains(gains=[1.0, 1.0, 1.0, 1.0, 1.0])
+        interface.recording_extractor.set_channel_offsets(offsets=[0.0, 0.0, 1.0, 1.0, 2.0])
+
+        sub_interfaces = interface.split_by_offset()
+
+        # One sub-interface per distinct offset, ordered by offset value, with distinct es_keys.
+        assert len(sub_interfaces) == 3
+        assert [sub.es_key for sub in sub_interfaces] == ["ElectricalSeries0", "ElectricalSeries1", "ElectricalSeries2"]
+        assert list(sub_interfaces[0].recording_extractor.get_channel_ids()) == ["a", "b"]
+        assert list(sub_interfaces[1].recording_extractor.get_channel_ids()) == ["c", "d"]
+        assert list(sub_interfaces[2].recording_extractor.get_channel_ids()) == ["e"]
+
+        # Each sub-interface has a single, homogeneous offset.
+        for sub_interface in sub_interfaces:
+            assert len(set(sub_interface.recording_extractor.get_channel_offsets())) == 1
+
+        # The original interface is left untouched.
+        assert interface.recording_extractor.get_num_channels() == 5
+
+    def test_split_by_offset_combined_in_converter_pipe(self, tmp_path):
+        """The split sub-interfaces combine in a ConverterPipe to one file with one series per offset."""
+        from pynwb import NWBHDF5IO
+
+        interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+        interface.recording_extractor = interface.recording_extractor.rename_channels(
+            new_channel_ids=["a", "b", "c", "d", "e"]
+        )
+        interface.recording_extractor.set_channel_gains(gains=[1.0, 1.0, 1.0, 1.0, 1.0])
+        interface.recording_extractor.set_channel_offsets(offsets=[0.0, 0.0, 1.0, 1.0, 2.0])
+
+        sub_interfaces = interface.split_by_offset()
+        converter = ConverterPipe(data_interfaces={sub.es_key: sub for sub in sub_interfaces})
+
+        nwbfile_path = tmp_path / "recording.nwb"
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+
+        expected_names = ["ElectricalSeries0", "ElectricalSeries1", "ElectricalSeries2"]
+        expected_offsets = [0.0, 1.0, 2.0]
+        expected_channel_counts = [2, 2, 1]
+        with NWBHDF5IO(path=str(nwbfile_path), mode="r") as io:
+            nwbfile = io.read()
+            # One ElectricalSeries per distinct offset, all in the same file.
+            assert sorted(nwbfile.acquisition.keys()) == expected_names
+            # A single shared electrodes table holds every channel.
+            assert len(nwbfile.electrodes) == 5
+            for name, expected_offset, expected_count in zip(expected_names, expected_offsets, expected_channel_counts):
+                electrical_series = nwbfile.acquisition[name]
+                # Offsets are stored in volts (micro-volt offset scaled by 1e-6); no rescaling.
+                assert electrical_series.offset == expected_offset * 1e-6
+                assert electrical_series.data.shape[1] == expected_count
+
     def test_set_probe(self, setup_interface):
         """Test setting probe with by_probe group mode."""
         # Create a simple probe
