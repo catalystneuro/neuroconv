@@ -7,7 +7,6 @@ import pytest
 from hdmf.testing import TestCase
 from natsort import natsorted
 from ndx_miniscope import Miniscope
-from ndx_miniscope.utils import get_timestamps
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 from pynwb.behavior import Position, SpatialSeries
@@ -17,6 +16,9 @@ from neuroconv.datainterfaces import (
     MedPCInterface,
     MiniscopeBehaviorInterface,
     NeuralynxNvtInterface,
+)
+from neuroconv.datainterfaces.ophys.miniscope._miniscope_readers import (
+    _get_fused_timestamps,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
@@ -195,10 +197,10 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
         )
         cls.starting_frames = np.array([0, 5, 10])  # there are 5 frames in each of the three avi files
         cls.external_files = [str(file) for file in list(natsorted(folder_path.glob("*/BehavCam*/0.avi")))]
-        cls.timestamps = get_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
+        cls.timestamps = _get_fused_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
 
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635000)
         assert metadata["Behavior"]["Device"][0] == self.device_metadata
 
         image_series_metadata = metadata["Behavior"]["ImageSeries"][0]

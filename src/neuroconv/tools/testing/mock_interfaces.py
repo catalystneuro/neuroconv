@@ -17,6 +17,10 @@ from ...datainterfaces.ecephys.baserecordingextractorinterface import (
 from ...datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
+from ...datainterfaces.events.baseeventsinterface import (
+    BaseEventsInterface,
+    _EventsData,
+)
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -243,6 +247,129 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
         nwbfile.add_acquisition(table)
 
 
+class MockEventsInterface(BaseEventsInterface):
+    """A configurable mock events interface for exercising the ``EventsTable`` writer without a real
+    acquisition format.
+
+    Generates ``num_event_types`` synthetic event types, each keyed by its own id (``"events"`` for a
+    single type, else ``"events_0" .. "events_{N-1}"``) and, by default, its own table. Their shape is
+    set by two taxonomy axes describing the generated *data*: ``event_extent`` (point vs event with
+    duration) and ``event_payload`` (timestamps only / a single categorical value / a multi-value
+    struct); both apply to every type. Timestamps are staggered across types so pooling several into
+    one table interleaves in time. Data is deterministic (no ``seed`` needed). Everything else a test
+    exercises, renaming a column, merging types into one table (repoint their ``table_metadata_key``),
+    dropping the meanings map, lives in the returned metadata and is driven by editing it, not by a
+    constructor flag.
+    """
+
+    def __init__(
+        self,
+        *,
+        metadata_key: str | None = None,
+        num_event_types: int = 1,
+        num_events: int = 4,
+        event_extent: Literal["point event", "event with duration"] = "point event",
+        event_payload: Literal["timestamps only", "single value", "multi value"] = "timestamps only",
+        verbose: bool = False,
+    ):
+        """Initialize a mock events interface.
+
+        Parameters
+        ----------
+        metadata_key : str, optional
+            The key under ``metadata["Events"]`` namespacing this interface's ``event_types``.
+            If None (default), ``"mock_events"`` is used.
+        num_event_types : int, optional
+            How many event types (streams) to generate, by default 1. Each gets its own id and, by
+            default, its own table; a test merges them by repointing their ``table_metadata_key`` at a
+            shared table.
+        num_events : int, optional
+            Number of events (timestamps) generated per event type, by default 4.
+        event_extent : {"point event", "event with duration"}, optional
+            The temporal extent of the generated events (the taxonomy's Extent axis). ``"point event"``
+            (default) generates timestamp-only events; ``"event with duration"`` gives each event a
+            duration, so the writer adds a ``duration`` column. Applies to every event type.
+        event_payload : {"timestamps only", "single value", "multi value"}, optional
+            The payload carried per event (the taxonomy's Payload axis). ``"timestamps only"``
+            (default) is a timestamp-only event with no value column; ``"single value"`` carries one
+            categorical field (a labeled column with a ``MeaningsTable``); ``"multi value"`` carries a
+            two-field struct that fans into two columns on the same rows (a categorical ``outcome``
+            plus a numeric ``amplitude``). Applies to every event type.
+        verbose : bool, optional
+            Whether to print status messages, by default False.
+        """
+        self._num_event_types = num_event_types
+        self._num_events = num_events
+        self._event_extent = event_extent
+        self._event_payload = event_payload
+        super().__init__(verbose=verbose)
+        self.metadata_key = metadata_key or "mock_events"
+
+    def _event_type_source_ids(self) -> list[str]:
+        # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
+        # their tables and column names) stay unique.
+        if self._num_event_types == 1:
+            return ["events"]
+        return [f"events_{index}" for index in range(self._num_event_types)]
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+
+        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+            suffix = "" if self._num_event_types == 1 else f"_{index}"
+            columns = {}
+            if self._event_payload != "timestamps only":
+                # A categorical value column with an editable label -> meaning vocabulary.
+                columns["outcome"] = {
+                    "column_name": f"outcome{suffix}",
+                    "description": "The outcome of each event.",
+                    "column_categories": {
+                        "labels": {0: "go", 1: "no_go"},
+                        "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                    },
+                }
+            if self._event_payload == "multi value":
+                # A second, non-categorical (numeric) field: written as raw values, no MeaningsTable.
+                columns["amplitude"] = {
+                    "column_name": f"amplitude{suffix}",
+                    "description": "The amplitude of each event.",
+                }
+            # No EventTables entry: a solo type names its own table from event_name (CamelCased). A merge
+            # test repoints these types' table_metadata_key at a shared key and declares the table there.
+            metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
+                "event_name": event_type_source_id,
+                "event_description": "Mock events.",
+                "columns": columns,
+            }
+        return metadata
+
+    def _get_events_data_dict(self) -> dict[str, _EventsData]:
+        if self._events_data_dict is not None:
+            return self._events_data_dict
+
+        duration = 0.05 if self._event_extent == "event with duration" else None
+        events_data_dict = {}
+        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+            # Stagger timestamps across types so pooling several into one table interleaves in time.
+            timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
+            durations = np.full(self._num_events, duration) if duration is not None else None
+            payload = {}
+            if self._event_payload != "timestamps only":
+                payload["outcome"] = np.arange(self._num_events) % 2  # alternating go / no_go
+            if self._event_payload == "multi value":
+                payload["amplitude"] = np.arange(self._num_events, dtype="float64")
+            events_data_dict[event_type_source_id] = _EventsData(
+                event_type_source_id=event_type_source_id,
+                timestamps=timestamps,
+                durations=durations,
+                payload=payload,
+            )
+
+        self._events_data_dict = events_data_dict
+        return self._events_data_dict
+
+
 class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
     """
     A mock SpikeGLX interface for testing purposes.
@@ -310,7 +437,6 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         # Minimal meta so `get_metadata` works similarly to real NIDQ header
         self.meta = {"acqMnMaXaDw": "0,0,8,1", "fileCreateTime": "2020-11-03T10:35:10", "niDev1ProductName": "PCI-6259"}
         self.verbose = None
-        self.es_key = "ElectricalSeriesNIDQ"
         self.metadata_key = "SpikeGLXNIDQ"
         self._analog_channel_groups = {
             "nidq_analog": {
@@ -333,6 +459,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
@@ -347,6 +474,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         seed: int = 0,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
         set_probe: bool = False,
     ):
         # Handle deprecated positional arguments
@@ -395,6 +523,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             seed=seed,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
         )
 
         self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
@@ -407,7 +536,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             probe.set_contact_ids(contact_ids)
             self.recording_extractor = self.recording_extractor.set_probe(probe, group_mode="by_probe")
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Get metadata for the recording interface.
 
@@ -416,7 +545,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         dict
             The metadata dictionary containing NWBFile metadata with session start time.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
@@ -788,9 +917,10 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self,
         num_samples: int = 1000,
         num_nodes: int = 3,
-        pose_estimation_metadata_key: str = "MockPoseEstimation",
         seed: int = 0,
         verbose: bool = False,
+        metadata_key: str = "MockPoseEstimation",
+        pose_estimation_metadata_key: str | None = None,
     ):
         """
         Initialize a mock pose estimation interface.
@@ -801,16 +931,28 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
             Number of samples to generate, by default 1000.
         num_nodes : int, optional
             Number of nodes/body parts to track, by default 3.
-        pose_estimation_metadata_key : str, optional
-            Key for pose estimation metadata container, by default "MockPoseEstimation".
         seed : int, optional
             Random seed for reproducible data generation, by default 0.
         verbose : bool, optional
             Control verbosity, by default False.
+        metadata_key : str, default: "MockPoseEstimation"
+            Metadata key for this interface.
+        pose_estimation_metadata_key : str, optional
+            Deprecated. Renamed to ``metadata_key``; passing it forwards the value to
+            ``metadata_key`` and will be removed on or after December 2026.
         """
+        if pose_estimation_metadata_key is not None:
+            warnings.warn(
+                "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
+                "will be removed on or after December 2026. Please use 'metadata_key' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            metadata_key = pose_estimation_metadata_key
+
         self.num_samples = num_samples
         self.num_nodes = num_nodes
-        self.pose_estimation_metadata_key = pose_estimation_metadata_key
+        self.metadata_key = metadata_key
         self.seed = seed
         self.verbose = verbose
 
@@ -898,114 +1040,144 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self._timestamps = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the mock pose estimation interface."""
+        """Get metadata for the mock pose estimation interface in the dict-based shape.
+
+        Returns metadata with top-level ``metadata["Devices"]`` and the pose sub-modality at
+        ``metadata["Behavior"]["Pose"]`` holding ``Skeletons`` and ``PoseEstimations`` registries,
+        all keyed by ``self.metadata_key`` and cross-referenced via ``device_metadata_key`` and
+        ``skeleton_metadata_key``.
+        """
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # Create metadata following the DeepLabCut pattern
-        container_name = self.pose_estimation_metadata_key
+        container_name = self.metadata_key
         skeleton_name = f"Skeleton{container_name}"
         device_name = f"Camera{container_name}"
 
-        # Create PoseEstimation metadata structure
-        pose_estimation_metadata = DeepDict()
-
-        # Add Skeleton as a dictionary
-        pose_estimation_metadata["Skeletons"] = {
-            skeleton_name: {"name": skeleton_name, "nodes": self.nodes, "edges": self.edges.tolist()}
-        }
-
-        # Add Device as a dictionary
-        pose_estimation_metadata["Devices"] = {
-            device_name: {"name": device_name, "description": "Mock camera device for pose estimation testing."}
-        }
-
-        # Add PoseEstimation container
-        pose_estimation_metadata["PoseEstimationContainers"] = {
-            container_name: {
-                "name": container_name,
-                "description": f"Mock pose estimation data from {self.source_software}.",
-                "source_software": self.source_software,
-                "dimensions": [[640, 480]],
-                "skeleton": skeleton_name,
-                "devices": [device_name],
-                "scorer": self.scorer,
-                "original_videos": ["mock_video.mp4"],
-                "PoseEstimationSeries": {},
-            }
-        }
-
-        # Add a series for each node
+        pose_estimation_series_entries = {}
         for node in self.nodes:
-            # Convert node name to PascalCase for the series name
             pascal_case_node = "".join(word.capitalize() for word in node.replace("_", " ").split())
-            series_name = f"PoseEstimationSeries{pascal_case_node}"
-
-            pose_estimation_metadata["PoseEstimationContainers"][container_name]["PoseEstimationSeries"][node] = {
-                "name": series_name,
+            pose_estimation_series_entries[node] = {
+                "name": f"PoseEstimationSeries{pascal_case_node}",
                 "description": f"Mock pose estimation series for {node}.",
                 "unit": "pixels",
                 "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
                 "confidence_definition": "Softmax output of the deep neural network.",
             }
 
-        # Add PoseEstimation metadata to the main metadata
-        metadata["PoseEstimation"] = pose_estimation_metadata
+        metadata["Devices"] = {
+            self.metadata_key: {
+                "name": device_name,
+                "description": "Mock camera device for pose estimation testing.",
+            }
+        }
+        metadata["Behavior"] = {
+            "Pose": {
+                "Skeletons": {
+                    self.metadata_key: {
+                        "name": skeleton_name,
+                        "nodes": self.nodes,
+                        "edges": self.edges.tolist(),
+                    },
+                },
+                "PoseEstimations": {
+                    self.metadata_key: {
+                        "name": container_name,
+                        "description": f"Mock pose estimation data from {self.source_software}.",
+                        "source_software": self.source_software,
+                        "scorer": self.scorer,
+                        "dimensions": [[640, 480]],
+                        "original_videos": ["mock_video.mp4"],
+                        "device_metadata_key": self.metadata_key,
+                        "skeleton_metadata_key": self.metadata_key,
+                        "PoseEstimationSeries": pose_estimation_series_entries,
+                    },
+                },
+            },
+        }
 
         return metadata
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
-        """Add mock pose estimation data to NWBFile using ndx-pose."""
+        """Add mock pose estimation data to NWBFile using ndx-pose, reading names from metadata."""
         from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
-        # Create or get behavior processing module
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        pose_metadata = metadata["Behavior"]["Pose"]
+        container_entry = pose_metadata["PoseEstimations"][self.metadata_key]
+
         behavior_module = get_module(nwbfile, "behavior")
 
-        # Create device
-        device = Device(name="MockCamera", description="Mock camera device for pose estimation testing")
-        nwbfile.add_device(device)
+        # Lazy device creation: only write a device when the container references one. ndx-pose
+        # makes ``devices`` optional, so an absent ``device_metadata_key`` means "no device", not a
+        # fabricated placeholder. Reuse an existing Device with the same name when present, which
+        # lets multiple interfaces share a device by pointing at the same ``device_metadata_key``.
+        device = None
+        device_metadata_key = container_entry.get("device_metadata_key")
+        if device_metadata_key is not None:
+            device_entry = metadata["Devices"][device_metadata_key]
+            device_name = device_entry["name"]
+            if device_name in nwbfile.devices:
+                device = nwbfile.devices[device_name]
+            else:
+                device = Device(name=device_name, description=device_entry.get("description", ""))
+                nwbfile.add_device(device)
 
-        # Create skeleton
-        skeleton = Skeleton(name="MockSkeleton", nodes=self.nodes, edges=self.edges)
+        # Lazy skeleton creation: only write a skeleton when the container references one. Reuse an
+        # existing Skeleton with the same name when present.
+        skeleton = None
+        skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
+        if skeleton_metadata_key is not None:
+            skeleton_entry = pose_metadata["Skeletons"][skeleton_metadata_key]
+            skeleton_name = skeleton_entry["name"]
+            existing_skeletons = (
+                behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}
+            )
+            if skeleton_name in existing_skeletons:
+                skeleton = existing_skeletons[skeleton_name]
+            else:
+                skeleton = Skeleton(name=skeleton_name, nodes=skeleton_entry["nodes"], edges=self.edges)
 
-        # Create pose estimation series for each node
+        pose_estimation_series_metadata = container_entry["PoseEstimationSeries"]
         pose_estimation_series = []
         for index, node_name in enumerate(self.nodes):
-            # Convert node name to PascalCase for the series name
-            pascal_case_node = "".join(word.capitalize() for word in node_name.replace("_", " ").split())
-            series_name = f"PoseEstimationSeries{pascal_case_node}"
-
+            series_metadata = pose_estimation_series_metadata[node_name]
             series = PoseEstimationSeries(
-                name=series_name,
-                description=f"Pose estimation for {node_name}",
+                name=series_metadata["name"],
+                description=series_metadata["description"],
                 data=self.pose_data[:, index, :],
-                unit="pixels",
-                reference_frame="top left corner of video frame",
+                unit=series_metadata["unit"],
+                reference_frame=series_metadata["reference_frame"],
                 timestamps=self.get_timestamps(),
                 confidence=np.ones(self.num_samples),
-                confidence_definition="definition of confidence",
+                confidence_definition=series_metadata["confidence_definition"],
             )
             pose_estimation_series.append(series)
 
-        # Create pose estimation container
         pose_estimation = PoseEstimation(
-            name="MockPoseEstimation",
-            description=f"Mock pose estimation data from {self.source_software}",
+            name=container_entry["name"],
+            description=container_entry["description"],
             pose_estimation_series=pose_estimation_series,
             skeleton=skeleton,
-            devices=[device],
-            scorer=self.scorer,
-            source_software=self.source_software,
-            dimensions=np.array([[640, 480]], dtype="uint16"),
-            original_videos=["mock_video.mp4"],
-            labeled_videos=["mock_video_labeled.mp4"],
+            devices=[device] if device is not None else None,
+            scorer=container_entry["scorer"],
+            source_software=container_entry["source_software"],
+            dimensions=(
+                np.array(container_entry["dimensions"], dtype="uint16")
+                if container_entry.get("dimensions") is not None
+                else None
+            ),
+            original_videos=container_entry.get("original_videos"),
+            labeled_videos=container_entry.get("labeled_videos"),
         )
 
         behavior_module.add(pose_estimation)
-        if "Skeletons" not in behavior_module.data_interfaces:
-            skeletons = Skeletons(skeletons=[skeleton])
-            behavior_module.add(skeletons)
-        else:
-            skeletons = behavior_module["Skeletons"]
-            skeletons.add_skeletons(skeleton)
+        if skeleton is not None:
+            if "Skeletons" not in behavior_module.data_interfaces:
+                skeletons = Skeletons(skeletons=[skeleton])
+                behavior_module.add(skeletons)
+            elif skeleton.name not in behavior_module["Skeletons"].skeletons:
+                behavior_module["Skeletons"].add_skeletons(skeleton)

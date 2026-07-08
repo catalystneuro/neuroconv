@@ -359,6 +359,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         # No super here, we need to do everything by hand
         self.verbose = verbose
         self.es_key = es_key
+        self.metadata_key = es_key
         self.source_data = dict(folder_path=folder_path)
         self._number_of_segments = 1  # CellExplorer is mono segment
 
@@ -476,7 +477,6 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         compression_opts: int | None = None,
         iterator_type: str = "v2",
         iterator_options: dict | None = None,
-        iterator_opts: dict | None = None,
     ):
         # Handle deprecated positional arguments
         if args:
@@ -489,7 +489,6 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
                 "compression_opts",
                 "iterator_type",
                 "iterator_options",
-                "iterator_opts",
             ]
             num_positional_args_before_args = 2  # nwbfile, metadata
             if len(args) > len(parameter_names):
@@ -517,19 +516,6 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
             compression_opts = positional_values.get("compression_opts", compression_opts)
             iterator_type = positional_values.get("iterator_type", iterator_type)
             iterator_options = positional_values.get("iterator_options", iterator_options)
-            iterator_opts = positional_values.get("iterator_opts", iterator_opts)
-
-        # Handle deprecated iterator_opts parameter
-        if iterator_opts is not None:
-            warnings.warn(
-                "The 'iterator_opts' parameter is deprecated and will be removed in May 2026 or after. "
-                "Use 'iterator_options' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            if iterator_options is not None:
-                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
-            iterator_options = iterator_opts
 
         super().add_to_nwbfile(
             nwbfile=nwbfile,
