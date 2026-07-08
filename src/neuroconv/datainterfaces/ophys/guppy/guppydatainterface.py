@@ -7,7 +7,6 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pandas
-from hdmf.backends.hdf5 import H5DataIO
 from hdmf.common import DynamicTableRegion
 from pydantic import DirectoryPath, validate_call
 from pynwb.core import VectorData
@@ -1086,13 +1085,10 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 raw_store_name=store,
             )
         if include_event_references:
-            # TODO(hdmf#1532): drop the H5DataIO(maxshape=(None,)) wrapper once the upstream fix lands.
-            # An object-reference column whose targets are DynamicTables (EventsTable) otherwise makes
-            # hdmf infer a rank-3 maxshape and fail the write; declaring the 1-D maxshape sidesteps it.
             events_table.add_column(
                 name="events",
                 description="Reference to the EventsTable (in nwbfile.events) holding this event's onset timestamps.",
-                data=H5DataIO(event_references, maxshape=(None,)),
+                data=event_references,
             )
         processing_module.add(events_table)
         return events_table
