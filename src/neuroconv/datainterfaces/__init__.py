@@ -35,6 +35,7 @@ from .ecephys.cellexplorer.cellexplorerdatainterface import (
 )
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
+from .ecephys.eeglab.eeglabdatainterface import EEGLABRecordingInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.intan.intananaloginterface import IntanAnalogInterface
 from .ecephys.intan.intanstiminterface import IntanStimInterface
@@ -157,6 +158,7 @@ interface_list = [
     AxonaUnitRecordingInterface,
     EDFRecordingInterface,
     EDFAnalogInterface,
+    EEGLABRecordingInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
     PlexonLFPInterface,
