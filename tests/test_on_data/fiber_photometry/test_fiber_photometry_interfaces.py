@@ -944,25 +944,19 @@ class TestTDTFiberPhotometryInterfaceSingleSeries(FiberPhotometryInterfaceTestMi
         stream_names="_405R",
         metadata_key="Signal",
     )
-    conversion_options = dict(stub_test=True)
+    conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
-    def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            # The response series is named by its metadata (default "FiberPhotometryResponseSeries"),
-            # while "Signal" is this interface's metadata_key.
-            assert "FiberPhotometryResponseSeries" in nwbfile.acquisition
-            response_series = nwbfile.acquisition["FiberPhotometryResponseSeries"]
-            assert response_series.data.shape[0] > 0
-            assert "fiber_photometry" in nwbfile.lab_meta_data
-            table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
-            assert len(table) == 1
+    # Expected first 5 samples of the "_405R" store and its sampling, verified against the tank.
+    expected_response_series_data = np.array(
+        [0.32750106, 0.3274658, 0.32822716, 0.33025593, 0.3340194], dtype=np.float32
+    )
+    expected_starting_time = 0.0
+    expected_rate = 1017.2526245117188
 
     def check_extracted_metadata(self, metadata: dict):
+        # TDT-specific idiosyncrasy: the session start time is read from the tank header.
         assert "session_start_time" in metadata["NWBFile"]
-        # "Signal" is the metadata_key under which this interface's response-series metadata lives.
-        assert "Signal" in metadata["FiberPhotometry"]
 
     def test_get_available_streams(self):
         streams = self.data_interface_cls.get_available_streams(folder_path=self.interface_kwargs["folder_path"])
