@@ -45,6 +45,42 @@ def _make_eeg_struct(data_field, *, with_events: bool = True, trials: int = 1) -
     return eeg
 
 
+def _make_epoched_eeg_struct(traces_3d, urevent_latencies, xmin) -> dict:
+    """Build an epoched EEG struct (with ``urevent``) so real per-epoch onsets are recoverable.
+
+    ``traces_3d`` is ``(n_channels, n_points, n_trials)``; ``urevent_latencies`` are the 1-based
+    original-recording sample latencies of each epoch's time-locking event.
+    """
+    number_of_channels, number_of_points, number_of_trials = traces_3d.shape
+    chanlocs = dict(
+        labels=CHANNEL_LABELS,
+        X=np.arange(number_of_channels, dtype="float64"),
+        Y=np.arange(number_of_channels, dtype="float64") + 10.0,
+        Z=np.arange(number_of_channels, dtype="float64") + 20.0,
+    )
+    lock_within_sample = 1.0 - xmin * SAMPLING_FREQUENCY  # 1-based within-epoch sample at t_rel == 0
+    # One time-locking event per epoch; its concatenated latency is (epoch)*pnts + within-epoch sample.
+    event = dict(
+        type=["stim"] * number_of_trials,
+        latency=np.array([epoch * number_of_points + lock_within_sample for epoch in range(number_of_trials)]),
+        epoch=np.arange(1, number_of_trials + 1),
+        urevent=np.arange(1, number_of_trials + 1),
+    )
+    urevent = dict(type=["stim"] * number_of_trials, latency=np.asarray(urevent_latencies, dtype="float64"))
+    return dict(
+        setname="synthetic-epoched",
+        srate=SAMPLING_FREQUENCY,
+        nbchan=number_of_channels,
+        pnts=number_of_points,
+        trials=number_of_trials,
+        xmin=xmin,
+        data=traces_3d,
+        chanlocs=chanlocs,
+        event=event,
+        urevent=urevent,
+    )
+
+
 @pytest.fixture
 def microvolt_traces() -> np.ndarray:
     """Deterministic (n_channels, n_points) traces in microvolts."""
@@ -121,78 +157,70 @@ class TestEEGLABRecordingInterface:
         nwbfile = interface.create_nwbfile(metadata=_session_metadata(interface), write_events=False)
         assert nwbfile.intervals is None or "events" not in nwbfile.intervals
 
-    def test_epoched_data_splits_into_one_file_per_epoch(self, tmp_path):
-        number_of_trials = 6
-        epoch_start_time = -1.0
+    def test_epoched_writes_one_series_per_epoch_in_one_file(self, tmp_path):
+        """Epoched data → one ElectricalSeries per epoch in a single file, on the shared real timeline."""
+        number_of_trials = 3
+        xmin = -1.0
         rng = np.random.default_rng(seed=1)
-        # Epoched EEGLAB data is a (n_channels, n_points, n_trials) tensor.
-        epoched_traces = (rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, number_of_trials)) * 20.0).astype(
-            "float32"
-        )
-        eeg = _make_eeg_struct(epoched_traces, trials=number_of_trials, with_events=False)
-        eeg["xmin"] = epoch_start_time
+        traces = (rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, number_of_trials)) * 20.0).astype("float32")
+        # Real (original-recording) latencies of each epoch's time-locking event — distinct and ordered.
+        urevent_latencies = [129.0, 2000.0, 5000.0]
         set_path = tmp_path / "epoched.set"
-        savemat(str(set_path), {"EEG": eeg}, do_compression=True)
+        savemat(str(set_path), {"EEG": _make_epoched_eeg_struct(traces, urevent_latencies, xmin)}, do_compression=True)
 
         interface = EEGLABRecordingInterface(file_path=set_path)
         assert interface.is_epoched
 
-        written_paths = interface.run_conversion_split_by_epoch(
-            nwbfile_path=tmp_path / "epoched.nwb", metadata=_session_metadata(interface), overwrite=True
-        )
-        expected_paths = [tmp_path / f"epoched_epoch{index}.nwb" for index in range(number_of_trials)]
-        assert written_paths == expected_paths
+        nwbfile_path = tmp_path / "epoched.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=_session_metadata(interface), overwrite=True)
 
-        for epoch_index, path in enumerate(expected_paths):
-            assert path.exists()
-            with NWBHDF5IO(path=str(path), mode="r") as io:
-                nwbfile = io.read()
-                electrical_series = nwbfile.acquisition["ElectricalSeries"]
-                # Each file holds exactly one epoch.
+        expected_onsets = [(latency - 1.0) / SAMPLING_FREQUENCY + xmin for latency in urevent_latencies]
+        with NWBHDF5IO(path=str(nwbfile_path), mode="r") as io:
+            nwbfile = io.read()
+            # One ElectricalSeries per epoch (marked with "Epoch"), all in the same file.
+            names = sorted(nwbfile.acquisition.keys())
+            assert names == ["ElectricalSeriesEpoch0", "ElectricalSeriesEpoch1", "ElectricalSeriesEpoch2"]
+            # A single shared electrodes table.
+            assert len(nwbfile.electrodes) == NUMBER_OF_CHANNELS
+            for index, name in enumerate(names):
+                electrical_series = nwbfile.acquisition[name]
                 assert electrical_series.data.shape == (NUMBER_OF_POINTS, NUMBER_OF_CHANNELS)
+                # Real per-epoch start time on the shared session timeline (starting_time + rate).
+                assert electrical_series.starting_time == pytest.approx(expected_onsets[index], abs=1e-6)
+                assert electrical_series.rate == pytest.approx(SAMPLING_FREQUENCY)
                 written_microvolts = electrical_series.data[:] * electrical_series.conversion * 1e6
-                np.testing.assert_allclose(written_microvolts, epoched_traces[:, :, epoch_index].T, atol=1e-2)
-                # Epoch-relative time axis: the series starts at EEG.xmin.
-                assert electrical_series.starting_time == pytest.approx(epoch_start_time)
+                np.testing.assert_allclose(written_microvolts, traces[:, :, index].T, atol=1e-2)
 
-    def test_epoched_conversion_without_split_raises(self, tmp_path):
-        rng = np.random.default_rng(seed=3)
-        epoched_traces = (rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, 4)) * 20.0).astype("float32")
+            # Per-epoch boundaries in the epochs table (real times + locking-event label).
+            epochs = nwbfile.epochs.to_dataframe()
+            assert len(epochs) == number_of_trials
+            np.testing.assert_allclose(epochs["start_time"], expected_onsets, atol=1e-6)
+            assert list(epochs["epoch_index"]) == [0, 1, 2]
+            assert list(epochs["label"]) == ["stim", "stim", "stim"]
+
+            # Events come from urevent (unique) at real times.
+            events = nwbfile.intervals["events"]
+            assert len(events) == number_of_trials
+            np.testing.assert_allclose(
+                events["start_time"][:], [(latency - 1.0) / SAMPLING_FREQUENCY for latency in urevent_latencies], atol=1e-6
+            )
+
+    def test_epoched_write_epochs_false(self, tmp_path):
+        rng = np.random.default_rng(seed=2)
+        traces = (rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, 2)) * 20.0).astype("float32")
         set_path = tmp_path / "epoched.set"
-        savemat(str(set_path), {"EEG": _make_eeg_struct(epoched_traces, trials=4)}, do_compression=True)
+        savemat(str(set_path), {"EEG": _make_epoched_eeg_struct(traces, [129.0, 2000.0], -1.0)}, do_compression=True)
 
         interface = EEGLABRecordingInterface(file_path=set_path)
-        with pytest.raises(ValueError, match="epoched"):
-            interface.create_nwbfile(metadata=_session_metadata(interface))
+        nwbfile = interface.create_nwbfile(metadata=_session_metadata(interface), write_epochs=False)
+        assert nwbfile.epochs is None
+        assert len(nwbfile.acquisition) == 2
 
-    def test_epoched_events_assigned_to_correct_epoch(self, tmp_path):
-        """Events are partitioned to their epoch with epoch-relative onsets."""
-        number_of_trials = 3
-        epoch_start_time = -1.0
-        rng = np.random.default_rng(seed=4)
-        epoched_traces = (rng.standard_normal((NUMBER_OF_CHANNELS, NUMBER_OF_POINTS, number_of_trials)) * 20.0).astype(
-            "float32"
-        )
-        eeg = _make_eeg_struct(epoched_traces, trials=number_of_trials, with_events=False)
-        eeg["xmin"] = epoch_start_time
-        # Two events: one time-locking event in epoch 1 and one in epoch 2 (1-based EEGLAB indices).
-        locking_sample = 1 - epoch_start_time * SAMPLING_FREQUENCY  # within-epoch sample for t_rel == 0
-        eeg["event"] = dict(
-            type=["stim", "stim"],
-            latency=np.array([locking_sample, NUMBER_OF_POINTS + locking_sample]),
-            epoch=np.array([1, 2]),
-        )
-        set_path = tmp_path / "epoched_events.set"
-        savemat(str(set_path), {"EEG": eeg}, do_compression=True)
-
-        sub_interfaces = EEGLABRecordingInterface(file_path=set_path).split_by_epoch()
-        assert len(sub_interfaces) == number_of_trials
-        # Epochs 0 and 1 each get one event at the time-locking time (t == 0); epoch 2 gets none.
-        assert len(sub_interfaces[0]._eeglab_events) == 1
-        assert sub_interfaces[0]._eeglab_events[0]["start_time"] == pytest.approx(0.0)
-        assert len(sub_interfaces[1]._eeglab_events) == 1
-        assert sub_interfaces[1]._eeglab_events[0]["start_time"] == pytest.approx(0.0)
-        assert len(sub_interfaces[2]._eeglab_events) == 0
+    def test_continuous_has_no_epochs_table(self, inline_set_path):
+        interface = EEGLABRecordingInterface(file_path=inline_set_path)
+        nwbfile = interface.create_nwbfile(metadata=_session_metadata(interface))
+        assert list(nwbfile.acquisition.keys()) == ["ElectricalSeries"]
+        assert nwbfile.epochs is None
 
     def test_subject_metadata_from_struct_and_bids(self, tmp_path, microvolt_traces):
         eeg = _make_eeg_struct(microvolt_traces)

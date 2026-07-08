@@ -53,12 +53,14 @@ To skip writing the event markers, pass ``write_events=False`` as a conversion o
 Epoched datasets
 ^^^^^^^^^^^^^^^^
 
-A single NWB ``ElectricalSeries`` is continuous, so epoched EEGLAB datasets (``EEG.trials > 1``) cannot
-be stored in one file. Instead, write one NWB file per epoch with ``run_conversion_split_by_epoch``.
-Each file holds a single epoch with an epoch-relative time axis (the time-locking event at ``t = 0``,
-i.e. the series starts at ``EEG.xmin``) and only the events belonging to that epoch. The output paths
-are derived from ``nwbfile_path`` by inserting an ``_epoch{index}`` suffix
-(e.g. ``recording.nwb`` -> ``recording_epoch0.nwb``, ``recording_epoch1.nwb``, ...).
+Epoched EEGLAB datasets (``EEG.trials > 1``) are handled automatically by ``run_conversion``: each epoch
+is written as its own ``ElectricalSeries`` (named ``ElectricalSeriesEpoch{index}``) into the **same** NWB
+file, all sharing a single electrodes table. Each series is placed at the epoch's real time in the source
+recording — recovered from ``EEG.urevent`` — so the epochs live on one shared session timeline rather
+than a synthetic one. The per-epoch boundaries and time-locking event types are written to the NWB
+``epochs`` table, and the unique ``EEG.event`` markers are written to the ``"events"`` table at their
+real times. (If the real timing cannot be recovered, epochs fall back to the epoch-relative start
+``EEG.xmin``.)
 
 .. code-block:: python
 
@@ -68,11 +70,7 @@ are derived from ``nwbfile_path`` by inserting an ``_epoch{index}`` suffix
     metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1, 0, 0, tzinfo=ZoneInfo("US/Pacific")))
     metadata["Subject"] = dict(subject_id="subject1", species="Homo sapiens", sex="M", age="P30Y")
 
-    # Writes one NWB file per epoch and returns the written paths
-    written_paths = interface.run_conversion_split_by_epoch(
-        nwbfile_path=f"{path_to_save_nwbfile}", metadata=metadata, overwrite=True
-    )
+    # Writes one NWB file with one ElectricalSeries per epoch plus an epochs table
+    interface.run_conversion(nwbfile_path=f"{path_to_save_nwbfile}", metadata=metadata, overwrite=True)
 
-For finer control you can call ``interface.split_by_epoch()`` to obtain one interface per epoch and run
-the conversion on each yourself. A continuous dataset converts normally with ``run_conversion``; calling
-``run_conversion`` directly on an epoched dataset raises an informative error directing you here.
+Pass ``write_epochs=False`` to skip the epochs table.

@@ -116,51 +116,114 @@ def _coerce_coordinate(values, number_of_channels: int):
     return coordinate
 
 
-def _extract_events(
+def _extract_epoch_info(
     eeg_struct: dict,
     sampling_frequency: float,
     number_of_points: int,
     number_of_trials: int,
     epoch_start_time: float,
-) -> list[dict]:
+) -> "list[dict] | None":
     """
-    Convert the EEGLAB ``EEG.event`` struct into a list of event dictionaries.
+    Recover per-epoch timing from ``EEG.event`` + ``EEG.urevent``.
 
-    Each event carries an ``epoch_index`` (0-based; always 0 for continuous data) and a ``start_time``
-    expressed relative to its epoch's start (so it aligns with the per-epoch recording timeline).
+    Epoched EEGLAB datasets keep, for each epoch, the original (continuous-recording) latency of its
+    time-locking event in ``EEG.urevent``. From that we recover where each epoch actually sat in the
+    source recording, so epochs can be placed on a shared, real session timeline.
+
+    Returns
+    -------
+    list of dict or None
+        One dict per epoch ``{"onset": float, "label": str}`` where ``onset`` is the real recording
+        time (seconds) of the epoch's **first sample** and ``label`` is its time-locking event type.
+        Returns ``None`` when the timing cannot be recovered (no events/urevents), so the caller can
+        fall back to epoch-relative placement.
     """
     event_struct = eeg_struct.get("event")
-    if not isinstance(event_struct, dict) or "latency" not in event_struct:
-        return []
+    urevent_struct = eeg_struct.get("urevent")
+    if not (isinstance(event_struct, dict) and "latency" in event_struct and "epoch" in event_struct):
+        return None
+    if not (isinstance(urevent_struct, dict) and "latency" in urevent_struct and "urevent" in event_struct):
+        return None
 
-    # EEGLAB latencies are 1-based sample indices into the (concatenated) data.
-    latencies = np.atleast_1d(event_struct["latency"])
+    latencies = np.atleast_1d(event_struct["latency"]).astype("float64")
+    epochs = np.atleast_1d(event_struct["epoch"]).astype("int64")
+    urevent_refs = np.atleast_1d(event_struct["urevent"]).astype("int64")
     types = np.atleast_1d(event_struct.get("type", np.full(len(latencies), "")))
-    durations = event_struct.get("duration")
+    urevent_latencies = np.atleast_1d(urevent_struct["latency"]).astype("float64")
+
+    # 1-based within-epoch sample at the time-locking event (epoch-relative t == 0).
+    lock_within_sample = 1.0 - epoch_start_time * sampling_frequency
+
+    info = []
+    for epoch in range(1, number_of_trials + 1):
+        indices = np.where(epochs == epoch)[0]
+        if len(indices) == 0:
+            return None
+        within = latencies[indices] - (epoch - 1) * number_of_points
+        locking = indices[int(np.argmin(np.abs(within - lock_within_sample)))]
+        reference = int(urevent_refs[locking])
+        if reference < 1 or reference > len(urevent_latencies):
+            return None
+        locking_event_time = (urevent_latencies[reference - 1] - 1.0) / sampling_frequency
+        info.append(dict(onset=locking_event_time + epoch_start_time, label=str(types[locking]).strip()))
+    return info
+
+
+def _events_from_struct(struct: dict, sampling_frequency: float, latency_to_time) -> list[dict]:
+    """Build event dicts from an EEGLAB event-like struct (``EEG.event`` or ``EEG.urevent``)."""
+    latencies = np.atleast_1d(struct["latency"])
+    types = np.atleast_1d(struct.get("type", np.full(len(latencies), "")))
+    durations = struct.get("duration")
     durations = np.atleast_1d(durations) if durations is not None else np.zeros(len(latencies))
-    is_epoched = number_of_trials > 1
-    epoch_indices = np.atleast_1d(event_struct["epoch"]) if (is_epoched and "epoch" in event_struct) else None
 
     events = []
     for index, latency in enumerate(latencies):
         duration_in_samples = float(durations[index]) if index < len(durations) else 0.0
         duration_in_samples = 0.0 if np.isnan(duration_in_samples) else duration_in_samples
-        label = str(types[index] if index < len(types) else "").strip()
-
-        if is_epoched:
-            if epoch_indices is not None:
-                epoch_index = int(epoch_indices[index]) - 1
-            else:
-                epoch_index = int((float(latency) - 1.0) // number_of_points)
-            within_epoch_sample = float(latency) - epoch_index * number_of_points  # 1-based
-            start_time = epoch_start_time + (within_epoch_sample - 1.0) / sampling_frequency
-        else:
-            epoch_index = 0
-            start_time = (float(latency) - 1.0) / sampling_frequency
-
+        start_time = latency_to_time(index, float(latency))
         stop_time = start_time + duration_in_samples / sampling_frequency
-        events.append(dict(start_time=start_time, stop_time=stop_time, label=label, epoch_index=epoch_index))
+        label = str(types[index] if index < len(types) else "").strip()
+        events.append(dict(start_time=start_time, stop_time=stop_time, label=label))
     return events
+
+
+def _extract_events(
+    eeg_struct: dict,
+    sampling_frequency: float,
+    number_of_points: int,
+    number_of_trials: int,
+    epoch_onsets: list,
+) -> list[dict]:
+    """
+    Convert EEGLAB events into a list of ``{start_time, stop_time, label}`` dicts on the shared timeline.
+
+    For epoched data, ``EEG.event`` lists each event once per *containing* epoch, so overlapping epochs
+    duplicate events; ``EEG.urevent`` holds the unique original events at their real latencies, so it is
+    used when available. Otherwise ``EEG.event`` is used: for epoched data each event is placed at its
+    epoch's real onset plus its within-epoch offset; for continuous data at its latency in seconds.
+    """
+    is_epoched = number_of_trials > 1
+    urevent_struct = eeg_struct.get("urevent")
+    if is_epoched and isinstance(urevent_struct, dict) and "latency" in urevent_struct:
+        # urevent latencies are 1-based samples in the original continuous recording.
+        return _events_from_struct(
+            urevent_struct, sampling_frequency, lambda index, latency: (latency - 1.0) / sampling_frequency
+        )
+
+    event_struct = eeg_struct.get("event")
+    if not isinstance(event_struct, dict) or "latency" not in event_struct:
+        return []
+
+    epoch_indices = np.atleast_1d(event_struct["epoch"]) if (is_epoched and "epoch" in event_struct) else None
+
+    def latency_to_time(index, latency):
+        if is_epoched:
+            epoch_index = int(epoch_indices[index]) - 1 if epoch_indices is not None else int((latency - 1.0) // number_of_points)
+            within_epoch_sample = latency - epoch_index * number_of_points  # 1-based
+            return epoch_onsets[epoch_index] + (within_epoch_sample - 1.0) / sampling_frequency
+        return epoch_onsets[0] + (latency - 1.0) / sampling_frequency
+
+    return _events_from_struct(event_struct, sampling_frequency, latency_to_time)
 
 
 def _clean_cell(value):
@@ -249,14 +312,17 @@ def _read_eeglab_recording(file_path: FilePath):
     Read an EEGLAB ``.set`` file (with optional external ``.fdt``) into a SpikeInterface recording.
 
     Handles both EEGLAB layouts (self-contained ``.set`` with inline data, and a ``.set`` + ``.fdt``
-    pair). Continuous data becomes a single-segment recording; epoched data (``EEG.trials > 1``)
-    becomes a multi-segment recording with one segment per epoch, each starting at the EEGLAB epoch
-    start time (``EEG.xmin``) so the time-locking event sits at the correct epoch-relative time.
+    pair). Continuous data becomes a single-segment recording. Epoched data (``EEG.trials > 1``)
+    becomes a multi-segment recording with one segment per epoch, each segment starting at the epoch's
+    real time in the source recording (recovered from ``EEG.urevent``) so all epochs live on a shared
+    session timeline; when that timing cannot be recovered, epochs fall back to the epoch-relative
+    start (``EEG.xmin``).
 
     Returns
     -------
     tuple
-        ``(recording, events, subject_metadata)``.
+        ``(recording, events, subject_metadata, epochs)`` where ``epochs`` is a list of per-epoch
+        dicts (empty for continuous data).
     """
     from spikeinterface.core import NumpyRecording
 
@@ -268,6 +334,7 @@ def _read_eeglab_recording(file_path: FilePath):
     number_of_points = int(eeg_struct["pnts"])
     number_of_trials = int(np.atleast_1d(eeg_struct.get("trials", 1)).ravel()[0])
     epoch_start_time = float(np.atleast_1d(eeg_struct.get("xmin", 0.0)).ravel()[0])
+    is_epoched = number_of_trials > 1
 
     data = eeg_struct.get("data")
     if isinstance(data, str):
@@ -286,11 +353,29 @@ def _read_eeglab_recording(file_path: FilePath):
             number_of_trials=number_of_trials,
         )
 
+    # Real first-sample time of each epoch on the shared session timeline. Recovered from urevent when
+    # possible; otherwise epochs fall back to the epoch-relative start (xmin) and simply overlap.
+    epoch_info = (
+        _extract_epoch_info(
+            eeg_struct=eeg_struct,
+            sampling_frequency=sampling_frequency,
+            number_of_points=number_of_points,
+            number_of_trials=number_of_trials,
+            epoch_start_time=epoch_start_time,
+        )
+        if is_epoched
+        else None
+    )
+    if is_epoched:
+        epoch_onsets = [info["onset"] for info in epoch_info] if epoch_info is not None else [
+            epoch_start_time
+        ] * number_of_trials
+    else:
+        epoch_onsets = [0.0]
+
     # One SpikeInterface segment per epoch; each segment is (n_points, n_channels) in microvolts.
     traces_per_segment = [traces[:, :, trial_index].T.astype("float32") for trial_index in range(number_of_trials)]
-    is_epoched = number_of_trials > 1
-    # Epoched segments start at the EEGLAB epoch start time (xmin); continuous data starts at 0.
-    t_starts = [epoch_start_time] * number_of_trials if is_epoched else None
+    t_starts = epoch_onsets if is_epoched else None
 
     channel_names, locations = _extract_channel_info(eeg_struct=eeg_struct, number_of_channels=number_of_channels)
     events = _extract_events(
@@ -298,8 +383,15 @@ def _read_eeglab_recording(file_path: FilePath):
         sampling_frequency=sampling_frequency,
         number_of_points=number_of_points,
         number_of_trials=number_of_trials,
-        epoch_start_time=epoch_start_time,
+        epoch_onsets=epoch_onsets,
     )
+
+    epochs = []
+    if is_epoched:
+        epoch_duration = number_of_points / sampling_frequency
+        for index, onset in enumerate(epoch_onsets):
+            label = epoch_info[index]["label"] if epoch_info is not None else ""
+            epochs.append(dict(epoch_index=index, start_time=onset, stop_time=onset + epoch_duration, label=label))
 
     recording = NumpyRecording(
         traces_list=traces_per_segment,
@@ -316,7 +408,7 @@ def _read_eeglab_recording(file_path: FilePath):
 
     subject_metadata = _extract_subject_metadata(eeg_struct=eeg_struct)
 
-    return recording, events, subject_metadata
+    return recording, events, subject_metadata, epochs
 
 
 class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
@@ -327,13 +419,13 @@ class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
     file with inline data, and a ``.set`` file paired with an external ``.fdt`` binary. The ``.set``
     structure is read with pymatreader and the ``.fdt`` binary with NumPy.
 
-    Continuous datasets are written as a single ``ElectricalSeries`` and, by default, ``EEG.event``
-    markers are written to a ``TimeIntervals`` table named ``"events"``.
-
-    Epoched datasets (``EEG.trials > 1``) cannot be stored in a single continuous ``ElectricalSeries``.
-    Use :meth:`run_conversion_split_by_epoch` to write one NWB file per epoch, or :meth:`split_by_epoch`
-    to obtain one single-epoch interface per epoch. Each epoch is written with an epoch-relative time
-    axis (the time-locking event at ``t = 0``) and only the events belonging to that epoch.
+    Continuous datasets are written as a single ``ElectricalSeries``. Epoched datasets
+    (``EEG.trials > 1``) are written as one ``ElectricalSeries`` per epoch into the same NWB file
+    (named ``ElectricalSeriesEpoch{index}``), each placed at the epoch's real time in the source
+    recording (recovered from ``EEG.urevent``) so they share one session timeline. The per-epoch
+    boundaries and time-locking event types are written to the NWB ``epochs`` table. In both cases
+    ``EEG.event`` markers are written to a ``TimeIntervals`` table named ``"events"`` (disable with
+    ``write_events=False``; disable the epochs table with ``write_epochs=False``).
     """
 
     display_name = "EEGLAB Recording"
@@ -354,10 +446,11 @@ class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
         return NumpyRecording
 
     def _initialize_extractor(self, interface_kwargs: dict):
-        """Read the EEGLAB file into a NumpyRecording, caching the events and subject metadata."""
-        recording, events, subject_metadata = _read_eeglab_recording(file_path=interface_kwargs["file_path"])
+        """Read the EEGLAB file into a NumpyRecording, caching events, subject metadata, and epochs."""
+        recording, events, subject_metadata, epochs = _read_eeglab_recording(file_path=interface_kwargs["file_path"])
         self._eeglab_events = events
         self._eeglab_subject_metadata = subject_metadata
+        self._eeglab_epochs = epochs
         return recording
 
     def __init__(
@@ -406,99 +499,21 @@ class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
 
         return metadata
 
-    def split_by_epoch(self) -> list["EEGLABRecordingInterface"]:
-        """
-        Split an epoched dataset into one single-epoch interface per epoch.
-
-        Each returned interface wraps a single epoch (a single-segment recording with an epoch-relative
-        time axis) together with only the events belonging to that epoch, and can be written to its own
-        NWB file. If the dataset is continuous, a single-element list containing this interface is
-        returned unchanged.
-
-        Returns
-        -------
-        list of EEGLABRecordingInterface
-            One interface per epoch, in epoch order.
-        """
-        number_of_epochs = self.recording_extractor.get_num_segments()
-        if number_of_epochs <= 1:
-            return [self]
-
-        sub_interfaces = []
-        for epoch_index in range(number_of_epochs):
-            sub_interface = copy.copy(self)
-            sub_interface.recording_extractor = self.recording_extractor.select_segments([epoch_index])
-            sub_interface._number_of_segments = 1
-            sub_interface._eeglab_events = [
-                dict(start_time=event["start_time"], stop_time=event["stop_time"], label=event["label"], epoch_index=0)
-                for event in self._eeglab_events
-                if event["epoch_index"] == epoch_index
-            ]
-            sub_interfaces.append(sub_interface)
-        return sub_interfaces
-
-    def run_conversion_split_by_epoch(
-        self,
-        nwbfile_path: FilePath,
-        metadata: dict | None = None,
-        overwrite: bool = False,
-        backend: "str | None" = None,
-        **conversion_options,
-    ) -> list[Path]:
-        """
-        Run the conversion, writing one NWB file per epoch.
-
-        For continuous datasets a single file is written to ``nwbfile_path``. For epoched datasets the
-        channels of each epoch are written to their own NWB file, with output paths derived from
-        ``nwbfile_path`` by inserting an ``_epoch{index}`` suffix before the file extension
-        (e.g. ``recording.nwb`` -> ``recording_epoch0.nwb``, ``recording_epoch1.nwb``, ...).
-
-        Parameters
-        ----------
-        nwbfile_path : FilePath
-            Base path used to derive the output file path(s).
-        metadata : dict, optional
-            Metadata dictionary used to create each NWBFile. The same metadata is used for every file.
-        overwrite : bool, default: False
-            Whether to overwrite existing files at the derived paths.
-        backend : {"hdf5", "zarr"}, optional
-            The type of backend to use when writing the files.
-        **conversion_options
-            Additional keyword arguments forwarded to each ``run_conversion`` call.
-
-        Returns
-        -------
-        list of pathlib.Path
-            The paths of the NWB files that were written.
-        """
-        sub_interfaces = self.split_by_epoch()
-
-        if len(sub_interfaces) == 1:
-            sub_interfaces[0].run_conversion(
-                nwbfile_path=nwbfile_path, metadata=metadata, overwrite=overwrite, backend=backend, **conversion_options
-            )
-            return [Path(nwbfile_path)]
-
-        base_path = Path(nwbfile_path)
-        written_paths = []
-        for epoch_index, sub_interface in enumerate(sub_interfaces):
-            epoch_path = base_path.parent / f"{base_path.stem}_epoch{epoch_index}{base_path.suffix}"
-            sub_interface.run_conversion(
-                nwbfile_path=epoch_path, metadata=metadata, overwrite=overwrite, backend=backend, **conversion_options
-            )
-            written_paths.append(epoch_path)
-        return written_paths
-
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
         *,
         write_events: bool = True,
+        write_epochs: bool = True,
         **conversion_options,
     ):
         """
         Add the EEGLAB data to an NWBFile.
+
+        Continuous datasets are written as one ``ElectricalSeries``. Epoched datasets are written as one
+        ``ElectricalSeries`` per epoch (named ``ElectricalSeriesEpoch{index}``) sharing a single
+        electrodes table, each placed at the epoch's real time on the shared session timeline.
 
         Parameters
         ----------
@@ -507,23 +522,30 @@ class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
         metadata : dict, optional
             Metadata dictionary for constructing the NWBFile.
         write_events : bool, default: True
-            If True, the EEGLAB ``EEG.event`` markers belonging to this (single-epoch or continuous)
-            recording are written to a ``TimeIntervals`` table named ``"events"``.
+            If True, the EEGLAB ``EEG.event`` markers are written to a ``TimeIntervals`` table named
+            ``"events"``.
+        write_epochs : bool, default: True
+            If True and the dataset is epoched, the per-epoch boundaries (and time-locking event types)
+            are written to the NWB ``epochs`` table.
         **conversion_options
             Additional keyword arguments forwarded to the recording ``add_to_nwbfile`` method.
         """
-        if self.is_epoched:
-            number_of_epochs = self.recording_extractor.get_num_segments()
-            raise ValueError(
-                f"This EEGLAB dataset is epoched ({number_of_epochs} epochs). NWB cannot store epoched data in a "
-                "single continuous ElectricalSeries. Use `run_conversion_split_by_epoch()` to write one NWB file "
-                "per epoch, or `split_by_epoch()` to obtain one interface per epoch."
-            )
+        metadata = metadata if metadata is not None else self.get_metadata()
+
+        # For epoched data the recording is multi-segment, so the ecephys writer emits one
+        # ElectricalSeries per epoch and appends the segment index to the series name. Marking the name
+        # with "Epoch" lets downstream consumers recognize the epoch split (vs. e.g. an offset split).
+        if self.is_epoched and self.es_key is not None:
+            metadata = copy.deepcopy(metadata)
+            series_metadata = metadata["Ecephys"].setdefault(self.es_key, dict())
+            series_metadata["name"] = f"{series_metadata.get('name', self.es_key)}Epoch"
 
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
         if write_events and getattr(self, "_eeglab_events", None):
             self._add_events_to_nwbfile(nwbfile=nwbfile)
+        if write_epochs and getattr(self, "_eeglab_epochs", None):
+            self._add_epochs_to_nwbfile(nwbfile=nwbfile)
 
     def _add_events_to_nwbfile(self, nwbfile: NWBFile):
         from pynwb.epoch import TimeIntervals
@@ -536,3 +558,16 @@ class EEGLABRecordingInterface(BaseRecordingExtractorInterface):
         for event in self._eeglab_events:
             events_table.add_row(start_time=event["start_time"], stop_time=event["stop_time"], label=event["label"])
         nwbfile.add_time_intervals(events_table)
+
+    def _add_epochs_to_nwbfile(self, nwbfile: NWBFile):
+        """Write per-epoch boundaries (real session times) and locking-event types to the epochs table."""
+        if nwbfile.epochs is None or "epoch_index" not in nwbfile.epochs.colnames:
+            nwbfile.add_epoch_column(name="epoch_index", description="0-based index of the epoch (EEGLAB trial).")
+            nwbfile.add_epoch_column(name="label", description="Type of the time-locking event for the epoch.")
+        for epoch in self._eeglab_epochs:
+            nwbfile.add_epoch(
+                start_time=epoch["start_time"],
+                stop_time=epoch["stop_time"],
+                epoch_index=epoch["epoch_index"],
+                label=epoch["label"],
+            )
