@@ -28,10 +28,8 @@ from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...tools.fiber_photometry import (
     FIBER_PHOTOMETRY_PLACEHOLDER,
     add_commanded_voltage_series,
+    add_fiber_photometry_devices,
     add_fiber_photometry_lab_metadata,
-    add_ophys_device,
-    add_ophys_device_model,
-    add_optical_fibers,
     get_default_fiber_photometry_metadata,
     get_fiber_photometry_table_region,
 )
@@ -39,22 +37,6 @@ from ...utils import DeepDict, dict_deep_update, get_base_schema
 from ...utils.checks import calculate_regular_series_rate
 
 __all__ = ["BaseFiberPhotometryInterface", "FIBER_PHOTOMETRY_PLACEHOLDER"]
-
-_DEVICE_MODEL_TYPES = [
-    "OpticalFiberModel",
-    "ExcitationSourceModel",
-    "PhotodetectorModel",
-    "BandOpticalFilterModel",
-    "EdgeOpticalFilterModel",
-    "DichroicMirrorModel",
-]
-_DEVICE_TYPES = [
-    "ExcitationSource",
-    "Photodetector",
-    "BandOpticalFilter",
-    "EdgeOpticalFilter",
-    "DichroicMirror",
-]
 
 
 class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
@@ -200,17 +182,16 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     def _warn_about_placeholder_metadata(self, fiber_photometry_metadata: dict, strict: bool) -> None:
         """Warn (or raise, if ``strict``) about required fields still holding placeholder sentinels."""
         issues = []
-        for row in fiber_photometry_metadata.get("FiberPhotometryTable", {}).get("rows", []):
-            row_name = row.get("name", "?")
+        for row_key, row in fiber_photometry_metadata.get("FiberPhotometryTable", {}).get("rows", {}).items():
             if row.get("location") == FIBER_PHOTOMETRY_PLACEHOLDER:
-                issues.append(f"table row '{row_name}' location")
+                issues.append(f"table row '{row_key}' location")
             for field in ("excitation_wavelength_in_nm", "emission_wavelength_in_nm"):
                 value = row.get(field)
                 if value is None or (isinstance(value, float) and np.isnan(value)):
-                    issues.append(f"table row '{row_name}' {field}")
-        for indicator in fiber_photometry_metadata.get("FiberPhotometryIndicators", []):
+                    issues.append(f"table row '{row_key}' {field}")
+        for indicator_key, indicator in fiber_photometry_metadata.get("FiberPhotometryIndicators", {}).items():
             if indicator.get("label") == FIBER_PHOTOMETRY_PLACEHOLDER:
-                issues.append(f"indicator '{indicator.get('name')}' label")
+                issues.append(f"indicator '{indicator_key}' label")
         if not issues:
             return
         message = (
@@ -263,15 +244,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             return array[: min(stub_samples, len(array))] if stub_test else array
 
         # Shared containers — the helpers are idempotent, so these run unconditionally.
-        for device_type in _DEVICE_MODEL_TYPES:
-            for device_metadata in fiber_photometry_metadata.get(device_type + "s", []):
-                add_ophys_device_model(nwbfile=nwbfile, device_metadata=device_metadata, device_type=device_type)
-        for device_type in _DEVICE_TYPES:
-            for device_metadata in fiber_photometry_metadata.get(device_type + "s", []):
-                add_ophys_device(nwbfile=nwbfile, device_metadata=device_metadata, device_type=device_type)
-        add_optical_fibers(nwbfile=nwbfile, optical_fibers_metadata=fiber_photometry_metadata.get("OpticalFibers", []))
+        add_fiber_photometry_devices(nwbfile=nwbfile, fiber_photometry_metadata=fiber_photometry_metadata)
 
-        for commanded_voltage_metadata in fiber_photometry_metadata.get("CommandedVoltageSeries", []):
+        for commanded_voltage_metadata in fiber_photometry_metadata.get("CommandedVoltageSeries", {}).values():
             commanded_voltage_stream_name = commanded_voltage_metadata["stream_name"]
             commanded_voltage_data = np.asarray(self._get_stream_data(stream_name=commanded_voltage_stream_name))
             index = commanded_voltage_metadata.get("index")
@@ -303,7 +278,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         table_region = get_fiber_photometry_table_region(
             fiber_photometry_table=fiber_photometry_table,
             table_rows_metadata=fiber_photometry_metadata["FiberPhotometryTable"]["rows"],
-            row_names=series_metadata["fiber_photometry_table_region"],
+            row_metadata_keys=series_metadata["fiber_photometry_table_region"],
             description=series_metadata["fiber_photometry_table_region_description"],
         )
         response_series = FiberPhotometryResponseSeries(

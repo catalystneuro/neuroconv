@@ -163,18 +163,21 @@ To ensure that the NWB file is fully annotated, specify the metadata using the f
 
 .. note::
 
-    For the single-series interface, four things differ from the block below (which predates the
+    For the single-series interface, several things differ from the block below (which predates the
     single-series refactor and is retained here as a field reference for the shared device, indicator,
-    and virus sections):
+    and virus sections). The single-series metadata format is documented in full at
+    :ref:`fiber_photometry_metadata_structure`; in short:
 
     * The metadata lives at the top-level key ``metadata["FiberPhotometry"]``, not nested under
       ``metadata["Ophys"]``.
-    * The input streams are selected via the ``stream_names`` constructor argument, so
-      ``FiberPhotometryResponseSeries`` entries no longer carry a ``stream_name`` field.
-    * Each ``FiberPhotometryTable`` row must include a ``name``; the response series references rows by
-      those names via ``fiber_photometry_table_region`` (a list of row names, not integer indices).
-    * A single interface writes one response series, supplied under
-      ``metadata["FiberPhotometry"][metadata_key]`` (a dict), rather than a list of series.
+    * Shared containers are dicts keyed by ``metadata_key`` (not lists), and entries reference each
+      other with ``_metadata_key`` fields (e.g. a row's ``optical_fiber_metadata_key``) rather than by
+      name.
+    * The input streams are selected via the ``stream_names`` constructor argument, so response-series
+      entries no longer carry a ``stream_name`` field.
+    * The response series references table rows via ``fiber_photometry_table_region`` (a list of row
+      keys, not integer indices), and a single interface writes one response series, supplied under
+      ``metadata["FiberPhotometry"][metadata_key]``.
 
 .. code-block:: python
 

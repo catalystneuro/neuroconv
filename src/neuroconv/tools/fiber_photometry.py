@@ -9,48 +9,87 @@ from neuroconv.tools import get_package
 #: value from a deliberate ``"unknown"`` so an intentional "unknown" silences the placeholder warning.
 FIBER_PHOTOMETRY_PLACEHOLDER = "PLACEHOLDER"
 
+#: Device-model containers, keyed by their metadata block name, mapping to the ndx model class name.
+_DEVICE_MODEL_CONTAINERS = {
+    "OpticalFiberModels": "OpticalFiberModel",
+    "ExcitationSourceModels": "ExcitationSourceModel",
+    "PhotodetectorModels": "PhotodetectorModel",
+    "BandOpticalFilterModels": "BandOpticalFilterModel",
+    "EdgeOpticalFilterModels": "EdgeOpticalFilterModel",
+    "DichroicMirrorModels": "DichroicMirrorModel",
+}
+#: Device-instance containers (excluding ``OpticalFibers``, which are a special case with a nested
+#: ``fiber_insertion``), keyed by their metadata block name, mapping to the ndx device class name.
+_DEVICE_INSTANCE_CONTAINERS = {
+    "ExcitationSources": "ExcitationSource",
+    "Photodetectors": "Photodetector",
+    "BandOpticalFilters": "BandOpticalFilter",
+    "EdgeOpticalFilters": "EdgeOpticalFilter",
+    "DichroicMirrors": "DichroicMirror",
+}
+#: FiberPhotometryTable row reference fields (``<field>_metadata_key``) mapping to the ndx row column.
+_ROW_DEVICE_KEY_FIELDS = {
+    "optical_fiber_metadata_key": "optical_fiber",
+    "excitation_source_metadata_key": "excitation_source",
+    "photodetector_metadata_key": "photodetector",
+    "dichroic_mirror_metadata_key": "dichroic_mirror",
+    "excitation_filter_metadata_key": "excitation_filter",
+    "emission_filter_metadata_key": "emission_filter",
+}
+
 
 def get_default_fiber_photometry_metadata(metadata_key: str) -> dict:
     """Return the default top-level ``FiberPhotometry`` metadata block for a single-series interface.
 
-    Mirrors the pattern of ``get_nwb_imaging_metadata``: the required fields are pre-filled with
-    sentinels — ``NaN`` for the required numeric wavelengths and :data:`FIBER_PHOTOMETRY_PLACEHOLDER`
-    for required strings — so an interface runs on zero user metadata while ``add_to_nwbfile`` warns
-    about any surviving sentinel. ``metadata_key`` scopes this interface's response-series entry.
+    Mirrors the pattern of ``get_nwb_imaging_metadata``: shared containers are dicts keyed by a
+    ``metadata_key`` and reference each other with ``_metadata_key`` fields (consistent with the ophys
+    metadata system). Required fields are pre-filled with sentinels — ``NaN`` for the required numeric
+    wavelengths and :data:`FIBER_PHOTOMETRY_PLACEHOLDER` for required strings — so an interface runs on
+    zero user metadata while ``add_to_nwbfile`` warns about any surviving sentinel. ``metadata_key``
+    scopes this interface's response-series entry.
     """
     placeholder = FIBER_PHOTOMETRY_PLACEHOLDER
     fiber_photometry_metadata = dict(
-        OpticalFiberModels=[
-            dict(name="optical_fiber_model", manufacturer=placeholder, numerical_aperture=float("nan"))
-        ],
-        OpticalFibers=[dict(name="optical_fiber", model="optical_fiber_model", fiber_insertion=dict())],
-        ExcitationSourceModels=[
-            dict(
+        OpticalFiberModels={
+            "optical_fiber_model": dict(
+                name="optical_fiber_model", manufacturer=placeholder, numerical_aperture=float("nan")
+            )
+        },
+        OpticalFibers={
+            "optical_fiber": dict(
+                name="optical_fiber", model_metadata_key="optical_fiber_model", fiber_insertion=dict()
+            )
+        },
+        ExcitationSourceModels={
+            "excitation_source_model": dict(
                 name="excitation_source_model",
                 manufacturer=placeholder,
                 source_type=placeholder,
                 excitation_mode=placeholder,
             )
-        ],
-        ExcitationSources=[dict(name="excitation_source", model="excitation_source_model")],
-        PhotodetectorModels=[dict(name="photodetector_model", manufacturer=placeholder, detector_type=placeholder)],
-        Photodetectors=[dict(name="photodetector", model="photodetector_model")],
-        FiberPhotometryIndicators=[dict(name="indicator", label=placeholder)],
+        },
+        ExcitationSources={
+            "excitation_source": dict(name="excitation_source", model_metadata_key="excitation_source_model")
+        },
+        PhotodetectorModels={
+            "photodetector_model": dict(name="photodetector_model", manufacturer=placeholder, detector_type=placeholder)
+        },
+        Photodetectors={"photodetector": dict(name="photodetector", model_metadata_key="photodetector_model")},
+        FiberPhotometryIndicators={"indicator": dict(name="indicator", label=placeholder)},
         FiberPhotometryTable=dict(
             name="fiber_photometry_table",
             description=placeholder,
-            rows=[
-                dict(
-                    name="row0",
+            rows={
+                "row0": dict(
                     location=placeholder,
                     excitation_wavelength_in_nm=float("nan"),
                     emission_wavelength_in_nm=float("nan"),
-                    indicator="indicator",
-                    optical_fiber="optical_fiber",
-                    excitation_source="excitation_source",
-                    photodetector="photodetector",
+                    indicator_metadata_key="indicator",
+                    optical_fiber_metadata_key="optical_fiber",
+                    excitation_source_metadata_key="excitation_source",
+                    photodetector_metadata_key="photodetector",
                 )
-            ],
+            },
         ),
     )
     fiber_photometry_metadata[metadata_key] = dict(
@@ -143,7 +182,11 @@ def add_ophys_device(
         "DichroicMirror",
     ],
 ):
-    """Add an optical physiology device instance to an NWBFile object."""
+    """Add an optical physiology device instance to an NWBFile object.
+
+    ``device_metadata["model"]`` is the *name* of an already-added device model; the caller resolves any
+    ``model_metadata_key`` reference to that name before calling this function.
+    """
     valid_device_types = [
         "ExcitationSource",
         "Photodetector",
@@ -179,29 +222,54 @@ def add_ophys_device(
     nwbfile.add_device(ophys_device)
 
 
-def add_optical_fibers(*, nwbfile: NWBFile, optical_fibers_metadata: list[dict]) -> None:
-    """Add ``OpticalFiber`` devices to an NWBFile, idempotently by name.
+def _resolve_device_model(device_metadata: dict, model_key_to_name: dict) -> dict:
+    """Return a copy of ``device_metadata`` with ``model_metadata_key`` resolved to a ``model`` name."""
+    resolved = {key: value for key, value in device_metadata.items() if key != "model_metadata_key"}
+    model_metadata_key = device_metadata["model_metadata_key"]
+    assert (
+        model_metadata_key in model_key_to_name
+    ), f"Device '{device_metadata['name']}' references unknown model_metadata_key '{model_metadata_key}'."
+    resolved["model"] = model_key_to_name[model_metadata_key]
+    return resolved
 
-    Optical fibers are a special case among devices: each carries a nested ``fiber_insertion``
-    block and a ``model`` reference resolved from ``nwbfile.device_models``.
+
+def add_fiber_photometry_devices(*, nwbfile: NWBFile, fiber_photometry_metadata: dict) -> None:
+    """Add all fiber photometry device models and instances to an NWBFile, idempotently by name.
+
+    Reads the dict-keyed device containers under ``fiber_photometry_metadata`` (``OpticalFiberModels``,
+    ``ExcitationSources``, ``OpticalFibers``, ...). Device instances reference their model with a
+    ``model_metadata_key`` field, resolved here to the model's name.
     """
     ndx_ophys_devices = get_package("ndx_ophys_devices")
-    for optical_fiber_metadata in optical_fibers_metadata:
+
+    model_key_to_name = {}
+    for container_name, device_type in _DEVICE_MODEL_CONTAINERS.items():
+        for model_metadata_key, model_metadata in fiber_photometry_metadata.get(container_name, {}).items():
+            model_key_to_name[model_metadata_key] = model_metadata["name"]
+            add_ophys_device_model(nwbfile=nwbfile, device_metadata=model_metadata, device_type=device_type)
+
+    for container_name, device_type in _DEVICE_INSTANCE_CONTAINERS.items():
+        for device_metadata in fiber_photometry_metadata.get(container_name, {}).values():
+            add_ophys_device(
+                nwbfile=nwbfile,
+                device_metadata=_resolve_device_model(device_metadata, model_key_to_name),
+                device_type=device_type,
+            )
+
+    # Optical fibers are a special case: each carries a nested ``fiber_insertion``.
+    for optical_fiber_metadata in fiber_photometry_metadata.get("OpticalFibers", {}).values():
         name = optical_fiber_metadata["name"]
         if name in nwbfile.devices:
             _assert_metadata_matches_existing(nwbfile.devices[name], optical_fiber_metadata, name)
             continue
-
-        optical_fiber_metadata = deepcopy(optical_fiber_metadata)
-        optical_fiber_metadata["fiber_insertion"] = ndx_ophys_devices.FiberInsertion(
-            **optical_fiber_metadata["fiber_insertion"]
-        )
-        model_name = optical_fiber_metadata["model"]
+        resolved = _resolve_device_model(optical_fiber_metadata, model_key_to_name)
+        model_name = resolved["model"]
         assert (
             model_name in nwbfile.device_models
         ), f"Device model {model_name} not found in NWBFile device_models for {name}."
-        optical_fiber_metadata["model"] = nwbfile.device_models[model_name]
-        nwbfile.add_device(ndx_ophys_devices.OpticalFiber(**optical_fiber_metadata))
+        resolved["model"] = nwbfile.device_models[model_name]
+        resolved["fiber_insertion"] = ndx_ophys_devices.FiberInsertion(**resolved["fiber_insertion"])
+        nwbfile.add_device(ndx_ophys_devices.OpticalFiber(**resolved))
 
 
 def add_commanded_voltage_series(
@@ -238,8 +306,9 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
 
     This is a build-once operation guarded by the presence of the ``"fiber_photometry"`` lab
     metadata: the first interface to run assembles the entire container from the (converter-merged)
-    metadata, and subsequent interfaces reuse it. Any ``CommandedVoltageSeries`` referenced by a
-    table row must already be present in ``nwbfile.acquisition``.
+    metadata, and subsequent interfaces reuse it. Devices and any ``CommandedVoltageSeries`` referenced
+    by a table row must already be present in the NWBFile. Entries reference each other with
+    ``_metadata_key`` fields (e.g. a table row's ``optical_fiber_metadata_key``), resolved here.
 
     Returns the ``FiberPhotometryTable`` so callers can build table regions.
     """
@@ -249,64 +318,78 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
     if "fiber_photometry" in nwbfile.lab_meta_data:
         return nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
 
-    name_to_viral_vector = {}
-    for viral_vector_metadata in fiber_photometry_metadata.get("FiberPhotometryViruses", []):
-        viral_vector = ndx_ophys_devices.ViralVector(**viral_vector_metadata)
-        name_to_viral_vector[viral_vector.name] = viral_vector
+    key_to_viral_vector = {}
+    for viral_vector_metadata_key, viral_vector_metadata in fiber_photometry_metadata.get(
+        "FiberPhotometryViruses", {}
+    ).items():
+        key_to_viral_vector[viral_vector_metadata_key] = ndx_ophys_devices.ViralVector(**viral_vector_metadata)
     viruses = (
-        ndx_fiber_photometry.FiberPhotometryViruses(viral_vectors=list(name_to_viral_vector.values()))
-        if name_to_viral_vector
+        ndx_fiber_photometry.FiberPhotometryViruses(viral_vectors=list(key_to_viral_vector.values()))
+        if key_to_viral_vector
         else None
     )
 
-    name_to_injection = {}
-    for injection_metadata in fiber_photometry_metadata.get("FiberPhotometryVirusInjections", []):
-        injection_metadata = deepcopy(injection_metadata)
-        injection_metadata["viral_vector"] = name_to_viral_vector[injection_metadata["viral_vector"]]
-        injection = ndx_ophys_devices.ViralVectorInjection(**injection_metadata)
-        name_to_injection[injection.name] = injection
+    key_to_injection = {}
+    for injection_metadata_key, injection_metadata in fiber_photometry_metadata.get(
+        "FiberPhotometryVirusInjections", {}
+    ).items():
+        viral_vector_metadata_key = injection_metadata["viral_vector_metadata_key"]
+        injection_metadata = {
+            key: value for key, value in injection_metadata.items() if key != "viral_vector_metadata_key"
+        }
+        injection_metadata["viral_vector"] = key_to_viral_vector[viral_vector_metadata_key]
+        key_to_injection[injection_metadata_key] = ndx_ophys_devices.ViralVectorInjection(**injection_metadata)
     virus_injections = (
-        ndx_fiber_photometry.FiberPhotometryVirusInjections(viral_vector_injections=list(name_to_injection.values()))
-        if name_to_injection
+        ndx_fiber_photometry.FiberPhotometryVirusInjections(viral_vector_injections=list(key_to_injection.values()))
+        if key_to_injection
         else None
     )
 
-    name_to_indicator = {}
-    for indicator_metadata in fiber_photometry_metadata.get("FiberPhotometryIndicators", []):
-        if "viral_vector_injection" in indicator_metadata:
-            indicator_metadata = deepcopy(indicator_metadata)
-            indicator_metadata["viral_vector_injection"] = name_to_injection[
-                indicator_metadata["viral_vector_injection"]
-            ]
-        indicator = ndx_ophys_devices.Indicator(**indicator_metadata)
-        name_to_indicator[indicator.name] = indicator
-    if not name_to_indicator:
+    key_to_indicator = {}
+    for indicator_metadata_key, indicator_metadata in fiber_photometry_metadata.get(
+        "FiberPhotometryIndicators", {}
+    ).items():
+        injection_key = indicator_metadata.get("viral_vector_injection_metadata_key")
+        indicator_metadata = {
+            key: value for key, value in indicator_metadata.items() if key != "viral_vector_injection_metadata_key"
+        }
+        if injection_key is not None:
+            indicator_metadata["viral_vector_injection"] = key_to_injection[injection_key]
+        key_to_indicator[indicator_metadata_key] = ndx_ophys_devices.Indicator(**indicator_metadata)
+    if not key_to_indicator:
         raise ValueError("At least one indicator must be specified in the metadata.")
-    indicators = ndx_fiber_photometry.FiberPhotometryIndicators(indicators=list(name_to_indicator.values()))
+    indicators = ndx_fiber_photometry.FiberPhotometryIndicators(indicators=list(key_to_indicator.values()))
+
+    # Maps to resolve a device/commanded-voltage _metadata_key to the NWB object's name.
+    instance_key_to_name = {}
+    for container_name in ("OpticalFibers", *_DEVICE_INSTANCE_CONTAINERS):
+        for device_metadata_key, device_metadata in fiber_photometry_metadata.get(container_name, {}).items():
+            instance_key_to_name[device_metadata_key] = device_metadata["name"]
+    commanded_voltage_key_to_name = {
+        key: value["name"] for key, value in fiber_photometry_metadata.get("CommandedVoltageSeries", {}).items()
+    }
 
     table_metadata = fiber_photometry_metadata["FiberPhotometryTable"]
     fiber_photometry_table = ndx_fiber_photometry.FiberPhotometryTable(
         name=table_metadata["name"],
         description=table_metadata["description"],
     )
-    device_fields = [
-        "optical_fiber",
-        "excitation_source",
-        "photodetector",
-        "dichroic_mirror",
-        "excitation_filter",
-        "emission_filter",
-    ]
-    for row_metadata in table_metadata["rows"]:
-        row_data = {field: nwbfile.devices[row_metadata[field]] for field in device_fields if field in row_metadata}
+    for row_metadata in table_metadata["rows"].values():
+        row_data = {}
+        for key_field, ndx_field in _ROW_DEVICE_KEY_FIELDS.items():
+            if key_field in row_metadata:
+                row_data[ndx_field] = nwbfile.devices[instance_key_to_name[row_metadata[key_field]]]
         row_data["location"] = row_metadata["location"]
         row_data["excitation_wavelength_in_nm"] = row_metadata["excitation_wavelength_in_nm"]
         row_data["emission_wavelength_in_nm"] = row_metadata["emission_wavelength_in_nm"]
-        row_data["indicator"] = name_to_indicator[row_metadata["indicator"]]
+        row_data["indicator"] = key_to_indicator[row_metadata["indicator_metadata_key"]]
         if "coordinates" in row_metadata:
             row_data["coordinates"] = row_metadata["coordinates"]
-        if "commanded_voltage_series" in row_metadata:
-            row_data["commanded_voltage_series"] = nwbfile.acquisition[row_metadata["commanded_voltage_series"]]
+        if "commanded_voltage_series_metadata_key" in row_metadata:
+            commanded_voltage_name = commanded_voltage_key_to_name[
+                row_metadata["commanded_voltage_series_metadata_key"]
+            ]
+            row_data["commanded_voltage_series"] = nwbfile.acquisition[commanded_voltage_name]
         fiber_photometry_table.add_row(**row_data)
 
     fiber_photometry_lab_metadata = ndx_fiber_photometry.FiberPhotometry(
@@ -321,20 +404,20 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
 
 
 def get_fiber_photometry_table_region(
-    *, fiber_photometry_table, table_rows_metadata: list[dict], row_names: list[str], description: str
+    *, fiber_photometry_table, table_rows_metadata: dict, row_metadata_keys: list[str], description: str
 ):
-    """Resolve a list of table-row *names* to a ``FiberPhotometryTableRegion``.
+    """Resolve a list of table-row *metadata keys* to a ``FiberPhotometryTableRegion``.
 
-    Row indices are derived from the position of each named row in the (converter-merged)
-    ``table_rows_metadata`` — the same order the rows were added in — so regions never depend on
-    fragile hand-written integer indices. Raises loudly if a referenced row name is not present.
+    Row indices are derived from the position of each keyed row in the (converter-merged)
+    ``table_rows_metadata`` dict — the same order the rows were added in — so regions never depend on
+    fragile hand-written integer indices. Raises loudly if a referenced row key is not present.
     """
-    name_to_index = {row["name"]: index for index, row in enumerate(table_rows_metadata)}
-    missing = [name for name in row_names if name not in name_to_index]
+    key_to_index = {row_metadata_key: index for index, row_metadata_key in enumerate(table_rows_metadata)}
+    missing = [row_metadata_key for row_metadata_key in row_metadata_keys if row_metadata_key not in key_to_index]
     if missing:
         raise ValueError(
             f"FiberPhotometryResponseSeries references table row(s) {missing} that are not present "
-            f"in the FiberPhotometryTable metadata (available: {list(name_to_index)})."
+            f"in the FiberPhotometryTable metadata (available: {list(key_to_index)})."
         )
-    region = [name_to_index[name] for name in row_names]
+    region = [key_to_index[row_metadata_key] for row_metadata_key in row_metadata_keys]
     return fiber_photometry_table.create_fiber_photometry_table_region(description=description, region=region)
