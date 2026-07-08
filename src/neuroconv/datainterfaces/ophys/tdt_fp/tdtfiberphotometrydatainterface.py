@@ -571,11 +571,11 @@ class _TDTFiberPhotometryInterfaceSingleStream(TDTLoadMixin, BaseFiberPhotometry
         stream_indices: list[int] | None = None,
         verbose: bool = False,
     ):
-        self.stream_indices = stream_indices
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
             metadata_key=metadata_key,
+            stream_indices=stream_indices,
             verbose=verbose,
         )
 
@@ -597,22 +597,20 @@ class _TDTFiberPhotometryInterfaceSingleStream(TDTLoadMixin, BaseFiberPhotometry
         """
         return stream_name[1:] if stream_name.startswith("_") else stream_name
 
-    def _load_stream(self, stream_name: str, t1: float = 0.0, t2: float = 0.0):
+    def _load_stream(self, stream_name: str):
         store_code = self._stream_name_to_store_code(stream_name)
-        tdt_photometry = self.load(t1=t1, t2=t2, store=store_code)
+        tdt_photometry = self.load(store=store_code)
         return tdt_photometry.streams[stream_name]
 
-    def _get_stream_data(self, *, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> np.ndarray:
-        stream = self._load_stream(stream_name, t1=t1, t2=t2)
+    def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
+        stream = self._load_stream(stream_name)
         data = np.asarray(stream.data)
         if data.ndim == 2:
             data = data.T  # TDT stores are (channels, samples); make time-major.
-            if self.stream_indices is not None:
-                data = data[:, self.stream_indices]
         return data
 
-    def _get_stream_timestamps(self, *, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> np.ndarray:
-        stream = self._load_stream(stream_name, t1=t1, t2=t2)
+    def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
+        stream = self._load_stream(stream_name)
         rate = float(stream.fs)
         starting_time = float(stream.start_time)
         num_samples = np.asarray(stream.data).shape[-1]

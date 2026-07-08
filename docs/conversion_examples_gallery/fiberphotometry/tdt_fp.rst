@@ -143,8 +143,8 @@ Convert TDT Fiber Photometry data to NWB using
 
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path =  f"{path_to_save_nwbfile}"
-    >>> # t1 and t2 are optional arguments to specify the start and end times for the conversion
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, t1=0.0, t2=1.0)
+    >>> # stub_test writes only the first stub_samples samples, which is useful for quick tests
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, stub_test=True)
 
 .. note::
 

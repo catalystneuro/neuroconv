@@ -12,8 +12,8 @@ Child interfaces implement only the format-reading seam:
 
 * ``get_available_streams(...)`` — discover atomic source streams (a classmethod/staticmethod so a
   converter can be authored before construction).
-* ``_get_stream_data(stream_name, t1, t2)`` — return time-major data for one stream.
-* ``_get_stream_timestamps(stream_name, t1, t2)`` — return the timestamps for one stream.
+* ``_get_stream_data(stream_name)`` — return time-major data for one stream.
+* ``_get_stream_timestamps(stream_name)`` — return the timestamps for one stream.
 * ``get_metadata`` — enrich the base scaffold with whatever the format embeds (e.g. session start time).
 """
 
@@ -66,6 +66,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         *,
         stream_name: str | list[str],
         metadata_key: str | None = None,
+        stream_indices: list[int] | None = None,
         verbose: bool = False,
         **source_data,
     ):
@@ -81,12 +82,16 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             metadata. When ``None`` (default), it is generated from ``stream_name`` (e.g. stream
             ``"_405R"`` gives ``"fiber_photometry_405r"``), so multiple interfaces over different streams
             already get distinct keys. Pass an explicit value to override.
+        stream_indices : list of int, optional
+            Column indices selecting which channels of the (column-stacked) stream data to keep.
+            ``None`` (default) keeps all channels.
         verbose : bool, default: False
             Whether to print status messages.
         **source_data
             Format-specific source arguments (e.g. ``folder_path`` or ``file_path``).
         """
         self.stream_names = [stream_name] if isinstance(stream_name, str) else list(stream_name)
+        self.stream_indices = stream_indices
         if metadata_key is None:
             stream_parts = [str(name).replace(" ", "_").strip("_").lower() for name in self.stream_names]
             metadata_key = "_".join(["fiber_photometry", *stream_parts])
@@ -102,20 +107,16 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     # ------------------------------------------------------------------
 
     @abstractmethod
-    def _get_stream_data(self, *, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> np.ndarray:
+    def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         """Return time-major data for a single atomic source stream.
 
-        Shaped ``(num_samples,)`` or ``(num_samples, num_channels)``. ``t1``/``t2`` window the read
-        (seconds, original clock; 0 means start/end).
+        Shaped ``(num_samples,)`` or ``(num_samples, num_channels)``.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def _get_stream_timestamps(self, *, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> np.ndarray:
-        """Return the timestamps (shape ``(num_samples,)``) for a single atomic source stream.
-
-        ``t1``/``t2`` window the read (seconds, original clock; 0 means start/end).
-        """
+    def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
+        """Return the timestamps (shape ``(num_samples,)``) for a single atomic source stream."""
         raise NotImplementedError
 
     # ------------------------------------------------------------------
@@ -167,15 +168,20 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     # NWB conversion
     # ------------------------------------------------------------------
 
-    def _read_response_data(self, t1: float = 0.0, t2: float = 0.0) -> np.ndarray:
-        """Read and column-stack this interface's stream(s) into one time-major data array."""
+    def _read_response_data(self) -> np.ndarray:
+        """Read and column-stack this interface's stream(s) into one time-major data array.
+
+        ``stream_indices`` (if set) selects which columns of the stacked array to keep.
+        """
         arrays = []
         for stream_name in self.stream_names:
-            data = np.asarray(self._get_stream_data(stream_name=stream_name, t1=t1, t2=t2))
+            data = np.asarray(self._get_stream_data(stream_name=stream_name))
             if data.ndim == 1:
                 data = data[:, np.newaxis]
             arrays.append(data)
         combined = np.concatenate(arrays, axis=1)
+        if self.stream_indices is not None:
+            combined = combined[:, self.stream_indices]
         if combined.shape[1] == 1:
             combined = combined[:, 0]
         return combined
@@ -224,8 +230,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         metadata: dict | None = None,
         *,
         stub_test: bool = False,
-        t1: float = 0.0,
-        t2: float = 0.0,
+        stub_samples: int = 100,
         always_write_timestamps: bool = False,
         strict: bool = False,
     ) -> None:
@@ -243,11 +248,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         metadata : dict, optional
             Metadata dictionary; defaults to ``self.get_metadata()``.
         stub_test : bool, default: False
-            If True, add only 1 second of data (requires ``t2 == 0.0``).
-        t1 : float, default: 0.0
-            Start of the time window in seconds on the original clock (0 means start of recording).
-        t2 : float, default: 0.0
-            End of the time window in seconds on the original clock (0 means end of recording).
+            If True, add only the first ``stub_samples`` samples of each series for testing purposes.
+        stub_samples : int, default: 100
+            The number of samples to write when ``stub_test`` is True.
         always_write_timestamps : bool, default: False
             If True, always write an explicit timestamps array even when the series is regularly sampled.
         strict : bool, default: False
@@ -259,11 +262,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         fiber_photometry_metadata = metadata["Ophys"]["FiberPhotometry"]
         self._warn_about_placeholder_metadata(fiber_photometry_metadata, strict=strict)
 
-        if stub_test:
-            assert (
-                t2 == 0.0
-            ), f"stub_test cannot be used with a specified t2 ({t2}). Use t2=0.0 for stub_test or set stub_test=False."
-            t2 = t1 + 1.0
+        def stub(array: np.ndarray) -> np.ndarray:
+            return array[: min(stub_samples, len(array))] if stub_test else array
 
         # Shared containers — the helpers are idempotent, so these run unconditionally.
         for device_type in _DEVICE_MODEL_TYPES:
@@ -276,24 +276,20 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         for commanded_voltage_metadata in fiber_photometry_metadata.get("CommandedVoltageSeries", []):
             commanded_voltage_stream_name = commanded_voltage_metadata["stream_name"]
-            commanded_voltage_data = np.asarray(
-                self._get_stream_data(stream_name=commanded_voltage_stream_name, t1=t1, t2=t2)
-            )
+            commanded_voltage_data = np.asarray(self._get_stream_data(stream_name=commanded_voltage_stream_name))
             index = commanded_voltage_metadata.get("index")
             if index is not None and commanded_voltage_data.ndim == 2:
                 commanded_voltage_data = commanded_voltage_data[:, index]
-            commanded_voltage_timestamps = self._get_stream_timestamps(
-                stream_name=commanded_voltage_stream_name, t1=t1, t2=t2
-            )
+            commanded_voltage_timestamps = self._get_stream_timestamps(stream_name=commanded_voltage_stream_name)
             add_commanded_voltage_series(
                 nwbfile=nwbfile,
                 name=commanded_voltage_metadata["name"],
                 description=commanded_voltage_metadata.get("description", ""),
-                data=commanded_voltage_data,
+                data=stub(commanded_voltage_data),
                 unit=commanded_voltage_metadata["unit"],
                 frequency=commanded_voltage_metadata["frequency"],
                 timing_kwargs=self._timing_kwargs_from_timestamps(
-                    commanded_voltage_timestamps, always_write_timestamps
+                    stub(commanded_voltage_timestamps), always_write_timestamps
                 ),
             )
 
@@ -302,11 +298,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
 
         # Add this interface's single response series.
-        data = self._read_response_data(t1=t1, t2=t2)
-        if self._aligned_timestamps is not None:
-            timestamps = self._aligned_timestamps
-        else:
-            timestamps = self._get_stream_timestamps(stream_name=self.stream_names[0], t1=t1, t2=t2)
+        data = stub(self._read_response_data())
+        timestamps = stub(self.get_timestamps())
         timing_kwargs = self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps)
 
         series_metadata = fiber_photometry_metadata[self.metadata_key]
