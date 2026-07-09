@@ -1,6 +1,7 @@
 # v0.9.4 (Upcoming)
 
 ## Features
+* Added top-level `metadata["DeviceModels"]` support to the dict-based metadata registry, alongside the existing `metadata["Devices"]`. Entries carry an optional `type` field (defaulting to the core `DeviceModel`/`Device`) that resolves to the concrete NWB class by lazily importing its extension via `get_package`; device instances reference a model with `device_model_metadata_key`. Adds `_add_device_model_to_nwbfile` and `_add_devices_to_nwbfile` in `tools.nwb_helpers` and gives `_add_device_to_nwbfile` the canonical `(nwbfile, metadata, metadata_key)` form used across NeuroConv, where a device instance pulls in its referenced model on demand. The existing entry-based `device_metadata` form is retained transitionally so current ecephys, ophys, and behavior callers are unchanged and migrate later. This is the shared foundation the fiber photometry migration ([PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)) builds on. [PR #1780](https://github.com/catalystneuro/neuroconv/pull/1780)
 * Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
 
 ## Removals, Deprecations and Changes
