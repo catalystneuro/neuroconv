@@ -777,9 +777,7 @@ class TestDoricFiberPhotometryInterfaceCSV(FiberPhotometryInterfaceTestMixin):
 
     data_interface_cls = DoricFiberPhotometryInterface
     interface_kwargs = dict(
-        file_path=str(
-            OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "oft_2024-03-01T10_16_32_signal.csv"
-        ),
+        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "oft_2024-03-01T10_16_32_signal.csv"),
         stream_names="sig",
         metadata_key="Signal",
     )

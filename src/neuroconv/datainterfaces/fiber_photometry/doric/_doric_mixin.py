@@ -65,7 +65,9 @@ class DoricLoadMixin:
         import pandas as pd
 
         columns = list(pd.read_csv(file_path, nrows=0).columns)
-        time_column = next((column for column in columns if column.strip().lower() in _CSV_TIME_COLUMN_CANDIDATES), None)
+        time_column = next(
+            (column for column in columns if column.strip().lower() in _CSV_TIME_COLUMN_CANDIDATES), None
+        )
         if time_column is None:
             raise ValueError(
                 f"Could not find a time column in {file_path}. Expected one of "
