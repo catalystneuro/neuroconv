@@ -770,3 +770,37 @@ class TestDoricFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         )
         assert interface.metadata_key == "fiber_photometry_bbc300_roisignals_series0001_cam1exc1_roi01"
         assert interface.metadata_key in interface.get_metadata()["FiberPhotometry"]
+
+
+class TestDoricFiberPhotometryInterfaceCSV(FiberPhotometryInterfaceTestMixin):
+    """Tests the CSV variant of DoricFiberPhotometryInterface (DoricStudio CSV export)."""
+
+    data_interface_cls = DoricFiberPhotometryInterface
+    interface_kwargs = dict(
+        file_path=str(
+            OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "oft_2024-03-01T10_16_32_signal.csv"
+        ),
+        stream_names="sig",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True, stub_samples=5)
+    save_directory = OUTPUT_PATH
+
+    # Expected first 5 samples of the "sig" column and its (regular, ~60 Hz) sampling.
+    expected_response_series_data = np.array(
+        [385.503571428571, 388.564285714286, 386.578571428571, 389.047857142857, 388.915714285714]
+    )
+    expected_starting_time = 8.1
+    expected_rate = 59.999999999984226
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
+        assert streams == ["ref", "sig"]
+
+    def test_default_metadata_warns_about_placeholders(self, setup_interface):
+        # The CSV export does not embed a session start time (unlike the .doric HDF5 export), so it
+        # must be supplied here for the scaffold to pass the base NWBFile schema.
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        with pytest.warns(UserWarning, match="placeholder"):
+            self.interface.create_nwbfile(metadata=metadata, stub_test=True)

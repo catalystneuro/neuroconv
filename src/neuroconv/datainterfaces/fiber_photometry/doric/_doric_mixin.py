@@ -1,22 +1,37 @@
 import warnings
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 
 _DORIC_CREATED_FMT = "%a %b %d %H:%M:%S %Y"
+_CSV_TIME_COLUMN_CANDIDATES = ("time", "time(s)")
 
 
 class DoricLoadMixin:
-    """Shared .doric HDF5 reading logic for interfaces constructed with ``file_path``.
+    """Shared reading logic for Doric Neuroscience Studio fiber photometry files.
 
-    Provides stream discovery (walking ``DataAcquisition`` for groups with a ``Time`` sibling
-    dataset) and per-stream data/timestamp/session-start-time reading. The host interface must
-    populate ``self.source_data["file_path"]`` with the path to the ``.doric`` file and
-    ``self._streams`` (via :meth:`_discover_streams_from_file`) before reading data.
+    Supports two export formats:
+
+    * ``.doric`` (HDF5): streams are discovered by walking ``DataAcquisition`` for groups that
+      contain a ``Time`` sibling dataset; each non-Time 1-D dataset found this way is a stream.
+    * ``.csv`` (DoricStudio CSV export): one shared time column (matched case-insensitively
+      against ``"Time(s)"``/``"time"``) plus one or more data columns, each of which is a stream.
+
+    The host interface must populate ``self.source_data["file_path"]`` with the path to the file
+    and ``self._streams`` (via :meth:`_discover_streams_from_file`) before reading data.
     """
 
     @staticmethod
-    def _discover_streams(f) -> dict:
+    def _is_csv(file_path) -> bool:
+        return Path(file_path).suffix.lower() == ".csv"
+
+    # ------------------------------------------------------------------
+    # Stream discovery
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _discover_streams_hdf5(f) -> dict:
         """Walk DataAcquisition and return stream_name -> {data_path, time_path}."""
         import h5py
 
@@ -36,6 +51,7 @@ class DoricLoadMixin:
                 if isinstance(item, h5py.Dataset) and item.ndim == 1:
                     stream_name = f"{name}/{key}".replace("/", "_")
                     streams[stream_name] = {
+                        "format": "hdf5",
                         "data_path": f"DataAcquisition/{name}/{key}",
                         "time_path": f"DataAcquisition/{name}/Time",
                     }
@@ -43,37 +59,65 @@ class DoricLoadMixin:
         f["DataAcquisition"].visititems(_visit)
         return streams
 
-    def _discover_streams_from_file(self) -> dict:
+    @staticmethod
+    def _discover_streams_csv(file_path) -> dict:
+        """Return stream_name -> {data_column, time_column} from a DoricStudio CSV export."""
+        import pandas as pd
+
+        columns = list(pd.read_csv(file_path, nrows=0).columns)
+        time_column = next((column for column in columns if column.strip().lower() in _CSV_TIME_COLUMN_CANDIDATES), None)
+        if time_column is None:
+            raise ValueError(
+                f"Could not find a time column in {file_path}. Expected one of "
+                f"{_CSV_TIME_COLUMN_CANDIDATES} (case-insensitive) among the columns, got {columns}."
+            )
+        return {
+            column: {"format": "csv", "data_column": column, "time_column": time_column}
+            for column in columns
+            if column != time_column
+        }
+
+    @classmethod
+    def _discover_streams_from_path(cls, file_path) -> dict:
+        if cls._is_csv(file_path):
+            return cls._discover_streams_csv(file_path)
         import h5py
 
-        with h5py.File(self.source_data["file_path"], "r") as f:
-            return self._discover_streams(f)
+        with h5py.File(file_path, "r") as f:
+            return cls._discover_streams_hdf5(f)
+
+    def _discover_streams_from_file(self) -> dict:
+        return self._discover_streams_from_path(self.source_data["file_path"])
 
     @classmethod
     def get_available_streams(cls, file_path) -> list[str]:
-        """Return the names of the streams available in a .doric file.
+        """Return the names of the streams available in a Doric ``.doric`` or ``.csv`` file.
 
         Parameters
         ----------
         file_path : FilePath
-            Path to the .doric HDF5 file.
+            Path to the ``.doric`` HDF5 file or DoricStudio CSV export.
 
         Returns
         -------
         list[str]
             Sorted list of stream names.
         """
-        import h5py
+        return sorted(cls._discover_streams_from_path(file_path))
 
-        with h5py.File(file_path, "r") as f:
-            streams = cls._discover_streams(f)
-        return sorted(streams)
+    # ------------------------------------------------------------------
+    # Session start time (HDF5 only; not embedded in the CSV export)
+    # ------------------------------------------------------------------
 
     def _get_session_start_time(self) -> datetime | None:
         """Parse the session start time from the file's ``Created`` attribute, if present."""
+        file_path = self.source_data["file_path"]
+        if self._is_csv(file_path):
+            return None
+
         import h5py
 
-        with h5py.File(self.source_data["file_path"], "r") as f:
+        with h5py.File(file_path, "r") as f:
             created_str = f.attrs.get("Created", "")
         if not created_str:
             return None
@@ -86,16 +130,33 @@ class DoricLoadMixin:
             )
             return None
 
+    # ------------------------------------------------------------------
+    # Per-stream data / timestamps
+    # ------------------------------------------------------------------
+
+    def _read_csv_dataframe(self):
+        if getattr(self, "_csv_dataframe", None) is None:
+            import pandas as pd
+
+            self._csv_dataframe = pd.read_csv(self.source_data["file_path"])
+        return self._csv_dataframe
+
     def _get_stream_data_full(self, stream_name: str) -> np.ndarray:
+        info = self._streams[stream_name]
+        if info["format"] == "csv":
+            return np.asarray(self._read_csv_dataframe()[info["data_column"]].values)
+
         import h5py
 
-        info = self._streams[stream_name]
         with h5py.File(self.source_data["file_path"], "r") as f:
             return np.asarray(f[info["data_path"]][:])
 
     def _get_stream_timestamps_full(self, stream_name: str) -> np.ndarray:
+        info = self._streams[stream_name]
+        if info["format"] == "csv":
+            return np.asarray(self._read_csv_dataframe()[info["time_column"]].values)
+
         import h5py
 
-        info = self._streams[stream_name]
         with h5py.File(self.source_data["file_path"], "r") as f:
             return np.asarray(f[info["time_path"]][:])

@@ -1,4 +1,4 @@
-"""Interface for Doric Neuroscience Studio fiber photometry data (.doric HDF5 files)."""
+"""Interface for Doric Neuroscience Studio fiber photometry data (.doric HDF5 or DoricStudio CSV files)."""
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -10,24 +10,28 @@ from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 
 
 class DoricFiberPhotometryInterface(DoricLoadMixin, BaseFiberPhotometryInterface):
-    """Interface for fiber photometry data from Doric Neuroscience Studio .doric HDF5 files.
+    """Interface for fiber photometry data from Doric Neuroscience Studio.
 
-    Reads streams produced by the Doric Neuroscience Studio software (compatible with BBC300,
+    Reads either of the two formats produced by Doric Neuroscience Studio (compatible with BBC300,
     BBC600, FPC, and other Doric acquisition hardware) and writes a single
     ``FiberPhotometryResponseSeries`` to NWB using the ndx-fiber-photometry extension, assembled
     from one or more input streams; use multiple interfaces (with distinct ``metadata_key`` values)
     in a converter to write several series sharing one ``FiberPhotometryTable``.
 
-    Stream names are auto-discovered from the HDF5 file by walking ``DataAcquisition`` for groups
-    that contain a ``Time`` sibling dataset. Each non-Time 1-D dataset found this way becomes a
-    stream whose name is the path relative to ``DataAcquisition`` with ``/`` replaced by ``_``
-    (e.g. ``BBC300_ROISignals_Series0001_CAM1EXC1_ROI01``). Call :meth:`get_available_streams` to
-    discover stream names.
+    * ``.doric`` (HDF5): stream names are auto-discovered by walking ``DataAcquisition`` for groups
+      that contain a ``Time`` sibling dataset. Each non-Time 1-D dataset found this way becomes a
+      stream whose name is the path relative to ``DataAcquisition`` with ``/`` replaced by ``_``
+      (e.g. ``BBC300_ROISignals_Series0001_CAM1EXC1_ROI01``).
+    * ``.csv`` (DoricStudio CSV export): one shared time column (matched case-insensitively against
+      ``"Time(s)"``/``"time"``) plus one or more data columns; each data column is a stream named
+      after its column header (e.g. ``sig``, ``ref``).
+
+    Call :meth:`get_available_streams` to discover stream names for either format.
     """
 
     display_name = "DoricFiberPhotometry"
-    info = "Data Interface for converting fiber photometry data from Doric Neuroscience Studio .doric HDF5 files."
-    associated_suffixes = ("doric",)
+    info = "Data Interface for converting fiber photometry data from Doric Neuroscience Studio."
+    associated_suffixes = ("doric", "csv")
 
     @validate_call
     def __init__(
@@ -44,7 +48,7 @@ class DoricFiberPhotometryInterface(DoricLoadMixin, BaseFiberPhotometryInterface
         Parameters
         ----------
         file_path : FilePath
-            Path to the .doric HDF5 file produced by Doric Neuroscience Studio.
+            Path to the ``.doric`` HDF5 file or DoricStudio ``.csv`` export.
         stream_names : str or list of str
             The input stream(s) whose samples are assembled into this interface's single
             ``FiberPhotometryResponseSeries``. Call :meth:`get_available_streams` to discover them.
