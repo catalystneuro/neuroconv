@@ -35,78 +35,83 @@ Shared containers (device models, devices, indicators, and the table) are dicts 
 .. code-block:: python
 
     >>> fiber_photometry_metadata = {
-    ...     "FiberPhotometry": {
-    ...         "OpticalFiberModels": {
-    ...             "ofm": {
-    ...                 "name": "optical_fiber_model",
-    ...                 "manufacturer": "Doric Lenses",
-    ...                 "numerical_aperture": 0.48,
-    ...                 "core_diameter_in_um": 400.0,
-    ...             }
-    ...         },
-    ...         "OpticalFibers": {
-    ...             "fiber_dms": {
-    ...                 "name": "optical_fiber",
-    ...                 "model_metadata_key": "ofm",
-    ...                 "fiber_insertion": {"depth_in_mm": 2.8},
-    ...             }
-    ...         },
-    ...         "ExcitationSourceModels": {
-    ...             "esm": {
-    ...                 "name": "excitation_source_model",
-    ...                 "manufacturer": "Doric Lenses",
-    ...                 "source_type": "LED",
-    ...                 "excitation_mode": "one-photon",
-    ...             }
-    ...         },
-    ...         "ExcitationSources": {
-    ...             "led_465": {
-    ...                 "name": "excitation_source_465nm",
-    ...                 "model_metadata_key": "esm",
-    ...             }
-    ...         },
-    ...         "PhotodetectorModels": {
-    ...             "pdm": {
-    ...                 "name": "photodetector_model",
-    ...                 "manufacturer": "Doric Lenses",
-    ...                 "detector_type": "photodiode",
-    ...             }
-    ...         },
-    ...         "Photodetectors": {
-    ...             "pd": {
-    ...                 "name": "photodetector",
-    ...                 "model_metadata_key": "pdm",
-    ...             }
-    ...         },
-    ...         "FiberPhotometryIndicators": {
-    ...             "gcamp": {
-    ...                 "name": "green_fluorophore",
-    ...                 "description": "GCaMP7b calcium indicator.",
-    ...                 "label": "GCaMP7b",
-    ...             }
-    ...         },
-    ...         "FiberPhotometryTable": {
-    ...             "name": "fiber_photometry_table",
-    ...             "description": "Fiber photometry system metadata.",
-    ...             "rows": {
-    ...                 "dms_465": {
-    ...                     "location": "DMS",
-    ...                     "excitation_wavelength_in_nm": 465.0,
-    ...                     "emission_wavelength_in_nm": 525.0,
-    ...                     "indicator_metadata_key": "gcamp",
-    ...                     "optical_fiber_metadata_key": "fiber_dms",
-    ...                     "excitation_source_metadata_key": "led_465",
-    ...                     "photodetector_metadata_key": "pd",
+    ...     "Ophys": {
+    ...         "FiberPhotometry": {
+    ...             "OpticalFiberModels": [
+    ...                 {
+    ...                     "name": "optical_fiber_model",
+    ...                     "manufacturer": "Doric Lenses",
+    ...                     "numerical_aperture": 0.48,
+    ...                     "core_diameter_in_um": 400.0,
     ...                 }
+    ...             ],
+    ...             "OpticalFibers": [
+    ...                 {
+    ...                     "name": "optical_fiber",
+    ...                     "model": "optical_fiber_model",
+    ...                     "fiber_insertion": {"depth_in_mm": 2.8},
+    ...                 }
+    ...             ],
+    ...             "ExcitationSourceModels": [
+    ...                 {
+    ...                     "name": "excitation_source_model",
+    ...                     "manufacturer": "Doric Lenses",
+    ...                     "source_type": "LED",
+    ...                     "excitation_mode": "one-photon",
+    ...                 }
+    ...             ],
+    ...             "ExcitationSources": [
+    ...                 {
+    ...                     "name": "excitation_source_465nm",
+    ...                     "model": "excitation_source_model",
+    ...                 }
+    ...             ],
+    ...             "PhotodetectorModels": [
+    ...                 {
+    ...                     "name": "photodetector_model",
+    ...                     "manufacturer": "Doric Lenses",
+    ...                     "detector_type": "photodiode",
+    ...                 }
+    ...             ],
+    ...             "Photodetectors": [
+    ...                 {
+    ...                     "name": "photodetector",
+    ...                     "model": "photodetector_model",
+    ...                 }
+    ...             ],
+    ...             "FiberPhotometryIndicators": [
+    ...                 {
+    ...                     "name": "green_fluorophore",
+    ...                     "description": "GCaMP7b calcium indicator.",
+    ...                     "label": "GCaMP7b",
+    ...                 }
+    ...             ],
+    ...             "FiberPhotometryTable": {
+    ...                 "name": "fiber_photometry_table",
+    ...                 "description": "Fiber photometry system metadata.",
+    ...                 "rows": [
+    ...                     {
+    ...                         "location": "DMS",
+    ...                         "excitation_wavelength_in_nm": 465.0,
+    ...                         "emission_wavelength_in_nm": 525.0,
+    ...                         "indicator": "green_fluorophore",
+    ...                         "optical_fiber": "optical_fiber",
+    ...                         "excitation_source": "excitation_source_465nm",
+    ...                         "photodetector": "photodetector",
+    ...                     }
+    ...                 ],
     ...             },
-    ...         },
-    ...         "calcium_signal_dms": {
-    ...             "name": "calcium_signal_dms",
-    ...             "description": "GCaMP7b fluorescence from DMS.",
-    ...             "unit": "a.u.",
-    ...             "fiber_photometry_table_region": ["dms_465"],
-    ...             "fiber_photometry_table_region_description": "DMS fiber photometry row.",
-    ...         },
+    ...             "FiberPhotometryResponseSeries": [
+    ...                 {
+    ...                     "name": "calcium_signal_dms",
+    ...                     "description": "GCaMP7b fluorescence from DMS.",
+    ...                     "stream_name": "BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+    ...                     "unit": "a.u.",
+    ...                     "fiber_photometry_table_region": [0],
+    ...                     "fiber_photometry_table_region_description": "DMS fiber photometry row.",
+    ...                 }
+    ...             ],
+    ...         }
     ...     }
     ... }
 
