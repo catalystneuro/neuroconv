@@ -8,11 +8,12 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
-from ._doric_mixin import DoricLoadMixin
-from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_model
 from neuroconv.utils import DeepDict
+
+from ._doric_mixin import DoricLoadMixin
+from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 
 
 class _DoricFiberPhotometryInterfaceMultiSeries(DoricLoadMixin, BaseTemporalAlignmentInterface):
