@@ -822,9 +822,7 @@ class TestDoricFiberPhotometryInterfaceCSVGroupedHeader(FiberPhotometryInterface
     save_directory = OUTPUT_PATH
 
     # Expected first 5 samples of the "Raw" column and its (regular, ~120 Hz) sampling.
-    expected_response_series_data = np.array(
-        [0.970641194, 2.22319712, 3.13737907, 2.08487197, 1.11903745]
-    )
+    expected_response_series_data = np.array([0.970641194, 2.22319712, 3.13737907, 2.08487197, 1.11903745])
     expected_starting_time = 0.0041085
     expected_rate = 120.4819277108434
 
