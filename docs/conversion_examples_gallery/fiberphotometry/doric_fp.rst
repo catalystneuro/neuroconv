@@ -28,74 +28,84 @@ Specify the minimal metadata required for the conversion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 All hardware metadata must be supplied by the user — this interface does not inject hardware defaults.
+Shared containers (device models, devices, indicators, and the table) are dicts keyed by an arbitrary
+``metadata_key`` handle; entries reference each other with ``_metadata_key`` fields. See
+:ref:`fiber_photometry_metadata_structure` for the full format reference.
 
 .. code-block:: python
 
     >>> fiber_photometry_metadata = {
     ...     "FiberPhotometry": {
-    ...         "OpticalFiberModels": [
-    ...             {
+    ...         "OpticalFiberModels": {
+    ...             "ofm": {
     ...                 "name": "optical_fiber_model",
     ...                 "manufacturer": "Doric Lenses",
     ...                 "numerical_aperture": 0.48,
     ...                 "core_diameter_in_um": 400.0,
     ...             }
-    ...         ],
-    ...         "OpticalFibers": [
-    ...             {
+    ...         },
+    ...         "OpticalFibers": {
+    ...             "fiber_dms": {
     ...                 "name": "optical_fiber",
-    ...                 "model": "optical_fiber_model",
+    ...                 "model_metadata_key": "ofm",
     ...                 "fiber_insertion": {"depth_in_mm": 2.8},
     ...             }
-    ...         ],
-    ...         "ExcitationSourceModels": [
-    ...             {
+    ...         },
+    ...         "ExcitationSourceModels": {
+    ...             "esm": {
     ...                 "name": "excitation_source_model",
     ...                 "manufacturer": "Doric Lenses",
     ...                 "source_type": "LED",
     ...                 "excitation_mode": "one-photon",
     ...             }
-    ...         ],
-    ...         "ExcitationSources": [
-    ...             {
+    ...         },
+    ...         "ExcitationSources": {
+    ...             "led_465": {
     ...                 "name": "excitation_source_465nm",
-    ...                 "model": "excitation_source_model",
+    ...                 "model_metadata_key": "esm",
     ...             }
-    ...         ],
-    ...         "PhotodetectorModels": [
-    ...             {
+    ...         },
+    ...         "PhotodetectorModels": {
+    ...             "pdm": {
     ...                 "name": "photodetector_model",
     ...                 "manufacturer": "Doric Lenses",
     ...                 "detector_type": "photodiode",
     ...             }
-    ...         ],
-    ...         "Photodetectors": [
-    ...             {
+    ...         },
+    ...         "Photodetectors": {
+    ...             "pd": {
     ...                 "name": "photodetector",
-    ...                 "model": "photodetector_model",
+    ...                 "model_metadata_key": "pdm",
     ...             }
-    ...         ],
-    ...         "FiberPhotometryIndicators": [
-    ...             {
+    ...         },
+    ...         "FiberPhotometryIndicators": {
+    ...             "gcamp": {
     ...                 "name": "green_fluorophore",
     ...                 "description": "GCaMP7b calcium indicator.",
     ...                 "label": "GCaMP7b",
     ...             }
-    ...         ],
+    ...         },
     ...         "FiberPhotometryTable": {
     ...             "name": "fiber_photometry_table",
     ...             "description": "Fiber photometry system metadata.",
-    ...             "rows": [
-    ...                 {
+    ...             "rows": {
+    ...                 "dms_465": {
     ...                     "location": "DMS",
     ...                     "excitation_wavelength_in_nm": 465.0,
     ...                     "emission_wavelength_in_nm": 525.0,
-    ...                     "indicator": "green_fluorophore",
-    ...                     "optical_fiber": "optical_fiber",
-    ...                     "excitation_source": "excitation_source_465nm",
-    ...                     "photodetector": "photodetector",
+    ...                     "indicator_metadata_key": "gcamp",
+    ...                     "optical_fiber_metadata_key": "fiber_dms",
+    ...                     "excitation_source_metadata_key": "led_465",
+    ...                     "photodetector_metadata_key": "pd",
     ...                 }
-    ...             ],
+    ...             },
+    ...         },
+    ...         "calcium_signal_dms": {
+    ...             "name": "calcium_signal_dms",
+    ...             "description": "GCaMP7b fluorescence from DMS.",
+    ...             "unit": "a.u.",
+    ...             "fiber_photometry_table_region": ["dms_465"],
+    ...             "fiber_photometry_table_region_description": "DMS fiber photometry row.",
     ...         },
     ...     }
     ... }
@@ -141,21 +151,7 @@ Convert Doric Fiber Photometry data to NWB using
     >>> # stub_test writes only the first stub_samples samples, which is useful for quick tests
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, stub_test=True)
 
-.. note::
+.. seealso::
 
-    Constructing ``DoricFiberPhotometryInterface`` without ``stream_names`` uses the deprecated
-    multi-series behavior (writing every stream at once), which emits a ``DeprecationWarning`` and
-    will be removed on or after January 2027. Pass ``stream_names`` to use the single-series interface.
-
-For the single-series interface, the metadata format is documented in full at
-:ref:`fiber_photometry_metadata_structure`; in short:
-
-* The metadata lives at the top-level key ``metadata["FiberPhotometry"]``.
-* Shared containers are dicts keyed by ``metadata_key`` (not lists), and entries reference each
-  other with ``_metadata_key`` fields (e.g. a row's ``optical_fiber_metadata_key``) rather than by
-  name.
-* The input streams are selected via the ``stream_names`` constructor argument, so response-series
-  entries no longer carry a ``stream_name`` field.
-* The response series references table rows via ``fiber_photometry_table_region`` (a list of row
-  keys, not integer indices), and a single interface writes one response series, supplied under
-  ``metadata["FiberPhotometry"][metadata_key]``.
+    :ref:`fiber_photometry_metadata_structure` for the full metadata format reference shared by all
+    single-series fiber photometry interfaces.

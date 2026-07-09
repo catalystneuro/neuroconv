@@ -99,29 +99,3 @@ class DoricLoadMixin:
         info = self._streams[stream_name]
         with h5py.File(self.source_data["file_path"], "r") as f:
             return np.asarray(f[info["time_path"]][:])
-
-    def _load_stream_array(self, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
-        """Load a single stream's data and timestamps from the HDF5 file, restricted to [t1, t2].
-
-        Parameters
-        ----------
-        stream_name : str
-            A key returned by :py:meth:`get_available_streams`.
-        t1 : float
-            Start time in seconds (original clock). 0 means beginning of recording.
-        t2 : float
-            End time in seconds (original clock). 0 means end of recording.
-
-        Returns
-        -------
-        data : np.ndarray, shape (N,)
-        timestamps : np.ndarray, shape (N,)
-        """
-        import h5py
-
-        info = self._streams[stream_name]
-        with h5py.File(self.source_data["file_path"], "r") as f:
-            time_data = f[info["time_path"]][:]
-            start_idx = int(np.searchsorted(time_data, t1)) if t1 > 0.0 else 0
-            end_idx = int(np.searchsorted(time_data, t2, side="right")) if t2 > 0.0 else len(time_data)
-            return f[info["data_path"]][start_idx:end_idx], time_data[start_idx:end_idx]
