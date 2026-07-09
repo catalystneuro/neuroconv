@@ -20,9 +20,13 @@ from . import (
     configure_backend,
     get_default_backend_configuration,
 )
+from ._device_registry import (
+    _DEVICE_MODEL_TYPE_SOURCES,
+    _DEVICE_TYPE_SOURCES,
+    _resolve_type,
+)
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
-from ._device_registry import _DEVICE_MODEL_TYPE_SOURCES, _DEVICE_TYPE_SOURCES, _resolve_type
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -262,12 +266,12 @@ def _add_device_to_nwbfile(
         device_metadata = metadata["Devices"][metadata_key]
         device_model_metadata_key = device_metadata.get("device_model_metadata_key")
         if device_model_metadata_key is not None:
-            model = _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_model_metadata_key)
+            model = _add_device_model_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata, metadata_key=device_model_metadata_key
+            )
             device_metadata = {**device_metadata, "model": model}
     elif device_metadata is None:
-        raise ValueError(
-            "Provide either `metadata` + `metadata_key` (canonical) or `device_metadata` (transitional)."
-        )
+        raise ValueError("Provide either `metadata` + `metadata_key` (canonical) or `device_metadata` (transitional).")
 
     device_name = device_metadata["name"]
     if device_name in nwbfile.devices:

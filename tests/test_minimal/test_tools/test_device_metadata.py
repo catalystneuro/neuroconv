@@ -97,7 +97,9 @@ class TestAddDeviceTransitional:
     def test_resolved_model_object_is_linked(self):
         nwbfile = mock_NWBFile()
         model = _add_device_model_to_nwbfile(
-            nwbfile=nwbfile, metadata=dict(DeviceModels={"m": dict(name="model_1", manufacturer="ACME")}), metadata_key="m"
+            nwbfile=nwbfile,
+            metadata=dict(DeviceModels={"m": dict(name="model_1", manufacturer="ACME")}),
+            metadata_key="m",
         )
         device = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=dict(name="d1", model=model))
         assert device.model is nwbfile.device_models["model_1"]
