@@ -3,9 +3,10 @@
 import numpy as np
 from pydantic import FilePath, validate_call
 
+from neuroconv.utils import DeepDict
+
 from ._doric_mixin import DoricLoadMixin
 from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
-from neuroconv.utils import DeepDict
 
 
 class DoricFiberPhotometryInterface(DoricLoadMixin, BaseFiberPhotometryInterface):
