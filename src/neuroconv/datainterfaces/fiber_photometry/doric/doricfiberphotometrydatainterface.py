@@ -2,21 +2,20 @@
 
 import warnings
 from copy import deepcopy
-from datetime import datetime
 from typing import Literal
 
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
+from ._doric_mixin import DoricLoadMixin
+from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_model
 from neuroconv.utils import DeepDict
 
-_DORIC_CREATED_FMT = "%a %b %d %H:%M:%S %Y"
 
-
-class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
+class _DoricFiberPhotometryInterfaceMultiSeries(DoricLoadMixin, BaseTemporalAlignmentInterface):
     """Interface for fiber photometry data from Doric Neuroscience Studio .doric HDF5 files.
 
     Reads ROI-averaged fluorescence signals produced by the Doric Neuroscience Studio
@@ -54,57 +53,15 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose)
         # Keep ndx extensions registered so pynwb IO works correctly.
-        import h5py
         import ndx_fiber_photometry  # noqa: F401
         import ndx_ophys_devices  # noqa: F401
 
-        self._streams: dict[str, dict] = {}
-        self._session_start_time: datetime | None = None
-
-        with h5py.File(self.source_data["file_path"], "r") as f:
-            self._streams = self._discover_streams(f)
-            created_str = f.attrs.get("Created", "")
-
-        if created_str:
-            try:
-                self._session_start_time = datetime.strptime(created_str, _DORIC_CREATED_FMT)
-            except ValueError:
-                warnings.warn(
-                    f"Could not parse 'Created' attribute from .doric file (got {created_str!r}). "
-                    f"Expected format: '{_DORIC_CREATED_FMT}'. Session start time will not be set automatically."
-                )
+        self._streams: dict[str, dict] = self._discover_streams_from_file()
+        self._session_start_time = self._get_session_start_time()
 
     # ------------------------------------------------------------------
     # Stream discovery
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def _discover_streams(f) -> dict:
-        """Walk DataAcquisition and return stream_name → {data_path, time_path}."""
-        import h5py
-
-        streams: dict[str, dict] = {}
-        if "DataAcquisition" not in f:
-            return streams
-
-        def _visit(name: str, obj) -> None:
-            if not isinstance(obj, h5py.Group):
-                return
-            if "Time" not in obj:
-                return
-            for key in obj:
-                if key == "Time":
-                    continue
-                item = obj[key]
-                if isinstance(item, h5py.Dataset) and item.ndim == 1:
-                    stream_name = f"{name}/{key}".replace("/", "_")
-                    streams[stream_name] = {
-                        "data_path": f"DataAcquisition/{name}/{key}",
-                        "time_path": f"DataAcquisition/{name}/Time",
-                    }
-
-        f["DataAcquisition"].visititems(_visit)
-        return streams
 
     def get_stream_names(self) -> list[str]:
         """Return all stream names discovered in the .doric file.
@@ -116,36 +73,6 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             in ``FiberPhotometryResponseSeries`` metadata entries.
         """
         return sorted(self._streams)
-
-    # ------------------------------------------------------------------
-    # Internal data loader
-    # ------------------------------------------------------------------
-
-    def _load_stream_array(self, stream_name: str, t1: float = 0.0, t2: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
-        """Load a single stream's data and timestamps from the HDF5 file.
-
-        Parameters
-        ----------
-        stream_name : str
-            A key returned by :py:meth:`get_stream_names`.
-        t1 : float
-            Start time in seconds (original clock). 0 means beginning of recording.
-        t2 : float
-            End time in seconds (original clock). 0 means end of recording.
-
-        Returns
-        -------
-        data : np.ndarray, shape (N,)
-        timestamps : np.ndarray, shape (N,)
-        """
-        import h5py
-
-        info = self._streams[stream_name]
-        with h5py.File(self.source_data["file_path"], "r") as f:
-            time_data = f[info["time_path"]][:]
-            start_idx = int(np.searchsorted(time_data, t1)) if t1 > 0.0 else 0
-            end_idx = int(np.searchsorted(time_data, t2, side="right")) if t2 > 0.0 else len(time_data)
-            return f[info["data_path"]][start_idx:end_idx], time_data[start_idx:end_idx]
 
     # ------------------------------------------------------------------
     # Metadata
@@ -491,3 +418,152 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                     **timing_kwargs,
                 )
             )
+
+
+class _DoricFiberPhotometryInterfaceSingleSeries(DoricLoadMixin, BaseFiberPhotometryInterface):
+    """Single-series Doric fiber photometry interface (writes one FiberPhotometryResponseSeries)."""
+
+    display_name = "DoricFiberPhotometry"
+    info = "Data Interface for converting fiber photometry data from Doric Neuroscience Studio .doric HDF5 files."
+    associated_suffixes = ("doric",)
+
+    @validate_call
+    def __init__(
+        self,
+        *,
+        file_path: FilePath,
+        stream_names: str | list[str],
+        metadata_key: str | None = None,
+        stream_indices: list[int] | None = None,
+        verbose: bool = False,
+    ):
+        super().__init__(
+            file_path=file_path,
+            stream_names=stream_names,
+            metadata_key=metadata_key,
+            stream_indices=stream_indices,
+            verbose=verbose,
+        )
+        self._streams: dict[str, dict] = self._discover_streams_from_file()
+
+    def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
+        return self._get_stream_data_full(stream_name)
+
+    def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
+        return self._get_stream_timestamps_full(stream_name)
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        session_start_time = self._get_session_start_time()
+        if session_start_time is not None:
+            metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata
+
+
+class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
+    """Interface for fiber photometry data from Doric Neuroscience Studio .doric HDF5 files.
+
+    Each interface writes a single ``FiberPhotometryResponseSeries``, assembled from one or more input
+    streams (Doric HDF5 datasets); use multiple interfaces (with distinct ``metadata_key`` values) in a
+    converter to write several series sharing one ``FiberPhotometryTable``. Call
+    :meth:`get_available_streams` to discover stream names.
+
+    Stream names are auto-discovered from the HDF5 file by walking ``DataAcquisition`` for groups
+    that contain a ``Time`` sibling dataset. Each non-Time 1-D dataset found this way becomes a
+    stream whose name is the path relative to ``DataAcquisition`` with ``/`` replaced by ``_``
+    (e.g. ``BBC300_ROISignals_Series0001_CAM1EXC1_ROI01``).
+
+    .. deprecated::
+        Constructing without ``stream_names`` routes to the deprecated multi-series implementation,
+        which writes every stream at once and will be removed on or after January 2027. Pass
+        ``stream_names`` to use the single-series interface.
+    """
+
+    keywords = ("fiber photometry",)
+    display_name = "DoricFiberPhotometry"
+    info = "Data Interface for converting fiber photometry data from Doric Neuroscience Studio .doric HDF5 files."
+    associated_suffixes = ("doric",)
+
+    @validate_call
+    def __init__(
+        self,
+        *,
+        file_path: FilePath,
+        stream_names: str | list[str] | None = None,
+        metadata_key: str | None = None,
+        stream_indices: list[int] | None = None,
+        verbose: bool = False,
+    ):
+        """Initialize the DoricFiberPhotometryInterface.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the .doric HDF5 file produced by Doric Neuroscience Studio.
+        stream_names : str or list of str, optional
+            The input stream(s) whose samples are assembled into this interface's single
+            ``FiberPhotometryResponseSeries``. If omitted, the deprecated multi-series behavior
+            is used (see class docstring).
+        metadata_key : str, optional
+            Key under ``metadata["FiberPhotometry"]`` holding this interface's response-series
+            metadata. When ``None`` (default), it is generated from ``stream_names``.
+        stream_indices : list of int, optional
+            Column indices selecting which channels of the (column-stacked) stream data to keep.
+        verbose : bool, default: False
+            Whether to print status messages.
+        """
+        if stream_names is None:
+            warnings.warn(
+                "Constructing DoricFiberPhotometryInterface without `stream_names` uses the deprecated "
+                "multi-series behavior, which will be removed on or after January 2027. Pass "
+                "`stream_names=` to write a single FiberPhotometryResponseSeries "
+                "(see DoricFiberPhotometryInterface.get_available_streams).",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self._delegate = _DoricFiberPhotometryInterfaceMultiSeries(file_path=file_path, verbose=verbose)
+        else:
+            self._delegate = _DoricFiberPhotometryInterfaceSingleSeries(
+                file_path=file_path,
+                stream_names=stream_names,
+                metadata_key=metadata_key,
+                stream_indices=stream_indices,
+                verbose=verbose,
+            )
+        self.verbose = verbose
+        self.source_data = self._delegate.source_data
+
+    @classmethod
+    def get_available_streams(cls, file_path: FilePath) -> list[str]:
+        """Return the names of the streams available in a .doric file."""
+        return _DoricFiberPhotometryInterfaceSingleSeries.get_available_streams(file_path)
+
+    def __getattr__(self, name: str):
+        # Forward any attribute not defined on the router (get_stream_names, load helpers, ...)
+        # to the active delegate. __getattr__ only fires when normal lookup fails, so the explicit
+        # forwarders below and the router's own attributes take precedence.
+        return getattr(self.__dict__["_delegate"], name)
+
+    def get_metadata(self) -> DeepDict:
+        return self._delegate.get_metadata()
+
+    def get_metadata_schema(self) -> dict:
+        return self._delegate.get_metadata_schema()
+
+    def get_conversion_options_schema(self) -> dict:
+        return self._delegate.get_conversion_options_schema()
+
+    def get_original_timestamps(self, *args, **kwargs):
+        return self._delegate.get_original_timestamps(*args, **kwargs)
+
+    def get_timestamps(self, *args, **kwargs):
+        return self._delegate.get_timestamps(*args, **kwargs)
+
+    def set_aligned_timestamps(self, *args, **kwargs) -> None:
+        return self._delegate.set_aligned_timestamps(*args, **kwargs)
+
+    def set_aligned_starting_time(self, *args, **kwargs) -> None:
+        return self._delegate.set_aligned_starting_time(*args, **kwargs)
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options) -> None:
+        return self._delegate.add_to_nwbfile(nwbfile, metadata, **conversion_options)

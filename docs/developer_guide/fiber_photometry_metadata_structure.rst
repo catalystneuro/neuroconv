@@ -5,9 +5,9 @@ Fiber Photometry Metadata Structure
 
 This document describes the fiber photometry metadata system in NeuroConv, used by the single-series
 fiber photometry interfaces built on ``BaseFiberPhotometryInterface`` (currently
-``TDTFiberPhotometryInterface``). It is intended as a reference for developers contributing new fiber
-photometry interfaces or modifying existing ones, and to document the design decisions behind the
-format.
+``TDTFiberPhotometryInterface`` and ``DoricFiberPhotometryInterface``). It is intended as a reference for
+developers contributing new fiber photometry interfaces or modifying existing ones, and to document the
+design decisions behind the format.
 
 A single-series interface writes exactly one ``FiberPhotometryResponseSeries`` (the ndx-fiber-photometry
 neurodata type), assembled from one or more input *streams* (atomic source signals — a TDT store, a

@@ -13,6 +13,9 @@ from neuroconv.datainterfaces import (
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
 )
+from neuroconv.datainterfaces.fiber_photometry.doric.doricfiberphotometrydatainterface import (
+    _DoricFiberPhotometryInterfaceMultiSeries,
+)
 from neuroconv.datainterfaces.fiber_photometry.tdt.tdtfiberphotometrydatainterface import (
     _TDTFiberPhotometryInterfaceMultiSeries,
 )
@@ -816,7 +819,9 @@ _DORIC_METADATA = {
 
 
 class TestDoricFiberPhotometryInterface(TestCase, DoricFiberPhotometryInterfaceMixin):
-    data_interface_cls = DoricFiberPhotometryInterface
+    # Tests the deprecated multi-series implementation directly (the public DoricFiberPhotometryInterface
+    # now routes ``stream_names``-less construction here with a DeprecationWarning).
+    data_interface_cls = _DoricFiberPhotometryInterfaceMultiSeries
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric")
     )
@@ -971,4 +976,45 @@ class TestTDTFiberPhotometryInterfaceSingleSeries(FiberPhotometryInterfaceTestMi
         # With no explicit metadata_key, it is derived from stream_names (as in ScanImage).
         interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"], stream_names="_405R")
         assert interface.metadata_key == "fiber_photometry_405r"
+        assert interface.metadata_key in interface.get_metadata()["FiberPhotometry"]
+
+
+class TestDoricFiberPhotometryInterfaceSingleSeries(FiberPhotometryInterfaceTestMixin):
+    """Tests the new single-series DoricFiberPhotometryInterface (one FiberPhotometryResponseSeries)."""
+
+    data_interface_cls = DoricFiberPhotometryInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"),
+        stream_names="BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True, stub_samples=5)
+    save_directory = OUTPUT_PATH
+
+    # Expected first 5 samples of the ROI01 stream and its timestamps, verified against the file.
+    expected_response_series_data = np.array(
+        [33097.410530260444, 32641.454000374742, 32420.17912685029, 32356.823683717445, 32344.640059958776]
+    )
+    expected_timestamps = np.array([0.001, 0.035, 0.068, 0.101, 0.134])
+
+    def check_extracted_metadata(self, metadata: dict):
+        # Doric-specific idiosyncrasy: the session start time is read from the file's 'Created' attribute.
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 6, 24, 13, 58, 38)
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
+        assert "BBC300_ROISignals_Series0001_CAM1EXC1_ROI01" in streams
+
+    def test_stream_names_less_construction_routes_to_deprecated_multiseries(self):
+        with pytest.warns(DeprecationWarning, match="stream_names"):
+            interface = self.data_interface_cls(file_path=self.interface_kwargs["file_path"])
+        assert isinstance(interface._delegate, _DoricFiberPhotometryInterfaceMultiSeries)
+
+    def test_metadata_key_generated_from_stream_names(self):
+        # With no explicit metadata_key, it is derived from stream_names (as in ScanImage).
+        interface = self.data_interface_cls(
+            file_path=self.interface_kwargs["file_path"],
+            stream_names="BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+        )
+        assert interface.metadata_key == "fiber_photometry_bbc300_roisignals_series0001_cam1exc1_roi01"
         assert interface.metadata_key in interface.get_metadata()["FiberPhotometry"]

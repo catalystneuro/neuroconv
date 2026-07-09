@@ -10,9 +10,11 @@ Install NeuroConv with the additional dependencies necessary for reading Doric F
 Discover available signal streams
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The interface auto-discovers streams from the ``.doric`` HDF5 file by walking ``DataAcquisition``
+Streams are auto-discovered from the ``.doric`` HDF5 file by walking ``DataAcquisition``
 for groups that contain a ``Time`` sibling dataset.  Each non-``Time`` 1-D dataset becomes a stream
 whose name is built from its HDF5 path (relative to ``DataAcquisition``) with ``/`` replaced by ``_``.
+Call :py:meth:`~neuroconv.datainterfaces.DoricFiberPhotometryInterface.get_available_streams` (callable
+before construction) to discover stream names.
 
 .. code-block:: python
 
@@ -20,17 +22,12 @@ whose name is built from its HDF5 path (relative to ``DataAcquisition``) with ``
     >>> from neuroconv.datainterfaces import DoricFiberPhotometryInterface
 
     >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"
-    >>> interface = DoricFiberPhotometryInterface(file_path=file_path, verbose=False)
-    >>> stream_names = interface.get_stream_names()
-    >>> print(stream_names)
-    [...]
+    >>> available_streams = DoricFiberPhotometryInterface.get_available_streams(file_path=file_path)
 
-Specify the metadata required for the conversion
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Specify the minimal metadata required for the conversion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All hardware metadata must be supplied by the user. The ``stream_name`` field in each
-``FiberPhotometryResponseSeries`` entry must match one of the names returned by
-:py:meth:`~neuroconv.datainterfaces.DoricFiberPhotometryInterface.get_stream_names`.
+All hardware metadata must be supplied by the user — this interface does not inject hardware defaults.
 
 .. code-block:: python
 
@@ -100,16 +97,6 @@ All hardware metadata must be supplied by the user. The ``stream_name`` field in
     ...                 }
     ...             ],
     ...         },
-    ...         "FiberPhotometryResponseSeries": [
-    ...             {
-    ...                 "name": "calcium_signal_dms",
-    ...                 "description": "GCaMP7b fluorescence from DMS.",
-    ...                 "stream_name": "BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
-    ...                 "unit": "a.u.",
-    ...                 "fiber_photometry_table_region": [0],
-    ...                 "fiber_photometry_table_region_description": "DMS fiber photometry row.",
-    ...             }
-    ...         ],
     ...     }
     ... }
 
@@ -131,15 +118,44 @@ Convert Doric Fiber Photometry data to NWB using
 
     >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"
 
-    >>> interface = DoricFiberPhotometryInterface(file_path=file_path, verbose=False)
-
-    >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"].update(
-    ...     session_description="A fiber photometry session.",
-    ...     session_start_time=datetime(2024, 1, 1, tzinfo=ZoneInfo("US/Eastern")),
+    >>> # Each interface writes a single FiberPhotometryResponseSeries, assembled from one or more input
+    >>> # streams. Combine multiple interfaces (with distinct metadata_key values) in a converter to
+    >>> # share one FiberPhotometryTable.
+    >>> interface = DoricFiberPhotometryInterface(
+    ...     file_path=file_path,
+    ...     stream_names="BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+    ...     metadata_key="calcium_signal_dms",
+    ...     verbose=False,
     ... )
-
+    >>> metadata = interface.get_metadata()
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Eastern"))
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>> # get_metadata() returns an editable scaffold; the required fiber photometry fields (excitation/
+    >>> # emission wavelengths, indicator, location, ...) are pre-filled with placeholder values that
+    >>> # should be replaced before archiving. add_to_nwbfile warns about any that remain unset.
     >>> metadata = dict_deep_update(metadata, fiber_photometry_metadata)
 
+    >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = Path("doric_fiber_photometry.nwb")
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+    >>> # stub_test writes only the first stub_samples samples, which is useful for quick tests
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, stub_test=True)
+
+.. note::
+
+    Constructing ``DoricFiberPhotometryInterface`` without ``stream_names`` uses the deprecated
+    multi-series behavior (writing every stream at once), which emits a ``DeprecationWarning`` and
+    will be removed on or after January 2027. Pass ``stream_names`` to use the single-series interface.
+
+For the single-series interface, the metadata format is documented in full at
+:ref:`fiber_photometry_metadata_structure`; in short:
+
+* The metadata lives at the top-level key ``metadata["FiberPhotometry"]``.
+* Shared containers are dicts keyed by ``metadata_key`` (not lists), and entries reference each
+  other with ``_metadata_key`` fields (e.g. a row's ``optical_fiber_metadata_key``) rather than by
+  name.
+* The input streams are selected via the ``stream_names`` constructor argument, so response-series
+  entries no longer carry a ``stream_name`` field.
+* The response series references table rows via ``fiber_photometry_table_region`` (a list of row
+  keys, not integer indices), and a single interface writes one response series, supplied under
+  ``metadata["FiberPhotometry"][metadata_key]``.
