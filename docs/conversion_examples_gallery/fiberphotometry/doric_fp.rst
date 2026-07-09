@@ -18,7 +18,9 @@ Doric Neuroscience Studio, chosen automatically from the ``file_path`` extension
   built from its HDF5 path (relative to ``DataAcquisition``) with ``/`` replaced by ``_``.
 * ``.csv`` (DoricStudio CSV export): one shared time column (matched case-insensitively against
   ``"time"``/``"Time(s)"``) plus one or more data columns; each data column is a stream named after
-  its column header (e.g. ``sig``, ``ref``).
+  its column header (e.g. ``sig``, ``ref``). Older exports that prepend a channel/device "group"
+  line above the real header (e.g. ``---,Analog In. | Ch.1,...`` followed by
+  ``Time(s),AIn-1 - Dem (ref),...``) are handled automatically, as are trailing empty columns.
 
 Call :py:meth:`~neuroconv.datainterfaces.DoricFiberPhotometryInterface.get_available_streams` (callable
 before construction) to discover stream names for either format.

@@ -802,3 +802,38 @@ class TestDoricFiberPhotometryInterfaceCSV(FiberPhotometryInterfaceTestMixin):
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         with pytest.warns(UserWarning, match="placeholder"):
             self.interface.create_nwbfile(metadata=metadata, stub_test=True)
+
+
+class TestDoricFiberPhotometryInterfaceCSVGroupedHeader(FiberPhotometryInterfaceTestMixin):
+    """Tests the older, grouped-header CSV variant of DoricFiberPhotometryInterface.
+
+    Some Doric Neuroscience Studio exports prepend a channel/device "group" line above the real
+    header (e.g. ``---,Analog In. | Ch.1,...`` followed by ``Time(s),AIn-1 - Dem (ref),...``), with
+    a trailing comma producing an extra unnamed, all-NaN column. Both are handled transparently.
+    """
+
+    data_interface_cls = DoricFiberPhotometryInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "12282020-cfc-pppda7_0000.csv"),
+        stream_names="Raw",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True, stub_samples=5)
+    save_directory = OUTPUT_PATH
+
+    # Expected first 5 samples of the "Raw" column and its (regular, ~120 Hz) sampling.
+    expected_response_series_data = np.array(
+        [0.970641194, 2.22319712, 3.13737907, 2.08487197, 1.11903745]
+    )
+    expected_starting_time = 0.0041085
+    expected_rate = 120.4819277108434
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
+        assert streams == ["AIn-1 - Dem (da)", "AIn-1 - Dem (ref)", "AOut-1", "AOut-2", "DI/O-1", "Raw"]
+
+    def test_default_metadata_warns_about_placeholders(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        with pytest.warns(UserWarning, match="placeholder"):
+            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
