@@ -53,6 +53,7 @@
 * Fixed the global compression test failing against `hdf5plugin>=7.0.0`. The test asserted on each filter's free-text description string, which 7.0.0 reworded for LZ4 and Zstd when switching to The HDF Group's bundled implementations (the filter IDs are unchanged). The test now asserts only on the stable numeric filter ID, which is what actually proves the requested filter was applied. [PR #1766](https://github.com/catalystneuro/neuroconv/pull/1766)
 
 ## Features
+* Use SpikeInterface metric descriptions to populate property_descriptions in `add_sorting_analyzer_to_nwbfile` [PR #1717](https://github.com/catalystneuro/neuroconv/pull/1717)
 * Added `CSVEventsInterface` for converting discrete events from a CSV file into `ndx-events` objects. [PR #1755](https://github.com/catalystneuro/neuroconv/pull/1755)
 * Added `TDTEventsInterface` for converting discrete events (epocs) from a TDT tank folder. [PR #1751](https://github.com/catalystneuro/neuroconv/pull/1751) [PR #1775](https://github.com/catalystneuro/neuroconv/pull/1775)
 * Added `BaseEventsInterface`, a shared base for events interfaces that writes native `pynwb` 4.0 `EventsTable` objects into `nwbfile.events`. [PR #1774](https://github.com/catalystneuro/neuroconv/pull/1774)
