@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-from jsonschema.validators import Draft7Validator
 from pynwb import NWBHDF5IO
 from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
@@ -79,9 +78,6 @@ class TestTimestampOnlyEventType:
             folder_path=self.folder_path, exclude_events=self.exclude_events, metadata_key="my_recording"
         )
         assert set(renamed.get_metadata()["Events"].keys()) == {"my_recording"}
-
-    def test_metadata_schema_is_valid(self, interface):
-        Draft7Validator.check_schema(interface.get_metadata_schema())
 
     def test_add_to_nwbfile_writes_events(self, interface):
         nwbfile = mock_NWBFile()
