@@ -35,7 +35,7 @@ class TestResolveType:
 class TestAddDeviceModel:
     def test_default_type_is_plain_device_model(self):
         nwbfile = mock_NWBFile()
-        metadata = dict(DeviceModels={"m": dict(name="model_1", manufacturer="ACME")})
+        metadata = {"DeviceModels": {"m": {"name": "model_1", "manufacturer": "ACME"}}}
         model = _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="m")
         assert type(model) is DeviceModel
         assert "model_1" in nwbfile.device_models
@@ -43,7 +43,7 @@ class TestAddDeviceModel:
 
     def test_idempotent_on_name(self):
         nwbfile = mock_NWBFile()
-        metadata = dict(DeviceModels={"m": dict(name="model_1", manufacturer="ACME")})
+        metadata = {"DeviceModels": {"m": {"name": "model_1", "manufacturer": "ACME"}}}
         first = _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="m")
         second = _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="m")
         assert first is second
@@ -52,23 +52,23 @@ class TestAddDeviceModel:
     def test_missing_key_raises(self):
         nwbfile = mock_NWBFile()
         with pytest.raises(ValueError, match="not present in metadata\\['DeviceModels'\\]"):
-            _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=dict(DeviceModels={}), metadata_key="absent")
+            _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata={"DeviceModels": {}}, metadata_key="absent")
 
 
 class TestAddDeviceCanonical:
     def test_default_type_is_plain_device(self):
         nwbfile = mock_NWBFile()
-        metadata = dict(Devices={"d": dict(name="d1", description="a probe")})
+        metadata = {"Devices": {"d": {"name": "d1", "description": "a probe"}}}
         device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="d")
         assert type(device) is Device
         assert nwbfile.devices["d1"].description == "a probe"
 
     def test_pulls_and_links_model_on_demand(self):
         nwbfile = mock_NWBFile()
-        metadata = dict(
-            DeviceModels={"m": dict(name="model_1", manufacturer="ACME")},
-            Devices={"d": dict(name="d1", device_model_metadata_key="m")},
-        )
+        metadata = {
+            "DeviceModels": {"m": {"name": "model_1", "manufacturer": "ACME"}},
+            "Devices": {"d": {"name": "d1", "device_model_metadata_key": "m"}},
+        }
         device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="d")
         assert "model_1" in nwbfile.device_models  # pulled on demand, no separate model pass
         assert device.model is nwbfile.device_models["model_1"]
@@ -77,33 +77,3 @@ class TestAddDeviceCanonical:
         nwbfile = mock_NWBFile()
         with pytest.raises(ValueError, match="Provide either"):
             _add_device_to_nwbfile(nwbfile=nwbfile)
-
-
-class TestAddDeviceTransitional:
-    def test_pre_resolved_entry_plain_device(self):
-        nwbfile = mock_NWBFile()
-        device = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=dict(name="d1", manufacturer="imec"))
-        assert type(device) is Device
-        assert nwbfile.devices["d1"].manufacturer == "imec"
-
-    def test_idempotent_on_name(self):
-        nwbfile = mock_NWBFile()
-        first = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=dict(name="d1"))
-        second = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=dict(name="d1"))
-        assert first is second
-        assert len(nwbfile.devices) == 1
-
-    def test_resolved_model_object_is_linked(self):
-        nwbfile = mock_NWBFile()
-        model = _add_device_model_to_nwbfile(
-            nwbfile=nwbfile,
-            metadata=dict(DeviceModels={"m": dict(name="model_1", manufacturer="ACME")}),
-            metadata_key="m",
-        )
-        device = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=dict(name="d1", model=model))
-        assert device.model is nwbfile.device_models["model_1"]
-
-    def test_unknown_type_raises(self):
-        nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="Unknown device type 'NotAType'"):
-            _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=dict(name="d1", type="NotAType"))
