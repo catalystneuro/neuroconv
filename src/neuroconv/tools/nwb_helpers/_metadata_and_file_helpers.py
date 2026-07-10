@@ -20,7 +20,7 @@ from . import (
     configure_backend,
     get_default_backend_configuration,
 )
-from ._device_registry import (
+from ._device_types import (
     _DEVICE_MODEL_TYPE_SOURCES,
     _DEVICE_TYPE_SOURCES,
     _resolve_type,

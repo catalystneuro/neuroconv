@@ -52,7 +52,7 @@ def _resolve_type(type_name: str, *, sources: dict[str, tuple[str, str | None]],
         raise ValueError(
             f"Unknown device type {type_name!r}. Known types: {known}. If this type comes from an "
             "NWB extension, add it to the device type source maps in "
-            "neuroconv.tools.nwb_helpers._device_registry."
+            "neuroconv.tools.nwb_helpers._device_types."
         )
     module_name, installation_instructions = sources[type_name]
     module = get_package(package_name=module_name, installation_instructions=installation_instructions)

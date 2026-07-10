@@ -10,7 +10,7 @@ from pynwb.device import Device, DeviceModel
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import _add_device_model_to_nwbfile
-from neuroconv.tools.nwb_helpers._device_registry import (
+from neuroconv.tools.nwb_helpers._device_types import (
     _DEVICE_MODEL_TYPE_SOURCES,
     _DEVICE_TYPE_SOURCES,
     _resolve_type,

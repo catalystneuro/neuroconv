@@ -13,7 +13,7 @@ from neuroconv.tools.nwb_helpers import (
     _add_device_model_to_nwbfile,
     _add_device_to_nwbfile,
 )
-from neuroconv.tools.nwb_helpers._device_registry import (
+from neuroconv.tools.nwb_helpers._device_types import (
     _DEVICE_MODEL_TYPE_SOURCES,
     _DEVICE_TYPE_SOURCES,
     _resolve_type,
