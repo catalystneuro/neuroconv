@@ -46,7 +46,7 @@
 * Fixed the global compression test failing against `hdf5plugin>=7.0.0`. The test asserted on each filter's free-text description string, which 7.0.0 reworded for LZ4 and Zstd when switching to The HDF Group's bundled implementations (the filter IDs are unchanged). The test now asserts only on the stable numeric filter ID, which is what actually proves the requested filter was applied. [PR #1766](https://github.com/catalystneuro/neuroconv/pull/1766)
 
 ## Features
-* `TDTEventsInterface` now writes per-event durations for durative (STROFF) epoc stores into the `EventsTable` `duration` column, instead of raising on them. [PR #1781](https://github.com/catalystneuro/neuroconv/pull/1781)
+* `TDTEventsInterface` now supports events that have a duration, writing each event's duration to the `EventsTable` `duration` column, instead of raising. [PR #1781](https://github.com/catalystneuro/neuroconv/pull/1781)
 * Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
 * Use SpikeInterface metric descriptions to populate property_descriptions in `add_sorting_analyzer_to_nwbfile` [PR #1717](https://github.com/catalystneuro/neuroconv/pull/1717)
 * Added `CSVEventsInterface` for converting discrete events from a CSV file into `ndx-events` objects. [PR #1755](https://github.com/catalystneuro/neuroconv/pull/1755)
