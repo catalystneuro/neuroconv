@@ -27,10 +27,6 @@ from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
-from neuroconv.tools.fiber_photometry import (
-    _DEVICE_INSTANCE_CONTAINERS,
-    _DEVICE_MODEL_CONTAINERS,
-)
 from neuroconv.tools.nwb_helpers import (
     configure_backend,
     get_default_backend_configuration,
@@ -1697,12 +1693,13 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
             self.interface.create_nwbfile(metadata=metadata, stub_test=True)
 
     def check_read_nwb(self, nwbfile_path: str):
-        fiber_photometry_metadata = self.interface.get_metadata()["FiberPhotometry"]
+        metadata = self.interface.get_metadata()
+        fiber_photometry_metadata = metadata["FiberPhotometry"]
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
             self._check_response_series(nwbfile, fiber_photometry_metadata)
             self._check_fiber_photometry_table(nwbfile, fiber_photometry_metadata)
-            self._check_devices(nwbfile, fiber_photometry_metadata)
+            self._check_devices(nwbfile, metadata)
             self._check_indicators(nwbfile, fiber_photometry_metadata)
 
     def _check_response_series(self, nwbfile, fiber_photometry_metadata: dict):
@@ -1734,14 +1731,12 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
             for wavelength_field in ("excitation_wavelength_in_nm", "emission_wavelength_in_nm"):
                 assert_array_equal(table[wavelength_field][row_index], row_metadata[wavelength_field])
 
-    def _check_devices(self, nwbfile, fiber_photometry_metadata: dict):
-        """Every device model and device instance named in the metadata must be in the NWBFile."""
-        for container_name in _DEVICE_MODEL_CONTAINERS:
-            for device_metadata in fiber_photometry_metadata.get(container_name, {}).values():
-                assert device_metadata["name"] in nwbfile.device_models
-        for container_name in ("OpticalFibers", *_DEVICE_INSTANCE_CONTAINERS):
-            for device_metadata in fiber_photometry_metadata.get(container_name, {}).values():
-                assert device_metadata["name"] in nwbfile.devices
+    def _check_devices(self, nwbfile, metadata: dict):
+        """Every device model and device instance named in the top-level registry must be in the NWBFile."""
+        for device_model_metadata in metadata.get("DeviceModels", {}).values():
+            assert device_model_metadata["name"] in nwbfile.device_models
+        for device_metadata in metadata.get("Devices", {}).values():
+            assert device_metadata["name"] in nwbfile.devices
 
     def _check_indicators(self, nwbfile, fiber_photometry_metadata: dict):
         """Every indicator named in the metadata must be written to the FiberPhotometry lab metadata."""

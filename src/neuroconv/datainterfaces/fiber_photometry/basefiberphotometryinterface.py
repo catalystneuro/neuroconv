@@ -137,10 +137,11 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return dict_deep_update(metadata, default_fiber_photometry_metadata)
 
     def get_metadata_schema(self) -> dict:
-        """Return a permissive schema for the top-level ``FiberPhotometry`` metadata block."""
+        """Return a permissive schema for the ``FiberPhotometry`` and top-level device metadata blocks."""
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["FiberPhotometry"] = get_base_schema(tag="FiberPhotometry")
-        metadata_schema["properties"]["FiberPhotometry"]["additionalProperties"] = True
+        for tag in ("FiberPhotometry", "Devices", "DeviceModels"):
+            metadata_schema["properties"][tag] = get_base_schema(tag=tag)
+            metadata_schema["properties"][tag]["additionalProperties"] = True
         return metadata_schema
 
     # ------------------------------------------------------------------
@@ -243,8 +244,10 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         def stub(array: np.ndarray) -> np.ndarray:
             return array[: min(stub_samples, len(array))] if stub_test else array
 
-        # Shared containers — the helpers are idempotent, so these run unconditionally.
-        add_fiber_photometry_devices(nwbfile=nwbfile, fiber_photometry_metadata=fiber_photometry_metadata)
+        # Shared containers — the helpers are idempotent, so these run unconditionally. Devices and
+        # device models live in the top-level ``metadata["Devices"]`` / ``metadata["DeviceModels"]``
+        # registry, so the device helper receives the full metadata.
+        add_fiber_photometry_devices(nwbfile=nwbfile, metadata=metadata)
 
         for commanded_voltage_metadata in fiber_photometry_metadata.get("CommandedVoltageSeries", {}).values():
             commanded_voltage_stream_name = commanded_voltage_metadata["stream_name"]
@@ -266,7 +269,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             )
 
         fiber_photometry_table = add_fiber_photometry_lab_metadata(
-            nwbfile=nwbfile, fiber_photometry_metadata=fiber_photometry_metadata
+            nwbfile=nwbfile, fiber_photometry_metadata=fiber_photometry_metadata, devices_metadata=metadata["Devices"]
         )
 
         # Add this interface's single response series.
