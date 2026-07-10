@@ -18,17 +18,6 @@ except ImportError:
 
 TDT_DATA_PATH = ECEPHY_DATA_PATH / "tdt"
 
-# A tank with one onset-only strobe store, PAB_: 30 events whose data codes cycle through [16, 2064, 0].
-PAYLOAD_TANK = str(TDT_DATA_PATH / "epocs_with_payload")
-
-# A tank with a 235-event onset-only counter store (Tick) plus three durative stores (s1s_/s4s_/sms_),
-# each carrying real STRON/STROFF offset durations, which the interface does not support yet.
-OFFSETS_TANK = str(TDT_DATA_PATH / "epocs_with_offsets_1")
-DURATIVE_STORES = ["s1s_", "s4s_", "sms_"]
-
-# The anonymized tanks share this fixed session start date.
-ANONYMIZED_SESSION_START = "1970-01-12T13:46:40+00:00"
-
 
 class TestDetectors:
     def test_synthesized_offset_is_detected(self):
@@ -50,40 +39,46 @@ class TestDetectors:
         assert _data_is_counter(np.array([1.0, 2.0, 3.0, 4.0]))
         assert _data_is_counter(np.array([0.0, 1.0, 2.0]))
 
-    def test_strobe_codes_are_not_a_counter(self):
+    def test_value_codes_are_not_a_counter(self):
         assert not _data_is_counter(np.array([16.0, 2064.0, 0.0, 16.0]))
 
 
-class TestTDTEventsCounter:
-    """A counter (onset-only, timestamp-only) store: ``Tick`` in ``epocs_with_offsets_1``, with the
-    tank's durative stores excluded so only the writable counter remains."""
+class TestTimestampOnlyEventType:
+    """A timestamp-only event type: ``Tick`` in the durations dataset, with the event types that have
+    durations excluded so only the timestamp-only one remains."""
+
+    folder_path = str(TDT_DATA_PATH / "epocs_with_offsets_1")
+    exclude_events = ["s1s_", "s4s_", "sms_"]  # the event types whose events have durations
 
     @pytest.fixture
     def interface(self):
-        return TDTEventsInterface(folder_path=OFFSETS_TANK, exclude_events=DURATIVE_STORES)
+        return TDTEventsInterface(folder_path=self.folder_path, exclude_events=self.exclude_events)
 
     def test_session_start_time(self, interface):
-        assert interface.get_metadata()["NWBFile"]["session_start_time"] == ANONYMIZED_SESSION_START
+        # The anonymized dataset has a fixed session start date.
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == "1970-01-12T13:46:40+00:00"
 
-    def test_lists_counter_epoc(self, interface):
+    def test_lists_the_event_type(self, interface):
         event_types = interface.get_metadata()["Events"]["tdt_events"]["event_types"]
         assert set(event_types.keys()) == {"Tick"}
         entry = event_types["Tick"]
         assert entry["event_name"] == "Tick"
-        assert entry.get("columns", {}) == {}  # a counter store is timestamp-only, so no value columns
+        assert entry.get("columns", {}) == {}  # a timestamp-only event type has no value columns
 
     def test_exclude_events(self):
-        # Excluding every store leaves no event types.
-        interface = TDTEventsInterface(folder_path=OFFSETS_TANK, exclude_events=DURATIVE_STORES + ["Tick"])
+        # Excluding every event type leaves none.
+        interface = TDTEventsInterface(folder_path=self.folder_path, exclude_events=self.exclude_events + ["Tick"])
         assert interface.get_metadata()["Events"]["tdt_events"]["event_types"] == {}
 
     def test_metadata_key_default_and_override(self, interface):
-        # No EventTables block is seeded: a solo store names its own table from event_name, so
+        # No EventTables block is seeded: a solo event type names its own table from event_name, so
         # metadata["Events"] holds only the per-interface metadata_key block.
         assert set(interface.get_metadata()["Events"].keys()) == {"tdt_events"}
 
-        renamed = TDTEventsInterface(folder_path=OFFSETS_TANK, exclude_events=DURATIVE_STORES, metadata_key="my_tank")
-        assert set(renamed.get_metadata()["Events"].keys()) == {"my_tank"}
+        renamed = TDTEventsInterface(
+            folder_path=self.folder_path, exclude_events=self.exclude_events, metadata_key="my_recording"
+        )
+        assert set(renamed.get_metadata()["Events"].keys()) == {"my_recording"}
 
     def test_metadata_schema_is_valid(self, interface):
         Draft7Validator.check_schema(interface.get_metadata_schema())
@@ -111,12 +106,15 @@ class TestTDTEventsCounter:
             assert len(read_events) == 235
 
 
-class TestTDTEventsStrobe:
-    """The ``PAB_`` strobe store in ``epocs_with_payload``: 30 events whose codes cycle [16, 2064, 0]."""
+class TestEventTypeWithValueColumn:
+    """An event type carrying a categorical value column: ``PAB_`` in the payload dataset, 30 events
+    whose codes cycle [16, 2064, 0]."""
+
+    folder_path = str(TDT_DATA_PATH / "epocs_with_payload")
 
     @pytest.fixture
     def interface(self):
-        return TDTEventsInterface(folder_path=PAYLOAD_TANK)
+        return TDTEventsInterface(folder_path=self.folder_path)
 
     def test_get_events(self, interface):
         events = interface.get_events()
@@ -124,16 +122,16 @@ class TestTDTEventsStrobe:
         for array in events["PAB_"].values():
             assert len(array) == 30
 
-    def test_metadata_seeds_strobe_labels(self, interface):
+    def test_metadata_seeds_value_column_labels(self, interface):
         metadata = interface.get_metadata()
         entry = metadata["Events"]["tdt_events"]["event_types"]["PAB_"]
-        # The PAB_ store gets one categorical 'strobe' column (keyed by its payload field); the three
-        # distinct codes are seeded as an editable raw-code -> label map.
-        strobe = entry["columns"]["strobe"]
-        assert strobe["column_categories"]["labels"] == {0: "0", 16: "16", 2064: "2064"}
-        assert strobe["column_name"] == "strobe"
-        # The type names its own (solo) table from event_name and carries its description; no EventTables
-        # entry is seeded (the writer drops the trailing padding "_", so the table object is "PAB").
+        # The PAB_ event type gets one categorical value column ("strobe", keyed by its payload field);
+        # the three distinct codes are seeded as an editable raw-code -> label map.
+        value_column = entry["columns"]["strobe"]
+        assert value_column["column_categories"]["labels"] == {0: "0", 16: "16", 2064: "2064"}
+        assert value_column["column_name"] == "strobe"
+        # The event type names its own (solo) table from event_name and carries its description; no
+        # EventTables entry is seeded (the writer drops the trailing padding "_", so the table is "PAB").
         assert entry["event_name"] == "PAB_"
         assert entry["event_description"] == "Onset times of the TDT epoc 'PAB_', labeled by strobe value."
         assert "EventTables" not in metadata["Events"]
@@ -142,7 +140,7 @@ class TestTDTEventsStrobe:
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        pab_events = nwbfile.get_events_table("PAB")  # "PAB_" store, trailing padding "_" dropped
+        pab_events = nwbfile.get_events_table("PAB")  # "PAB_", trailing padding "_" dropped
         assert isinstance(pab_events, EventsTable)
         assert len(pab_events) == 30
         # The 30 events cycle through the three codes.
@@ -157,7 +155,7 @@ class TestTDTEventsStrobe:
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-        nwbfile_path = tmp_path / "test_tdt_strobe.nwb"
+        nwbfile_path = tmp_path / "test_tdt_value_column.nwb"
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
             io.write(nwbfile)
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
@@ -167,20 +165,22 @@ class TestTDTEventsStrobe:
             assert list(read_events["strobe"][:]) == ["left", "right", "none"] * 10
 
 
-class TestTDTEventsDurative:
-    """The durative stores in ``epocs_with_offsets_1`` (``s1s_``/``s4s_``/``sms_``) carry real
-    STRON/STROFF offsets, written as per-event durations in the table's ``duration`` column."""
+class TestEventTypeWithDurations:
+    """Event types whose events have durations: ``s1s_``/``s4s_``/``sms_`` in the durations dataset,
+    written as a per-event duration in the table's ``duration`` column."""
+
+    folder_path = str(TDT_DATA_PATH / "epocs_with_offsets_1")
 
     @pytest.fixture
     def interface(self):
-        return TDTEventsInterface(folder_path=OFFSETS_TANK, exclude_events=["Tick"])
+        return TDTEventsInterface(folder_path=self.folder_path, exclude_events=["Tick"])
 
     def test_add_to_nwbfile_writes_durations(self, interface):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        # Each store ("s1s_"/"s4s_"/"sms_") becomes a table named from the store (padding "_" dropped,
-        # capitalized), carrying a "duration" column of real per-event STROFF durations (~1 s, ~4 s, ~0.25 s).
+        # Each event type becomes a table named from the store (trailing padding "_" dropped, capitalized),
+        # carrying a "duration" column of the real per-event durations (~1 s, ~4 s, ~0.25 s).
         for table_name, expected_duration in [("S1s", 1.0), ("S4s", 4.0), ("Sms", 0.25)]:
             table = nwbfile.get_events_table(table_name)
             assert isinstance(table, EventsTable)
