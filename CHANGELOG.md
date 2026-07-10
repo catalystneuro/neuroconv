@@ -5,6 +5,7 @@
 * Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
 * Adapted `DoricFiberPhotometryInterface` to use `BaseFiberPhotometryInterface`. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
 * Added `DoricFiberPhotometryInterface` support for Doric CSV format. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
+* Added `DoricFiberPhotometryInterface` support for the legacy "EPConsole" `.doric` HDF5 layout (``Traces/<console>/<stream>/<stream>``), auto-detected alongside the newer `DataAcquisition`-based layout. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
 
 ## Removals, Deprecations and Changes
 * Bumped minimum `pynwb` version to `>=4.0.0`. [PR #1769](https://github.com/catalystneuro/neuroconv/pull/1769)

@@ -10,12 +10,20 @@ Install NeuroConv with the additional dependencies necessary for reading Doric F
 Discover available signal streams
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:py:class:`~neuroconv.datainterfaces.DoricFiberPhotometryInterface` reads two formats produced by
-Doric Neuroscience Studio, chosen automatically from the ``file_path`` extension:
+:py:class:`~neuroconv.datainterfaces.DoricFiberPhotometryInterface` reads the formats produced by
+Doric Neuroscience Studio, chosen automatically from the ``file_path`` extension and, for ``.doric``,
+the internal HDF5 layout:
 
-* ``.doric`` (HDF5): streams are auto-discovered by walking ``DataAcquisition`` for groups that
-  contain a ``Time`` sibling dataset.  Each non-``Time`` 1-D dataset becomes a stream whose name is
-  built from its HDF5 path (relative to ``DataAcquisition``) with ``/`` replaced by ``_``.
+* ``.doric`` (HDF5), newer layout: streams are auto-discovered by walking ``DataAcquisition`` for
+  groups that contain a ``Time`` sibling dataset.  Each non-``Time`` 1-D dataset becomes a stream
+  whose name is built from its HDF5 path (relative to ``DataAcquisition``) with ``/`` replaced by
+  ``_``.
+* ``.doric`` (HDF5), legacy "EPConsole" layout: each stream is its own group nested under
+  ``Traces/<console>/`` holding a single dataset of the same name (e.g.
+  ``Traces/Console/AIn-1 - Raw/AIn-1 - Raw``), with the shared timestamps in a sibling time-like
+  group (e.g. ``Traces/Console/Time(s)/...``). Stream names are built the same way, relative to
+  ``Traces`` (e.g. ``Console_AIn-1 - Raw``). This layout is tried automatically when the newer one
+  yields no streams.
 * ``.csv`` (DoricStudio CSV export): one shared time column (matched case-insensitively against
   ``"time"``/``"Time(s)"``) plus one or more data columns; each data column is a stream named after
   its column header (e.g. ``sig``, ``ref``). Older exports that prepend a channel/device "group"
@@ -23,7 +31,7 @@ Doric Neuroscience Studio, chosen automatically from the ``file_path`` extension
   ``Time(s),AIn-1 - Dem (ref),...``) are handled automatically, as are trailing empty columns.
 
 Call :py:meth:`~neuroconv.datainterfaces.DoricFiberPhotometryInterface.get_available_streams` (callable
-before construction) to discover stream names for either format.
+before construction) to discover stream names for any of these variants.
 
 .. code-block:: python
 
@@ -38,6 +46,12 @@ before construction) to discover stream names for either format.
     >>> csv_streams = DoricFiberPhotometryInterface.get_available_streams(file_path=csv_file_path)
     >>> print(csv_streams)
     ['ref', 'sig']
+
+    >>> # As does the legacy "EPConsole" HDF5 layout
+    >>> legacy_file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "D2-EPConsole_0039.doric"
+    >>> legacy_streams = DoricFiberPhotometryInterface.get_available_streams(file_path=legacy_file_path)
+    >>> print(legacy_streams)
+    ['Console_AIn-1 - Raw', 'Console_AIn-2 - Raw', 'Console_DI--O-1']
 
 Convert Doric Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -95,10 +109,11 @@ interface picks the reader based on the file extension:
 
 .. note::
 
-    The ``.doric`` HDF5 export embeds a session start time (read from the file's ``Created``
-    attribute) that is set automatically in ``get_metadata()``. The ``.csv`` export does not embed
-    one, so ``metadata["NWBFile"]["session_start_time"]`` must always be set by hand when converting
-    from CSV.
+    The newer ``DataAcquisition``-based ``.doric`` HDF5 layout embeds a session start time (read
+    from the file's ``Created`` attribute) that is set automatically in ``get_metadata()``. Neither
+    the legacy "EPConsole" HDF5 layout nor the ``.csv`` export embeds one, so
+    ``metadata["NWBFile"]["session_start_time"]`` must always be set by hand when converting from
+    either of those.
 
 .. seealso::
 

@@ -835,3 +835,40 @@ class TestDoricFiberPhotometryInterfaceCSVGroupedHeader(FiberPhotometryInterface
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         with pytest.warns(UserWarning, match="placeholder"):
             self.interface.create_nwbfile(metadata=metadata, stub_test=True)
+
+
+class TestDoricFiberPhotometryInterfaceLegacyHDF5(FiberPhotometryInterfaceTestMixin):
+    """Tests the legacy "EPConsole" HDF5 layout of DoricFiberPhotometryInterface.
+
+    Older Doric exports nest each stream under ``Traces/<console>/<stream>/<stream>`` (a group
+    holding a single dataset of the same name) with a sibling ``Traces/<console>/Time(s)/...`` group
+    holding the shared timestamps, instead of the newer ``DataAcquisition``-based layout.
+    """
+
+    data_interface_cls = DoricFiberPhotometryInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "D2-EPConsole_0039.doric"),
+        stream_names="Console_AIn-1 - Raw",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True, stub_samples=5)
+    save_directory = OUTPUT_PATH
+
+    # Expected first 5 samples of the "Console_AIn-1 - Raw" stream and its (regular, ~12048 Hz) sampling.
+    expected_response_series_data = np.array(
+        [0.0067140720847191915, 0.04409924619281558, 0.12848292489394808, 0.19486068300424186, 0.24475844599749763]
+    )
+    expected_starting_time = 0.0
+    expected_rate = 12048.192771084337
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
+        assert streams == ["Console_AIn-1 - Raw", "Console_AIn-2 - Raw", "Console_DI--O-1"]
+
+    def test_default_metadata_warns_about_placeholders(self, setup_interface):
+        # This legacy export does not embed a 'Created' attribute either, so no session start time
+        # is set automatically.
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        with pytest.warns(UserWarning, match="placeholder"):
+            self.interface.create_nwbfile(metadata=metadata, stub_test=True)

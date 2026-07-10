@@ -27,7 +27,9 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
     * ``.doric`` (HDF5): stream names are auto-discovered by walking ``DataAcquisition`` for groups
       that contain a ``Time`` sibling dataset. Each non-Time 1-D dataset found this way becomes a
       stream whose name is the path relative to ``DataAcquisition`` with ``/`` replaced by ``_``
-      (e.g. ``BBC300_ROISignals_Series0001_CAM1EXC1_ROI01``).
+      (e.g. ``BBC300_ROISignals_Series0001_CAM1EXC1_ROI01``). Older "EPConsole"-style exports that
+      instead nest each stream under ``Traces/<console>/<stream>/<stream>`` (with a sibling
+      ``Traces/<console>/Time(s)/...`` group holding the shared timestamps) are also supported.
     * ``.csv`` (DoricStudio CSV export): one shared time column (matched case-insensitively against
       ``"Time(s)"``/``"time"``) plus one or more data columns; each data column is a stream named
       after its column header (e.g. ``sig``, ``ref``). The time column may be on the first or second
@@ -86,7 +88,7 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
         return Path(file_path).suffix.lower() == ".csv"
 
     @staticmethod
-    def _discover_streams_hdf5(f) -> dict:
+    def _discover_streams_hdf5_data_acquisition(f) -> dict:
         """Walk DataAcquisition and return stream_name -> {data_path, time_path}."""
         import h5py
 
@@ -113,6 +115,62 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
 
         f["DataAcquisition"].visititems(_visit)
         return streams
+
+    @staticmethod
+    def _discover_streams_hdf5_traces(f) -> dict:
+        """Walk the legacy ``Traces`` layout (older "EPConsole" .doric exports).
+
+        Under ``Traces/<console>/``, each stream is its own group holding a single dataset with the
+        same name as the group (e.g. ``Traces/Console/AIn-1 - Raw/AIn-1 - Raw``), and the shared
+        timestamps live in a sibling time-like group (e.g. ``Traces/Console/Time(s)/Console_time(s)``).
+        """
+        import h5py
+
+        streams: dict[str, dict] = {}
+        if "Traces" not in f:
+            return streams
+
+        def _visit(name: str, obj) -> None:
+            if not isinstance(obj, h5py.Group):
+                return
+            time_child_name = next(
+                (
+                    child_name
+                    for child_name in obj
+                    if isinstance(obj[child_name], h5py.Group)
+                    and child_name.strip().lower() in _CSV_TIME_COLUMN_CANDIDATES
+                ),
+                None,
+            )
+            if time_child_name is None:
+                return
+            time_group = obj[time_child_name]
+            time_datasets = [key for key in time_group if isinstance(time_group[key], h5py.Dataset)]
+            if len(time_datasets) != 1:
+                return
+            time_path = f"Traces/{name}/{time_child_name}/{time_datasets[0]}"
+
+            for child_name in obj:
+                if child_name == time_child_name:
+                    continue
+                child = obj[child_name]
+                if not isinstance(child, h5py.Group) or child_name not in child:
+                    continue
+                data_item = child[child_name]
+                if isinstance(data_item, h5py.Dataset) and data_item.ndim == 1:
+                    stream_name = f"{name}/{child_name}".replace("/", "_")
+                    streams[stream_name] = {
+                        "format": "hdf5",
+                        "data_path": f"Traces/{name}/{child_name}/{child_name}",
+                        "time_path": time_path,
+                    }
+
+        f["Traces"].visititems(_visit)
+        return streams
+
+    @classmethod
+    def _discover_streams_hdf5(cls, f) -> dict:
+        return cls._discover_streams_hdf5_data_acquisition(f) or cls._discover_streams_hdf5_traces(f)
 
     @staticmethod
     def _find_csv_header_row_and_time_column(file_path) -> tuple[int, str, list[str]]:
