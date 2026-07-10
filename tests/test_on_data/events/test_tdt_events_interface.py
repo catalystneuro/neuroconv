@@ -167,12 +167,23 @@ class TestTDTEventsStrobe:
             assert list(read_events["strobe"][:]) == ["left", "right", "none"] * 10
 
 
-class TestTDTEventsRealOffset:
+class TestTDTEventsDurative:
     """The durative stores in ``epocs_with_offsets_1`` (``s1s_``/``s4s_``/``sms_``) carry real
-    STRON/STROFF offset durations, which the interface does not support yet, so writing them raises.
-    This exercises the unsupported path on real data rather than a fabricated block."""
+    STRON/STROFF offsets, written as per-event durations in the table's ``duration`` column."""
 
-    def test_real_offset_raises(self):
-        interface = TDTEventsInterface(folder_path=OFFSETS_TANK)  # includes the durative stores
-        with pytest.raises(NotImplementedError, match=r"real offset.*issues/new"):
-            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=interface.get_metadata())
+    @pytest.fixture
+    def interface(self):
+        return TDTEventsInterface(folder_path=OFFSETS_TANK, exclude_events=["Tick"])
+
+    def test_add_to_nwbfile_writes_durations(self, interface):
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        # Each store ("s1s_"/"s4s_"/"sms_") becomes a table named from the store (padding "_" dropped,
+        # capitalized), carrying a "duration" column of real per-event STROFF durations (~1 s, ~4 s, ~0.25 s).
+        for table_name, expected_duration in [("S1s", 1.0), ("S4s", 4.0), ("Sms", 0.25)]:
+            table = nwbfile.get_events_table(table_name)
+            assert isinstance(table, EventsTable)
+            assert table.colnames == ("timestamp", "duration")
+            assert len(table) == 5
+            assert np.allclose(table["duration"][:], expected_duration, atol=0.01)
