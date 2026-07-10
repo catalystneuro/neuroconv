@@ -1,9 +1,5 @@
 # v0.9.4 (Upcoming)
 
-## Features
-* Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
-* Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
-
 ## Removals, Deprecations and Changes
 * Bumped minimum `pynwb` version to `>=4.0.0`. [PR #1769](https://github.com/catalystneuro/neuroconv/pull/1769)
 * Migrated `TDTFiberPhotometryInterface` to a single-series interface that selects input streams via the new `stream_names` argument. Constructing without `stream_names` is deprecated and will be removed on or after January 2027. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
@@ -51,6 +47,9 @@
 * Fixed the global compression test failing against `hdf5plugin>=7.0.0`. The test asserted on each filter's free-text description string, which 7.0.0 reworded for LZ4 and Zstd when switching to The HDF Group's bundled implementations (the filter IDs are unchanged). The test now asserts only on the stable numeric filter ID, which is what actually proves the requested filter was applied. [PR #1766](https://github.com/catalystneuro/neuroconv/pull/1766)
 
 ## Features
+* Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
+* Added support for device models via top-level `metadata["DeviceModels"]` and `metadata["Devices"]` registries. [PR #1780](https://github.com/catalystneuro/neuroconv/pull/1780)
+* Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
 * Use SpikeInterface metric descriptions to populate property_descriptions in `add_sorting_analyzer_to_nwbfile` [PR #1717](https://github.com/catalystneuro/neuroconv/pull/1717)
 * Added `CSVEventsInterface` for converting discrete events from a CSV file into `ndx-events` objects. [PR #1755](https://github.com/catalystneuro/neuroconv/pull/1755)
 * Added `TDTEventsInterface` for converting discrete events (epocs) from a TDT tank folder. [PR #1751](https://github.com/catalystneuro/neuroconv/pull/1751) [PR #1775](https://github.com/catalystneuro/neuroconv/pull/1775)
