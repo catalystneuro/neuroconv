@@ -47,6 +47,7 @@
 
 ## Features
 * `TDTEventsInterface` now supports events that have a duration, writing each event's duration to the `EventsTable` `duration` column, instead of raising. [PR #1781](https://github.com/catalystneuro/neuroconv/pull/1781)
+* Added support for device models via top-level `metadata["DeviceModels"]` and `metadata["Devices"]` registries. [PR #1780](https://github.com/catalystneuro/neuroconv/pull/1780)
 * Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
 * Use SpikeInterface metric descriptions to populate property_descriptions in `add_sorting_analyzer_to_nwbfile` [PR #1717](https://github.com/catalystneuro/neuroconv/pull/1717)
 * Added `CSVEventsInterface` for converting discrete events from a CSV file into `ndx-events` objects. [PR #1755](https://github.com/catalystneuro/neuroconv/pull/1755)
