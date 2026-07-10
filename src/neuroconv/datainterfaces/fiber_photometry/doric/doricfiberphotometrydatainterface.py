@@ -77,7 +77,7 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
             stream_indices=stream_indices,
             verbose=verbose,
         )
-        self._streams: dict[str, dict] = self._discover_streams_from_path(self.source_data["file_path"])
+        self._streams: dict[str, dict] = self._discover_streams(self.source_data["file_path"])
 
     # ------------------------------------------------------------------
     # Stream discovery
@@ -87,8 +87,38 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
     def _is_csv(file_path) -> bool:
         return Path(file_path).suffix.lower() == ".csv"
 
+    @classmethod
+    def get_available_streams(cls, file_path) -> list[str]:
+        """Return the names of the streams available in a Doric ``.doric`` or ``.csv`` file.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the ``.doric`` HDF5 file or DoricStudio CSV export.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of stream names.
+        """
+        return sorted(cls._discover_streams(file_path))
+
+    @classmethod
+    def _discover_streams(cls, file_path) -> dict:
+        """Dispatch to the CSV or HDF5 stream discoverer based on the file extension.
+
+        For HDF5, the modern ``DataAcquisition``-based layout is tried first, falling back to the
+        legacy ``Traces``-based layout when the former yields no streams.
+        """
+        if cls._is_csv(file_path):
+            return cls._discover_csv_streams(file_path)
+        import h5py
+
+        with h5py.File(file_path, "r") as f:
+            return cls._discover_hdf5_streams(f) or cls._discover_hdf5_streams_legacy(f)
+
     @staticmethod
-    def _discover_streams_hdf5_data_acquisition(f) -> dict:
+    def _discover_hdf5_streams(f) -> dict:
         """Walk DataAcquisition and return stream_name -> {data_path, time_path}."""
         import h5py
 
@@ -117,7 +147,7 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
         return streams
 
     @staticmethod
-    def _discover_streams_hdf5_traces(f) -> dict:
+    def _discover_hdf5_streams_legacy(f) -> dict:
         """Walk the legacy ``Traces`` layout (older "EPConsole" .doric exports).
 
         Under ``Traces/<console>/``, each stream is its own group holding a single dataset with the
@@ -169,11 +199,17 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
         return streams
 
     @classmethod
-    def _discover_streams_hdf5(cls, f) -> dict:
-        return cls._discover_streams_hdf5_data_acquisition(f) or cls._discover_streams_hdf5_traces(f)
+    def _discover_csv_streams(cls, file_path) -> dict:
+        """Return stream_name -> {header_row, data_column, time_column} from a CSV export."""
+        header_row, time_column, columns = cls._locate_csv_header(file_path)
+        return {
+            column: {"format": "csv", "header_row": header_row, "data_column": column, "time_column": time_column}
+            for column in columns
+            if column != time_column and not column.startswith("Unnamed:")
+        }
 
     @staticmethod
-    def _find_csv_header_row_and_time_column(file_path) -> tuple[int, str, list[str]]:
+    def _locate_csv_header(file_path) -> tuple[int, str, list[str]]:
         """Locate the header row and time column of a DoricStudio CSV export.
 
         Most exports have the column names on the first line (e.g. ``time,ref,sig``). Older Doric
@@ -195,41 +231,6 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
             f"Could not find a time column in {file_path}. Expected one of "
             f"{_CSV_TIME_COLUMN_CANDIDATES} (case-insensitive) on the first or second line."
         )
-
-    @classmethod
-    def _discover_streams_csv(cls, file_path) -> dict:
-        """Return stream_name -> {header_row, data_column, time_column} from a CSV export."""
-        header_row, time_column, columns = cls._find_csv_header_row_and_time_column(file_path)
-        return {
-            column: {"format": "csv", "header_row": header_row, "data_column": column, "time_column": time_column}
-            for column in columns
-            if column != time_column and not column.startswith("Unnamed:")
-        }
-
-    @classmethod
-    def _discover_streams_from_path(cls, file_path) -> dict:
-        if cls._is_csv(file_path):
-            return cls._discover_streams_csv(file_path)
-        import h5py
-
-        with h5py.File(file_path, "r") as f:
-            return cls._discover_streams_hdf5(f)
-
-    @classmethod
-    def get_available_streams(cls, file_path) -> list[str]:
-        """Return the names of the streams available in a Doric ``.doric`` or ``.csv`` file.
-
-        Parameters
-        ----------
-        file_path : FilePath
-            Path to the ``.doric`` HDF5 file or DoricStudio CSV export.
-
-        Returns
-        -------
-        list[str]
-            Sorted list of stream names.
-        """
-        return sorted(cls._discover_streams_from_path(file_path))
 
     # ------------------------------------------------------------------
     # Session start time (HDF5 only; not embedded in the CSV export)
