@@ -12,7 +12,6 @@ from pynwb.testing.mock.file import mock_NWBFile
 from neuroconv.tools.nwb_helpers import (
     _add_device_model_to_nwbfile,
     _add_device_to_nwbfile,
-    _add_devices_to_nwbfile,
 )
 from neuroconv.tools.nwb_helpers._device_registry import (
     _DEVICE_MODEL_TYPE_SOURCES,
@@ -108,28 +107,3 @@ class TestAddDeviceTransitional:
         nwbfile = mock_NWBFile()
         with pytest.raises(ValueError, match="Unknown device type 'NotAType'"):
             _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=dict(name="d1", type="NotAType"))
-
-
-class TestAddDevicesOrchestrator:
-    def test_models_and_instances_added_and_linked(self):
-        nwbfile = mock_NWBFile()
-        metadata = dict(
-            DeviceModels={"m": dict(name="model_1", manufacturer="ACME")},
-            Devices={"d": dict(name="d1", device_model_metadata_key="m")},
-        )
-        _add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-        assert "model_1" in nwbfile.device_models
-        assert nwbfile.devices["d1"].model is nwbfile.device_models["model_1"]
-
-    def test_missing_device_model_metadata_key_raises(self):
-        nwbfile = mock_NWBFile()
-        metadata = dict(DeviceModels={}, Devices={"d": dict(name="d1", device_model_metadata_key="absent")})
-        with pytest.raises(ValueError, match="not present in metadata\\['DeviceModels'\\]"):
-            _add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-    def test_empty_or_missing_registries_are_noops(self):
-        nwbfile = mock_NWBFile()
-        _add_devices_to_nwbfile(nwbfile=nwbfile, metadata=dict())
-        _add_devices_to_nwbfile(nwbfile=nwbfile, metadata=dict(DeviceModels={}, Devices={}))
-        assert len(nwbfile.devices) == 0
-        assert len(nwbfile.device_models) == 0

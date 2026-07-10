@@ -285,33 +285,6 @@ def _add_device_to_nwbfile(
     return device
 
 
-def _add_devices_to_nwbfile(
-    nwbfile: NWBFile,
-    *,
-    metadata: dict,
-):
-    """
-    Add all top-level device models and device instances from metadata, models first.
-
-    Walks the dict-keyed top-level ``metadata["DeviceModels"]`` and ``metadata["Devices"]`` registries,
-    calling the canonical per-item helpers by key. Models are added first so unreferenced models are
-    still written; each instance additionally pulls in its own referenced model on demand (idempotent),
-    so the two are order-independent. Both passes are idempotent on ``name``.
-
-    Parameters
-    ----------
-    nwbfile : NWBFile
-        The NWB file to add the devices to.
-    metadata : dict
-        Metadata dictionary with dict-keyed ``metadata["DeviceModels"]`` and ``metadata["Devices"]``.
-    """
-    for metadata_key in metadata.get("DeviceModels", {}):
-        _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
-
-    for metadata_key in metadata.get("Devices", {}):
-        _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
-
-
 def _attempt_cleanup_of_existing_nwbfile(nwbfile_path: Path) -> None:
     if not nwbfile_path.exists():
         return

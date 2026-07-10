@@ -27,7 +27,6 @@ from ._dataset_configuration import get_default_dataset_io_configurations, get_e
 from ._metadata_and_file_helpers import (
     _add_device_model_to_nwbfile,
     _add_device_to_nwbfile,
-    _add_devices_to_nwbfile,
     add_device_from_metadata,
     configure_and_write_nwbfile,
     get_default_nwbfile_metadata,
