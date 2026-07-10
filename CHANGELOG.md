@@ -51,6 +51,7 @@
 ## Features
 * Added `GuppyInterface` for converting [GuPPy](https://github.com/LernerLab/GuPPy) processed fiber photometry outputs, depending on the [`ndx-guppy`](https://github.com/catalystneuro/ndx-guppy) extension. [PR #965](https://github.com/catalystneuro/neuroconv/pull/965)
 * Added `TDTFiberPhotometryGuppyConverter` to bundle raw TDT fiber photometry acquisition, raw events, and GuPPy-derived outputs into a single conversion. [PR #965](https://github.com/catalystneuro/neuroconv/pull/965)
+* Use SpikeInterface metric descriptions to populate property_descriptions in `add_sorting_analyzer_to_nwbfile` [PR #1717](https://github.com/catalystneuro/neuroconv/pull/1717)
 * Added `CSVEventsInterface` for converting discrete events from a CSV file into `ndx-events` objects. [PR #1755](https://github.com/catalystneuro/neuroconv/pull/1755)
 * Added `TDTEventsInterface` for converting discrete events (epocs) from a TDT tank folder. [PR #1751](https://github.com/catalystneuro/neuroconv/pull/1751) [PR #1775](https://github.com/catalystneuro/neuroconv/pull/1775)
 * Added `BaseEventsInterface`, a shared base for events interfaces that writes native `pynwb` 4.0 `EventsTable` objects into `nwbfile.events`. [PR #1774](https://github.com/catalystneuro/neuroconv/pull/1774)
