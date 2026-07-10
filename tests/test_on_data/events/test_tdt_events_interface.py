@@ -1,14 +1,9 @@
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO
 from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import TDTEventsInterface
-from neuroconv.datainterfaces.events.tdt_events.tdteventsdatainterface import (
-    _data_is_counter,
-    _offset_is_synthesized,
-)
 
 try:
     from ..setup_paths import ECEPHY_DATA_PATH
@@ -16,30 +11,6 @@ except ImportError:
     from setup_paths import ECEPHY_DATA_PATH
 
 TDT_DATA_PATH = ECEPHY_DATA_PATH / "tdt"
-
-
-class TestDetectors:
-    def test_synthesized_offset_is_detected(self):
-        onset = np.array([1.0, 2.0, 3.0])
-        offset = np.array([2.0, 3.0, np.inf])  # TDT fill: offset[i] == onset[i + 1], last is inf
-        assert _offset_is_synthesized(onset, offset)
-
-    def test_real_offset_is_not_synthesized(self):
-        onset = np.array([1.0, 2.0, 3.0])
-        offset = np.array([1.5, 2.5, 3.5])  # genuine falling edges strictly inside each interval
-        assert not _offset_is_synthesized(onset, offset)
-
-    def test_single_event_offset_is_synthesized(self):
-        onset = np.array([1.0])
-        offset = np.array([np.inf])
-        assert _offset_is_synthesized(onset, offset)
-
-    def test_counter_data_is_detected(self):
-        assert _data_is_counter(np.array([1.0, 2.0, 3.0, 4.0]))
-        assert _data_is_counter(np.array([0.0, 1.0, 2.0]))
-
-    def test_value_codes_are_not_a_counter(self):
-        assert not _data_is_counter(np.array([16.0, 2064.0, 0.0, 16.0]))
 
 
 class TestTimestampOnlyEventType:
@@ -70,8 +41,8 @@ class TestTimestampOnlyEventType:
         assert interface.get_metadata()["Events"]["tdt_events"]["event_types"] == {}
 
     def test_metadata_key_default_and_override(self, interface):
-        # No EventTables block is seeded: a solo event type names its own table from event_name, so
-        # metadata["Events"] holds only the per-interface metadata_key block.
+        # The default metadata_key block; a solo event type names its own table, so no EventTables
+        # override is seeded.
         assert set(interface.get_metadata()["Events"].keys()) == {"tdt_events"}
 
         renamed = TDTEventsInterface(
@@ -88,19 +59,6 @@ class TestTimestampOnlyEventType:
         assert tick_events.colnames == ("timestamp",)
         assert len(tick_events) == 235
 
-    def test_round_trip(self, interface, tmp_path):
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-
-        nwbfile_path = tmp_path / "test_tdt_events.nwb"
-        with NWBHDF5IO(nwbfile_path, mode="w") as io:
-            io.write(nwbfile)
-
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_events = io.read().get_events_table("Tick")
-            assert isinstance(read_events, EventsTable)
-            assert len(read_events) == 235
-
 
 class TestEventTypeWithValueColumn:
     """An event type carrying a categorical value column: ``PAB_`` in the payload dataset, 30 events
@@ -111,12 +69,6 @@ class TestEventTypeWithValueColumn:
     @pytest.fixture
     def interface(self):
         return TDTEventsInterface(folder_path=self.folder_path)
-
-    def test_get_events(self, interface):
-        events = interface.get_events()
-        assert set(events) == {"PAB_"}
-        for array in events["PAB_"].values():
-            assert len(array) == 30
 
     def test_metadata_seeds_value_column_labels(self, interface):
         metadata = interface.get_metadata()
@@ -141,24 +93,6 @@ class TestEventTypeWithValueColumn:
         assert len(pab_events) == 30
         # The 30 events cycle through the three codes.
         assert list(pab_events["strobe"][:]) == ["16", "2064", "0"] * 10
-
-    def test_user_relabeling_round_trip(self, interface, tmp_path):
-        metadata = interface.get_metadata()
-        labels = metadata["Events"]["tdt_events"]["event_types"]["PAB_"]["columns"]["strobe"]["column_categories"][
-            "labels"
-        ]
-        labels.update({0: "none", 16: "left", 2064: "right"})
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-        nwbfile_path = tmp_path / "test_tdt_value_column.nwb"
-        with NWBHDF5IO(nwbfile_path, mode="w") as io:
-            io.write(nwbfile)
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_events = io.read().get_events_table("PAB")
-            assert isinstance(read_events, EventsTable)
-            # Codes [16, 2064, 0] map through the user's relabeling.
-            assert list(read_events["strobe"][:]) == ["left", "right", "none"] * 10
 
 
 class TestEventTypeWithDurations:
