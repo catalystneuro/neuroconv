@@ -84,11 +84,20 @@ hierarchy tables, because those can only be built once the full set of channels 
 :py:class:`~neuroconv.datainterfaces.icephys.axon.axonintracellularconverter.AxonIntracellularConverter`
 combines several interfaces and builds that hierarchy over them: the ``SimultaneousRecordings`` (channels
 recorded together) and ``SequentialRecordings`` (one per run, carrying the stimulus type) tables, and the
-``Repetitions`` / ``ExperimentalConditions`` levels when you label the runs. You give it one interface per
-channel: a single cell is the one-interface case; pass one per electrode for a **dual-patch** recording (the
-channels of each sweep grouped into one simultaneous recording), or one per file for a **multi-file** experiment
-(each run becomes its own sequential recording, the runs placed on a single timeline from each file's header
-start time, which requires ABF version 2). The example below combines two channels recorded in one file.
+two optional grouping levels above them. You give it one interface per channel: a single cell is the
+one-interface case; pass one per electrode for a **dual-patch** recording (the channels of each sweep grouped
+into one simultaneous recording), or one per file for a **multi-file** experiment (each run becomes its own
+sequential recording, the runs placed on a single timeline from each file's header start time, which requires
+ABF version 2).
+
+You build the two upper grouping levels by labeling each interface through its ``repetition`` and ``condition``
+arguments. Runs sharing a ``repetition`` label are grouped into one ``Repetitions`` entry (repeated trials of the
+same protocol), and repetitions sharing a ``condition`` label are grouped into one ``ExperimentalConditions``
+entry (the experimental condition, for example a drug wash-in versus control). Both are optional: pass neither and
+the converter stops at the sequential level; pass ``condition`` alone and each run becomes its own repetition
+before being grouped by condition.
+
+The example below combines two channels recorded in one file.
 
 .. code-block:: python
 

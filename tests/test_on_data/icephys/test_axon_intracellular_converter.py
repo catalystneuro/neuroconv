@@ -26,27 +26,16 @@ from ..setup_paths import ECEPHY_DATA_PATH
 
 ICEPHYS_DATA_PATH = ECEPHY_DATA_PATH / "axon" / "intracellular_data"
 
-# One protocol-driven run: IN0 recorded in pA (voltage clamp) with a reconstructed Cmd 0 stimulus, 3 sweeps.
-SINGLE_CELL_FILE = ICEPHYS_DATA_PATH / "read_raw_protocol" / "user_list.abf"
-# Genuine dual patch: IN0 (current clamp) and IN1 (voltage clamp) recorded together.
-DUAL_PATCH_FILE = ICEPHYS_DATA_PATH / "dual_patch_pairs" / "current_clamp.abf"
-
-# Several runs recorded back-to-back (ascending header start times, all ABF v2): distinct protocols on the same
-# IN0 channel. Exercises multi-file alignment and the repetition / condition levels.
-MULTI_FILE_RUNS = [
-    ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
-    ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
-    ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
-    ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
-]
-
 
 class TestAxonConverterSingleCell:
     """One interface: the single-cell path that adds the simultaneous / sequential chain."""
 
+    # One protocol-driven run: IN0 recorded in pA (voltage clamp) with a reconstructed Cmd 0 stimulus, 3 sweeps.
+    file_path = ICEPHYS_DATA_PATH / "read_raw_protocol" / "user_list.abf"
+
     def test_add_to_nwbfile(self):
         interface = AxonIntracellularInterface(
-            file_path=str(SINGLE_CELL_FILE), response_channel_name="IN0", mode="voltage_clamp", stimulus_command="Cmd 0"
+            file_path=self.file_path, response_channel_name="IN0", mode="voltage_clamp", stimulus_command="Cmd 0"
         )
         nwbfile = AxonIntracellularConverter(data_interfaces=[interface]).create_nwbfile()
 
@@ -62,14 +51,13 @@ class TestAxonConverterSingleCell:
 class TestAxonConverterDualPatch:
     """Two electrodes from one dual-patch file: each sweep groups both electrodes into one simultaneous recording."""
 
+    # Genuine dual patch: IN0 (current clamp) and IN1 (voltage clamp) recorded together.
+    file_path = ICEPHYS_DATA_PATH / "dual_patch_pairs" / "current_clamp.abf"
+
     def test_add_to_nwbfile(self):
         interfaces = [
-            AxonIntracellularInterface(
-                file_path=str(DUAL_PATCH_FILE), response_channel_name="IN0", mode="current_clamp"
-            ),
-            AxonIntracellularInterface(
-                file_path=str(DUAL_PATCH_FILE), response_channel_name="IN1", mode="voltage_clamp"
-            ),
+            AxonIntracellularInterface(file_path=self.file_path, response_channel_name="IN0", mode="current_clamp"),
+            AxonIntracellularInterface(file_path=self.file_path, response_channel_name="IN1", mode="voltage_clamp"),
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
@@ -90,15 +78,24 @@ class TestAxonConverterDualPatch:
 class TestAxonConverterMultiFile:
     """Several files from one cell: each run is its own sequential recording, placed on a shared timeline."""
 
+    # Several runs recorded back-to-back (ascending header start times, all ABF v2): distinct protocols on the same
+    # IN0 channel. Exercises multi-file alignment and the repetition / condition levels.
+    run_files = [
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
+    ]
+
     def test_add_to_nwbfile(self):
         interfaces = [
-            AxonIntracellularInterface(file_path=str(path), response_channel_name="IN0", mode="current_clamp")
-            for path in MULTI_FILE_RUNS
+            AxonIntracellularInterface(file_path=path, response_channel_name="IN0", mode="current_clamp")
+            for path in self.run_files
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
         # One run per file: each distinct file is its own sequence, hence its own sequential recording.
-        assert len(nwbfile.icephys_sequential_recordings) == len(MULTI_FILE_RUNS)
+        assert len(nwbfile.icephys_sequential_recordings) == len(self.run_files)
         # All runs are the same amplifier model, so the files share one device even across files (dedup by name).
         assert len(nwbfile.devices) == 1
 
@@ -121,18 +118,24 @@ class TestAxonConverterSameStemFiles:
     disambiguated run identities, distinct ``sequence`` and series names and two separate runs, never the silent
     cross-cell merge or the duplicate-name error that the bare-stem identity would have produced."""
 
+    # Two genuinely different protocol runs, staged below under a shared stem to force the collision.
+    source_files = [
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
+    ]
+
     def test_add_to_nwbfile(self, tmp_path):
         # Stage two genuinely different files under a shared stem "0000" in different folders (symlinks, no copy).
         cell_a = tmp_path / "cellA" / "0000.abf"
         cell_b = tmp_path / "cellB" / "0000.abf"
         cell_a.parent.mkdir()
         cell_b.parent.mkdir()
-        cell_a.symlink_to(MULTI_FILE_RUNS[0])
-        cell_b.symlink_to(MULTI_FILE_RUNS[1])
+        cell_a.symlink_to(self.source_files[0])
+        cell_b.symlink_to(self.source_files[1])
 
         interfaces = [
-            AxonIntracellularInterface(file_path=str(cell_a), response_channel_name="IN0", mode="current_clamp"),
-            AxonIntracellularInterface(file_path=str(cell_b), response_channel_name="IN0", mode="current_clamp"),
+            AxonIntracellularInterface(file_path=cell_a, response_channel_name="IN0", mode="current_clamp"),
+            AxonIntracellularInterface(file_path=cell_b, response_channel_name="IN0", mode="current_clamp"),
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
@@ -150,12 +153,20 @@ class TestAxonConverterSameStemFiles:
 class TestAxonConverterRepetitions:
     """Repetition labels group the runs' sequential recordings into repetitions (no conditions)."""
 
+    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
+    run_files = [
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
+    ]
+
     def test_add_to_nwbfile(self):
         interfaces = [
             AxonIntracellularInterface(
-                file_path=str(path), response_channel_name="IN0", mode="current_clamp", repetition=repetition
+                file_path=path, response_channel_name="IN0", mode="current_clamp", repetition=repetition
             )
-            for path, repetition in zip(MULTI_FILE_RUNS, ["r1", "r1", "r2", "r2"])
+            for path, repetition in zip(self.run_files, ["r1", "r1", "r2", "r2"])
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
@@ -171,16 +182,24 @@ class TestAxonConverterRepetitions:
 class TestAxonConverterConditions:
     """Condition labels group repetitions into experimental conditions (the full chain)."""
 
+    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
+    run_files = [
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
+    ]
+
     def test_add_to_nwbfile(self):
         interfaces = [
             AxonIntracellularInterface(
-                file_path=str(path),
+                file_path=path,
                 response_channel_name="IN0",
                 mode="current_clamp",
                 repetition=repetition,
                 condition=condition,
             )
-            for path, repetition, condition in zip(MULTI_FILE_RUNS, ["r1", "r2", "r3", "r4"], ["A", "A", "B", "B"])
+            for path, repetition, condition in zip(self.run_files, ["r1", "r2", "r3", "r4"], ["A", "A", "B", "B"])
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
@@ -194,19 +213,27 @@ class TestAxonConverterConditions:
 class TestAxonConverterConditionWithoutRepetition:
     """`condition` with no `repetition` defaults each run to its own repetition (identity), then groups by condition."""
 
+    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
+    run_files = [
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
+    ]
+
     def test_add_to_nwbfile(self):
         interfaces = [
             AxonIntracellularInterface(
-                file_path=str(path), response_channel_name="IN0", mode="current_clamp", condition=condition
+                file_path=path, response_channel_name="IN0", mode="current_clamp", condition=condition
             )
-            for path, condition in zip(MULTI_FILE_RUNS, ["A", "A", "B", "B"])
+            for path, condition in zip(self.run_files, ["A", "A", "B", "B"])
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
         # Identity repetitions: one per run, each holding a single sequential recording.
         repetitions = nwbfile.icephys_repetitions
-        assert len(repetitions) == len(MULTI_FILE_RUNS)
-        assert all(len(repetitions["sequential_recordings"][i]) == 1 for i in range(len(MULTI_FILE_RUNS)))
+        assert len(repetitions) == len(self.run_files)
+        assert all(len(repetitions["sequential_recordings"][i]) == 1 for i in range(len(self.run_files)))
         # Conditions group those identity repetitions: two conditions of two repetitions each.
         conditions = nwbfile.icephys_experimental_conditions
         assert len(conditions) == 2
@@ -217,17 +244,25 @@ class TestAxonConverterRepetitionLabelReusedAcrossConditions:
     """A repetition label reused in two conditions stays distinct: the aggregator keys repetitions by
     ``(condition, label)``, not by label alone."""
 
+    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
+    run_files = [
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
+    ]
+
     def test_add_to_nwbfile(self):
         # "r1" and "r2" each appear under both condition "A" and condition "B".
         interfaces = [
             AxonIntracellularInterface(
-                file_path=str(path),
+                file_path=path,
                 response_channel_name="IN0",
                 mode="current_clamp",
                 repetition=repetition,
                 condition=condition,
             )
-            for path, repetition, condition in zip(MULTI_FILE_RUNS, ["r1", "r2", "r1", "r2"], ["A", "A", "B", "B"])
+            for path, repetition, condition in zip(self.run_files, ["r1", "r2", "r1", "r2"], ["A", "A", "B", "B"])
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
@@ -243,17 +278,25 @@ class TestAxonConverterRepetitionGroupsRunsWithinConditions:
     """A repetition label shared by two runs within a condition groups them into one repetition; conditions then
     group those repetitions."""
 
+    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
+    run_files = [
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
+    ]
+
     def test_add_to_nwbfile(self):
         # Runs 0,1 are condition "A" repetition "r1"; runs 2,3 are condition "B" repetition "r2".
         interfaces = [
             AxonIntracellularInterface(
-                file_path=str(path),
+                file_path=path,
                 response_channel_name="IN0",
                 mode="current_clamp",
                 repetition=repetition,
                 condition=condition,
             )
-            for path, repetition, condition in zip(MULTI_FILE_RUNS, ["r1", "r1", "r2", "r2"], ["A", "A", "B", "B"])
+            for path, repetition, condition in zip(self.run_files, ["r1", "r1", "r2", "r2"], ["A", "A", "B", "B"])
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
@@ -275,16 +318,24 @@ class TestAxonConverterSharedElectrodeAcrossFiles:
     (an electrode found by name and shared, rather than created once per interface).
     """
 
+    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
+    run_files = [
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
+        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
+    ]
+
     def test_merge_electrodes_via_edited_links(self):
         interfaces = [
-            AxonIntracellularInterface(file_path=str(path), response_channel_name="IN0", mode="current_clamp")
-            for path in MULTI_FILE_RUNS
+            AxonIntracellularInterface(file_path=path, response_channel_name="IN0", mode="current_clamp")
+            for path in self.run_files
         ]
         converter = AxonIntracellularConverter(data_interfaces=interfaces)
         metadata = converter.get_metadata()
 
         # Default: one electrode entry per file.
-        assert len(metadata["Icephys"]["IntracellularElectrodes"]) == len(MULTI_FILE_RUNS)
+        assert len(metadata["Icephys"]["IntracellularElectrodes"]) == len(self.run_files)
 
         # Collapse to a single shared electrode and point every series at it.
         shared_key = "SharedCell"
@@ -303,7 +354,7 @@ class TestAxonConverterSharedElectrodeAcrossFiles:
         electrode = next(iter(nwbfile.icephys_electrodes.values()))
         assert all(series.electrode is electrode for series in nwbfile.acquisition.values())
         # Merging electrodes does not merge runs: each file is still its own sequential recording.
-        assert len(nwbfile.icephys_sequential_recordings) == len(MULTI_FILE_RUNS)
+        assert len(nwbfile.icephys_sequential_recordings) == len(self.run_files)
 
 
 class TestAxonConverterDistinctDevicesViaLink:
@@ -314,14 +365,13 @@ class TestAxonConverterDistinctDevicesViaLink:
     follows the device ``name`` link rather than the metadata key.
     """
 
+    # Genuine dual patch: IN0 (current clamp) and IN1 (voltage clamp) recorded together on one amplifier.
+    file_path = ICEPHYS_DATA_PATH / "dual_patch_pairs" / "current_clamp.abf"
+
     def test_distinct_devices(self):
         interfaces = [
-            AxonIntracellularInterface(
-                file_path=str(DUAL_PATCH_FILE), response_channel_name="IN0", mode="current_clamp"
-            ),
-            AxonIntracellularInterface(
-                file_path=str(DUAL_PATCH_FILE), response_channel_name="IN1", mode="voltage_clamp"
-            ),
+            AxonIntracellularInterface(file_path=self.file_path, response_channel_name="IN0", mode="current_clamp"),
+            AxonIntracellularInterface(file_path=self.file_path, response_channel_name="IN1", mode="voltage_clamp"),
         ]
         converter = AxonIntracellularConverter(data_interfaces=interfaces)
         metadata = converter.get_metadata()
