@@ -150,8 +150,13 @@ class TestAxonConverterSameStemFiles:
         assert len(nwbfile.icephys_sequential_recordings) == 2
 
 
-class TestAxonConverterRepetitions:
-    """Repetition labels group the runs' sequential recordings into repetitions (no conditions)."""
+class TestAxonConverterRepetitionsAndConditions:
+    """Aggregation of the ``repetition`` / ``condition`` grouping labels into the ``Repetitions`` and
+    ``ExperimentalConditions`` tables. Every method drives the same four back-to-back runs (one cell, one channel),
+    varying only the labels to exercise one branch of the aggregator each: the conditions table is omitted when no
+    condition is given, a missing ``repetition`` defaults to identity repetitions, repetitions are keyed by
+    ``(condition, label)`` so a label reused across conditions stays distinct, and a label shared within one
+    condition groups its runs into a single repetition."""
 
     # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
     run_files = [
@@ -161,7 +166,8 @@ class TestAxonConverterRepetitions:
         ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
     ]
 
-    def test_add_to_nwbfile(self):
+    def test_repetitions_without_conditions(self):
+        """Repetition labels group the runs' sequential recordings; with no condition, no conditions table."""
         interfaces = [
             AxonIntracellularInterface(
                 file_path=path, response_channel_name="IN0", mode="current_clamp", repetition=repetition
@@ -178,19 +184,8 @@ class TestAxonConverterRepetitions:
         # No condition column -> the experimental-conditions table is not built.
         assert nwbfile.icephys_experimental_conditions is None
 
-
-class TestAxonConverterConditionWithoutRepetition:
-    """`condition` with no `repetition` defaults each run to its own repetition (identity), then groups by condition."""
-
-    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
-    run_files = [
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
-    ]
-
-    def test_add_to_nwbfile(self):
+    def test_conditions_without_repetition(self):
+        """`condition` with no `repetition` defaults each run to its own repetition (identity), then groups them."""
         interfaces = [
             AxonIntracellularInterface(
                 file_path=path, response_channel_name="IN0", mode="current_clamp", condition=condition
@@ -208,20 +203,9 @@ class TestAxonConverterConditionWithoutRepetition:
         assert len(conditions) == 2
         assert all(len(conditions["repetitions"][i]) == 2 for i in range(2))
 
-
-class TestAxonConverterRepetitionLabelReusedAcrossConditions:
-    """A repetition label reused in two conditions stays distinct: the aggregator keys repetitions by
-    ``(condition, label)``, not by label alone."""
-
-    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
-    run_files = [
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
-    ]
-
-    def test_add_to_nwbfile(self):
+    def test_repetition_label_reused_across_conditions(self):
+        """A repetition label reused in two conditions stays distinct: repetitions are keyed by ``(condition, label)``,
+        not by label alone."""
         # "r1" and "r2" each appear under both condition "A" and condition "B".
         interfaces = [
             AxonIntracellularInterface(
@@ -242,20 +226,9 @@ class TestAxonConverterRepetitionLabelReusedAcrossConditions:
         assert len(conditions) == 2
         assert all(len(conditions["repetitions"][i]) == 2 for i in range(2))
 
-
-class TestAxonConverterRepetitionGroupsRunsWithinConditions:
-    """A repetition label shared by two runs within a condition groups them into one repetition; conditions then
-    group those repetitions."""
-
-    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
-    run_files = [
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
-    ]
-
-    def test_add_to_nwbfile(self):
+    def test_repetition_groups_runs_within_condition(self):
+        """A repetition label shared by two runs within a condition groups them into one repetition; conditions then
+        group those repetitions."""
         # Runs 0,1 are condition "A" repetition "r1"; runs 2,3 are condition "B" repetition "r2".
         interfaces = [
             AxonIntracellularInterface(
