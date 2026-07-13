@@ -99,6 +99,7 @@ Fiber Photometry
 .. toctree::
     :maxdepth: 1
 
+    Doric Fiber Photometry <fiberphotometry/doric_fp>
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
 
 Behavior
@@ -113,8 +114,19 @@ Behavior
     LightningPose <behavior/lightningpose>
     Neuralynx NVT <behavior/neuralynx_nvt>
     SLEAP <behavior/sleap>
+    VAME <behavior/vame>
     Videos <behavior/video>
     MedPC <behavior/medpc>
+
+
+Events
+------
+
+.. toctree::
+    :maxdepth: 1
+
+    CSV Events <events/csv_events>
+    TDT Events <events/tdt_events>
 
 
 Image

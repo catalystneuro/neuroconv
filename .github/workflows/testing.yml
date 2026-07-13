@@ -160,6 +160,27 @@ jobs:
             deactivate
           fi
 
+      - name: Test events machinery
+        shell: bash
+        run: |
+          # Create events environment
+          python -m venv env_events
+          # Activate events environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_events/Scripts/activate
+          else
+            source env_events/bin/activate
+          fi
+          python -m pip install -U pip
+          python -m pip install ".[events]"
+          python -m pip install --group test
+          python -m pytest tests/test_modalities/test_events -vv -rsx -n auto --dist loadscope
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
+
       - name: Prepare data for tests
         uses: ./.github/actions/load-data
         with:

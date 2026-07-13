@@ -7,6 +7,7 @@ from ._mock._mock_dataset_models import (
 from .mock_files import generate_path_expander_demo_ibl
 from .mock_interfaces import (
     MockBehaviorEventInterface,
+    MockEventsInterface,
     MockSpikeGLXNIDQInterface,
     MockRecordingInterface,
     MockImagingInterface,
