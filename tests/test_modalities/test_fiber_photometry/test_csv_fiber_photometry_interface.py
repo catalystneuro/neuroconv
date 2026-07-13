@@ -40,7 +40,7 @@ class TestCSVFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         pd.DataFrame({"timestamps": TIMESTAMPS, "data": SIGNAL_DATA}).to_csv(signal_path, index=False)
         cls.signal_path = signal_path
         cls.interface_kwargs = dict(
-            file_path=signal_path,
+            file_paths=signal_path,
             data_columns="data",
             timestamps_column="timestamps",
             metadata_key="calcium_signal",
@@ -62,30 +62,53 @@ class TestCSVFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     def test_get_available_columns(self):
         assert CSVFiberPhotometryInterface.get_available_columns(file_path=self.signal_path) == ["timestamps", "data"]
 
-    def test_metadata_key_generated_from_data_columns(self):
-        """With no explicit metadata_key, it is derived from data_columns."""
+    def test_metadata_key_generated_from_file_name(self):
+        """With no explicit metadata_key, it is derived from the file name(s)."""
         interface = CSVFiberPhotometryInterface(
-            file_path=self.signal_path, data_columns="data", timestamps_column="timestamps"
+            file_paths=self.signal_path, data_columns="data", timestamps_column="timestamps"
         )
-        assert interface.metadata_key == "fiber_photometry_data"
+        assert interface.metadata_key == "fiber_photometry_sample_signal_channel"
         assert interface.metadata_key in interface.get_metadata()["FiberPhotometry"]
 
     def test_read_header_less_csv_by_integer_position(self, tmp_path):
         """Integer column identifiers address a header-less CSV by position."""
         path = tmp_path / "header_less.csv"
         pd.DataFrame({"a": TIMESTAMPS, "b": SIGNAL_DATA}).to_csv(path, index=False, header=False)
-        interface = CSVFiberPhotometryInterface(file_path=path, data_columns=1, timestamps_column=0)
+        interface = CSVFiberPhotometryInterface(file_paths=path, data_columns=1, timestamps_column=0)
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
-        np.testing.assert_array_equal(interface._get_stream_data(stream_name=1), SIGNAL_DATA)
+        np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
 
     def test_multiple_data_columns_stack_into_multichannel_series(self, tmp_path):
-        """A list of data_columns is column-stacked into one multi-channel response series."""
+        """A list of data_columns from one file is column-stacked into one multi-channel series."""
         path = tmp_path / "wide.csv"
         pd.DataFrame({"time": TIMESTAMPS, "signal": SIGNAL_DATA, "control": CONTROL_DATA}).to_csv(path, index=False)
         interface = CSVFiberPhotometryInterface(
-            file_path=path, data_columns=["signal", "control"], timestamps_column="time"
+            file_paths=path, data_columns=["signal", "control"], timestamps_column="time"
         )
         data = interface._read_response_data()
         assert data.shape == (NUM_SAMPLES, 2)
         np.testing.assert_array_equal(data[:, 0], SIGNAL_DATA)
         np.testing.assert_array_equal(data[:, 1], CONTROL_DATA)
+
+    def test_multiple_files_stack_into_multichannel_series(self, tmp_path):
+        """Per-channel CSVs (GuPPy layout) are column-stacked into one multi-channel series, in file
+        order, on the first file's timestamps."""
+        signal_path = tmp_path / "signal.csv"
+        control_path = tmp_path / "control.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS, "data": SIGNAL_DATA}).to_csv(signal_path, index=False)
+        pd.DataFrame({"timestamps": TIMESTAMPS, "data": CONTROL_DATA}).to_csv(control_path, index=False)
+        interface = CSVFiberPhotometryInterface(
+            file_paths=[signal_path, control_path], data_columns="data", timestamps_column="timestamps"
+        )
+        np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
+        data = interface._read_response_data()
+        assert data.shape == (NUM_SAMPLES, 2)
+        np.testing.assert_array_equal(data[:, 0], SIGNAL_DATA)
+        np.testing.assert_array_equal(data[:, 1], CONTROL_DATA)
+
+    def test_missing_data_column_raises_at_construction(self, tmp_path):
+        """A file missing a named data column fails loudly up front, not at read time."""
+        path = tmp_path / "signal.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS, "data": SIGNAL_DATA}).to_csv(path, index=False)
+        with pytest.raises(AssertionError, match="not found"):
+            CSVFiberPhotometryInterface(file_paths=path, data_columns="missing", timestamps_column="timestamps")
