@@ -27,6 +27,11 @@ class AxonIntracellularConverter(ConverterPipe):
     files (placeholder time only) is not yet supported.
     """
 
+    display_name = "Axon Intracellular Converter"
+    keywords = AxonIntracellularInterface.keywords
+    associated_suffixes = AxonIntracellularInterface.associated_suffixes
+    info = "Combines several AxonIntracellularInterface instances (dual patch, multi-file) into one icephys hierarchy."
+
     def get_metadata(self) -> dict:
         interfaces = list(self.data_interface_objects.values())
         self._assign_run_identities(interfaces)  # before super(), which builds each interface's metadata
