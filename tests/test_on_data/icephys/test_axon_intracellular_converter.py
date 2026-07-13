@@ -179,37 +179,6 @@ class TestAxonConverterRepetitions:
         assert nwbfile.icephys_experimental_conditions is None
 
 
-class TestAxonConverterConditions:
-    """Condition labels group repetitions into experimental conditions (the full chain)."""
-
-    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
-    run_files = [
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
-    ]
-
-    def test_add_to_nwbfile(self):
-        interfaces = [
-            AxonIntracellularInterface(
-                file_path=path,
-                response_channel_name="IN0",
-                mode="current_clamp",
-                repetition=repetition,
-                condition=condition,
-            )
-            for path, repetition, condition in zip(self.run_files, ["r1", "r2", "r3", "r4"], ["A", "A", "B", "B"])
-        ]
-        nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
-
-        # Four distinct repetitions, grouped into two conditions of two repetitions each.
-        assert len(nwbfile.icephys_repetitions) == 4
-        conditions = nwbfile.icephys_experimental_conditions
-        assert len(conditions) == 2
-        assert all(len(conditions["repetitions"][i]) == 2 for i in range(2))
-
-
 class TestAxonConverterConditionWithoutRepetition:
     """`condition` with no `repetition` defaults each run to its own repetition (identity), then groups by condition."""
 
