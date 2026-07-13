@@ -122,7 +122,7 @@ The example below combines two channels recorded in one file.
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
-    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 Legacy AbfInterface
 ~~~~~~~~~~~~~~~~~~~~

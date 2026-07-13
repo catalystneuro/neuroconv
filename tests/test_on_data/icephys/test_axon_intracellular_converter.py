@@ -143,8 +143,10 @@ class TestAxonConverterDisambiguatesCollidingFilenames:
         cell_b = tmp_path / "cellB" / "0000.abf"
         cell_a.parent.mkdir()
         cell_b.parent.mkdir()
-        cell_a.symlink_to(self.source_files[0])
-        cell_b.symlink_to(self.source_files[1])
+        # Point at the resolved real file: the gin source is itself a git-annex symlink, and pydantic's FilePath
+        # validator does not follow a symlink-to-a-symlink chain (it reports the staged path as not-a-file).
+        cell_a.symlink_to(self.source_files[0].resolve())
+        cell_b.symlink_to(self.source_files[1].resolve())
 
         interfaces = [
             AxonIntracellularInterface(file_path=cell_a, response_channel_name="IN0", mode="current_clamp"),
