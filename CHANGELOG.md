@@ -47,7 +47,7 @@
 * Fixed the global compression test failing against `hdf5plugin>=7.0.0`. The test asserted on each filter's free-text description string, which 7.0.0 reworded for LZ4 and Zstd when switching to The HDF Group's bundled implementations (the filter IDs are unchanged). The test now asserts only on the stable numeric filter ID, which is what actually proves the requested filter was applied. [PR #1766](https://github.com/catalystneuro/neuroconv/pull/1766)
 
 ## Features
-* Added `CSVFiberPhotometryInterface` for converting raw fiber photometry recordings stored as per-stream CSV files, parsed into the `ndx-fiber-photometry` format. Install with `pip install "neuroconv[csv_fp]"`. [PR #1754](https://github.com/catalystneuro/neuroconv/pull/1754)
+* Added `CSVFiberPhotometryInterface` for converting raw fiber photometry recordings stored as per-stream CSV files, parsed into the `ndx-fiber-photometry` format. It inherits from `BaseFiberPhotometryInterface` and is single-series (one `FiberPhotometryResponseSeries` per interface, selected via `stream_names`/`metadata_key`). Install with `pip install "neuroconv[csv_fp]"`. [PR #1754](https://github.com/catalystneuro/neuroconv/pull/1754)
 * `TDTEventsInterface` now supports events that have a duration, writing each event's duration to the `EventsTable` `duration` column, instead of raising. [PR #1781](https://github.com/catalystneuro/neuroconv/pull/1781)
 * Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
 * Added support for device models via top-level `metadata["DeviceModels"]` and `metadata["Devices"]` registries. [PR #1780](https://github.com/catalystneuro/neuroconv/pull/1780)

@@ -105,9 +105,9 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
 )
-from .ophys.csv_fp.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
+from .fiber_photometry.csv.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
 from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
 from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
