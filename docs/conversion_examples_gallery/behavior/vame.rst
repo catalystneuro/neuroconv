@@ -14,6 +14,12 @@ The interface reads per-session ``.npy`` output files—motif labels, latent-spa
 vectors and community labels—and writes them to NWB using the
 `ndx-vame <https://github.com/catalystneuro/ndx-vame>`_ NWB extension.
 
+In addition to the faithful per-frame ``MotifSeries``, the interface automatically derives a
+curated `ndx-ethogram <https://github.com/catalystneuro/ndx-ethogram>`_ product for each motif
+run: an ``EthogramBouts`` table (the per-frame motif labels run-length-encoded into one row per
+bout) plus its ``Ethogram`` catalogue. The faithful ``MotifSeries`` is kept alongside it, and each
+bout links back to it via ``source``.
+
 A typical VAME project has the following output layout for each session::
 
     <project>/
