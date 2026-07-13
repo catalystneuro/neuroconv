@@ -4,29 +4,15 @@ from typing import Literal
 from pynwb import NWBFile
 
 from neuroconv.tools import get_package
+from neuroconv.tools.nwb_helpers import (
+    _add_device_model_to_nwbfile,
+    _add_device_to_nwbfile,
+)
 
 #: Sentinel written into required string metadata fields the user has not filled in. It is a distinct
 #: value from a deliberate ``"unknown"`` so an intentional "unknown" silences the placeholder warning.
 FIBER_PHOTOMETRY_PLACEHOLDER = "PLACEHOLDER"
 
-#: Device-model containers, keyed by their metadata block name, mapping to the ndx model class name.
-_DEVICE_MODEL_CONTAINERS = {
-    "OpticalFiberModels": "OpticalFiberModel",
-    "ExcitationSourceModels": "ExcitationSourceModel",
-    "PhotodetectorModels": "PhotodetectorModel",
-    "BandOpticalFilterModels": "BandOpticalFilterModel",
-    "EdgeOpticalFilterModels": "EdgeOpticalFilterModel",
-    "DichroicMirrorModels": "DichroicMirrorModel",
-}
-#: Device-instance containers (excluding ``OpticalFibers``, which are a special case with a nested
-#: ``fiber_insertion``), keyed by their metadata block name, mapping to the ndx device class name.
-_DEVICE_INSTANCE_CONTAINERS = {
-    "ExcitationSources": "ExcitationSource",
-    "Photodetectors": "Photodetector",
-    "BandOpticalFilters": "BandOpticalFilter",
-    "EdgeOpticalFilters": "EdgeOpticalFilter",
-    "DichroicMirrors": "DichroicMirror",
-}
 #: FiberPhotometryTable row reference fields (``<field>_metadata_key``) mapping to the ndx row column.
 _ROW_DEVICE_KEY_FIELDS = {
     "optical_fiber_metadata_key": "optical_fiber",
@@ -39,42 +25,59 @@ _ROW_DEVICE_KEY_FIELDS = {
 
 
 def get_default_fiber_photometry_metadata(metadata_key: str) -> dict:
-    """Return the default top-level ``FiberPhotometry`` metadata block for a single-series interface.
+    """Return the default metadata scaffold for a single-series fiber photometry interface.
 
-    Mirrors the pattern of ``get_nwb_imaging_metadata``: shared containers are dicts keyed by a
-    ``metadata_key`` and reference each other with ``_metadata_key`` fields (consistent with the ophys
-    metadata system). Required fields are pre-filled with sentinels — ``NaN`` for the required numeric
-    wavelengths and :data:`FIBER_PHOTOMETRY_PLACEHOLDER` for required strings — so an interface runs on
-    zero user metadata while ``add_to_nwbfile`` warns about any surviving sentinel. ``metadata_key``
-    scopes this interface's response-series entry.
+    Devices and device models live in the shared top-level ``metadata["Devices"]`` /
+    ``metadata["DeviceModels"]`` registry (added in #1780): each entry carries a ``type`` naming its
+    concrete class and a device links its model with ``device_model_metadata_key``. The remaining fiber
+    photometry containers (indicators, the ``FiberPhotometryTable``, and this interface's response
+    series) live under ``metadata["FiberPhotometry"]``, keyed by ``metadata_key`` and referencing each
+    other — and the shared devices — with ``_metadata_key`` fields. Required fields are pre-filled with
+    sentinels — ``NaN`` for the required numeric wavelengths and :data:`FIBER_PHOTOMETRY_PLACEHOLDER` for
+    required strings — so an interface runs on zero user metadata while ``add_to_nwbfile`` warns about any
+    surviving sentinel. ``metadata_key`` scopes this interface's response-series entry.
     """
     placeholder = FIBER_PHOTOMETRY_PLACEHOLDER
+    device_models = {
+        "optical_fiber_model": dict(
+            type="OpticalFiberModel",
+            name="optical_fiber_model",
+            manufacturer=placeholder,
+            numerical_aperture=float("nan"),
+        ),
+        "excitation_source_model": dict(
+            type="ExcitationSourceModel",
+            name="excitation_source_model",
+            manufacturer=placeholder,
+            source_type=placeholder,
+            excitation_mode=placeholder,
+        ),
+        "photodetector_model": dict(
+            type="PhotodetectorModel",
+            name="photodetector_model",
+            manufacturer=placeholder,
+            detector_type=placeholder,
+        ),
+    }
+    devices = {
+        "optical_fiber": dict(
+            type="OpticalFiber",
+            name="optical_fiber",
+            device_model_metadata_key="optical_fiber_model",
+            fiber_insertion=dict(),
+        ),
+        "excitation_source": dict(
+            type="ExcitationSource",
+            name="excitation_source",
+            device_model_metadata_key="excitation_source_model",
+        ),
+        "photodetector": dict(
+            type="Photodetector",
+            name="photodetector",
+            device_model_metadata_key="photodetector_model",
+        ),
+    }
     fiber_photometry_metadata = dict(
-        OpticalFiberModels={
-            "optical_fiber_model": dict(
-                name="optical_fiber_model", manufacturer=placeholder, numerical_aperture=float("nan")
-            )
-        },
-        OpticalFibers={
-            "optical_fiber": dict(
-                name="optical_fiber", model_metadata_key="optical_fiber_model", fiber_insertion=dict()
-            )
-        },
-        ExcitationSourceModels={
-            "excitation_source_model": dict(
-                name="excitation_source_model",
-                manufacturer=placeholder,
-                source_type=placeholder,
-                excitation_mode=placeholder,
-            )
-        },
-        ExcitationSources={
-            "excitation_source": dict(name="excitation_source", model_metadata_key="excitation_source_model")
-        },
-        PhotodetectorModels={
-            "photodetector_model": dict(name="photodetector_model", manufacturer=placeholder, detector_type=placeholder)
-        },
-        Photodetectors={"photodetector": dict(name="photodetector", model_metadata_key="photodetector_model")},
         FiberPhotometryIndicators={"indicator": dict(name="indicator", label=placeholder)},
         FiberPhotometryTable=dict(
             name="fiber_photometry_table",
@@ -99,7 +102,7 @@ def get_default_fiber_photometry_metadata(metadata_key: str) -> dict:
         fiber_photometry_table_region=["row0"],
         fiber_photometry_table_region_description=placeholder,
     )
-    return dict(FiberPhotometry=fiber_photometry_metadata)
+    return dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry_metadata)
 
 
 def _assert_metadata_matches_existing(existing_object, metadata: dict, name: str) -> None:
@@ -222,54 +225,35 @@ def add_ophys_device(
     nwbfile.add_device(ophys_device)
 
 
-def _resolve_device_model(device_metadata: dict, model_key_to_name: dict) -> dict:
-    """Return a copy of ``device_metadata`` with ``model_metadata_key`` resolved to a ``model`` name."""
-    resolved = {key: value for key, value in device_metadata.items() if key != "model_metadata_key"}
-    model_metadata_key = device_metadata["model_metadata_key"]
-    assert (
-        model_metadata_key in model_key_to_name
-    ), f"Device '{device_metadata['name']}' references unknown model_metadata_key '{model_metadata_key}'."
-    resolved["model"] = model_key_to_name[model_metadata_key]
-    return resolved
+def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
+    """Add all fiber photometry device models and instances to an NWBFile via the shared registry.
 
-
-def add_fiber_photometry_devices(*, nwbfile: NWBFile, fiber_photometry_metadata: dict) -> None:
-    """Add all fiber photometry device models and instances to an NWBFile, idempotently by name.
-
-    Reads the dict-keyed device containers under ``fiber_photometry_metadata`` (``OpticalFiberModels``,
-    ``ExcitationSources``, ``OpticalFibers``, ...). Device instances reference their model with a
-    ``model_metadata_key`` field, resolved here to the model's name.
+    Device models and instances live in the top-level ``metadata["DeviceModels"]`` /
+    ``metadata["Devices"]`` registry (added in #1780) and are written with the shared
+    :func:`~neuroconv.tools.nwb_helpers._add_device_model_to_nwbfile` /
+    :func:`~neuroconv.tools.nwb_helpers._add_device_to_nwbfile` helpers, idempotently by name. Each
+    device links its model with ``device_model_metadata_key``, resolved on demand by the canonical
+    helper. Optical fibers are the one special case: each carries a nested ``fiber_insertion`` dict,
+    built here into an ``ndx_ophys_devices.FiberInsertion`` and passed through the helper's pre-resolved
+    (transitional) form.
     """
-    ndx_ophys_devices = get_package("ndx_ophys_devices")
+    for device_model_metadata_key in metadata.get("DeviceModels", {}):
+        _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_model_metadata_key)
 
-    model_key_to_name = {}
-    for container_name, device_type in _DEVICE_MODEL_CONTAINERS.items():
-        for model_metadata_key, model_metadata in fiber_photometry_metadata.get(container_name, {}).items():
-            model_key_to_name[model_metadata_key] = model_metadata["name"]
-            add_ophys_device_model(nwbfile=nwbfile, device_metadata=model_metadata, device_type=device_type)
-
-    for container_name, device_type in _DEVICE_INSTANCE_CONTAINERS.items():
-        for device_metadata in fiber_photometry_metadata.get(container_name, {}).values():
-            add_ophys_device(
-                nwbfile=nwbfile,
-                device_metadata=_resolve_device_model(device_metadata, model_key_to_name),
-                device_type=device_type,
-            )
-
-    # Optical fibers are a special case: each carries a nested ``fiber_insertion``.
-    for optical_fiber_metadata in fiber_photometry_metadata.get("OpticalFibers", {}).values():
-        name = optical_fiber_metadata["name"]
-        if name in nwbfile.devices:
-            _assert_metadata_matches_existing(nwbfile.devices[name], optical_fiber_metadata, name)
+    for device_metadata_key, device_metadata in metadata.get("Devices", {}).items():
+        if "fiber_insertion" not in device_metadata:
+            _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key)
             continue
-        resolved = _resolve_device_model(optical_fiber_metadata, model_key_to_name)
-        model_name = resolved["model"]
-        assert (
-            model_name in nwbfile.device_models
-        ), f"Device model {model_name} not found in NWBFile device_models for {name}."
-        resolved["model"] = nwbfile.device_models[model_name]
-        resolved["fiber_insertion"] = ndx_ophys_devices.FiberInsertion(**resolved["fiber_insertion"])
-        nwbfile.add_device(ndx_ophys_devices.OpticalFiber(**resolved))
+        # Optical fiber: build the nested FiberInsertion and resolve the model, then use the helper's
+        # transitional form (a pre-resolved entry dict) since the canonical form cannot build sub-objects.
+        ndx_ophys_devices = get_package("ndx_ophys_devices")
+        model = _add_device_model_to_nwbfile(
+            nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata["device_model_metadata_key"]
+        )
+        resolved = {key: value for key, value in device_metadata.items() if key != "device_model_metadata_key"}
+        resolved["fiber_insertion"] = ndx_ophys_devices.FiberInsertion(**device_metadata["fiber_insertion"])
+        resolved["model"] = model
+        _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=resolved)
 
 
 def add_commanded_voltage_series(
@@ -301,14 +285,15 @@ def add_commanded_voltage_series(
     return commanded_voltage_series
 
 
-def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_metadata: dict):
+def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_metadata: dict, devices_metadata: dict):
     """Build the shared ``FiberPhotometry`` lab metadata (viruses, injections, indicators, table).
 
     This is a build-once operation guarded by the presence of the ``"fiber_photometry"`` lab
     metadata: the first interface to run assembles the entire container from the (converter-merged)
     metadata, and subsequent interfaces reuse it. Devices and any ``CommandedVoltageSeries`` referenced
     by a table row must already be present in the NWBFile. Entries reference each other with
-    ``_metadata_key`` fields (e.g. a table row's ``optical_fiber_metadata_key``), resolved here.
+    ``_metadata_key`` fields (e.g. a table row's ``optical_fiber_metadata_key``), resolved here — device
+    keys against the top-level ``devices_metadata`` (``metadata["Devices"]``).
 
     Returns the ``FiberPhotometryTable`` so callers can build table regions.
     """
@@ -361,10 +346,10 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
     indicators = ndx_fiber_photometry.FiberPhotometryIndicators(indicators=list(key_to_indicator.values()))
 
     # Maps to resolve a device/commanded-voltage _metadata_key to the NWB object's name.
-    instance_key_to_name = {}
-    for container_name in ("OpticalFibers", *_DEVICE_INSTANCE_CONTAINERS):
-        for device_metadata_key, device_metadata in fiber_photometry_metadata.get(container_name, {}).items():
-            instance_key_to_name[device_metadata_key] = device_metadata["name"]
+    instance_key_to_name = {
+        device_metadata_key: device_metadata["name"]
+        for device_metadata_key, device_metadata in devices_metadata.items()
+    }
     commanded_voltage_key_to_name = {
         key: value["name"] for key, value in fiber_photometry_metadata.get("CommandedVoltageSeries", {}).items()
     }

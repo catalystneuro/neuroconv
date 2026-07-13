@@ -32,13 +32,19 @@ Design Principles
 The fiber photometry metadata system follows the same spirit as the ophys and ecephys systems (see
 :ref:`ophys_metadata_structure`), specialized to the ndx-fiber-photometry data model:
 
-1. **Its own top-level block.** All fiber photometry metadata lives under ``metadata["FiberPhotometry"]``,
-   not nested under ``metadata["Ophys"]``. Fiber photometry is technically an optical method, but — like
-   the ecephys/icephys split — it has its own interfaces, its own extension, and its own metadata block.
+1. **Its own top-level block, but shared devices.** The fiber-photometry-specific metadata (indicators,
+   viruses/injections, the ``FiberPhotometryTable``, commanded voltage, and the response series) lives
+   under ``metadata["FiberPhotometry"]``, not nested under ``metadata["Ophys"]``. Fiber photometry is
+   technically an optical method, but — like the ecephys/icephys split — it has its own interfaces, its
+   own extension, and its own metadata block. The one exception is the hardware itself: device models and
+   device instances live in the shared, cross-modality top-level registry ``metadata["Devices"]`` /
+   ``metadata["DeviceModels"]``, because ndx-ophys-devices classes such as ``ExcitationSource`` are reused
+   by other modalities and should not grow a fiber-photometry-only writing path.
 
    .. code-block:: python
 
        metadata["FiberPhotometry"]["FiberPhotometryIndicators"]["gcamp"]["label"] = "GCaMP7b"
+       metadata["DeviceModels"]["ofm"]["numerical_aperture"] = 0.48
 
 2. **Dict-keyed containers, keyed by ``metadata_key``.** Following the ophys metadata system, every
    container is a dict whose keys are ``metadata_key`` handles. The hardware and biology shared across a
@@ -50,11 +56,12 @@ The fiber photometry metadata system follows the same spirit as the ophys and ec
 
 3. **Linking is by ``_metadata_key``, resolved at write time.** Entries reference each other with
    ``<thing>_metadata_key`` fields holding the *key* of the referenced entry — a device names its model
-   via ``model_metadata_key``, a table row names its optical fiber via ``optical_fiber_metadata_key``,
-   and a response series names the table rows it spans via ``fiber_photometry_table_region`` (a list of
-   row keys). This matches the ophys convention. At write time each key is resolved through its
-   container to the entry's ``name`` and then to the actual NWB object; row references resolve to
-   integer row indices (their position in the merged rows dict).
+   via ``device_model_metadata_key`` (into ``metadata["DeviceModels"]``), a table row names its optical
+   fiber via ``optical_fiber_metadata_key`` (into ``metadata["Devices"]``), and a response series names
+   the table rows it spans via ``fiber_photometry_table_region`` (a list of row keys). This matches the
+   ophys convention. At write time each key is resolved through its container to the entry's ``name`` and
+   then to the actual NWB object; row references resolve to integer row indices (their position in the
+   merged rows dict).
 
 4. **One shared, keyed-row table.** A file has a single ``FiberPhotometryTable``. Every response series
    references a *region* of its rows by row key, so regions never depend on fragile integer indices.
@@ -77,35 +84,32 @@ The complete fiber photometry metadata structure (one interface with ``metadata_
         "NWBFile": {...},   # Session-level metadata
         "Subject": {...},   # Subject information
 
+        # ----- Shared, cross-modality device registry (top-level, from #1780) -----
+
+        # Device models. Each entry carries a `type` naming its concrete ndx-ophys-devices class.
+        "DeviceModels": {
+            "ofm": {"type": "OpticalFiberModel", "name": "optical_fiber_model",
+                    "manufacturer": "Doric Lenses", "numerical_aperture": 0.48},
+            "esm": {"type": "ExcitationSourceModel", "name": "excitation_source_model",
+                    "manufacturer": "Doric Lenses", "source_type": "LED", "excitation_mode": "one-photon"},
+            "pdm": {"type": "PhotodetectorModel", "name": "photodetector_model",
+                    "manufacturer": "Doric Lenses", "detector_type": "photodiode"},
+            # (also BandOpticalFilterModel, EdgeOpticalFilterModel, DichroicMirrorModel)
+        },
+
+        # Device instances. Each carries a `type` and links its model by `device_model_metadata_key`.
+        "Devices": {
+            "fiber_dms": {"type": "OpticalFiber", "name": "optical_fiber_dms", "device_model_metadata_key": "ofm",
+                          "fiber_insertion": {"depth_in_mm": 4.2, "insertion_position_ap_in_mm": 0.8}},
+            "led_465": {"type": "ExcitationSource", "name": "excitation_source_465",
+                        "device_model_metadata_key": "esm"},
+            "pd": {"type": "Photodetector", "name": "photodetector", "device_model_metadata_key": "pdm"},
+            # (also BandOpticalFilter, EdgeOpticalFilter, DichroicMirror)
+        },
+
         "FiberPhotometry": {
 
             # ----- Shared containers: dicts keyed by metadata_key (built once per file) -----
-
-            # Device models (paired with device instances below)
-            "OpticalFiberModels": {
-                "ofm": {"name": "optical_fiber_model", "manufacturer": "Doric Lenses", "numerical_aperture": 0.48},
-            },
-            "ExcitationSourceModels": {
-                "esm": {"name": "excitation_source_model", "manufacturer": "Doric Lenses",
-                        "source_type": "LED", "excitation_mode": "one-photon"},
-            },
-            "PhotodetectorModels": {
-                "pdm": {"name": "photodetector_model", "manufacturer": "Doric Lenses", "detector_type": "photodiode"},
-            },
-            # (also BandOpticalFilterModels, EdgeOpticalFilterModels, DichroicMirrorModels)
-
-            # Device instances (each references its model by model_metadata_key)
-            "OpticalFibers": {
-                "fiber_dms": {"name": "optical_fiber_dms", "model_metadata_key": "ofm",
-                              "fiber_insertion": {"depth_in_mm": 4.2, "insertion_position_ap_in_mm": 0.8}},
-            },
-            "ExcitationSources": {
-                "led_465": {"name": "excitation_source_465", "model_metadata_key": "esm"},
-            },
-            "Photodetectors": {
-                "pd": {"name": "photodetector", "model_metadata_key": "pdm"},
-            },
-            # (also BandOpticalFilters, EdgeOpticalFilters, DichroicMirrors)
 
             # Indicators, and optionally the viruses/injections that delivered them
             "FiberPhotometryViruses": {
@@ -186,23 +190,26 @@ Shared Containers and Metadata-Key Linking
 Following the ophys system, entries reference each other with ``<thing>_metadata_key`` fields holding
 the *key* of the referenced entry (not its NWB name). The reference chain is:
 
-- A **device instance** references its **model**: ``"model_metadata_key": "ofm"``.
+- A **device instance** (in ``metadata["Devices"]``) references its **model** (in
+  ``metadata["DeviceModels"]``): ``"device_model_metadata_key": "ofm"``.
 - A **virus injection** references its **viral vector**: ``"viral_vector_metadata_key": "aav_gcamp"``.
 - An **indicator** optionally references its **injection**:
   ``"viral_vector_injection_metadata_key": "inj_dms"``.
 - A **table row** references its **devices and indicator** via ``optical_fiber_metadata_key``,
   ``excitation_source_metadata_key``, ``photodetector_metadata_key``, ``indicator_metadata_key``, and
   optionally ``dichroic_mirror_metadata_key``, ``excitation_filter_metadata_key``,
-  ``emission_filter_metadata_key``, and ``commanded_voltage_series_metadata_key``.
+  ``emission_filter_metadata_key``, and ``commanded_voltage_series_metadata_key``. The device keys point
+  into the shared ``metadata["Devices"]`` registry.
 - A **response series** references the **table rows** it spans:
   ``"fiber_photometry_table_region": ["dms_465", "dms_405"]`` (a list of row keys).
 
 At write time each ``_metadata_key`` is resolved through its container to the entry's ``name`` and then
-to the actual NWB object (e.g. an ``optical_fiber_metadata_key`` resolves to ``OpticalFibers[key]["name"]``
-and then ``nwbfile.devices[name]``). The device models and instances come in pairs
-(``OpticalFiberModels`` / ``OpticalFibers``, ``ExcitationSourceModels`` / ``ExcitationSources``, and so
-on). Optical fibers are the one special case: each carries a nested ``fiber_insertion`` block
-(stereotaxic coordinates and insertion geometry), a *contained* component specified inline rather than a
+to the actual NWB object (e.g. an ``optical_fiber_metadata_key`` resolves to ``Devices[key]["name"]``
+and then ``nwbfile.devices[name]``). A device instance and its model are separate entries linked by
+``device_model_metadata_key``, written through the shared device helpers (``_add_device_to_nwbfile`` /
+``_add_device_model_to_nwbfile``); an entry's ``type`` selects the concrete ndx-ophys-devices class.
+Optical fibers are the one special case: each carries a nested ``fiber_insertion`` block (stereotaxic
+coordinates and insertion geometry), a *contained* component specified inline rather than a
 separately-keyed object.
 
 
@@ -240,8 +247,11 @@ table:
    ``dict_deep_update``, which merges the keyed containers by key), so every interface sees the full set
    of shared rows and devices and whichever runs first can build the complete table.
 
-3. Declaring the same-named shared object with *different* contents in two interfaces is a loud error
-   rather than a silent merge, so an authoring mistake surfaces immediately.
+3. Declaring the same-named shared object with *different* contents in two interfaces is currently a
+   *silent* merge for devices and device models: the shared device registry reuses whichever object was
+   written first and ignores the conflicting metadata. Restoring the loud-error-on-conflict behavior at
+   the registry level is tracked in
+   `#1782 <https://github.com/catalystneuro/neuroconv/issues/1782>`_.
 
 Commanded voltage is a special case among the shared containers: it is data-bearing (it reads samples
 from a stream, not just static metadata). Each ``CommandedVoltageSeries`` entry names the input
@@ -253,11 +263,12 @@ associate each demodulated signal with the sinusoidal drive that produced it.
 Default Scaffold and Placeholder Sentinels
 ------------------------------------------
 
-``get_metadata()`` returns the NWBFile basics merged with a default ``FiberPhotometry`` block produced
-by :func:`~neuroconv.tools.fiber_photometry.get_default_fiber_photometry_metadata`. The scaffold is a
-complete, runnable structure — one placeholder device of each kind, one indicator, one table row, and
-one response series entry under the interface's ``metadata_key`` — with required fields pre-filled with
-sentinels:
+``get_metadata()`` returns the NWBFile basics merged with the default ``DeviceModels``, ``Devices``, and
+``FiberPhotometry`` blocks produced by
+:func:`~neuroconv.tools.fiber_photometry.get_default_fiber_photometry_metadata`. The scaffold is a
+complete, runnable structure — one placeholder device (and its model) of each kind in the top-level
+registry, one indicator, one table row, and one response series entry under the interface's
+``metadata_key`` — with required fields pre-filled with sentinels:
 
 - Required **numeric** fields (``excitation_wavelength_in_nm``, ``emission_wavelength_in_nm``,
   ``numerical_aperture``) default to ``NaN``. The ndx spec forbids null here, so there is no honest
