@@ -13,12 +13,8 @@ except ImportError:
 
 GPIO_FILE_PATH = str(OPHYS_DATA_PATH / "analog_datasets" / "inscopix" / "gpio" / "odor_concentration_stimulus.gpio")
 
-# The eight analog/monitor channels present (and non-empty) in the fixture, and their default units.
-EXPECTED_UNITS = {
-    "GPIO-1": "a.u.",
-    "GPIO-2": "a.u.",
-    "GPIO-3": "a.u.",
-    "GPIO-4": "a.u.",
+# Monitor channels have known units; everything else defaults to "a.u.".
+MONITOR_UNITS = {
     "EX-LED": "mW/mm^2",
     "OG-LED": "mW/mm^2",
     "DI-LED": "mW/mm^2",
@@ -36,25 +32,41 @@ def test_session_start_time(interface):
     assert session_start_time == datetime(2025, 2, 27, 11, 25, 28, 935000, tzinfo=timezone.utc)
 
 
-def test_writes_analog_channels_with_units(interface):
+def test_get_available_channels():
+    inventory = InscopixGpioInterface.get_available_channels(GPIO_FILE_PATH)
+    assert len(inventory) == 26
+    by_name = {entry["name"]: entry for entry in inventory}
+    # GPIO-2 is the odor code: 336 samples spanning four levels.
+    assert by_name["GPIO-2"]["num_samples"] == 336
+    assert by_name["GPIO-2"]["unique_values"] == [128.0, 144.0, 160.0, 224.0]
+
+
+def test_writes_all_channels_by_default(interface):
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile)
-    assert set(nwbfile.acquisition) == set(EXPECTED_UNITS)
-    for name, unit in EXPECTED_UNITS.items():
+    # Every one of the 26 channels is written as a TimeSeries (digital and BNC lines included).
+    assert len(nwbfile.acquisition) == 26
+    assert "BNC_Sync_Output" in nwbfile.acquisition
+    assert "Digital_GPI_0" in nwbfile.acquisition
+    for name, unit in MONITOR_UNITS.items():
         time_series = nwbfile.acquisition[name]
         assert isinstance(time_series, TimeSeries)
         assert time_series.unit == unit
         # Irregular sampling: explicit per-event timestamps, not a fixed rate.
         assert time_series.timestamps is not None
         assert time_series.rate is None
+    # A general-purpose GPIO input has no known unit.
+    assert nwbfile.acquisition["GPIO-1"].unit == "a.u."
 
 
-def test_digital_and_bnc_channels_excluded(interface):
-    # The digital lines and BNC sync/trigger channels are events, not analog; they are never written here.
+def test_exclude_channels(interface):
     nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile)
-    written = set(nwbfile.acquisition)
-    assert not any(name.startswith("Digital ") or name.startswith("BNC ") for name in written)
+    InscopixGpioInterface(
+        file_path=GPIO_FILE_PATH, exclude_channels=["BNC Sync Output", "Digital GPI 0"]
+    ).add_to_nwbfile(nwbfile=nwbfile)
+    assert len(nwbfile.acquisition) == 24
+    assert "BNC_Sync_Output" not in nwbfile.acquisition
+    assert "Digital_GPI_0" not in nwbfile.acquisition
 
 
 def test_channel_units_and_conversion_override(interface):
@@ -66,7 +78,6 @@ def test_channel_units_and_conversion_override(interface):
     )
     assert nwbfile.acquisition["GPIO-1"].unit == "volts"
     assert nwbfile.acquisition["GPIO-1"].conversion == 2.5
-    # An un-overridden monitor channel keeps its default unit and conversion.
     assert nwbfile.acquisition["e-focus"].unit == "micrometers"
     assert nwbfile.acquisition["e-focus"].conversion == 1.0
 

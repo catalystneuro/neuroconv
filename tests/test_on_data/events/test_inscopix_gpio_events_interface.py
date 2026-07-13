@@ -16,8 +16,8 @@ except ImportError:
 
 GPIO_FILE_PATH = str(OPHYS_DATA_PATH / "analog_datasets" / "inscopix" / "gpio" / "odor_concentration_stimulus.gpio")
 
-# ``BNC Sync Output`` is a 0/1 frame clock (9 low->high edges); ``GPIO-2`` is the odor-concentration
-# code (amplitudes 128/144/160/224, cut into 4 bands -> 335 band-change events).
+# ``BNC Sync Output`` is a 0/1 frame clock (9 rising edges); ``GPIO-2`` is the odor-concentration code
+# (amplitudes 128/144/160/224, cut into four bands -> 334 band-change events).
 EVENTS_CONFIG = {
     "BNC Sync Output": {"reading": "rising"},
     "GPIO-2": {"levels": [136, 152, 192], "field": "concentration"},
@@ -30,9 +30,15 @@ def interface():
 
 
 def test_requires_events_config():
-    # events_config is a required keyword; omitting it is an error (signal-encoded selection is explicit).
+    # events_config is a required keyword; omitting it is an error (selection is explicit).
     with pytest.raises(ValidationError, match="events_config"):
         InscopixGpioEventsInterface(file_path=GPIO_FILE_PATH)
+
+
+def test_get_available_channels():
+    inventory = InscopixGpioEventsInterface.get_available_channels(GPIO_FILE_PATH)
+    by_name = {entry["name"]: entry for entry in inventory}
+    assert by_name["BNC Sync Output"]["unique_values"] == [0.0, 1.0]  # a 0/1 line
 
 
 def test_metadata_schema_is_valid(interface):
@@ -47,10 +53,10 @@ def test_session_start_time(interface):
 def test_metadata_seeds_event_types(interface):
     event_types = interface.get_metadata()["Events"]["inscopix_gpio_events"]["event_types"]
     assert set(event_types) == {"BNC Sync Output", "GPIO-2"}
-    # The digital line is timestamp-only (no value columns).
+    # The digital line read as rising edges is timestamp-only (no value column).
     assert event_types["BNC Sync Output"]["event_name"] == "bnc_sync_output"
     assert event_types["BNC Sync Output"]["columns"] == {}
-    # The coded line gets one categorical column keyed by its field, labeling the four observed bands.
+    # The coded line gets one categorical column labeling the four observed bands.
     concentration = event_types["GPIO-2"]["columns"]["concentration"]
     assert concentration["column_name"] == "concentration"
     assert concentration["column_categories"]["labels"] == {
@@ -85,7 +91,7 @@ def test_digital_line_is_timestamp_only(interface):
     table = nwbfile.get_events_table("BncSyncOutput")
     assert isinstance(table, EventsTable)
     assert table.colnames == ("timestamp",)
-    assert len(table) == 9  # nine low->high edges on the frame clock
+    assert len(table) == 9  # nine rising edges on the frame clock
 
 
 def test_coded_line_writes_categorical_column(interface):
@@ -93,8 +99,20 @@ def test_coded_line_writes_categorical_column(interface):
     interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
     table = nwbfile.get_events_table("Gpio2")
     assert table.colnames == ("timestamp", "concentration")
-    assert len(table) == 335  # one event per band change
+    assert len(table) == 334  # one event per band change (the opening-state sample is not an event)
     assert set(table["concentration"].data) == {"0", "1", "2", "3"}
+
+
+def test_interval_reading_writes_durations():
+    # A digital line read as intervals carries a duration column.
+    interface = InscopixGpioEventsInterface(
+        file_path=GPIO_FILE_PATH,
+        events_config={"BNC Sync Output": {"reading": "interval"}},
+    )
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+    table = nwbfile.get_events_table("BncSyncOutput")
+    assert "duration" in table.colnames
 
 
 def test_unknown_channel_raises():
@@ -113,5 +131,5 @@ def test_round_trip(interface, tmp_path):
         io.write(nwbfile)
     with NWBHDF5IO(nwbfile_path, mode="r") as io:
         read_nwbfile = io.read()
-        assert len(read_nwbfile.get_events_table("Gpio2")) == 335
+        assert len(read_nwbfile.get_events_table("Gpio2")) == 334
         assert len(read_nwbfile.get_events_table("BncSyncOutput")) == 9
