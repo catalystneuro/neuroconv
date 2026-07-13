@@ -249,14 +249,14 @@ Ophys:
         fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the DMS isosbestic control.
       - name: dls_calcium_signal
         description: The fluorescence from the DLS calcium signal.
-        stream_name: Dv3B
+        stream_name: Dv4B
         stream_indices: null
         unit: a.u.
         fiber_photometry_table_region: [2]
         fiber_photometry_table_region_description: The region of the FiberPhotometryTable corresponding to the DLS calcium signal.
       - name: dls_isosbestic_control
         description: The fluorescence from the DLS isosbestic control.
-        stream_name: Dv3B
+        stream_name: Dv4B
         stream_indices: null
         unit: a.u.
         fiber_photometry_table_region: [3]
