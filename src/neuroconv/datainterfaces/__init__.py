@@ -95,6 +95,7 @@ from .ophys.femtonics.femtonicsdatainterface import FemtonicsImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.inscopix.inscopixsegmentationdatainterface import InscopixSegmentationInterface
 from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterface
+from .ophys.inscopix.inscopixgpiodatainterface import InscopixGpioInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
@@ -122,6 +123,7 @@ from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 # Events
 from .events.csv_events.csveventsdatainterface import CSVEventsInterface
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
+from .events.inscopix_gpio_events.inscopixgpioeventsdatainterface import InscopixGpioEventsInterface
 
 interface_list = [
     # Ecephys
@@ -185,6 +187,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     InscopixImagingInterface,
+    InscopixGpioInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
@@ -216,6 +219,7 @@ interface_list = [
     # Events
     CSVEventsInterface,
     TDTEventsInterface,
+    InscopixGpioEventsInterface,
 ]
 
 interfaces_by_category = dict(
@@ -249,6 +253,7 @@ interfaces_by_category = dict(
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
         IntanStim=IntanStimInterface,
+        InscopixGpio=InscopixGpioInterface,
     ),
     icephys=dict(Abf=AbfInterface, AxonIntracellular=AxonIntracellularInterface),
     behavior=dict(
@@ -270,5 +275,6 @@ interfaces_by_category = dict(
     events=dict(
         CSVEvents=CSVEventsInterface,
         TDTEvents=TDTEventsInterface,
+        InscopixGpioEvents=InscopixGpioEventsInterface,
     ),
 )

@@ -127,6 +127,7 @@ Events
 
     CSV Events <events/csv_events>
     TDT Events <events/tdt_events>
+    Inscopix GPIO <events/inscopix_gpio>
 
 
 Image
