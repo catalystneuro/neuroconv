@@ -18,7 +18,7 @@ from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
     BrukerTiffMultiPlaneConverter,
     BrukerTiffSinglePlaneConverter,
 )
-from ..datainterfaces.ophys.guppy.tdtfiberphotometryguppyconverter import (
+from ..datainterfaces.fiber_photometry.guppy.tdtfiberphotometryguppyconverter import (
     TDTFiberPhotometryGuppyConverter,
 )
 from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConverter

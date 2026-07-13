@@ -12,60 +12,30 @@ The :py:class:`~neuroconv.converters.TDTFiberPhotometryGuppyConverter` bundles t
 Specify the minimal metadata required for the conversion.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The converter writes the GuPPy-derived traces as ``FiberPhotometryResponseSeries`` linked back into the acquisition ``FiberPhotometryTable``, so the table and the raw response series describe the optical hardware. Each response series ``stream_name`` is the TDT store name GuPPy processed (here ``Dv2A``/``Dv1A`` for DMS and ``Dv4B``/``Dv3B`` for DLS); the converter uses these to auto-link every GuPPy region to its table rows.
+The converter discovers the acquisition channels from the GuPPy ``storesList.csv`` -- each region contributes its ``signal`` and ``control`` store -- and builds one raw ``FiberPhotometryResponseSeries`` (and one ``FiberPhotometryTable`` row) per store, keyed by ``<region>_<role>`` (here ``dms_signal``/``dms_control`` and ``dls_signal``/``dls_control``). The GuPPy-derived traces are written as ``FiberPhotometryResponseSeries`` linked back into that table. ``converter.get_metadata()`` returns a runnable scaffold with placeholder values; fill in the real optical hardware, indicator, and per-row location/wavelengths by row key (they must match the keys above), and ``run_conversion`` warns about any placeholder left behind.
 
 .. code-block:: python
 
     >>> fiber_photometry_metadata = {
-    ...     "Ophys": {
-    ...         "FiberPhotometry": {
-    ...             "OpticalFiberModels": [
-    ...                 {"name": "optical_fiber_model", "manufacturer": "Doric Lenses", "numerical_aperture": 0.48}
-    ...             ],
-    ...             "OpticalFibers": [
-    ...                 {"name": "optical_fiber", "model": "optical_fiber_model", "fiber_insertion": {"depth_in_mm": 2.8}}
-    ...             ],
-    ...             "ExcitationSourceModels": [
-    ...                 {"name": "excitation_source_model", "manufacturer": "Doric Lenses", "source_type": "LED", "excitation_mode": "one-photon"}
-    ...             ],
-    ...             "ExcitationSources": [
-    ...                 {"name": "excitation_source_calcium_signal", "model": "excitation_source_model"},
-    ...                 {"name": "excitation_source_isosbestic_control", "model": "excitation_source_model"}
-    ...             ],
-    ...             "PhotodetectorModels": [
-    ...                 {"name": "photodetector_model", "manufacturer": "Doric Lenses", "detector_type": "photodiode"}
-    ...             ],
-    ...             "Photodetectors": [
-    ...                 {"name": "photodetector", "model": "photodetector_model"}
-    ...             ],
-    ...             "DichroicMirrorModels": [
-    ...                 {"name": "dichroic_mirror_model", "manufacturer": "Doric Lenses"}
-    ...             ],
-    ...             "DichroicMirrors": [
-    ...                 {"name": "dichroic_mirror", "model": "dichroic_mirror_model"}
-    ...             ],
-    ...             "FiberPhotometryIndicators": [
-    ...                 {"name": "dms_green_fluorophore", "description": "GCaMP7b indicator for the DMS recording.", "label": "GCaMP7b"},
-    ...                 {"name": "dls_green_fluorophore", "description": "GCaMP7b indicator for the DLS recording.", "label": "GCaMP7b"}
-    ...             ],
-    ...             "FiberPhotometryTable": {
-    ...                 "name": "fiber_photometry_table",
-    ...                 "description": "Fiber photometry system metadata table.",
-    ...                 "rows": [
-    ...                     {"name": "0", "location": "DMS", "excitation_wavelength_in_nm": 465.0, "emission_wavelength_in_nm": 525.0, "indicator": "dms_green_fluorophore", "optical_fiber": "optical_fiber", "excitation_source": "excitation_source_calcium_signal", "photodetector": "photodetector", "dichroic_mirror": "dichroic_mirror"},
-    ...                     {"name": "1", "location": "DMS", "excitation_wavelength_in_nm": 405.0, "emission_wavelength_in_nm": 525.0, "indicator": "dms_green_fluorophore", "optical_fiber": "optical_fiber", "excitation_source": "excitation_source_isosbestic_control", "photodetector": "photodetector", "dichroic_mirror": "dichroic_mirror"},
-    ...                     {"name": "2", "location": "DLS", "excitation_wavelength_in_nm": 465.0, "emission_wavelength_in_nm": 525.0, "indicator": "dls_green_fluorophore", "optical_fiber": "optical_fiber", "excitation_source": "excitation_source_calcium_signal", "photodetector": "photodetector", "dichroic_mirror": "dichroic_mirror"},
-    ...                     {"name": "3", "location": "DLS", "excitation_wavelength_in_nm": 405.0, "emission_wavelength_in_nm": 525.0, "indicator": "dls_green_fluorophore", "optical_fiber": "optical_fiber", "excitation_source": "excitation_source_isosbestic_control", "photodetector": "photodetector", "dichroic_mirror": "dichroic_mirror"}
-    ...                 ]
+    ...     "DeviceModels": {
+    ...         "optical_fiber_model": {"manufacturer": "Doric Lenses", "numerical_aperture": 0.48},
+    ...         "excitation_source_model": {"manufacturer": "Doric Lenses", "source_type": "LED", "excitation_mode": "one-photon"},
+    ...         "photodetector_model": {"manufacturer": "Doric Lenses", "detector_type": "photodiode"},
+    ...     },
+    ...     "FiberPhotometry": {
+    ...         "FiberPhotometryIndicators": {
+    ...             "indicator": {"label": "GCaMP7b", "description": "GCaMP7b calcium indicator."},
+    ...         },
+    ...         "FiberPhotometryTable": {
+    ...             "description": "Fiber photometry acquisition table for the dual-region GuPPy session.",
+    ...             "rows": {
+    ...                 "dms_signal": {"location": "DMS", "excitation_wavelength_in_nm": 465.0, "emission_wavelength_in_nm": 525.0},
+    ...                 "dms_control": {"location": "DMS", "excitation_wavelength_in_nm": 405.0, "emission_wavelength_in_nm": 525.0},
+    ...                 "dls_signal": {"location": "DLS", "excitation_wavelength_in_nm": 465.0, "emission_wavelength_in_nm": 525.0},
+    ...                 "dls_control": {"location": "DLS", "excitation_wavelength_in_nm": 405.0, "emission_wavelength_in_nm": 525.0},
     ...             },
-    ...             "FiberPhotometryResponseSeries": [
-    ...                 {"name": "dms_calcium_signal", "description": "The fluorescence from the DMS calcium signal.", "stream_name": "Dv2A", "unit": "a.u.", "fiber_photometry_table_region": [0], "fiber_photometry_table_region_description": "The DMS calcium signal."},
-    ...                 {"name": "dms_isosbestic_control", "description": "The fluorescence from the DMS isosbestic control.", "stream_name": "Dv1A", "unit": "a.u.", "fiber_photometry_table_region": [1], "fiber_photometry_table_region_description": "The DMS isosbestic control."},
-    ...                 {"name": "dls_calcium_signal", "description": "The fluorescence from the DLS calcium signal.", "stream_name": "Dv4B", "unit": "a.u.", "fiber_photometry_table_region": [2], "fiber_photometry_table_region_description": "The DLS calcium signal."},
-    ...                 {"name": "dls_isosbestic_control", "description": "The fluorescence from the DLS isosbestic control.", "stream_name": "Dv3B", "unit": "a.u.", "fiber_photometry_table_region": [3], "fiber_photometry_table_region_description": "The DLS isosbestic control."}
-    ...             ]
-    ...         }
-    ...     }
+    ...         },
+    ...     },
     ... }
 
 Convert TDT Fiber Photometry + GuPPy data to NWB

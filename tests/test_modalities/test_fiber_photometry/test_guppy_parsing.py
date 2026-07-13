@@ -8,7 +8,9 @@ both GuPPy binning modes -- integer ``bin_(0-3)`` ("# of trials") and decimal ``
 import numpy as np
 import pandas
 
-from neuroconv.datainterfaces.ophys.guppy.guppydatainterface import GuppyInterface
+from neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface import (
+    GuppyInterface,
+)
 
 SESSION = "Photo_249_391-200721-120136"
 

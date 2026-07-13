@@ -19,11 +19,19 @@ from ..setup_paths import OPHYS_DATA_PATH
 # (Dv1A/Dv2A/Dv3B/Dv4B, LNRW/LNnR/PrtR) are exactly the ones this tank exposes, which is the only
 # coupling the converter requires.
 SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"
-FIBER_PHOTOMETRY_METADATA_FILE = Path(__file__).parent / "fiber_photometry_metadata.yaml"
+FIBER_PHOTOMETRY_METADATA_FILE = Path(__file__).parent / "guppy_converter_metadata.yaml"
 
 
 EXPECTED_REGIONS = ("dms", "dls")
 EXPECTED_TDT_SESSION_START_TIME = datetime(2020, 7, 21, 17, 2, 24, 999999, tzinfo=timezone.utc)
+# One single-series TDT acquisition interface (and one FiberPhotometryTable row) per GuPPy store.
+EXPECTED_TDT_INTERFACE_NAMES = {
+    "TDTFiberPhotometry_dms_signal",
+    "TDTFiberPhotometry_dms_control",
+    "TDTFiberPhotometry_dls_signal",
+    "TDTFiberPhotometry_dls_control",
+}
+EXPECTED_RESPONSE_SERIES_NAMES = {"dms_signal", "dms_control", "dls_signal", "dls_control"}
 
 
 class TestTDTFiberPhotometryGuppyConverter:
@@ -44,7 +52,7 @@ class TestTDTFiberPhotometryGuppyConverter:
         return dict_deep_update(converter.get_metadata(), editable_metadata)
 
     def test_construction_creates_all_interfaces(self, converter):
-        assert set(converter.data_interface_objects) == {"TDTFiberPhotometry", "TDTEvents", "Guppy"}
+        assert set(converter.data_interface_objects) == EXPECTED_TDT_INTERFACE_NAMES | {"TDTEvents", "Guppy"}
 
     def test_session_start_time_taken_from_tdt(self, converter):
         metadata = converter.get_metadata()
@@ -84,12 +92,7 @@ class TestTDTFiberPhotometryGuppyConverter:
                 for name, obj in nwbfile.acquisition.items()
                 if obj.neurodata_type == "FiberPhotometryResponseSeries"
             ]
-            assert {
-                "dms_calcium_signal",
-                "dms_isosbestic_control",
-                "dls_calcium_signal",
-                "dls_isosbestic_control",
-            } == set(response_series_names)
+            assert EXPECTED_RESPONSE_SERIES_NAMES == set(response_series_names)
 
             assert "guppy" in nwbfile.processing
             processing_module = nwbfile.processing["guppy"]
@@ -179,15 +182,14 @@ class TestTDTFiberPhotometryGuppyConverter:
                 assert referenced is nwbfile.get_events_table(_to_table_object_name(event_name))
 
     def test_derive_region_to_table_indices(self, converter, metadata):
-        """The auto-join composes region -> store names -> stream_name -> table rows."""
+        """Each region owns the table-row indices of its signal + control acquisition series."""
         region_to_indices = converter._derive_region_to_table_indices(metadata)
         assert region_to_indices == {"dms": [0, 1], "dls": [2, 3]}
 
-    def test_unmatched_stream_name_raises(self, converter, metadata):
-        """A region whose stores match no response-series stream_name fails loudly."""
-        for response_series in metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryResponseSeries"]:
-            response_series["stream_name"] = "does_not_exist"
-        with pytest.raises(AssertionError, match="matched no FiberPhotometryResponseSeries"):
+    def test_missing_table_row_raises(self, converter, metadata):
+        """A region whose acquisition row is missing from the table fails loudly."""
+        del metadata["FiberPhotometry"]["FiberPhotometryTable"]["rows"]["dms_signal"]
+        with pytest.raises(AssertionError, match="not present"):
             converter._derive_region_to_table_indices(metadata)
 
     def test_guppy_timestamps_in_nwb_are_native(self, converter, metadata, tmp_path):
