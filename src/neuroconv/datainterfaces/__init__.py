@@ -242,8 +242,8 @@ interfaces_by_category = dict(
         if "Segmentation" in interface.__name__
     },
     fiber_photometry={
-        "TDTFiberPhotometry": TDTFiberPhotometryInterface,
         "DoricFiberPhotometry": DoricFiberPhotometryInterface,
+        "TDTFiberPhotometry": TDTFiberPhotometryInterface,
     },
     processed_fiber_photometry={
         "Guppy": GuppyInterface,
@@ -268,7 +268,6 @@ interfaces_by_category = dict(
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
         MedPC=MedPCInterface,
-        TDTEvents=TDTEventsInterface,
     ),
     image=dict(
         Image=ImageInterface,
