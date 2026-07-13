@@ -847,7 +847,7 @@ class TestDoricFiberPhotometryInterfaceLegacyHDF5(FiberPhotometryInterfaceTestMi
 
     data_interface_cls = DoricFiberPhotometryInterface
     interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "D2-EPConsole_0039.doric"),
+        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "D2-EPConsole_0039_stub.doric"),
         stream_names="Console_AIn-1 - Raw",
         metadata_key="Signal",
     )
