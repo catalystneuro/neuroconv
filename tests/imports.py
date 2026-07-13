@@ -90,6 +90,7 @@ class TestImportStructure(TestCase):
             "ecephys",
             "icephys",
             "ophys",
+            "fiber_photometry",
             "text",
             "image",
             "events",

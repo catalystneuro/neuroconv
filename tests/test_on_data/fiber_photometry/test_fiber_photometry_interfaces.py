@@ -13,8 +13,12 @@ from neuroconv.datainterfaces import (
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
 )
+from neuroconv.datainterfaces.fiber_photometry.tdt.tdtfiberphotometrydatainterface import (
+    _TDTFiberPhotometryInterfaceMultiSeries,
+)
 from neuroconv.tools.testing.data_interface_mixins import (
     DoricFiberPhotometryInterfaceMixin,
+    FiberPhotometryInterfaceTestMixin,
     TDTFiberPhotometryInterfaceMixin,
 )
 from neuroconv.utils import dict_deep_update, load_dict_from_file
@@ -26,7 +30,9 @@ except ImportError:
 
 
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
-    data_interface_cls = TDTFiberPhotometryInterface
+    # Tests the deprecated multi-series implementation directly (the public TDTFiberPhotometryInterface
+    # now routes ``stream_names``-less construction here with a DeprecationWarning).
+    data_interface_cls = _TDTFiberPhotometryInterfaceMultiSeries
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"),
     )
@@ -707,106 +713,104 @@ _DORIC_STREAM_NAMES = sorted(
 )
 
 _DORIC_METADATA = {
-    "Ophys": {
-        "FiberPhotometry": {
-            "OpticalFiberModels": [
-                {
-                    "name": "optical_fiber_model",
-                    "manufacturer": "Doric Lenses",
-                    "numerical_aperture": 0.48,
-                    "core_diameter_in_um": 400.0,
-                }
-            ],
-            "OpticalFibers": [
-                {
-                    "name": "optical_fiber",
-                    "model": "optical_fiber_model",
-                    "fiber_insertion": {"depth_in_mm": 2.8},
-                }
-            ],
-            "ExcitationSourceModels": [
-                {
-                    "name": "excitation_source_model",
-                    "manufacturer": "Doric Lenses",
-                    "source_type": "LED",
-                    "excitation_mode": "one-photon",
-                }
-            ],
-            "ExcitationSources": [
-                {
-                    "name": "excitation_source_465nm",
-                    "model": "excitation_source_model",
-                },
-                {
-                    "name": "excitation_source_405nm",
-                    "model": "excitation_source_model",
-                },
-            ],
-            "PhotodetectorModels": [
-                {
-                    "name": "photodetector_model",
-                    "manufacturer": "Doric Lenses",
-                    "detector_type": "photodiode",
-                }
-            ],
-            "Photodetectors": [
-                {
-                    "name": "photodetector",
-                    "model": "photodetector_model",
-                }
-            ],
-            "FiberPhotometryIndicators": [
-                {
-                    "name": "green_fluorophore",
-                    "description": "GCaMP7b calcium indicator.",
-                    "label": "GCaMP7b",
-                }
-            ],
-            "FiberPhotometryTable": {
-                "name": "fiber_photometry_table",
-                "description": "Fiber photometry acquisition metadata.",
-                "rows": [
-                    {
-                        "name": "0",
-                        "location": "DMS",
-                        "excitation_wavelength_in_nm": 465.0,
-                        "emission_wavelength_in_nm": 525.0,
-                        "indicator": "green_fluorophore",
-                        "optical_fiber": "optical_fiber",
-                        "excitation_source": "excitation_source_465nm",
-                        "photodetector": "photodetector",
-                    },
-                    {
-                        "name": "1",
-                        "location": "DMS",
-                        "excitation_wavelength_in_nm": 405.0,
-                        "emission_wavelength_in_nm": 525.0,
-                        "indicator": "green_fluorophore",
-                        "optical_fiber": "optical_fiber",
-                        "excitation_source": "excitation_source_405nm",
-                        "photodetector": "photodetector",
-                    },
-                ],
+    "FiberPhotometry": {
+        "OpticalFiberModels": [
+            {
+                "name": "optical_fiber_model",
+                "manufacturer": "Doric Lenses",
+                "numerical_aperture": 0.48,
+                "core_diameter_in_um": 400.0,
+            }
+        ],
+        "OpticalFibers": [
+            {
+                "name": "optical_fiber",
+                "model": "optical_fiber_model",
+                "fiber_insertion": {"depth_in_mm": 2.8},
+            }
+        ],
+        "ExcitationSourceModels": [
+            {
+                "name": "excitation_source_model",
+                "manufacturer": "Doric Lenses",
+                "source_type": "LED",
+                "excitation_mode": "one-photon",
+            }
+        ],
+        "ExcitationSources": [
+            {
+                "name": "excitation_source_465nm",
+                "model": "excitation_source_model",
             },
-            "FiberPhotometryResponseSeries": [
+            {
+                "name": "excitation_source_405nm",
+                "model": "excitation_source_model",
+            },
+        ],
+        "PhotodetectorModels": [
+            {
+                "name": "photodetector_model",
+                "manufacturer": "Doric Lenses",
+                "detector_type": "photodiode",
+            }
+        ],
+        "Photodetectors": [
+            {
+                "name": "photodetector",
+                "model": "photodetector_model",
+            }
+        ],
+        "FiberPhotometryIndicators": [
+            {
+                "name": "green_fluorophore",
+                "description": "GCaMP7b calcium indicator.",
+                "label": "GCaMP7b",
+            }
+        ],
+        "FiberPhotometryTable": {
+            "name": "fiber_photometry_table",
+            "description": "Fiber photometry acquisition metadata.",
+            "rows": [
                 {
-                    "name": "signal_exc1_roi1",
-                    "description": "465 nm channel, ROI 1.",
-                    "stream_name": "BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
-                    "unit": "a.u.",
-                    "fiber_photometry_table_region": [0],
-                    "fiber_photometry_table_region_description": "Row 0.",
+                    "name": "0",
+                    "location": "DMS",
+                    "excitation_wavelength_in_nm": 465.0,
+                    "emission_wavelength_in_nm": 525.0,
+                    "indicator": "green_fluorophore",
+                    "optical_fiber": "optical_fiber",
+                    "excitation_source": "excitation_source_465nm",
+                    "photodetector": "photodetector",
                 },
                 {
-                    "name": "signal_exc2_roi1",
-                    "description": "405 nm channel, ROI 1.",
-                    "stream_name": "BBC300_ROISignals_Series0001_CAM1EXC2_ROI01",
-                    "unit": "a.u.",
-                    "fiber_photometry_table_region": [1],
-                    "fiber_photometry_table_region_description": "Row 1.",
+                    "name": "1",
+                    "location": "DMS",
+                    "excitation_wavelength_in_nm": 405.0,
+                    "emission_wavelength_in_nm": 525.0,
+                    "indicator": "green_fluorophore",
+                    "optical_fiber": "optical_fiber",
+                    "excitation_source": "excitation_source_405nm",
+                    "photodetector": "photodetector",
                 },
             ],
-        }
+        },
+        "FiberPhotometryResponseSeries": [
+            {
+                "name": "signal_exc1_roi1",
+                "description": "465 nm channel, ROI 1.",
+                "stream_name": "BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+                "unit": "a.u.",
+                "fiber_photometry_table_region": [0],
+                "fiber_photometry_table_region_description": "Row 0.",
+            },
+            {
+                "name": "signal_exc2_roi1",
+                "description": "405 nm channel, ROI 1.",
+                "stream_name": "BBC300_ROISignals_Series0001_CAM1EXC2_ROI01",
+                "unit": "a.u.",
+                "fiber_photometry_table_region": [1],
+                "fiber_photometry_table_region_description": "Row 1.",
+            },
+        ],
     }
 }
 
@@ -929,3 +933,42 @@ class TestDoricFiberPhotometryInterface(TestCase, DoricFiberPhotometryInterfaceM
         for name, (st, r) in aligned.items():
             assert retrieved[name][0] == st
             assert retrieved[name][1] == r
+
+
+class TestTDTFiberPhotometryInterfaceSingleSeries(FiberPhotometryInterfaceTestMixin):
+    """Tests the new single-series TDTFiberPhotometryInterface (one FiberPhotometryResponseSeries)."""
+
+    data_interface_cls = TDTFiberPhotometryInterface
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photometry-161823_stubbed"),
+        stream_names="_405R",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True, stub_samples=5)
+    save_directory = OUTPUT_PATH
+
+    # Expected first 5 samples of the "_405R" store and its sampling, verified against the tank.
+    expected_response_series_data = np.array(
+        [0.32750106, 0.3274658, 0.32822716, 0.33025593, 0.3340194], dtype=np.float32
+    )
+    expected_starting_time = 0.0
+    expected_rate = 1017.2526245117188
+
+    def check_extracted_metadata(self, metadata: dict):
+        # TDT-specific idiosyncrasy: the session start time is read from the tank header.
+        assert "session_start_time" in metadata["NWBFile"]
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(folder_path=self.interface_kwargs["folder_path"])
+        assert "_405R" in streams and "_490R" in streams
+
+    def test_stream_names_less_construction_routes_to_deprecated_multiseries(self):
+        with pytest.warns(DeprecationWarning, match="stream_names"):
+            interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"])
+        assert isinstance(interface._delegate, _TDTFiberPhotometryInterfaceMultiSeries)
+
+    def test_metadata_key_generated_from_stream_names(self):
+        # With no explicit metadata_key, it is derived from stream_names (as in ScanImage).
+        interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"], stream_names="_405R")
+        assert interface.metadata_key == "fiber_photometry_405r"
+        assert interface.metadata_key in interface.get_metadata()["FiberPhotometry"]
