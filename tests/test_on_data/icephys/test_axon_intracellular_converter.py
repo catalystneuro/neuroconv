@@ -163,6 +163,10 @@ class TestAxonConverterDisambiguatesCollidingFilenames:
         assert len(nwbfile.icephys_sequential_recordings) == 2
 
 
+# NOTE: the two test classes below exercise format-agnostic converter/interface machinery (the icephys-hierarchy
+# aggregation and metadata-driven electrode sharing), not anything ABF-specific. They would be better tested once,
+# generically, through a shared icephys mock interface so any icephys interface benefits. Until that mock exists they
+# remain here, since they cover important features of the converter and interfaces.
 class TestAxonConverterRepetitionsAndConditions:
     """Aggregation of the ``repetition`` / ``condition`` grouping labels into the ``Repetitions`` and
     ``ExperimentalConditions`` tables. Every method drives the same four back-to-back runs (one cell, one channel),
@@ -275,7 +279,7 @@ class TestAxonConverterRepetitionsAndConditions:
         assert all(len(conditions["repetitions"][i]) == 1 for i in range(2))
 
 
-class TestAxonConverterSharedElectrodeAcrossFiles:
+class TestAxonConverterElectrodeSharingThroughMetadata:
     """Use case: several runs of one cell were saved as separate files, so each defaults to its own electrode, but the
     user knows they are the same physical pipette and wants them recorded against a single electrode. Editing the
     metadata to point every response series at one electrode entry collapses them onto that shared electrode and its
