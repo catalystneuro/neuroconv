@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -8,7 +7,6 @@ from pynwb import NWBHDF5IO
 from neuroconv.converters import TDTFiberPhotometryGuppyConverter
 from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
-from neuroconv.utils import dict_deep_update, load_dict_from_file
 
 from ..setup_paths import OPHYS_DATA_PATH
 
@@ -19,7 +17,6 @@ from ..setup_paths import OPHYS_DATA_PATH
 # (Dv1A/Dv2A/Dv3B/Dv4B, LNRW/LNnR/PrtR) are exactly the ones this tank exposes, which is the only
 # coupling the converter requires.
 SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"
-FIBER_PHOTOMETRY_METADATA_FILE = Path(__file__).parent / "guppy_converter_metadata.yaml"
 
 
 EXPECTED_REGIONS = ("dms", "dls")
@@ -46,11 +43,6 @@ class TestTDTFiberPhotometryGuppyConverter:
             guppy_folder_path=guppy_output_folder,
         )
 
-    @pytest.fixture
-    def metadata(self, converter):
-        editable_metadata = load_dict_from_file(FIBER_PHOTOMETRY_METADATA_FILE)
-        return dict_deep_update(converter.get_metadata(), editable_metadata)
-
     def test_construction_creates_all_interfaces(self, converter):
         assert set(converter.data_interface_objects) == EXPECTED_TDT_INTERFACE_NAMES | {"TDTEvents", "Guppy"}
 
@@ -73,11 +65,10 @@ class TestTDTFiberPhotometryGuppyConverter:
         ophys_properties = schema["properties"]["Ophys"]["properties"]
         assert "Guppy" in ophys_properties
 
-    def test_run_conversion_writes_acquisition_and_processing(self, converter, metadata, tmp_path):
+    def test_run_conversion_writes_acquisition_and_processing(self, converter, tmp_path):
         nwbfile_path = tmp_path / "tdt_guppy_converter.nwb"
         converter.run_conversion(
             nwbfile_path=str(nwbfile_path),
-            metadata=metadata,
             overwrite=True,
             stub_test=True,
         )
@@ -147,11 +138,10 @@ class TestTDTFiberPhotometryGuppyConverter:
             "PrtR": "port_entries",
         }
 
-    def test_run_conversion_writes_tdt_events(self, converter, metadata, tmp_path):
+    def test_run_conversion_writes_tdt_events(self, converter, tmp_path):
         nwbfile_path = tmp_path / "tdt_guppy_events.nwb"
         converter.run_conversion(
             nwbfile_path=str(nwbfile_path),
-            metadata=metadata,
             overwrite=True,
             stub_test=True,
         )
@@ -181,18 +171,19 @@ class TestTDTFiberPhotometryGuppyConverter:
                 referenced = events_table["events"][row_index]
                 assert referenced is nwbfile.get_events_table(_to_table_object_name(event_name))
 
-    def test_derive_region_to_table_indices(self, converter, metadata):
+    def test_derive_region_to_table_indices(self, converter):
         """Each region owns the table-row indices of its signal + control acquisition series."""
-        region_to_indices = converter._derive_region_to_table_indices(metadata)
+        region_to_indices = converter._derive_region_to_table_indices(converter.get_metadata())
         assert region_to_indices == {"dms": [0, 1], "dls": [2, 3]}
 
-    def test_missing_table_row_raises(self, converter, metadata):
+    def test_missing_table_row_raises(self, converter):
         """A region whose acquisition row is missing from the table fails loudly."""
+        metadata = converter.get_metadata()
         del metadata["FiberPhotometry"]["FiberPhotometryTable"]["rows"]["dms_signal"]
         with pytest.raises(AssertionError, match="not present"):
             converter._derive_region_to_table_indices(metadata)
 
-    def test_guppy_timestamps_in_nwb_are_native(self, converter, metadata, tmp_path):
+    def test_guppy_timestamps_in_nwb_are_native(self, converter, tmp_path):
         """GuPPy traces keep their native timestamps -- no cross-system offset is applied.
 
         GuPPy and TDT share the recording-start origin, so GuPPy's emitted timestamps already sit
@@ -202,7 +193,6 @@ class TestTDTFiberPhotometryGuppyConverter:
         nwbfile_path = tmp_path / "tdt_guppy_alignment.nwb"
         converter.run_conversion(
             nwbfile_path=str(nwbfile_path),
-            metadata=metadata,
             overwrite=True,
             stub_test=True,
         )
