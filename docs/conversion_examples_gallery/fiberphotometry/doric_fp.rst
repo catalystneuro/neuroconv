@@ -48,7 +48,7 @@ before construction) to discover stream names for any of these variants.
     ['ref', 'sig']
 
     >>> # As does the legacy "EPConsole" HDF5 layout
-    >>> legacy_file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "D2-EPConsole_0039.doric"
+    >>> legacy_file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "D2-EPConsole_0039_stub.doric"
     >>> legacy_streams = DoricFiberPhotometryInterface.get_available_streams(file_path=legacy_file_path)
     >>> print(legacy_streams)
     ['Console_AIn-1 - Raw', 'Console_AIn-2 - Raw', 'Console_DI--O-1']
