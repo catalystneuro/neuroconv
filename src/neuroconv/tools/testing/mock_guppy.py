@@ -6,8 +6,10 @@ carries a long time/lag/sample axis. None of that bulk is needed to exercise ``G
 parsing and writing logic, so this module reproduces the *format* of each file GuPPy emits (with
 tiny arrays) without any dependency on GuPPy itself.
 
-Each private writer mirrors the corresponding GuPPy writer, cited in its docstring, so the format
-stays traceable to the source. File layouts were captured from GuPPy 2.0.0a7 output.
+Each private writer reproduces a documented on-disk format -- its filename pattern plus the HDF5
+dataset keys / DataFrame columns / dtypes that ``GuppyInterface`` reads -- described in its own
+docstring, with no dependency on GuPPy's internals. These layouts were captured from real GuPPy
+output.
 """
 
 import json
@@ -194,8 +196,7 @@ def _trial_bin_edges(num_trials: int, bin_size_in_trials: int) -> list[tuple[int
 def _write_stores_list(folder_path, region_to_stores, event_store_to_name) -> None:
     """Two-row ``storesList.csv`` (row 0 = acquisition store names, row 1 = GuPPy semantic names).
 
-    Mirrors the inlined ``np.savetxt(..., delimiter=",", fmt="%s")`` writes in GuPPy
-    (orchestration/storenames.py:451, analysis/control_channel.py:79).
+    Written via ``np.savetxt(..., delimiter=",", fmt="%s")``.
     """
     store_names, semantic_names = [], []
     for region, stores in region_to_stores.items():
@@ -213,7 +214,7 @@ def _write_stores_list(folder_path, region_to_stores, event_store_to_name) -> No
 def _write_parameters(
     folder_path, guppy_version, zscore_method, peak_start_points, peak_end_points, bin_size_in_trials
 ) -> None:
-    """``GuPPyParamtersUsed.json`` via ``json.dump`` (mirrors orchestration/save_parameters.py:69).
+    """``GuPPyParamtersUsed.json`` written via ``json.dump``.
 
     ``peak_startPoint``/``peak_endPoint`` are padded to length 10 with NaN exactly as GuPPy does;
     ``GuppyInterface`` strips the NaN padding back to the real windows.
@@ -248,19 +249,15 @@ def _write_parameters(
 
 
 def _write_trace(folder_path, prefix, region, num_samples) -> None:
-    """``<prefix>_<region>.hdf5`` with a single 1-D float64 ``data`` dataset.
-
-    Mirrors ``analysis/standard_io.write_zscore`` -> ``utils/_hdf5_io.write_hdf5(..., key="data")``.
-    """
+    """``<prefix>_<region>.hdf5`` with a single 1-D float64 dataset under key ``data``."""
     data = np.linspace(-1.0, 1.0, num_samples, dtype=np.float64)
     with h5py.File(folder_path / f"{prefix}_{region}.hdf5", "w") as trace_file:
         trace_file.create_dataset("data", data=data, maxshape=(None,), chunks=True)
 
 
 def _write_time_correction(folder_path, region, timestamps, sampling_rate, session_start_time) -> None:
-    """``timeCorrection_<region>.hdf5`` with ``timeRecStart``/``timestampNew``/``sampling_rate``/``correctionIndex``.
-
-    Mirrors ``analysis/standard_io.write_corrected_timestamps`` (four keyed ``write_hdf5`` calls).
+    """``timeCorrection_<region>.hdf5`` with four keyed datasets: ``timeRecStart``, ``timestampNew``,
+    ``sampling_rate``, ``correctionIndex``.
     """
     time_rec_start = np.asarray([session_start_time.timestamp()], dtype=np.float64)
     correction_index = np.arange(timestamps.shape[0], dtype=np.int64)
@@ -274,8 +271,8 @@ def _write_time_correction(folder_path, region, timestamps, sampling_rate, sessi
 def _write_transients_occurrences(folder_path, feature, region) -> None:
     """``transientsOccurrences_<feature>_<region>.csv`` with columns ``timestamps``, ``amplitude``.
 
-    Mirrors ``analysis/standard_io.write_freq_and_amp_to_csv`` (a generic ``DataFrame.to_csv``). The
-    peaks sit inside the trace window; a couple fall beyond the 1-s stub window on purpose.
+    Written as a DataFrame via ``to_csv`` (leading integer index column). The peaks sit inside the
+    trace window; a couple fall beyond the 1-s stub window on purpose.
     """
     peaks = np.array([[1.2, 0.9], [1.5, 1.4], [1.8, 0.7], [2.5, 1.1]], dtype=np.float64)
     dataframe = pandas.DataFrame(peaks, index=np.arange(peaks.shape[0]), columns=["timestamps", "amplitude"])
@@ -285,7 +282,7 @@ def _write_transients_occurrences(folder_path, feature, region) -> None:
 def _write_freq_and_amp(folder_path, feature, region) -> None:
     """``freqAndAmp_<feature>_<region>.h5`` -- one row, columns ``freq (events/min)``, ``amplitude``.
 
-    Mirrors ``analysis/standard_io.write_freq_and_amp_to_hdf5`` (``DataFrame.to_hdf(key="df")``).
+    Written as a DataFrame via ``to_hdf(key="df")``.
     """
     dataframe = pandas.DataFrame([[28.7, 2.18]], index=[_SESSION_ID], columns=["freq (events/min)", "amplitude"])
     dataframe.to_hdf(folder_path / f"freqAndAmp_{feature}_{region}.h5", key="df", mode="w")
@@ -295,8 +292,7 @@ def _event_matrix_dataframe(axis, trial_onsets, bin_edges) -> pandas.DataFrame:
     """Build the shared PSTH / cross-correlation DataFrame layout.
 
     Columns: one float-named column per trial onset, then ``bin_(a-b)``/``bin_err_(a-b)`` pairs,
-    then ``timestamps``, ``mean``, ``err`` -- all float32, matching GuPPy's
-    ``analysis/psth_utils.create_Df_for_psth`` / ``create_Df_for_cross_correlation`` output.
+    then ``timestamps``, ``mean``, ``err`` -- all float32.
     """
     num_points = axis.shape[0]
     data = {}
@@ -317,7 +313,7 @@ def _write_psth(
 ) -> None:
     """PSTH ``.h5`` -- ``<event>_<region>_<feature>_<region>.h5`` (+ ``baselineUncorrected`` variant).
 
-    Mirrors ``analysis/psth_utils.create_Df_for_psth`` -> ``DataFrame.to_hdf(key="df")``.
+    Written as a DataFrame via ``to_hdf(key="df")``.
     """
     suffix = "" if baseline_corrected else "baselineUncorrected_"
     filename = f"{event}_{region}_{suffix}{feature}_{region}.h5"
@@ -330,7 +326,7 @@ def _write_cross_correlation(
 ) -> None:
     """Cross-correlation ``.h5`` -- ``corr_<event>_<feature>_<region_1>_<region_2>.h5``.
 
-    Mirrors ``analysis/psth_utils.create_Df_for_cross_correlation`` -> ``DataFrame.to_hdf(key="df")``.
+    Written as a DataFrame via ``to_hdf(key="df")``.
     """
     filename = f"corr_{event}_{feature}_{region_1}_{region_2}.h5"
     dataframe = _event_matrix_dataframe(lag_axis, trial_onsets, bin_edges)
@@ -341,8 +337,8 @@ def _write_peak_auc(folder_path, event, region, feature, trial_onsets, bin_edges
     """Peak/AUC ``.h5`` -- ``peak_AUC_<event>_<region>_<feature>_<region>.h5``.
 
     Columns are ``peak_pos_<w>``/``peak_neg_<w>``/``area_<w>`` per window; index rows are
-    ``<session>_<onset>`` per trial, ``<session>_bin_(a-b)``, and ``<session>_mean``. Mirrors
-    ``analysis/standard_io.write_peak_and_area_to_hdf5`` (``DataFrame.to_hdf(key="df")``).
+    ``<session>_<onset>`` per trial, ``<session>_bin_(a-b)``, and ``<session>_mean``. Written as a
+    DataFrame via ``to_hdf(key="df")``.
     """
     columns = []
     for window in range(1, num_windows + 1):
