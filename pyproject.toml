@@ -132,11 +132,14 @@ behavior = [
 ]
 
 ## Events
-tdt_events = [
-    "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
+csv_events = [
     "ndx-events==0.2.2",
 ]
+tdt_events = [
+    "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
+]
 events = [
+    "neuroconv[csv_events]",
     "neuroconv[tdt_events]",
 ]
 
@@ -358,6 +361,10 @@ suite2p = [
     "natsort",
     "neuroconv[ophys_minimal]",
 ]
+doric_fp = [
+    "neuroconv[fiber_photometry]",
+    "h5py>=3",
+]
 tdt_fp = [
     "neuroconv[fiber_photometry]",
     "tdt",
@@ -375,6 +382,7 @@ tiff = [
 ]
 ophys = [
     "neuroconv[brukertiff]",
+    "neuroconv[doric_fp]",
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",

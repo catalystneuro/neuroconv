@@ -99,6 +99,7 @@ Fiber Photometry
 .. toctree::
     :maxdepth: 1
 
+    Doric Fiber Photometry <fiberphotometry/doric_fp>
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
     CSV Fiber Photometry <fiberphotometry/csv_fp>
 
@@ -125,6 +126,7 @@ Events
 .. toctree::
     :maxdepth: 1
 
+    CSV Events <events/csv_events>
     TDT Events <events/tdt_events>
 
 

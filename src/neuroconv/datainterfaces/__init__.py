@@ -108,7 +108,8 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 from .ophys.csv_fp.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
-from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
+from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
+from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
 
@@ -120,6 +121,7 @@ from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 # Events
+from .events.csv_events.csveventsdatainterface import CSVEventsInterface
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
@@ -191,6 +193,7 @@ interface_list = [
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
     CSVFiberPhotometryInterface,
+    DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
@@ -213,6 +216,7 @@ interface_list = [
     # Image
     ImageInterface,
     # Events
+    CSVEventsInterface,
     TDTEventsInterface,
 ]
 
@@ -238,6 +242,7 @@ interfaces_by_category = dict(
         if "Segmentation" in interface.__name__
     },
     fiber_photometry={
+        "DoricFiberPhotometry": DoricFiberPhotometryInterface,
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
         "CSVFiberPhotometry": CSVFiberPhotometryInterface,
     },
@@ -266,6 +271,7 @@ interfaces_by_category = dict(
         Image=ImageInterface,
     ),
     events=dict(
+        CSVEvents=CSVEventsInterface,
         TDTEvents=TDTEventsInterface,
     ),
 )

@@ -1,190 +1,140 @@
-from datetime import datetime, timezone
-
-import ndx_events
 import numpy as np
 import pytest
-from jsonschema.validators import Draft7Validator
-from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import TDTEventsInterface
-from neuroconv.datainterfaces.events.tdt_events.tdteventsdatainterface import (
-    _data_is_counter,
-    _offset_is_synthesized,
-)
 
 try:
-    from ..setup_paths import OPHYS_DATA_PATH
+    from ..setup_paths import ECEPHY_DATA_PATH
 except ImportError:
-    from setup_paths import OPHYS_DATA_PATH
+    from setup_paths import ECEPHY_DATA_PATH
 
-TDT_DATA_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT"
-TDT_TANK_PATH = str(TDT_DATA_PATH / "Photo_249_391-200721-120136_stubbed")
-# Epoc onset lengths in the Photo_249 stubbed tank.
-EPOC_NAME_TO_LENGTH = {"PrtR": 49, "RNPS": 11, "LNRW": 50, "LNnR": 1457}
-
-# A stubbed tank with a real strobe store, ``PAB_``: 5 events with codes [16, 2064, 0, 16, 2064].
-STROBE_TANK_PATH = str(TDT_DATA_PATH / "Photometry-161823_stubbed")
+TDT_DATA_PATH = ECEPHY_DATA_PATH / "tdt"
 
 
-class _FakeEpoc:
-    """Minimal stand-in for a ``tdt`` epoc store, exposing the onset/offset/data arrays."""
-
-    def __init__(self, onset, offset, data):
-        self.onset = onset
-        self.offset = offset
-        self.data = data
-
-
-class _FakeBlock:
-    """Minimal stand-in for a ``tdt.read_block`` result, exposing an ``epocs`` mapping."""
-
-    def __init__(self, epocs):
-        self.epocs = epocs
+def test_exclude_events():
+    # exclude_events drops the named event types from the discovered set.
+    folder_path = TDT_DATA_PATH / "epocs_with_offsets_1"
+    interface = TDTEventsInterface(folder_path=folder_path, exclude_events=["Tick", "s4s_", "sms_"])
+    event_types = interface.get_metadata()["Events"]["tdt_events"]["event_types"]
+    assert set(event_types) == {"s1s_"}
 
 
-class TestDetectors:
-    def test_synthesized_offset_is_detected(self):
-        onset = np.array([1.0, 2.0, 3.0])
-        offset = np.array([2.0, 3.0, np.inf])  # TDT fill: offset[i] == onset[i + 1], last is inf
-        assert _offset_is_synthesized(onset, offset)
+class TDTEventsInterfaceMixin:
+    """Builds ``self.interface`` from ``data_interface_cls`` and ``interface_kwargs`` set on the subclass."""
 
-    def test_real_offset_is_not_synthesized(self):
-        onset = np.array([1.0, 2.0, 3.0])
-        offset = np.array([1.5, 2.5, 3.5])  # genuine falling edges strictly inside each interval
-        assert not _offset_is_synthesized(onset, offset)
-
-    def test_single_event_offset_is_synthesized(self):
-        onset = np.array([1.0])
-        offset = np.array([np.inf])
-        assert _offset_is_synthesized(onset, offset)
-
-    def test_counter_data_is_detected(self):
-        assert _data_is_counter(np.array([1.0, 2.0, 3.0, 4.0]))
-        assert _data_is_counter(np.array([0.0, 1.0, 2.0]))
-
-    def test_strobe_codes_are_not_a_counter(self):
-        assert not _data_is_counter(np.array([16.0, 2064.0, 0.0, 16.0]))
-
-
-class TestTDTEventsInterface:
-    @pytest.fixture
-    def interface(self):
-        return TDTEventsInterface(folder_path=TDT_TANK_PATH)
-
-    def test_get_events(self, interface):
-        events = interface.get_events()
-        for epoc_name, event in events.items():
-            expected_length = EPOC_NAME_TO_LENGTH[epoc_name]
-            assert len(event["onset"]) == expected_length
-            assert len(event["offset"]) == expected_length
-            assert len(event["data"]) == expected_length
-
-    def test_session_start_time(self, interface):
-        metadata = interface.get_metadata()
-        expected = datetime(2020, 7, 21, 17, 2, 24, 999999, tzinfo=timezone.utc).isoformat()
-        assert metadata["NWBFile"]["session_start_time"] == expected
-
-    def test_default_lists_all_epocs(self, interface):
-        event_columns = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]
-        assert set(event_columns.keys()) == set(EPOC_NAME_TO_LENGTH)
-        for epoc_name, column in event_columns.items():
-            assert column["column_name"] == epoc_name
-
-    def test_exclude_events(self):
-        interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, exclude_events=["LNRW", "LNnR"])
-        event_columns = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]
-        assert set(event_columns.keys()) == {"PrtR", "RNPS"}
-
-    def test_metadata_key_default_and_override(self):
-        interface = TDTEventsInterface(folder_path=TDT_TANK_PATH)
-        assert set(interface.get_metadata()["Events"].keys()) == {"tdt_events"}
-
-        interface = TDTEventsInterface(folder_path=TDT_TANK_PATH, metadata_key="my_tank")
-        events_metadata = interface.get_metadata()["Events"]
-        assert set(events_metadata.keys()) == {"my_tank"}
-        assert set(events_metadata["my_tank"]["event_columns"].keys()) == set(EPOC_NAME_TO_LENGTH)
-
-    def test_metadata_schema_is_valid(self, interface):
-        Draft7Validator.check_schema(interface.get_metadata_schema())
-
-    def test_add_to_nwbfile_writes_events(self, interface):
-        nwbfile = mock_NWBFile()
-        metadata = interface.get_metadata()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-        prtr_events = nwbfile.acquisition["PrtR"]
-        assert isinstance(prtr_events, ndx_events.Events)
-        assert len(prtr_events.timestamps) == 49
-
-    def test_real_offset_raises(self, interface, monkeypatch):
-        # A real (buddy) offset store has falling edges strictly inside each interval, so the
-        # synthesized-fill check fails and the unsupported case raises.
-        fake_block = _FakeBlock(
-            {"PrtR": _FakeEpoc(np.array([1.0, 2.0, 3.0]), np.array([1.5, 2.5, 3.5]), np.array([1.0, 2.0, 3.0]))}
-        )
-        monkeypatch.setattr(interface, "load", lambda **kwargs: fake_block)
-        metadata = {"Events": {"tdt_events": {"event_columns": {"PrtR": {"column_name": "PrtR", "description": "d"}}}}}
-        with pytest.raises(NotImplementedError, match=r"real offset.*issues/new"):
-            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
-
-    def test_round_trip(self, interface, tmp_path):
-        nwbfile = mock_NWBFile()
-        metadata = interface.get_metadata()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-        nwbfile_path = tmp_path / "test_tdt_events.nwb"
-        with NWBHDF5IO(nwbfile_path, mode="w") as io:
-            io.write(nwbfile)
-
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_nwbfile = io.read()
-            read_events = read_nwbfile.acquisition["LNnR"]
-            assert isinstance(read_events, ndx_events.Events)
-            assert len(read_events.timestamps) == 1457
-
-
-class TestTDTEventsStrobeInterface:
-    """Covers the ``PAB_`` strobe store in the Photometry-161823 stubbed tank."""
+    data_interface_cls = TDTEventsInterface
 
     @pytest.fixture
     def interface(self):
-        return TDTEventsInterface(folder_path=STROBE_TANK_PATH, exclude_events=["Vid1", "Tick"])
+        return self.data_interface_cls(**self.interface_kwargs)
 
-    def test_metadata_seeds_strobe_labels(self, interface):
-        column = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]["PAB_"]
-        # The PAB_ store's three distinct codes are seeded as an editable raw-code -> label map.
-        assert column["column_categories"]["labels"] == {0: "0", 16: "16", 2064: "2064"}
-        assert column["description"] == "Onset times of the TDT epoc 'PAB_', labeled by strobe value."
 
-    def test_counter_store_has_no_labels(self):
-        interface = TDTEventsInterface(folder_path=STROBE_TANK_PATH, exclude_events=["PAB_", "Vid1"])
-        column = interface.get_metadata()["Events"]["tdt_events"]["event_columns"]["Tick"]
-        assert "column_categories" not in column
+class TestTimestampOnlyEventType(TDTEventsInterfaceMixin):
+    """A timestamp-only event type: ``Tick`` in the durations dataset, with the event types that have
+    durations excluded so only the timestamp-only one remains."""
 
-    def test_add_to_nwbfile_writes_labeled_events(self, interface):
+    interface_kwargs = dict(
+        folder_path=TDT_DATA_PATH / "epocs_with_offsets_1",
+        exclude_events=["s1s_", "s4s_", "sms_"],
+    )
+
+    def test_get_metadata(self, interface):
+        expected_metadata = {
+            "tdt_events": {
+                "event_types": {
+                    "Tick": {
+                        "event_name": "Tick",
+                        "event_description": "Onset times of the TDT epoc 'Tick'.",
+                    },
+                },
+            },
+        }
+        assert interface.get_metadata()["Events"] == expected_metadata
+
+    def test_add_to_nwbfile(self, interface):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        pab_events = nwbfile.acquisition["PAB_"]
-        assert isinstance(pab_events, ndx_events.LabeledEvents)
-        # labels are ordered by numeric code; data indexes into them, recovering [16, 2064, 0, 16, 2064].
-        assert pab_events.labels == ["0", "16", "2064"]
-        np.testing.assert_array_equal(pab_events.data, [1, 2, 0, 1, 2])
-        assert len(pab_events.timestamps) == 5
+        tick_events = nwbfile.get_events_table("Tick")  # "Tick" has no underscore, so it stays verbatim
+        assert tick_events.colnames == ("timestamp",)
+        assert len(tick_events) == 235
 
-    def test_user_relabeling_round_trip(self, interface, tmp_path):
-        metadata = interface.get_metadata()
-        column = metadata["Events"]["tdt_events"]["event_columns"]["PAB_"]
-        column["column_categories"]["labels"] = {0: "none", 16: "left", 2064: "right"}
+
+class TestEventTypeWithValueColumn(TDTEventsInterfaceMixin):
+    """An event type carrying a categorical value column: ``PAB_`` in the payload dataset, 30 events
+    whose codes cycle [16, 2064, 0]."""
+
+    interface_kwargs = dict(folder_path=TDT_DATA_PATH / "epocs_with_payload")
+
+    def test_get_metadata(self, interface):
+        expected_metadata = {
+            "tdt_events": {
+                "event_types": {
+                    "PAB_": {
+                        "event_name": "PAB_",
+                        "event_description": "Onset times of the TDT epoc 'PAB_', labeled by strobe value.",
+                        "columns": {
+                            "strobe": {
+                                "column_name": "strobe",
+                                "description": "Strobe code for each 'PAB_' event.",
+                                "column_categories": {"labels": {0: "0", 16: "16", 2064: "2064"}},
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        assert interface.get_metadata()["Events"] == expected_metadata
+
+    def test_add_to_nwbfile(self, interface):
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        nwbfile_path = tmp_path / "test_tdt_strobe.nwb"
-        with NWBHDF5IO(nwbfile_path, mode="w") as io:
-            io.write(nwbfile)
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_events = io.read().acquisition["PAB_"]
-            assert isinstance(read_events, ndx_events.LabeledEvents)
-            assert list(read_events.labels) == ["none", "left", "right"]
-            np.testing.assert_array_equal(read_events.data, [1, 2, 0, 1, 2])
+        pab_events = nwbfile.get_events_table("PAB")  # "PAB_", trailing padding "_" dropped
+        assert len(pab_events) == 30
+        # The 30 events cycle through the three codes.
+        assert list(pab_events["strobe"][:]) == ["16", "2064", "0"] * 10
+
+
+class TestEventTypeWithDurations(TDTEventsInterfaceMixin):
+    """Event types whose events have durations: ``s1s_``/``s4s_``/``sms_`` in the durations dataset,
+    written as a per-event duration in the table's ``duration`` column."""
+
+    interface_kwargs = dict(
+        folder_path=TDT_DATA_PATH / "epocs_with_offsets_1",
+        exclude_events=["Tick"],
+    )
+
+    def test_get_metadata(self, interface):
+        expected_metadata = {
+            "tdt_events": {
+                "event_types": {
+                    "s1s_": {"event_name": "s1s_", "event_description": "Onset times of the TDT epoc 's1s_'."},
+                    "s4s_": {"event_name": "s4s_", "event_description": "Onset times of the TDT epoc 's4s_'."},
+                    "sms_": {"event_name": "sms_", "event_description": "Onset times of the TDT epoc 'sms_'."},
+                },
+            },
+        }
+        assert interface.get_metadata()["Events"] == expected_metadata
+
+    def test_add_to_nwbfile(self, interface):
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        # Each event type becomes a table named from the store (trailing padding "_" dropped, capitalized),
+        # carrying a "duration" column of the real per-event durations (~1 s, ~4 s, ~0.25 s).
+        s1s_table = nwbfile.get_events_table("S1s")
+        assert s1s_table.colnames == ("timestamp", "duration")
+        assert np.allclose(s1s_table["timestamp"][:], [54.629499, 90.678067, 126.729257, 162.823700, 198.878167])
+        assert np.allclose(s1s_table["duration"][:], [0.999424, 1.000735, 1.000079, 0.999588, 0.999916])
+
+        s4s_table = nwbfile.get_events_table("S4s")
+        assert s4s_table.colnames == ("timestamp", "duration")
+        assert np.allclose(s4s_table["timestamp"][:], [65.629389, 101.679104, 137.778299, 173.828997, 209.928192])
+        assert np.allclose(s4s_table["duration"][:], [4.000973, 4.000973, 3.999826, 3.999171, 4.000317])
+
+        sms_table = nwbfile.get_events_table("Sms")
+        assert sms_table.colnames == ("timestamp", "duration")
+        assert np.allclose(sms_table["timestamp"][:], [43.580621, 79.629517, 115.678577, 151.778591, 187.858944])
+        assert np.allclose(sms_table["duration"][:], [0.251003, 0.249692, 0.249856, 0.249856, 0.250348])
