@@ -9,8 +9,9 @@ converter reads those rows back and aggregates them: rows sharing a timing range
 ``ExperimentalConditions``. When the interfaces come from several files, the converter also places them on one
 timeline from each file's header start time (``rec_datetime``).
 
-Each class below is one dataset / configuration and checks only the ``add_to_nwbfile`` result (the in-memory
-NWBFile from ``create_nwbfile``), mirroring the one-class-per-scenario shape of the interface tests.
+Each class below is one user-facing scenario and checks only the ``add_to_nwbfile`` result (the in-memory NWBFile
+from ``create_nwbfile``). Most scenarios are a single test; the repetition / condition grouping is one class with a
+method per branch, since those share the same fixture and differ only in the labels the user passes.
 
 Fixtures live in the gin ``ephy_testing_data`` repo under ``axon/intracellular_data`` (the same purpose-built set
 the interface tests use). The ``read_raw_protocol`` files are several runs recorded back-to-back on one rig
@@ -28,7 +29,10 @@ ICEPHYS_DATA_PATH = ECEPHY_DATA_PATH / "axon" / "intracellular_data"
 
 
 class TestAxonConverterSingleCell:
-    """One interface: the single-cell path that adds the simultaneous / sequential chain."""
+    """The simplest use case: one cell recorded on one channel in a single ABF file, converted through the converter
+    rather than the bare interface. Even with a single interface the converter builds the full icephys hierarchy, so
+    the user gets one ``SimultaneousRecordings`` entry per sweep and one ``SequentialRecordings`` run instead of a
+    loose pile of series. Also confirms the stimulus type read from the ABF protocol reaches the sequential table."""
 
     # One protocol-driven run: IN0 recorded in pA (voltage clamp) with a reconstructed Cmd 0 stimulus, 3 sweeps.
     file_path = ICEPHYS_DATA_PATH / "read_raw_protocol" / "user_list.abf"
@@ -49,7 +53,10 @@ class TestAxonConverterSingleCell:
 
 
 class TestAxonConverterDualPatch:
-    """Two electrodes from one dual-patch file: each sweep groups both electrodes into one simultaneous recording."""
+    """A dual patch-clamp recording: two electrodes acquired together in one ABF file. The user passes one interface
+    per channel (here IN0 in current clamp, IN1 in voltage clamp), and the converter recognizes that both electrodes
+    are sampled on the same sweeps, grouping the two per-sweep rows into a single ``SimultaneousRecordings`` entry and
+    keeping them one run. Because both channels come from one file, they share the one amplifier device."""
 
     # Genuine dual patch: IN0 (current clamp) and IN1 (voltage clamp) recorded together.
     file_path = ICEPHYS_DATA_PATH / "dual_patch_pairs" / "current_clamp.abf"
@@ -76,7 +83,11 @@ class TestAxonConverterDualPatch:
 
 
 class TestAxonConverterMultiFile:
-    """Several files from one cell: each run is its own sequential recording, placed on a shared timeline."""
+    """One cell recorded across several protocol files back-to-back (the common Clampex pattern of one file per run),
+    combined into a single NWB file. The user hands the converter one interface per file; each becomes its own
+    ``SequentialRecordings`` run, and the converter reconstructs the real relative timing by placing every file on one
+    timeline from its header start time, with the earliest file as the session origin. Files recorded on the same
+    amplifier still share one device."""
 
     # Several runs recorded back-to-back (ascending header start times, all ABF v2): distinct protocols on the same
     # IN0 channel. Exercises multi-file alignment and the repetition / condition levels.
@@ -113,10 +124,12 @@ class TestAxonConverterMultiFile:
         assert all(abs(observed - expected) < 1.0 for observed, expected in zip(normalized_starts, expected_offsets))
 
 
-class TestAxonConverterSameStemFiles:
-    """Two different recordings that share the Clampex filename ``0000.abf`` (one per cell folder) get distinct,
-    disambiguated run identities, distinct ``sequence`` and series names and two separate runs, never the silent
-    cross-cell merge or the duplicate-name error that the bare-stem identity would have produced."""
+class TestAxonConverterDisambiguatesCollidingFilenames:
+    """The realistic multi-file case where Clampex has named each cell's file per folder, so combining cells from
+    different folders hands the converter several files that all share the filename ``0000.abf``. The converter
+    disambiguates each run by its parent folder (``cellA_0000``, ``cellB_0000``) so the cells stay distinct runs with
+    non-colliding series names. Without this the two cells would either be silently merged into one run or crash on a
+    duplicate object name; the user does nothing beyond passing the paths."""
 
     # Two genuinely different protocol runs, staged below under a shared stem to force the collision.
     source_files = [
@@ -167,7 +180,10 @@ class TestAxonConverterRepetitionsAndConditions:
     ]
 
     def test_repetitions_without_conditions(self):
-        """Repetition labels group the runs' sequential recordings; with no condition, no conditions table."""
+        """Use case: a protocol repeated several times, the user tagging runs by ``repetition`` but giving no
+        ``condition``. Runs sharing a repetition label are grouped into one ``Repetitions`` entry, so two ``r1`` runs
+        and two ``r2`` runs yield two repetitions of two sequentials each. With no condition given, the converter
+        stops there and does not build an ``ExperimentalConditions`` table."""
         interfaces = [
             AxonIntracellularInterface(
                 file_path=path, response_channel_name="IN0", mode="current_clamp", repetition=repetition
@@ -185,7 +201,10 @@ class TestAxonConverterRepetitionsAndConditions:
         assert nwbfile.icephys_experimental_conditions is None
 
     def test_conditions_without_repetition(self):
-        """`condition` with no `repetition` defaults each run to its own repetition (identity), then groups them."""
+        """Use case: the user groups runs by experimental ``condition`` (for example drug versus control) but never
+        labels repetitions. Because the conditions table sits above the repetitions rung, the converter fills that
+        rung with identity repetitions, one per run, then groups those by condition. Four runs under conditions
+        A, A, B, B thus give four single-run repetitions collected into two conditions."""
         interfaces = [
             AxonIntracellularInterface(
                 file_path=path, response_channel_name="IN0", mode="current_clamp", condition=condition
@@ -204,8 +223,10 @@ class TestAxonConverterRepetitionsAndConditions:
         assert all(len(conditions["repetitions"][i]) == 2 for i in range(2))
 
     def test_repetition_label_reused_across_conditions(self):
-        """A repetition label reused in two conditions stays distinct: repetitions are keyed by ``(condition, label)``,
-        not by label alone."""
+        """Use case: the user reuses the same repetition names (``r1``, ``r2``) under each condition, the natural way
+        to label "first repeat of A, first repeat of B". The converter keys repetitions by ``(condition, label)``, so
+        ``r1`` under condition A and ``r1`` under condition B stay two separate repetitions rather than collapsing into
+        one. Four runs therefore produce four distinct repetitions across the two conditions."""
         # "r1" and "r2" each appear under both condition "A" and condition "B".
         interfaces = [
             AxonIntracellularInterface(
@@ -227,8 +248,10 @@ class TestAxonConverterRepetitionsAndConditions:
         assert all(len(conditions["repetitions"][i]) == 2 for i in range(2))
 
     def test_repetition_groups_runs_within_condition(self):
-        """A repetition label shared by two runs within a condition groups them into one repetition; conditions then
-        group those repetitions."""
+        """Use case: within a single condition the user records the same protocol twice and gives both runs the same
+        repetition label, meaning "these two runs are one repeat". The converter groups the two runs sharing a
+        ``(condition, label)`` into one ``Repetitions`` entry holding both sequential recordings. The two conditions
+        then each hold their one repetition."""
         # Runs 0,1 are condition "A" repetition "r1"; runs 2,3 are condition "B" repetition "r2".
         interfaces = [
             AxonIntracellularInterface(
@@ -253,12 +276,11 @@ class TestAxonConverterRepetitionsAndConditions:
 
 
 class TestAxonConverterSharedElectrodeAcrossFiles:
-    """Cross-referencing: the editable electrode links can merge several runs of one cell onto one electrode.
-
-    By default each file is its own electrode (distinct, file-derived keys). Repointing every response series at
-    a single electrode entry collapses them, exercising the electrode-reuse branch of ``_get_or_create_electrode``
-    (an electrode found by name and shared, rather than created once per interface).
-    """
+    """Use case: several runs of one cell were saved as separate files, so each defaults to its own electrode, but the
+    user knows they are the same physical pipette and wants them recorded against a single electrode. Editing the
+    metadata to point every response series at one electrode entry collapses them onto that shared electrode and its
+    device. Merging the electrodes does not merge the runs: each file remains its own sequential recording, so
+    electrode identity and run structure stay independent."""
 
     # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
     run_files = [
@@ -290,10 +312,10 @@ class TestAxonConverterSharedElectrodeAcrossFiles:
 
         nwbfile = converter.create_nwbfile(metadata=metadata)
 
-        # All four runs now share one electrode (and its single amplifier device); every response references it.
+        # The link edit took effect: the four per-file electrodes collapsed onto the one shared electrode. (That
+        # sharing itself is a metadata-linking behavior owned by the interface's TestAxonIntracellularMetadata; here
+        # it is only the premise for the converter-specific invariant below.)
         assert len(nwbfile.icephys_electrodes) == 1
-        assert len(nwbfile.devices) == 1
-        electrode = next(iter(nwbfile.icephys_electrodes.values()))
-        assert all(series.electrode is electrode for series in nwbfile.acquisition.values())
-        # Merging electrodes does not merge runs: each file is still its own sequential recording.
+        # The invariant this test owns: merging electrodes does not merge runs. Run grouping follows the `sequence`
+        # column, not electrode identity, so each file is still its own sequential recording.
         assert len(nwbfile.icephys_sequential_recordings) == len(self.run_files)
