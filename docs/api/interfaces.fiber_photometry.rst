@@ -16,3 +16,7 @@ TDT Fiber Photometry
 GuPPy
 -----
 .. automodule:: neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface
+
+TDT Fiber Photometry + GuPPy
+----------------------------
+.. automodule:: neuroconv.datainterfaces.fiber_photometry.guppy.tdtfiberphotometryguppyconverter
