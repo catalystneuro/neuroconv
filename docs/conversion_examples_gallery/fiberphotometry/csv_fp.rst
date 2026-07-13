@@ -7,13 +7,17 @@ Install NeuroConv with the additional dependencies necessary for reading CSV Fib
 
     pip install "neuroconv[csv_fp]"
 
-This CSV format is a raw acquisition format for fiber photometry recordings, with one CSV per stream
-(e.g. a signal channel and an isosbestic control channel). Each data CSV has ``timestamps`` and
-``data`` columns and is named after its stream (``<stream_name>.csv``).
+This is a general-purpose CSV reader: point it at one CSV file and name the column holding the
+timestamps in seconds (``timestamps_column``) and the data column(s) whose fluorescence samples form
+the series (``data_columns``). Columns are addressed by name (for a CSV with a header row) or by
+0-based positional index (for a header-less CSV). Both narrow files (one data column, e.g. the GuPPy
+acquisition format's ``<stream>.csv`` with ``timestamps`` and ``data`` columns) and wide files
+(several data columns sharing one timestamps column) are supported.
 
-Each interface writes a single ``FiberPhotometryResponseSeries``, assembled from one or more input
-streams; combine multiple interfaces (with distinct ``metadata_key`` values) in a converter to write
-several series sharing one ``FiberPhotometryTable``.
+Each interface writes a single ``FiberPhotometryResponseSeries``; a list of ``data_columns`` is
+column-stacked into one multi-channel series. To write several *separate* series (e.g. a signal and
+an isosbestic control) sharing one ``FiberPhotometryTable``, combine one interface per series (with
+distinct ``metadata_key`` values) in a converter.
 
 Convert CSV Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,21 +38,18 @@ supplied explicitly in the metadata.
 
     >>> from neuroconv.datainterfaces import CSVFiberPhotometryInterface
 
-    >>> # This format is just per-stream CSVs; here we write a small example signal and control channel
-    >>> # with ``timestamps`` and ``data`` columns.
-    >>> folder_path = output_folder
+    >>> # Here we write a small example signal channel CSV with ``timestamps`` and ``data`` columns.
+    >>> file_path = output_folder / "Sample_Signal_Channel.csv"
     >>> sampling_rate = 100.0
     >>> num_samples = 150
     >>> timestamps = np.arange(num_samples) / sampling_rate
     >>> signal = pd.DataFrame({"timestamps": timestamps, "data": np.linspace(0.1, 1.0, num_samples)})
-    >>> signal.to_csv(folder_path / "Sample_Signal_Channel.csv", index=False)
-    >>> control = pd.DataFrame({"timestamps": timestamps, "data": np.linspace(0.5, 1.4, num_samples)})
-    >>> control.to_csv(folder_path / "Sample_Control_Channel.csv", index=False)
+    >>> signal.to_csv(file_path, index=False)
 
-    >>> # Discover the data streams available in the folder (callable before construction)
-    >>> available_streams = CSVFiberPhotometryInterface.get_available_streams(folder_path=folder_path)
+    >>> # Inspect the file's column headers (callable before construction)
+    >>> available_columns = CSVFiberPhotometryInterface.get_available_columns(file_path=file_path)
 
-    >>> interface = CSVFiberPhotometryInterface(folder_path=folder_path, stream_names="Sample_Signal_Channel", metadata_key="calcium_signal", verbose=False)
+    >>> interface = CSVFiberPhotometryInterface(file_path=file_path, data_columns="data", timestamps_column="timestamps", metadata_key="calcium_signal", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # CSV recordings have no embedded start time, so it must be set explicitly.
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))

@@ -1,92 +1,104 @@
-"""Interface for raw fiber photometry data stored as per-stream CSV files."""
-
-from pathlib import Path
+"""Interface for fiber photometry data stored in a CSV file."""
 
 import numpy as np
 import pandas as pd
-from pydantic import DirectoryPath, validate_call
+from pydantic import FilePath, validate_call
 
 from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 
 
 class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
-    """Data Interface for converting raw fiber photometry data from CSV files.
+    """Data Interface for converting raw fiber photometry data from a single CSV file.
 
-    This CSV format is a raw acquisition format, with one CSV per stream (e.g. a signal channel, an
-    isosbestic control channel). Each data CSV has (at least) two columns -- ``timestamps`` (seconds)
-    and ``data`` (fluorescence) -- and is named after its stream (``<stream_name>.csv``). Call
-    :meth:`get_available_streams` to list the data streams discovered in a folder.
+    This is a general-purpose CSV fiber photometry reader: the caller points at one CSV file, names
+    the column holding the timestamps in seconds (``timestamps_column``), and names the data
+    column(s) whose fluorescence samples become this interface's single
+    ``FiberPhotometryResponseSeries`` (``data_columns``). Both narrow files (one data column, e.g. the
+    GuPPy acquisition format's ``<stream>.csv`` with ``timestamps`` and ``data`` columns) and wide
+    files (several data columns sharing one timestamps column) are supported.
 
-    Each interface writes a single ``FiberPhotometryResponseSeries``, assembled from one or more input
-    streams; use multiple interfaces (with distinct ``metadata_key`` values) in a converter to write
-    several series sharing one ``FiberPhotometryTable``.
+    A list of ``data_columns`` is column-stacked into one multi-channel response series; to write
+    several *separate* series (e.g. a signal and an isosbestic control) sharing one
+    ``FiberPhotometryTable``, use one interface per series (with distinct ``metadata_key`` values) in
+    a converter.
 
     Notes
     -----
-    Unlike the TDT format, CSV recordings carry no embedded recording-start timestamp, so
-    :meth:`get_metadata` does NOT populate ``NWBFile/session_start_time``. The user must supply it via
-    editable metadata.
+    CSV recordings carry no embedded recording-start timestamp, so :meth:`get_metadata` does NOT
+    populate ``NWBFile/session_start_time``. The user must supply it via editable metadata.
     """
 
     display_name = "CSVFiberPhotometry"
-    info = "Data Interface for converting fiber photometry data from CSV files."
+    info = "Data Interface for converting fiber photometry data from a CSV file."
     associated_suffixes = ("csv",)
 
     @validate_call
     def __init__(
         self,
+        file_path: FilePath,
         *,
-        folder_path: DirectoryPath,
-        stream_names: str | list[str],
+        data_columns: str | int | list[str | int],
+        timestamps_column: str | int,
         metadata_key: str | None = None,
-        stream_indices: list[int] | None = None,
+        read_kwargs: dict | None = None,
         verbose: bool = False,
     ):
         """Initialize the CSVFiberPhotometryInterface.
 
         Parameters
         ----------
-        folder_path : DirectoryPath
-            The path to the folder containing the per-stream CSV files.
-        stream_names : str or list of str
-            The input stream(s) -- CSV file stems (see :meth:`get_available_streams`) -- whose samples
-            are column-stacked into this interface's single ``FiberPhotometryResponseSeries``.
+        file_path : FilePath
+            The path to the CSV file holding the fiber photometry data.
+        data_columns : str, int, or list of str or int
+            The data column(s) whose samples are column-stacked into this interface's single
+            ``FiberPhotometryResponseSeries``. A column name (for a CSV with a header row) or a
+            positional index (0-based, for a header-less CSV). Pass a list to stack several columns
+            into one multi-channel series.
+        timestamps_column : str or int
+            The column holding the timestamps (seconds), shared by every data column. A column name
+            for a CSV with a header row, or a positional index (0-based) for a header-less CSV.
         metadata_key : str, optional
-            Key under ``metadata["FiberPhotometry"]`` holding this interface's response-series metadata.
-            When ``None`` (default), it is generated from ``stream_names``.
-        stream_indices : list of int, optional
-            Column indices selecting which channels of the (column-stacked) stream data to keep.
+            Key under ``metadata["FiberPhotometry"]`` holding this interface's response-series
+            metadata. When ``None`` (default), it is generated from ``data_columns``.
+        read_kwargs : dict, optional
+            Additional keyword arguments forwarded to ``pandas.read_csv`` to handle format quirks such
+            as ``sep``, ``encoding``, ``decimal``, or ``skiprows``. Any value given here overrides the
+            interface's own defaults (``header`` and ``float_precision``). Default is None.
         verbose : bool, default: False
             Whether to print status messages.
         """
+        data_columns_list = [data_columns] if isinstance(data_columns, (str, int)) else list(data_columns)
+        self._read_kwargs = read_kwargs or dict()
         super().__init__(
-            folder_path=folder_path,
-            stream_names=stream_names,
+            file_path=file_path,
+            stream_names=data_columns_list,
+            timestamps_column=timestamps_column,
             metadata_key=metadata_key,
-            stream_indices=stream_indices,
             verbose=verbose,
         )
 
     @classmethod
-    def get_available_streams(cls, folder_path: DirectoryPath) -> list[str]:
-        """Return the names of the data streams (CSV file stems) discovered in the folder.
+    def get_available_columns(cls, file_path: FilePath) -> list[str]:
+        """Return the header column names of the CSV file (empty for a header-less file).
 
-        Only the data CSVs (those with a ``data`` column) are streams; single-column event CSVs (e.g.
-        TTLs) are excluded -- those belong to a separate events interface.
+        A convenience for picking ``data_columns`` / ``timestamps_column`` on a headered file; a
+        header-less file is addressed by positional integer indices instead.
         """
-        stream_names = []
-        for path in sorted(Path(folder_path).glob("*.csv")):
-            columns = [column.lower() for column in pd.read_csv(path, nrows=0).columns]
-            if "data" in columns:
-                stream_names.append(path.stem)
-        return stream_names
+        return list(pd.read_csv(file_path, nrows=0).columns)
 
-    def _stream_csv_path(self, stream_name: str) -> Path:
-        """Return the path to the CSV file backing the given stream."""
-        return Path(self.source_data["folder_path"]) / f"{stream_name}.csv"
+    def _read_column(self, column: str | int) -> np.ndarray:
+        """Read a single column from the CSV file as a numpy array."""
+        # An int column specifier means a header-less file (positional columns); a str means a header row.
+        header = None if isinstance(self.source_data["timestamps_column"], int) else 0
+        # float_precision="round_trip" uses an exact, platform-independent float parser; pandas's
+        # default C parser rounds the final ULP differently across platforms. Caller-supplied
+        # read_kwargs override these defaults.
+        read_kwargs = {"header": header, "float_precision": "round_trip", **self._read_kwargs}
+        dataframe = pd.read_csv(self.source_data["file_path"], usecols=[column], **read_kwargs)
+        return dataframe[column].to_numpy()
 
-    def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
-        return pd.read_csv(self._stream_csv_path(stream_name), usecols=["data"])["data"].to_numpy()
+    def _get_stream_data(self, *, stream_name: str | int) -> np.ndarray:
+        return self._read_column(stream_name)
 
-    def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
-        return pd.read_csv(self._stream_csv_path(stream_name), usecols=["timestamps"])["timestamps"].to_numpy()
+    def _get_stream_timestamps(self, *, stream_name: str | int) -> np.ndarray:
+        return self._read_column(self.source_data["timestamps_column"]).astype("float64")
