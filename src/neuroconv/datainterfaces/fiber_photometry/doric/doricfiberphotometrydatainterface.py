@@ -32,7 +32,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
     All fiber photometry hardware metadata (device models, devices, optical fibers,
     indicators, table rows, and response series) must be supplied by the user in the
-    ``metadata["Ophys"]["FiberPhotometry"]`` block — this interface does not inject
+    ``metadata["FiberPhotometry"]`` block — this interface does not inject
     hardware defaults.
     """
 
@@ -304,7 +304,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         nwbfile : NWBFile
             The in-memory object to add the data to.
         metadata : dict
-            Metadata dictionary.  The ``metadata["Ophys"]["FiberPhotometry"]`` block
+            Metadata dictionary.  The ``metadata["FiberPhotometry"]`` block
             must contain device models, devices, optical fibers, indicators,
             ``FiberPhotometryTable``, and ``FiberPhotometryResponseSeries`` — each
             ``FiberPhotometryResponseSeries`` entry must include a ``stream_name``
@@ -362,7 +362,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             "DichroicMirrorModel",
         ]
         for device_type in device_model_types:
-            for device_meta in metadata["Ophys"]["FiberPhotometry"].get(device_type + "s", []):
+            for device_meta in metadata["FiberPhotometry"].get(device_type + "s", []):
                 add_ophys_device_model(nwbfile=nwbfile, device_metadata=device_meta, device_type=device_type)
 
         # ── Devices ──────────────────────────────────────────────────────────────
@@ -374,11 +374,11 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             "DichroicMirror",
         ]
         for device_type in device_types:
-            for device_meta in metadata["Ophys"]["FiberPhotometry"].get(device_type + "s", []):
+            for device_meta in metadata["FiberPhotometry"].get(device_type + "s", []):
                 add_ophys_device(nwbfile=nwbfile, device_metadata=device_meta, device_type=device_type)
 
         # ── Optical fibers (special case: each has a FiberInsertion) ─────────────
-        for optical_fiber_meta in metadata["Ophys"]["FiberPhotometry"].get("OpticalFibers", []):
+        for optical_fiber_meta in metadata["FiberPhotometry"].get("OpticalFibers", []):
             fiber_insertion = FiberInsertion(**optical_fiber_meta["fiber_insertion"])
             of_meta = deepcopy(optical_fiber_meta)
             of_meta["fiber_insertion"] = fiber_insertion
@@ -390,7 +390,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         # ── Viral vectors, injections, and indicators ─────────────────────────────
         name_to_viral_vector: dict[str, ViralVector] = {}
-        for vv_meta in metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryViruses", []):
+        for vv_meta in metadata["FiberPhotometry"].get("FiberPhotometryViruses", []):
             vv = ViralVector(**vv_meta)
             name_to_viral_vector[vv.name] = vv
         viruses = (
@@ -398,7 +398,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
 
         name_to_injection: dict[str, ViralVectorInjection] = {}
-        for inj_meta in metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryVirusInjections", []):
+        for inj_meta in metadata["FiberPhotometry"].get("FiberPhotometryVirusInjections", []):
             inj_meta = deepcopy(inj_meta)
             inj_meta["viral_vector"] = name_to_viral_vector[inj_meta["viral_vector"]]
             inj = ViralVectorInjection(**inj_meta)
@@ -410,7 +410,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
 
         name_to_indicator: dict[str, Indicator] = {}
-        for ind_meta in metadata["Ophys"]["FiberPhotometry"].get("FiberPhotometryIndicators", []):
+        for ind_meta in metadata["FiberPhotometry"].get("FiberPhotometryIndicators", []):
             if "viral_vector_injection" in ind_meta:
                 ind_meta = deepcopy(ind_meta)
                 ind_meta["viral_vector_injection"] = name_to_injection[ind_meta["viral_vector_injection"]]
@@ -421,7 +421,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         indicators = FiberPhotometryIndicators(indicators=list(name_to_indicator.values()))
 
         # ── FiberPhotometryTable ──────────────────────────────────────────────────
-        table_meta = metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryTable"]
+        table_meta = metadata["FiberPhotometry"]["FiberPhotometryTable"]
         fiber_photometry_table = FiberPhotometryTable(
             name=table_meta["name"],
             description=table_meta["description"],
@@ -465,7 +465,7 @@ class DoricFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         nwbfile.add_lab_meta_data(fp_lab_meta)
 
         # ── FiberPhotometryResponseSeries ─────────────────────────────────────────
-        for series_meta in metadata["Ophys"]["FiberPhotometry"]["FiberPhotometryResponseSeries"]:
+        for series_meta in metadata["FiberPhotometry"]["FiberPhotometryResponseSeries"]:
             stream_name = series_meta["stream_name"]
             data, file_timestamps = self._load_stream_array(stream_name, t1=t1, t2=t2)
 

@@ -1,4 +1,6 @@
+import os
 import warnings
+from contextlib import redirect_stdout
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Literal
@@ -8,13 +10,15 @@ from pydantic import DirectoryPath, validate_call
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from neuroconv.tools import get_package
 from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_model
 from neuroconv.utils import DeepDict
 
 from ._tdt_mixin import TDTLoadMixin
+from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 
 
-class TDTFiberPhotometryInterface(TDTLoadMixin, BaseTemporalAlignmentInterface):
+class _TDTFiberPhotometryInterfaceMultiSeries(TDTLoadMixin, BaseTemporalAlignmentInterface):
     """
     Data Interface for converting fiber photometry data from a TDT output folder.
 
@@ -548,3 +552,178 @@ class TDTFiberPhotometryInterface(TDTLoadMixin, BaseTemporalAlignmentInterface):
                 **timing_kwargs,
             )
             nwbfile.add_acquisition(fiber_photometry_response_series)
+
+
+class _TDTFiberPhotometryInterfaceSingleSeries(TDTLoadMixin, BaseFiberPhotometryInterface):
+    """Single-series TDT fiber photometry interface (writes one FiberPhotometryResponseSeries)."""
+
+    display_name = "TDTFiberPhotometry"
+    info = "Data Interface for converting fiber photometry data from TDT files."
+    associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
+
+    @validate_call
+    def __init__(
+        self,
+        *,
+        folder_path: DirectoryPath,
+        stream_names: str | list[str],
+        metadata_key: str | None = None,
+        stream_indices: list[int] | None = None,
+        verbose: bool = False,
+    ):
+        super().__init__(
+            folder_path=folder_path,
+            stream_names=stream_names,
+            metadata_key=metadata_key,
+            stream_indices=stream_indices,
+            verbose=verbose,
+        )
+
+    @classmethod
+    def get_available_streams(cls, folder_path: DirectoryPath) -> list[str]:
+        """Return the names of the stream stores available in a TDT tank."""
+        tdt = get_package("tdt", installation_instructions="pip install tdt")
+        with open(os.devnull, "w", encoding="utf-8") as f, redirect_stdout(f):
+            tdt_photometry = tdt.read_block(str(folder_path), evtype=["streams"], t2=1.0)
+        return sorted(tdt_photometry.streams.keys())
+
+    @staticmethod
+    def _stream_name_to_store_code(stream_name: str) -> str:
+        """Map a tdt stream key to the store code accepted by ``read_block(store=...)``.
+
+        ``tdt`` prefixes an underscore to keys whose store codes start with a digit (e.g. store
+        ``405R`` is keyed ``_405R``), but the ``store`` filter expects the raw code, so strip a
+        single leading underscore.
+        """
+        return stream_name[1:] if stream_name.startswith("_") else stream_name
+
+    def _load_stream(self, stream_name: str):
+        store_code = self._stream_name_to_store_code(stream_name)
+        tdt_photometry = self.load(store=store_code)
+        return tdt_photometry.streams[stream_name]
+
+    def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
+        stream = self._load_stream(stream_name)
+        data = np.asarray(stream.data)
+        if data.ndim == 2:
+            data = data.T  # TDT stores are (channels, samples); make time-major.
+        return data
+
+    def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
+        stream = self._load_stream(stream_name)
+        rate = float(stream.fs)
+        starting_time = float(stream.start_time)
+        num_samples = np.asarray(stream.data).shape[-1]
+        return starting_time + np.arange(num_samples) / rate
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        tdt_photometry = self.load(evtype=["scalars"])  # Quickly loads info without loading all the data.
+        start_timestamp = tdt_photometry.info.start_date.timestamp()
+        session_start_datetime = datetime.fromtimestamp(start_timestamp, tz=timezone.utc)
+        metadata["NWBFile"]["session_start_time"] = session_start_datetime.isoformat()
+        return metadata
+
+
+class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
+    """Data Interface for converting fiber photometry data from a TDT output folder.
+
+    Each interface writes a single ``FiberPhotometryResponseSeries``, assembled from one or more input
+    streams (TDT stores); use multiple interfaces (with distinct ``metadata_key`` values) in a converter
+    to write several series sharing one ``FiberPhotometryTable``. Call :meth:`get_available_streams` to
+    discover stream names.
+
+    .. deprecated::
+        Constructing without ``stream_names`` routes to the deprecated multi-series implementation,
+        which writes every stream at once and will be removed on or after January 2027. Pass
+        ``stream_names`` to use the single-series interface.
+    """
+
+    keywords = ("fiber photometry",)
+    display_name = "TDTFiberPhotometry"
+    info = "Data Interface for converting fiber photometry data from TDT files."
+    associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
+
+    @validate_call
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        *,
+        stream_names: str | list[str] | None = None,
+        metadata_key: str | None = None,
+        stream_indices: list[int] | None = None,
+        verbose: bool = False,
+    ):
+        """Initialize the TDTFiberPhotometryInterface.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            The path to the folder containing the TDT data.
+        stream_names : str or list of str, optional
+            The input stream(s) (TDT stores) whose samples are assembled into this interface's single
+            ``FiberPhotometryResponseSeries``. If omitted, the deprecated multi-series behavior is
+            used (see class docstring).
+        metadata_key : str, optional
+            Key under ``metadata["FiberPhotometry"]`` holding this interface's response-series
+            metadata. When ``None`` (default), it is generated from ``stream_names``.
+        stream_indices : list of int, optional
+            Column indices selecting which channels of the (column-stacked) stream data to keep.
+        verbose : bool, default: False
+            Whether to print status messages.
+        """
+        if stream_names is None:
+            warnings.warn(
+                "Constructing TDTFiberPhotometryInterface without `stream_names` uses the deprecated "
+                "multi-series behavior, which will be removed on or after January 2027. Pass "
+                "`stream_names=` to write a single FiberPhotometryResponseSeries "
+                "(see TDTFiberPhotometryInterface.get_available_streams).",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self._delegate = _TDTFiberPhotometryInterfaceMultiSeries(folder_path=folder_path, verbose=verbose)
+        else:
+            self._delegate = _TDTFiberPhotometryInterfaceSingleSeries(
+                folder_path=folder_path,
+                stream_names=stream_names,
+                metadata_key=metadata_key,
+                stream_indices=stream_indices,
+                verbose=verbose,
+            )
+        self.verbose = verbose
+        self.source_data = self._delegate.source_data
+
+    @classmethod
+    def get_available_streams(cls, folder_path: DirectoryPath) -> list[str]:
+        """Return the names of the stream stores available in a TDT tank."""
+        return _TDTFiberPhotometryInterfaceSingleSeries.get_available_streams(folder_path)
+
+    def __getattr__(self, name: str):
+        # Forward any attribute not defined on the router (load, get_events, stream_names, ...)
+        # to the active delegate. __getattr__ only fires when normal lookup fails, so the explicit
+        # forwarders below and the router's own attributes take precedence.
+        return getattr(self.__dict__["_delegate"], name)
+
+    def get_metadata(self) -> DeepDict:
+        return self._delegate.get_metadata()
+
+    def get_metadata_schema(self) -> dict:
+        return self._delegate.get_metadata_schema()
+
+    def get_conversion_options_schema(self) -> dict:
+        return self._delegate.get_conversion_options_schema()
+
+    def get_original_timestamps(self, *args, **kwargs):
+        return self._delegate.get_original_timestamps(*args, **kwargs)
+
+    def get_timestamps(self, *args, **kwargs):
+        return self._delegate.get_timestamps(*args, **kwargs)
+
+    def set_aligned_timestamps(self, *args, **kwargs) -> None:
+        return self._delegate.set_aligned_timestamps(*args, **kwargs)
+
+    def set_aligned_starting_time(self, *args, **kwargs) -> None:
+        return self._delegate.set_aligned_starting_time(*args, **kwargs)
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options) -> None:
+        return self._delegate.add_to_nwbfile(nwbfile, metadata, **conversion_options)
