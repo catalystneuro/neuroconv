@@ -6,7 +6,7 @@ from pydantic import DirectoryPath, validate_call
 from neuroconv.utils import DeepDict
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
-from ...ophys.tdt_fp._tdt_mixin import TDTLoadMixin
+from ...fiber_photometry.tdt._tdt_mixin import TDTLoadMixin
 
 
 def _offset_is_synthesized(onset: np.ndarray, offset: np.ndarray) -> bool:

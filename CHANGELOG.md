@@ -2,6 +2,7 @@
 
 ## Removals, Deprecations and Changes
 * Bumped minimum `pynwb` version to `>=4.0.0`. [PR #1769](https://github.com/catalystneuro/neuroconv/pull/1769)
+* Migrated `TDTFiberPhotometryInterface` to a single-series interface that selects input streams via the new `stream_names` argument. Constructing without `stream_names` is deprecated and will be removed on or after January 2027. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
 * Migrated `ExternalVideoInterface` and `InternalVideoInterface` to the unified dict-based metadata pattern: added a `metadata_key` registry key and moved the camera `Device` to top-level `metadata["Devices"]` referenced by `device_metadata_key`. The nested `device=dict(...)` form is deprecated and will be removed on or after December 2026. [PR #1767](https://github.com/catalystneuro/neuroconv/pull/1767)
 * CI no longer queries gin to compute the test-data cache key. The `load-data` action now hashes the S3 listing of each dataset prefix (`ephy_testing_data`, `ophys_testing_data`, `behavior_testing_data`) and uses that as the cache key, so any file change on S3 invalidates the cache automatically and the next CI run downloads the fresh data. Previously, an unreachable gin server caused every test job to fail at the data-fetch step even when the cache was already populated and S3 was reachable, and gin/S3 had to be updated in tight lockstep or new data was silently cached as missing. [PR #1741](https://github.com/catalystneuro/neuroconv/pull/1741)
 * Removed the deprecated `external_mode` parameter from `LightningPoseConverter.add_to_nwbfile` and migrated the converter to `ExternalVideoInterface`. Videos are now always written as external `ImageSeries` with the `ExternalVideos` dict-based metadata structure (the old `Videos` list structure is no longer accepted). [PR #1734](https://github.com/catalystneuro/neuroconv/pull/1734)
@@ -47,6 +48,7 @@
 
 ## Features
 * `TDTEventsInterface` now supports events that have a duration, writing each event's duration to the `EventsTable` `duration` column, instead of raising. [PR #1781](https://github.com/catalystneuro/neuroconv/pull/1781)
+* Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
 * Added support for device models via top-level `metadata["DeviceModels"]` and `metadata["Devices"]` registries. [PR #1780](https://github.com/catalystneuro/neuroconv/pull/1780)
 * Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
 * Use SpikeInterface metric descriptions to populate property_descriptions in `add_sorting_analyzer_to_nwbfile` [PR #1717](https://github.com/catalystneuro/neuroconv/pull/1717)
