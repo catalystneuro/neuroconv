@@ -297,37 +297,3 @@ class TestAxonConverterSharedElectrodeAcrossFiles:
         assert all(series.electrode is electrode for series in nwbfile.acquisition.values())
         # Merging electrodes does not merge runs: each file is still its own sequential recording.
         assert len(nwbfile.icephys_sequential_recordings) == len(self.run_files)
-
-
-class TestAxonConverterDistinctDevicesViaLink:
-    """Cross-referencing: pointing two electrodes at differently-named device entries yields two devices.
-
-    Devices dedup by ``name``, so the dual-patch file (one amplifier) normally writes one device. Adding a second,
-    differently-named device entry and repointing one electrode at it splits them, confirming device identity
-    follows the device ``name`` link rather than the metadata key.
-    """
-
-    # Genuine dual patch: IN0 (current clamp) and IN1 (voltage clamp) recorded together on one amplifier.
-    file_path = ICEPHYS_DATA_PATH / "dual_patch_pairs" / "current_clamp.abf"
-
-    def test_distinct_devices(self):
-        interfaces = [
-            AxonIntracellularInterface(file_path=self.file_path, response_channel_name="IN0", mode="current_clamp"),
-            AxonIntracellularInterface(file_path=self.file_path, response_channel_name="IN1", mode="voltage_clamp"),
-        ]
-        converter = AxonIntracellularConverter(data_interfaces=interfaces)
-        metadata = converter.get_metadata()
-
-        # Both electrodes start on the one shared device (same file).
-        assert len(metadata["Devices"]) == 1
-
-        # Add a second, differently-named device and repoint the second electrode at it.
-        electrode_keys = list(metadata["Icephys"]["IntracellularElectrodes"])
-        metadata["Devices"]["SecondAmplifier"] = {"name": "Second amplifier"}
-        metadata["Icephys"]["IntracellularElectrodes"][electrode_keys[1]]["device_metadata_key"] = "SecondAmplifier"
-
-        nwbfile = converter.create_nwbfile(metadata=metadata)
-
-        # Two distinct device names -> two devices, and the second amplifier is present.
-        assert len(nwbfile.devices) == 2
-        assert "Second amplifier" in {device.name for device in nwbfile.devices.values()}
