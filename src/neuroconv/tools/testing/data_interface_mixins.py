@@ -1569,6 +1569,102 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
         else:
             assert_array_equal(response_series.timestamps[:], self.expected_timestamps)
 
+    def check_run_conversion_in_nwbconverter_with_backend(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+        conversion_options = dict(Test=self.conversion_options)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend=backend,
+            conversion_options=conversion_options,
+        )
+
+    def check_run_conversion_in_nwbconverter_with_backend_configuration(
+        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
+    ):
+        class TestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Test=type(self.interface))
+
+        test_kwargs = self.test_kwargs[0] if isinstance(self.test_kwargs, list) else self.test_kwargs
+        source_data = dict(Test=test_kwargs)
+        converter = TestNWBConverter(source_data=source_data)
+        conversion_options = dict(Test=self.conversion_options)
+        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+        backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            backend_configuration=backend_configuration,
+            conversion_options=conversion_options,
+        )
+
+
+class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """Shared tests for single-series fiber photometry interfaces.
+
+    This mixin is the contract between the *expected* values a child supplies by hand — the
+    response-series data and its timing, which every child determines independently for its own
+    format/file — and *how those values surface in the NWB file*, which is uniform across all
+    interfaces built on ``BaseFiberPhotometryInterface`` and therefore lives here. A child only
+    declares ``expected_response_series_data`` and the expected timing (``expected_rate`` +
+    ``expected_starting_time`` for a regular series, or ``expected_timestamps`` for an irregular one);
+    it does not reimplement ``check_read_nwb``. The response-series expectations are deliberately *not*
+    derived from the interface's own reading methods (that would be circular); they are hand-supplied
+    literals. The ``FiberPhotometryTable`` / device / indicator assertions instead validate the
+    metadata → NWB mapping against the metadata used for the conversion. Format idiosyncrasies (e.g.
+    where a session start time comes from) belong in a small dedicated override or unit test.
+    """
+
+    #: Hand-supplied expected samples of the written ``FiberPhotometryResponseSeries``. With a small
+    #: ``stub_samples`` in ``conversion_options`` this is a short, readable literal.
+    expected_response_series_data: np.ndarray
+    #: Expected timing: set ``expected_rate`` + ``expected_starting_time`` for a regularly sampled
+    #: series, or ``expected_timestamps`` for an irregular one.
+    expected_starting_time: float | None = None
+    expected_rate: float | None = None
+    expected_timestamps: np.ndarray | None = None
+
+    def test_default_metadata_warns_about_placeholders(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        with pytest.warns(UserWarning, match="placeholder"):
+            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        metadata = self.interface.get_metadata()
+        fiber_photometry_metadata = metadata["FiberPhotometry"]
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            self._check_response_series(nwbfile, fiber_photometry_metadata)
+            self._check_fiber_photometry_table(nwbfile, fiber_photometry_metadata)
+            self._check_devices(nwbfile, metadata)
+            self._check_indicators(nwbfile, fiber_photometry_metadata)
+
+    def _check_response_series(self, nwbfile, fiber_photometry_metadata: dict):
+        """The written response series must match the child's hand-supplied expected data and timing."""
+        series_metadata = fiber_photometry_metadata[self.interface.metadata_key]
+        series_name = series_metadata["name"]
+        assert series_name in nwbfile.acquisition, f"'{series_name}' missing from acquisition."
+        response_series = nwbfile.acquisition[series_name]
+
+        assert response_series.unit == series_metadata["unit"]
+        assert_array_equal(response_series.data[:], self.expected_response_series_data)
+
+        # A regular series is written as rate + starting_time; an irregular one as explicit timestamps.
+        if self.expected_rate is not None:
+            assert response_series.rate == pytest.approx(self.expected_rate)
+            assert response_series.starting_time == pytest.approx(self.expected_starting_time)
+        else:
+            assert_array_equal(response_series.timestamps[:], self.expected_timestamps)
+
     def _check_fiber_photometry_table(self, nwbfile, fiber_photometry_metadata: dict):
         """One table row per metadata row, with the per-row scalar fields matching the metadata."""
         assert "fiber_photometry" in nwbfile.lab_meta_data
