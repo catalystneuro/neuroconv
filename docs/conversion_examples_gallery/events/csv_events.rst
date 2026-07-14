@@ -3,14 +3,18 @@ CSV Events data conversion
 
 :py:class:`~neuroconv.datainterfaces.events.csv_events.csveventsdatainterface.CSVEventsInterface`
 is a general-purpose reader for discrete events (e.g. TTL pulses) stored in a CSV file. You point it
-at one CSV and name the column that holds the event timestamps in seconds (``timestamps_column``). Pass
-``event_type_column=None`` when the file is a single event type, in which case it is written as an
-``ndx_events.Events`` object named after the file stem. When the file holds several event types told
-apart by a label column, name that column with ``event_type_column`` and the file is written as an
-``ndx_events.LabeledEvents`` object carrying the per-event labels. Either way the object lands in
-``nwbfile.acquisition``.
+at one CSV and assign each column a role. Every row is one event occurrence at ``timestamps_column``
+(seconds). Pass ``event_type_column=None`` when the file is a single event type, in which case it is
+written as one ``pynwb.event.EventsTable`` named after the file stem. When the file holds several event
+types told apart by a label column, name that column with ``event_type_column``: each distinct value
+becomes its own event type and, by default, its own ``EventsTable``. Merging several types into one
+table with an ``event_type`` discriminator column is opt-in by pointing their ``table_metadata_key`` at
+a shared key in the editable metadata. Optionally, ``value_columns`` carries extra columns along as
+per-event values and ``durations_column`` writes per-event durations. Either way the tables land in
+``nwbfile.events``.
 
-Install NeuroConv with the additional dependencies necessary for reading CSV event data.
+CSV events need only NeuroConv's core dependencies, but the ``csv_events`` extra is available for a
+consistent install command.
 
 .. code-block:: bash
 
