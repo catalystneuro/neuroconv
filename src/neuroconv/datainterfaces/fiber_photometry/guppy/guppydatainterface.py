@@ -15,6 +15,7 @@ from pynwb.file import NWBFile
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.tools import get_package
+from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.utils import DeepDict
 from neuroconv.utils.json_schema import get_base_schema
@@ -711,28 +712,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             {region: timestamps + aligned_starting_time for region, timestamps in region_to_timestamps.items()}
         )
 
-    @staticmethod
-    def _get_fiber_photometry_table(nwbfile: NWBFile):
-        """Return the acquisition ``FiberPhotometryTable`` already present in ``nwbfile``.
-
-        GuPPy does not own this table; the acquisition interface must have added it (as a
-        ``FiberPhotometry`` lab_meta_data object) before this interface runs.
-        """
-        fiber_photometry_lab_meta_data = next(
-            (
-                lab_meta_data
-                for lab_meta_data in nwbfile.lab_meta_data.values()
-                if hasattr(lab_meta_data, "fiber_photometry_table")
-            ),
-            None,
-        )
-        assert fiber_photometry_lab_meta_data is not None, (
-            "No FiberPhotometryTable found in the NWBFile. GuppyInterface does not stand alone; the "
-            "acquisition interface must add the fiber photometry table before GuPPy runs (drive both "
-            "through a converter, e.g. TDTFiberPhotometryGuppyConverter)."
-        )
-        return fiber_photometry_lab_meta_data.fiber_photometry_table
-
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -772,7 +751,12 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         """
         ndx_guppy = get_package(package_name="ndx_guppy", installation_instructions="pip install ndx-guppy")
 
-        fiber_photometry_table = self._get_fiber_photometry_table(nwbfile)
+        fiber_photometry_table = get_fiber_photometry_table(nwbfile)
+        assert fiber_photometry_table is not None, (
+            "No FiberPhotometryTable found in the NWBFile. GuppyInterface does not stand alone; the "
+            "acquisition interface must add the fiber photometry table before GuPPy runs (drive both "
+            "through a converter, e.g. TDTFiberPhotometryGuppyConverter)."
+        )
         guppy_metadata = metadata["FiberPhotometry"]["Guppy"]
         processing_module_metadata = guppy_metadata["ProcessingModule"]
         processing_module = get_module(
