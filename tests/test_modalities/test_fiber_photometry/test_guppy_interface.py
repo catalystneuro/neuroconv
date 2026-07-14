@@ -238,7 +238,7 @@ class TestGuppyInterface:
 
     def test_metadata_cross_correlations(self, interface, case):
         metadata = interface.get_metadata()
-        cross_correlations_metadata = metadata["Ophys"]["Guppy"]["CrossCorrelations"]
+        cross_correlations_metadata = metadata["FiberPhotometry"]["Guppy"]["CrossCorrelations"]
         # One object per (trace_type, region-pair); the event is concatenated into the data.
         expected_names = {
             f"cross_correlation_{entry['trace_type']}_{entry['region_1']}_{entry['region_2']}"
@@ -248,12 +248,12 @@ class TestGuppyInterface:
 
     def test_metadata_processing_module_includes_guppy_version(self, interface):
         metadata = interface.get_metadata()
-        description = metadata["Ophys"]["Guppy"]["ProcessingModule"]["description"]
+        description = metadata["FiberPhotometry"]["Guppy"]["ProcessingModule"]["description"]
         assert "(GuPPy version 2.0.0a7)" in description
 
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()
-        guppy_metadata = metadata["Ophys"]["Guppy"]
+        guppy_metadata = metadata["FiberPhotometry"]["Guppy"]
 
         expected_trace_names = {
             f"{prefix}_{region}" for region, prefixes in case["expected_traces"].items() for prefix in prefixes

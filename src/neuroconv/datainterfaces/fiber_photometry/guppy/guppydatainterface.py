@@ -557,7 +557,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 f"GuPPy-derived fiber photometry processing outputs (GuPPy version {guppy_version})."
             )
 
-        metadata["Ophys"]["Guppy"] = dict(
+        metadata["FiberPhotometry"]["Guppy"] = dict(
             ProcessingModule=dict(
                 name="fiber_photometry",
                 description=processing_module_description,
@@ -578,8 +578,8 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         """Return the metadata schema for this interface."""
         trace_type_schema = dict(type="string", enum=list(self._TRANSIENT_FEATURES))
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"].setdefault("Ophys", get_base_schema(tag="Ophys"))
-        metadata_schema["properties"]["Ophys"]["properties"]["Guppy"] = dict(
+        metadata_schema["properties"].setdefault("FiberPhotometry", get_base_schema(tag="FiberPhotometry"))
+        metadata_schema["properties"]["FiberPhotometry"]["properties"]["Guppy"] = dict(
             type="object",
             additionalProperties=False,
             # Only the always-present keys are required. The data-dependent product
@@ -757,7 +757,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             The in-memory NWBFile to add the data to. Must already contain the acquisition
             ``FiberPhotometryTable`` (as a ``FiberPhotometry`` lab_meta_data object).
         metadata : dict
-            Metadata dictionary; must contain ``metadata["Ophys"]["Guppy"]``.
+            Metadata dictionary; must contain ``metadata["FiberPhotometry"]["Guppy"]``.
         fiber_photometry_table_region_indices : dict[str, list[int]]
             Mapping from GuPPy region label (e.g. ``"dms"``) to the acquisition
             ``FiberPhotometryTable`` row indices that region's derived traces were computed from
@@ -768,7 +768,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         ndx_guppy = get_package(package_name="ndx_guppy", installation_instructions="pip install ndx-guppy")
 
         fiber_photometry_table = self._get_fiber_photometry_table(nwbfile)
-        guppy_metadata = metadata["Ophys"]["Guppy"]
+        guppy_metadata = metadata["FiberPhotometry"]["Guppy"]
         processing_module_metadata = guppy_metadata["ProcessingModule"]
         processing_module = get_module(
             nwbfile=nwbfile,
