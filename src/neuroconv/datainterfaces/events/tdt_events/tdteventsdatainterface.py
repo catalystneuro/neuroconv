@@ -2,15 +2,11 @@ from datetime import datetime, timezone
 
 import numpy as np
 from pydantic import DirectoryPath, validate_call
-from pynwb.file import NWBFile
 
-from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.tools import get_package
 from neuroconv.utils import DeepDict
 
-from ...ophys.tdt_fp._tdt_mixin import TDTLoadMixin
-
-_NEW_ISSUE_URL = "https://github.com/catalystneuro/neuroconv/issues/new"
+from ..baseeventsinterface import BaseEventsInterface, _EventsData
+from ...fiber_photometry.tdt._tdt_mixin import TDTLoadMixin
 
 
 def _offset_is_synthesized(onset: np.ndarray, offset: np.ndarray) -> bool:
@@ -46,22 +42,20 @@ def _normalize_strobe_value(value: float) -> int | float:
     return int(value) if value.is_integer() else value
 
 
-class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
+class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
     """Data Interface for converting discrete events (epocs) from a TDT output folder.
 
     The TDT tank stores discrete events as epocs (e.g. camera TTL pulses, port entries, nose pokes).
-    This interface reads those epocs via ``tdt.read_block`` and writes each selected epoc as an
-    ``ndx_events.Events`` object (onset timestamps only) into ``nwbfile.acquisition``. Acquisition is
-    used because TDT epocs are raw acquired markers (TTLs, strobes, sync pulses) whose interpretation
-    is not necessarily behavioral.
+    This interface reads those epocs via ``tdt.read_block`` and writes each selected epoc as one
+    ``pynwb.event.EventsTable`` inside ``nwbfile.events``.
 
     Most epoc stores are onset-type epocs whose ``data`` array is a meaningless incrementing counter,
-    so only the onsets are written (as ``ndx_events.Events``). A store whose ``data`` carries real
-    strobe codes (e.g. the ``PAB_`` store's ``[16, 2064, 0]`` cycle) is written as an
-    ``ndx_events.LabeledEvents`` instead, with the codes as per-event labels. The ``offset`` array of
-    an onset-type epoc is a synthesized fill (``offset[i] == onset[i + 1]``, last value ``inf``) and
-    is not written; epocs that carry real offset (STROFF) durations are not supported yet, and the
-    interface detects them and raises ``NotImplementedError`` pointing to a feature request.
+    so only the onsets are written (a timestamp-only table). A store whose ``data`` carries real
+    strobe codes (e.g. the ``PAB_`` store's ``[16, 2064, 0]`` cycle) additionally gets a categorical
+    ``strobe`` column, with the codes as per-event labels. The ``offset`` array of an onset-type epoc
+    is a synthesized fill (``offset[i] == onset[i + 1]``, last value ``inf``) and is not written.
+    Epocs that carry real offset (STROFF) durations are written as durative events, with each event's
+    duration (``offset`` minus ``onset``) in the table's ``duration`` column.
     """
 
     keywords = ("events", "TDT")
@@ -98,8 +92,6 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "tdt_events"
-        # This import is to assure that ndx_events is in the global namespace when a pynwb.io object is created
-        import ndx_events  # noqa: F401
 
     def get_metadata(self) -> DeepDict:
         """
@@ -121,128 +113,74 @@ class TDTEventsInterface(TDTLoadMixin, BaseDataInterface):
         included_events = [epoc_name for epoc_name in epocs.keys() if epoc_name not in exclude_events]
         for epoc_name in included_events:
             data = np.asarray(epocs[epoc_name].data)
-            column = {
-                "column_name": epoc_name,
-                "description": f"Onset times of the TDT epoc '{epoc_name}'.",
-            }
-            # A non-counter ``data`` array is a real strobe: seed an editable label per code so the
-            # store is written as LabeledEvents and the user can rename the codes (e.g. 16 -> "left").
-            if len(data) > 0 and not _data_is_counter(data):
-                column["description"] = f"Onset times of the TDT epoc '{epoc_name}', labeled by strobe value."
-                column["column_categories"] = {
-                    "labels": {
-                        _normalize_strobe_value(value): str(_normalize_strobe_value(value)) for value in np.unique(data)
+            if len(data) == 0:
+                continue  # an epoc with no events is not a writable event type; skip it entirely
+            is_strobe = not _data_is_counter(data)
+
+            # One EventsTable per epoc store; event_name defaults to the store name. A counter store is
+            # timestamp-only (no columns); a real strobe gets one categorical 'strobe' column (keyed by
+            # its payload field) with an editable code -> label map.
+            event_description = f"Onset times of the TDT epoc '{epoc_name}'."
+            entry = {"event_name": epoc_name, "event_description": event_description}
+            if is_strobe:
+                entry["event_description"] = f"Onset times of the TDT epoc '{epoc_name}', labeled by strobe value."
+                entry["columns"] = {
+                    "strobe": {
+                        "column_name": "strobe",
+                        "description": f"Strobe code for each '{epoc_name}' event.",
+                        "column_categories": {
+                            "labels": {
+                                _normalize_strobe_value(value): str(_normalize_strobe_value(value))
+                                for value in np.unique(data)
+                            }
+                        },
                     }
                 }
-            metadata["Events"][self.metadata_key]["event_columns"][epoc_name] = column
+            metadata["Events"][self.metadata_key]["event_types"][epoc_name] = entry
         return metadata
 
-    def get_metadata_schema(self) -> dict:
+    def _get_events_data_dict(self) -> dict[str, _EventsData]:
+        """Build the internal event representation from the TDT epocs, cached after the first call.
+
+        Each included epoc becomes one :class:`_EventsData`: a counter epoc yields onset timestamps only
+        (a bare marker, empty payload), while a strobe epoc (real ``data`` codes) carries the per-event
+        codes under the ``"strobe"`` payload field, normalized to match the ``column_categories["labels"]``
+        keys seeded by :meth:`get_metadata`. An onset-only epoc is timestamp-only (``durations`` left
+        ``None``); an epoc carrying real offset (STROFF) durations is written with per-event durations
+        (``offset`` minus ``onset``).
         """
-        Get the metadata schema for the TDTEventsInterface.
-
-        Returns
-        -------
-        dict
-            The metadata schema for this interface.
-        """
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Events"] = {
-            "type": "object",
-            "additionalProperties": {  # keyed by metadata_key
-                "type": "object",
-                "properties": {
-                    "event_columns": {
-                        "type": "object",
-                        "additionalProperties": {  # keyed by epoc store name (event_type_id)
-                            "type": "object",
-                            "required": ["column_name", "description"],
-                            "properties": {
-                                "column_name": {"type": "string"},
-                                "description": {"type": "string"},
-                                # Present only for strobe stores: the column's value vocabulary.
-                                "column_categories": {
-                                    "type": "object",
-                                    "properties": {
-                                        # maps each raw strobe code to a display label
-                                        "labels": {"type": "object", "additionalProperties": {"type": "string"}},
-                                        "meanings": {"type": "object", "additionalProperties": {"type": "string"}},
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-        }
-        return metadata_schema
-
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
-        """Add the selected TDT epocs to the NWBFile as ``ndx_events.Events`` objects.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            The NWB file to add the events to.
-        metadata : dict
-            Metadata dictionary. Each entry in ``metadata["Events"][metadata_key]["event_columns"]``
-            is keyed by the TDT epoc store name (``event_type_id``) and holds the output object's
-            ``column_name`` and ``description``. A strobe store additionally holds a
-            ``column_categories["labels"]`` map (raw code -> display label) and is written as
-            ``LabeledEvents``; other stores are written as ``Events``.
-        """
-        ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events==0.2.2")
-
-        event_columns = metadata["Events"][self.metadata_key]["event_columns"]
-        event_object_names = [column["column_name"] for column in event_columns.values()]
-        assert len(event_object_names) == len(set(event_object_names)), (
-            f"Duplicate Events 'column_name' values found in metadata: {event_object_names}. "
-            "Each Events object must have a unique name."
-        )
+        if self._events_data_dict is not None:
+            return self._events_data_dict
 
         tdt_photometry = self.load(evtype=["epocs"])
-        available_epocs = list(tdt_photometry.epocs.keys())
-        for epoc_name, column in event_columns.items():
-            assert (
-                epoc_name in available_epocs
-            ), f"Epoc '{epoc_name}' not found in the TDT tank. Available epocs: {available_epocs}."
+        exclude_events = self.source_data["exclude_events"] or []
+        included_events = [epoc_name for epoc_name in tdt_photometry.epocs.keys() if epoc_name not in exclude_events]
+
+        events_data_dict = {}
+        for epoc_name in included_events:
             epoc = tdt_photometry.epocs[epoc_name]
             onset = np.asarray(epoc.onset)
             offset = np.asarray(epoc.offset)
             data = np.asarray(epoc.data)
             if len(onset) == 0:
-                continue
+                continue  # an epoc with no onsets is not a writable event type; skip it (matches get_metadata)
 
-            if not _offset_is_synthesized(onset, offset):
-                raise NotImplementedError(
-                    f"The TDT epoc '{epoc_name}' carries real offset (STROFF) durations, which "
-                    "TDTEventsInterface does not support yet (only onset timestamps are written). "
-                    f"Please request support by opening an issue: {_NEW_ISSUE_URL}?title="
-                    "TDTEventsInterface:+support+epocs+with+real+offset+(STROFF)+durations"
-                )
-
-            if _data_is_counter(data):
-                # The data is a meaningless counter, so the onsets carry all the information.
-                events = ndx_events.Events(
-                    name=column["column_name"],
-                    description=column["description"],
-                    timestamps=onset,
-                )
+            # An onset-only epoc's offset is a synthesized fill carrying no information, so the type is
+            # timestamp-only (durations left None). A durative (STROFF) epoc has real falling edges,
+            # written as per-event durations (offset minus onset).
+            if _offset_is_synthesized(onset, offset):
+                durations = None
             else:
-                # The data is a real strobe: write it as LabeledEvents, one label per code. The label
-                # vocabulary is the editable ``column_categories["labels"]`` map seeded by
-                # ``get_metadata`` (raw code -> display label), ordered by the numeric code so the
-                # integer label keys are stable.
-                labels_map = column["column_categories"]["labels"]
-                sorted_values = sorted(labels_map, key=lambda value: float(value))
-                labels = [labels_map[value] for value in sorted_values]
-                value_to_index = {float(value): index for index, value in enumerate(sorted_values)}
-                label_keys = np.array([value_to_index[float(value)] for value in data], dtype=np.uint32)
-                events = ndx_events.LabeledEvents(
-                    name=column["column_name"],
-                    description=column["description"],
-                    timestamps=onset,
-                    data=label_keys,
-                    labels=labels,
-                )
-            nwbfile.add_acquisition(events)
+                durations = offset - onset
+
+            # A counter ``data`` array is a meaningless index (a bare marker); a real strobe carries
+            # per-event codes, kept under the 'strobe' payload field and normalized to the label keys.
+            payload = {}
+            if not _data_is_counter(data):
+                payload = {"strobe": np.array([_normalize_strobe_value(value) for value in data])}
+            events_data_dict[epoc_name] = _EventsData(
+                event_type_source_id=epoc_name, timestamps=onset, durations=durations, payload=payload
+            )
+
+        self._events_data_dict = events_data_dict
+        return self._events_data_dict
