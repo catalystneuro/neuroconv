@@ -189,16 +189,16 @@ class TestGuppyInterface:
     # ----------------------------------------------------------------- discovery / metadata
 
     def test_discovery(self, interface, case):
-        assert interface.regions == case["expected_regions"]
-        assert interface.traces_by_region == case["expected_traces"]
-        assert interface.transients_by_region == case["expected_transients"]
+        assert interface._regions == case["expected_regions"]
+        assert interface._traces_by_region == case["expected_traces"]
+        assert interface._transients_by_region == case["expected_transients"]
 
     def test_discovery_event_store_to_event_name(self, interface, case):
-        assert interface.event_store_to_event_name == case["expected_event_store_to_event_name"]
+        assert interface._event_store_to_event_name == case["expected_event_store_to_event_name"]
 
     def test_discovery_psths_and_peak_aucs(self, interface, case):
-        assert len(interface.psths) == case["expected_psth_count"]
-        assert len(interface.peak_aucs) == case["expected_peak_auc_count"]
+        assert len(interface._psths) == case["expected_psth_count"]
+        assert len(interface._peak_aucs) == case["expected_peak_auc_count"]
 
     def test_metadata_session_start_time(self, interface, case):
         metadata = interface.get_metadata()
@@ -227,7 +227,7 @@ class TestGuppyInterface:
                     "region_1": entry["region_1"],
                     "region_2": entry["region_2"],
                 }
-                for entry in interface.cross_correlations
+                for entry in interface._cross_correlations
             ),
             key=lambda entry: (entry["event_name"], entry["trace_type"]),
         )
@@ -301,13 +301,13 @@ class TestGuppyInterface:
         (``port_entries`` -> ``PortEntries``). The registry's optional ``events`` column resolves each
         row to its table.
         """
-        if not interface.event_names:
+        if not interface._event_names:
             module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=True)
             assert "events" not in module["events"].colnames  # no optional object-reference column
             return
 
         event_tables = {}
-        for event_name in interface.event_names:
+        for event_name in interface._event_names:
             events_table = EventsTable(name=_to_table_object_name(event_name), description=event_name)
             events_table.add_row(timestamp=0.0)
             events_table.add_row(timestamp=1.0)
@@ -350,10 +350,10 @@ class TestGuppyInterface:
         # Each event-bearing product is one object per condition, with trials concatenated across
         # events: the per-trial 'event' reference labels every trials column, while 'summary_event'
         # has one row per event (matching the columns of 'mean'/'mean_*').
-        event_order = {name: index for index, name in enumerate(interface.event_names)}
+        event_order = {name: index for index, name in enumerate(interface._event_names)}
 
         cross_correlation_groups = _group_by_condition(
-            interface.cross_correlations, ("feature", "region_1", "region_2"), event_order
+            interface._cross_correlations, ("feature", "region_1", "region_2"), event_order
         )
         for (feature, region_1, region_2), entries in cross_correlation_groups.items():
             cross_correlation = module[f"cross_correlation_{feature}_{region_1}_{region_2}"]
@@ -368,7 +368,7 @@ class TestGuppyInterface:
             assert _resolve_events(module, cross_correlation.summary_event) == expected_events
             assert set(_resolve_events(module, cross_correlation.event)) == set(expected_events)
 
-        psth_groups = _group_by_condition(interface.psths, ("region", "feature", "baseline_corrected"), event_order)
+        psth_groups = _group_by_condition(interface._psths, ("region", "feature", "baseline_corrected"), event_order)
         for (region, feature, baseline_corrected), entries in psth_groups.items():
             suffix = "" if baseline_corrected else "_baseline_uncorrected"
             psth = module[f"psth_{region}_{feature}{suffix}"]
@@ -382,7 +382,7 @@ class TestGuppyInterface:
             assert _resolve_regions(module, psth.region) == [region]
             assert _resolve_events(module, psth.summary_event) == expected_events
 
-        peak_auc_groups = _group_by_condition(interface.peak_aucs, ("region", "feature"), event_order)
+        peak_auc_groups = _group_by_condition(interface._peak_aucs, ("region", "feature"), event_order)
         for (region, feature), entries in peak_auc_groups.items():
             peak_auc = module[f"peak_auc_{region}_{feature}"]
             expected_events = [entry["event"] for entry in entries]
@@ -437,11 +437,11 @@ class TestGuppyInterface:
 
     def test_cross_correlation_matches_source(self, interface, case, linked_nwbfile, region_to_indices):
         module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
-        event_order = {name: index for index, name in enumerate(interface.event_names)}
+        event_order = {name: index for index, name in enumerate(interface._event_names)}
         # The object for one condition concatenates its events' trials/bins; compare against the same
         # concatenation of the per-event source files.
         for (feature, region_1, region_2), entries in _group_by_condition(
-            interface.cross_correlations, ("feature", "region_1", "region_2"), event_order
+            interface._cross_correlations, ("feature", "region_1", "region_2"), event_order
         ).items():
             cross_correlation = module[f"cross_correlation_{feature}_{region_1}_{region_2}"]
             trials_blocks, onset_values, mean_blocks = [], [], []
@@ -476,10 +476,10 @@ class TestGuppyInterface:
 
     def test_psth_matches_source(self, interface, case, linked_nwbfile, region_to_indices):
         module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
-        event_order = {name: index for index, name in enumerate(interface.event_names)}
+        event_order = {name: index for index, name in enumerate(interface._event_names)}
         # no-op for fixtures without PSTH files
         for (region, feature, baseline_corrected), entries in _group_by_condition(
-            interface.psths, ("region", "feature", "baseline_corrected"), event_order
+            interface._psths, ("region", "feature", "baseline_corrected"), event_order
         ).items():
             suffix = "" if baseline_corrected else "_baseline_uncorrected"
             psth = module[f"psth_{region}_{feature}{suffix}"]
@@ -495,9 +495,9 @@ class TestGuppyInterface:
 
     def test_peak_auc_matches_source(self, interface, case, linked_nwbfile, region_to_indices):
         module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
-        event_order = {name: index for index, name in enumerate(interface.event_names)}
+        event_order = {name: index for index, name in enumerate(interface._event_names)}
         for (region, feature), entries in _group_by_condition(
-            interface.peak_aucs, ("region", "feature"), event_order
+            interface._peak_aucs, ("region", "feature"), event_order
         ).items():
             peak_auc = module[f"peak_auc_{region}_{feature}"]
             # mean_peak_positive is (num_windows, num_events): one column per event's across-trial mean.
@@ -510,7 +510,7 @@ class TestGuppyInterface:
                     np.array([float(source.loc[mean_row, f"peak_pos_{window + 1}"]) for window in range(window_count)])
                 )
             np.testing.assert_array_equal(peak_auc.mean_peak_positive[:], np.stack(expected_mean_columns, axis=1))
-            start_points = np.asarray(interface.guppy_parameters["peak_startPoint"], dtype=np.float64)
+            start_points = np.asarray(interface._guppy_parameters["peak_startPoint"], dtype=np.float64)
             np.testing.assert_array_equal(peak_auc.window_start[:], start_points[~np.isnan(start_points)])
 
     def test_valid_signal_intervals_match_source(self, interface, case, linked_nwbfile, region_to_indices):
@@ -523,7 +523,7 @@ class TestGuppyInterface:
 
         table = module["valid_signal_intervals"]
         assert table.neurodata_type == "GuppyValidSignalIntervals"
-        assert interface.artifact_removal_method in table.description
+        assert interface._artifact_removal_method in table.description
         actual_regions = _resolve_regions(module, table["region"])
         actual_starts = list(table["start_time"][:])
         actual_stops = list(table["stop_time"][:])
@@ -549,9 +549,9 @@ class TestGuppyInterface:
 
         interface = GuppyInterface(folder_path=str(copied_folder))
         module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
-        event_order = {name: index for index, name in enumerate(interface.event_names)}
+        event_order = {name: index for index, name in enumerate(interface._event_names)}
         for feature, region_1, region_2 in _group_by_condition(
-            interface.cross_correlations, ("feature", "region_1", "region_2"), event_order
+            interface._cross_correlations, ("feature", "region_1", "region_2"), event_order
         ):
             cross_correlation = module[f"cross_correlation_{feature}_{region_1}_{region_2}"]
             assert cross_correlation.bin_edges is None

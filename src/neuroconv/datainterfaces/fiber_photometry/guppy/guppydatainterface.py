@@ -38,12 +38,18 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
     """
     Data Interface for converting GuPPy (Guided Photometry Analysis in Python) processed outputs.
 
-    GuPPy is a processing tool, not an acquisition system. This interface writes the derived products
-    GuPPy computes -- control fit / ΔF/F / z-score traces, transient peaks and their summary, peri-event
-    PSTHs, peak/AUC summaries, region-pair cross-correlations, and the valid-signal intervals -- as the
-    dedicated ``ndx-guppy`` neurodata types, plus the GuPPy parameters (``GuppyParameters``) and two
-    registry tables (``GuppyRegionsTable``, ``GuppyEventsTable``) that give region and event a single
-    structured identity referenced by every product.
+    This interface writes the derived products that GuPPy computes as dedicated ``ndx-guppy`` neurodata types:
+
+    * control-fit / ΔF/F / z-score traces
+    * transient peaks and their per-(region, trace_type) summary
+    * peri-event PSTHs
+    * peak / AUC summaries
+    * region-pair cross-correlations
+    * valid-signal intervals
+
+    plus the GuPPy parameters (``GuppyParameters``) and two registry tables (``GuppyRegionsTable``,
+    ``GuppyEventsTable``) that give each region and event a single structured identity referenced by
+    every product.
 
     The derived traces are ``GuppyDerivedResponseSeries`` (a ``FiberPhotometryResponseSeries`` subtype),
     so they carry the acquisition device/fiber/indicator provenance via ``fiber_photometry_table_region``.
@@ -160,20 +166,19 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 )
                 artifact_removal_method = "concatenate"
 
-        self.folder_path = folder_path
-        self.parameters_file_path = parameters_file_path
-        self.regions = regions
-        self.region_to_store_names = region_to_store_names
-        self.event_store_to_event_name = event_store_to_event_name
-        self.event_names = event_names
-        self.traces_by_region = traces_by_region
-        self.transients_by_region = transients_by_region
-        self.cross_correlations = cross_correlations
-        self.psths = psths
-        self.peak_aucs = peak_aucs
-        self.valid_signal_intervals_by_region = valid_signal_intervals_by_region
-        self.artifact_removal_method = artifact_removal_method
-        self.guppy_parameters = guppy_parameters
+        self._folder_path = folder_path
+        self._regions = regions
+        self._region_to_store_names = region_to_store_names
+        self._event_store_to_event_name = event_store_to_event_name
+        self._event_names = event_names
+        self._traces_by_region = traces_by_region
+        self._transients_by_region = transients_by_region
+        self._cross_correlations = cross_correlations
+        self._psths = psths
+        self._peak_aucs = peak_aucs
+        self._valid_signal_intervals_by_region = valid_signal_intervals_by_region
+        self._artifact_removal_method = artifact_removal_method
+        self._guppy_parameters = guppy_parameters
         self._region_to_aligned_timestamps: dict[str, np.ndarray] | None = None
 
     @staticmethod
@@ -343,7 +348,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         return result
 
     def _read_time_correction(self, region: str) -> dict:
-        time_correction_path = self.folder_path / f"timeCorrection_{region}.hdf5"
+        time_correction_path = self._folder_path / f"timeCorrection_{region}.hdf5"
         assert time_correction_path.is_file(), f"Missing {time_correction_path} for region '{region}'."
         with h5py.File(time_correction_path, "r") as f:
             # `timeRecStart` is absent for some acquisition formats (e.g. headerless CSV inputs)
@@ -357,14 +362,14 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
 
     def _bin_basis(self) -> str:
         """Whether GuPPy PSTH/cross-correlation bins are defined over 'trials' or 'time'."""
-        use_time_or_trials = self.guppy_parameters.get("use_time_or_trials")
+        use_time_or_trials = self._guppy_parameters.get("use_time_or_trials")
         if isinstance(use_time_or_trials, str) and use_time_or_trials.strip().lower().startswith("time"):
             return "time"
         return "trials"
 
     def _guppy_parameters_kwargs(self) -> dict:
         """Map ``GuPPyParamtersUsed.json`` keys onto ``GuppyParameters`` constructor kwargs."""
-        parameters = self.guppy_parameters
+        parameters = self._guppy_parameters
         text_keys = dict(
             guppy_version="guppy_version",
             zscore_method="zscore_method",
@@ -410,8 +415,8 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
 
     def _peak_windows(self) -> tuple[np.ndarray, np.ndarray]:
         """Return the real (non-NaN-padded) peak window start/stop arrays from the parameters."""
-        start_points = np.asarray(self.guppy_parameters.get("peak_startPoint"), dtype=np.float64)
-        end_points = np.asarray(self.guppy_parameters.get("peak_endPoint"), dtype=np.float64)
+        start_points = np.asarray(self._guppy_parameters.get("peak_startPoint"), dtype=np.float64)
+        end_points = np.asarray(self._guppy_parameters.get("peak_endPoint"), dtype=np.float64)
         valid = ~np.isnan(start_points)
         return start_points[valid], end_points[valid]
 
@@ -419,13 +424,13 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         """Return metadata pre-populated from the GuPPy outputs and parameters file."""
         metadata = super().get_metadata()
 
-        first_region = self.regions[0]
+        first_region = self._regions[0]
         time_correction = self._read_time_correction(first_region)
         if time_correction["time_rec_start"] is not None:
             session_start_datetime = datetime.fromtimestamp(time_correction["time_rec_start"], tz=timezone.utc)
             metadata["NWBFile"]["session_start_time"] = session_start_datetime
 
-        guppy_parameters = self.guppy_parameters
+        guppy_parameters = self._guppy_parameters
         zscore_method = guppy_parameters.get("zscore_method", "unspecified")
         baseline_window_start = guppy_parameters.get("baselineWindowStart")
         baseline_window_end = guppy_parameters.get("baselineWindowEnd")
@@ -450,8 +455,8 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         )
 
         traces_metadata = []
-        for region in self.regions:
-            for prefix in self.traces_by_region[region]:
+        for region in self._regions:
+            for prefix in self._traces_by_region[region]:
                 description = prefix_to_description_template[prefix].format(
                     region=region,
                     filter_window=filter_window,
@@ -472,8 +477,8 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 )
 
         transients_metadata = []
-        for region in self.regions:
-            for feature in self.transients_by_region[region]:
+        for region in self._regions:
+            for feature in self._transients_by_region[region]:
                 transients_metadata.append(
                     dict(
                         name=f"transients_{region}_{feature}",
@@ -492,7 +497,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         # mirrors that with one entry per condition carrying the list of events it spans.
         cross_correlations_metadata = []
         for (feature, region_1, region_2), entries in self._group_by_condition(
-            self.cross_correlations, ("feature", "region_1", "region_2")
+            self._cross_correlations, ("feature", "region_1", "region_2")
         ).items():
             event_names = [entry["event"] for entry in entries]
             cross_correlations_metadata.append(
@@ -514,7 +519,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
 
         psths_metadata = []
         for (region, feature, baseline_corrected), entries in self._group_by_condition(
-            self.psths, ("region", "feature", "baseline_corrected")
+            self._psths, ("region", "feature", "baseline_corrected")
         ).items():
             event_names = [entry["event"] for entry in entries]
             suffix = "" if baseline_corrected else "_baseline_uncorrected"
@@ -534,7 +539,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             )
 
         peak_aucs_metadata = []
-        for (region, feature), entries in self._group_by_condition(self.peak_aucs, ("region", "feature")).items():
+        for (region, feature), entries in self._group_by_condition(self._peak_aucs, ("region", "feature")).items():
             event_names = [entry["event"] for entry in entries]
             peak_aucs_metadata.append(
                 dict(
@@ -687,7 +692,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
 
     def get_original_timestamps(self) -> dict[str, np.ndarray]:
         """Return the original (GuPPy-corrected) timestamps for each region."""
-        return {region: self._read_time_correction(region)["timestamps"] for region in self.regions}
+        return {region: self._read_time_correction(region)["timestamps"] for region in self._regions}
 
     def get_timestamps(self) -> dict[str, np.ndarray]:
         """Return the (possibly aligned) timestamps for each region."""
@@ -792,8 +797,8 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             fiber_photometry_table_region_indices=fiber_photometry_table_region_indices,
         )
         events_table = self._add_events_table(ndx_guppy=ndx_guppy, processing_module=processing_module, nwbfile=nwbfile)
-        region_to_row_index = {region: index for index, region in enumerate(self.regions)}
-        event_to_row_index = {event_name: index for index, event_name in enumerate(self.event_names)}
+        region_to_row_index = {region: index for index, region in enumerate(self._regions)}
+        event_to_row_index = {event_name: index for index, event_name in enumerate(self._event_names)}
 
         def region_reference(region_names: list[str]) -> DynamicTableRegion:
             return DynamicTableRegion(
@@ -815,7 +820,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         for trace_metadata in guppy_metadata["Traces"]:
             region = trace_metadata["region"]
             trace_basename = trace_metadata["trace_basename"]
-            with h5py.File(self.folder_path / f"{trace_basename}.hdf5", "r") as f:
+            with h5py.File(self._folder_path / f"{trace_basename}.hdf5", "r") as f:
                 data = f["data"][:]
             timestamps = region_to_timestamps[region]
             if stub_test:
@@ -855,7 +860,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         for transient_metadata in guppy_metadata["Transients"]:
             region = transient_metadata["region"]
             trace_type = transient_metadata["trace_type"]
-            occurrences = pandas.read_csv(self.folder_path / f"transientsOccurrences_{trace_type}_{region}.csv")
+            occurrences = pandas.read_csv(self._folder_path / f"transientsOccurrences_{trace_type}_{region}.csv")
             peak_timestamps = occurrences["timestamps"].to_numpy(dtype=float)
             peak_amplitudes = occurrences["amplitude"].to_numpy(dtype=float)
             # Peaks are in GuPPy's emitted timebase; map them onto the (possibly aligned) timestamps.
@@ -907,7 +912,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         # Cross-correlations: one GuppyCrossCorrelation per (trace_type, region-pair) condition,
         # concatenating every event's trials/bins along the trials/bin axes.
         cross_correlation_groups = self._group_by_condition(
-            self.cross_correlations, ("feature", "region_1", "region_2")
+            self._cross_correlations, ("feature", "region_1", "region_2")
         )
         for cross_correlation_metadata in guppy_metadata["CrossCorrelations"]:
             entries = cross_correlation_groups[
@@ -945,7 +950,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
 
         # Peri-event PSTHs: one GuppyPSTH per (region, trace_type, baseline) condition,
         # concatenating every event's trials/bins along the trials/bin axes.
-        psth_groups = self._group_by_condition(self.psths, ("region", "feature", "baseline_corrected"))
+        psth_groups = self._group_by_condition(self._psths, ("region", "feature", "baseline_corrected"))
         for psth_metadata in guppy_metadata["PSTHs"]:
             entries = psth_groups[
                 (psth_metadata["region"], psth_metadata["trace_type"], psth_metadata["baseline_corrected"])
@@ -976,7 +981,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             processing_module.add(ndx_guppy.GuppyPSTH(**psth_kwargs))
 
         # Peak/AUC summaries: one GuppyPeakAUC per (region, trace_type) condition, concatenated across events.
-        peak_auc_groups = self._group_by_condition(self.peak_aucs, ("region", "feature"))
+        peak_auc_groups = self._group_by_condition(self._peak_aucs, ("region", "feature"))
         for peak_auc_metadata in guppy_metadata["PeakAUCs"]:
             entries = peak_auc_groups[(peak_auc_metadata["region"], peak_auc_metadata["trace_type"])]
             peak_auc = self._build_peak_auc(
@@ -990,18 +995,18 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             processing_module.add(peak_auc)
 
         # Valid-signal intervals.
-        if self.valid_signal_intervals_by_region:
+        if self._valid_signal_intervals_by_region:
             valid_signal_intervals = ndx_guppy.GuppyValidSignalIntervals(
                 name="valid_signal_intervals",
                 description=(
                     "Time intervals retained as valid signal (i.e., not removed as artifacts) "
-                    f"during GuPPy preprocessing. Method: {self.artifact_removal_method}. "
+                    f"during GuPPy preprocessing. Method: {self._artifact_removal_method}. "
                     "Sourced from coordsForPreProcessing_<region>.npy."
                 ),
                 target_tables={"region": regions_table},
             )
-            for region in sorted(self.valid_signal_intervals_by_region):
-                intervals = self.valid_signal_intervals_by_region[region]
+            for region in sorted(self._valid_signal_intervals_by_region):
+                intervals = self._valid_signal_intervals_by_region[region]
                 # Interval boundaries are in GuPPy's emitted recording timebase. Shift them by the same
                 # scalar offset applied to the region's timestamps (they are boundary values, not
                 # per-sample timestamps to interpolate against).
@@ -1024,14 +1029,14 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             "at the acquisition FiberPhotometryTable signal + isosbestic rows for that region.",
             target_tables={"fiber_photometry_table_region": fiber_photometry_table},
         )
-        for region in self.regions:
+        for region in self._regions:
             assert region in fiber_photometry_table_region_indices, (
                 f"No fiber_photometry_table_region_indices supplied for region '{region}'. GuppyInterface "
                 f"does not stand alone; drive it through a converter (e.g. TDTFiberPhotometryGuppyConverter)."
             )
             regions_table.add_row(
                 region=region,
-                raw_store_name=self.region_to_store_names.get(region, {}).get("signal"),
+                raw_store_name=self._region_to_store_names.get(region, {}).get("signal"),
                 fiber_photometry_table_region=list(fiber_photometry_table_region_indices[region]),
             )
         processing_module.add(regions_table)
@@ -1065,8 +1070,8 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         row references its table via the optional ``events`` column; otherwise (e.g. standalone GuPPy
         with no acquisition events) the column is omitted.
         """
-        name_to_store = {event_name: store for store, event_name in self.event_store_to_event_name.items()}
-        event_references = [self._resolve_events_table(nwbfile, event_name) for event_name in self.event_names]
+        name_to_store = {event_name: store for store, event_name in self._event_store_to_event_name.items()}
+        event_references = [self._resolve_events_table(nwbfile, event_name) for event_name in self._event_names]
         include_event_references = len(event_references) > 0 and all(
             reference is not None for reference in event_references
         )
@@ -1075,7 +1080,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             name="events",
             description="GuPPy behavioral events (one row per event GuPPy aligned to).",
         )
-        for event_name in self.event_names:
+        for event_name in self._event_names:
             store = name_to_store[event_name]
             events_table.add_row(
                 event_name=event_name,
@@ -1101,9 +1106,9 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         summary_trace_types: list[str] = []
         summary_frequencies: list[float] = []
         summary_amplitudes: list[float] = []
-        for region in self.regions:
-            for feature in self.transients_by_region[region]:
-                freq_amp_path = self.folder_path / f"freqAndAmp_{feature}_{region}.h5"
+        for region in self._regions:
+            for feature in self._transients_by_region[region]:
+                freq_amp_path = self._folder_path / f"freqAndAmp_{feature}_{region}.h5"
                 if not freq_amp_path.is_file():
                     continue
                 freq_amp_dataframe = pandas.read_hdf(freq_amp_path)
@@ -1149,10 +1154,10 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
 
         ``key_fields`` are the entry fields that define a condition (everything except the event),
         e.g. ``("region", "feature", "baseline_corrected")`` for PSTHs. Within each group the entries
-        are ordered by their event's position in ``self.event_names`` so concatenation across events
+        are ordered by their event's position in ``self._event_names`` so concatenation across events
         is deterministic.
         """
-        event_order = {event_name: index for index, event_name in enumerate(self.event_names)}
+        event_order = {event_name: index for index, event_name in enumerate(self._event_names)}
         groups: dict[tuple, list[dict]] = {}
         for entry in entries:
             key = tuple(entry[field] for field in key_fields)
