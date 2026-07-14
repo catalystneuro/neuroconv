@@ -30,28 +30,28 @@ Convert CSV Fiber Photometry data to NWB using
 CSV recordings carry no embedded recording-start timestamp, so ``session_start_time`` must be
 supplied explicitly in the metadata.
 
+Here we use a small example signal-channel CSV (``Sample_Signal_Channel.csv``) with ``timestamps``
+and ``data`` columns:
+
+.. code-block:: text
+
+    timestamps,data
+    0.0,0.1
+    0.01,0.106
+    0.02,0.112
+    ...
+
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
 
-    >>> import numpy as np
-    >>> import pandas as pd
-
     >>> from neuroconv.datainterfaces import CSVFiberPhotometryInterface
 
-    >>> # Here we write a small example signal channel CSV with ``timestamps`` and ``data`` columns.
-    >>> file_path = output_folder / "Sample_Signal_Channel.csv"
-    >>> sampling_rate = 100.0
-    >>> num_samples = 150
-    >>> timestamps = np.arange(num_samples) / sampling_rate
-    >>> signal = pd.DataFrame({"timestamps": timestamps, "data": np.linspace(0.1, 1.0, num_samples)})
-    >>> signal.to_csv(file_path, index=False)
-
     >>> # Inspect the file's column headers (callable before construction)
-    >>> available_columns = CSVFiberPhotometryInterface.get_available_columns(file_path=file_path)
+    >>> available_columns = CSVFiberPhotometryInterface.get_available_columns(file_path=csv_signal_channel_path)
 
-    >>> interface = CSVFiberPhotometryInterface(file_paths=file_path, data_columns="data", timestamps_column="timestamps", metadata_key="calcium_signal", verbose=False)
+    >>> interface = CSVFiberPhotometryInterface(file_paths=csv_signal_channel_path, data_columns="data", timestamps_column="timestamps", metadata_key="calcium_signal", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # CSV recordings have no embedded start time, so it must be set explicitly.
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))

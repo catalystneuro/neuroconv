@@ -30,6 +30,12 @@ def add_data_space(doctest_namespace, tmp_path, request):
         doctest_namespace["mda_firings_path"] = _generate_mda_firings(tmp_path)
         doctest_namespace["mda_sampling_frequency"] = 30_000.0
 
+    # CSV fiber photometry has no gin fixture; generate a small signal-channel CSV on-the-fly for
+    # the csv_fp.rst doctest so the gallery entry itself can stay focused on the conversion API
+    # rather than on synthesis code.
+    if test_path is not None and Path(str(test_path)).name == "csv_fp.rst":
+        doctest_namespace["csv_signal_channel_path"] = _generate_csv_signal_channel(tmp_path)
+
 
 def _generate_mda_firings(tmp_path):
     from spikeinterface.core import generate_ground_truth_recording
@@ -46,6 +52,19 @@ def _generate_mda_firings(tmp_path):
         sorting=sorting, save_path=str(firings_path), write_primary_channels=True,
     )
     return firings_path
+
+
+def _generate_csv_signal_channel(tmp_path):
+    import numpy as np
+    import pandas as pd
+
+    sampling_rate = 100.0
+    num_samples = 150
+    timestamps = np.arange(num_samples) / sampling_rate
+    signal = pd.DataFrame({"timestamps": timestamps, "data": np.linspace(0.1, 1.0, num_samples)})
+    csv_path = Path(tmp_path) / "Sample_Signal_Channel.csv"
+    signal.to_csv(csv_path, index=False)
+    return csv_path
 
 
 python_version = platform.python_version()
