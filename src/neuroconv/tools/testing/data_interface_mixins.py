@@ -1512,116 +1512,62 @@ class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignment
                 assert series.data.shape[0] == len(series.timestamps)
 
 
-class DoricFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    """Mixin for testing Doric fiber photometry interfaces."""
+class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """Shared tests for single-series fiber photometry interfaces.
 
-    # Disable generic tests that require schema/metadata patterns not used here.
-    def test_metadata(self):
-        pass
+    This mixin is the contract between the *expected* values a child supplies by hand — the
+    response-series data and its timing, which every child determines independently for its own
+    format/file — and *how those values surface in the NWB file*, which is uniform across all
+    interfaces built on ``BaseFiberPhotometryInterface`` and therefore lives here. A child only
+    declares ``expected_response_series_data`` and the expected timing (``expected_rate`` +
+    ``expected_starting_time`` for a regular series, or ``expected_timestamps`` for an irregular one);
+    it does not reimplement ``check_read_nwb``. The response-series expectations are deliberately *not*
+    derived from the interface's own reading methods (that would be circular); they are hand-supplied
+    literals. The ``FiberPhotometryTable`` / device / indicator assertions instead validate the
+    metadata → NWB mapping against the metadata used for the conversion. Format idiosyncrasies (e.g.
+    where a session start time comes from) belong in a small dedicated override or unit test.
+    """
 
-    def test_metadata_schema_valid(self):
-        pass
+    #: Hand-supplied expected samples of the written ``FiberPhotometryResponseSeries``. With a small
+    #: ``stub_samples`` in ``conversion_options`` this is a short, readable literal.
+    expected_response_series_data: np.ndarray
+    #: Expected timing: set ``expected_rate`` + ``expected_starting_time`` for a regularly sampled
+    #: series, or ``expected_timestamps`` for an irregular one.
+    expected_starting_time: float | None = None
+    expected_rate: float | None = None
+    expected_timestamps: np.ndarray | None = None
 
-    def test_no_metadata_mutation(self):
-        pass
-
-    def test_conversion_options_schema_valid(self):
-        pass
-
-    def test_run_conversion_with_backend(self):
-        pass
-
-    def test_run_conversion_with_backend_configuration(self):
-        pass
-
-    def test_configure_backend_for_equivalent_nwbfiles(self):
-        pass
-
-    def test_interface_alignment(self, *args, **kwargs):
-        pass
-
-    def test_all_conversion_checks(self, metadata: dict):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
-
-                self.check_metadata_schema_valid()
-                self.check_conversion_options_schema_valid()
-                self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
-
-                self.check_no_metadata_mutation(metadata=metadata)
-                self.check_configure_backend_for_equivalent_nwbfiles(metadata=metadata)
-
-                self.check_run_conversion_in_nwbconverter_with_backend(
-                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
-                )
-                self.check_run_conversion_in_nwbconverter_with_backend_configuration(
-                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
-                )
-                self.check_run_conversion_with_backend(
-                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
-                )
-                self.check_run_conversion_with_backend_configuration(
-                    nwbfile_path=self.nwbfile_path, metadata=metadata, backend="hdf5"
-                )
-                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
-                self.run_custom_checks()
-
-    def check_metadata(self):
+    def test_default_metadata_warns_about_placeholders(self, setup_interface):
         metadata = self.interface.get_metadata()
-        self.check_extracted_metadata(metadata)
+        with pytest.warns(UserWarning, match="placeholder"):
+            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
 
-    def check_metadata_schema_valid(self):
-        schema = self.interface.get_metadata_schema()
-        Draft7Validator.check_schema(schema=schema)
+    def check_read_nwb(self, nwbfile_path: str):
+        metadata = self.interface.get_metadata()
+        fiber_photometry_metadata = metadata["FiberPhotometry"]
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            self._check_response_series(nwbfile, fiber_photometry_metadata)
+            self._check_fiber_photometry_table(nwbfile, fiber_photometry_metadata)
+            self._check_devices(nwbfile, metadata)
+            self._check_indicators(nwbfile, fiber_photometry_metadata)
 
-    def check_conversion_options_schema_valid(self):
-        schema = self.interface.get_conversion_options_schema()
-        Draft7Validator.check_schema(schema=schema)
+    def _check_response_series(self, nwbfile, fiber_photometry_metadata: dict):
+        """The written response series must match the child's hand-supplied expected data and timing."""
+        series_metadata = fiber_photometry_metadata[self.interface.metadata_key]
+        series_name = series_metadata["name"]
+        assert series_name in nwbfile.acquisition, f"'{series_name}' missing from acquisition."
+        response_series = nwbfile.acquisition[series_name]
 
-    def check_no_metadata_mutation(self, metadata: dict):
-        metadata_in = deepcopy(metadata)
-        nwbfile = mock_NWBFile()
-        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
-        assert metadata == metadata_in
+        assert response_series.unit == series_metadata["unit"]
+        assert_array_equal(response_series.data[:], self.expected_response_series_data)
 
-    def check_run_conversion_with_backend(
-        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
-    ):
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            metadata=metadata,
-            backend=backend,
-            **self.conversion_options,
-        )
-
-    def check_configure_backend_for_equivalent_nwbfiles(
-        self, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
-    ):
-        nwbfile_1 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        nwbfile_2 = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        backend_configuration = get_default_backend_configuration(nwbfile=nwbfile_1, backend=backend)
-        configure_backend(nwbfile=nwbfile_2, backend_configuration=backend_configuration)
-
-    def check_run_conversion_with_backend_configuration(
-        self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
-    ):
-        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path,
-            metadata=metadata,
-            overwrite=True,
-            backend_configuration=backend_configuration,
-            **self.conversion_options,
-        )
+        # A regular series is written as rate + starting_time; an irregular one as explicit timestamps.
+        if self.expected_rate is not None:
+            assert response_series.rate == pytest.approx(self.expected_rate)
+            assert response_series.starting_time == pytest.approx(self.expected_starting_time)
+        else:
+            assert_array_equal(response_series.timestamps[:], self.expected_timestamps)
 
     def check_run_conversion_in_nwbconverter_with_backend(
         self, nwbfile_path: str, metadata: dict, backend: Literal["hdf5", "zarr"] = "hdf5"
