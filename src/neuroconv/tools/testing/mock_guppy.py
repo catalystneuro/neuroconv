@@ -20,11 +20,11 @@ import h5py
 import numpy as np
 import pandas
 
-# Default topology mirrors the ``Photo_249_391-200721-120136_stubbed`` TDT tank: two regions, three
-# behavioral events, two transient features, one cross-correlation pair. The store names
+# Default topology mirrors the ``Photo_249_391-200721-120136_stubbed`` TDT tank: two recording_sites, three
+# behavioral events, two transient features, one cross-correlation pair. The store ids
 # (Dv1A/Dv2A/Dv3B/Dv4B) and event epocs (LNRW/LNnR/PrtR) are the ones that tank actually exposes, so
 # ``TDTFiberPhotometryGuppyConverter`` can be driven against it with these defaults unchanged.
-_DEFAULT_REGION_TO_STORES = {
+_DEFAULT_RECORDING_SITE_TO_STORES = {
     "dms": {"signal": "Dv2A", "control": "Dv1A"},
     "dls": {"signal": "Dv4B", "control": "Dv3B"},
 }
@@ -39,7 +39,7 @@ _SESSION_ID = "mock_guppy_session"
 def generate_mock_guppy_output_folder(
     folder_path: str | Path,
     *,
-    region_to_stores: dict[str, dict[str, str]] | None = None,
+    recording_site_to_stores: dict[str, dict[str, str]] | None = None,
     event_store_to_name: dict[str, str] | None = None,
     features: tuple[str, ...] = ("z_score", "dff"),
     trace_prefixes: tuple[str, ...] = ("cntrl_sig_fit", "dff", "z_score"),
@@ -51,6 +51,7 @@ def generate_mock_guppy_output_folder(
     num_trials: int = 4,
     peak_start_points: tuple[float, ...] = (-5.0, 0.0, 5.0),
     peak_end_points: tuple[float, ...] = (0.0, 3.0, 10.0),
+    valid_signal_intervals: tuple[tuple[float, float], ...] = ((1.25, 1.75), (2.0, 2.5)),
     bin_size_in_trials: int = 3,
     guppy_version: str = "2.0.0a7",
     zscore_method: str = "standard z-score",
@@ -67,10 +68,10 @@ def generate_mock_guppy_output_folder(
     ----------
     folder_path : str or Path
         Directory to create and populate (created if missing).
-    region_to_stores : dict, optional
-        ``{region: {"signal": <store>, "control": <store>}}``. Defaults to the two-region
-        ``dms``/``dls`` topology with the acquisition store names of the reference fixture. Override
-        the store names to match a real TDT tank (for the converter test).
+    recording_site_to_stores : dict, optional
+        ``{recording_site: {"signal": <store>, "control": <store>}}``. Defaults to the two-recording_site
+        ``dms``/``dls`` topology with the acquisition store ids of the reference fixture. Override
+        the store ids to match a real TDT tank (for the converter test).
     event_store_to_name : dict, optional
         ``{acquisition_store: event_name}`` for the behavioral events. Defaults to the three
         ``LNRW``/``LNnR``/``PrtR`` epocs the Photo_249 tank exposes.
@@ -79,9 +80,9 @@ def generate_mock_guppy_output_folder(
     trace_prefixes : tuple of str, optional
         Derived continuous trace prefixes to emit.
     cross_correlation_pairs : tuple of (str, str), optional
-        ``(reference_region, target_region)`` pairs to emit cross-correlations for.
+        ``(reference_recording_site, target_recording_site)`` pairs to emit cross-correlations for.
     session_start_time : datetime, optional
-        Written into ``timeCorrection_<region>.hdf5`` as ``timeRecStart``; drives
+        Written into ``timeCorrection_<recording_site>.hdf5`` as ``timeRecStart``; drives
         ``get_metadata()["NWBFile"]["session_start_time"]``.
     sampling_rate, num_samples : float, int, optional
         Shape of the derived traces and their timestamps. ``num_samples / sampling_rate`` must
@@ -90,6 +91,11 @@ def generate_mock_guppy_output_folder(
         Shape of the PSTH / cross-correlation matrices.
     peak_start_points, peak_end_points : tuple of float, optional
         Peak/AUC analysis windows; also written to the parameters file (NaN-padded like GuPPy).
+    valid_signal_intervals : tuple of (float, float), optional
+        ``[start, stop]`` valid-signal (artifact-free) windows written to
+        ``coordsForPreProcessing_<recording_site>.npy`` for every recording_site, and reflected by ``removeArtifacts``
+        in the parameters file. Pass an empty tuple to emit no coords files (the no-artifact-removal
+        case). The windows must fall inside the trace timebase.
     bin_size_in_trials : int, optional
         Trials per bin for the ``bin_(a-b)`` columns ("# of trials" binning mode).
     guppy_version, zscore_method : str, optional
@@ -103,9 +109,11 @@ def generate_mock_guppy_output_folder(
     folder_path = Path(folder_path)
     folder_path.mkdir(parents=True, exist_ok=True)
 
-    region_to_stores = region_to_stores if region_to_stores is not None else _DEFAULT_REGION_TO_STORES
+    recording_site_to_stores = (
+        recording_site_to_stores if recording_site_to_stores is not None else _DEFAULT_RECORDING_SITE_TO_STORES
+    )
     event_store_to_name = event_store_to_name if event_store_to_name is not None else _DEFAULT_EVENT_STORE_TO_NAME
-    regions = list(region_to_stores)
+    recording_sites = list(recording_site_to_stores)
     event_names = list(event_store_to_name.values())
 
     # Trace timebase: start ~1 s in (the lights-on delay) so the first timestamp is > 0.5 s.
@@ -116,7 +124,9 @@ def generate_mock_guppy_output_folder(
     peri_event_time = np.linspace(-5.0, 10.0, num_psth_timepoints)
     lag_axis = np.linspace(-5.0, 5.0, num_psth_timepoints)
 
-    _write_stores_list(folder_path, region_to_stores=region_to_stores, event_store_to_name=event_store_to_name)
+    _write_stores_list(
+        folder_path, recording_site_to_stores=recording_site_to_stores, event_store_to_name=event_store_to_name
+    )
     _write_parameters(
         folder_path,
         guppy_version=guppy_version,
@@ -124,30 +134,33 @@ def generate_mock_guppy_output_folder(
         peak_start_points=peak_start_points,
         peak_end_points=peak_end_points,
         bin_size_in_trials=bin_size_in_trials,
+        remove_artifacts=bool(valid_signal_intervals),
     )
 
-    for region in regions:
+    for recording_site in recording_sites:
         _write_time_correction(
             folder_path,
-            region=region,
+            recording_site=recording_site,
             timestamps=timestamps,
             sampling_rate=sampling_rate,
             session_start_time=session_start_time,
         )
+        if valid_signal_intervals:
+            _write_valid_signal_intervals(folder_path, recording_site=recording_site, intervals=valid_signal_intervals)
         for prefix in trace_prefixes:
-            _write_trace(folder_path, prefix=prefix, region=region, num_samples=num_samples)
+            _write_trace(folder_path, prefix=prefix, recording_site=recording_site, num_samples=num_samples)
         for feature in features:
-            _write_transients_occurrences(folder_path, feature=feature, region=region)
-            _write_freq_and_amp(folder_path, feature=feature, region=region)
+            _write_transients_occurrences(folder_path, feature=feature, recording_site=recording_site)
+            _write_freq_and_amp(folder_path, feature=feature, recording_site=recording_site)
 
     for event_name in event_names:
-        for region in regions:
+        for recording_site in recording_sites:
             for feature in features:
                 for baseline_corrected in (True, False):
                     _write_psth(
                         folder_path,
                         event=event_name,
-                        region=region,
+                        recording_site=recording_site,
                         feature=feature,
                         baseline_corrected=baseline_corrected,
                         peri_event_time=peri_event_time,
@@ -157,7 +170,7 @@ def generate_mock_guppy_output_folder(
                 _write_peak_auc(
                     folder_path,
                     event=event_name,
-                    region=region,
+                    recording_site=recording_site,
                     feature=feature,
                     trial_onsets=trial_onsets,
                     bin_edges=bin_edges,
@@ -168,13 +181,13 @@ def generate_mock_guppy_output_folder(
     cross_correlation_folder.mkdir(exist_ok=True)
     for event_name in event_names:
         for feature in features:
-            for region_1, region_2 in cross_correlation_pairs:
+            for recording_site_1, recording_site_2 in cross_correlation_pairs:
                 _write_cross_correlation(
                     cross_correlation_folder,
                     event=event_name,
                     feature=feature,
-                    region_1=region_1,
-                    region_2=region_2,
+                    recording_site_1=recording_site_1,
+                    recording_site_2=recording_site_2,
                     lag_axis=lag_axis,
                     trial_onsets=trial_onsets,
                     bin_edges=bin_edges,
@@ -193,26 +206,45 @@ def _trial_bin_edges(num_trials: int, bin_size_in_trials: int) -> list[tuple[int
     return edges
 
 
-def _write_stores_list(folder_path, region_to_stores, event_store_to_name) -> None:
-    """Two-row ``storesList.csv`` (row 0 = acquisition store names, row 1 = GuPPy semantic names).
+def _write_stores_list(folder_path, recording_site_to_stores, event_store_to_name) -> None:
+    """Two-row ``storesList.csv`` (row 0 = acquisition store ids, row 1 = GuPPy store labels).
 
     Written via ``np.savetxt(..., delimiter=",", fmt="%s")``.
     """
-    store_names, semantic_names = [], []
-    for region, stores in region_to_stores.items():
-        store_names.append(stores["control"])
-        semantic_names.append(f"control_{region}")
-        store_names.append(stores["signal"])
-        semantic_names.append(f"signal_{region}")
+    store_ids, store_labels = [], []
+    for recording_site, stores in recording_site_to_stores.items():
+        store_ids.append(stores["control"])
+        store_labels.append(f"control_{recording_site}")
+        store_ids.append(stores["signal"])
+        store_labels.append(f"signal_{recording_site}")
     for store, event_name in event_store_to_name.items():
-        store_names.append(store)
-        semantic_names.append(event_name)
-    rows = np.asarray([store_names, semantic_names], dtype=str)
+        store_ids.append(store)
+        store_labels.append(event_name)
+    rows = np.asarray([store_ids, store_labels], dtype=str)
     np.savetxt(folder_path / "storesList.csv", rows, delimiter=",", fmt="%s")
 
 
+def _write_valid_signal_intervals(folder_path, recording_site, intervals) -> None:
+    """``coordsForPreProcessing_<recording_site>.npy`` -- the artifact-removal boundary coordinates.
+
+    A 2-D float array whose column 0 is a flat, even-length sequence of interval boundaries
+    ``[start, stop, start, stop, ...]`` (seconds). ``GuppyInterface`` reads column 0, checks it is
+    even-length, and reshapes it to ``(num_intervals, 2)`` ``[start, stop]`` pairs. Column 1 mirrors
+    the boundary amplitudes GuPPy stores alongside each coordinate (unread by the interface).
+    """
+    boundaries = np.asarray(intervals, dtype=np.float64).reshape(-1)
+    coords = np.column_stack([boundaries, np.zeros_like(boundaries)])
+    np.save(folder_path / f"coordsForPreProcessing_{recording_site}.npy", coords)
+
+
 def _write_parameters(
-    folder_path, guppy_version, zscore_method, peak_start_points, peak_end_points, bin_size_in_trials
+    folder_path,
+    guppy_version,
+    zscore_method,
+    peak_start_points,
+    peak_end_points,
+    bin_size_in_trials,
+    remove_artifacts,
 ) -> None:
     """``GuPPyParamtersUsed.json`` written via ``json.dump``.
 
@@ -226,7 +258,7 @@ def _write_parameters(
         guppy_version=guppy_version,
         isosbestic_control=True,
         filter_window=100.0,
-        removeArtifacts=False,
+        removeArtifacts=remove_artifacts,
         artifactsRemovalMethod="concatenate",
         zscore_method=zscore_method,
         baselineWindowStart=0.0,
@@ -248,44 +280,44 @@ def _write_parameters(
         json.dump(parameters, parameters_file, indent=4)
 
 
-def _write_trace(folder_path, prefix, region, num_samples) -> None:
-    """``<prefix>_<region>.hdf5`` with a single 1-D float64 dataset under key ``data``."""
+def _write_trace(folder_path, prefix, recording_site, num_samples) -> None:
+    """``<prefix>_<recording_site>.hdf5`` with a single 1-D float64 dataset under key ``data``."""
     data = np.linspace(-1.0, 1.0, num_samples, dtype=np.float64)
-    with h5py.File(folder_path / f"{prefix}_{region}.hdf5", "w") as trace_file:
+    with h5py.File(folder_path / f"{prefix}_{recording_site}.hdf5", "w") as trace_file:
         trace_file.create_dataset("data", data=data, maxshape=(None,), chunks=True)
 
 
-def _write_time_correction(folder_path, region, timestamps, sampling_rate, session_start_time) -> None:
-    """``timeCorrection_<region>.hdf5`` with four keyed datasets: ``timeRecStart``, ``timestampNew``,
+def _write_time_correction(folder_path, recording_site, timestamps, sampling_rate, session_start_time) -> None:
+    """``timeCorrection_<recording_site>.hdf5`` with four keyed datasets: ``timeRecStart``, ``timestampNew``,
     ``sampling_rate``, ``correctionIndex``.
     """
     time_rec_start = np.asarray([session_start_time.timestamp()], dtype=np.float64)
     correction_index = np.arange(timestamps.shape[0], dtype=np.int64)
-    with h5py.File(folder_path / f"timeCorrection_{region}.hdf5", "w") as time_correction_file:
+    with h5py.File(folder_path / f"timeCorrection_{recording_site}.hdf5", "w") as time_correction_file:
         time_correction_file.create_dataset("timeRecStart", data=time_rec_start)
         time_correction_file.create_dataset("timestampNew", data=timestamps, maxshape=(None,), chunks=True)
         time_correction_file.create_dataset("sampling_rate", data=np.asarray([sampling_rate], dtype=np.float32))
         time_correction_file.create_dataset("correctionIndex", data=correction_index, maxshape=(None,), chunks=True)
 
 
-def _write_transients_occurrences(folder_path, feature, region) -> None:
-    """``transientsOccurrences_<feature>_<region>.csv`` with columns ``timestamps``, ``amplitude``.
+def _write_transients_occurrences(folder_path, feature, recording_site) -> None:
+    """``transientsOccurrences_<feature>_<recording_site>.csv`` with columns ``timestamps``, ``amplitude``.
 
     Written as a DataFrame via ``to_csv`` (leading integer index column). The peaks sit inside the
     trace window; a couple fall beyond the 1-s stub window on purpose.
     """
     peaks = np.array([[1.2, 0.9], [1.5, 1.4], [1.8, 0.7], [2.5, 1.1]], dtype=np.float64)
     dataframe = pandas.DataFrame(peaks, index=np.arange(peaks.shape[0]), columns=["timestamps", "amplitude"])
-    dataframe.to_csv(folder_path / f"transientsOccurrences_{feature}_{region}.csv")
+    dataframe.to_csv(folder_path / f"transientsOccurrences_{feature}_{recording_site}.csv")
 
 
-def _write_freq_and_amp(folder_path, feature, region) -> None:
-    """``freqAndAmp_<feature>_<region>.h5`` -- one row, columns ``freq (events/min)``, ``amplitude``.
+def _write_freq_and_amp(folder_path, feature, recording_site) -> None:
+    """``freqAndAmp_<feature>_<recording_site>.h5`` -- one row, columns ``freq (events/min)``, ``amplitude``.
 
     Written as a DataFrame via ``to_hdf(key="df")``.
     """
     dataframe = pandas.DataFrame([[28.7, 2.18]], index=[_SESSION_ID], columns=["freq (events/min)", "amplitude"])
-    dataframe.to_hdf(folder_path / f"freqAndAmp_{feature}_{region}.h5", key="df", mode="w")
+    dataframe.to_hdf(folder_path / f"freqAndAmp_{feature}_{recording_site}.h5", key="df", mode="w")
 
 
 def _event_matrix_dataframe(axis, trial_onsets, bin_edges) -> pandas.DataFrame:
@@ -309,32 +341,32 @@ def _event_matrix_dataframe(axis, trial_onsets, bin_edges) -> pandas.DataFrame:
 
 
 def _write_psth(
-    folder_path, event, region, feature, baseline_corrected, peri_event_time, trial_onsets, bin_edges
+    folder_path, event, recording_site, feature, baseline_corrected, peri_event_time, trial_onsets, bin_edges
 ) -> None:
-    """PSTH ``.h5`` -- ``<event>_<region>_<feature>_<region>.h5`` (+ ``baselineUncorrected`` variant).
+    """PSTH ``.h5`` -- ``<event>_<recording_site>_<feature>_<recording_site>.h5`` (+ ``baselineUncorrected`` variant).
 
     Written as a DataFrame via ``to_hdf(key="df")``.
     """
     suffix = "" if baseline_corrected else "baselineUncorrected_"
-    filename = f"{event}_{region}_{suffix}{feature}_{region}.h5"
+    filename = f"{event}_{recording_site}_{suffix}{feature}_{recording_site}.h5"
     dataframe = _event_matrix_dataframe(peri_event_time, trial_onsets, bin_edges)
     dataframe.to_hdf(folder_path / filename, key="df", mode="w")
 
 
 def _write_cross_correlation(
-    folder_path, event, feature, region_1, region_2, lag_axis, trial_onsets, bin_edges
+    folder_path, event, feature, recording_site_1, recording_site_2, lag_axis, trial_onsets, bin_edges
 ) -> None:
-    """Cross-correlation ``.h5`` -- ``corr_<event>_<feature>_<region_1>_<region_2>.h5``.
+    """Cross-correlation ``.h5`` -- ``corr_<event>_<feature>_<recording_site_1>_<recording_site_2>.h5``.
 
     Written as a DataFrame via ``to_hdf(key="df")``.
     """
-    filename = f"corr_{event}_{feature}_{region_1}_{region_2}.h5"
+    filename = f"corr_{event}_{feature}_{recording_site_1}_{recording_site_2}.h5"
     dataframe = _event_matrix_dataframe(lag_axis, trial_onsets, bin_edges)
     dataframe.to_hdf(folder_path / filename, key="df", mode="w")
 
 
-def _write_peak_auc(folder_path, event, region, feature, trial_onsets, bin_edges, num_windows) -> None:
-    """Peak/AUC ``.h5`` -- ``peak_AUC_<event>_<region>_<feature>_<region>.h5``.
+def _write_peak_auc(folder_path, event, recording_site, feature, trial_onsets, bin_edges, num_windows) -> None:
+    """Peak/AUC ``.h5`` -- ``peak_AUC_<event>_<recording_site>_<feature>_<recording_site>.h5``.
 
     Columns are ``peak_pos_<w>``/``peak_neg_<w>``/``area_<w>`` per window; index rows are
     ``<session>_<onset>`` per trial, ``<session>_bin_(a-b)``, and ``<session>_mean``. Written as a
@@ -350,4 +382,6 @@ def _write_peak_auc(folder_path, event, region, feature, trial_onsets, bin_edges
 
     values = np.arange(len(index) * len(columns), dtype=np.float64).reshape(len(index), len(columns))
     dataframe = pandas.DataFrame(values, index=index, columns=columns)
-    dataframe.to_hdf(folder_path / f"peak_AUC_{event}_{region}_{feature}_{region}.h5", key="df", mode="w")
+    dataframe.to_hdf(
+        folder_path / f"peak_AUC_{event}_{recording_site}_{feature}_{recording_site}.h5", key="df", mode="w"
+    )
