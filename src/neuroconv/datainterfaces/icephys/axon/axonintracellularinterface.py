@@ -59,6 +59,8 @@ class AxonIntracellularInterface(BaseDataInterface):
         mode: Literal["voltage_clamp", "current_clamp", "izero"],
         stimulus_channel_name: str | None = None,
         stimulus_command: str | None = None,
+        repetition: str | None = None,
+        condition: str | None = None,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -82,6 +84,13 @@ class AxonIntracellularInterface(BaseDataInterface):
             A digital-to-analog converter command channel name (for example ``"Cmd 0"``) whose waveform is
             reconstructed from the protocol and written as the stimulus. ABF v2 only. Mutually exclusive
             with ``stimulus_channel_name``. See ``get_command_names``.
+        repetition : str, optional
+            Label grouping this run's sequential recording with others into a ``Repetitions`` entry (the same
+            protocol repeated). Used only when combining interfaces in a converter; if set on any interface it
+            must be set on all of them.
+        condition : str, optional
+            Label grouping this run's repetition with others into an ``ExperimentalConditions`` entry. Requires
+            ``repetition`` (conditions group repetitions); if set on any interface it must be set on all.
         metadata_key : str, optional
             Identity of this interface's response ``PatchClampSeries`` in the metadata dict. Defaults to the
             file stem plus the response channel name (a plain identifier).
@@ -90,12 +99,19 @@ class AxonIntracellularInterface(BaseDataInterface):
         super().__init__(verbose=verbose)
         self._file_path = file_path
         self._mode = mode
+        self._repetition = repetition
+        self._condition = condition
+        # Seconds added to this interface's series timestamps; a converter sets it for multi-file alignment.
+        # Default 0 leaves single-file output unchanged.
+        self._starting_time_shift = 0.0
         self.source_data = dict(
             file_path=file_path,
             response_channel_name=response_channel_name,
             mode=mode,
             stimulus_channel_name=stimulus_channel_name,
             stimulus_command=stimulus_command,
+            repetition=repetition,
+            condition=condition,
             metadata_key=metadata_key,
             verbose=verbose,
         )
@@ -144,19 +160,35 @@ class AxonIntracellularInterface(BaseDataInterface):
         self._has_stimulus = stimulus_channel_name is not None or stimulus_command is not None
 
         self._response_channel_name = self._channel_names[self._response_channel_index]
+        self._metadata_key = metadata_key
 
-        # Metadata-dict keys, seeded once from the file stem: the device is per file, the electrode per response
-        # channel, and the series key is the user's `metadata_key` if given, else the electrode key. Each series
-        # entry links to its electrode key and each electrode to its device key (see get_metadata), and those links
-        # are editable, so two series can be pointed at one electrode to share it. The bare stem is a fine default
-        # for a single file; making these unique across several files is a combining converter's responsibility.
-        self._device_metadata_key = self._file_path.stem
-        self._electrode_metadata_key = f"{self._file_path.stem}_{self._response_channel_name}"
-        self._series_metadata_key = metadata_key or self._electrode_metadata_key
+        # The run identity: the per-file grouping handle that `sequence` and the device/electrode/series keys all
+        # derive from (see the properties below). Defaults to the file stem; a converter combining several files
+        # overrides it with a unique, disambiguated label, because the stem collides across folders (Clampex names
+        # files per folder, e.g. 0000.abf). A lone interface keeps the stem, so single-file output is unchanged.
+        self._run_identity = self._file_path.stem
 
-        # Derived once from the parsed header.
+        # Derived once from the parsed header; read here and by a combining converter (for multi-file alignment).
+        self._recording_start_datetime = reader._axon_info.get("rec_datetime")
         self._num_sweeps = int(reader.header["nb_segment"][0])
         self._sampling_rate = float(reader.get_signal_sampling_rate())
+
+    # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to all
+    # of them. The device is per run, the electrode per response channel, and the series key is the user's
+    # `metadata_key` if given, else the electrode key. Each series entry links to its electrode key and each
+    # electrode to its device key (see get_metadata), and those links are editable, so two series can be pointed
+    # at one electrode to share it.
+    @property
+    def _device_metadata_key(self) -> str:
+        return self._run_identity
+
+    @property
+    def _electrode_metadata_key(self) -> str:
+        return f"{self._run_identity}_{self._response_channel_name}"
+
+    @property
+    def _series_metadata_key(self) -> str:
+        return self._metadata_key or self._electrode_metadata_key
 
     # ------------------------------------------------------------------ metadata
 
@@ -255,10 +287,10 @@ class AxonIntracellularInterface(BaseDataInterface):
         data, timestamps, sweep_sample_ranges = self._concatenate_channel_sweeps(
             self._reader, self._response_channel_index, self._num_sweeps, self._sampling_rate
         )
-        # The series is written on this file's own clock (timestamps start at the ABF header's t_start). The
-        # interface does not shift them: placing several files on one shared session timeline is a multi-file
-        # concern that only something seeing all the files can resolve, so temporal alignment is deferred rather
-        # than handled here with a per-interface offset.
+        # The series is written on this file's own clock (timestamps start at the ABF header's t_start). A lone
+        # interface leaves _starting_time_shift at 0; a converter combining several files sets it so they share one
+        # session timeline (aligned by header start time), since that resolution needs sight of all the files.
+        timestamps = timestamps + self._starting_time_shift
         channel = self._signal_channels[self._response_channel_index]
         response_kwargs = dict(
             name=response_metadata["name"],
@@ -303,9 +335,11 @@ class AxonIntracellularInterface(BaseDataInterface):
         series (and, when present, its stimulus series) by the sweep's ``(start_index, count)`` range, and tag
         every row with two run-level foreign-key columns:
 
-        - ``sequence``: the run identity (the file stem; the whole file is one run, so every sweep shares it).
-          This is the column an aggregator later groups on to build a SequentialRecordings entry.
+        - ``sequence``: the run identity (defaults to the file stem; the whole file is one run, so every sweep
+          shares it). This is the column an aggregator later groups on to build a SequentialRecordings entry.
         - ``stimulus_type``: what kind of run it was (gap-free, the protocol file name, or "not described").
+        - ``repetition`` and ``condition``: only when the user gave them (when combining several files in a
+          converter), so the runs group into repetitions and experimental conditions; a lone file omits them.
 
         These carry the run information in denormalized form, so the file stays information-complete even though
         the upper tables are not built. Those tables (SimultaneousRecordings, SequentialRecordings, and above) are
@@ -316,12 +350,18 @@ class AxonIntracellularInterface(BaseDataInterface):
         this contribution stays composable.
         """
         columns = {
-            "sequence": self._file_path.stem,
+            "sequence": self._run_identity,
             "stimulus_type": self._extract_and_format_stimulus_type(),
         }
+        if self._repetition is not None:
+            columns["repetition"] = self._repetition
+        if self._condition is not None:
+            columns["condition"] = self._condition
         column_descriptions = {
-            "sequence": "Run identity grouping rows into a sequential recording (one run per source file).",
+            "sequence": "Run identity grouping rows into a sequential recording (shared per source file).",
             "stimulus_type": "Stimulus type of the run, carried up to its sequential recording when aggregated.",
+            "repetition": "Repetition label grouping sequential recordings into a repetition.",
+            "condition": "Experimental condition label grouping repetitions.",
         }
         table = nwbfile.get_intracellular_recordings()
         for name in columns:
