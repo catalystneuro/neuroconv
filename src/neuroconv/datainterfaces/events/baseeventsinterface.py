@@ -309,11 +309,19 @@ class BaseEventsInterface(BaseDataInterface):
                     f"'{field_source_id}', but its payload has no such field (has {sorted(event.payload)})."
                 )
                 column_name = column_spec["column_name"]
-                assert column_name not in column_specs, (
-                    f"Two event columns write the same column_name '{column_name}'. "
-                    "Give each event column a unique column_name."
-                )
-                column_specs[column_name] = column_spec
+                existing_spec = column_specs.get(column_name)
+                if existing_spec is None:
+                    column_specs[column_name] = column_spec
+                else:
+                    # An identical re-declaration across types is one shared column; a conflicting one raises.
+                    self._check_shared_column_compatible(
+                        existing_spec,
+                        column_spec,
+                        column_name=column_name,
+                        table_name=table.name,
+                        event_name=event_name,
+                    )
+                # Each type still fills its own rows into the (possibly shared) column below.
                 resolved_columns.append((field_source_id, column_name, self._labels_map(column_spec)))
             for index, timestamp in enumerate(event.timestamps):
                 cells = {}
@@ -348,7 +356,7 @@ class BaseEventsInterface(BaseDataInterface):
             fill = "" if categories is not None else np.nan
             table.add_column(
                 name=column_name,
-                description=column_spec.get("description", f"Value of the '{column_name}' column for each event."),
+                description=column_spec.get("description", ""),
                 data=[fill] * n_existing,
             )
             meanings = categories.get("meanings") if categories else None
@@ -399,6 +407,33 @@ class BaseEventsInterface(BaseDataInterface):
                     existing = table[column_name].data
                     row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
             table.add_row(**row_kwargs)
+
+    @staticmethod
+    def _check_shared_column_compatible(
+        existing_spec: dict,
+        new_spec: dict,
+        *,
+        column_name: str,
+        table_name: str,
+        event_name: str,
+    ) -> None:
+        """Raise if an event type's ``column_name`` declaration conflicts with an earlier type's.
+
+        Two event types may target the same ``column_name`` to write one shared column, but only if they
+        declare it identically. The comparison is on ``description`` and ``column_categories`` (labels +
+        meanings), the only fields besides the (equal-by-construction) ``column_name`` a column spec carries.
+        ``event_name`` is the offending (current) type's user-declared name; the message points at it, since
+        that is the declaration the author would edit to reconcile.
+        """
+        existing = (existing_spec.get("description"), existing_spec.get("column_categories"))
+        new = (new_spec.get("description"), new_spec.get("column_categories"))
+        if existing != new:
+            raise ValueError(
+                f"Event type '{event_name}' declares column '{column_name}' in table '{table_name}' with a spec "
+                f"that conflicts with an earlier event type's declaration of the same column (different description "
+                f"or meanings). A column shared across event types must be declared identically on each type; "
+                f"reconcile the declarations or use distinct column_names."
+            )
 
     @staticmethod
     def _labels_map(column_spec: dict) -> dict | None:

@@ -381,5 +381,10 @@ by type:
 If a shared type did carry a value (e.g. a labeled choice), it would add its own column, filled only
 on its rows, exactly as in the single-interface case above.
 
+When several pooled types record the *same* quantity, give them one shared column by declaring the
+identical ``column_name`` (with matching ``column_categories`` and ``description``) on each; the writer
+merges them into a single column filled from every type's rows instead of one column per type. Declaring
+the same ``column_name`` with conflicting meanings or descriptions is an error.
+
 If you have a use case not covered here, please open an issue at `NeuroConv GitHub Issues
 <https://github.com/catalystneuro/neuroconv/issues>`_.
