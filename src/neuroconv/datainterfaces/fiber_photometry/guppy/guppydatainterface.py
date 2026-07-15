@@ -13,9 +13,7 @@ from pynwb.core import VectorData
 from pynwb.file import NWBFile
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.tools import get_package
-from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.utils import DeepDict
 from neuroconv.utils.json_schema import get_base_schema
@@ -49,20 +47,18 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
     * peak / AUC summaries
     * recording-site-pair cross-correlations
 
-    plus the GuPPy parameters (``GuppyParameters``) and two registry tables (``GuppyRecordingSitesTable``,
-    ``GuppyEventsTable``) that give each recording_site and event a single structured identity referenced by
-    every product.
+    plus the GuPPy parameters (``GuppyParameters``), the ``GuppyValidSignalIntervals`` object, and two slim
+    registry tables (``GuppyRecordingSitesTable``, ``GuppyEventsTable``) that give each recording_site and
+    event a single structured identity referenced by every product.
 
-    The derived traces are ``GuppyDerivedResponseSeries`` (a ``FiberPhotometryResponseSeries`` subtype),
-    so they carry the acquisition device/fiber/indicator provenance via ``fiber_photometry_table_region``.
-    That link is the type's defining provenance, so this interface does **not stand alone**: its
-    :meth:`add_to_nwbfile` requires the acquisition's ``FiberPhotometryTable`` to already be present and a
-    ``recording_site_to_fiber_photometry_table_rows`` map (recording_site -> table row indices) supplied by a converter
-    that pairs GuPPy with an acquisition interface (see ``TDTFiberPhotometryGuppyConverter``).
-
-    The ``EventsTable`` reference on ``GuppyEventsTable`` is the one optional outward link -- populated
-    when the behavioral events live in the NWBFile's ``events`` group (as ``pynwb.event.EventsTable``
-    objects), omitted otherwise.
+    :meth:`add_to_nwbfile` takes **no linkage arguments** -- it writes only what the GuPPy output defines.
+    The two registries are slim (names only); their outward links are optional and populated afterwards by
+    a converter that owns the acquisition and events tables: the recording sites'
+    ``fiber_photometry_table_region`` into the acquisition ``FiberPhotometryTable``, and the events'
+    ``events`` DynamicTableRegion into the merged ``EventsTable`` (see ``TDTFiberPhotometryGuppyConverter``).
+    Run standalone, the file is valid without those two links. The converter reaches the parsed identifiers
+    it needs to build the links through the :attr:`recording_sites`, :attr:`event_names`, and
+    :attr:`recording_site_to_store_ids` read-only views.
 
     All products are placed in a ``ProcessingModule`` (default name ``fiber_photometry``).
     """
@@ -179,6 +175,26 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self._valid_signal_intervals_by_recording_site = valid_signal_intervals_by_recording_site
         self._guppy_parameters = guppy_parameters
         self._recording_site_to_aligned_timestamps: dict[str, np.ndarray] | None = None
+
+    # ------------------------------------------------------------------ #
+    # Read-only views of the parsed GuPPy identifiers, for a converter that owns the acquisition /
+    # events tables and needs to compute the registries' outward links (which the interface leaves
+    # unpopulated). No GuPPy-file parsing leaves the interface -- only the parsed identities.
+    # ------------------------------------------------------------------ #
+    @property
+    def recording_sites(self) -> list[str]:
+        """The discovered recording-site names, in the canonical GuppyRecordingSitesTable row order."""
+        return list(self._recording_sites)
+
+    @property
+    def event_names(self) -> list[str]:
+        """The discovered event names, in the canonical GuppyEventsTable row order."""
+        return list(self._event_names)
+
+    @property
+    def recording_site_to_store_ids(self) -> dict[str, dict[str, str]]:
+        """``{recording_site: {"signal": <store_id>, "control": <store_id>}}`` from storesList.csv."""
+        return {recording_site: dict(stores) for recording_site, stores in self._recording_site_to_store_ids.items()}
 
     @staticmethod
     def _discover_recording_sites(stores_list_path: Path) -> list[str]:
@@ -631,46 +647,36 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: dict,
         *,
-        recording_site_to_fiber_photometry_table_rows: dict[str, list[int]],
         stub_test: bool = False,
     ) -> None:
         """
         Add GuPPy-derived fiber photometry products to an NWBFile as ndx-guppy neurodata types.
 
-        Builds the ``GuppyParameters`` lab metadata, the ``GuppyRecordingSitesTable`` and ``GuppyEventsTable``
-        registries, and the per-product objects (traces, transients, summary, cross-correlation, PSTH,
-        peak/AUC, valid intervals), each referencing its registry rows. Products are written on the
-        timestamps GuPPy emits, or on the externally-aligned timestamps provided via
-        :meth:`set_aligned_timestamps` / :meth:`set_aligned_starting_time`.
+        Builds the ``GuppyParameters`` lab metadata, the slim ``GuppyRecordingSitesTable`` and
+        ``GuppyEventsTable`` registries, the per-product objects (traces, transients, summary,
+        cross-correlation, PSTH, peak/AUC) each referencing its registry rows, and the
+        ``GuppyValidSignalIntervals`` object. Products are written on the timestamps GuPPy emits, or on
+        the externally-aligned timestamps provided via :meth:`set_aligned_timestamps` /
+        :meth:`set_aligned_starting_time`.
 
-        This interface does **not stand alone**: the acquisition ``FiberPhotometryTable`` must already be
-        present in ``nwbfile`` and ``recording_site_to_fiber_photometry_table_rows`` is required (the derived
-        traces are ``FiberPhotometryResponseSeries`` whose ``fiber_photometry_table_region`` link is their
-        defining provenance). Both are supplied by a converter that owns the acquisition side (see
-        ``TDTFiberPhotometryGuppyConverter``).
+        This method takes **no linkage arguments**: it writes only what the GuPPy output defines. The
+        registries are slim (names only), and their outward links -- the recording sites' acquisition
+        ``fiber_photometry_table_region`` and the events' ``events`` reference into the merged
+        ``EventsTable`` -- are populated afterwards by a converter that owns the acquisition and events
+        tables (see ``TDTFiberPhotometryGuppyConverter``). Run standalone, the file is valid without
+        those two links.
 
         Parameters
         ----------
         nwbfile : NWBFile
-            The in-memory NWBFile to add the data to. Must already contain the acquisition
-            ``FiberPhotometryTable`` (as a ``FiberPhotometry`` lab_meta_data object).
+            The in-memory NWBFile to add the data to.
         metadata : dict
             Metadata dictionary; must contain ``metadata["FiberPhotometry"][self.metadata_key]``.
-        recording_site_to_fiber_photometry_table_rows : dict[str, list[int]]
-            Mapping from GuPPy recording_site label (e.g. ``"dms"``) to the acquisition
-            ``FiberPhotometryTable`` row indices that recording_site's derived traces were computed from
-            (typically the excitation signal and isosbestic control rows).
         stub_test : bool, optional
             If True, only a short slice of each large product is written. Default = False.
         """
         ndx_guppy = get_package(package_name="ndx_guppy", installation_instructions="pip install ndx-guppy")
 
-        fiber_photometry_table = get_fiber_photometry_table(nwbfile)
-        assert fiber_photometry_table is not None, (
-            "No FiberPhotometryTable found in the NWBFile. GuppyInterface does not stand alone; the "
-            "acquisition interface must add the fiber photometry table before GuPPy runs (drive both "
-            "through a converter, e.g. TDTFiberPhotometryGuppyConverter)."
-        )
         guppy_metadata = metadata["FiberPhotometry"][self.metadata_key]
         processing_module_metadata = guppy_metadata["ProcessingModule"]
         processing_module = get_module(
@@ -687,25 +693,25 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         # Session-wide typed parameters.
         self._add_guppy_parameters_to_nwbfile(ndx_guppy=ndx_guppy, nwbfile=nwbfile)
 
-        # Registries: recording_site and event identity, referenced by every product.
+        # Registries: recording_site and event identity, referenced by every product. Slim by design --
+        # the converter enriches them with the fiber / events links afterwards.
         recording_sites_table = self._add_guppy_recording_sites_table_to_nwbfile(
+            ndx_guppy=ndx_guppy, processing_module=processing_module
+        )
+        events_table = self._add_guppy_events_table_to_nwbfile(ndx_guppy=ndx_guppy, processing_module=processing_module)
+        # Valid-signal (artifact-free) intervals: one object, one row per interval, referencing its site.
+        self._add_guppy_valid_signal_intervals_to_nwbfile(
             ndx_guppy=ndx_guppy,
             processing_module=processing_module,
-            fiber_photometry_table=fiber_photometry_table,
-            recording_site_to_fiber_photometry_table_rows=recording_site_to_fiber_photometry_table_rows,
+            recording_sites_table=recording_sites_table,
             recording_site_to_original_timestamps=recording_site_to_original_timestamps,
             recording_site_to_timestamps=recording_site_to_timestamps,
-        )
-        events_table = self._add_guppy_events_table_to_nwbfile(
-            ndx_guppy=ndx_guppy, processing_module=processing_module, nwbfile=nwbfile
         )
         # Derived continuous traces.
         self._add_guppy_derived_response_series_to_nwbfile(
             ndx_guppy=ndx_guppy,
             processing_module=processing_module,
             traces_metadata=guppy_metadata["Traces"],
-            fiber_photometry_table=fiber_photometry_table,
-            recording_site_to_fiber_photometry_table_rows=recording_site_to_fiber_photometry_table_rows,
             recording_site_to_timestamps=recording_site_to_timestamps,
             recording_sites_table=recording_sites_table,
             recording_site_to_stub_end_time=recording_site_to_stub_end_time,
@@ -796,8 +802,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         ndx_guppy,
         processing_module,
         traces_metadata: dict,
-        fiber_photometry_table,
-        recording_site_to_fiber_photometry_table_rows: dict,
         recording_site_to_timestamps: dict,
         recording_sites_table,
         recording_site_to_stub_end_time: dict,
@@ -807,9 +811,11 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
 
         The source ``.hdf5`` basename, trace_type, and unit are derived from the interface's discovered
         state; the editable name/description come from ``traces_metadata`` (keyed by the trace's derived
-        default name). Under ``stub_test`` each trace is truncated to its first ~1 s and the truncated
-        end time is recorded in ``recording_site_to_stub_end_time`` so the transient tables can be clipped to
-        match.
+        default name). Each series references its recording site; the acquisition fiber provenance is
+        reached through that recording-site row (its ``fiber_photometry_table_region``, populated by the
+        converter), so the inherited per-series ``fiber_photometry_table_region`` is left unset. Under
+        ``stub_test`` each trace is truncated to its first ~1 s and the truncated end time is recorded in
+        ``recording_site_to_stub_end_time`` so the transient tables can be clipped to match.
         """
         for recording_site in self._recording_sites:
             for prefix in self._traces_by_recording_site[recording_site]:
@@ -826,19 +832,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     timestamps = timestamps[:stub_sample_count]
                     recording_site_to_stub_end_time[recording_site] = float(timestamps[-1])
 
-                assert recording_site in recording_site_to_fiber_photometry_table_rows, (
-                    f"No recording_site_to_fiber_photometry_table_rows supplied for recording_site '{recording_site}' (trace "
-                    f"'{trace_name}'). GuppyInterface does not stand alone; drive it through a converter "
-                    f"(e.g. TDTFiberPhotometryGuppyConverter)."
-                )
-                # A fresh DynamicTableRegion per trace: one recording_site cannot be parented to multiple series.
-                fiber_photometry_table_region = fiber_photometry_table.create_fiber_photometry_table_region(
-                    description=(
-                        f"Acquisition fiber-photometry table rows (excitation signal and isosbestic "
-                        f"control) that GuPPy trace '{trace_name}' was computed from."
-                    ),
-                    region=recording_site_to_fiber_photometry_table_rows[recording_site],
-                )
                 response_series = ndx_guppy.GuppyDerivedResponseSeries(
                     name=trace_name,
                     description=entry["description"],
@@ -847,7 +840,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     timestamps=timestamps,
                     trace_type=_PREFIX_TO_TRACE_TYPE[prefix],
                     recording_site=self._recording_site_reference(recording_sites_table, [recording_site]),
-                    fiber_photometry_table_region=fiber_photometry_table_region,
                 )
                 processing_module.add(response_series)
 
@@ -1052,117 +1044,82 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             )
             processing_module.add(peak_auc)
 
-    def _add_guppy_recording_sites_table_to_nwbfile(
+    def _add_guppy_recording_sites_table_to_nwbfile(self, *, ndx_guppy, processing_module):
+        """Build and add the slim GuppyRecordingSitesTable: one row per recording site, name only.
+
+        The optional ``fiber_photometry_table_region`` link into the acquisition FiberPhotometryTable is
+        populated afterwards by a converter that owns that table; the interface does not know the
+        acquisition row layout, so it writes only the recording-site identities here.
+        """
+        recording_sites_table = ndx_guppy.GuppyRecordingSitesTable(
+            name="recording_sites",
+            description="GuPPy recording sites (one row per recording site).",
+        )
+        for recording_site in self._recording_sites:
+            recording_sites_table.add_row(recording_site=recording_site)
+        processing_module.add(recording_sites_table)
+        return recording_sites_table
+
+    def _add_guppy_valid_signal_intervals_to_nwbfile(
         self,
         *,
         ndx_guppy,
         processing_module,
-        fiber_photometry_table,
-        recording_site_to_fiber_photometry_table_rows: dict,
+        recording_sites_table,
         recording_site_to_original_timestamps: dict,
         recording_site_to_timestamps: dict,
     ):
-        """Build and add the GuppyRecordingSitesTable, linking each recording_site to its fiber photometry rows.
+        """Build and add the GuppyValidSignalIntervals object, if any coordsForPreProcessing files exist.
 
-        Valid-signal (artifact-free) intervals are a per-recording_site fact, carried here as an
-        obs_intervals-style ragged column: each recording_site's ``[start, stop]`` windows are shifted from
-        GuPPy's emitted recording timebase onto the (possibly aligned) timestamps by the same scalar
-        offset applied to that recording_site's timestamps (they are boundary values, not per-sample timestamps
-        to interpolate against). When any recording_site has intervals the column is written for every row
-        (empty entry for recording_sites without); when none do, the column is omitted entirely.
+        One row per valid ``[start, stop]`` window, each referencing its recording site via a
+        DynamicTableRegion into the GuppyRecordingSitesTable. Each window is shifted from GuPPy's emitted
+        recording timebase onto the (possibly aligned) timestamps by the same scalar offset applied to
+        that recording site's timestamps (they are boundary values, not per-sample timestamps to
+        interpolate against).
         """
-        valid_signal_intervals_by_recording_site: dict[str, list[list[float]]] = {}
-        if self._valid_signal_intervals_by_recording_site:
-            for recording_site in self._recording_sites:
-                intervals = self._valid_signal_intervals_by_recording_site.get(recording_site)
-                if intervals is None:
-                    valid_signal_intervals_by_recording_site[recording_site] = []
-                    continue
-                time_offset = float(recording_site_to_timestamps[recording_site][0]) - float(
-                    recording_site_to_original_timestamps[recording_site][0]
-                )
-                valid_signal_intervals_by_recording_site[recording_site] = (intervals + time_offset).tolist()
+        if not self._valid_signal_intervals_by_recording_site:
+            return None
 
-        recording_sites_table = ndx_guppy.GuppyRecordingSitesTable(
-            name="recording_sites",
-            description="GuPPy recording sites (one row per recording site). Each row's optional fiber link points "
-            "at the acquisition FiberPhotometryTable signal + isosbestic rows for that recording site.",
-            target_tables={"fiber_photometry_table_region": fiber_photometry_table},
-        )
-        any_valid_signal_intervals = any(
-            valid_signal_intervals_by_recording_site.get(recording_site) for recording_site in self._recording_sites
+        recording_site_to_row_index = {
+            recording_site: index for index, recording_site in enumerate(self._recording_sites)
+        }
+        valid_signal_intervals = ndx_guppy.GuppyValidSignalIntervals(
+            name="valid_signal_intervals",
+            description=(
+                "Time intervals retained as valid signal (not removed as artifacts) during GuPPy "
+                "preprocessing, one row per interval with a recording-site reference."
+            ),
+            target_tables={"recording_site": recording_sites_table},
         )
         for recording_site in self._recording_sites:
-            assert recording_site in recording_site_to_fiber_photometry_table_rows, (
-                f"No recording_site_to_fiber_photometry_table_rows supplied for recording_site '{recording_site}'. GuppyInterface "
-                f"does not stand alone; drive it through a converter (e.g. TDTFiberPhotometryGuppyConverter)."
+            intervals = self._valid_signal_intervals_by_recording_site.get(recording_site)
+            if intervals is None:
+                continue
+            time_offset = float(recording_site_to_timestamps[recording_site][0]) - float(
+                recording_site_to_original_timestamps[recording_site][0]
             )
-            row_kwargs = dict(
-                recording_site=recording_site,
-                store_id=self._recording_site_to_store_ids.get(recording_site, {}).get("signal"),
-                store_label=f"signal_{recording_site}",
-                fiber_photometry_table_region=list(recording_site_to_fiber_photometry_table_rows[recording_site]),
-            )
-            if any_valid_signal_intervals:
-                row_kwargs["valid_signal_intervals"] = valid_signal_intervals_by_recording_site.get(recording_site, [])
-            recording_sites_table.add_row(**row_kwargs)
-        processing_module.add(recording_sites_table)
-        return recording_sites_table
+            for start, stop in intervals + time_offset:
+                valid_signal_intervals.add_interval(
+                    start_time=float(start),
+                    stop_time=float(stop),
+                    recording_site=recording_site_to_row_index[recording_site],
+                )
+        processing_module.add(valid_signal_intervals)
+        return valid_signal_intervals
 
-    @staticmethod
-    def _resolve_events_table(nwbfile: NWBFile, event_name: str):
-        """Return the pynwb EventsTable (in ``nwbfile.events``) holding this event's onsets, or None.
+    def _add_guppy_events_table_to_nwbfile(self, *, ndx_guppy, processing_module):
+        """Build and add the slim GuppyEventsTable: one row per event GuPPy aligned to, name only.
 
-        The events writer names a solo (one-type) table by the CamelCased event name
-        (``port_entries`` -> ``PortEntries``), so that is the primary lookup. If instead several
-        event types were merged into one table, that table carries an ``event_type`` discriminator
-        column; the fallback finds the table whose discriminator lists ``event_name``.
+        The optional ``events`` link -- a ragged DynamicTableRegion into the merged pynwb EventsTable's
+        occurrence rows -- is populated afterwards by a converter that merges every event type into one
+        EventsTable; the interface writes only the event identities here.
         """
-        if nwbfile.events is None:
-            return None
-        table = nwbfile.events.get(_to_table_object_name(event_name))
-        if table is not None:
-            return table
-        for events_table in nwbfile.events.values():
-            if "event_type" in events_table.colnames and event_name in list(events_table["event_type"][:]):
-                return events_table
-        return None
-
-    def _add_guppy_events_table_to_nwbfile(self, *, ndx_guppy, processing_module, nwbfile: NWBFile):
-        """Build and add the GuppyEventsTable, optionally referencing the EventsTable objects that hold
-        each event's onset timestamps.
-
-        The behavioral events are written (by the events interface) as ``pynwb.event.EventsTable``
-        objects in ``nwbfile.events``. When every GuPPy event resolves to such a table, each registry
-        row references its table via the optional ``events`` column; otherwise (e.g. standalone GuPPy
-        with no acquisition events) the column is omitted.
-        """
-        name_to_store = {event_name: store for store, event_name in self._event_store_to_event_name.items()}
-        event_references = [self._resolve_events_table(nwbfile, event_name) for event_name in self._event_names]
-        include_event_references = len(event_references) > 0 and all(
-            reference is not None for reference in event_references
-        )
-
         events_table = ndx_guppy.GuppyEventsTable(
             name="events",
             description="GuPPy behavioral events (one row per event GuPPy aligned to).",
         )
         for event_name in self._event_names:
-            store = name_to_store[event_name]
-            events_table.add_row(
-                event_name=event_name,
-                event_description=(
-                    f"Behavioral event '{event_name}' that GuPPy aligned to (acquisition store '{store}')."
-                ),
-                store_id=store,
-                store_label=event_name,
-            )
-        if include_event_references:
-            events_table.add_column(
-                name="events",
-                description="Reference to the EventsTable (in nwbfile.events) holding this event's onset timestamps.",
-                data=event_references,
-            )
+            events_table.add_row(event_name=event_name)
         processing_module.add(events_table)
         return events_table
 
