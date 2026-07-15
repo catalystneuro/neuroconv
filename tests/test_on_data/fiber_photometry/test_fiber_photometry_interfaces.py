@@ -4,11 +4,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+import pytest
 from hdmf.testing import TestCase
+from parameterized import parameterized
 from pynwb import NWBHDF5IO
 
-from neuroconv.datainterfaces import TDTFiberPhotometryInterface
+from neuroconv.datainterfaces import (
+    DoricFiberPhotometryInterface,
+    TDTFiberPhotometryInterface,
+)
+from neuroconv.datainterfaces.fiber_photometry.tdt.tdtfiberphotometrydatainterface import (
+    _TDTFiberPhotometryInterfaceMultiSeries,
+)
 from neuroconv.tools.testing.data_interface_mixins import (
+    FiberPhotometryInterfaceTestMixin,
     TDTFiberPhotometryInterfaceMixin,
 )
 from neuroconv.utils import dict_deep_update, load_dict_from_file
@@ -16,14 +25,13 @@ from neuroconv.utils import dict_deep_update, load_dict_from_file
 try:
     from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 except ImportError:
-    from setup_paths import OUTPUT_PATH
-
-import pytest
-from parameterized import parameterized
+    from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
 
 class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin):
-    data_interface_cls = TDTFiberPhotometryInterface
+    # Tests the deprecated multi-series implementation directly (the public TDTFiberPhotometryInterface
+    # now routes ``stream_names``-less construction here with a DeprecationWarning).
+    data_interface_cls = _TDTFiberPhotometryInterfaceMultiSeries
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"),
     )
@@ -682,3 +690,185 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
         interface = self.data_interface_cls(**self.interface_kwargs)
         with self.assertRaises(AssertionError):
             interface.load(t2=1.0, evtype=["invalid"])
+
+
+class TestTDTFiberPhotometryInterfaceSingleSeries(FiberPhotometryInterfaceTestMixin):
+    """Tests the new single-series TDTFiberPhotometryInterface (one FiberPhotometryResponseSeries)."""
+
+    data_interface_cls = TDTFiberPhotometryInterface
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photometry-161823_stubbed"),
+        stream_names="_405R",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True, stub_samples=5)
+    save_directory = OUTPUT_PATH
+
+    # Expected first 5 samples of the "_405R" store and its sampling, verified against the tank.
+    expected_response_series_data = np.array(
+        [0.32750106, 0.3274658, 0.32822716, 0.33025593, 0.3340194], dtype=np.float32
+    )
+    expected_starting_time = 0.0
+    expected_rate = 1017.2526245117188
+
+    def check_extracted_metadata(self, metadata: dict):
+        # TDT-specific idiosyncrasy: the session start time is read from the tank header.
+        assert "session_start_time" in metadata["NWBFile"]
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(folder_path=self.interface_kwargs["folder_path"])
+        assert "_405R" in streams and "_490R" in streams
+
+    def test_stream_names_less_construction_routes_to_deprecated_multiseries(self):
+        with pytest.warns(DeprecationWarning, match="stream_names"):
+            interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"])
+        assert isinstance(interface._delegate, _TDTFiberPhotometryInterfaceMultiSeries)
+
+    def test_metadata_key_generated_from_stream_names(self):
+        # With no explicit metadata_key, it is derived from stream_names (as in ScanImage).
+        interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"], stream_names="_405R")
+        assert interface.metadata_key == "fiber_photometry_405r"
+        assert interface.metadata_key in interface.get_metadata()["FiberPhotometry"]
+
+
+# ---------------------------------------------------------------------------
+# Doric fiber photometry tests
+# ---------------------------------------------------------------------------
+
+
+class TestDoricFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
+    """Tests the single-series DoricFiberPhotometryInterface (one FiberPhotometryResponseSeries)."""
+
+    data_interface_cls = DoricFiberPhotometryInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"),
+        stream_names="BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True, stub_samples=5)
+    save_directory = OUTPUT_PATH
+
+    # Expected first 5 samples of the ROI01 stream and its timestamps, verified against the file.
+    expected_response_series_data = np.array(
+        [33097.410530260444, 32641.454000374742, 32420.17912685029, 32356.823683717445, 32344.640059958776]
+    )
+    expected_timestamps = np.array([0.001, 0.035, 0.068, 0.101, 0.134])
+
+    def check_extracted_metadata(self, metadata: dict):
+        # Doric-specific idiosyncrasy: the session start time is read from the file's 'Created' attribute.
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 6, 24, 13, 58, 38)
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
+        assert "BBC300_ROISignals_Series0001_CAM1EXC1_ROI01" in streams
+
+    def test_metadata_key_generated_from_stream_names(self):
+        # With no explicit metadata_key, it is derived from stream_names (as in ScanImage).
+        interface = self.data_interface_cls(
+            file_path=self.interface_kwargs["file_path"],
+            stream_names="BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
+        )
+        assert interface.metadata_key == "fiber_photometry_bbc300_roisignals_series0001_cam1exc1_roi01"
+        assert interface.metadata_key in interface.get_metadata()["FiberPhotometry"]
+
+
+class TestDoricFiberPhotometryInterfaceCSV(FiberPhotometryInterfaceTestMixin):
+    """Tests the CSV variant of DoricFiberPhotometryInterface (DoricStudio CSV export)."""
+
+    data_interface_cls = DoricFiberPhotometryInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "oft_2024-03-01T10_16_32_signal.csv"),
+        stream_names="sig",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True, stub_samples=5)
+    save_directory = OUTPUT_PATH
+
+    # Expected first 5 samples of the "sig" column and its (regular, ~60 Hz) sampling.
+    expected_response_series_data = np.array(
+        [385.503571428571, 388.564285714286, 386.578571428571, 389.047857142857, 388.915714285714]
+    )
+    expected_starting_time = 8.1
+    expected_rate = 59.999999999984226
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
+        assert streams == ["ref", "sig"]
+
+    def test_default_metadata_warns_about_placeholders(self, setup_interface):
+        # The CSV export does not embed a session start time (unlike the .doric HDF5 export), so it
+        # must be supplied here for the scaffold to pass the base NWBFile schema.
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        with pytest.warns(UserWarning, match="placeholder"):
+            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
+
+
+class TestDoricFiberPhotometryInterfaceCSVGroupedHeader(FiberPhotometryInterfaceTestMixin):
+    """Tests the older, grouped-header CSV variant of DoricFiberPhotometryInterface.
+
+    Some Doric Neuroscience Studio exports prepend a channel/device "group" line above the real
+    header (e.g. ``---,Analog In. | Ch.1,...`` followed by ``Time(s),AIn-1 - Dem (ref),...``), with
+    a trailing comma producing an extra unnamed, all-NaN column. Both are handled transparently.
+    """
+
+    data_interface_cls = DoricFiberPhotometryInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "12282020-cfc-pppda7_0000.csv"),
+        stream_names="Raw",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True, stub_samples=5)
+    save_directory = OUTPUT_PATH
+
+    # Expected first 5 samples of the "Raw" column and its (regular, ~120 Hz) sampling.
+    expected_response_series_data = np.array([0.970641194, 2.22319712, 3.13737907, 2.08487197, 1.11903745])
+    expected_starting_time = 0.0041085
+    expected_rate = 120.4819277108434
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
+        assert streams == ["AIn-1 - Dem (da)", "AIn-1 - Dem (ref)", "AOut-1", "AOut-2", "DI/O-1", "Raw"]
+
+    def test_default_metadata_warns_about_placeholders(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        with pytest.warns(UserWarning, match="placeholder"):
+            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
+
+
+class TestDoricFiberPhotometryInterfaceLegacyHDF5(FiberPhotometryInterfaceTestMixin):
+    """Tests the legacy "EPConsole" HDF5 layout of DoricFiberPhotometryInterface.
+
+    Older Doric exports nest each stream under ``Traces/<console>/<stream>/<stream>`` (a group
+    holding a single dataset of the same name) with a sibling ``Traces/<console>/Time(s)/...`` group
+    holding the shared timestamps, instead of the newer ``DataAcquisition``-based layout.
+    """
+
+    data_interface_cls = DoricFiberPhotometryInterface
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "D2-EPConsole_0039_stub.doric"),
+        stream_names="Console_AIn-1 - Raw",
+        metadata_key="Signal",
+    )
+    conversion_options = dict(stub_test=True, stub_samples=5)
+    save_directory = OUTPUT_PATH
+
+    # Expected first 5 samples of the "Console_AIn-1 - Raw" stream and its (regular, ~12048 Hz) sampling.
+    expected_response_series_data = np.array(
+        [0.0067140720847191915, 0.04409924619281558, 0.12848292489394808, 0.19486068300424186, 0.24475844599749763]
+    )
+    expected_starting_time = 0.0
+    expected_rate = 12048.192771084337
+
+    def test_get_available_streams(self):
+        streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
+        assert streams == ["Console_AIn-1 - Raw", "Console_AIn-2 - Raw", "Console_DI--O-1"]
+
+    def test_default_metadata_warns_about_placeholders(self, setup_interface):
+        # This legacy export does not embed a 'Created' attribute either, so no session start time
+        # is set automatically.
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        with pytest.warns(UserWarning, match="placeholder"):
+            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
