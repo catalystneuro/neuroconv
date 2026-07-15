@@ -602,3 +602,57 @@ class TestEventsAcrossInterfaces:
         assert list(events["outcome"][:]) == ["go", "go", "no_go", "no_go"]
         # A created the outcome MeaningsTable; B reused it rather than duplicating.
         assert set(events.meanings_tables.keys()) == {"event_type_meanings", "outcome_meanings"}
+
+    def test_unset_table_metadata_key_is_not_shared_across_interfaces(self):
+        # An unset table_metadata_key defaults to each type's own event_type_source_id, a per-type handle,
+        # NOT a shared table. Two solo types in different interfaces that both leave it unset are not a merge,
+        # even though they happen to share the default source id "events". Each writes its own table named from
+        # its event_name, with its own independent outcome column, so the differing labels are not a conflict.
+        interface_a = MockEventsInterface(metadata_key="events_a", num_events=2, event_payload="single value")
+        interface_b = MockEventsInterface(metadata_key="events_b", num_events=2, event_payload="single value")
+        metadata = {
+            "Events": {
+                "events_a": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "left",
+                            "event_description": "Left events.",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {"labels": {0: "go", 1: "no_go"}},
+                                }
+                            },
+                        }
+                    }
+                },
+                "events_b": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "right",
+                            "event_description": "Right events.",
+                            # Same column_name, different labels: a conflict ONLY if these shared a table.
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {"labels": {0: "left", 1: "right"}},
+                                }
+                            },
+                        }
+                    }
+                },
+            }
+        }
+        nwbfile = mock_NWBFile()
+        interface_a.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        # Two separate solo tables named from each type's event_name, not one merged table.
+        assert set(nwbfile.events.keys()) == {"Left", "Right"}
+        left = nwbfile.get_events_table("Left")
+        right = nwbfile.get_events_table("Right")
+        # A solo table has no event_type discriminator, and each carries its own independent outcome column.
+        assert "event_type" not in left.colnames
+        assert "event_type" not in right.colnames
+        assert list(left["outcome"][:]) == ["go", "no_go"]
+        assert list(right["outcome"][:]) == ["left", "right"]
