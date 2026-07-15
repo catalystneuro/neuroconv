@@ -51,6 +51,7 @@ def generate_mock_guppy_output_folder(
     num_trials: int = 4,
     peak_start_points: tuple[float, ...] = (-5.0, 0.0, 5.0),
     peak_end_points: tuple[float, ...] = (0.0, 3.0, 10.0),
+    valid_signal_intervals: tuple[tuple[float, float], ...] = ((1.25, 1.75), (2.0, 2.5)),
     bin_size_in_trials: int = 3,
     guppy_version: str = "2.0.0a7",
     zscore_method: str = "standard z-score",
@@ -90,6 +91,11 @@ def generate_mock_guppy_output_folder(
         Shape of the PSTH / cross-correlation matrices.
     peak_start_points, peak_end_points : tuple of float, optional
         Peak/AUC analysis windows; also written to the parameters file (NaN-padded like GuPPy).
+    valid_signal_intervals : tuple of (float, float), optional
+        ``[start, stop]`` valid-signal (artifact-free) windows written to
+        ``coordsForPreProcessing_<region>.npy`` for every region, and reflected by ``removeArtifacts``
+        in the parameters file. Pass an empty tuple to emit no coords files (the no-artifact-removal
+        case). The windows must fall inside the trace timebase.
     bin_size_in_trials : int, optional
         Trials per bin for the ``bin_(a-b)`` columns ("# of trials" binning mode).
     guppy_version, zscore_method : str, optional
@@ -124,6 +130,7 @@ def generate_mock_guppy_output_folder(
         peak_start_points=peak_start_points,
         peak_end_points=peak_end_points,
         bin_size_in_trials=bin_size_in_trials,
+        remove_artifacts=bool(valid_signal_intervals),
     )
 
     for region in regions:
@@ -134,6 +141,8 @@ def generate_mock_guppy_output_folder(
             sampling_rate=sampling_rate,
             session_start_time=session_start_time,
         )
+        if valid_signal_intervals:
+            _write_valid_signal_intervals(folder_path, region=region, intervals=valid_signal_intervals)
         for prefix in trace_prefixes:
             _write_trace(folder_path, prefix=prefix, region=region, num_samples=num_samples)
         for feature in features:
@@ -211,8 +220,27 @@ def _write_stores_list(folder_path, region_to_stores, event_store_to_name) -> No
     np.savetxt(folder_path / "storesList.csv", rows, delimiter=",", fmt="%s")
 
 
+def _write_valid_signal_intervals(folder_path, region, intervals) -> None:
+    """``coordsForPreProcessing_<region>.npy`` -- the artifact-removal boundary coordinates.
+
+    A 2-D float array whose column 0 is a flat, even-length sequence of interval boundaries
+    ``[start, stop, start, stop, ...]`` (seconds). ``GuppyInterface`` reads column 0, checks it is
+    even-length, and reshapes it to ``(num_intervals, 2)`` ``[start, stop]`` pairs. Column 1 mirrors
+    the boundary amplitudes GuPPy stores alongside each coordinate (unread by the interface).
+    """
+    boundaries = np.asarray(intervals, dtype=np.float64).reshape(-1)
+    coords = np.column_stack([boundaries, np.zeros_like(boundaries)])
+    np.save(folder_path / f"coordsForPreProcessing_{region}.npy", coords)
+
+
 def _write_parameters(
-    folder_path, guppy_version, zscore_method, peak_start_points, peak_end_points, bin_size_in_trials
+    folder_path,
+    guppy_version,
+    zscore_method,
+    peak_start_points,
+    peak_end_points,
+    bin_size_in_trials,
+    remove_artifacts,
 ) -> None:
     """``GuPPyParamtersUsed.json`` written via ``json.dump``.
 
@@ -226,7 +254,7 @@ def _write_parameters(
         guppy_version=guppy_version,
         isosbestic_control=True,
         filter_window=100.0,
-        removeArtifacts=False,
+        removeArtifacts=remove_artifacts,
         artifactsRemovalMethod="concatenate",
         zscore_method=zscore_method,
         baselineWindowStart=0.0,

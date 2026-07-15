@@ -117,7 +117,12 @@ class TestGuppyInterface:
                     expected_psth_count=24,  # 3 events x 2 regions x 2 features x {corrected, uncorrected}
                     expected_peak_auc_count=12,  # 3 events x 2 regions x 2 features
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
-                    expected_valid_signal_intervals=[],
+                    # The mock writes the same coordsForPreProcessing windows for every region; with no
+                    # temporal alignment the offset is 0, so the aligned intervals equal the source.
+                    expected_valid_signal_intervals={
+                        "dms": [[1.25, 1.75], [2.0, 2.5]],
+                        "dls": [[1.25, 1.75], [2.0, 2.5]],
+                    },
                     expected_event_store_to_event_name={
                         "LNRW": "rewarded_nose_pokes",
                         "LNnR": "unrewarded_nose_pokes",
@@ -517,23 +522,21 @@ class TestGuppyInterface:
         module = self._add(interface, linked_nwbfile, region_to_indices, stub_test=False)
 
         expected = case["expected_valid_signal_intervals"]
+        regions_table = module["regions"]
+        # There is no standalone valid-signal-intervals object; the intervals ride on the regions table
+        # as an obs_intervals-style ragged column per region.
+        assert "valid_signal_intervals" not in module.data_interfaces
+
         if not expected:
-            assert "valid_signal_intervals" not in module.data_interfaces
+            assert "valid_signal_intervals" not in regions_table.colnames
             return
 
-        table = module["valid_signal_intervals"]
-        assert table.neurodata_type == "GuppyValidSignalIntervals"
-        assert interface._artifact_removal_method in table.description
-        actual_regions = _resolve_regions(module, table["region"])
-        actual_starts = list(table["start_time"][:])
-        actual_stops = list(table["stop_time"][:])
-        assert len(actual_regions) == len(expected)
-        for (region, start, stop), (expected_region, expected_start, expected_stop) in zip(
-            zip(actual_regions, actual_starts, actual_stops), expected
-        ):
-            assert region == expected_region
-            assert start == pytest.approx(expected_start)
-            assert stop == pytest.approx(expected_stop)
+        region_names = list(regions_table["region"].data)
+        for region, expected_intervals in expected.items():
+            row_index = region_names.index(region)
+            np.testing.assert_allclose(regions_table["valid_signal_intervals"][row_index], expected_intervals)
+        # The removal method is recorded once on GuppyParameters, not on the regions table.
+        assert linked_nwbfile.lab_meta_data["guppy_parameters"].artifacts_removal_method == "concatenate"
 
     def test_cross_correlation_without_psth_bin_columns(self, case, tmp_path, linked_nwbfile, region_to_indices):
         copied_folder = tmp_path / "guppy_output_copy"
@@ -581,20 +584,12 @@ class TestGuppyInterface:
                 assert table["timestamp"][0] == pytest.approx(expected_first_peak)
 
         if case["expected_valid_signal_intervals"]:
-            interval_table = module["valid_signal_intervals"]
-            actual = list(
-                zip(
-                    _resolve_regions(module, interval_table["region"]),
-                    list(interval_table["start_time"][:]),
-                    list(interval_table["stop_time"][:]),
-                )
-            )
-            for (region, start, stop), (expected_region, expected_start, expected_stop) in zip(
-                actual, case["expected_valid_signal_intervals"]
-            ):
-                assert region == expected_region
-                assert start == pytest.approx(expected_start + offset)
-                assert stop == pytest.approx(expected_stop + offset)
+            regions_table = module["regions"]
+            region_names = list(regions_table["region"].data)
+            for region, expected_intervals in case["expected_valid_signal_intervals"].items():
+                row_index = region_names.index(region)
+                expected_shifted = np.asarray(expected_intervals, dtype=float) + offset
+                np.testing.assert_allclose(regions_table["valid_signal_intervals"][row_index], expected_shifted)
 
     def test_round_trip_write_read(self, interface, case, linked_nwbfile, region_to_indices, tmp_path):
         # GuppyInterface is non-standalone: add its products to an acquisition-linked NWBFile and
@@ -607,7 +602,15 @@ class TestGuppyInterface:
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
             module = nwbfile.processing["fiber_photometry"]
-            assert module["regions"].neurodata_type == "GuppyRegionsTable"
+            regions_table = module["regions"]
+            assert regions_table.neurodata_type == "GuppyRegionsTable"
+            # Valid-signal intervals round-trip as the regions table's ragged column, not a separate object.
+            assert "valid_signal_intervals" not in module.data_interfaces
+            if case["expected_valid_signal_intervals"]:
+                region_names = list(regions_table["region"].data)
+                for region, expected_intervals in case["expected_valid_signal_intervals"].items():
+                    row_index = region_names.index(region)
+                    np.testing.assert_allclose(regions_table["valid_signal_intervals"][row_index], expected_intervals)
             for region, prefixes in case["expected_traces"].items():
                 for prefix in prefixes:
                     series = module.data_interfaces[f"{prefix}_{region}"]

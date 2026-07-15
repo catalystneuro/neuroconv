@@ -46,7 +46,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
     * peri-event PSTHs
     * peak / AUC summaries
     * region-pair cross-correlations
-    * valid-signal intervals
 
     plus the GuPPy parameters (``GuppyParameters``) and two registry tables (``GuppyRegionsTable``,
     ``GuppyEventsTable``) that give each region and event a single structured identity referenced by
@@ -156,17 +155,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 UserWarning,
             )
 
-        artifact_removal_method = None
-        if valid_signal_intervals_by_region:
-            artifact_removal_method = guppy_parameters.get("artifactsRemovalMethod")
-            if artifact_removal_method is None:
-                warnings.warn(
-                    "GuPPy parameters do not specify 'artifactsRemovalMethod' but artifact removal "
-                    "intervals were found; defaulting to 'concatenate' (GuPPy's UI default).",
-                    UserWarning,
-                )
-                artifact_removal_method = "concatenate"
-
         self._folder_path = folder_path
         self._regions = regions
         self._region_to_store_names = region_to_store_names
@@ -178,7 +166,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self._psths = psths
         self._peak_aucs = peak_aucs
         self._valid_signal_intervals_by_region = valid_signal_intervals_by_region
-        self._artifact_removal_method = artifact_removal_method
         self._guppy_parameters = guppy_parameters
         self._region_to_aligned_timestamps: dict[str, np.ndarray] | None = None
 
@@ -773,12 +760,27 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         # Session-wide typed parameters.
         nwbfile.add_lab_meta_data(ndx_guppy.GuppyParameters(**self._guppy_parameters_kwargs()))
 
+        # Valid-signal intervals are a per-region fact (the artifact-free windows GuPPy keeps), carried
+        # as an obs_intervals-style ragged column on the regions table. Boundaries are in GuPPy's emitted
+        # recording timebase; shift each region's by the same scalar offset applied to its timestamps
+        # (they are boundary values, not per-sample timestamps to interpolate against).
+        aligned_valid_signal_intervals_by_region: dict[str, list[list[float]]] = {}
+        if self._valid_signal_intervals_by_region:
+            for region in self._regions:
+                intervals = self._valid_signal_intervals_by_region.get(region)
+                if intervals is None:
+                    aligned_valid_signal_intervals_by_region[region] = []
+                    continue
+                time_offset = float(region_to_timestamps[region][0]) - float(region_to_original_timestamps[region][0])
+                aligned_valid_signal_intervals_by_region[region] = (intervals + time_offset).tolist()
+
         # Registries: region and event identity, referenced by every product.
         regions_table = self._add_regions_table(
             ndx_guppy=ndx_guppy,
             processing_module=processing_module,
             fiber_photometry_table=fiber_photometry_table,
             fiber_photometry_table_region_indices=fiber_photometry_table_region_indices,
+            valid_signal_intervals_by_region=aligned_valid_signal_intervals_by_region,
         )
         events_table = self._add_events_table(ndx_guppy=ndx_guppy, processing_module=processing_module, nwbfile=nwbfile)
         region_to_row_index = {region: index for index, region in enumerate(self._regions)}
@@ -978,51 +980,40 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             )
             processing_module.add(peak_auc)
 
-        # Valid-signal intervals.
-        if self._valid_signal_intervals_by_region:
-            valid_signal_intervals = ndx_guppy.GuppyValidSignalIntervals(
-                name="valid_signal_intervals",
-                description=(
-                    "Time intervals retained as valid signal (i.e., not removed as artifacts) "
-                    f"during GuPPy preprocessing. Method: {self._artifact_removal_method}. "
-                    "Sourced from coordsForPreProcessing_<region>.npy."
-                ),
-                target_tables={"region": regions_table},
-            )
-            for region in sorted(self._valid_signal_intervals_by_region):
-                intervals = self._valid_signal_intervals_by_region[region]
-                # Interval boundaries are in GuPPy's emitted recording timebase. Shift them by the same
-                # scalar offset applied to the region's timestamps (they are boundary values, not
-                # per-sample timestamps to interpolate against).
-                time_offset = float(region_to_timestamps[region][0]) - float(region_to_original_timestamps[region][0])
-                for start, stop in intervals + time_offset:
-                    valid_signal_intervals.add_row(
-                        start_time=float(start),
-                        stop_time=float(stop),
-                        region=region_to_row_index[region],
-                    )
-            processing_module.add(valid_signal_intervals)
-
     def _add_regions_table(
-        self, ndx_guppy, processing_module, fiber_photometry_table, fiber_photometry_table_region_indices: dict
+        self,
+        ndx_guppy,
+        processing_module,
+        fiber_photometry_table,
+        fiber_photometry_table_region_indices: dict,
+        valid_signal_intervals_by_region: dict,
     ):
-        """Build and add the GuppyRegionsTable, linking each region to its fiber photometry rows."""
+        """Build and add the GuppyRegionsTable, linking each region to its fiber photometry rows.
+
+        ``valid_signal_intervals_by_region`` maps each region to its (timestamp-aligned) list of
+        ``[start, stop]`` valid-signal windows. When any region has intervals, they are written as an
+        obs_intervals-style ragged column; regions without intervals get an empty entry.
+        """
         regions_table = ndx_guppy.GuppyRegionsTable(
             name="regions",
             description="GuPPy logical regions (one row per region). Each row's optional fiber link points "
             "at the acquisition FiberPhotometryTable signal + isosbestic rows for that region.",
             target_tables={"fiber_photometry_table_region": fiber_photometry_table},
         )
+        any_valid_signal_intervals = any(valid_signal_intervals_by_region.get(region) for region in self._regions)
         for region in self._regions:
             assert region in fiber_photometry_table_region_indices, (
                 f"No fiber_photometry_table_region_indices supplied for region '{region}'. GuppyInterface "
                 f"does not stand alone; drive it through a converter (e.g. TDTFiberPhotometryGuppyConverter)."
             )
-            regions_table.add_row(
+            row_kwargs = dict(
                 region=region,
                 raw_store_name=self._region_to_store_names.get(region, {}).get("signal"),
                 fiber_photometry_table_region=list(fiber_photometry_table_region_indices[region]),
             )
+            if any_valid_signal_intervals:
+                row_kwargs["valid_signal_intervals"] = valid_signal_intervals_by_region.get(region, [])
+            regions_table.add_row(**row_kwargs)
         processing_module.add(regions_table)
         return regions_table
 
