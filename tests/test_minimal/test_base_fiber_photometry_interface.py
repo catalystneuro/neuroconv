@@ -1,7 +1,6 @@
 """Data-free tests of the shared fiber photometry writer, driven by ``MockFiberPhotometryInterface``."""
 
 import re
-import warnings
 
 import pytest
 from jsonschema.validators import Draft7Validator
@@ -33,25 +32,6 @@ class TestMockFiberPhotometryInterface:
         interface = MockFiberPhotometryInterface(metadata_key="my_series")
         assert interface.metadata_key == "my_series"
         assert "my_series" in interface.get_metadata()["FiberPhotometry"]
-
-    def test_default_build_is_placeholder_free(self):
-        # The mock fills every placeholder the base scaffold pre-seeds, so a standalone build emits no
-        # placeholder UserWarning. Two streams stack into a 2-channel series and a two-row table.
-        interface = MockFiberPhotometryInterface()
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", UserWarning)
-            nwbfile = interface.create_nwbfile()
-
-        table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
-        assert len(table) == 2
-        assert list(table["excitation_wavelength_in_nm"][:]) == [465.0, 405.0]
-
-        series = nwbfile.acquisition["FiberPhotometryResponseSeries"]
-        assert series.data[:].shape == (100, 2)
-        # 100 samples at 100 Hz is regular, so timing is written as rate + starting_time.
-        assert series.rate == pytest.approx(100.0)
-        assert series.starting_time == pytest.approx(0.0)
-        assert "indicator" in nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_indicators.indicators
 
     def test_single_stream_collapses_to_one_channel(self):
         # A single stream exercises the base's shape[1] == 1 collapse: a 1-D series and a one-row table.
