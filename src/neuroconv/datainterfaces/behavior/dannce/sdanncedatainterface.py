@@ -26,6 +26,7 @@ class SDANNCEInterface(DANNCEInterface):
         landmark_names: list[str] | None = None,
         subject_name: str = "ind1",
         pose_estimation_metadata_key: str = "PoseEstimationSDANNCE",
+        camera_names: list[str] | None = None,
         verbose: bool = False,
     ):
         """
@@ -54,7 +55,11 @@ class SDANNCEInterface(DANNCEInterface):
             The subject name used for linking the skeleton to the NWB subject.
         pose_estimation_metadata_key : str, default: "PoseEstimationSDANNCE"
             Controls where in the metadata the pose estimation data is stored and the name of the
-            PoseEstimation container in the NWB file.
+            MultiCameraPoseEstimation container in the NWB file. Must be set to a unique value per
+            animal when writing multiple SDANNCEInterface instances (one per animal) to the same
+            NWBFile, since each animal's container needs a distinct name.
+        camera_names : list of str, optional
+            See :class:`DANNCEInterface`.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         """
@@ -67,6 +72,7 @@ class SDANNCEInterface(DANNCEInterface):
             landmark_names=landmark_names,
             subject_name=subject_name,
             pose_estimation_metadata_key=pose_estimation_metadata_key,
+            camera_names=camera_names,
             verbose=verbose,
         )
 
@@ -95,8 +101,11 @@ class SDANNCEInterface(DANNCEInterface):
         container["source_software"] = "sDANNCE"
         container["scorer"] = "sDANNCE"
 
-        device_metadata_key = container["devices"][0]
-        device = metadata["PoseEstimation"]["Devices"][device_metadata_key]
-        device["description"] = "Multi-camera system used for 3D pose estimation with sDANNCE."
+        for device_metadata_key in container["devices"]:
+            device = metadata["PoseEstimation"]["Devices"][device_metadata_key]
+            device["description"] = (
+                f"Camera '{device['camera_name']}' of the multi-camera system used for 3D pose "
+                "estimation with sDANNCE."
+            )
 
         return metadata

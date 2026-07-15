@@ -136,6 +136,47 @@ class TestSDANNCEInterfaceConversion:
             assert_array_equal(series.confidence, p_max[:, 1, i])
             assert series.unit == "millimeters"
 
+    def test_multiple_animals_share_camera_device(self, sdannce_mat_file):
+        """Multiple SDANNCEInterface instances (one per animal) writing to the same NWBFile should
+        reuse a single shared camera Device instead of each creating their own."""
+        file_path = sdannce_mat_file[0]
+
+        nwbfile = NWBFile(
+            session_description="test",
+            identifier="test_sdannce_shared_device",
+            session_start_time=datetime.now().astimezone(),
+        )
+
+        interface_animal0 = SDANNCEInterface(
+            file_path=file_path,
+            animal_index=0,
+            sampling_rate=30.0,
+            subject_name="rat1",
+            pose_estimation_metadata_key="PoseEstimationSDANNCE_rat1",
+        )
+        interface_animal1 = SDANNCEInterface(
+            file_path=file_path,
+            animal_index=1,
+            sampling_rate=30.0,
+            subject_name="rat2",
+            pose_estimation_metadata_key="PoseEstimationSDANNCE_rat2",
+        )
+
+        interface_animal0.add_to_nwbfile(nwbfile=nwbfile)
+        interface_animal1.add_to_nwbfile(nwbfile=nwbfile)
+
+        # Only one shared camera device should have been created.
+        assert list(nwbfile.devices.keys()) == ["Camera1"]
+
+        behavior = nwbfile.processing["behavior"]
+        pe_animal0 = behavior.data_interfaces["PoseEstimationSDANNCE_rat1"]
+        pe_animal1 = behavior.data_interfaces["PoseEstimationSDANNCE_rat2"]
+
+        camera0 = next(iter(pe_animal0.pose_estimations.values())).device
+        camera1 = next(iter(pe_animal1.pose_estimations.values())).device
+        assert camera0 is camera1
+        assert camera0 is nwbfile.devices["Camera1"]
+
     def test_stub_test_limits_output_samples(self, tmp_path):
         n_samples = 400
         n_animals = 2

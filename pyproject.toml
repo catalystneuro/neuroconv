@@ -93,7 +93,7 @@ audio = [
     "scipy", # for scipy.io.wavfile
 ]
 dannce = [
-    "ndx-pose>=0.2",
+    "ndx-pose>=0.3.0",
     "scipy",
     # opencv (via neuroconv[video]) is only needed when video_file_path is provided for timestamp extraction
 ]

@@ -41,6 +41,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         landmark_names: list[str] | None = None,
         subject_name: str = "ind1",
         pose_estimation_metadata_key: str = "PoseEstimationDANNCE",
+        camera_names: list[str] | None = None,
         verbose: bool = False,
     ):
         """
@@ -77,7 +78,13 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             The subject name used for linking the skeleton to the NWB subject.
         pose_estimation_metadata_key : str, default: "PoseEstimationDANNCE"
             Controls where in the metadata the pose estimation data is stored and the name of the
-            PoseEstimation container in the NWB file.
+            MultiCameraPoseEstimation container in the NWB file.
+        camera_names : list of str, optional
+            Names of the cameras in the multi-camera rig used to produce the 3D predictions (e.g.,
+            ``["Camera1", "Camera2", ..., "Camera6"]``). One camera Device and one empty per-camera
+            ``PoseEstimation`` child of the ``MultiCameraPoseEstimation`` container is created per
+            name; pass the corresponding videos as ``source_videos`` to ``add_to_nwbfile`` to link
+            each camera's source video. If not provided, defaults to a single camera, ``["Camera1"]``.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         """
@@ -87,11 +94,11 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         from packaging import version as version_parse
 
         ndx_pose_version = version("ndx-pose")
-        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.2.1"):
+        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.3.0"):
             raise ImportError(
-                "DANNCE interface requires ndx-pose version 0.2.1 or later. "
+                "DANNCE interface requires ndx-pose version 0.3.0 or later. "
                 f"Found version {ndx_pose_version}. Please upgrade: "
-                "pip install 'ndx-pose>=0.2.1'"
+                "pip install 'ndx-pose>=0.3.0'"
             )
 
         file_path = Path(file_path)
@@ -101,6 +108,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self.subject_name = subject_name
         self.verbose = verbose
         self.pose_estimation_metadata_key = pose_estimation_metadata_key
+        self._camera_names = list(camera_names) if camera_names else ["Camera1"]
         self._sampling_rate = sampling_rate
         self._video_file_path = Path(video_file_path) if video_file_path is not None else None
         self._frametimes_file_path = Path(frametimes_file_path) if frametimes_file_path is not None else None
@@ -224,6 +232,13 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             "properties": {
                 "name": {"type": "string", "description": "Name of the device"},
                 "description": {"type": "string", "description": "Description of the device"},
+                "camera_name": {
+                    "type": "string",
+                    "description": (
+                        "Name of the camera this device represents, matching a key of the "
+                        "'source_videos' dict passed to add_to_nwbfile."
+                    ),
+                },
             },
             "required": ["name"],
         }
@@ -231,9 +246,9 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         containers_schema = get_base_schema(tag="PoseEstimationContainers")
         containers_schema["additionalProperties"] = {
             "type": "object",
-            "description": "Metadata for a PoseEstimation group",
+            "description": "Metadata for a MultiCameraPoseEstimation group",
             "properties": {
-                "name": {"type": "string", "description": "Name of the PoseEstimation group"},
+                "name": {"type": "string", "description": "Name of the MultiCameraPoseEstimation group"},
                 "description": {"type": ["string", "null"], "description": "Description of the pose estimation"},
                 "source_software": {"type": ["string", "null"], "description": "Name of the software tool used"},
                 "source_software_version": {"type": ["string", "null"], "description": "Version of the software"},
@@ -241,7 +256,11 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                 "skeleton": {"type": ["string", "null"], "description": "Reference to a Skeleton"},
                 "devices": {
                     "type": ["array", "null"],
-                    "description": "References to Device objects",
+                    "description": (
+                        "References to Device objects, one per camera. Each device becomes the camera "
+                        "link of its own empty per-camera PoseEstimation child of the "
+                        "MultiCameraPoseEstimation container."
+                    ),
                     "items": {"type": "string"},
                 },
                 "PoseEstimationSeries": {
@@ -286,7 +305,14 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
 
         container_name = self.pose_estimation_metadata_key
         skeleton_name = f"Skeleton{container_name}_{self.subject_name.capitalize()}"
-        device_name = f"Camera{container_name}"
+
+        devices_metadata = {}
+        for camera_name in self._camera_names:
+            devices_metadata[camera_name] = {
+                "name": camera_name,
+                "description": f"Camera '{camera_name}' of the multi-camera system used for 3D pose estimation.",
+                "camera_name": camera_name,
+            }
 
         pose_estimation_series_metadata = {}
         for landmark in self._landmark_names:
@@ -308,12 +334,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                     "subject": self.subject_name,
                 }
             },
-            "Devices": {
-                device_name: {
-                    "name": device_name,
-                    "description": "Multi-camera system used for 3D pose estimation with DANNCE.",
-                }
-            },
+            "Devices": devices_metadata,
             "PoseEstimationContainers": {
                 container_name: {
                     "name": container_name,
@@ -321,7 +342,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                     "source_software": "DANNCE",
                     "scorer": "DANNCE",
                     "skeleton": skeleton_name,
-                    "devices": [device_name],
+                    "devices": list(devices_metadata.keys()),
                     "PoseEstimationSeries": pose_estimation_series_metadata,
                 }
             },
@@ -334,7 +355,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: dict | None = None,
         stub_test: bool = False,
-        source_video: ImageSeries | None = None,
+        source_videos: dict[str, ImageSeries] | None = None,
     ) -> None:
         """
         Add DANNCE pose estimation data to an NWB file.
@@ -348,13 +369,16 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         stub_test : bool, default: False
             If True, write only the first 100 frames to the NWB file for quick smoke testing.
             The interface's internal data arrays are not mutated.
-        source_video : ImageSeries, optional
-            Formal NWB link to an ``ImageSeries`` containing the source video used for pose
-            estimation. The ``ImageSeries`` must already be added to the ``NWBFile`` (e.g. in
-            ``nwbfile.acquisition``) before calling this method. When provided, this is preferred
-            over the string-path ``original_videos`` field.
+        source_videos : dict of str to ImageSeries, optional
+            Formal NWB links to ``ImageSeries`` containing the source video for each camera,
+            keyed by camera name (matching the ``camera_names`` passed at construction, e.g.
+            ``{"Camera1": image_series_1, "Camera2": image_series_2}``). Each ``ImageSeries`` must
+            already be added to the ``NWBFile`` (e.g. in ``nwbfile.acquisition``) before calling
+            this method. Cameras without a corresponding entry are linked with no source video.
+            Each is linked from its corresponding per-camera ``PoseEstimation`` child of the
+            ``MultiCameraPoseEstimation`` container.
         """
-        from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
+        from ndx_pose import MultiCameraPoseEstimation, PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
         # Build metadata
         default_metadata = DeepDict(self.get_metadata())
@@ -434,30 +458,46 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             series = PoseEstimationSeries(**series_kwargs)
             pose_estimation_series.append(series)
 
-        # Create or get device
-        device_metadata_key = container_metadata["devices"][0]
-        device_metadata = pose_estimation_metadata["Devices"][device_metadata_key]
-        device_name = device_metadata["name"]
+        # Create or get one Device per camera, named directly after the camera (not derived from the
+        # per-instance pose_estimation_metadata_key), so multiple interface instances writing to the same
+        # NWBFile with matching camera_names (e.g., one SDANNCEInterface per animal) share and reuse the
+        # same camera Devices.
+        source_videos = source_videos or {}
+        camera_pose_estimations = []
+        for device_metadata_key in container_metadata["devices"]:
+            device_metadata = pose_estimation_metadata["Devices"][device_metadata_key]
+            device_name = device_metadata["name"]
+            camera_name = device_metadata.get("camera_name", device_name)
 
-        if device_name not in nwbfile.devices:
-            camera = nwbfile.create_device(
-                name=device_name,
-                description=device_metadata.get("description", "Camera used for pose estimation."),
+            if device_name not in nwbfile.devices:
+                camera = nwbfile.create_device(
+                    name=device_name,
+                    description=device_metadata.get("description", "Camera used for pose estimation."),
+                )
+            else:
+                camera = nwbfile.devices[device_name]
+
+            # Per-camera PoseEstimation child: DANNCE/sDANNCE only produce triangulated 3D world-space
+            # landmarks (no raw per-camera 2D data), so this child carries no pose_estimation_series of
+            # its own -- it exists solely to formally link the camera Device (and, when available, that
+            # camera's source video) under the MultiCameraPoseEstimation container.
+            camera_pose_estimation = PoseEstimation(
+                name=f"{device_name}PoseEstimation",
+                device=camera,
+                source_video=source_videos.get(camera_name),
             )
-        else:
-            camera = nwbfile.devices[device_name]
+            camera_pose_estimations.append(camera_pose_estimation)
 
-        # Create PoseEstimation container
-        pose_estimation = PoseEstimation(
+        # Create MultiCameraPoseEstimation container holding the 3D world-space landmark series
+        pose_estimation = MultiCameraPoseEstimation(
             name=container_metadata["name"],
             pose_estimation_series=pose_estimation_series,
+            pose_estimations=camera_pose_estimations,
             description=container_metadata.get("description", "3D keypoint coordinates estimated using DANNCE."),
-            devices=[camera],
             scorer=container_metadata.get("scorer"),
             source_software=container_metadata.get("source_software", "DANNCE"),
             source_software_version=container_metadata.get("source_software_version"),
             skeleton=skeleton,
-            source_video=source_video,
         )
 
         behavior_module.add(pose_estimation)

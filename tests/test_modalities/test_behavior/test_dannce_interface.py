@@ -8,6 +8,8 @@ from pynwb.image import ImageSeries
 from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 from scipy.io import savemat
 
+from ndx_pose import MultiCameraPoseEstimation
+
 from neuroconv.datainterfaces import DANNCEInterface
 
 
@@ -209,8 +211,15 @@ class TestDANNCEInterfaceConversion:
 
         # Verify pose estimation container
         pe = behavior.data_interfaces["PoseEstimationDANNCE"]
+        assert isinstance(pe, MultiCameraPoseEstimation)
         assert len(pe.pose_estimation_series) == n_landmarks
         assert pe.source_software == "DANNCE"
+
+        # Verify the camera device is linked via a per-camera PoseEstimation child
+        assert len(pe.pose_estimations) == 1
+        camera_pose_estimation = next(iter(pe.pose_estimations.values()))
+        assert camera_pose_estimation.device.name == "Camera1"
+        assert len(camera_pose_estimation.pose_estimation_series) == 0
 
         # Build name-to-index mapping (NWB may return series in alphabetical order)
         landmark_names = [f"landmark_{i}" for i in range(n_landmarks)]
@@ -316,13 +325,15 @@ class TestDANNCEInterfaceConversion:
             format="external",
             external_file=["camera1.mp4"],
             rate=30.0,
+            num_samples=100,
         )
         nwbfile.add_acquisition(source_video)
 
-        interface.add_to_nwbfile(nwbfile=nwbfile, source_video=source_video)
+        interface.add_to_nwbfile(nwbfile=nwbfile, source_videos={"Camera1": source_video})
 
         pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
-        assert pe.source_video is source_video
+        camera_pose_estimation = next(iter(pe.pose_estimations.values()))
+        assert camera_pose_estimation.source_video is source_video
 
     def test_source_video_defaults_to_none(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
@@ -332,7 +343,50 @@ class TestDANNCEInterfaceConversion:
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
         pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
-        assert pe.source_video is None
+        camera_pose_estimation = next(iter(pe.pose_estimations.values()))
+        assert camera_pose_estimation.source_video is None
+
+    def test_multiple_cameras_link_distinct_source_videos(self, dannce_mat_file):
+        file_path, _, _, _, _ = dannce_mat_file
+        camera_names = ["Camera1", "Camera2", "Camera3"]
+        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, camera_names=camera_names)
+
+        nwbfile = NWBFile(
+            session_description="test",
+            identifier="test_dannce_multi_camera",
+            session_start_time=datetime.now().astimezone(),
+        )
+
+        source_videos = {}
+        for camera_name in camera_names:
+            video = ImageSeries(
+                name=f"SourceVideo{camera_name}",
+                description=f"Source video for {camera_name}.",
+                unit="NA",
+                format="external",
+                external_file=[f"{camera_name}.mp4"],
+                rate=30.0,
+                num_samples=100,
+            )
+            nwbfile.add_acquisition(video)
+            source_videos[camera_name] = video
+
+        # Omit the source video for the last camera to verify unmatched cameras stay linkless.
+        source_videos_missing_last = dict(source_videos)
+        del source_videos_missing_last[camera_names[-1]]
+
+        interface.add_to_nwbfile(nwbfile=nwbfile, source_videos=source_videos_missing_last)
+
+        pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
+        assert len(pe.pose_estimations) == len(camera_names)
+
+        assert set(nwbfile.devices.keys()) == set(camera_names)
+
+        camera_pose_estimations_by_device = {pe_.device.name: pe_ for pe_ in pe.pose_estimations.values()}
+        for camera_name in camera_names[:-1]:
+            assert camera_pose_estimations_by_device[camera_name].source_video is source_videos[camera_name]
+
+        assert camera_pose_estimations_by_device[camera_names[-1]].source_video is None
 
     def test_stub_test_limits_output_samples(self, tmp_path):
         # Build a larger fixture (500 samples) so stub_test (=100) actually slices.
