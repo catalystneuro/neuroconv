@@ -241,15 +241,12 @@ class TestGuppyInterface:
         )
         assert actual == expected
 
-    def test_metadata_cross_correlations(self, interface, case):
-        metadata = interface.get_metadata()
-        cross_correlations_metadata = metadata["FiberPhotometry"]["Guppy"]["CrossCorrelations"]
-        # One object per (trace_type, region-pair); the event is concatenated into the data.
-        expected_names = {
-            f"cross_correlation_{entry['trace_type']}_{entry['region_1']}_{entry['region_2']}"
-            for entry in case["expected_cross_correlations"]
-        }
-        assert {entry["name"] for entry in cross_correlations_metadata} == expected_names
+    def test_metadata_omits_event_bearing_products(self, interface):
+        """GuPPy names its outputs deterministically, so the event-bearing products (cross-correlations,
+        PSTHs, peak/AUC) -- whose ndx-guppy types have no description and whose names are derived -- have
+        nothing editable and are omitted from get_metadata entirely."""
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"]
+        assert set(guppy_metadata.keys()) == {"ProcessingModule", "Traces", "Transients", "TransientSummary"}
 
     def test_metadata_processing_module_includes_guppy_version(self, interface):
         metadata = interface.get_metadata()
@@ -260,17 +257,44 @@ class TestGuppyInterface:
         metadata = interface.get_metadata()
         guppy_metadata = metadata["FiberPhotometry"]["Guppy"]
 
+        # Families are dicts keyed by the derived object name; each entry carries only the description.
         expected_trace_names = {
             f"{prefix}_{region}" for region, prefixes in case["expected_traces"].items() for prefix in prefixes
         }
-        assert {trace["name"] for trace in guppy_metadata["Traces"]} == expected_trace_names
+        assert set(guppy_metadata["Traces"].keys()) == expected_trace_names
 
         expected_transient_names = {
             f"transients_{region}_{feature}"
             for region, features in case["expected_transients"].items()
             for feature in features
         }
-        assert {transient["name"] for transient in guppy_metadata["Transients"]} == expected_transient_names
+        assert set(guppy_metadata["Transients"].keys()) == expected_transient_names
+
+    def test_metadata_editable_surface_is_description_only(self, interface):
+        """Names and units are GuPPy-deterministic (derived at write time), so the only editable field
+        on the per-object families is the description -- no internal handles, no name, no unit."""
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"]
+        for family in ("Traces", "Transients"):
+            for entry in guppy_metadata[family].values():
+                assert set(entry.keys()) == {"description"}, (family, entry)
+
+    def test_metadata_key_scopes_block_and_description_edit_propagates(self, case, linked_nwbfile, region_to_indices):
+        """A non-default metadata_key scopes the whole block, and editing a trace's description (the one
+        editable field) propagates to the written object, which keeps its derived name."""
+        interface = GuppyInterface(folder_path=str(case["folder_path"]), metadata_key="GuppyB")
+        metadata = interface.get_metadata()
+        assert "GuppyB" in metadata["FiberPhotometry"]
+        assert "Guppy" not in metadata["FiberPhotometry"]
+
+        trace_name = next(iter(metadata["FiberPhotometry"]["GuppyB"]["Traces"]))
+        metadata["FiberPhotometry"]["GuppyB"]["Traces"][trace_name]["description"] = "custom trace description"
+        interface.add_to_nwbfile(
+            linked_nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=True
+        )
+
+        module = linked_nwbfile.processing["fiber_photometry"]
+        assert trace_name in module.data_interfaces  # object keeps its derived name
+        assert module[trace_name].description == "custom trace description"
 
     # ----------------------------------------------------------------- registries / parameters
 
