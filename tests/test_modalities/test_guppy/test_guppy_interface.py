@@ -241,12 +241,26 @@ class TestGuppyInterface:
         )
         assert actual == expected
 
-    def test_metadata_omits_event_bearing_products(self, interface):
-        """GuPPy names its outputs deterministically, so the event-bearing products (cross-correlations,
-        PSTHs, peak/AUC) -- whose ndx-guppy types have no description and whose names are derived -- have
-        nothing editable and are omitted from get_metadata entirely."""
+    def test_metadata_enumerates_all_products(self, interface, case):
+        """get_metadata is a full manifest: every product family GuPPy emits appears, each a dict keyed
+        by the object's default name."""
         guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"]
-        assert set(guppy_metadata.keys()) == {"ProcessingModule", "Traces", "Transients", "TransientSummary"}
+        assert set(guppy_metadata.keys()) == {
+            "ProcessingModule",
+            "Traces",
+            "Transients",
+            "TransientSummary",
+            "CrossCorrelations",
+            "PSTHs",
+            "PeakAUCs",
+        }
+        expected_cross_correlation_names = {
+            f"cross_correlation_{entry['trace_type']}_{entry['region_1']}_{entry['region_2']}"
+            for entry in case["expected_cross_correlations"]
+        }
+        assert set(guppy_metadata["CrossCorrelations"].keys()) == expected_cross_correlation_names
+        assert len(guppy_metadata["PSTHs"]) == case["expected_psth_count"] // len(interface._event_names)
+        assert len(guppy_metadata["PeakAUCs"]) == case["expected_peak_auc_count"] // len(interface._event_names)
 
     def test_metadata_processing_module_includes_guppy_version(self, interface):
         metadata = interface.get_metadata()
@@ -257,7 +271,7 @@ class TestGuppyInterface:
         metadata = interface.get_metadata()
         guppy_metadata = metadata["FiberPhotometry"]["Guppy"]
 
-        # Families are dicts keyed by the derived object name; each entry carries only the description.
+        # Families are dicts keyed by the derived object name.
         expected_trace_names = {
             f"{prefix}_{region}" for region, prefixes in case["expected_traces"].items() for prefix in prefixes
         }
@@ -270,31 +284,38 @@ class TestGuppyInterface:
         }
         assert set(guppy_metadata["Transients"].keys()) == expected_transient_names
 
-    def test_metadata_editable_surface_is_description_only(self, interface):
-        """Names and units are GuPPy-deterministic (derived at write time), so the only editable field
-        on the per-object families is the description -- no internal handles, no name, no unit."""
+    def test_metadata_entries_expose_name_and_description_only(self, interface):
+        """Every product entry carries exactly the editable name + description (name defaults to the key).
+        No internal handles (region, trace_basename, trace_type, region pair, event lists) and no derived
+        unit ever appear in the metadata."""
         guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"]
-        for family in ("Traces", "Transients"):
-            for entry in guppy_metadata[family].values():
-                assert set(entry.keys()) == {"description"}, (family, entry)
+        for family in ("Traces", "Transients", "CrossCorrelations", "PSTHs", "PeakAUCs"):
+            for name, entry in guppy_metadata[family].items():
+                assert set(entry.keys()) == {"name", "description"}, (family, entry)
+                assert entry["name"] == name  # default name is the key
 
-    def test_metadata_key_scopes_block_and_description_edit_propagates(self, case, linked_nwbfile, region_to_indices):
-        """A non-default metadata_key scopes the whole block, and editing a trace's description (the one
-        editable field) propagates to the written object, which keeps its derived name."""
+    def test_metadata_key_scopes_block_and_edits_propagate(self, case, linked_nwbfile, region_to_indices):
+        """A non-default metadata_key scopes the whole block; editing an object's name and description
+        propagates to the written object -- including an event-bearing product (PSTH)."""
         interface = GuppyInterface(folder_path=str(case["folder_path"]), metadata_key="GuppyB")
         metadata = interface.get_metadata()
         assert "GuppyB" in metadata["FiberPhotometry"]
         assert "Guppy" not in metadata["FiberPhotometry"]
 
-        trace_name = next(iter(metadata["FiberPhotometry"]["GuppyB"]["Traces"]))
-        metadata["FiberPhotometry"]["GuppyB"]["Traces"][trace_name]["description"] = "custom trace description"
+        guppy_block = metadata["FiberPhotometry"]["GuppyB"]
+        trace_tag = next(iter(guppy_block["Traces"]))
+        guppy_block["Traces"][trace_tag]["name"] = "renamed_trace"
+        guppy_block["Traces"][trace_tag]["description"] = "custom trace description"
+        psth_tag = next(iter(guppy_block["PSTHs"]))
+        guppy_block["PSTHs"][psth_tag]["description"] = "custom psth description"
+
         interface.add_to_nwbfile(
             linked_nwbfile, metadata, fiber_photometry_table_region_indices=region_to_indices, stub_test=True
         )
-
         module = linked_nwbfile.processing["fiber_photometry"]
-        assert trace_name in module.data_interfaces  # object keeps its derived name
-        assert module[trace_name].description == "custom trace description"
+        assert "renamed_trace" in module.data_interfaces  # rename took effect
+        assert module["renamed_trace"].description == "custom trace description"
+        assert module[psth_tag].description == "custom psth description"  # description reaches group products
 
     # ----------------------------------------------------------------- registries / parameters
 

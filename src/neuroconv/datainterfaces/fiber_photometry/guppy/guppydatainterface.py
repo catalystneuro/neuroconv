@@ -452,12 +452,14 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
 
         guppy_parameters = self._guppy_parameters
 
-        # GuPPy names its outputs deterministically (region/trace_type/condition are baked into each
-        # object name), so object names and units are derived, not user-editable -- add_to_nwbfile
-        # rebuilds them from self._*. The only editable surface is the description text; descriptions
-        # are intentionally generic because the processing parameters live once in the GuppyParameters
-        # lab metadata, not duplicated here. Each family below is a dict keyed by the object's derived
-        # name, whose value carries only that editable description.
+        # Every product GuPPy emits is enumerated here so get_metadata is a full manifest of what the
+        # file will contain. Each family is a dict keyed by the object's derived default name (the
+        # "tag"); the value carries the editable presentation fields -- ``name`` (defaults to the tag,
+        # a stable handle add_to_nwbfile recomputes) and a generic ``description``. Descriptions omit
+        # processing parameters, which live once in the GuppyParameters lab metadata. Internal join
+        # keys (region, trace_basename, trace_type, region pair, baseline flag, event lists) and units
+        # are NOT stored here -- editing them would break the join or contradict the data, so
+        # add_to_nwbfile derives them from self._* instead.
         prefix_to_description_template = dict(
             cntrl_sig_fit="GuPPy fitted control trace for region '{region}'.",
             dff="GuPPy ΔF/F trace for region '{region}'.",
@@ -466,20 +468,51 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         traces_metadata = {}
         for region in self._regions:
             for prefix in self._traces_by_region[region]:
-                traces_metadata[self._trace_name(region, prefix)] = dict(
-                    description=prefix_to_description_template[prefix].format(region=region)
+                name = self._trace_name(region, prefix)
+                traces_metadata[name] = dict(
+                    name=name, description=prefix_to_description_template[prefix].format(region=region)
                 )
 
         transients_metadata = {}
         for region in self._regions:
             for feature in self._transients_by_region[region]:
-                transients_metadata[self._transients_name(region, feature)] = dict(
-                    description=f"GuPPy-detected transient peaks in the '{feature}' trace for region '{region}'."
+                name = self._transients_name(region, feature)
+                transients_metadata[name] = dict(
+                    name=name,
+                    description=f"GuPPy-detected transient peaks in the '{feature}' trace for region '{region}'.",
                 )
 
-        # The event-bearing products (cross-correlations, PSTHs, peak/AUC) are omitted entirely: their
-        # ndx-guppy types have no description field and their names are derived, so there is nothing to
-        # edit. add_to_nwbfile builds them straight from the discovered data.
+        cross_correlations_metadata = {}
+        for feature, region_1, region_2 in self._group_by_condition(
+            self._cross_correlations, ("feature", "region_1", "region_2")
+        ):
+            name = self._cross_correlation_name(feature, region_1, region_2)
+            cross_correlations_metadata[name] = dict(
+                name=name,
+                description=(
+                    f"GuPPy peri-event cross-correlation of the '{feature}' trace between regions "
+                    f"'{region_1}' and '{region_2}'."
+                ),
+            )
+
+        psths_metadata = {}
+        for region, feature, baseline_corrected in self._group_by_condition(
+            self._psths, ("region", "feature", "baseline_corrected")
+        ):
+            name = self._psth_name(region, feature, baseline_corrected)
+            baseline = "baseline-corrected" if baseline_corrected else "baseline-uncorrected"
+            psths_metadata[name] = dict(
+                name=name,
+                description=f"GuPPy peri-event PSTH of the '{feature}' trace for region '{region}' ({baseline}).",
+            )
+
+        peak_aucs_metadata = {}
+        for region, feature in self._group_by_condition(self._peak_aucs, ("region", "feature")):
+            name = self._peak_auc_name(region, feature)
+            peak_aucs_metadata[name] = dict(
+                name=name,
+                description=f"GuPPy peak/area summary of the '{feature}' PSTH for region '{region}'.",
+            )
 
         guppy_version = guppy_parameters.get("guppy_version")
         processing_module_description = "GuPPy-derived fiber photometry processing outputs."
@@ -499,6 +532,9 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 name="transient_summary",
                 description=("Per-(region, trace_type) GuPPy transient summary: events/min and mean peak amplitude."),
             ),
+            CrossCorrelations=cross_correlations_metadata,
+            PSTHs=psths_metadata,
+            PeakAUCs=peak_aucs_metadata,
         )
         return metadata
 
@@ -507,31 +543,23 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"].setdefault("FiberPhotometry", get_base_schema(tag="FiberPhotometry"))
 
-        # GuPPy owns the object names and units (both derived from the data), so the only editable
-        # surface is description text. Traces/Transients are keyed collections: an object whose keys
-        # are the derived object names mapping to a ``{description}`` value schema (additionalProperties),
-        # not a positional array. The event-bearing products (cross-correlations/PSTHs/peak-AUC) are not
-        # exposed at all -- their types have no description field and their names are derived, so there
-        # is nothing to edit.
-        description_only_collection = dict(
-            type="object",
-            additionalProperties=dict(
-                type="object",
-                required=["description"],
-                properties=dict(description=dict(type="string")),
-            ),
-        )
+        # Every product family is a keyed collection: an object whose keys are the derived object names
+        # mapping to a ``{name, description}`` value schema (additionalProperties), not a positional
+        # array. name/description are the editable presentation surface; units and all internal join
+        # keys are derived at write time and never appear here. The two singular objects
+        # (ProcessingModule, TransientSummary) are plain ``{name, description}`` objects.
         named_object = dict(
             type="object",
             required=["name", "description"],
             properties=dict(name=dict(type="string"), description=dict(type="string")),
         )
+        named_collection = dict(type="object", additionalProperties=named_object)
 
         metadata_schema["properties"]["FiberPhotometry"]["properties"][self.metadata_key] = dict(
             type="object",
             additionalProperties=False,
-            # Transients is empty ({}) for sessions with no detected transients, which validates fine,
-            # so only the always-present keys are required.
+            # The data-dependent families are empty ({}) for sessions that lack those products, which
+            # validates fine, so only the always-present keys are required.
             required=[
                 "ProcessingModule",
                 "Traces",
@@ -539,9 +567,12 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             ],
             properties=dict(
                 ProcessingModule=named_object,
-                Traces=description_only_collection,
-                Transients=description_only_collection,
+                Traces=named_collection,
+                Transients=named_collection,
                 TransientSummary=named_object,
+                CrossCorrelations=named_collection,
+                PSTHs=named_collection,
+                PeakAUCs=named_collection,
             ),
         )
         return metadata_schema
@@ -677,6 +708,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self._add_guppy_cross_correlations_to_nwbfile(
             ndx_guppy=ndx_guppy,
             processing_module=processing_module,
+            cross_correlations_metadata=guppy_metadata["CrossCorrelations"],
             regions_table=regions_table,
             events_table=events_table,
             bin_basis=bin_basis,
@@ -687,6 +719,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self._add_guppy_psths_to_nwbfile(
             ndx_guppy=ndx_guppy,
             processing_module=processing_module,
+            psths_metadata=guppy_metadata["PSTHs"],
             regions_table=regions_table,
             events_table=events_table,
             bin_basis=bin_basis,
@@ -697,6 +730,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self._add_guppy_peak_aucs_to_nwbfile(
             ndx_guppy=ndx_guppy,
             processing_module=processing_module,
+            peak_aucs_metadata=guppy_metadata["PeakAUCs"],
             regions_table=regions_table,
             events_table=events_table,
             bin_basis=bin_basis,
@@ -741,18 +775,17 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
     ) -> None:
         """Add each derived continuous trace as a GuppyDerivedResponseSeries.
 
-        Everything but the description is derived from the interface's discovered state (name, source
-        ``.hdf5`` basename, trace_type, unit); only the editable description comes from
-        ``traces_metadata`` (keyed by the trace's derived name). Under ``stub_test`` each trace is
-        truncated to its first ~1 s and the truncated end time is recorded in
-        ``region_to_stub_end_time`` so the transient tables can be clipped to match.
+        The source ``.hdf5`` basename, trace_type, and unit are derived from the interface's discovered
+        state; the editable name/description come from ``traces_metadata`` (keyed by the trace's derived
+        default name). Under ``stub_test`` each trace is truncated to its first ~1 s and the truncated
+        end time is recorded in ``region_to_stub_end_time`` so the transient tables can be clipped to
+        match.
         """
         for region in self._regions:
             for prefix in self._traces_by_region[region]:
-                # Name and basename are the same derived handle; only the description is editable.
-                trace_name = self._trace_name(region, prefix)
-                trace_basename = trace_name
-                entry = traces_metadata[trace_name]
+                trace_basename = self._trace_name(region, prefix)
+                entry = traces_metadata[trace_basename]
+                trace_name = entry["name"]
                 with h5py.File(self._folder_path / f"{trace_basename}.hdf5", "r") as f:
                     data = f["data"][:]
                 timestamps = region_to_timestamps[region]
@@ -802,15 +835,14 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
     ) -> None:
         """Add one GuppyTransientsTable per (region, trace_type) of detected transient peaks.
 
-        Name, region, and trace_type (which is also the ``transientsOccurrences_*`` file key) are
-        derived from the interface's discovered state; only the editable description comes from
-        ``transients_metadata`` (keyed by the table's derived name).
+        Region and trace_type (which is also the ``transientsOccurrences_*`` file key) are derived from
+        the interface's discovered state; the editable name/description come from ``transients_metadata``
+        (keyed by the table's derived default name).
         """
         region_to_row_index = {region: index for index, region in enumerate(self._regions)}
         for region in self._regions:
             for feature in self._transients_by_region[region]:
-                transients_name = self._transients_name(region, feature)
-                entry = transients_metadata[transients_name]
+                entry = transients_metadata[self._transients_name(region, feature)]
                 trace_type = feature
                 occurrences = pandas.read_csv(self._folder_path / f"transientsOccurrences_{trace_type}_{region}.csv")
                 peak_timestamps = occurrences["timestamps"].to_numpy(dtype=float)
@@ -827,7 +859,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                         peak_amplitudes = peak_amplitudes[keep_mask]
 
                 transients_table = ndx_guppy.GuppyTransientsTable(
-                    name=transients_name,
+                    name=entry["name"],
                     description=entry["description"],
                     trace_type=trace_type,
                     unit="a.u.",
@@ -857,6 +889,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         *,
         ndx_guppy,
         processing_module,
+        cross_correlations_metadata: dict,
         regions_table,
         events_table,
         bin_basis: str,
@@ -865,16 +898,18 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         """Add one GuppyCrossCorrelation per (trace_type, region-pair) condition, concatenating every
         event's trials/bins along the trials/bin axes.
 
-        Fully derived from the interface's discovered state -- these objects have no description field
-        and their names are deterministic, so there is no metadata to consume.
+        Condition keys (trace_type, region pair) are derived from the interface's discovered state; the
+        editable name/description come from ``cross_correlations_metadata`` (keyed by the derived name).
         """
         cross_correlation_groups = self._group_by_condition(
             self._cross_correlations, ("feature", "region_1", "region_2")
         )
         for (feature, region_1, region_2), entries in cross_correlation_groups.items():
+            entry = cross_correlations_metadata[self._cross_correlation_name(feature, region_1, region_2)]
             concatenated = self._concatenate_event_matrices(entries, stub_test=stub_test)
             cross_correlation_kwargs = dict(
-                name=self._cross_correlation_name(feature, region_1, region_2),
+                name=entry["name"],
+                description=entry["description"],
                 trace_type=feature,
                 unit="a.u.",
                 region=self._region_reference(regions_table, [region_1, region_2]),
@@ -903,6 +938,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         *,
         ndx_guppy,
         processing_module,
+        psths_metadata: dict,
         regions_table,
         events_table,
         bin_basis: str,
@@ -911,14 +947,16 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         """Add one GuppyPSTH per (region, trace_type, baseline) condition, concatenating every event's
         trials/bins along the trials/bin axes.
 
-        Fully derived from the interface's discovered state -- these objects have no description field
-        and their names are deterministic, so there is no metadata to consume.
+        Condition keys (region, trace_type, baseline flag) are derived from the interface's discovered
+        state; the editable name/description come from ``psths_metadata`` (keyed by the derived name).
         """
         psth_groups = self._group_by_condition(self._psths, ("region", "feature", "baseline_corrected"))
         for (region, feature, baseline_corrected), entries in psth_groups.items():
+            entry = psths_metadata[self._psth_name(region, feature, baseline_corrected)]
             concatenated = self._concatenate_event_matrices(entries, stub_test=stub_test)
             psth_kwargs = dict(
-                name=self._psth_name(region, feature, baseline_corrected),
+                name=entry["name"],
+                description=entry["description"],
                 trace_type=feature,
                 baseline_corrected=bool(baseline_corrected),
                 unit="a.u.",
@@ -948,21 +986,24 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         *,
         ndx_guppy,
         processing_module,
+        peak_aucs_metadata: dict,
         regions_table,
         events_table,
         bin_basis: str,
     ) -> None:
         """Add one GuppyPeakAUC per (region, trace_type) condition, concatenated across events.
 
-        Fully derived from the interface's discovered state -- these objects have no description field
-        and their names are deterministic, so there is no metadata to consume.
+        Condition keys (region, trace_type) are derived from the interface's discovered state; the
+        editable name/description come from ``peak_aucs_metadata`` (keyed by the derived name).
         """
         peak_auc_groups = self._group_by_condition(self._peak_aucs, ("region", "feature"))
         for (region, feature), entries in peak_auc_groups.items():
+            entry = peak_aucs_metadata[self._peak_auc_name(region, feature)]
             peak_auc = self._build_peak_auc(
                 ndx_guppy=ndx_guppy,
                 entries=entries,
-                name=self._peak_auc_name(region, feature),
+                name=entry["name"],
+                description=entry["description"],
                 region=region,
                 trace_type=feature,
                 events_table=events_table,
@@ -1280,6 +1321,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         ndx_guppy,
         entries: list[dict],
         name: str,
+        description: str,
         region: str,
         trace_type: str,
         regions_table,
@@ -1349,6 +1391,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
 
         kwargs = dict(
             name=name,
+            description=description,
             trace_type=trace_type,
             unit="a.u.",
             region=self._region_reference(regions_table, [region]),
