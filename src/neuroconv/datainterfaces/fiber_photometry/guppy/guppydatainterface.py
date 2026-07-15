@@ -758,52 +758,128 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         bin_basis = self._bin_basis()
 
         # Session-wide typed parameters.
-        nwbfile.add_lab_meta_data(ndx_guppy.GuppyParameters(**self._guppy_parameters_kwargs()))
-
-        # Valid-signal intervals are a per-region fact (the artifact-free windows GuPPy keeps), carried
-        # as an obs_intervals-style ragged column on the regions table. Boundaries are in GuPPy's emitted
-        # recording timebase; shift each region's by the same scalar offset applied to its timestamps
-        # (they are boundary values, not per-sample timestamps to interpolate against).
-        aligned_valid_signal_intervals_by_region: dict[str, list[list[float]]] = {}
-        if self._valid_signal_intervals_by_region:
-            for region in self._regions:
-                intervals = self._valid_signal_intervals_by_region.get(region)
-                if intervals is None:
-                    aligned_valid_signal_intervals_by_region[region] = []
-                    continue
-                time_offset = float(region_to_timestamps[region][0]) - float(region_to_original_timestamps[region][0])
-                aligned_valid_signal_intervals_by_region[region] = (intervals + time_offset).tolist()
+        self._add_guppy_parameters_to_nwbfile(ndx_guppy=ndx_guppy, nwbfile=nwbfile)
 
         # Registries: region and event identity, referenced by every product.
-        regions_table = self._add_regions_table(
+        regions_table = self._add_guppy_regions_table_to_nwbfile(
             ndx_guppy=ndx_guppy,
             processing_module=processing_module,
             fiber_photometry_table=fiber_photometry_table,
             fiber_photometry_table_region_indices=fiber_photometry_table_region_indices,
-            valid_signal_intervals_by_region=aligned_valid_signal_intervals_by_region,
+            region_to_original_timestamps=region_to_original_timestamps,
+            region_to_timestamps=region_to_timestamps,
         )
-        events_table = self._add_events_table(ndx_guppy=ndx_guppy, processing_module=processing_module, nwbfile=nwbfile)
-        region_to_row_index = {region: index for index, region in enumerate(self._regions)}
-        event_to_row_index = {event_name: index for index, event_name in enumerate(self._event_names)}
-
-        def region_reference(region_names: list[str]) -> DynamicTableRegion:
-            return DynamicTableRegion(
-                name="region",
-                data=[region_to_row_index[region] for region in region_names],
-                description="GuPPy region(s) this object was computed from.",
-                table=regions_table,
-            )
-
-        def event_reference(event_names: list[str], name: str = "event") -> DynamicTableRegion:
-            return DynamicTableRegion(
-                name=name,
-                data=[event_to_row_index[event_name] for event_name in event_names],
-                description="GuPPy behavioral event(s) this object's columns were aligned to.",
-                table=events_table,
-            )
-
+        events_table = self._add_guppy_events_table_to_nwbfile(
+            ndx_guppy=ndx_guppy, processing_module=processing_module, nwbfile=nwbfile
+        )
         # Derived continuous traces.
-        for trace_metadata in guppy_metadata["Traces"]:
+        self._add_guppy_derived_response_series_to_nwbfile(
+            ndx_guppy=ndx_guppy,
+            processing_module=processing_module,
+            traces_metadata=guppy_metadata["Traces"],
+            fiber_photometry_table=fiber_photometry_table,
+            fiber_photometry_table_region_indices=fiber_photometry_table_region_indices,
+            region_to_timestamps=region_to_timestamps,
+            regions_table=regions_table,
+            region_to_stub_end_time=region_to_stub_end_time,
+            stub_test=stub_test,
+        )
+
+        # Per-(region, trace_type) transient peak tables.
+        self._add_guppy_transients_tables_to_nwbfile(
+            ndx_guppy=ndx_guppy,
+            processing_module=processing_module,
+            transients_metadata=guppy_metadata["Transients"],
+            regions_table=regions_table,
+            region_to_original_timestamps=region_to_original_timestamps,
+            region_to_timestamps=region_to_timestamps,
+            region_to_stub_end_time=region_to_stub_end_time,
+            stub_test=stub_test,
+        )
+
+        # Single per-session transient summary table.
+        self._add_guppy_transient_summary_table_to_nwbfile(
+            ndx_guppy=ndx_guppy,
+            processing_module=processing_module,
+            regions_table=regions_table,
+            summary_metadata=guppy_metadata["TransientSummary"],
+        )
+
+        # Cross-correlations: one GuppyCrossCorrelation per (trace_type, region-pair) condition.
+        self._add_guppy_cross_correlations_to_nwbfile(
+            ndx_guppy=ndx_guppy,
+            processing_module=processing_module,
+            cross_correlations_metadata=guppy_metadata["CrossCorrelations"],
+            regions_table=regions_table,
+            events_table=events_table,
+            bin_basis=bin_basis,
+            stub_test=stub_test,
+        )
+
+        # Peri-event PSTHs: one GuppyPSTH per (region, trace_type, baseline) condition.
+        self._add_guppy_psths_to_nwbfile(
+            ndx_guppy=ndx_guppy,
+            processing_module=processing_module,
+            psths_metadata=guppy_metadata["PSTHs"],
+            regions_table=regions_table,
+            events_table=events_table,
+            bin_basis=bin_basis,
+            stub_test=stub_test,
+        )
+
+        # Peak/AUC summaries: one GuppyPeakAUC per (region, trace_type) condition.
+        self._add_guppy_peak_aucs_to_nwbfile(
+            ndx_guppy=ndx_guppy,
+            processing_module=processing_module,
+            peak_aucs_metadata=guppy_metadata["PeakAUCs"],
+            regions_table=regions_table,
+            events_table=events_table,
+            bin_basis=bin_basis,
+        )
+
+    def _region_reference(self, regions_table, region_names: list[str]) -> DynamicTableRegion:
+        """Build a DynamicTableRegion into the GuppyRegionsTable for the given region name(s)."""
+        region_to_row_index = {region: index for index, region in enumerate(self._regions)}
+        return DynamicTableRegion(
+            name="region",
+            data=[region_to_row_index[region] for region in region_names],
+            description="GuPPy region(s) this object was computed from.",
+            table=regions_table,
+        )
+
+    def _event_reference(self, events_table, event_names: list[str], name: str = "event") -> DynamicTableRegion:
+        """Build a DynamicTableRegion into the GuppyEventsTable for the given event name(s)."""
+        event_to_row_index = {event_name: index for index, event_name in enumerate(self._event_names)}
+        return DynamicTableRegion(
+            name=name,
+            data=[event_to_row_index[event_name] for event_name in event_names],
+            description="GuPPy behavioral event(s) this object's columns were aligned to.",
+            table=events_table,
+        )
+
+    def _add_guppy_parameters_to_nwbfile(self, *, ndx_guppy, nwbfile: NWBFile) -> None:
+        """Add the session-wide typed GuppyParameters lab metadata."""
+        nwbfile.add_lab_meta_data(ndx_guppy.GuppyParameters(**self._guppy_parameters_kwargs()))
+
+    def _add_guppy_derived_response_series_to_nwbfile(
+        self,
+        *,
+        ndx_guppy,
+        processing_module,
+        traces_metadata: list[dict],
+        fiber_photometry_table,
+        fiber_photometry_table_region_indices: dict,
+        region_to_timestamps: dict,
+        regions_table,
+        region_to_stub_end_time: dict,
+        stub_test: bool,
+    ) -> None:
+        """Add each derived continuous trace as a GuppyDerivedResponseSeries.
+
+        Under ``stub_test`` each trace is truncated to its first ~1 s and the truncated end time is
+        recorded in ``region_to_stub_end_time`` so the transient tables can be clipped to match.
+        """
+        for trace_metadata in traces_metadata:
             region = trace_metadata["region"]
             trace_basename = trace_metadata["trace_basename"]
             with h5py.File(self._folder_path / f"{trace_basename}.hdf5", "r") as f:
@@ -837,13 +913,26 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 unit=trace_metadata["unit"],
                 timestamps=timestamps,
                 trace_type=trace_metadata["trace_type"],
-                region=region_reference([region]),
+                region=self._region_reference(regions_table, [region]),
                 fiber_photometry_table_region=fiber_photometry_table_region,
             )
             processing_module.add(response_series)
 
-        # Per-(region, trace_type) transient peak tables.
-        for transient_metadata in guppy_metadata["Transients"]:
+    def _add_guppy_transients_tables_to_nwbfile(
+        self,
+        *,
+        ndx_guppy,
+        processing_module,
+        transients_metadata: list[dict],
+        regions_table,
+        region_to_original_timestamps: dict,
+        region_to_timestamps: dict,
+        region_to_stub_end_time: dict,
+        stub_test: bool,
+    ) -> None:
+        """Add one GuppyTransientsTable per (region, trace_type) of detected transient peaks."""
+        region_to_row_index = {region: index for index, region in enumerate(self._regions)}
+        for transient_metadata in transients_metadata:
             region = transient_metadata["region"]
             trace_type = transient_metadata["trace_type"]
             occurrences = pandas.read_csv(self._folder_path / f"transientsOccurrences_{trace_type}_{region}.csv")
@@ -886,21 +975,23 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             )
             processing_module.add(transients_table)
 
-        # Single per-session transient summary table.
-        self._add_transient_summary(
-            ndx_guppy=ndx_guppy,
-            processing_module=processing_module,
-            regions_table=regions_table,
-            region_to_row_index=region_to_row_index,
-            summary_metadata=guppy_metadata["TransientSummary"],
-        )
-
-        # Cross-correlations: one GuppyCrossCorrelation per (trace_type, region-pair) condition,
-        # concatenating every event's trials/bins along the trials/bin axes.
+    def _add_guppy_cross_correlations_to_nwbfile(
+        self,
+        *,
+        ndx_guppy,
+        processing_module,
+        cross_correlations_metadata: list[dict],
+        regions_table,
+        events_table,
+        bin_basis: str,
+        stub_test: bool,
+    ) -> None:
+        """Add one GuppyCrossCorrelation per (trace_type, region-pair) condition, concatenating every
+        event's trials/bins along the trials/bin axes."""
         cross_correlation_groups = self._group_by_condition(
             self._cross_correlations, ("feature", "region_1", "region_2")
         )
-        for cross_correlation_metadata in guppy_metadata["CrossCorrelations"]:
+        for cross_correlation_metadata in cross_correlations_metadata:
             entries = cross_correlation_groups[
                 (
                     cross_correlation_metadata["trace_type"],
@@ -913,11 +1004,14 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 name=cross_correlation_metadata["name"],
                 trace_type=cross_correlation_metadata["trace_type"],
                 unit="a.u.",
-                region=region_reference(
-                    [cross_correlation_metadata["region_1"], cross_correlation_metadata["region_2"]]
+                region=self._region_reference(
+                    regions_table,
+                    [cross_correlation_metadata["region_1"], cross_correlation_metadata["region_2"]],
                 ),
-                event=event_reference(concatenated["trial_event_names"]),
-                summary_event=event_reference(concatenated["summary_event_names"], name="summary_event"),
+                event=self._event_reference(events_table, concatenated["trial_event_names"]),
+                summary_event=self._event_reference(
+                    events_table, concatenated["summary_event_names"], name="summary_event"
+                ),
                 lag=concatenated["axis"],
                 trial_onset_times=concatenated["trial_onset_times"],
                 trials=concatenated["traces"],
@@ -928,16 +1022,27 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 cross_correlation_kwargs.update(
                     bin_edges=concatenated["bin_edges"],
                     bin_edges__bin_basis=bin_basis,
-                    bin_event=event_reference(concatenated["bin_event_names"], name="bin_event"),
+                    bin_event=self._event_reference(events_table, concatenated["bin_event_names"], name="bin_event"),
                     binned_mean=concatenated["binned_value"],
                     binned_error=concatenated["binned_error"],
                 )
             processing_module.add(ndx_guppy.GuppyCrossCorrelation(**cross_correlation_kwargs))
 
-        # Peri-event PSTHs: one GuppyPSTH per (region, trace_type, baseline) condition,
-        # concatenating every event's trials/bins along the trials/bin axes.
+    def _add_guppy_psths_to_nwbfile(
+        self,
+        *,
+        ndx_guppy,
+        processing_module,
+        psths_metadata: list[dict],
+        regions_table,
+        events_table,
+        bin_basis: str,
+        stub_test: bool,
+    ) -> None:
+        """Add one GuppyPSTH per (region, trace_type, baseline) condition, concatenating every event's
+        trials/bins along the trials/bin axes."""
         psth_groups = self._group_by_condition(self._psths, ("region", "feature", "baseline_corrected"))
-        for psth_metadata in guppy_metadata["PSTHs"]:
+        for psth_metadata in psths_metadata:
             entries = psth_groups[
                 (psth_metadata["region"], psth_metadata["trace_type"], psth_metadata["baseline_corrected"])
             ]
@@ -947,9 +1052,11 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 trace_type=psth_metadata["trace_type"],
                 baseline_corrected=bool(psth_metadata["baseline_corrected"]),
                 unit="a.u.",
-                region=region_reference([psth_metadata["region"]]),
-                event=event_reference(concatenated["trial_event_names"]),
-                summary_event=event_reference(concatenated["summary_event_names"], name="summary_event"),
+                region=self._region_reference(regions_table, [psth_metadata["region"]]),
+                event=self._event_reference(events_table, concatenated["trial_event_names"]),
+                summary_event=self._event_reference(
+                    events_table, concatenated["summary_event_names"], name="summary_event"
+                ),
                 peri_event_time=concatenated["axis"],
                 trial_onset_times=concatenated["trial_onset_times"],
                 traces=concatenated["traces"],
@@ -960,40 +1067,65 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 psth_kwargs.update(
                     bin_edges=concatenated["bin_edges"],
                     bin_edges__bin_basis=bin_basis,
-                    bin_event=event_reference(concatenated["bin_event_names"], name="bin_event"),
+                    bin_event=self._event_reference(events_table, concatenated["bin_event_names"], name="bin_event"),
                     binned_mean=concatenated["binned_value"],
                     binned_error=concatenated["binned_error"],
                 )
             processing_module.add(ndx_guppy.GuppyPSTH(**psth_kwargs))
 
-        # Peak/AUC summaries: one GuppyPeakAUC per (region, trace_type) condition, concatenated across events.
+    def _add_guppy_peak_aucs_to_nwbfile(
+        self,
+        *,
+        ndx_guppy,
+        processing_module,
+        peak_aucs_metadata: list[dict],
+        regions_table,
+        events_table,
+        bin_basis: str,
+    ) -> None:
+        """Add one GuppyPeakAUC per (region, trace_type) condition, concatenated across events."""
         peak_auc_groups = self._group_by_condition(self._peak_aucs, ("region", "feature"))
-        for peak_auc_metadata in guppy_metadata["PeakAUCs"]:
+        for peak_auc_metadata in peak_aucs_metadata:
             entries = peak_auc_groups[(peak_auc_metadata["region"], peak_auc_metadata["trace_type"])]
             peak_auc = self._build_peak_auc(
                 ndx_guppy=ndx_guppy,
                 entries=entries,
                 peak_auc_metadata=peak_auc_metadata,
-                region_reference=region_reference,
-                event_reference=event_reference,
+                regions_table=regions_table,
+                events_table=events_table,
                 bin_basis=bin_basis,
             )
             processing_module.add(peak_auc)
 
-    def _add_regions_table(
+    def _add_guppy_regions_table_to_nwbfile(
         self,
+        *,
         ndx_guppy,
         processing_module,
         fiber_photometry_table,
         fiber_photometry_table_region_indices: dict,
-        valid_signal_intervals_by_region: dict,
+        region_to_original_timestamps: dict,
+        region_to_timestamps: dict,
     ):
         """Build and add the GuppyRegionsTable, linking each region to its fiber photometry rows.
 
-        ``valid_signal_intervals_by_region`` maps each region to its (timestamp-aligned) list of
-        ``[start, stop]`` valid-signal windows. When any region has intervals, they are written as an
-        obs_intervals-style ragged column; regions without intervals get an empty entry.
+        Valid-signal (artifact-free) intervals are a per-region fact, carried here as an
+        obs_intervals-style ragged column: each region's ``[start, stop]`` windows are shifted from
+        GuPPy's emitted recording timebase onto the (possibly aligned) timestamps by the same scalar
+        offset applied to that region's timestamps (they are boundary values, not per-sample timestamps
+        to interpolate against). When any region has intervals the column is written for every row
+        (empty entry for regions without); when none do, the column is omitted entirely.
         """
+        valid_signal_intervals_by_region: dict[str, list[list[float]]] = {}
+        if self._valid_signal_intervals_by_region:
+            for region in self._regions:
+                intervals = self._valid_signal_intervals_by_region.get(region)
+                if intervals is None:
+                    valid_signal_intervals_by_region[region] = []
+                    continue
+                time_offset = float(region_to_timestamps[region][0]) - float(region_to_original_timestamps[region][0])
+                valid_signal_intervals_by_region[region] = (intervals + time_offset).tolist()
+
         regions_table = ndx_guppy.GuppyRegionsTable(
             name="regions",
             description="GuPPy logical regions (one row per region). Each row's optional fiber link points "
@@ -1036,7 +1168,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 return events_table
         return None
 
-    def _add_events_table(self, ndx_guppy, processing_module, nwbfile: NWBFile):
+    def _add_guppy_events_table_to_nwbfile(self, *, ndx_guppy, processing_module, nwbfile: NWBFile):
         """Build and add the GuppyEventsTable, optionally referencing the EventsTable objects that hold
         each event's onset timestamps.
 
@@ -1073,10 +1205,11 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         processing_module.add(events_table)
         return events_table
 
-    def _add_transient_summary(
-        self, ndx_guppy, processing_module, regions_table, region_to_row_index: dict, summary_metadata: dict
+    def _add_guppy_transient_summary_table_to_nwbfile(
+        self, *, ndx_guppy, processing_module, regions_table, summary_metadata: dict
     ):
         """Build and add the per-session GuppyTransientSummaryTable, if any freqAndAmp files exist."""
+        region_to_row_index = {region: index for index, region in enumerate(self._regions)}
         summary_region_indices: list[int] = []
         summary_trace_types: list[str] = []
         summary_frequencies: list[float] = []
@@ -1268,7 +1401,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         return trial_rows, bin_rows, mean_row
 
     def _build_peak_auc(
-        self, ndx_guppy, entries: list[dict], peak_auc_metadata: dict, region_reference, event_reference, bin_basis: str
+        self, ndx_guppy, entries: list[dict], peak_auc_metadata: dict, regions_table, events_table, bin_basis: str
     ):
         """Build a full-fidelity GuppyPeakAUC for one (region, trace_type) condition, concatenated across events.
 
@@ -1335,9 +1468,9 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             name=peak_auc_metadata["name"],
             trace_type=peak_auc_metadata["trace_type"],
             unit="a.u.",
-            region=region_reference([peak_auc_metadata["region"]]),
-            event=event_reference(trial_event_names),
-            summary_event=event_reference(summary_event_names, name="summary_event"),
+            region=self._region_reference(regions_table, [peak_auc_metadata["region"]]),
+            event=self._event_reference(events_table, trial_event_names),
+            summary_event=self._event_reference(events_table, summary_event_names, name="summary_event"),
             window_start=window_start,
             window_stop=window_stop,
             trial_onset_times=np.array(trial_onset_times, dtype=np.float64),
@@ -1352,7 +1485,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             kwargs.update(
                 bin_edges=np.concatenate(bin_edges_blocks, axis=0),
                 bin_edges__bin_basis=bin_basis,
-                bin_event=event_reference(bin_event_names, name="bin_event"),
+                bin_event=self._event_reference(events_table, bin_event_names, name="bin_event"),
                 binned_peak_positive=np.concatenate(binned_peak_positive_blocks, axis=1),
                 binned_peak_negative=np.concatenate(binned_peak_negative_blocks, axis=1),
                 binned_area_under_curve=np.concatenate(binned_area_blocks, axis=1),
