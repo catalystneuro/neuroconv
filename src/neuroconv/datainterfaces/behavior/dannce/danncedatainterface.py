@@ -592,7 +592,14 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             another animal's interface instance). Merged on top of any calibrations already loaded from
             ``calibration_path`` at construction, taking precedence per-camera over those.
         """
-        from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation, PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
+        from ndx_pose import (
+            CalibratedCamera,
+            MultiCameraPoseEstimation,
+            PoseEstimation,
+            PoseEstimationSeries,
+            Skeleton,
+            Skeletons,
+        )
 
         # Build metadata
         default_metadata = DeepDict(self.get_metadata())
