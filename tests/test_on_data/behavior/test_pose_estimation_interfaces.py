@@ -884,8 +884,8 @@ class TestDeepLabCutInterfaceGetAvailableSubjects:
 
 
 @pytest.mark.skipif(
-    ndx_pose_version < version.parse("0.2.0"),
-    reason="Interface requires ndx-pose version >= 0.2.0",
+    ndx_pose_version < version.parse("0.3.0"),
+    reason="Interface requires ndx-pose version >= 0.3.0",
 )
 class TestDANNCEInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = DANNCEInterface
@@ -898,7 +898,7 @@ class TestDANNCEInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_extracted_metadata(self, metadata: dict):
         container_name = "PoseEstimationDANNCE"
         skeleton_name = f"Skeleton{container_name}_Ind1"
-        device_name = f"Camera{container_name}"
+        device_name = "Camera1"
 
         assert "PoseEstimation" in metadata
         pose_metadata = metadata["PoseEstimation"]
@@ -928,9 +928,11 @@ class TestDANNCEInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
         series = container["PoseEstimationSeries"]
         assert len(series) == 22
         for landmark_meta in series.values():
-            assert landmark_meta["unit"] == "mm"
+            assert landmark_meta["unit"] == "millimeters"
 
     def check_read_nwb(self, nwbfile_path: str):
+        from ndx_pose import MultiCameraPoseEstimation
+
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
@@ -939,13 +941,19 @@ class TestDANNCEInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
             assert "Skeletons" in behavior.data_interfaces
 
             pe = behavior.data_interfaces["PoseEstimationDANNCE"]
+            assert isinstance(pe, MultiCameraPoseEstimation)
             assert len(pe.pose_estimation_series) == 22
             assert pe.source_software == "DANNCE"
 
             for series in pe.pose_estimation_series.values():
                 assert series.data.shape == (400, 3)
                 assert series.confidence.shape == (400,)
-                assert series.unit == "mm"
+                assert series.unit == "millimeters"
+
+            # The camera device is linked via a per-camera PoseEstimation child.
+            assert len(pe.pose_estimations) == 1
+            camera_pose_estimation = next(iter(pe.pose_estimations.values()))
+            assert camera_pose_estimation.device.name == "Camera1"
 
             skeleton = pe.skeleton
             assert len(skeleton.nodes[:]) == 22

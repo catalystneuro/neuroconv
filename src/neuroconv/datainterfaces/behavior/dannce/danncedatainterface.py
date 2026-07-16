@@ -14,9 +14,9 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
     """Data interface for DANNCE 3D pose estimation datasets."""
 
     display_name = "DANNCE"
-    keywords = ("DANNCE", "3D pose estimation", "behavior", "pose estimation")
+    keywords = ("DANNCE", "sDANNCE", "social DANNCE", "3D pose estimation", "behavior", "pose estimation")
     associated_suffixes = (".mat",)
-    info = "Interface for DANNCE 3D pose estimation output data."
+    info = "Interface for DANNCE and social DANNCE (sDANNCE) 3D pose estimation output data."
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -42,15 +42,21 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         subject_name: str = "ind1",
         pose_estimation_metadata_key: str = "PoseEstimationDANNCE",
         camera_names: list[str] | None = None,
+        animal_index: int | None = None,
         verbose: bool = False,
     ):
         """
-        Interface for writing DANNCE 3D pose estimation output files to NWB.
+        Interface for writing DANNCE and social DANNCE (sDANNCE) 3D pose estimation output files to NWB.
 
         DANNCE (3-Dimensional Aligned Neural Network for Computational Ethology) is a
         multi-camera 3D pose estimation system that tracks anatomical landmarks on animals.
         This interface reads DANNCE prediction .mat files and converts them to NWB format
-        using the ndx-pose extension.
+        using the ndx-pose extension. It transparently supports both single-animal DANNCE output
+        (``pred`` shaped ``(n_frames, 3, n_landmarks)``) and multi-animal sDANNCE output (``pred``
+        shaped ``(n_frames, n_animals, 3, n_landmarks)``, selected via ``animal_index``) -- which
+        shape a given file has is auto-detected at load time and is not necessarily determined by
+        which software produced it, so try this interface regardless of whether your data came from
+        DANNCE or sDANNCE.
 
         Parameters
         ----------
@@ -85,6 +91,13 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             ``PoseEstimation`` child of the ``MultiCameraPoseEstimation`` container is created per
             name; pass the corresponding videos as ``source_videos`` to ``add_to_nwbfile`` to link
             each camera's source video. If not provided, defaults to a single camera, ``["Camera1"]``.
+        animal_index : int, optional
+            Index of the animal to write, selecting along the animal axis of a 4D ``pred`` array
+            (shape ``(n_frames, n_animals, 3, n_landmarks)``), as produced by multi-animal sDANNCE
+            output. Required when ``pred`` is 4D; construct one interface instance per animal, using
+            a distinct ``pose_estimation_metadata_key`` per instance, to write each animal to the
+            same NWBFile. Must be omitted (left as ``None``) when ``pred`` is already 3D
+            (single-animal DANNCE output) -- passing it in that case raises an error.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         """
@@ -109,6 +122,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self.verbose = verbose
         self.pose_estimation_metadata_key = pose_estimation_metadata_key
         self._camera_names = list(camera_names) if camera_names else ["Camera1"]
+        self._animal_index = animal_index
         self._sampling_rate = sampling_rate
         self._video_file_path = Path(video_file_path) if video_file_path is not None else None
         self._frametimes_file_path = Path(frametimes_file_path) if frametimes_file_path is not None else None
@@ -141,15 +155,53 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         super().__init__(file_path=file_path, video_file_path=video_file_path, verbose=verbose)
 
     def _load_dannce_data(self, file_path: Path) -> None:
-        """Load and parse the DANNCE .mat prediction file."""
+        """Load and parse the DANNCE/sDANNCE .mat prediction file.
+
+        Handles both single-animal DANNCE output (``pred`` shape ``(n_samples, 3, n_landmarks)``)
+        and multi-animal sDANNCE output (``pred`` shape ``(n_samples, n_animals, 3, n_landmarks)``,
+        sliced down to one animal via ``self._animal_index``).
+        """
         from scipy.io import loadmat
 
         mat_data = loadmat(str(file_path))
 
-        self._pred = mat_data["pred"]  # shape: (n_samples, 3, n_landmarks)
-        self._p_max = mat_data["p_max"]  # shape: (n_samples, n_landmarks)
+        pred = mat_data["pred"]
+        p_max = mat_data["p_max"]
         sample_id = mat_data["sampleID"]  # shape: (1, n_samples) or (n_samples,)
         self._sample_id = np.squeeze(sample_id).astype("float64")
+
+        if pred.ndim == 4:
+            if p_max.ndim != 3:
+                raise ValueError(
+                    f"Expected 3D 'p_max' to pair with 4D 'pred' (multi-animal sDANNCE output), "
+                    f"but 'p_max' has shape {p_max.shape}."
+                )
+            if self._animal_index is None:
+                raise ValueError(
+                    f"The prediction file has an explicit animal axis (pred shape {pred.shape}). "
+                    "Pass 'animal_index' to select which animal to write."
+                )
+            n_animals = pred.shape[1]
+            if not 0 <= self._animal_index < n_animals:
+                raise IndexError(
+                    f"animal_index {self._animal_index} is out of range for a file with {n_animals} animals."
+                )
+            pred = pred[:, self._animal_index, :, :]
+            p_max = p_max[:, self._animal_index, :]
+        elif pred.ndim == 3:
+            if self._animal_index is not None:
+                raise ValueError(
+                    f"'animal_index' was provided ({self._animal_index}) but the prediction data is "
+                    f"already single-animal (pred shape {pred.shape}). Omit 'animal_index' for this file."
+                )
+        else:
+            raise ValueError(
+                f"Expected 'pred' to be 3D (single-animal DANNCE output) or 4D (multi-animal sDANNCE "
+                f"output), but got shape {pred.shape}."
+            )
+
+        self._pred = pred  # shape: (n_samples, 3, n_landmarks)
+        self._p_max = p_max  # shape: (n_samples, n_landmarks)
 
     def _get_timestamps_from_video(self, stub_test: bool = False) -> np.ndarray:
         """Extract timestamps from the video file, indexed by sampleID."""
@@ -356,6 +408,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         metadata: dict | None = None,
         stub_test: bool = False,
         source_videos: dict[str, ImageSeries] | None = None,
+        camera_calibrations: dict[str, dict] | None = None,
     ) -> None:
         """
         Add DANNCE pose estimation data to an NWB file.
@@ -377,8 +430,26 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             this method. Cameras without a corresponding entry are linked with no source video.
             Each is linked from its corresponding per-camera ``PoseEstimation`` child of the
             ``MultiCameraPoseEstimation`` container.
+        camera_calibrations : dict of str to dict, optional
+            Intrinsic/extrinsic calibration parameters for each camera, keyed by camera name
+            (matching ``camera_names``), e.g.::
+
+                {
+                    "Camera1": dict(
+                        intrinsic_matrix=...,  # required, shape (3, 3)
+                        rotation_matrix=...,  # optional, shape (3, 3)
+                        translation_vector=...,  # optional, shape (3,)
+                        distortion_coefficients=...,  # optional
+                    ),
+                }
+
+            When a camera has a matching entry, its Device is created as an ``ndx_pose.CalibratedCamera``
+            (a ``Device`` extended with these calibration fields) instead of a plain ``Device``. Cameras
+            without a corresponding entry get a plain ``Device``. Ignored for a camera whose Device was
+            already added to the ``NWBFile`` by a previous call (e.g. a shared camera already created by
+            another animal's interface instance).
         """
-        from ndx_pose import MultiCameraPoseEstimation, PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
+        from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation, PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
         # Build metadata
         default_metadata = DeepDict(self.get_metadata())
@@ -460,9 +531,10 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
 
         # Create or get one Device per camera, named directly after the camera (not derived from the
         # per-instance pose_estimation_metadata_key), so multiple interface instances writing to the same
-        # NWBFile with matching camera_names (e.g., one SDANNCEInterface per animal) share and reuse the
-        # same camera Devices.
+        # NWBFile with matching camera_names (e.g., one interface instance per animal_index) share and
+        # reuse the same camera Devices.
         source_videos = source_videos or {}
+        camera_calibrations = camera_calibrations or {}
         camera_pose_estimations = []
         for device_metadata_key in container_metadata["devices"]:
             device_metadata = pose_estimation_metadata["Devices"][device_metadata_key]
@@ -470,10 +542,22 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             camera_name = device_metadata.get("camera_name", device_name)
 
             if device_name not in nwbfile.devices:
-                camera = nwbfile.create_device(
-                    name=device_name,
-                    description=device_metadata.get("description", "Camera used for pose estimation."),
-                )
+                calibration = camera_calibrations.get(camera_name)
+                if calibration is not None:
+                    camera = CalibratedCamera(
+                        name=device_name,
+                        description=device_metadata.get("description", "Camera used for pose estimation."),
+                        intrinsic_matrix=calibration["intrinsic_matrix"],
+                        rotation_matrix=calibration.get("rotation_matrix"),
+                        translation_vector=calibration.get("translation_vector"),
+                        distortion_coefficients=calibration.get("distortion_coefficients"),
+                    )
+                    nwbfile.add_device(camera)
+                else:
+                    camera = nwbfile.create_device(
+                        name=device_name,
+                        description=device_metadata.get("description", "Camera used for pose estimation."),
+                    )
             else:
                 camera = nwbfile.devices[device_name]
 

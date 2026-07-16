@@ -8,7 +8,7 @@ from pynwb.image import ImageSeries
 from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 from scipy.io import savemat
 
-from ndx_pose import MultiCameraPoseEstimation
+from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation
 
 from neuroconv.datainterfaces import DANNCEInterface
 
@@ -41,6 +41,23 @@ def frametimes_npy_file(tmp_path, dannce_mat_file):
     file_path = tmp_path / "frametimes.npy"
     np.save(str(file_path), frametimes)
     return file_path, seconds
+
+
+@pytest.fixture
+def multi_animal_dannce_mat_file(tmp_path):
+    """Create a synthetic multi-animal (sDANNCE-style) prediction .mat file (2 animals)."""
+    n_samples = 80
+    n_animals = 2
+    n_landmarks = 5
+
+    rng = np.random.default_rng(7)
+    pred = rng.standard_normal((n_samples, n_animals, 3, n_landmarks))
+    p_max = rng.random((n_samples, n_animals, n_landmarks))
+    sample_id = np.arange(n_samples, dtype="float64").reshape(1, -1)
+
+    file_path = tmp_path / "save_data_AVG0.mat"
+    savemat(str(file_path), dict(pred=pred, p_max=p_max, sampleID=sample_id))
+    return file_path, n_samples, n_animals, n_landmarks, pred, p_max
 
 
 class TestDANNCEInterfaceInit:
@@ -76,6 +93,42 @@ class TestDANNCEInterfaceInit:
         bad_file.touch()
         with pytest.raises(IOError, match="Only .mat files are supported"):
             DANNCEInterface(file_path=bad_file, sampling_rate=30.0)
+
+
+class TestDANNCEInterfaceAnimalIndex:
+    """Coverage for multi-animal (sDANNCE-style) 4D 'pred' input, selected via animal_index."""
+
+    def test_animal_index_0_slices_correctly(self, multi_animal_dannce_mat_file):
+        file_path, n_samples, _, n_landmarks, pred, p_max = multi_animal_dannce_mat_file
+        interface = DANNCEInterface(file_path=file_path, animal_index=0, sampling_rate=30.0)
+
+        assert interface._pred.shape == (n_samples, 3, n_landmarks)
+        assert interface._p_max.shape == (n_samples, n_landmarks)
+        assert_array_equal(interface._pred, pred[:, 0, :, :])
+        assert_array_equal(interface._p_max, p_max[:, 0, :])
+
+    def test_animal_index_1_slices_correctly(self, multi_animal_dannce_mat_file):
+        file_path, n_samples, _, n_landmarks, pred, p_max = multi_animal_dannce_mat_file
+        interface = DANNCEInterface(file_path=file_path, animal_index=1, sampling_rate=30.0)
+
+        assert interface._pred.shape == (n_samples, 3, n_landmarks)
+        assert_array_equal(interface._pred, pred[:, 1, :, :])
+        assert_array_equal(interface._p_max, p_max[:, 1, :])
+
+    def test_out_of_range_animal_index_raises(self, multi_animal_dannce_mat_file):
+        file_path, _, n_animals, _, _, _ = multi_animal_dannce_mat_file
+        with pytest.raises(IndexError, match="out of range"):
+            DANNCEInterface(file_path=file_path, animal_index=n_animals, sampling_rate=30.0)
+
+    def test_4d_pred_without_animal_index_raises(self, multi_animal_dannce_mat_file):
+        file_path = multi_animal_dannce_mat_file[0]
+        with pytest.raises(ValueError, match="explicit animal axis"):
+            DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+
+    def test_3d_pred_with_animal_index_raises(self, dannce_mat_file):
+        file_path = dannce_mat_file[0]
+        with pytest.raises(ValueError, match="already single-animal"):
+            DANNCEInterface(file_path=file_path, animal_index=0, sampling_rate=30.0)
 
 
 class TestDANNCEInterfaceTimestamps:
@@ -387,6 +440,133 @@ class TestDANNCEInterfaceConversion:
             assert camera_pose_estimations_by_device[camera_name].source_video is source_videos[camera_name]
 
         assert camera_pose_estimations_by_device[camera_names[-1]].source_video is None
+
+    def test_camera_calibrations_create_calibrated_camera(self, dannce_mat_file):
+        file_path, _, _, _, _ = dannce_mat_file
+        camera_names = ["Camera1", "Camera2"]
+        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, camera_names=camera_names)
+
+        nwbfile = mock_NWBFile()
+
+        rng = np.random.default_rng(0)
+        camera_calibrations = {
+            "Camera1": dict(
+                intrinsic_matrix=rng.standard_normal((3, 3)),
+                rotation_matrix=rng.standard_normal((3, 3)),
+                translation_vector=rng.standard_normal(3),
+                distortion_coefficients=rng.standard_normal(5),
+            ),
+            # Camera2 intentionally has no calibration entry -- should get a plain Device.
+        }
+
+        interface.add_to_nwbfile(nwbfile=nwbfile, camera_calibrations=camera_calibrations)
+
+        camera1 = nwbfile.devices["Camera1"]
+        camera2 = nwbfile.devices["Camera2"]
+
+        assert isinstance(camera1, CalibratedCamera)
+        assert_array_equal(camera1.intrinsic_matrix, camera_calibrations["Camera1"]["intrinsic_matrix"])
+        assert_array_equal(camera1.rotation_matrix, camera_calibrations["Camera1"]["rotation_matrix"])
+        assert_array_equal(camera1.translation_vector, camera_calibrations["Camera1"]["translation_vector"])
+        assert_array_equal(
+            camera1.distortion_coefficients, camera_calibrations["Camera1"]["distortion_coefficients"]
+        )
+
+        assert not isinstance(camera2, CalibratedCamera)
+        assert type(camera2).__name__ == "Device"
+
+    def test_add_to_nwbfile_writes_selected_animal(self, multi_animal_dannce_mat_file):
+        file_path, n_samples, _, n_landmarks, pred, p_max = multi_animal_dannce_mat_file
+        interface = DANNCEInterface(
+            file_path=file_path,
+            animal_index=1,
+            sampling_rate=30.0,
+            subject_name="rat2",
+            pose_estimation_metadata_key="PoseEstimationRat2",
+        )
+
+        nwbfile = NWBFile(
+            session_description="test",
+            identifier="test_dannce_multi_animal",
+            session_start_time=datetime.now().astimezone(),
+        )
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        pe = nwbfile.processing["behavior"][interface.pose_estimation_metadata_key]
+        assert len(pe.pose_estimation_series) == n_landmarks
+
+        landmark_names = [f"landmark_{i}" for i in range(n_landmarks)]
+        name_to_idx = {}
+        for i, landmark in enumerate(landmark_names):
+            landmark_cap = landmark.replace("_", " ").title().replace(" ", "")
+            name_to_idx[f"PoseEstimationSeries{landmark_cap}"] = i
+
+        for series_name, series in pe.pose_estimation_series.items():
+            i = name_to_idx[series_name]
+            assert series.data.shape == (n_samples, 3)
+            assert_array_equal(series.data, pred[:, 1, :, i])
+            assert_array_equal(series.confidence, p_max[:, 1, i])
+
+    def test_multiple_animals_share_camera_device(self, multi_animal_dannce_mat_file):
+        """Multiple DANNCEInterface instances (one per animal_index) writing to the same NWBFile
+        should reuse a single shared camera Device instead of each creating their own."""
+        file_path = multi_animal_dannce_mat_file[0]
+
+        nwbfile = NWBFile(
+            session_description="test",
+            identifier="test_dannce_shared_device",
+            session_start_time=datetime.now().astimezone(),
+        )
+
+        interface_animal0 = DANNCEInterface(
+            file_path=file_path,
+            animal_index=0,
+            sampling_rate=30.0,
+            subject_name="rat1",
+            pose_estimation_metadata_key="PoseEstimationRat1",
+        )
+        interface_animal1 = DANNCEInterface(
+            file_path=file_path,
+            animal_index=1,
+            sampling_rate=30.0,
+            subject_name="rat2",
+            pose_estimation_metadata_key="PoseEstimationRat2",
+        )
+
+        interface_animal0.add_to_nwbfile(nwbfile=nwbfile)
+        interface_animal1.add_to_nwbfile(nwbfile=nwbfile)
+
+        # Only one shared camera device should have been created.
+        assert list(nwbfile.devices.keys()) == ["Camera1"]
+
+        behavior = nwbfile.processing["behavior"]
+        pe_animal0 = behavior.data_interfaces["PoseEstimationRat1"]
+        pe_animal1 = behavior.data_interfaces["PoseEstimationRat2"]
+
+        camera0 = next(iter(pe_animal0.pose_estimations.values())).device
+        camera1 = next(iter(pe_animal1.pose_estimations.values())).device
+        assert camera0 is camera1
+        assert camera0 is nwbfile.devices["Camera1"]
+
+    def test_source_software_relabeled_via_metadata_override(self, dannce_mat_file):
+        """DANNCEInterface defaults source_software/scorer to "DANNCE"; for sDANNCE-produced data,
+        relabel via the standard metadata-merge mechanism rather than a dedicated subclass."""
+        file_path = dannce_mat_file[0]
+        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+
+        metadata = interface.get_metadata()
+        container = metadata["PoseEstimation"]["PoseEstimationContainers"]["PoseEstimationDANNCE"]
+        container["description"] = "3D keypoint coordinates estimated using sDANNCE (social DANNCE)."
+        container["source_software"] = "sDANNCE"
+        container["scorer"] = "sDANNCE"
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
+        assert pe.source_software == "sDANNCE"
+        assert pe.scorer == "sDANNCE"
+        assert "sDANNCE" in pe.description
 
     def test_stub_test_limits_output_samples(self, tmp_path):
         # Build a larger fixture (500 samples) so stub_test (=100) actually slices.
