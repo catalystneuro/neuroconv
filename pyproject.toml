@@ -371,7 +371,7 @@ tdt_fp = [
 ]
 guppy = [
     "neuroconv[fiber_photometry]",
-    "ndx-guppy @ git+https://github.com/catalystneuro/ndx-guppy.git@main",
+    "ndx-guppy",
     "tables",
 ]
 thor = [
