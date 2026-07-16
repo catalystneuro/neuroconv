@@ -374,6 +374,11 @@ guppy = [
     "ndx-guppy @ git+https://github.com/catalystneuro/ndx-guppy.git@main",
     "tables",
 ]
+guppy_tdt = [  # For the TDTFiberPhotometryGuppyConverter
+    "neuroconv[guppy]",
+    "neuroconv[tdt_fp]",
+    "neuroconv[tdt_events]",
+]
 thor = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
@@ -398,6 +403,7 @@ ophys = [
     "neuroconv[sima]",
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
+    "neuroconv[guppy_tdt]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",

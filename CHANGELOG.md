@@ -55,6 +55,7 @@
 
 ## Features
 * Added `GuppyInterface` for converting [GuPPy](https://github.com/LernerLab/GuPPy) processed fiber photometry outputs, depending on the [`ndx-guppy`](https://github.com/catalystneuro/ndx-guppy) extension. [PR #965](https://github.com/catalystneuro/neuroconv/pull/965)
+* Added `TDTFiberPhotometryGuppyConverter` to bundle raw TDT fiber photometry acquisition, raw events, and GuPPy-derived outputs into a single conversion. [PR #1783](https://github.com/catalystneuro/neuroconv/pull/1783)
 * `TDTEventsInterface` now supports events that have a duration, writing each event's duration to the `EventsTable` `duration` column, instead of raising. [PR #1781](https://github.com/catalystneuro/neuroconv/pull/1781)
 * Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
 * Added support for device models via top-level `metadata["DeviceModels"]` and `metadata["Devices"]` registries. [PR #1780](https://github.com/catalystneuro/neuroconv/pull/1780)

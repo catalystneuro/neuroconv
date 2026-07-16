@@ -196,6 +196,11 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         """``{recording_site: {"signal": <store_id>, "control": <store_id>}}`` from storesList.csv."""
         return {recording_site: dict(stores) for recording_site, stores in self._recording_site_to_store_ids.items()}
 
+    @property
+    def event_store_to_event_name(self) -> dict[str, str]:
+        """``{store_id: event_name}`` for the behavioral event stores in storesList.csv (e.g. PrtN -> port_entries)."""
+        return dict(self._event_store_to_event_name)
+
     @staticmethod
     def _discover_recording_sites(stores_list_path: Path) -> list[str]:
         rows = stores_list_path.read_text(encoding="utf-8").strip().splitlines()
@@ -1045,12 +1050,15 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             processing_module.add(peak_auc)
 
     def _add_guppy_recording_sites_table_to_nwbfile(self, *, ndx_guppy, processing_module):
-        """Build and add the slim GuppyRecordingSitesTable: one row per recording site, name only.
+        """Get-or-create the GuppyRecordingSitesTable (one row per recording site, in canonical order).
 
-        The optional ``fiber_photometry_table_region`` link into the acquisition FiberPhotometryTable is
-        populated afterwards by a converter that owns that table; the interface does not know the
-        acquisition row layout, so it writes only the recording-site identities here.
+        A converter that owns the acquisition table may build this registry first (with its
+        ``fiber_photometry_table_region`` link populated); if so, reuse it. Standalone, build the slim
+        version (names only) -- the interface does not know the acquisition row layout.
         """
+        existing = processing_module.data_interfaces.get("recording_sites")
+        if existing is not None:
+            return existing
         recording_sites_table = ndx_guppy.GuppyRecordingSitesTable(
             name="recording_sites",
             description="GuPPy recording sites (one row per recording site).",
@@ -1108,12 +1116,15 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         return valid_signal_intervals
 
     def _add_guppy_events_table_to_nwbfile(self, *, ndx_guppy, processing_module):
-        """Build and add the slim GuppyEventsTable: one row per event GuPPy aligned to, name only.
+        """Get-or-create the GuppyEventsTable (one row per event GuPPy aligned to, in canonical order).
 
-        The optional ``events`` link -- a ragged DynamicTableRegion into the merged pynwb EventsTable's
-        occurrence rows -- is populated afterwards by a converter that merges every event type into one
-        EventsTable; the interface writes only the event identities here.
+        A converter that merges every event type into one EventsTable may build this registry first
+        (with its ``events`` ragged DynamicTableRegion into that table's occurrence rows populated); if
+        so, reuse it. Standalone, build the slim version (names only).
         """
+        existing = processing_module.data_interfaces.get("events")
+        if existing is not None:
+            return existing
         events_table = ndx_guppy.GuppyEventsTable(
             name="events",
             description="GuPPy behavioral events (one row per event GuPPy aligned to).",

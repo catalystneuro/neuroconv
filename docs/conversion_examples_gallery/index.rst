@@ -101,6 +101,7 @@ Fiber Photometry
 
     Doric Fiber Photometry <fiberphotometry/doric_fp>
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    TDT Fiber Photometry + GuPPy <fiberphotometry/tdt_guppy>
 
 Behavior
 --------
