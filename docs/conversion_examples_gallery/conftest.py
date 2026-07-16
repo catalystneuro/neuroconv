@@ -30,11 +30,14 @@ def add_data_space(doctest_namespace, tmp_path, request):
         doctest_namespace["mda_firings_path"] = _generate_mda_firings(tmp_path)
         doctest_namespace["mda_sampling_frequency"] = 30_000.0
 
-    # CSV fiber photometry has no gin fixture; generate a small signal-channel CSV on-the-fly for
-    # the csv_fp.rst doctest so the gallery entry itself can stay focused on the conversion API
-    # rather than on synthesis code.
+    # CSV fiber photometry has no gin fixture; generate small per-channel CSVs on-the-fly for the
+    # csv_fp.rst / multifile_csv_fp.rst doctests so the gallery entries themselves can stay focused on
+    # the conversion API rather than on synthesis code.
     if test_path is not None and Path(str(test_path)).name == "csv_fp.rst":
         doctest_namespace["csv_signal_channel_path"] = _generate_csv_signal_channel(tmp_path)
+    if test_path is not None and Path(str(test_path)).name == "multifile_csv_fp.rst":
+        doctest_namespace["csv_signal_channel_path"] = _generate_csv_signal_channel(tmp_path)
+        doctest_namespace["csv_control_channel_path"] = _generate_csv_control_channel(tmp_path)
 
 
 def _generate_mda_firings(tmp_path):
@@ -64,6 +67,20 @@ def _generate_csv_signal_channel(tmp_path):
     signal = pd.DataFrame({"timestamps": timestamps, "data": np.linspace(0.1, 1.0, num_samples)})
     csv_path = Path(tmp_path) / "Sample_Signal_Channel.csv"
     signal.to_csv(csv_path, index=False)
+    return csv_path
+
+
+def _generate_csv_control_channel(tmp_path):
+    import numpy as np
+    import pandas as pd
+
+    # Same timebase as the signal channel so the two files can be aggregated into one series.
+    sampling_rate = 100.0
+    num_samples = 150
+    timestamps = np.arange(num_samples) / sampling_rate
+    control = pd.DataFrame({"timestamps": timestamps, "data": np.linspace(0.05, 0.5, num_samples)})
+    csv_path = Path(tmp_path) / "Sample_Control_Channel.csv"
+    control.to_csv(csv_path, index=False)
     return csv_path
 
 

@@ -7,19 +7,19 @@ Install NeuroConv with the additional dependencies necessary for reading CSV Fib
 
     pip install "neuroconv[csv_fp]"
 
-This is a general-purpose CSV reader: point it at one or more CSV files and name the column holding
-the timestamps in seconds (``timestamps_column``) and the data column(s) whose fluorescence samples
-form the series (``data_columns``). Columns are addressed by name (for a CSV with a header row) or by
+This is a general-purpose CSV reader: point it at one CSV file and name the column holding the
+timestamps in seconds (``timestamps_column``) and the data column(s) whose fluorescence samples form
+the series (``data_columns``). Columns are addressed by name (for a CSV with a header row) or by
 0-based positional index (for a header-less CSV).
 
-Each interface writes a single ``FiberPhotometryResponseSeries``; its channels are the ``data_columns``
-read from each file, in file-then-column order, column-stacked into one series. This covers a narrow
-one-column file (the GuPPy acquisition format's ``<stream>.csv`` with ``timestamps`` and ``data``),
-a wide file with several data columns, and several per-channel files (GuPPy's layout, where the
-channel identity is in the *filename*) — in the multi-file case the channels share one time axis,
-taken from the first file. To write several *separate* series (e.g. a signal and an isosbestic
-control) sharing one ``FiberPhotometryTable``, combine one interface per series (with distinct
-``metadata_key`` values) in a converter.
+The interface writes a single ``FiberPhotometryResponseSeries``; its channels are the ``data_columns``
+read from the file, in column order, column-stacked into one series. This covers a narrow one-column
+file (the GuPPy acquisition format's ``<stream>.csv`` with ``timestamps`` and ``data``) and a wide
+file with several data columns. To aggregate *several* per-channel CSV files (e.g. GuPPy's per-region
+files) into one series, use :doc:`MultiFileCSVFiberPhotometryInterface <multifile_csv_fp>`. To write
+several *separate* series (e.g. a signal and an isosbestic control) sharing one
+``FiberPhotometryTable``, combine one interface per series (with distinct ``metadata_key`` values) in
+a converter.
 
 Convert CSV Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,7 +51,7 @@ and ``data`` columns:
     >>> # Inspect the file's column headers (callable before construction)
     >>> available_columns = CSVFiberPhotometryInterface.get_available_columns(file_path=csv_signal_channel_path)
 
-    >>> interface = CSVFiberPhotometryInterface(file_paths=csv_signal_channel_path, data_columns="data", timestamps_column="timestamps", metadata_key="calcium_signal", verbose=False)
+    >>> interface = CSVFiberPhotometryInterface(file_path=csv_signal_channel_path, data_columns="data", timestamps_column="timestamps", metadata_key="calcium_signal", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # CSV recordings have no embedded start time, so it must be set explicitly.
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
