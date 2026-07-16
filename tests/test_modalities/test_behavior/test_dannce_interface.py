@@ -60,6 +60,90 @@ def multi_animal_dannce_mat_file(tmp_path):
     return file_path, n_samples, n_animals, n_landmarks, pred, p_max
 
 
+def _synthetic_calibration_values(camera_index: int) -> dict:
+    """Deterministic per-camera calibration values, shared by the calibration fixtures below."""
+    return dict(
+        intrinsic_matrix=np.eye(3) * (camera_index + 1),
+        rotation_matrix=np.eye(3),
+        translation_vector=np.array([1.0, 2.0, 3.0]) * (camera_index + 1),
+        distortion_coefficients=np.array([0.1, 0.2, 0.01, 0.02]),
+    )
+
+
+@pytest.fixture
+def hires_params_calibration_dir(tmp_path):
+    """Create a directory of 'hires_camN_params.mat' files (one per camera), plus a decoy '.old' file."""
+    calibration_dir = tmp_path / "calibration"
+    calibration_dir.mkdir()
+
+    camera_names = ["Camera1", "Camera2"]
+    for i, camera_name in enumerate(camera_names):
+        values = _synthetic_calibration_values(i)
+        savemat(
+            str(calibration_dir / f"hires_cam{i + 1}_params.mat"),
+            dict(
+                K=values["intrinsic_matrix"],
+                r=values["rotation_matrix"],
+                t=values["translation_vector"].reshape(1, 3),
+                RDistort=values["distortion_coefficients"][:2].reshape(1, 2),
+                TDistort=values["distortion_coefficients"][2:].reshape(1, 2),
+            ),
+        )
+    # Backup file that must NOT be picked up by the 'hires_camN_params.mat' glob.
+    (calibration_dir / "hires_cam1_params.mat.old").write_text("not a real calibration file")
+
+    return calibration_dir, camera_names
+
+
+@pytest.fixture
+def calibration_json_file(tmp_path):
+    """Create a 'calibration.json' file with 'camera_names' and 'camera_params'."""
+    import json
+
+    camera_names = ["Camera1", "Camera2"]
+    camera_params = []
+    for i in range(len(camera_names)):
+        values = _synthetic_calibration_values(i)
+        camera_params.append(
+            dict(
+                camera_matrix=values["intrinsic_matrix"].tolist(),
+                rotation_matrix=values["rotation_matrix"].tolist(),
+                translation_vector=[[v] for v in values["translation_vector"].tolist()],
+                r_distort=values["distortion_coefficients"][:2].tolist(),
+                t_distort=values["distortion_coefficients"][2:].tolist(),
+            )
+        )
+
+    file_path = tmp_path / "calibration.json"
+    with open(file_path, "w") as f:
+        json.dump(dict(camera_names=camera_names, camera_params=camera_params, n_cameras=len(camera_names)), f)
+
+    return file_path, camera_names
+
+
+@pytest.fixture
+def label3d_calibration_mat_file(tmp_path):
+    """Create a Label3D-style '*_dannce.mat' file with 'camnames' and 'params'."""
+    camera_names = ["Camera1", "Camera2"]
+    params = np.empty((1, len(camera_names)), dtype=object)
+    for i in range(len(camera_names)):
+        values = _synthetic_calibration_values(i)
+        params[0, i] = {
+            "K": values["intrinsic_matrix"],
+            "r": values["rotation_matrix"],
+            "t": values["translation_vector"],
+            "RDistort": values["distortion_coefficients"][:2],
+            "TDistort": values["distortion_coefficients"][2:],
+        }
+
+    file_path = tmp_path / "sampleCAL_test_dannce.mat"
+    savemat(
+        str(file_path),
+        dict(camnames=np.array(camera_names, dtype=object), params=params),
+    )
+    return file_path, camera_names
+
+
 class TestDANNCEInterfaceInit:
     def test_initialization_with_sampling_rate(self, dannce_mat_file):
         file_path, n_samples, n_landmarks, _, _ = dannce_mat_file
@@ -241,6 +325,103 @@ class TestDANNCEInterfaceMetadata:
         metadata = interface.get_metadata()
 
         assert "CustomDANNCE" in metadata["PoseEstimation"]["PoseEstimationContainers"]
+
+
+class TestDANNCEInterfaceCalibration:
+    """Coverage for get_camera_calibrations() and the calibration_path constructor argument."""
+
+    def _assert_matches_synthetic_values(self, camera_calibrations: dict, camera_names: list[str]) -> None:
+        for i, camera_name in enumerate(camera_names):
+            expected = _synthetic_calibration_values(i)
+            actual = camera_calibrations[camera_name]
+            assert_array_equal(actual["intrinsic_matrix"], expected["intrinsic_matrix"])
+            assert_array_equal(actual["rotation_matrix"], expected["rotation_matrix"])
+            assert_array_equal(actual["translation_vector"], expected["translation_vector"])
+            assert_array_equal(actual["distortion_coefficients"], expected["distortion_coefficients"])
+
+    def test_get_camera_calibrations_from_hires_params_directory(self, hires_params_calibration_dir):
+        calibration_dir, camera_names = hires_params_calibration_dir
+        names, camera_calibrations = DANNCEInterface.get_camera_calibrations(calibration_dir)
+
+        assert names == camera_names
+        self._assert_matches_synthetic_values(camera_calibrations, camera_names)
+
+    def test_get_camera_calibrations_from_json(self, calibration_json_file):
+        file_path, camera_names = calibration_json_file
+        names, camera_calibrations = DANNCEInterface.get_camera_calibrations(file_path)
+
+        assert names == camera_names
+        self._assert_matches_synthetic_values(camera_calibrations, camera_names)
+
+    def test_get_camera_calibrations_from_label3d_mat(self, label3d_calibration_mat_file):
+        file_path, camera_names = label3d_calibration_mat_file
+        names, camera_calibrations = DANNCEInterface.get_camera_calibrations(file_path)
+
+        assert names == camera_names
+        self._assert_matches_synthetic_values(camera_calibrations, camera_names)
+
+    def test_get_camera_calibrations_nonexistent_path_raises(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            DANNCEInterface.get_camera_calibrations(tmp_path / "does_not_exist.json")
+
+    def test_get_camera_calibrations_unrecognized_suffix_raises(self, tmp_path):
+        bad_file = tmp_path / "calibration.txt"
+        bad_file.touch()
+        with pytest.raises(ValueError, match="Unrecognized calibration format"):
+            DANNCEInterface.get_camera_calibrations(bad_file)
+
+    def test_calibration_path_auto_populates_camera_names(self, dannce_mat_file, hires_params_calibration_dir):
+        file_path = dannce_mat_file[0]
+        calibration_dir, camera_names = hires_params_calibration_dir
+        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
+
+        assert interface._camera_names == camera_names
+
+    def test_explicit_camera_names_override_calibration_path(self, dannce_mat_file, hires_params_calibration_dir):
+        file_path = dannce_mat_file[0]
+        calibration_dir, _ = hires_params_calibration_dir
+        interface = DANNCEInterface(
+            file_path=file_path,
+            sampling_rate=30.0,
+            calibration_path=calibration_dir,
+            camera_names=["CustomCam"],
+        )
+
+        assert interface._camera_names == ["CustomCam"]
+
+    def test_calibration_path_auto_creates_calibrated_cameras(self, dannce_mat_file, hires_params_calibration_dir):
+        file_path = dannce_mat_file[0]
+        calibration_dir, camera_names = hires_params_calibration_dir
+        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)  # no camera_calibrations argument passed
+
+        for i, camera_name in enumerate(camera_names):
+            device = nwbfile.devices[camera_name]
+            assert isinstance(device, CalibratedCamera)
+            expected = _synthetic_calibration_values(i)
+            assert_array_equal(device.intrinsic_matrix, expected["intrinsic_matrix"])
+
+    def test_add_to_nwbfile_camera_calibrations_overrides_calibration_path(
+        self, dannce_mat_file, hires_params_calibration_dir
+    ):
+        file_path = dannce_mat_file[0]
+        calibration_dir, camera_names = hires_params_calibration_dir
+        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
+
+        override_intrinsic_matrix = np.eye(3) * 99
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(
+            nwbfile=nwbfile,
+            camera_calibrations={"Camera1": dict(intrinsic_matrix=override_intrinsic_matrix)},
+        )
+
+        # Camera1 is overridden by the explicit argument...
+        assert_array_equal(nwbfile.devices["Camera1"].intrinsic_matrix, override_intrinsic_matrix)
+        # ...while Camera2 still falls back to the calibration loaded from calibration_path.
+        expected_camera2 = _synthetic_calibration_values(1)
+        assert_array_equal(nwbfile.devices["Camera2"].intrinsic_matrix, expected_camera2["intrinsic_matrix"])
 
 
 class TestDANNCEInterfaceConversion:

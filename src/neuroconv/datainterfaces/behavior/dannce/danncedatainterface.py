@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import numpy as np
@@ -30,6 +31,125 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             ] = "Optional path to a frametimes.npy file (shape (2, n_frames); row 1 = seconds) for per-frame timestamps."
         return source_schema
 
+    @staticmethod
+    def get_camera_calibrations(calibration_path: str | Path) -> tuple[list[str], dict[str, dict]]:
+        """
+        Load per-camera intrinsic/extrinsic calibration parameters, auto-detecting the file format.
+
+        Three DANNCE/sDANNCE calibration layouts are supported:
+
+        - A directory of per-camera ``hires_camN_params.mat`` files (keys ``K``, ``r``, ``t``,
+          ``RDistort``, ``TDistort``); camera names are derived from the filenames (``Camera1``, ...).
+        - A single ``calibration.json`` file with top-level ``camera_names`` and ``camera_params``
+          (keys ``camera_matrix``, ``rotation_matrix``, ``translation_vector``, ``r_distort``,
+          ``t_distort``), index-aligned.
+        - A single Label3D-style ``*_dannce.mat`` file with top-level ``camnames`` and ``params``
+          (same keys as the per-camera ``.mat`` format), index-aligned.
+
+        Parameters
+        ----------
+        calibration_path : str or Path
+            Path to a calibration directory or file in one of the formats described above.
+
+        Returns
+        -------
+        camera_names : list of str
+            Camera names, in the order given by the calibration source.
+        camera_calibrations : dict of str to dict
+            Per-camera calibration kwargs (``intrinsic_matrix``, ``rotation_matrix``,
+            ``translation_vector``, ``distortion_coefficients``), keyed by camera name -- ready to pass
+            as the ``camera_calibrations`` argument of :meth:`add_to_nwbfile` or the ``calibration_path``
+            argument of ``__init__``.
+        """
+        calibration_path = Path(calibration_path)
+        if not calibration_path.exists():
+            raise FileNotFoundError(f"Calibration path '{calibration_path}' does not exist.")
+
+        if calibration_path.is_dir():
+            return DANNCEInterface._load_calibrations_from_hires_params_directory(calibration_path)
+        elif calibration_path.suffix == ".json":
+            return DANNCEInterface._load_calibrations_from_json(calibration_path)
+        elif calibration_path.suffix == ".mat":
+            return DANNCEInterface._load_calibrations_from_label3d_mat(calibration_path)
+        else:
+            raise ValueError(
+                f"Unrecognized calibration format for '{calibration_path}'. Expected a directory of "
+                "'hires_camN_params.mat' files, a '.json' file, or a Label3D-style '.mat' file."
+            )
+
+    @staticmethod
+    def _load_calibrations_from_hires_params_directory(directory: Path) -> tuple[list[str], dict[str, dict]]:
+        """Parse a directory of 'hires_camN_params.mat' files, one per camera."""
+        from scipy.io import loadmat
+
+        pattern = re.compile(r"hires_cam(\d+)_params\.mat$")
+        matches = []
+        for file_path in directory.iterdir():
+            match = pattern.match(file_path.name)
+            if match:
+                matches.append((int(match.group(1)), file_path))
+        if not matches:
+            raise ValueError(f"No 'hires_camN_params.mat' files found in '{directory}'.")
+        matches.sort(key=lambda pair: pair[0])
+
+        camera_names = [f"Camera{camera_number}" for camera_number, _ in matches]
+        camera_calibrations = {}
+        for camera_name, (_, file_path) in zip(camera_names, matches):
+            calibration = loadmat(str(file_path))
+            camera_calibrations[camera_name] = dict(
+                intrinsic_matrix=np.asarray(calibration["K"]),
+                rotation_matrix=np.asarray(calibration["r"]),
+                translation_vector=np.asarray(calibration["t"]).squeeze(),
+                distortion_coefficients=np.concatenate(
+                    [np.asarray(calibration["RDistort"]).squeeze(), np.asarray(calibration["TDistort"]).squeeze()]
+                ),
+            )
+        return camera_names, camera_calibrations
+
+    @staticmethod
+    def _load_calibrations_from_json(file_path: Path) -> tuple[list[str], dict[str, dict]]:
+        """Parse a single 'calibration.json' file with 'camera_names' and 'camera_params'."""
+        import json
+
+        with open(file_path) as f:
+            data = json.load(f)
+
+        camera_names = list(data["camera_names"])
+        camera_calibrations = {}
+        for camera_name, params in zip(camera_names, data["camera_params"]):
+            camera_calibrations[camera_name] = dict(
+                intrinsic_matrix=np.asarray(params["camera_matrix"]),
+                rotation_matrix=np.asarray(params["rotation_matrix"]),
+                translation_vector=np.asarray(params["translation_vector"]).squeeze(),
+                distortion_coefficients=np.concatenate(
+                    [np.asarray(params["r_distort"]).squeeze(), np.asarray(params["t_distort"]).squeeze()]
+                ),
+            )
+        return camera_names, camera_calibrations
+
+    @staticmethod
+    def _load_calibrations_from_label3d_mat(file_path: Path) -> tuple[list[str], dict[str, dict]]:
+        """Parse a single Label3D-style '*_dannce.mat' file with 'camnames' and 'params'."""
+        from scipy.io import loadmat
+
+        data = loadmat(str(file_path), simplify_cells=True)
+        camera_names = list(np.atleast_1d(data["camnames"]))
+        params_list = data["params"]
+        if isinstance(params_list, dict):
+            params_list = [params_list]
+
+        camera_calibrations = {}
+        for camera_name, params in zip(camera_names, params_list):
+            camera_calibrations[camera_name] = dict(
+                intrinsic_matrix=np.asarray(params["K"]),
+                rotation_matrix=np.asarray(params["r"]),
+                translation_vector=np.asarray(params["t"]).squeeze(),
+                distortion_coefficients=np.concatenate(
+                    [np.asarray(params["RDistort"]).squeeze(), np.asarray(params["TDistort"]).squeeze()]
+                ),
+            )
+        return camera_names, camera_calibrations
+
     @validate_call
     def __init__(
         self,
@@ -42,6 +162,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         subject_name: str = "ind1",
         pose_estimation_metadata_key: str = "PoseEstimationDANNCE",
         camera_names: list[str] | None = None,
+        calibration_path: Path | None = None,
         animal_index: int | None = None,
         verbose: bool = False,
     ):
@@ -90,7 +211,16 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             ``["Camera1", "Camera2", ..., "Camera6"]``). One camera Device and one empty per-camera
             ``PoseEstimation`` child of the ``MultiCameraPoseEstimation`` container is created per
             name; pass the corresponding videos as ``source_videos`` to ``add_to_nwbfile`` to link
-            each camera's source video. If not provided, defaults to a single camera, ``["Camera1"]``.
+            each camera's source video. If not provided, defaults to a single camera, ``["Camera1"]``,
+            unless ``calibration_path`` is given, in which case it defaults to the camera names
+            detected there.
+        calibration_path : str or Path, optional
+            Path to a camera calibration directory or file; see :meth:`get_camera_calibrations` for the
+            supported formats. When provided, the detected camera names and calibrations are used
+            automatically -- both to populate ``camera_names`` (unless explicitly overridden above) and
+            to create ``ndx_pose.CalibratedCamera`` devices in :meth:`add_to_nwbfile` without needing to
+            pass ``camera_calibrations`` there. An explicit ``camera_calibrations`` argument to
+            ``add_to_nwbfile`` still overrides individual cameras loaded from here.
         animal_index : int, optional
             Index of the animal to write, selecting along the animal axis of a 4D ``pred`` array
             (shape ``(n_frames, n_animals, 3, n_landmarks)``), as produced by multi-animal sDANNCE
@@ -121,7 +251,19 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self.subject_name = subject_name
         self.verbose = verbose
         self.pose_estimation_metadata_key = pose_estimation_metadata_key
-        self._camera_names = list(camera_names) if camera_names else ["Camera1"]
+
+        detected_camera_names = None
+        self._camera_calibrations = None
+        if calibration_path is not None:
+            detected_camera_names, self._camera_calibrations = self.get_camera_calibrations(calibration_path)
+
+        if camera_names:
+            self._camera_names = list(camera_names)
+        elif detected_camera_names:
+            self._camera_names = detected_camera_names
+        else:
+            self._camera_names = ["Camera1"]
+
         self._animal_index = animal_index
         self._sampling_rate = sampling_rate
         self._video_file_path = Path(video_file_path) if video_file_path is not None else None
@@ -447,7 +589,8 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             (a ``Device`` extended with these calibration fields) instead of a plain ``Device``. Cameras
             without a corresponding entry get a plain ``Device``. Ignored for a camera whose Device was
             already added to the ``NWBFile`` by a previous call (e.g. a shared camera already created by
-            another animal's interface instance).
+            another animal's interface instance). Merged on top of any calibrations already loaded from
+            ``calibration_path`` at construction, taking precedence per-camera over those.
         """
         from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation, PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
@@ -534,7 +677,9 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         # NWBFile with matching camera_names (e.g., one interface instance per animal_index) share and
         # reuse the same camera Devices.
         source_videos = source_videos or {}
-        camera_calibrations = camera_calibrations or {}
+        # Calibrations loaded from calibration_path at construction are the default; an explicit
+        # camera_calibrations argument here overrides individual cameras on top of those.
+        camera_calibrations = {**(self._camera_calibrations or {}), **(camera_calibrations or {})}
         camera_pose_estimations = []
         for device_metadata_key in container_metadata["devices"]:
             device_metadata = pose_estimation_metadata["Devices"][device_metadata_key]
