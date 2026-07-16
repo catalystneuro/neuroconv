@@ -196,6 +196,11 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         """``{recording_site: {"signal": <store_id>, "control": <store_id>}}`` from storesList.csv."""
         return {recording_site: dict(stores) for recording_site, stores in self._recording_site_to_store_ids.items()}
 
+    @property
+    def event_store_to_event_name(self) -> dict[str, str]:
+        """``{store_id: event_name}`` for the behavioral event stores in storesList.csv (e.g. PrtN -> port_entries)."""
+        return dict(self._event_store_to_event_name)
+
     @staticmethod
     def _discover_recording_sites(stores_list_path: Path) -> list[str]:
         rows = stores_list_path.read_text(encoding="utf-8").strip().splitlines()

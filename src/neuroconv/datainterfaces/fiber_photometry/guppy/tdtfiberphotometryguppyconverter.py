@@ -8,10 +8,15 @@ from .guppydatainterface import GuppyInterface
 from ..tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from ...events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 from ....nwbconverter import ConverterPipe
+from ....tools.fiber_photometry import get_fiber_photometry_table
 
 # GuPPy stores are labeled by role in storesList.csv; each becomes one single-series acquisition
-# interface (and one FiberPhotometryTable row). The order here fixes the per-region row order.
+# interface (and one FiberPhotometryTable row). The order here fixes the per-recording-site row order.
 _STORE_ROLES = ("signal", "control")
+# The single merged EventsTable every behavioral event type is written into (one DynamicTableRegion
+# from the GuppyEventsTable then references its occurrence rows).
+_MERGED_EVENTS_TABLE_KEY = "guppy_behavioral_events"
+_MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 
 
 class TDTFiberPhotometryGuppyConverter(ConverterPipe):
@@ -25,7 +30,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
 
     The acquisition side follows the single-series ``TDTFiberPhotometryInterface`` design: one interface
     (and one ``FiberPhotometryTable`` row) per GuPPy store. The stores are discovered from the GuPPy
-    ``storesList.csv`` -- each region contributes its ``signal`` and (optional) ``control`` store -- so
+    ``storesList.csv`` -- each recording site contributes its ``signal`` and (optional) ``control`` store -- so
     the converter builds exactly the acquisition channels GuPPy processed. All the single-series
     interfaces share one ``FiberPhotometryTable``, which the first one to run assembles from the
     converter-merged metadata.
@@ -58,7 +63,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             tin, tsq).
         guppy_folder_path : DirectoryPath
             Path to the GuPPy ``<session>_output_<N>`` folder containing ``storesList.csv``,
-            the per-region derived ``.hdf5`` files, and the ``GuPPyParamtersUsed.json``
+            the per-recording-site derived ``.hdf5`` files, and the ``GuPPyParamtersUsed.json``
             provenance file (discovered automatically by :class:`GuppyInterface`).
         verbose : bool, optional
             Whether to print status messages, default = False.
@@ -81,19 +86,19 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         # signal/control store. The GuPPy side already discovered these stores from storesList.csv.
         data_interfaces: dict = {}
         self._series_specs: list[dict] = []
-        self._region_to_row_keys: dict[str, list[str]] = {}
+        self._recording_site_to_row_keys: dict[str, list[str]] = {}
         self._tdt_interface_names: list[str] = []
-        for region in guppy_interface.regions:
-            store_names = guppy_interface.region_to_store_names[region]
+        for recording_site in guppy_interface.recording_sites:
+            store_ids = guppy_interface.recording_site_to_store_ids[recording_site]
             for role in _STORE_ROLES:
-                if role not in store_names:
+                if role not in store_ids:
                     continue
-                store_name = store_names[role]
-                metadata_key = f"{region}_{role}"
-                interface_name = f"TDTFiberPhotometry_{region}_{role}"
+                store_id = store_ids[role]
+                metadata_key = f"{recording_site}_{role}"
+                interface_name = f"TDTFiberPhotometry_{recording_site}_{role}"
                 data_interfaces[interface_name] = TDTFiberPhotometryInterface(
                     folder_path=tdt_folder_path,
-                    stream_names=store_name,
+                    stream_names=store_id,
                     metadata_key=metadata_key,
                     verbose=verbose,
                 )
@@ -102,14 +107,14 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
                     dict(
                         interface_name=interface_name,
                         metadata_key=metadata_key,
-                        region=region,
+                        recording_site=recording_site,
                         role=role,
-                        store_name=store_name,
+                        store_id=store_id,
                         row_key=metadata_key,
-                        series_name=f"{region}_{role}",
+                        series_name=f"{recording_site}_{role}",
                     )
                 )
-                self._region_to_row_keys.setdefault(region, []).append(metadata_key)
+                self._recording_site_to_row_keys.setdefault(recording_site, []).append(metadata_key)
                 self._tdt_interface_names.append(interface_name)
 
         events_interface = TDTEventsInterface(folder_path=tdt_folder_path, verbose=verbose)
@@ -150,15 +155,16 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
 
         # The TDT side adds a FiberPhotometry lab_meta_data object named "fiber_photometry"; rename the
         # GuPPy ProcessingModule to avoid colliding with that name during NWB write.
-        metadata["Ophys"]["Guppy"]["ProcessingModule"]["name"] = "guppy"
+        guppy_metadata_key = self.data_interface_objects["Guppy"].metadata_key
+        metadata["FiberPhotometry"][guppy_metadata_key]["ProcessingModule"]["name"] = "guppy"
 
         # Keep only the behavioral event stores GuPPy listed in storesList.csv and rename each to the
         # human-readable name GuPPy recorded there (e.g. the "PrtR" store becomes the "port_entries"
-        # event type). The events interface writes one EventsTable per surviving event type, named by
-        # the CamelCased event_name (-> "PortEntries"), so dropping the other epocs here excludes the
-        # unprocessed tank stores, and setting event_name fixes the table name GuppyInterface links to.
-        metadata_key = self.data_interface_objects["TDTEvents"].metadata_key
-        event_types = metadata["Events"][metadata_key]["event_types"]
+        # event type). Route every surviving type into a single merged EventsTable (shared
+        # table_metadata_key + a declared EventTables entry that names it), so one DynamicTableRegion
+        # from the GuppyEventsTable can reference each type's occurrence rows.
+        events_metadata_key = self.data_interface_objects["TDTEvents"].metadata_key
+        event_types = metadata["Events"][events_metadata_key]["event_types"]
         renamed_event_types = {}
         for epoc_name, event_name in self._event_store_to_event_name.items():
             entry = event_types[epoc_name]
@@ -166,14 +172,19 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             entry["event_description"] = (
                 f"Onset times of the '{event_name}' behavioral events (from TDT store '{epoc_name}')."
             )
+            entry["table_metadata_key"] = _MERGED_EVENTS_TABLE_KEY
             renamed_event_types[epoc_name] = entry
-        metadata["Events"][metadata_key]["event_types"] = renamed_event_types
+        metadata["Events"][events_metadata_key]["event_types"] = renamed_event_types
+        metadata["Events"].setdefault("EventTables", {})[_MERGED_EVENTS_TABLE_KEY] = dict(
+            table_name=_MERGED_EVENTS_TABLE_NAME,
+            description="All behavioral events GuPPy aligned to, merged into one table with an event_type discriminator.",
+        )
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        """Allow the ``Ophys`` block to carry the ``Guppy`` sub-schema alongside the base schemas."""
+        """Allow the ``FiberPhotometry`` block to carry the ``Guppy`` sub-schema alongside the base schemas."""
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ophys"]["additionalProperties"] = True
+        metadata_schema["properties"]["FiberPhotometry"]["additionalProperties"] = True
         return metadata_schema
 
     def get_conversion_options_schema(self) -> dict:
@@ -195,10 +206,11 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
     ) -> None:
         """Add raw TDT and GuPPy-derived data to the provided NWBFile.
 
-        The TDT interfaces run first (the first builds the ``FiberPhotometryTable``), then the GuPPy
-        step runs with auto-derived ``fiber_photometry_table_region_indices`` so its derived traces are
-        written as ``FiberPhotometryResponseSeries`` linked back into that table. Ordering is guaranteed
-        by the insertion order of ``data_interface_objects`` (TDT before GuPPy).
+        The sub-interfaces run first (the TDT acquisition interfaces build the shared
+        ``FiberPhotometryTable``; ``TDTEvents`` writes one merged ``EventsTable``; ``GuppyInterface``
+        writes its slim registries + products). Afterwards this converter enriches the two GuPPy
+        registries with the cross-interface links only it can compute: each recording site's acquisition
+        fiber rows and each event type's occurrence rows in the merged table.
         """
         if metadata is None:
             metadata = self.get_metadata()
@@ -210,6 +222,54 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             metadata=metadata,
             conversion_options=merged_conversion_options,
         )
+        self._link_recording_sites_to_fiber_photometry_table(nwbfile=nwbfile, metadata=metadata)
+        self._link_events_to_merged_events_table(nwbfile=nwbfile)
+
+    def _link_recording_sites_to_fiber_photometry_table(self, *, nwbfile: NWBFile, metadata: dict) -> None:
+        """Add the ragged ``fiber_photometry_table_region`` DTR column onto the GuppyRecordingSitesTable.
+
+        The interface leaves this outward link unset; only the converter knows the acquisition row
+        layout (it built the FiberPhotometryTable), so it fills the column here, in recording-site order.
+        """
+        fiber_photometry_table = get_fiber_photometry_table(nwbfile=nwbfile)
+        recording_sites_table = nwbfile.processing["guppy"]["recording_sites"]
+        recording_site_to_rows = self._derive_recording_site_to_table_rows(metadata)
+        # table=True adds the predefined ragged DTR column (its target is wired separately by
+        # _set_dtr_targets); passing the table object to add_column here trips a spurious hdmf warning.
+        recording_sites_table.add_column(
+            name="fiber_photometry_table_region",
+            description=(
+                "Acquisition FiberPhotometryTable rows (signal + isosbestic control) this recording "
+                "site's derived traces were computed from."
+            ),
+            data=[recording_site_to_rows[recording_site] for recording_site in recording_sites_table["recording_site"]],
+            index=True,
+            table=True,
+        )
+        recording_sites_table._set_dtr_targets({"fiber_photometry_table_region": fiber_photometry_table})
+
+    def _link_events_to_merged_events_table(self, *, nwbfile: NWBFile) -> None:
+        """Add the ragged ``events`` DTR column onto the GuppyEventsTable.
+
+        Every event type was merged into one ``EventsTable`` (with an ``event_type`` discriminator), so
+        each GuppyEventsTable row references its type's occurrence rows -- a precise row reference, not a
+        whole-table object reference.
+        """
+        merged_events_table = nwbfile.events[_MERGED_EVENTS_TABLE_NAME]
+        event_type_column = list(merged_events_table["event_type"][:])
+        events_table = nwbfile.processing["guppy"]["events"]
+        rows_by_event = [
+            [index for index, event_type in enumerate(event_type_column) if event_type == event_name]
+            for event_name in events_table["event_name"]
+        ]
+        events_table.add_column(
+            name="events",
+            description="Occurrence rows of this event type in the merged EventsTable (in nwbfile.events).",
+            data=rows_by_event,
+            index=True,
+            table=True,
+        )
+        events_table._set_dtr_targets({"events": merged_events_table})
 
     def run_conversion(
         self,
@@ -241,7 +301,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         )
 
     def _build_conversion_options(self, *, metadata: dict, conversion_options: dict | None, stub_test: bool) -> dict:
-        """Fan ``stub_test`` out to every sub-interface and inject GuPPy's table-region indices."""
+        """Fan ``stub_test`` out to every sub-interface (no linkage data is injected into GuPPy)."""
         conversion_options = dict(conversion_options) if conversion_options else {}
         merged_conversion_options: dict = {}
         for interface_name in self._tdt_interface_names:
@@ -249,33 +309,30 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             tdt_options.update(conversion_options.pop(interface_name, {}))
             merged_conversion_options[interface_name] = tdt_options
         merged_conversion_options["TDTEvents"] = conversion_options.pop("TDTEvents", {})
-        guppy_options: dict = {
-            "stub_test": stub_test,
-            "fiber_photometry_table_region_indices": self._derive_region_to_table_indices(metadata),
-        }
+        guppy_options: dict = {"stub_test": stub_test}
         guppy_options.update(conversion_options.pop("Guppy", {}))
         merged_conversion_options["Guppy"] = guppy_options
         merged_conversion_options.update(conversion_options)
         return merged_conversion_options
 
-    def _derive_region_to_table_indices(self, metadata: dict) -> dict[str, list[int]]:
-        """Map each GuPPy region to the acquisition ``FiberPhotometryTable`` row indices of its series.
+    def _derive_recording_site_to_table_rows(self, metadata: dict) -> dict[str, list[int]]:
+        """Map each GuPPy recording site to the acquisition ``FiberPhotometryTable`` row indices of its series.
 
-        Each region owns the rows of its signal and (optional) isosbestic-control acquisition series.
-        The integer index is the row's position in the (converter-built) ``FiberPhotometryTable.rows``
-        dict -- the same order the rows are added in -- so the region link never depends on fragile
-        hand-written integers. Fails loudly if a region's row is missing from the table.
+        Each recording site owns the rows of its signal and (optional) isosbestic-control acquisition
+        series. The integer index is the row's position in the (converter-built)
+        ``FiberPhotometryTable.rows`` dict -- the same order the rows are added in -- so the link never
+        depends on fragile hand-written integers. Fails loudly if a site's row is missing from the table.
         """
         rows = metadata["FiberPhotometry"]["FiberPhotometryTable"]["rows"]
         row_key_to_index = {row_key: index for index, row_key in enumerate(rows)}
-        region_to_indices: dict[str, list[int]] = {}
-        for region, row_keys in self._region_to_row_keys.items():
+        recording_site_to_rows: dict[str, list[int]] = {}
+        for recording_site, row_keys in self._recording_site_to_row_keys.items():
             missing = [row_key for row_key in row_keys if row_key not in row_key_to_index]
             assert not missing, (
-                f"GuPPy region '{region}' references FiberPhotometryTable row(s) {missing} not present "
-                f"in metadata['FiberPhotometry']['FiberPhotometryTable']['rows'] "
+                f"GuPPy recording site '{recording_site}' references FiberPhotometryTable row(s) {missing} not "
+                f"present in metadata['FiberPhotometry']['FiberPhotometryTable']['rows'] "
                 f"(available: {list(row_key_to_index)}). Check that the converter's table rows were not "
                 f"overwritten by user metadata."
             )
-            region_to_indices[region] = sorted(row_key_to_index[row_key] for row_key in row_keys)
-        return region_to_indices
+            recording_site_to_rows[recording_site] = sorted(row_key_to_index[row_key] for row_key in row_keys)
+        return recording_site_to_rows

@@ -5,7 +5,6 @@ import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv.converters import TDTFiberPhotometryGuppyConverter
-from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 
 from ..setup_paths import OPHYS_DATA_PATH
@@ -19,7 +18,7 @@ from ..setup_paths import OPHYS_DATA_PATH
 SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"
 
 
-EXPECTED_REGIONS = ("dms", "dls")
+EXPECTED_RECORDING_SITES = ("dms", "dls")
 EXPECTED_TDT_SESSION_START_TIME = datetime(2020, 7, 21, 17, 2, 24, 999999, tzinfo=timezone.utc)
 # One single-series TDT acquisition interface (and one FiberPhotometryTable row) per GuPPy store.
 EXPECTED_TDT_INTERFACE_NAMES = {
@@ -29,6 +28,9 @@ EXPECTED_TDT_INTERFACE_NAMES = {
     "TDTFiberPhotometry_dls_control",
 }
 EXPECTED_RESPONSE_SERIES_NAMES = {"dms_signal", "dms_control", "dls_signal", "dls_control"}
+# Onset counts from the Photo_249 epocs GuPPy listed (PrtR -> port_entries, etc.).
+EXPECTED_EVENT_TO_COUNT = {"port_entries": 49, "unrewarded_nose_pokes": 1457, "rewarded_nose_pokes": 50}
+MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 
 
 class TestTDTFiberPhotometryGuppyConverter:
@@ -52,26 +54,22 @@ class TestTDTFiberPhotometryGuppyConverter:
 
     def test_metadata_preserves_guppy_schema(self, converter):
         metadata = converter.get_metadata()
-        assert "Guppy" in metadata["Ophys"]
-        guppy_metadata = metadata["Ophys"]["Guppy"]
+        assert "Guppy" in metadata["FiberPhotometry"]
+        guppy_metadata = metadata["FiberPhotometry"]["Guppy"]
         # Renamed away from the GuppyInterface default of "fiber_photometry" to avoid
         # colliding with the TDT FiberPhotometry lab_meta_data object of the same name.
         assert guppy_metadata["ProcessingModule"]["name"] == "guppy"
-        trace_names = {trace["name"] for trace in guppy_metadata["Traces"]}
+        # Traces is a dict keyed by the derived object name.
+        trace_names = set(guppy_metadata["Traces"].keys())
         assert {"dff_dms", "z_score_dms", "cntrl_sig_fit_dms", "dff_dls"}.issubset(trace_names)
 
     def test_metadata_schema_includes_both_subinterfaces(self, converter):
         schema = converter.get_metadata_schema()
-        ophys_properties = schema["properties"]["Ophys"]["properties"]
-        assert "Guppy" in ophys_properties
+        assert "Guppy" in schema["properties"]["FiberPhotometry"]["properties"]
 
     def test_run_conversion_writes_acquisition_and_processing(self, converter, tmp_path):
         nwbfile_path = tmp_path / "tdt_guppy_converter.nwb"
-        converter.run_conversion(
-            nwbfile_path=str(nwbfile_path),
-            overwrite=True,
-            stub_test=True,
-        )
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), overwrite=True, stub_test=True)
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
@@ -87,30 +85,30 @@ class TestTDTFiberPhotometryGuppyConverter:
 
             assert "guppy" in nwbfile.processing
             processing_module = nwbfile.processing["guppy"]
-            # The registries anchor region/event identity for every GuPPy product.
-            regions_table = processing_module["regions"]
-            assert regions_table.neurodata_type == "GuppyRegionsTable"
-            assert list(regions_table["region"].data) == list(EXPECTED_REGIONS)
+            recording_sites_table = processing_module["recording_sites"]
+            assert recording_sites_table.neurodata_type == "GuppyRecordingSitesTable"
+            assert list(recording_sites_table["recording_site"].data) == list(EXPECTED_RECORDING_SITES)
             assert processing_module["events"].neurodata_type == "GuppyEventsTable"
 
-            # GuPPy region -> acquisition table rows, auto-derived from the shared stream-name linkage.
-            expected_region_to_indices = {"dms": [0, 1], "dls": [2, 3]}
-            region_row = {region: index for index, region in enumerate(EXPECTED_REGIONS)}
-            for region in EXPECTED_REGIONS:
+            # The converter enriched the (slim) recording-sites registry with the acquisition fiber link:
+            # each site's signal + control rows, in site order -> flat [0, 1, 2, 3].
+            flat_fiber_indices = list(recording_sites_table["fiber_photometry_table_region"].target.data[:])
+            assert flat_fiber_indices == [0, 1, 2, 3]
+
+            recording_site_row = {site: index for index, site in enumerate(EXPECTED_RECORDING_SITES)}
+            for recording_site in EXPECTED_RECORDING_SITES:
                 for prefix in ("cntrl_sig_fit", "dff", "z_score"):
-                    series_name = f"{prefix}_{region}"
-                    assert (
-                        series_name in processing_module.data_interfaces
-                    ), f"Expected {series_name} in fiber_photometry processing module."
+                    series_name = f"{prefix}_{recording_site}"
+                    assert series_name in processing_module.data_interfaces
                     series = processing_module.data_interfaces[series_name]
-                    # Derived traces are GuppyDerivedResponseSeries (a FiberPhotometryResponseSeries subtype)
-                    # linked both into the acquisition table and to the GuPPy regions registry row.
+                    # Derived traces are GuppyDerivedResponseSeries linked to the recording-site registry row;
+                    # the acquisition provenance is reached through that row, not stamped on the series.
                     assert series.neurodata_type == "GuppyDerivedResponseSeries"
-                    assert list(series.fiber_photometry_table_region.data[:]) == expected_region_to_indices[region]
-                    assert list(series.region.data) == [region_row[region]]
+                    assert series.fiber_photometry_table_region is None
+                    assert list(series.recording_site.data) == [recording_site_row[recording_site]]
 
             # Event-bearing products are concatenated across events into one object per condition: 8
-            # PSTHs (2 regions x 2 features x {corrected, uncorrected}), 4 peak/AUCs, 2 cross-corrs.
+            # PSTHs (2 sites x 2 features x {corrected, uncorrected}), 4 peak/AUCs, 2 cross-corrs.
             products_by_type = {}
             for product in processing_module.data_interfaces.values():
                 products_by_type.setdefault(product.neurodata_type, []).append(product)
@@ -138,75 +136,59 @@ class TestTDTFiberPhotometryGuppyConverter:
             "PrtR": "port_entries",
         }
 
-    def test_run_conversion_writes_tdt_events(self, converter, tmp_path):
+    def test_run_conversion_merges_events_and_links_registry(self, converter, tmp_path):
         nwbfile_path = tmp_path / "tdt_guppy_events.nwb"
-        converter.run_conversion(
-            nwbfile_path=str(nwbfile_path),
-            overwrite=True,
-            stub_test=True,
-        )
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), overwrite=True, stub_test=True)
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
 
-            # Only the storesList event stores are written, each as an EventsTable in nwbfile.events
-            # named by the CamelCased event name. Onset counts come from the corresponding Photo_249
-            # epocs (PrtR=49, LNnR=1457, LNRW=50).
-            expected_event_to_length = {
-                "PortEntries": 49,
-                "UnrewardedNosePokes": 1457,
-                "RewardedNosePokes": 50,
-            }
-            for table_name, expected_length in expected_event_to_length.items():
-                events = nwbfile.get_events_table(table_name)
-                assert events.neurodata_type == "EventsTable"
-                assert len(events) == expected_length
-            # Tank epocs absent from storesList.csv (RNPS) are not propagated.
-            assert "RNPS" not in nwbfile.events
+            # Every behavioral event type lands in ONE merged EventsTable with an event_type discriminator.
+            assert set(nwbfile.events) == {MERGED_EVENTS_TABLE_NAME}
+            merged = nwbfile.get_events_table(MERGED_EVENTS_TABLE_NAME)
+            assert "event_type" in merged.colnames
+            assert len(merged) == sum(EXPECTED_EVENT_TO_COUNT.values())
 
-            # The GuPPy events registry's optional object reference resolves to those EventsTables.
+            # The GuppyEventsTable's events DTR references each type's occurrence rows in that merged table
+            # (a precise row reference, not a whole-table object reference).
             events_table = nwbfile.processing["guppy"]["events"]
-            registry_event_names = list(events_table["event_name"].data)
-            for row_index, event_name in enumerate(registry_event_names):
-                referenced = events_table["events"][row_index]
-                assert referenced is nwbfile.get_events_table(_to_table_object_name(event_name))
+            for row_index, event_name in enumerate(events_table["event_name"].data):
+                referenced = events_table["events"][row_index]  # DataFrame of the merged table's rows
+                assert set(referenced["event_type"]) == {event_name}
+                assert len(referenced) == EXPECTED_EVENT_TO_COUNT[event_name]
 
-    def test_derive_region_to_table_indices(self, converter):
-        """Each region owns the table-row indices of its signal + control acquisition series."""
-        region_to_indices = converter._derive_region_to_table_indices(converter.get_metadata())
-        assert region_to_indices == {"dms": [0, 1], "dls": [2, 3]}
+    def test_derive_recording_site_to_table_rows(self, converter):
+        """Each recording site owns the table-row indices of its signal + control acquisition series."""
+        recording_site_to_rows = converter._derive_recording_site_to_table_rows(converter.get_metadata())
+        assert recording_site_to_rows == {"dms": [0, 1], "dls": [2, 3]}
 
     def test_missing_table_row_raises(self, converter):
-        """A region whose acquisition row is missing from the table fails loudly."""
+        """A recording site whose acquisition row is missing from the table fails loudly."""
         metadata = converter.get_metadata()
         del metadata["FiberPhotometry"]["FiberPhotometryTable"]["rows"]["dms_signal"]
         with pytest.raises(AssertionError, match="not present"):
-            converter._derive_region_to_table_indices(metadata)
+            converter._derive_recording_site_to_table_rows(metadata)
 
     def test_guppy_timestamps_in_nwb_are_native(self, converter, tmp_path):
         """GuPPy traces keep their native timestamps -- no cross-system offset is applied.
 
         GuPPy and TDT share the recording-start origin, so GuPPy's emitted timestamps already sit
         on the TDT clock. The first sample stays ~1s in (the lights-on delay) rather than being
-        shoved to the TDT stream start (0.0), which the old offset alignment did incorrectly.
+        shoved to the TDT stream start (0.0).
         """
         nwbfile_path = tmp_path / "tdt_guppy_alignment.nwb"
-        converter.run_conversion(
-            nwbfile_path=str(nwbfile_path),
-            overwrite=True,
-            stub_test=True,
-        )
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), overwrite=True, stub_test=True)
 
         guppy_interface = converter.data_interface_objects["Guppy"]
-        native_region_to_timestamps = guppy_interface.get_original_timestamps()
+        native_recording_site_to_timestamps = guppy_interface.get_original_timestamps()
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
             processing_module = nwbfile.processing["guppy"]
-            for region in EXPECTED_REGIONS:
-                native_timestamps = native_region_to_timestamps[region]
-                dff_series = processing_module.data_interfaces[f"dff_{region}"]
-                assert dff_series.timestamps is not None, f"Expected timestamps on dff_{region}."
+            for recording_site in EXPECTED_RECORDING_SITES:
+                native_timestamps = native_recording_site_to_timestamps[recording_site]
+                dff_series = processing_module.data_interfaces[f"dff_{recording_site}"]
+                assert dff_series.timestamps is not None, f"Expected timestamps on dff_{recording_site}."
                 written = np.asarray(dff_series.timestamps[:])
                 np.testing.assert_allclose(written, native_timestamps[: written.shape[0]], atol=1e-9)
                 # ~1s lights-on delay preserved, not shifted to the TDT stream start of 0.0.

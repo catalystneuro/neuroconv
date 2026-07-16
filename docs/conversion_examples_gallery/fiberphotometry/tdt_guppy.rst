@@ -12,7 +12,7 @@ The :py:class:`~neuroconv.converters.TDTFiberPhotometryGuppyConverter` bundles t
 Specify the minimal metadata required for the conversion.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The converter discovers the acquisition channels from the GuPPy ``storesList.csv`` -- each region contributes its ``signal`` and ``control`` store -- and builds one raw ``FiberPhotometryResponseSeries`` (and one ``FiberPhotometryTable`` row) per store, keyed by ``<region>_<role>`` (here ``dms_signal``/``dms_control`` and ``dls_signal``/``dls_control``). The GuPPy-derived traces are written as ``FiberPhotometryResponseSeries`` linked back into that table. ``converter.get_metadata()`` returns a runnable scaffold with placeholder values; fill in the real optical hardware, indicator, and per-row location/wavelengths by row key (they must match the keys above), and ``run_conversion`` warns about any placeholder left behind.
+The converter discovers the acquisition channels from the GuPPy ``storesList.csv`` -- each recording site contributes its ``signal`` and ``control`` store -- and builds one raw ``FiberPhotometryResponseSeries`` (and one ``FiberPhotometryTable`` row) per store, keyed by ``<recording_site>_<role>`` (here ``dms_signal``/``dms_control`` and ``dls_signal``/``dls_control``). The GuPPy-derived traces reference each recording site's ``FiberPhotometryTable`` rows through the ``GuppyRecordingSitesTable`` registry. ``converter.get_metadata()`` returns a runnable scaffold with placeholder values; fill in the real optical hardware, indicator, and per-row location/wavelengths by row key (they must match the keys above), and ``run_conversion`` warns about any placeholder left behind.
 
 .. code-block:: python
 
@@ -27,7 +27,7 @@ The converter discovers the acquisition channels from the GuPPy ``storesList.csv
     ...             "indicator": {"label": "GCaMP7b", "description": "GCaMP7b calcium indicator."},
     ...         },
     ...         "FiberPhotometryTable": {
-    ...             "description": "Fiber photometry acquisition table for the dual-region GuPPy session.",
+    ...             "description": "Fiber photometry acquisition table for the dual-recording-site GuPPy session.",
     ...             "rows": {
     ...                 "dms_signal": {"location": "DMS", "excitation_wavelength_in_nm": 465.0, "emission_wavelength_in_nm": 525.0},
     ...                 "dms_control": {"location": "DMS", "excitation_wavelength_in_nm": 405.0, "emission_wavelength_in_nm": 525.0},
@@ -42,7 +42,7 @@ Convert TDT Fiber Photometry + GuPPy data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Convert a full GuPPy session to NWB using :py:class:`~neuroconv.converters.TDTFiberPhotometryGuppyConverter`.
-The ``session_start_time`` is read from the TDT tank, and the converter auto-derives the link from each GuPPy region to its fiber photometry table rows.
+The ``session_start_time`` is read from the TDT tank, and the converter auto-derives the link from each GuPPy recording site to its fiber photometry table rows.
 
 .. code-block:: python
 
