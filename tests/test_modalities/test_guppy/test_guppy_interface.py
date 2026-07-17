@@ -9,7 +9,9 @@ import pytest
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.datainterfaces import _GuppyInterface
+from neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface import (
+    _GuppyInterface,
+)
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 
 
