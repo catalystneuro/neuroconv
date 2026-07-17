@@ -1,12 +1,5 @@
 # v0.9.4 (Upcoming)
 
-## Features
-* Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
-* Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
-* Adapted `DoricFiberPhotometryInterface` to use `BaseFiberPhotometryInterface`. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
-* Added `DoricFiberPhotometryInterface` support for Doric CSV format. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
-* Added `DoricFiberPhotometryInterface` support for the legacy "EPConsole" `.doric` HDF5 layout (``Traces/<console>/<stream>/<stream>``), auto-detected alongside the newer `DataAcquisition`-based layout. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
-
 ## Removals, Deprecations and Changes
 * Bumped minimum `pynwb` version to `>=4.0.0`. [PR #1769](https://github.com/catalystneuro/neuroconv/pull/1769)
 * Migrated `TDTFiberPhotometryInterface` to a single-series interface that selects input streams via the new `stream_names` argument. Constructing without `stream_names` is deprecated and will be removed on or after January 2027. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
@@ -58,6 +51,9 @@
 * Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
 * Added support for device models via top-level `metadata["DeviceModels"]` and `metadata["Devices"]` registries. [PR #1780](https://github.com/catalystneuro/neuroconv/pull/1780)
 * Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
+* Adapted `DoricFiberPhotometryInterface` to use `BaseFiberPhotometryInterface`. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
+* Added `DoricFiberPhotometryInterface` support for Doric CSV format. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
+* Added `DoricFiberPhotometryInterface` support for the legacy "EPConsole" `.doric` HDF5 layout (``Traces/<console>/<stream>/<stream>``), auto-detected alongside the newer `DataAcquisition`-based layout. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
 * Use SpikeInterface metric descriptions to populate property_descriptions in `add_sorting_analyzer_to_nwbfile` [PR #1717](https://github.com/catalystneuro/neuroconv/pull/1717)
 * Added `CSVEventsInterface` for converting discrete events from a CSV file into `ndx-events` objects. [PR #1755](https://github.com/catalystneuro/neuroconv/pull/1755)
 * Added `TDTEventsInterface` for converting discrete events (epocs) from a TDT tank folder. [PR #1751](https://github.com/catalystneuro/neuroconv/pull/1751) [PR #1775](https://github.com/catalystneuro/neuroconv/pull/1775)
