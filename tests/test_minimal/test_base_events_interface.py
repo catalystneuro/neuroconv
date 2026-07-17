@@ -301,14 +301,15 @@ class TestMockEventsInterface:
         assert list(events["event_type"][:]) == ["left", "right", "left", "right"]
 
     def test_two_event_types_with_same_name_errors(self):
-        # Two solo types resolving to the same table object name cannot share it: the first is written as
-        # a single-type table (no discriminator), so the second has nowhere to record its identity. The
-        # writer rejects it with a clear message rather than letting pynwb fail obscurely.
+        # Two event types with the same event_name resolve to the same table name, but neither asked to
+        # combine (no shared table_metadata_key, no EventTables entry): they are two separate tables
+        # colliding on a name. The writer rejects it and points at the two real fixes (rename, or combine
+        # on purpose), rather than advising a merge that was never intended or letting pynwb fail obscurely.
         interface = MockEventsInterface(num_event_types=2, event_payload="timestamps only")
         metadata = interface.get_metadata()
         metadata["Events"]["mock_events"]["event_types"]["events_0"]["event_name"] = "shared"
         metadata["Events"]["mock_events"]["event_types"]["events_1"]["event_name"] = "shared"
-        expected_error = "An events table named 'Shared' already exists but is a single-type table"
+        expected_error = "Event types 'events_0', 'events_1' resolve to the same events table name 'Shared'"
         with pytest.raises(ValueError, match=re.escape(expected_error)):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
@@ -832,3 +833,25 @@ class TestEventsAcrossInterfaces:
             "no_go": "A no-go outcome.",
             "abort": "An aborted trial.",
         }
+
+    def test_combining_into_an_existing_single_type_table_errors(self):
+        # An interface writes its one event type as its own table "Trials" without knowing the table will be
+        # shared (it was handed only its own metadata). A second interface then arrives with metadata that
+        # declares "Trials" as a shared table and routes its type there. The existing "Trials" has no
+        # event_type column and its rows' type was never recorded, so combining errors rather than mislabeling
+        # those rows. This only arises with partial metadata; a converter hands every interface the merged
+        # metadata, so the first writer would build "Trials" as a shared table from the start.
+        interface_a = MockEventsInterface(metadata_key="events_a", num_events=2, event_payload="timestamps only")
+        interface_b = MockEventsInterface(metadata_key="events_b", num_events=2, event_payload="timestamps only")
+        nwbfile = mock_NWBFile()
+
+        metadata_a = interface_a.get_metadata()
+        metadata_a["Events"]["events_a"]["event_types"]["events"]["event_name"] = "Trials"
+        interface_a.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata_a)  # writes a single-type table "Trials"
+
+        metadata_b = interface_b.get_metadata()
+        metadata_b["Events"]["EventTables"] = {"shared": {"table_name": "Trials", "description": "Trials."}}
+        metadata_b["Events"]["events_b"]["event_types"]["events"]["table_metadata_key"] = "shared"
+        expected_error = "already exists but holds a single event type"
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata_b)

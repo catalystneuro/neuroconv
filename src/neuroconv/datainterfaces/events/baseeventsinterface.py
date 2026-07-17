@@ -236,6 +236,7 @@ class BaseEventsInterface(BaseDataInterface):
             table_metadata_key = entry.get("table_metadata_key", event_type_source_id)
             event_type_source_ids_by_table.setdefault(table_metadata_key, []).append(event_type_source_id)
 
+        table_owners = {}  # table object name -> event_type_source_ids this call wrote into it (to name collisions)
         for table_metadata_key, event_type_source_ids in event_type_source_ids_by_table.items():
             # Resolve the table name/description: a declared EventTables entry wins, else derive from the
             # single solo type, else from the pooled types.
@@ -253,17 +254,45 @@ class BaseEventsInterface(BaseDataInterface):
                 )
 
             existing_table = nwbfile.events.get(table_name) if nwbfile.events is not None else None
-            # A declared shared table, more than one type here, or a table another interface already wrote
-            # all mean this is a merge, which needs the event_type discriminator.
-            is_merge = declared_entry is not None or len(event_type_source_ids) > 1 or existing_table is not None
+            # The user asks to combine several event types into one table by declaring an EventTables entry
+            # or by routing more than one type to the same table_metadata_key; either needs an event_type
+            # column. A table another interface already wrote continues such a combine.
+            wants_merge = declared_entry is not None or len(event_type_source_ids) > 1
+            is_merge = wants_merge or existing_table is not None
             if existing_table is not None and "event_type" not in existing_table.colnames:
+                if wants_merge:
+                    # Combining was intended, but the existing table was written holding a single event type,
+                    # so it has no event_type column and its rows' identity was never recorded (and cannot be
+                    # recovered to backfill). This only arises when the first writer lacked the full metadata
+                    # (independent add_to_nwbfile calls, or on-disk append); a converter, which passes every
+                    # interface the merged metadata, builds the shared table correctly from the first write.
+                    # Rather than error we could always write an 'event_type' column (taxes every single-type
+                    # table with a constant column, and silently swallows accidental name collisions) or
+                    # backfill the existing rows' 'event_type' with "" (mislabels real events); both rejected.
+                    raise ValueError(
+                        f"An events table named '{table_name}' already exists but holds a single event type "
+                        "(it has no 'event_type' column), so more event types cannot be combined into it. "
+                        "Declare a shared EventTables entry with this table_name so every contributing "
+                        "interface writes it as a shared table from the start."
+                    )
+                # No combine was intended: this event type's table name is already taken by another type.
+                offender = event_type_source_ids[0]
+                offender_name = event_types[offender]["event_name"]
+                prior = table_owners.get(table_name, [])
+                if prior:
+                    colliding = ", ".join(f"'{source_id}'" for source_id in [*prior, offender])
+                    raise ValueError(
+                        f"Event types {colliding} resolve to the same events table name '{table_name}' (their "
+                        "event_names produce the same table name). Give them different event_names, or route "
+                        "them to one shared table with the same table_metadata_key if you meant to combine them."
+                    )
                 raise ValueError(
-                    f"An events table named '{table_name}' already exists but is a single-type table (it has "
-                    "no 'event_type' discriminator), so events cannot be merged into it. Give this interface's "
-                    "table a distinct name, or declare a shared EventTables entry with this table_name so every "
-                    "contributing interface writes it as a merged table."
+                    f"Event type '{offender}' (event_name '{offender_name}') resolves to the events table name "
+                    f"'{table_name}', which already exists. Give it a different event_name, or route it to a "
+                    "shared table with the same table_metadata_key if you meant to combine them."
                 )
 
+            table_owners.setdefault(table_name, []).extend(event_type_source_ids)
             table = (
                 existing_table if existing_table is not None else EventsTable(name=table_name, description=description)
             )
