@@ -6,9 +6,7 @@ from pydantic import DirectoryPath, validate_call
 from neuroconv.utils import DeepDict
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
-from ...ophys.tdt_fp._tdt_mixin import TDTLoadMixin
-
-_NEW_ISSUE_URL = "https://github.com/catalystneuro/neuroconv/issues/new"
+from ...fiber_photometry.tdt._tdt_mixin import TDTLoadMixin
 
 
 def _offset_is_synthesized(onset: np.ndarray, offset: np.ndarray) -> bool:
@@ -55,9 +53,9 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
     so only the onsets are written (a timestamp-only table). A store whose ``data`` carries real
     strobe codes (e.g. the ``PAB_`` store's ``[16, 2064, 0]`` cycle) additionally gets a categorical
     ``strobe`` column, with the codes as per-event labels. The ``offset`` array of an onset-type epoc
-    is a synthesized fill (``offset[i] == onset[i + 1]``, last value ``inf``) and is not written;
-    epocs that carry real offset (STROFF) durations are not supported yet, and the interface detects
-    them and raises ``NotImplementedError`` pointing to a feature request.
+    is a synthesized fill (``offset[i] == onset[i + 1]``, last value ``inf``) and is not written.
+    Epocs that carry real offset (STROFF) durations are written as durative events, with each event's
+    duration (``offset`` minus ``onset``) in the table's ``duration`` column.
     """
 
     keywords = ("events", "TDT")
@@ -147,9 +145,9 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
         Each included epoc becomes one :class:`_EventsData`: a counter epoc yields onset timestamps only
         (a bare marker, empty payload), while a strobe epoc (real ``data`` codes) carries the per-event
         codes under the ``"strobe"`` payload field, normalized to match the ``column_categories["labels"]``
-        keys seeded by :meth:`get_metadata`. TDT epocs are point events, so ``durations`` is left
-        ``None``. An epoc carrying real offset (STROFF) durations is not supported yet and raises
-        ``NotImplementedError`` pointing to a feature request.
+        keys seeded by :meth:`get_metadata`. An onset-only epoc is timestamp-only (``durations`` left
+        ``None``); an epoc carrying real offset (STROFF) durations is written with per-event durations
+        (``offset`` minus ``onset``).
         """
         if self._events_data_dict is not None:
             return self._events_data_dict
@@ -167,20 +165,22 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
             if len(onset) == 0:
                 continue  # an epoc with no onsets is not a writable event type; skip it (matches get_metadata)
 
-            if not _offset_is_synthesized(onset, offset):
-                raise NotImplementedError(
-                    f"The TDT epoc '{epoc_name}' carries real offset (STROFF) durations, which "
-                    "TDTEventsInterface does not support yet (only onset timestamps are written). "
-                    f"Please request support by opening an issue: {_NEW_ISSUE_URL}?title="
-                    "TDTEventsInterface:+support+epocs+with+real+offset+(STROFF)+durations"
-                )
+            # An onset-only epoc's offset is a synthesized fill carrying no information, so the type is
+            # timestamp-only (durations left None). A durative (STROFF) epoc has real falling edges,
+            # written as per-event durations (offset minus onset).
+            if _offset_is_synthesized(onset, offset):
+                durations = None
+            else:
+                durations = offset - onset
 
             # A counter ``data`` array is a meaningless index (a bare marker); a real strobe carries
             # per-event codes, kept under the 'strobe' payload field and normalized to the label keys.
             payload = {}
             if not _data_is_counter(data):
                 payload = {"strobe": np.array([_normalize_strobe_value(value) for value in data])}
-            events_data_dict[epoc_name] = _EventsData(event_type_source_id=epoc_name, timestamps=onset, payload=payload)
+            events_data_dict[epoc_name] = _EventsData(
+                event_type_source_id=epoc_name, timestamps=onset, durations=durations, payload=payload
+            )
 
         self._events_data_dict = events_data_dict
         return self._events_data_dict
