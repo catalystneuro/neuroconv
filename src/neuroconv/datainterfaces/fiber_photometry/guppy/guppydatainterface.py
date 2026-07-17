@@ -15,7 +15,7 @@ from pynwb.file import NWBFile
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools import get_package
 from neuroconv.tools.nwb_helpers import get_module
-from neuroconv.utils import DeepDict
+from neuroconv.utils import DeepDict, calculate_regular_series_rate
 from neuroconv.utils.json_schema import get_base_schema
 
 
@@ -648,6 +648,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         metadata: dict,
         *,
         stub_test: bool = False,
+        always_write_timestamps: bool = False,
     ) -> None:
         """
         Add GuPPy-derived fiber photometry products to an NWBFile as ndx-guppy neurodata types.
@@ -674,6 +675,10 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             Metadata dictionary; must contain ``metadata["FiberPhotometry"][self.metadata_key]``.
         stub_test : bool, optional
             If True, only a short slice of each large product is written. Default = False.
+        always_write_timestamps : bool, optional
+            If True, always write the explicit ``timestamps`` vector on each derived trace instead of the
+            ``starting_time`` + ``rate`` representation used when the timestamps are regularly sampled.
+            Default = False.
         """
         ndx_guppy = get_package(package_name="ndx_guppy", installation_instructions="pip install ndx-guppy")
 
@@ -716,6 +721,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             recording_sites_table=recording_sites_table,
             recording_site_to_stub_end_time=recording_site_to_stub_end_time,
             stub_test=stub_test,
+            always_write_timestamps=always_write_timestamps,
         )
 
         # Per-(recording_site, trace_type) transient peak tables.
@@ -796,6 +802,21 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         """Add the session-wide typed GuppyParameters lab metadata."""
         nwbfile.add_lab_meta_data(ndx_guppy.GuppyParameters(**self._guppy_parameters_kwargs()))
 
+    @staticmethod
+    def _timing_kwargs_from_timestamps(timestamps: np.ndarray, always_write_timestamps: bool) -> dict:
+        """Choose the timing representation for a TimeSeries child from its timestamps.
+
+        Regularly-sampled timestamps are written as ``starting_time`` + ``rate``; otherwise the explicit
+        ``timestamps`` vector is written. ``always_write_timestamps`` forces the ``timestamps`` path. Mirrors
+        ``BaseFiberPhotometryInterface._timing_kwargs_from_timestamps`` (this interface extends
+        ``BaseTemporalAlignmentInterface`` rather than the fiber-photometry base, so it cannot inherit it).
+        """
+        if not always_write_timestamps:
+            rate = calculate_regular_series_rate(series=timestamps)
+            if rate is not None:
+                return dict(starting_time=float(timestamps[0]), rate=float(rate))
+        return dict(timestamps=timestamps)
+
     def _add_guppy_derived_response_series_to_nwbfile(
         self,
         *,
@@ -806,6 +827,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         recording_sites_table,
         recording_site_to_stub_end_time: dict,
         stub_test: bool,
+        always_write_timestamps: bool = False,
     ) -> None:
         """Add each derived continuous trace as a GuppyDerivedResponseSeries.
 
@@ -832,14 +854,15 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     timestamps = timestamps[:stub_sample_count]
                     recording_site_to_stub_end_time[recording_site] = float(timestamps[-1])
 
+                timing_kwargs = self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps)
                 response_series = ndx_guppy.GuppyDerivedResponseSeries(
                     name=trace_name,
                     description=entry["description"],
                     data=data,
                     unit=_PREFIX_TO_UNIT[prefix],
-                    timestamps=timestamps,
                     trace_type=_PREFIX_TO_TRACE_TYPE[prefix],
                     recording_site=self._recording_site_reference(recording_sites_table, [recording_site]),
+                    **timing_kwargs,
                 )
                 processing_module.add(response_series)
 

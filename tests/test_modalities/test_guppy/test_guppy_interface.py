@@ -317,8 +317,10 @@ class TestGuppyInterface:
                 # Fiber provenance is reached through the recording-site row, not stamped on the series.
                 assert series.fiber_photometry_table_region is None
                 assert _resolve_recording_sites(module, series.recording_site) == [recording_site]
-                assert series.data.shape[0] == len(series.timestamps)
-                assert float(series.timestamps[-1] - series.timestamps[0]) <= 1.01  # stub keeps ~1 s
+                # The regular GuPPy timebase is written as starting_time + rate, not an explicit vector.
+                assert series.timestamps is None
+                assert series.rate is not None
+                assert float(series.data.shape[0] - 1) / series.rate <= 1.01  # stub keeps ~1 s
 
         for recording_site, features in case["expected_transients"].items():
             for feature in features:
@@ -566,7 +568,8 @@ class TestGuppyInterface:
         module = self._add(interface, nwbfile, stub_test=False)
 
         first_trace_name = f"{case['expected_traces'][first_recording_site][0]}_{first_recording_site}"
-        assert float(module[first_trace_name].timestamps[0]) == pytest.approx(original_first_timestamp + offset)
+        # The regular timebase stays regular under a constant shift, so it is written as starting_time + rate.
+        assert float(module[first_trace_name].starting_time) == pytest.approx(original_first_timestamp + offset)
 
         for recording_site, features in case["expected_transients"].items():
             for feature in features:
@@ -611,6 +614,27 @@ class TestGuppyInterface:
                 )
                 assert module.data_interfaces[name].neurodata_type == "GuppyCrossCorrelation"
             assert nwbfile.lab_meta_data["guppy_parameters"].neurodata_type == "GuppyParameters"
+
+    def test_derived_response_series_uses_starting_time_and_rate(self, interface, case, nwbfile):
+        """The regular mock timebase (1.0 + arange(n) / 200 Hz) is written as starting_time + rate."""
+        module = self._add(interface, nwbfile, stub_test=False)
+        for recording_site, prefixes in case["expected_traces"].items():
+            for prefix in prefixes:
+                series = module[f"{prefix}_{recording_site}"]
+                assert series.timestamps is None
+                assert float(series.starting_time) == pytest.approx(1.0)
+                assert float(series.rate) == pytest.approx(200.0)
+
+    def test_always_write_timestamps_forces_explicit_timestamps(self, interface, case, nwbfile):
+        """always_write_timestamps=True writes the explicit timestamps vector even for a regular timebase."""
+        metadata = interface.get_metadata()
+        interface.add_to_nwbfile(nwbfile, metadata, stub_test=False, always_write_timestamps=True)
+        module = nwbfile.processing["fiber_photometry"]
+        first_recording_site = case["expected_recording_sites"][0]
+        first_trace_name = f"{case['expected_traces'][first_recording_site][0]}_{first_recording_site}"
+        series = module[first_trace_name]
+        assert series.rate is None
+        np.testing.assert_allclose(series.timestamps[:3], [1.0, 1.005, 1.01])
 
     # ----------------------------------------------------------------- warnings / construction errors
 
