@@ -12,7 +12,3 @@ Doric Fiber Photometry
 TDT Fiber Photometry
 --------------------
 .. automodule:: neuroconv.datainterfaces.fiber_photometry.tdt.tdtfiberphotometrydatainterface
-
-GuPPy
------
-.. automodule:: neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface

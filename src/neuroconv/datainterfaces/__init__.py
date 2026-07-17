@@ -108,7 +108,7 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
 from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
-from .fiber_photometry.guppy.guppydatainterface import GuppyInterface
+from .fiber_photometry.guppy.guppydatainterface import _GuppyInterface
 from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
@@ -194,7 +194,7 @@ interface_list = [
     MiniscopeImagingInterface,
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
-    GuppyInterface,
+    _GuppyInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
@@ -246,7 +246,7 @@ interfaces_by_category = dict(
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
     },
     processed_fiber_photometry={
-        "Guppy": GuppyInterface,
+        "Guppy": _GuppyInterface,
     },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,

@@ -35,7 +35,7 @@ _PREFIX_TO_UNIT = dict(cntrl_sig_fit="n.a.", dff="a.u.", z_score="a.u.")
 _BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
 
 
-class GuppyInterface(BaseTemporalAlignmentInterface):
+class _GuppyInterface(BaseTemporalAlignmentInterface):
     """
     Data Interface for converting GuPPy (Guided Photometry Analysis in Python) processed outputs.
 
@@ -79,7 +79,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         metadata_key: str = "Guppy",
         verbose: bool = False,
     ):
-        """Initialize the GuppyInterface.
+        """Initialize the _GuppyInterface.
 
         Parameters
         ----------

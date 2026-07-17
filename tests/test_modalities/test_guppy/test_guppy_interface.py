@@ -9,7 +9,7 @@ import pytest
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.datainterfaces import GuppyInterface
+from neuroconv.datainterfaces import _GuppyInterface
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 
 
@@ -40,7 +40,7 @@ def _resolve_events(module, dynamic_table_region) -> list[str]:
 def _group_by_condition(entries, key_fields, event_order):
     """Group per-event discovery entries by condition, ordering each group by event.
 
-    Mirrors ``GuppyInterface._group_by_condition``: the event-bearing products emit one object per
+    Mirrors ``_GuppyInterface._group_by_condition``: the event-bearing products emit one object per
     condition with trials concatenated across events in ``event_order`` order, so the tests compare
     against the same grouping.
     """
@@ -53,8 +53,8 @@ def _group_by_condition(entries, key_fields, event_order):
     return groups
 
 
-class TestGuppyInterface:
-    """Tests for the GuppyInterface against a synthetically-generated GuPPy output folder.
+class Test_GuppyInterface:
+    """Tests for the _GuppyInterface against a synthetically-generated GuPPy output folder.
 
     The fixture folder is produced on the fly by ``generate_mock_guppy_output_folder`` (a tiny,
     schema-faithful replica of a real GuPPy output), so these tests need no GIN data. The generator
@@ -138,11 +138,11 @@ class TestGuppyInterface:
 
     @pytest.fixture
     def interface(self, case):
-        return GuppyInterface(folder_path=str(case["folder_path"]))
+        return _GuppyInterface(folder_path=str(case["folder_path"]))
 
     @pytest.fixture
     def nwbfile(self):
-        """A plain NWBFile. GuppyInterface is standalone: it needs no acquisition/events tables to write
+        """A plain NWBFile. _GuppyInterface is standalone: it needs no acquisition/events tables to write
         (the two registry links are populated later by a converter that owns those tables)."""
         return mock_NWBFile()
 
@@ -179,7 +179,7 @@ class TestGuppyInterface:
             with h5py.File(copied_folder / f"timeCorrection_{recording_site}.hdf5", "r+") as time_correction_file:
                 del time_correction_file["timeRecStart"]
 
-        interface = GuppyInterface(folder_path=str(copied_folder))
+        interface = _GuppyInterface(folder_path=str(copied_folder))
         metadata = interface.get_metadata()
         assert metadata["NWBFile"].get("session_start_time") in (None, "")
 
@@ -259,7 +259,7 @@ class TestGuppyInterface:
     def test_metadata_key_scopes_block_and_edits_propagate(self, case, nwbfile):
         """A non-default metadata_key scopes the whole block; editing an object's name and description
         propagates to the written object -- including an event-bearing product (PSTH)."""
-        interface = GuppyInterface(folder_path=str(case["folder_path"]), metadata_key="GuppyB")
+        interface = _GuppyInterface(folder_path=str(case["folder_path"]), metadata_key="GuppyB")
         metadata = interface.get_metadata()
         assert "GuppyB" in metadata["FiberPhotometry"]
         assert "Guppy" not in metadata["FiberPhotometry"]
@@ -546,7 +546,7 @@ class TestGuppyInterface:
                 h5_path.unlink()
                 dataframe.to_hdf(h5_path, key="df", mode="w")
 
-        interface = GuppyInterface(folder_path=str(copied_folder))
+        interface = _GuppyInterface(folder_path=str(copied_folder))
         module = self._add(interface, nwbfile, stub_test=False)
         event_order = {name: index for index, name in enumerate(interface._event_names)}
         for feature, recording_site_1, recording_site_2 in _group_by_condition(
@@ -585,7 +585,7 @@ class TestGuppyInterface:
                 np.testing.assert_allclose(actual[recording_site], expected_shifted)
 
     def test_round_trip_write_read(self, interface, case, nwbfile, tmp_path):
-        # GuppyInterface is standalone: it writes a self-contained set of ndx-guppy objects, so the
+        # _GuppyInterface is standalone: it writes a self-contained set of ndx-guppy objects, so the
         # mock file can be written and read directly.
         self._add(interface, nwbfile, stub_test=True)
 
@@ -643,4 +643,4 @@ class TestGuppyInterface:
         shutil.copytree(case["folder_path"], copied_folder)
         (copied_folder / "GuPPyParamtersUsed.json").unlink()
         with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):
-            GuppyInterface(folder_path=str(copied_folder))
+            _GuppyInterface(folder_path=str(copied_folder))

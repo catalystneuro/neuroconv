@@ -2,12 +2,12 @@
 
 GuPPy (Guided Photometry Analysis in Python) writes a ``<session>_output_<N>`` folder full of
 derived fiber-photometry products. The real folders are ~100 MB because every condition file
-carries a long time/lag/sample axis. None of that bulk is needed to exercise ``GuppyInterface``'s
+carries a long time/lag/sample axis. None of that bulk is needed to exercise ``_GuppyInterface``'s
 parsing and writing logic, so this module reproduces the *format* of each file GuPPy emits (with
 tiny arrays) without any dependency on GuPPy itself.
 
 Each private writer reproduces a documented on-disk format -- its filename pattern plus the HDF5
-dataset keys / DataFrame columns / dtypes that ``GuppyInterface`` reads -- described in its own
+dataset keys / DataFrame columns / dtypes that ``_GuppyInterface`` reads -- described in its own
 docstring, with no dependency on GuPPy's internals. These layouts were captured from real GuPPy
 output.
 """
@@ -59,7 +59,7 @@ def generate_mock_guppy_output_folder(
     """Write a tiny GuPPy ``<session>_output`` folder to ``folder_path`` and return it.
 
     The generated folder is a faithful (but ~kilobyte-scale) replica of a real GuPPy output: the
-    filenames, HDF5 keys, DataFrame columns/index labels, and dtypes match what ``GuppyInterface``
+    filenames, HDF5 keys, DataFrame columns/index labels, and dtypes match what ``_GuppyInterface``
     reads. All arrays are internally consistent -- trace length equals timestamp length, transient
     peaks fall inside the trace window, and every event file for one condition shares an identical
     x-axis -- so the interface's ``*_matches_source`` assertions hold by construction.
@@ -228,7 +228,7 @@ def _write_valid_signal_intervals(folder_path, recording_site, intervals) -> Non
     """``coordsForPreProcessing_<recording_site>.npy`` -- the artifact-removal boundary coordinates.
 
     A 2-D float array whose column 0 is a flat, even-length sequence of interval boundaries
-    ``[start, stop, start, stop, ...]`` (seconds). ``GuppyInterface`` reads column 0, checks it is
+    ``[start, stop, start, stop, ...]`` (seconds). ``_GuppyInterface`` reads column 0, checks it is
     even-length, and reshapes it to ``(num_intervals, 2)`` ``[start, stop]`` pairs. Column 1 mirrors
     the boundary amplitudes GuPPy stores alongside each coordinate (unread by the interface).
     """
@@ -249,7 +249,7 @@ def _write_parameters(
     """``GuPPyParamtersUsed.json`` written via ``json.dump``.
 
     ``peak_startPoint``/``peak_endPoint`` are padded to length 10 with NaN exactly as GuPPy does;
-    ``GuppyInterface`` strips the NaN padding back to the real windows.
+    ``_GuppyInterface`` strips the NaN padding back to the real windows.
     """
     pad_length = 10
     start_padded = list(peak_start_points) + [float("nan")] * (pad_length - len(peak_start_points))
