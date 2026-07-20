@@ -2,13 +2,12 @@ from datetime import datetime
 
 import numpy as np
 import pytest
+from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.image import ImageSeries
 from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 from scipy.io import savemat
-
-from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation
 
 from neuroconv.datainterfaces import DANNCEInterface
 
@@ -649,9 +648,7 @@ class TestDANNCEInterfaceConversion:
         assert_array_equal(camera1.intrinsic_matrix, camera_calibrations["Camera1"]["intrinsic_matrix"])
         assert_array_equal(camera1.rotation_matrix, camera_calibrations["Camera1"]["rotation_matrix"])
         assert_array_equal(camera1.translation_vector, camera_calibrations["Camera1"]["translation_vector"])
-        assert_array_equal(
-            camera1.distortion_coefficients, camera_calibrations["Camera1"]["distortion_coefficients"]
-        )
+        assert_array_equal(camera1.distortion_coefficients, camera_calibrations["Camera1"]["distortion_coefficients"])
 
         assert not isinstance(camera2, CalibratedCamera)
         assert type(camera2).__name__ == "Device"
