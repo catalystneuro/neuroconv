@@ -295,18 +295,17 @@ class TestDANNCEInterfaceMetadata:
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
         metadata = interface.get_metadata()
 
-        assert "PoseEstimation" in metadata
-        pe = metadata["PoseEstimation"]
-        assert "Skeletons" in pe
-        assert "Devices" in pe
-        assert "PoseEstimationContainers" in pe
+        assert "Devices" in metadata
+        pose = metadata["Behavior"]["Pose"]
+        assert "Skeletons" in pose
+        assert "PoseEstimations" in pose
 
     def test_metadata_dannce_defaults(self, dannce_mat_file):
         file_path, _, n_landmarks, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
         metadata = interface.get_metadata()
 
-        container = metadata["PoseEstimation"]["PoseEstimationContainers"]["PoseEstimationDANNCE"]
+        container = metadata["Behavior"]["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
         assert container["source_software"] == "DANNCE"
         assert container["name"] == "PoseEstimationDANNCE"
 
@@ -318,12 +317,10 @@ class TestDANNCEInterfaceMetadata:
 
     def test_metadata_custom_key(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(
-            file_path=file_path, sampling_rate=30.0, pose_estimation_metadata_key="CustomDANNCE"
-        )
+        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, metadata_key="CustomDANNCE")
         metadata = interface.get_metadata()
 
-        assert "CustomDANNCE" in metadata["PoseEstimation"]["PoseEstimationContainers"]
+        assert "CustomDANNCE" in metadata["Behavior"]["Pose"]["PoseEstimations"]
 
 
 class TestDANNCEInterfaceCalibration:
@@ -660,7 +657,7 @@ class TestDANNCEInterfaceConversion:
             animal_index=1,
             sampling_rate=30.0,
             subject_name="rat2",
-            pose_estimation_metadata_key="PoseEstimationRat2",
+            metadata_key="PoseEstimationRat2",
         )
 
         nwbfile = NWBFile(
@@ -670,7 +667,7 @@ class TestDANNCEInterfaceConversion:
         )
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
-        pe = nwbfile.processing["behavior"][interface.pose_estimation_metadata_key]
+        pe = nwbfile.processing["behavior"][interface.metadata_key]
         assert len(pe.pose_estimation_series) == n_landmarks
 
         landmark_names = [f"landmark_{i}" for i in range(n_landmarks)]
@@ -701,14 +698,14 @@ class TestDANNCEInterfaceConversion:
             animal_index=0,
             sampling_rate=30.0,
             subject_name="rat1",
-            pose_estimation_metadata_key="PoseEstimationRat1",
+            metadata_key="PoseEstimationRat1",
         )
         interface_animal1 = DANNCEInterface(
             file_path=file_path,
             animal_index=1,
             sampling_rate=30.0,
             subject_name="rat2",
-            pose_estimation_metadata_key="PoseEstimationRat2",
+            metadata_key="PoseEstimationRat2",
         )
 
         interface_animal0.add_to_nwbfile(nwbfile=nwbfile)
@@ -733,7 +730,7 @@ class TestDANNCEInterfaceConversion:
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
 
         metadata = interface.get_metadata()
-        container = metadata["PoseEstimation"]["PoseEstimationContainers"]["PoseEstimationDANNCE"]
+        container = metadata["Behavior"]["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
         container["description"] = "3D keypoint coordinates estimated using sDANNCE (social DANNCE)."
         container["source_software"] = "sDANNCE"
         container["scorer"] = "sDANNCE"
