@@ -1042,8 +1042,8 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
     def get_metadata(self) -> DeepDict:
         """Get metadata for the mock pose estimation interface in the dict-based shape.
 
-        Returns metadata with top-level ``metadata["Devices"]`` and the pose sub-modality at
-        ``metadata["Behavior"]["Pose"]`` holding ``Skeletons`` and ``PoseEstimations`` registries,
+        Returns metadata with top-level ``metadata["Devices"]`` and the top-level pose modality at
+        ``metadata["Pose"]`` holding ``Skeletons`` and ``PoseEstimations`` registries,
         all keyed by ``self.metadata_key`` and cross-referenced via ``device_metadata_key`` and
         ``skeleton_metadata_key``.
         """
@@ -1072,27 +1072,25 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
                 "description": "Mock camera device for pose estimation testing.",
             }
         }
-        metadata["Behavior"] = {
-            "Pose": {
-                "Skeletons": {
-                    self.metadata_key: {
-                        "name": skeleton_name,
-                        "nodes": self.nodes,
-                        "edges": self.edges.tolist(),
-                    },
+        metadata["Pose"] = {
+            "Skeletons": {
+                self.metadata_key: {
+                    "name": skeleton_name,
+                    "nodes": self.nodes,
+                    "edges": self.edges.tolist(),
                 },
-                "PoseEstimations": {
-                    self.metadata_key: {
-                        "name": container_name,
-                        "description": f"Mock pose estimation data from {self.source_software}.",
-                        "source_software": self.source_software,
-                        "scorer": self.scorer,
-                        "dimensions": [[640, 480]],
-                        "original_videos": ["mock_video.mp4"],
-                        "device_metadata_key": self.metadata_key,
-                        "skeleton_metadata_key": self.metadata_key,
-                        "PoseEstimationSeries": pose_estimation_series_entries,
-                    },
+            },
+            "PoseEstimations": {
+                self.metadata_key: {
+                    "name": container_name,
+                    "description": f"Mock pose estimation data from {self.source_software}.",
+                    "source_software": self.source_software,
+                    "scorer": self.scorer,
+                    "dimensions": [[640, 480]],
+                    "original_videos": ["mock_video.mp4"],
+                    "device_metadata_key": self.metadata_key,
+                    "skeleton_metadata_key": self.metadata_key,
+                    "PoseEstimationSeries": pose_estimation_series_entries,
                 },
             },
         }
@@ -1106,7 +1104,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
-        pose_metadata = metadata["Behavior"]["Pose"]
+        pose_metadata = metadata["Pose"]
         container_entry = pose_metadata["PoseEstimations"][self.metadata_key]
 
         behavior_module = get_module(nwbfile, "behavior")
