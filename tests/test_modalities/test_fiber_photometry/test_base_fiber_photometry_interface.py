@@ -1,14 +1,33 @@
 """Data-free tests of the shared fiber photometry writer, driven by ``MockFiberPhotometryInterface``."""
 
-import pytest
+from datetime import datetime, timezone
+
+import numpy as np
 from jsonschema.validators import Draft7Validator
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
 
+from neuroconv.tools.testing.data_interface_mixins import (
+    FiberPhotometryInterfaceTestMixin,
+)
 from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
 
 
-class TestMockFiberPhotometryInterface:
+class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
+    data_interface_cls = MockFiberPhotometryInterface
+    interface_kwargs = dict()
+    conversion_options = dict(stub_test=True, stub_samples=3)
+
+    # Hand-supplied, not read back from the interface: the mock's two seeded standard-normal traces.
+    expected_response_series_data = np.array(
+        [
+            [0.1257302210933933, 0.345584192064786],
+            [-0.1321048632913019, 0.8216181435011584],
+            [0.6404226504432821, 0.33043707618338714],
+        ]
+    )
+    expected_rate = 100.0
+    expected_starting_time = 0.0
+
     def test_get_metadata_adds_no_provenance(self):
         # The mock contributes only a session start time: location, wavelengths and the indicator label
         # describe a preparation a synthetic source does not have, so they are left to the user. What is
@@ -17,18 +36,11 @@ class TestMockFiberPhotometryInterface:
         Draft7Validator.check_schema(interface.get_metadata_schema())
 
         metadata = interface.get_metadata()
-        assert metadata["NWBFile"]["session_start_time"].year == 2020
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 1, 1, tzinfo=timezone.utc)
 
         rows = metadata["FiberPhotometry"]["FiberPhotometryTable"]["rows"]
         assert all(row["location"] == "PLACEHOLDER" for row in rows.values())
         assert metadata["FiberPhotometry"]["FiberPhotometryIndicators"]["indicator"]["label"] == "PLACEHOLDER"
-
-    def test_default_metadata_warns_about_placeholders(self):
-        # Nothing fills the base scaffold's sentinels, so a default conversion warns like any real
-        # interface would. PR B removes the scaffold and this warning with it.
-        interface = MockFiberPhotometryInterface()
-        with pytest.warns(UserWarning, match="placeholder"):
-            interface.create_nwbfile()
 
     def test_metadata_key_override(self):
         # An explicit metadata_key names the response-series entry instead of the stream-derived default.
@@ -36,12 +48,42 @@ class TestMockFiberPhotometryInterface:
         assert interface.metadata_key == "my_series"
         assert "my_series" in interface.get_metadata()["FiberPhotometry"]
 
+    def test_channel_order_follows_stream_names(self):
+        # Which channel a stream lands on is positional: np.concatenate(axis=1) preserves stream_names
+        # order, and nothing downstream re-derives it, so the table region has to line up by position.
+        interface = MockFiberPhotometryInterface(stream_names=["first", "second", "third"])
+        data = interface._read_response_data()
+
+        assert data.shape == (100, 3)
+        for index, stream_name in enumerate(interface.stream_names):
+            assert_array_equal(data[:, index], interface._get_stream_data(stream_name=stream_name))
+
+    def test_stream_indices_select_and_reorder_channels(self):
+        # stream_indices selects a subset of the stacked columns *and* reorders them; here the third
+        # stream is written first and the second is dropped entirely.
+        interface = MockFiberPhotometryInterface(stream_names=["first", "second", "third"], stream_indices=[2, 0])
+        data = interface._read_response_data()
+
+        assert data.shape == (100, 2)
+        assert_array_equal(data[:, 0], interface._get_stream_data(stream_name="third"))
+        assert_array_equal(data[:, 1], interface._get_stream_data(stream_name="first"))
+
     def test_single_stream_collapses_to_one_channel(self):
-        # A single stream exercises the base's shape[1] == 1 collapse, giving a 1-D series.
+        # A lone column is written as a 1-D series rather than an (N, 1) one.
         interface = MockFiberPhotometryInterface(stream_names="signal")
         nwbfile = interface.create_nwbfile()
 
         assert nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100,)
+
+    def test_timing_comes_from_the_primary_stream(self):
+        # Multi-stream writes one timestamps vector taken from stream_names[0], so every stream is
+        # assumed to share that timebase; nothing checks that assumption.
+        interface = MockFiberPhotometryInterface(stream_names=["first", "second"])
+
+        assert_array_equal(
+            interface.get_original_timestamps(),
+            interface._get_stream_timestamps(stream_name="first"),
+        )
 
     def test_table_comes_from_user_metadata(self):
         # The complement of the above: supplying a table row per stream is the user's job, and doing so
@@ -70,17 +112,3 @@ class TestMockFiberPhotometryInterface:
         table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
         assert len(table) == 2
         assert nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100, 2)
-
-    def test_round_trip(self, tmp_path):
-        # The mock's reason for existing: a fiber photometry file that writes and reads back with no data
-        # on disk, so the ndx-fiber-photometry write/read path is covered without gin fixtures.
-        interface = MockFiberPhotometryInterface(seed=1)
-        expected_data = interface._read_response_data()
-
-        nwbfile_path = tmp_path / "mock_fiber_photometry.nwb"
-        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
-
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            series = nwbfile.acquisition["FiberPhotometryResponseSeries"]
-            assert_array_equal(series.data[:], expected_data)

@@ -389,6 +389,7 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         sampling_rate: float = 100.0,
         seed: int = 0,
         metadata_key: str | None = None,
+        stream_indices: list[int] | None = None,
         verbose: bool = False,
     ):
         """Initialize a mock fiber photometry interface.
@@ -396,8 +397,7 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         Parameters
         ----------
         stream_names : str or list of str, default: ("signal", "control")
-            One name per fiber; each becomes a ``FiberPhotometryTable`` row and a channel of the
-            response series.
+            One name per fiber; each becomes a channel of the response series.
         num_samples : int, default: 100
             Number of samples in the synthetic response series.
         sampling_rate : float, default: 100.0
@@ -406,6 +406,9 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
             Seed for the synthetic data.
         metadata_key : str, optional
             Override the response-series metadata key (default derived from ``stream_names``).
+        stream_indices : list of int, optional
+            Column indices selecting (and reordering) which channels of the column-stacked stream data
+            to keep. ``None`` (default) keeps all of them in ``stream_names`` order.
         verbose : bool, default: False
             Whether to print status messages.
         """
@@ -413,7 +416,12 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         self._num_samples = int(num_samples)
         self._sampling_rate = float(sampling_rate)
         self._seed = int(seed)
-        super().__init__(stream_names=stream_name_list, metadata_key=metadata_key, verbose=verbose)
+        super().__init__(
+            stream_names=stream_name_list,
+            metadata_key=metadata_key,
+            stream_indices=stream_indices,
+            verbose=verbose,
+        )
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         # Deterministic per-stream synthetic trace (a distinct seed per stream so channels differ).
