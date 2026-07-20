@@ -6,6 +6,7 @@ from hdmf.common import MeaningsTable
 from pynwb.event import EventsTable
 from pynwb.file import NWBFile
 
+from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
 from ...utils import to_camel_case
 
@@ -89,6 +90,24 @@ class BaseEventsInterface(BaseDataInterface):
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
         # coerced once even though get_metadata, add_to_nwbfile, and alignment all read it.
         self._events_data_dict = None
+        # Alignment state by composition: the interface holds the offset applied to its event times at write,
+        # rather than inheriting the array-shaped BaseTemporalAlignmentInterface contract, which does not fit
+        # events. Private and minimal (offset + shift) for now; see neuroconv/_temporal_alignment.py.
+        self._alignment = _TemporalAlignment()
+
+    def shift_times(self, delta: float) -> None:
+        """Shift every event time in this interface by ``delta`` seconds (gross alignment).
+
+        Relative and rigid: repeated calls accumulate, and the spacing between events (and their durations)
+        is preserved. The offset is applied lazily at write, so the internal representation stays in the
+        source clock.
+
+        Parameters
+        ----------
+        delta : float
+            The number of seconds to add to every event time.
+        """
+        self._alignment.shift(delta)
 
     @abstractmethod
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
@@ -294,6 +313,11 @@ class BaseEventsInterface(BaseDataInterface):
         event_types = metadata["Events"][self.metadata_key]["event_types"]
         event_data = self._get_events_data_dict()
 
+        # Apply the alignment offset here (lazily, at write): every written timestamp is native + offset, so
+        # the cached internal representation stays in the source clock. A shift is rigid, so durations are
+        # left unchanged.
+        time_offset = self._alignment.offset
+
         # Flatten this interface's types into rows (timestamp, event_name, duration, cells) and collect the
         # value-column specs keyed by column_name.
         rows = []
@@ -321,7 +345,7 @@ class BaseEventsInterface(BaseDataInterface):
                     value = event.payload[field_source_id][index]
                     cells[column_name] = labels_map[str(value)] if labels_map is not None else value
                 duration = float(event.durations[index]) if event.durations is not None else np.nan
-                rows.append((float(timestamp), event_name, duration, cells))
+                rows.append((float(timestamp) + time_offset, event_name, duration, cells))
 
         n_existing = len(table.id)
         has_duration = any(event_data[source_id].durations is not None for source_id in event_type_source_ids)
