@@ -19,11 +19,13 @@ returns a complete, realistic template, and edit the fields to match your experi
 Start From a Complete Example
 -----------------------------
 
-``get_example_metadata()`` returns a fully specified metadata dictionary with realistic placeholder values.
+``get_example_metadata()`` returns a fully specified metadata dictionary with realistic example values.
 The example describes a common two-channel setup — a calcium-dependent signal and an isosbestic control —
 so construct the interface with one stream per channel.
 
 .. code-block:: python
+
+    import yaml
 
     from neuroconv.datainterfaces import DoricFiberPhotometryInterface
 
@@ -35,19 +37,97 @@ so construct the interface with one stream per channel.
     # A complete, editable template with realistic values (not read from your file).
     metadata = interface.get_example_metadata()
 
-    # The template is organized into a few linked pieces:
-    # - metadata["DeviceModels"]            -> the model/specifications of each device
-    # - metadata["Devices"]                 -> the physical device instances, each linked to a model
-    # - metadata["FiberPhotometry"]["FiberPhotometryIndicators"] -> the indicator(s)
-    # - metadata["FiberPhotometry"]["FiberPhotometryTable"]["rows"] -> one row per recorded channel
-    # - metadata["FiberPhotometry"][interface.metadata_key]        -> this interface's response series
+    # Inspect the fiber photometry structure. The interface also fills standard NWBFile fields (omitted here).
+    fiber_photometry_structure = {key: metadata[key] for key in ("DeviceModels", "Devices", "FiberPhotometry")}
+    print(yaml.dump(fiber_photometry_structure, sort_keys=False))
 
-The pieces reference each other by key. Each ``FiberPhotometryTable`` row points at the hardware and indicator
-that produced it through ``*_metadata_key`` fields (``optical_fiber_metadata_key``,
-``excitation_source_metadata_key``, ``photodetector_metadata_key``, ``indicator_metadata_key``), each device
-points at its model through ``device_model_metadata_key``, and the response series points at its rows through
-``fiber_photometry_table_region``. Because of this wiring, you edit each thing in exactly one place: changing
-``metadata["Devices"]["optical_fiber"]`` updates every row that names ``optical_fiber``.
+This prints the full structure you will edit:
+
+.. code-block:: yaml
+
+    DeviceModels:
+      optical_fiber_model:
+        type: OpticalFiberModel
+        name: optical_fiber_model
+        manufacturer: Doric Lenses
+        numerical_aperture: 0.48
+      excitation_source_model:
+        type: ExcitationSourceModel
+        name: excitation_source_model
+        manufacturer: Doric Lenses
+        source_type: LED
+        excitation_mode: one-photon
+      photodetector_model:
+        type: PhotodetectorModel
+        name: photodetector_model
+        manufacturer: Doric Lenses
+        detector_type: photodiode
+    Devices:
+      optical_fiber:
+        type: OpticalFiber
+        name: optical_fiber
+        device_model_metadata_key: optical_fiber_model
+        fiber_insertion:
+          depth_in_mm: 4.0
+          insertion_position_ap_in_mm: 3.0
+      excitation_source_calcium_signal:
+        type: ExcitationSource
+        name: excitation_source_calcium_signal
+        device_model_metadata_key: excitation_source_model
+      excitation_source_isosbestic_control:
+        type: ExcitationSource
+        name: excitation_source_isosbestic_control
+        device_model_metadata_key: excitation_source_model
+      photodetector:
+        type: Photodetector
+        name: photodetector
+        device_model_metadata_key: photodetector_model
+    FiberPhotometry:
+      fiber_photometry_signal_isosbestic:
+        name: FiberPhotometryResponseSeries
+        description: Fiber photometry response series.
+        unit: a.u.
+        fiber_photometry_table_region:
+        - calcium_signal
+        - isosbestic_control
+        fiber_photometry_table_region_description: The calcium-dependent signal and isosbestic
+          control channels recorded from the optical fiber.
+      FiberPhotometryIndicators:
+        indicator:
+          name: indicator
+          label: GCaMP6s
+      FiberPhotometryTable:
+        name: fiber_photometry_table
+        description: Each row describes a single fiber photometry channel, linking it
+          to the optical fiber, excitation source, photodetector, and indicator used to
+          acquire it.
+        rows:
+          calcium_signal:
+            location: VTA
+            excitation_wavelength_in_nm: 470.0
+            emission_wavelength_in_nm: 525.0
+            indicator_metadata_key: indicator
+            optical_fiber_metadata_key: optical_fiber
+            excitation_source_metadata_key: excitation_source_calcium_signal
+            photodetector_metadata_key: photodetector
+          isosbestic_control:
+            location: VTA
+            excitation_wavelength_in_nm: 405.0
+            emission_wavelength_in_nm: 525.0
+            indicator_metadata_key: indicator
+            optical_fiber_metadata_key: optical_fiber
+            excitation_source_metadata_key: excitation_source_isosbestic_control
+            photodetector_metadata_key: photodetector
+
+The pieces reference each other by key, which you can see in the structure above. ``DeviceModels`` and
+``Devices`` are top-level registries: each device names its model through ``device_model_metadata_key``. Under
+``FiberPhotometry``, the ``FiberPhotometryTable`` has one entry in ``rows`` per recorded channel, and each row
+points at the hardware and indicator that produced it through the ``*_metadata_key`` fields
+(``optical_fiber_metadata_key``, ``excitation_source_metadata_key``, ``photodetector_metadata_key``,
+``indicator_metadata_key``). The response series entry — keyed by ``interface.metadata_key`` (here
+``fiber_photometry_signal_isosbestic``, derived from the stream names) — points at its rows through
+``fiber_photometry_table_region``. Because everything is referenced by key, you edit each item in exactly one
+place: changing ``metadata["Devices"]["optical_fiber"]`` updates every row that names ``optical_fiber``.
 
 
 Edit the Metadata
@@ -104,6 +184,3 @@ Pass the edited metadata to the conversion.
         nwbfile_path="fiber_photometry.nwb",
         metadata=metadata,
     )
-
-To build the NWB file in memory instead of writing it to disk (for example, to add more data before saving),
-use ``interface.create_nwbfile(metadata=metadata)``.
