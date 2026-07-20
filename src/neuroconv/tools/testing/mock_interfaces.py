@@ -389,7 +389,6 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         sampling_rate: float = 100.0,
         seed: int = 0,
         metadata_key: str | None = None,
-        stream_indices: list[int] | None = None,
         verbose: bool = False,
     ):
         """Initialize a mock fiber photometry interface.
@@ -406,9 +405,6 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
             Seed for the synthetic data.
         metadata_key : str, optional
             Override the response-series metadata key (default derived from ``stream_names``).
-        stream_indices : list of int, optional
-            Column indices selecting (and reordering) which channels of the column-stacked stream data
-            to keep. ``None`` (default) keeps all of them in ``stream_names`` order.
         verbose : bool, default: False
             Whether to print status messages.
         """
@@ -416,12 +412,7 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         self._num_samples = int(num_samples)
         self._sampling_rate = float(sampling_rate)
         self._seed = int(seed)
-        super().__init__(
-            stream_names=stream_name_list,
-            metadata_key=metadata_key,
-            stream_indices=stream_indices,
-            verbose=verbose,
-        )
+        super().__init__(stream_names=stream_name_list, metadata_key=metadata_key, verbose=verbose)
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         # Deterministic per-stream synthetic trace (a distinct seed per stream so channels differ).

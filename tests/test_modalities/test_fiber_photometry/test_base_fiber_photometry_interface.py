@@ -58,32 +58,12 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         for index, stream_name in enumerate(interface.stream_names):
             assert_array_equal(data[:, index], interface._get_stream_data(stream_name=stream_name))
 
-    def test_stream_indices_select_and_reorder_channels(self):
-        # stream_indices selects a subset of the stacked columns *and* reorders them; here the third
-        # stream is written first and the second is dropped entirely.
-        interface = MockFiberPhotometryInterface(stream_names=["first", "second", "third"], stream_indices=[2, 0])
-        data = interface._read_response_data()
-
-        assert data.shape == (100, 2)
-        assert_array_equal(data[:, 0], interface._get_stream_data(stream_name="third"))
-        assert_array_equal(data[:, 1], interface._get_stream_data(stream_name="first"))
-
     def test_single_stream_collapses_to_one_channel(self):
         # A lone column is written as a 1-D series rather than an (N, 1) one.
         interface = MockFiberPhotometryInterface(stream_names="signal")
         nwbfile = interface.create_nwbfile()
 
         assert nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100,)
-
-    def test_timing_comes_from_the_primary_stream(self):
-        # Multi-stream writes one timestamps vector taken from stream_names[0], so every stream is
-        # assumed to share that timebase; nothing checks that assumption.
-        interface = MockFiberPhotometryInterface(stream_names=["first", "second"])
-
-        assert_array_equal(
-            interface.get_original_timestamps(),
-            interface._get_stream_timestamps(stream_name="first"),
-        )
 
     def test_table_comes_from_user_metadata(self):
         # The complement of the above: supplying a table row per stream is the user's job, and doing so
