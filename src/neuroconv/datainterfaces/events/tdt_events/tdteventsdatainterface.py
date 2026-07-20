@@ -9,39 +9,6 @@ from ..baseeventsinterface import BaseEventsInterface, _EventsData
 from ...fiber_photometry.tdt._tdt_mixin import TDTLoadMixin
 
 
-def _offset_is_synthesized(onset: np.ndarray, offset: np.ndarray) -> bool:
-    """Return whether the epoc's ``offset`` array is a synthesized fill rather than real falling edges.
-
-    TDT fills onset-only epocs with ``offset = np.append(onset[1:], inf)`` (see ``tdt/TDTbin2py.py``,
-    where ``header.stores[var_name].offset = np.append(ts[1:], np.inf)``). A genuine paired
-    "buddy" offset store overwrites this with real falling-edge timestamps, which cannot reproduce
-    ``offset[i] == onset[i + 1]`` for every ``i``. Detecting the fill is therefore an exact
-    structural check, not a tolerance heuristic.
-    """
-    return len(offset) > 0 and np.isinf(offset[-1]) and np.array_equal(offset[:-1], onset[1:])
-
-
-def _data_is_counter(data: np.ndarray) -> bool:
-    """Return whether the epoc's ``data`` array is a meaningless incrementing index.
-
-    Onset-only epocs store a sequential counter (``0..N-1`` or ``1..N``) as their ``data``; a real
-    strobe carries meaningful codes (e.g. the ``[16, 2064, 0]`` cycle of the ``PAB_`` store) that do
-    not form an arithmetic sequence.
-    """
-    n = len(data)
-    return n > 0 and np.array_equal(data, np.arange(data[0], data[0] + n))
-
-
-def _normalize_strobe_value(value: float) -> int | float:
-    """Normalize a raw strobe value to a clean scalar for use as a label-map key.
-
-    Strobe codes are integer-valued floats in the TDT data (e.g. ``16.0``); cast those to ``int`` so
-    the seeded ``labels`` map reads as ``{16: "16"}`` rather than ``{16.0: "16.0"}``.
-    """
-    value = float(value)
-    return int(value) if value.is_integer() else value
-
-
 class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
     """Data Interface for converting discrete events (epocs) from a TDT output folder.
 
@@ -53,7 +20,7 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
     so only the onsets are written (a timestamp-only table). A store whose ``data`` carries real
     strobe codes (e.g. the ``PAB_`` store's ``[16, 2064, 0]`` cycle) additionally gets a categorical
     ``strobe`` column, with the codes as per-event labels. The ``offset`` array of an onset-type epoc
-    is a synthesized fill (``offset[i] == onset[i + 1]``, last value ``inf``) and is not written.
+    is derived from the onsets (``offset[i] == onset[i + 1]``, last value ``inf``) and is not written.
     Epocs that carry real offset (STROFF) durations are written as durative events, with each event's
     duration (``offset`` minus ``onset``) in the table's ``duration`` column.
     """
@@ -165,10 +132,10 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
             if len(onset) == 0:
                 continue  # an epoc with no onsets is not a writable event type; skip it (matches get_metadata)
 
-            # An onset-only epoc's offset is a synthesized fill carrying no information, so the type is
-            # timestamp-only (durations left None). A durative (STROFF) epoc has real falling edges,
+            # An onset-only epoc's offset is derived from the onsets, carrying no information, so the type
+            # is timestamp-only (durations left None). A durative (STROFF) epoc has real falling edges,
             # written as per-event durations (offset minus onset).
-            if _offset_is_synthesized(onset, offset):
+            if _offset_is_derived_from_onset(onset, offset):
                 durations = None
             else:
                 durations = offset - onset
@@ -184,3 +151,37 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
 
         self._events_data_dict = events_data_dict
         return self._events_data_dict
+
+
+def _offset_is_derived_from_onset(onset: np.ndarray, offset: np.ndarray) -> bool:
+    """Return whether the epoc's ``offset`` array is derived from ``onset`` rather than real falling edges.
+
+    TDT fills onset-only epocs with ``offset = np.append(onset[1:], inf)`` (see ``tdt/TDTbin2py.py``,
+    where ``header.stores[var_name].offset = np.append(ts[1:], np.inf)``). Those bytes are really
+    written, but they are fully determined by ``onset`` and carry no information of their own. A
+    genuine paired "buddy" offset store overwrites them with real falling-edge timestamps, which
+    cannot reproduce ``offset[i] == onset[i + 1]`` for every ``i``. Detecting the derived form is
+    therefore an exact structural check, not a tolerance heuristic.
+    """
+    return len(offset) > 0 and np.isinf(offset[-1]) and np.array_equal(offset[:-1], onset[1:])
+
+
+def _data_is_counter(data: np.ndarray) -> bool:
+    """Return whether the epoc's ``data`` array is a meaningless incrementing index.
+
+    Onset-only epocs store a sequential counter (``0..N-1`` or ``1..N``) as their ``data``; a real
+    strobe carries meaningful codes (e.g. the ``[16, 2064, 0]`` cycle of the ``PAB_`` store) that do
+    not form an arithmetic sequence.
+    """
+    n = len(data)
+    return n > 0 and np.array_equal(data, np.arange(data[0], data[0] + n))
+
+
+def _normalize_strobe_value(value: float) -> int | float:
+    """Normalize a raw strobe value to a clean scalar for use as a label-map key.
+
+    Strobe codes are integer-valued floats in the TDT data (e.g. ``16.0``); cast those to ``int`` so
+    the seeded ``labels`` map reads as ``{16: "16"}`` rather than ``{16.0: "16.0"}``.
+    """
+    value = float(value)
+    return int(value) if value.is_integer() else value
