@@ -27,6 +27,7 @@ from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
+from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
 from neuroconv.tools.nwb_helpers import (
     configure_backend,
     get_default_backend_configuration,
@@ -1571,8 +1572,8 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
 
     def _check_fiber_photometry_table(self, nwbfile, fiber_photometry_metadata: dict):
         """One table row per metadata row, with the per-row scalar fields matching the metadata."""
-        assert "fiber_photometry" in nwbfile.lab_meta_data
-        table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+        table = get_fiber_photometry_table(nwbfile)
+        assert table is not None
         rows_metadata = list(fiber_photometry_metadata["FiberPhotometryTable"]["rows"].values())
         assert len(table) == len(rows_metadata)
         for row_index, row_metadata in enumerate(rows_metadata):
