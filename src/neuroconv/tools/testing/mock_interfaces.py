@@ -376,21 +376,15 @@ class MockEventsInterface(BaseEventsInterface):
 class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
     """A mock acquisition fiber photometry interface backed by synthetic data.
 
-    Writes one ``FiberPhotometryResponseSeries`` plus the shared devices, an indicator, and a
-    fully-populated (non-placeholder) ``FiberPhotometryTable`` with one row per stream, so it works
-    standalone (``create_nwbfile`` / ``run_conversion``) and can stand in for a real acquisition
-    interface -- e.g. to supply the ``FiberPhotometryTable`` a derived, non-standalone interface (such
-    as ``GuppyInterface``) requires.
+    Writes one ``FiberPhotometryResponseSeries`` from a synthetic trace, so the
+    ``ndx-fiber-photometry`` write/read path is exercised with no data on disk.
+
     """
 
     def __init__(
         self,
         *,
         stream_names: str | list[str] = ("signal", "control"),
-        excitation_wavelengths_in_nm: tuple[float, ...] = (465.0, 405.0),
-        emission_wavelength_in_nm: float = 525.0,
-        location: str = "unknown",
-        indicator_label: str = "GCaMP",
         num_samples: int = 100,
         sampling_rate: float = 100.0,
         seed: int = 0,
@@ -404,15 +398,6 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         stream_names : str or list of str, default: ("signal", "control")
             One name per fiber; each becomes a ``FiberPhotometryTable`` row and a channel of the
             response series.
-        excitation_wavelengths_in_nm : tuple of float, default: (465.0, 405.0)
-            Excitation wavelength for each stream (same length as ``stream_names``); the default pairs
-            an excitation-signal fiber with an isosbestic-control fiber.
-        emission_wavelength_in_nm : float, default: 525.0
-            Emission wavelength shared by every row.
-        location : str, default: "unknown"
-            Anatomical location written to every table row.
-        indicator_label : str, default: "GCaMP"
-            Label of the single indicator.
         num_samples : int, default: 100
             Number of samples in the synthetic response series.
         sampling_rate : float, default: 100.0
@@ -425,15 +410,6 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
             Whether to print status messages.
         """
         stream_name_list = [stream_names] if isinstance(stream_names, str) else list(stream_names)
-        if len(excitation_wavelengths_in_nm) != len(stream_name_list):
-            raise ValueError(
-                f"excitation_wavelengths_in_nm has {len(excitation_wavelengths_in_nm)} entries but there "
-                f"are {len(stream_name_list)} stream(s); they must match one-to-one."
-            )
-        self._excitation_wavelengths_in_nm = tuple(float(value) for value in excitation_wavelengths_in_nm)
-        self._emission_wavelength_in_nm = float(emission_wavelength_in_nm)
-        self._location = location
-        self._indicator_label = indicator_label
         self._num_samples = int(num_samples)
         self._sampling_rate = float(sampling_rate)
         self._seed = int(seed)
@@ -449,33 +425,9 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         return np.arange(self._num_samples, dtype="float64") / self._sampling_rate
 
     def get_metadata(self) -> DeepDict:
-        """Fill the default scaffold's placeholders with real values and one table row per stream."""
+        """Return the base metadata with a fixed session start time; no fiber photometry provenance."""
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, tzinfo=timezone.utc)
-
-        fiber_photometry_metadata = metadata["FiberPhotometry"]
-        fiber_photometry_metadata["FiberPhotometryIndicators"]["indicator"]["label"] = self._indicator_label
-
-        table_metadata = fiber_photometry_metadata["FiberPhotometryTable"]
-        table_metadata["description"] = "Mock acquisition fiber photometry table."
-        rows = {}
-        for index, excitation_wavelength_in_nm in enumerate(self._excitation_wavelengths_in_nm):
-            rows[f"row{index}"] = dict(
-                location=self._location,
-                excitation_wavelength_in_nm=excitation_wavelength_in_nm,
-                emission_wavelength_in_nm=self._emission_wavelength_in_nm,
-                indicator_metadata_key="indicator",
-                optical_fiber_metadata_key="optical_fiber",
-                excitation_source_metadata_key="excitation_source",
-                photodetector_metadata_key="photodetector",
-            )
-        table_metadata["rows"] = rows
-
-        series_metadata = fiber_photometry_metadata[self.metadata_key]
-        series_metadata["name"] = "FiberPhotometryResponseSeries"
-        series_metadata["description"] = "Mock fiber photometry response series."
-        series_metadata["fiber_photometry_table_region"] = list(rows)
-        series_metadata["fiber_photometry_table_region_description"] = "Mock fibers."
         return metadata
 
 
