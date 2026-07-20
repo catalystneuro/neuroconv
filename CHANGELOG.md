@@ -49,6 +49,7 @@
 
 ## Features
 * `BaseEventsInterface` now supports gross temporal alignment via `shift_times(delta)`, which offsets every event time by `delta` seconds to position an events interface on the shared session clock. The offset is applied at write, leaving durations unchanged, and the source times are never mutated. Implemented by composition (the interface holds a small private alignment component) rather than inheriting `BaseTemporalAlignmentInterface`, whose single-timestamp-array contract does not fit events. [PR #1795](https://github.com/catalystneuro/neuroconv/pull/1795)
+* Added `_GuppyInterface` for converting [GuPPy](https://github.com/LernerLab/GuPPy) processed fiber photometry outputs, depending on the [`ndx-guppy`](https://github.com/catalystneuro/ndx-guppy) extension. [PR #965](https://github.com/catalystneuro/neuroconv/pull/965)
 * `TDTEventsInterface` now supports events that have a duration, writing each event's duration to the `EventsTable` `duration` column, instead of raising. [PR #1781](https://github.com/catalystneuro/neuroconv/pull/1781)
 * Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
 * Added support for device models via top-level `metadata["DeviceModels"]` and `metadata["Devices"]` registries. [PR #1780](https://github.com/catalystneuro/neuroconv/pull/1780)
