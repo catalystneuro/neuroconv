@@ -176,9 +176,14 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 device_model_metadata_key="optical_fiber_model",
                 fiber_insertion=dict(depth_in_mm=4.0, insertion_position_ap_in_mm=3.0),
             ),
-            excitation_source=dict(
+            excitation_source_calcium_signal=dict(
                 type="ExcitationSource",
-                name="excitation_source",
+                name="excitation_source_calcium_signal",
+                device_model_metadata_key="excitation_source_model",
+            ),
+            excitation_source_isosbestic_control=dict(
+                type="ExcitationSource",
+                name="excitation_source_isosbestic_control",
                 device_model_metadata_key="excitation_source_model",
             ),
             photodetector=dict(
@@ -191,23 +196,37 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             FiberPhotometryIndicators=dict(indicator=dict(name="indicator", label="GCaMP6s")),
             FiberPhotometryTable=dict(
                 name="fiber_photometry_table",
-                description="Fiber photometry table describing the recorded fibers.",
+                description=(
+                    "Each row describes a single fiber photometry channel, linking it to the optical fiber, "
+                    "excitation source, photodetector, and indicator used to acquire it."
+                ),
                 rows=dict(
-                    row0=dict(
+                    calcium_signal=dict(
                         location="VTA",
                         excitation_wavelength_in_nm=470.0,
                         emission_wavelength_in_nm=525.0,
                         indicator_metadata_key="indicator",
                         optical_fiber_metadata_key="optical_fiber",
-                        excitation_source_metadata_key="excitation_source",
+                        excitation_source_metadata_key="excitation_source_calcium_signal",
                         photodetector_metadata_key="photodetector",
-                    )
+                    ),
+                    isosbestic_control=dict(
+                        location="VTA",
+                        excitation_wavelength_in_nm=405.0,
+                        emission_wavelength_in_nm=525.0,
+                        indicator_metadata_key="indicator",
+                        optical_fiber_metadata_key="optical_fiber",
+                        excitation_source_metadata_key="excitation_source_isosbestic_control",
+                        photodetector_metadata_key="photodetector",
+                    ),
                 ),
             ),
         )
         fiber_photometry[self.metadata_key] = dict(
-            fiber_photometry_table_region=["row0"],
-            fiber_photometry_table_region_description="The region of the FiberPhotometryTable this series references.",
+            fiber_photometry_table_region=["calcium_signal", "isosbestic_control"],
+            fiber_photometry_table_region_description=(
+                "The calcium-dependent signal and isosbestic control channels recorded from the optical fiber."
+            ),
         )
         example = dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry)
         return dict_deep_update(metadata, example)
