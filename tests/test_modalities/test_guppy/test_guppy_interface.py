@@ -206,7 +206,7 @@ class Test_GuppyInterface:
     def test_metadata_enumerates_all_products(self, interface, case):
         """get_metadata is a full manifest: every product family GuPPy emits appears, each a dict keyed
         by the object's default name."""
-        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"]
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
         assert set(guppy_metadata.keys()) == {
             "ProcessingModule",
             "Traces",
@@ -226,12 +226,12 @@ class Test_GuppyInterface:
 
     def test_metadata_processing_module_includes_guppy_version(self, interface):
         metadata = interface.get_metadata()
-        description = metadata["FiberPhotometry"]["Guppy"]["ProcessingModule"]["description"]
+        description = metadata["FiberPhotometry"]["Guppy"][interface.metadata_key]["ProcessingModule"]["description"]
         assert "(GuPPy version 2.0.0a7)" in description
 
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()
-        guppy_metadata = metadata["FiberPhotometry"]["Guppy"]
+        guppy_metadata = metadata["FiberPhotometry"]["Guppy"][interface.metadata_key]
 
         # Families are dicts keyed by the derived object name.
         expected_trace_names = {
@@ -252,21 +252,29 @@ class Test_GuppyInterface:
         """Every product entry carries exactly the editable name + description (name defaults to the key).
         No internal handles (recording_site, trace_basename, trace_type, recording_site pair, event lists) and no derived
         unit ever appear in the metadata."""
-        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"]
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
         for family in ("Traces", "Transients", "CrossCorrelations", "PSTHs", "PeakAUCs"):
             for name, entry in guppy_metadata[family].items():
                 assert set(entry.keys()) == {"name", "description"}, (family, entry)
                 assert entry["name"] == name  # default name is the key
 
+    def test_metadata_key_defaults_to_output_folder_name(self, interface, case):
+        """With no explicit metadata_key, the block is scoped by the GuPPy output folder's name."""
+        assert interface.metadata_key == case["folder_path"].name
+        guppy_namespace = interface.get_metadata()["FiberPhotometry"]["Guppy"]
+        assert set(guppy_namespace.keys()) == {case["folder_path"].name}
+
     def test_metadata_key_scopes_block_and_edits_propagate(self, case, nwbfile):
-        """A non-default metadata_key scopes the whole block; editing an object's name and description
-        propagates to the written object -- including an event-bearing product (PSTH)."""
+        """A non-default metadata_key scopes the whole block under FiberPhotometry/Guppy; editing an
+        object's name and description propagates to the written object -- including an event-bearing
+        product (PSTH)."""
         interface = _GuppyInterface(folder_path=str(case["folder_path"]), metadata_key="GuppyB")
         metadata = interface.get_metadata()
-        assert "GuppyB" in metadata["FiberPhotometry"]
-        assert "Guppy" not in metadata["FiberPhotometry"]
+        guppy_namespace = metadata["FiberPhotometry"]["Guppy"]
+        assert "GuppyB" in guppy_namespace
+        assert case["folder_path"].name not in guppy_namespace
 
-        guppy_block = metadata["FiberPhotometry"]["GuppyB"]
+        guppy_block = guppy_namespace["GuppyB"]
         trace_tag = next(iter(guppy_block["Traces"]))
         guppy_block["Traces"][trace_tag]["name"] = "renamed_trace"
         guppy_block["Traces"][trace_tag]["description"] = "custom trace description"

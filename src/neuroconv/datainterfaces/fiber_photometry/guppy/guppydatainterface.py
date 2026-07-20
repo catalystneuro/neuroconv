@@ -76,7 +76,7 @@ class _GuppyInterface(BaseDataInterface):
         self,
         folder_path: DirectoryPath,
         *,
-        metadata_key: str = "Guppy",
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """Initialize the _GuppyInterface.
@@ -90,18 +90,19 @@ class _GuppyInterface(BaseDataInterface):
             ``GuPPyParamtersUsed.json`` into this folder, so it is discovered automatically; if
             it is missing the folder is not a valid GuPPy output and construction fails.
         metadata_key : str, optional
-            Key under ``metadata["FiberPhotometry"]`` that scopes everything this interface writes,
-            so two GuPPy interfaces in one conversion do not collide. Default = "Guppy".
+            Key under ``metadata["FiberPhotometry"]["Guppy"]`` that scopes everything this interface
+            writes, so two GuPPy interfaces in one conversion do not collide. Defaults to the GuPPy
+            output folder's name, which is unique per output.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        self.metadata_key = metadata_key
         super().__init__(
             folder_path=folder_path,
             verbose=verbose,
         )
 
         folder_path = Path(folder_path)
+        self.metadata_key = metadata_key if metadata_key is not None else folder_path.name
         stores_list_path = folder_path / "storesList.csv"
         assert (
             stores_list_path.is_file()
@@ -556,7 +557,7 @@ class _GuppyInterface(BaseDataInterface):
                 f"GuPPy-derived fiber photometry processing outputs (GuPPy version {guppy_version})."
             )
 
-        metadata["FiberPhotometry"][self.metadata_key] = dict(
+        metadata["FiberPhotometry"]["Guppy"][self.metadata_key] = dict(
             ProcessingModule=dict(
                 name="fiber_photometry",
                 description=processing_module_description,
@@ -592,7 +593,10 @@ class _GuppyInterface(BaseDataInterface):
         )
         named_collection = dict(type="object", additionalProperties=named_object)
 
-        metadata_schema["properties"]["FiberPhotometry"]["properties"][self.metadata_key] = dict(
+        guppy_namespace_schema = metadata_schema["properties"]["FiberPhotometry"]["properties"].setdefault(
+            "Guppy", get_base_schema(tag="Guppy")
+        )
+        guppy_namespace_schema["properties"][self.metadata_key] = dict(
             type="object",
             additionalProperties=False,
             # The data-dependent families are empty ({}) for sessions that lack those products, which
@@ -649,7 +653,7 @@ class _GuppyInterface(BaseDataInterface):
         nwbfile : NWBFile
             The in-memory NWBFile to add the data to.
         metadata : dict
-            Metadata dictionary; must contain ``metadata["FiberPhotometry"][self.metadata_key]``.
+            Metadata dictionary; must contain ``metadata["FiberPhotometry"]["Guppy"][self.metadata_key]``.
         stub_test : bool, optional
             If True, only a short slice of each large product is written. Default = False.
         always_write_timestamps : bool, optional
@@ -659,7 +663,7 @@ class _GuppyInterface(BaseDataInterface):
         """
         ndx_guppy = get_package(package_name="ndx_guppy", installation_instructions="pip install ndx-guppy")
 
-        guppy_metadata = metadata["FiberPhotometry"][self.metadata_key]
+        guppy_metadata = metadata["FiberPhotometry"]["Guppy"][self.metadata_key]
         processing_module_metadata = guppy_metadata["ProcessingModule"]
         processing_module = get_module(
             nwbfile=nwbfile,
