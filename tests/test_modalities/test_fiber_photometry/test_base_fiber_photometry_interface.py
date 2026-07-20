@@ -1,8 +1,10 @@
 """Data-free tests of the shared fiber photometry writer, driven by ``MockFiberPhotometryInterface``."""
 
+import re
 from datetime import datetime, timezone
 
 import numpy as np
+import pytest
 from jsonschema.validators import Draft7Validator
 from numpy.testing import assert_array_equal
 
@@ -57,6 +59,33 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         assert data.shape == (100, 3)
         for index, stream_name in enumerate(interface.stream_names):
             assert_array_equal(data[:, index], interface._get_stream_data(stream_name=stream_name))
+
+    def test_multi_channel_stream_contributes_one_column_per_channel(self):
+        # A single stream can itself be multi-channel (one acquisition store holding several fibers),
+        # in which case _get_stream_data returns 2-D and skips the np.newaxis promotion entirely.
+        interface = MockFiberPhotometryInterface(stream_names="fibers", channels_per_stream=4)
+        stream_data = interface._get_stream_data(stream_name="fibers")
+        assert stream_data.ndim == 2
+
+        data = interface._read_response_data()
+        assert data.shape == (100, 4)
+        assert_array_equal(data, stream_data)
+
+    def test_mixed_channel_counts_stack_by_total_channels(self):
+        # The realistic multi-fiber layout: a 3-fiber store at one wavelength plus a 1-channel
+        # isosbestic control. Columns total the per-stream channel counts, not the stream count, and
+        # the promoted 1-D stream stacks alongside the 2-D one.
+        interface = MockFiberPhotometryInterface(stream_names=["signal", "control"], channels_per_stream=[3, 1])
+        data = interface._read_response_data()
+
+        assert data.shape == (100, 4)
+        assert_array_equal(data[:, :3], interface._get_stream_data(stream_name="signal"))
+        assert_array_equal(data[:, 3], interface._get_stream_data(stream_name="control"))
+
+    def test_channels_per_stream_length_mismatch_errors(self):
+        expected_error = "channels_per_stream has 3 entries but there are 2 stream(s)"
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            MockFiberPhotometryInterface(stream_names=["a", "b"], channels_per_stream=[1, 2, 3])
 
     def test_single_stream_collapses_to_one_channel(self):
         # A lone column is written as a 1-D series rather than an (N, 1) one.

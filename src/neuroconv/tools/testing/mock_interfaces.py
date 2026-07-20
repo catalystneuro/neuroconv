@@ -385,6 +385,7 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         self,
         *,
         stream_names: str | list[str] = ("signal", "control"),
+        channels_per_stream: int | list[int] = 1,
         num_samples: int = 100,
         sampling_rate: float = 100.0,
         seed: int = 0,
@@ -396,7 +397,12 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         Parameters
         ----------
         stream_names : str or list of str, default: ("signal", "control")
-            One name per fiber; each becomes a channel of the response series.
+            One name per source stream; the streams are column-stacked into the response series.
+        channels_per_stream : int or list of int, default: 1
+            How many channels each stream carries. An ``int`` applies to every stream; a list gives a
+            count per stream, so a multi-fiber store can be mixed with a single-channel one. A stream
+            with one channel reads as a 1-D array, one with several as ``(num_samples, channels)``,
+            which is the shape a real multi-fiber acquisition store returns.
         num_samples : int, default: 100
             Number of samples in the synthetic response series.
         sampling_rate : float, default: 100.0
@@ -409,6 +415,14 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
             Whether to print status messages.
         """
         stream_name_list = [stream_names] if isinstance(stream_names, str) else list(stream_names)
+        if isinstance(channels_per_stream, int):
+            channels_per_stream = [channels_per_stream] * len(stream_name_list)
+        elif len(channels_per_stream) != len(stream_name_list):
+            raise ValueError(
+                f"channels_per_stream has {len(channels_per_stream)} entries but there are "
+                f"{len(stream_name_list)} stream(s); they must match one-to-one."
+            )
+        self._channels_per_stream = [int(count) for count in channels_per_stream]
         self._num_samples = int(num_samples)
         self._sampling_rate = float(sampling_rate)
         self._seed = int(seed)
@@ -418,7 +432,11 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         # Deterministic per-stream synthetic trace (a distinct seed per stream so channels differ).
         index = self.stream_names.index(stream_name)
         rng = np.random.default_rng(self._seed + index)
-        return rng.standard_normal(self._num_samples).astype("float64")
+        num_channels = self._channels_per_stream[index]
+        # Drawing a 1-D array for a single channel (rather than slicing an (N, 1) one) keeps the
+        # default draw identical to the single-channel case.
+        size = self._num_samples if num_channels == 1 else (self._num_samples, num_channels)
+        return rng.standard_normal(size).astype("float64")
 
     def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
         return np.arange(self._num_samples, dtype="float64") / self._sampling_rate
