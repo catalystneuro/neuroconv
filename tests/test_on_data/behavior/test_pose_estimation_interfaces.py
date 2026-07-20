@@ -398,7 +398,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         }
 
         assert metadata["Devices"] == expected_devices
-        assert metadata["Behavior"]["Pose"] == expected_pose_metadata
+        assert metadata["Pose"] == expected_pose_metadata
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Define expected values directly here
