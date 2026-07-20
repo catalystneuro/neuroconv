@@ -41,7 +41,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     "VameProjects": {
                         "VAMEProject": {                       # keyed by metadata_key (default "VAMEProject")
                             "name": "VAMEProject",
-                            "pose_estimation_metadata_key": "DLC",  # optional, -> Behavior/Pose/PoseEstimations
+                            "pose_estimation_metadata_key": "DLC",  # optional, -> Pose/PoseEstimations
                             "video_metadata_key": "video_0",   # optional, -> Behavior/InternalVideos|ExternalVideos
                         }
                     },
@@ -84,7 +84,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
     - ``motif_series_metadata_key`` in a ``CommunitySeries`` entry is automatically set to the matching
       run's ``MotifSeries`` key when the same run exists in ``motif_labels_file_paths``.
     - ``pose_estimation_metadata_key`` must name a ``PoseEstimation`` entry (in
-      ``Behavior/Pose/PoseEstimations``) whose container is already present in the NWB file when
+      ``Pose/PoseEstimations``) whose container is already present in the NWB file when
       :meth:`add_to_nwbfile` is called (i.e. the pose estimation interface must run first).
     - ``video_metadata_key`` optionally names a video entry (in ``Behavior/InternalVideos`` or
       ``Behavior/ExternalVideos``) whose ``ImageSeries`` is already present in the NWB file; each
@@ -366,7 +366,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 },
                 "pose_estimation_metadata_key": {
                     "type": ["string", "null"],
-                    "description": "Key of a PoseEstimation entry (in Behavior/Pose/PoseEstimations) to link to.",
+                    "description": "Key of a PoseEstimation entry (in Pose/PoseEstimations) to link to.",
                 },
                 "video_metadata_key": {
                     "type": ["string", "null"],
@@ -453,6 +453,11 @@ class VameInterface(BaseTemporalAlignmentInterface):
         }
 
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
+        # Leave the Behavior node open so sibling registries from other interfaces (e.g. a video
+        # interface's Behavior/InternalVideos) survive schema validation when VAME is combined in a
+        # converter. VAME's own Vame and Ethograms sub-schemas below keep additionalProperties: False,
+        # so its content stays strictly validated.
+        metadata_schema["properties"]["Behavior"]["additionalProperties"] = True
         metadata_schema["properties"]["Behavior"]["properties"] = {
             "Vame": {
                 "type": "object",
@@ -820,16 +825,16 @@ class VameInterface(BaseTemporalAlignmentInterface):
             community_series_objects[community_key] = CommunitySeries(**community_kwargs)
 
         # Optional link to an upstream PoseEstimation container, resolved strictly through the
-        # Behavior/Pose/PoseEstimations registry. The key is a registry address, not the object name,
+        # top-level Pose/PoseEstimations registry. The key is a registry address, not the object name,
         # so it must be registered; there is no name fallback.
         pose_estimation = None
         pose_estimation_key = project_metadata.get("pose_estimation_metadata_key")
         if pose_estimation_key is not None:
-            pose_estimations_registry = default_metadata.get("Behavior", {}).get("Pose", {}).get("PoseEstimations", {})
+            pose_estimations_registry = default_metadata.get("Pose", {}).get("PoseEstimations", {})
             if pose_estimation_key not in pose_estimations_registry:
                 raise ValueError(
                     f"pose_estimation_metadata_key '{pose_estimation_key}' was not found in "
-                    f"metadata['Behavior']['Pose']['PoseEstimations']. Available keys: "
+                    f"metadata['Pose']['PoseEstimations']. Available keys: "
                     f"{list(pose_estimations_registry)}."
                 )
             pose_container_name = pose_estimations_registry[pose_estimation_key]["name"]
