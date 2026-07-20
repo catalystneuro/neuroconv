@@ -538,6 +538,29 @@ class TestVameInterfaceIrregularTimestamps:
 class TestVameInterfacePoseEstimationLink:
     """add_to_nwbfile links a VAMEProject to an existing PoseEstimation container."""
 
+    def test_metadata_schema_permits_sibling_behavior_registries(self):
+        """Behavior stays open for other interfaces' registries so a Video+VAME converter validates.
+
+        VAME must not close its Behavior node, otherwise a sibling registry written by another
+        behavior interface (e.g. a video interface's Behavior/InternalVideos) is rejected as an
+        additional property when the combined metadata is validated against VAME's schema in a
+        converter.
+        """
+        from neuroconv.utils.json_schema import validate_metadata
+
+        interface = VameInterface(
+            file_path=str(CONFIG_PATH),
+            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
+        )
+
+        behavior_metadata = dict(interface.get_metadata()["Behavior"])
+        # A sibling registry another behavior interface would contribute (shape mirrors the video interfaces).
+        behavior_metadata["InternalVideos"] = {"video_0": {"name": "Video0"}}
+        behavior_schema = interface.get_metadata_schema()["properties"]["Behavior"]
+
+        # Raises jsonschema.ValidationError if the Behavior node rejects the sibling key.
+        validate_metadata(behavior_metadata, behavior_schema)
+
     def test_links_pose_estimation_when_key_is_set(self):
         interface = VameInterface(
             file_path=str(CONFIG_PATH),
@@ -554,11 +577,11 @@ class TestVameInterfacePoseEstimationLink:
         pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_metadata)
 
         pose_key = pose_estimation_interface.metadata_key
-        pose_container_name = pose_metadata["Behavior"]["Pose"]["PoseEstimations"][pose_key]["name"]
+        pose_container_name = pose_metadata["Pose"]["PoseEstimations"][pose_key]["name"]
 
         vame_metadata = interface.get_metadata()
         # The pose registry must be present for the key to resolve (strict lookup, no name fallback).
-        vame_metadata["Behavior"]["Pose"] = pose_metadata["Behavior"]["Pose"]
+        vame_metadata["Pose"] = pose_metadata["Pose"]
         vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = pose_key
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 
@@ -578,14 +601,14 @@ class TestVameInterfacePoseEstimationLink:
         pose_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0, metadata_key="DLC")
         pose_interface.set_aligned_timestamps(aligned_timestamps)
         pose_meta = pose_interface.get_metadata()
-        pose_meta["Behavior"]["Pose"]["PoseEstimations"]["DLC"]["name"] = "PoseEstimationDeepLabCut"
+        pose_meta["Pose"]["PoseEstimations"]["DLC"]["name"] = "PoseEstimationDeepLabCut"
 
         nwbfile = mock_NWBFile()
         pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_meta)
 
         vame_metadata = interface.get_metadata()
         vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = "DLC"
-        vame_metadata["Behavior"]["Pose"] = pose_meta["Behavior"]["Pose"]
+        vame_metadata["Pose"] = pose_meta["Pose"]
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 
         project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
@@ -609,7 +632,7 @@ class TestVameInterfacePoseEstimationLink:
         pose_key = pose_interface.metadata_key
 
         vame_metadata = interface.get_metadata()
-        vame_metadata["Behavior"]["Pose"] = pose_metadata["Behavior"]["Pose"]
+        vame_metadata["Pose"] = pose_metadata["Pose"]
         vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = pose_key
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 

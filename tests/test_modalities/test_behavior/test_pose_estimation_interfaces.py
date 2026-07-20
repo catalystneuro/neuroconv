@@ -23,7 +23,7 @@ class TestMockPoseEstimationInterface(PoseEstimationInterfaceTestMixin):
             },
         }
 
-        pose_metadata = metadata["Behavior"]["Pose"]
+        pose_metadata = metadata["Pose"]
 
         skeleton = pose_metadata["Skeletons"][metadata_key]
         assert skeleton["name"] == skeleton_name
@@ -42,7 +42,7 @@ class TestPoseEstimationMetadata:
 
     These tests exercise the linking patterns the schema enables: shared devices across
     containers, shared skeletons across containers, fully decoupled references, and a mixed
-    scenario. The pose sub-modality lives under ``metadata["Behavior"]["Pose"]`` and holds the
+    scenario. The pose modality lives at the top-level ``metadata["Pose"]`` and holds the
     ``Skeletons`` and ``PoseEstimation`` registries. Each test constructs its full ``metadata``
     dict inline, with the same ``metadata_key`` variables passed to the interface and used in
     the metadata dict, so the cross-references between interfaces and entries are visible at a
@@ -68,52 +68,50 @@ class TestPoseEstimationMetadata:
             "Devices": {
                 shared_device_key: {"name": "SharedCamera", "description": "Shared multi-view camera."},
             },
-            "Behavior": {
-                "Pose": {
-                    "Skeletons": {
-                        metadata_key_top: {"name": "SkeletonViewTop", "nodes": bodyparts},
-                        metadata_key_side: {"name": "SkeletonViewSide", "nodes": bodyparts},
-                    },
-                    "PoseEstimations": {
-                        metadata_key_top: {
-                            "name": "ViewTop",
-                            "description": "Top-view pose estimation container.",
-                            "source_software": "MockSourceSoftware",
-                            "scorer": "MockScorer",
-                            "dimensions": [[640, 480]],
-                            "original_videos": ["mock_video_top.mp4"],
-                            "device_metadata_key": shared_device_key,
-                            "skeleton_metadata_key": metadata_key_top,
-                            "PoseEstimationSeries": {
-                                bodypart: {
-                                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
-                                    "description": f"Mock pose estimation series for {bodypart}.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network.",
-                                }
-                                for bodypart in bodyparts
-                            },
+            "Pose": {
+                "Skeletons": {
+                    metadata_key_top: {"name": "SkeletonViewTop", "nodes": bodyparts},
+                    metadata_key_side: {"name": "SkeletonViewSide", "nodes": bodyparts},
+                },
+                "PoseEstimations": {
+                    metadata_key_top: {
+                        "name": "ViewTop",
+                        "description": "Top-view pose estimation container.",
+                        "source_software": "MockSourceSoftware",
+                        "scorer": "MockScorer",
+                        "dimensions": [[640, 480]],
+                        "original_videos": ["mock_video_top.mp4"],
+                        "device_metadata_key": shared_device_key,
+                        "skeleton_metadata_key": metadata_key_top,
+                        "PoseEstimationSeries": {
+                            bodypart: {
+                                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                                "description": f"Mock pose estimation series for {bodypart}.",
+                                "unit": "pixels",
+                                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                                "confidence_definition": "Softmax output of the deep neural network.",
+                            }
+                            for bodypart in bodyparts
                         },
-                        metadata_key_side: {
-                            "name": "ViewSide",
-                            "description": "Side-view pose estimation container.",
-                            "source_software": "MockSourceSoftware",
-                            "scorer": "MockScorer",
-                            "dimensions": [[640, 480]],
-                            "original_videos": ["mock_video_side.mp4"],
-                            "device_metadata_key": shared_device_key,
-                            "skeleton_metadata_key": metadata_key_side,
-                            "PoseEstimationSeries": {
-                                bodypart: {
-                                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
-                                    "description": f"Mock pose estimation series for {bodypart}.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network.",
-                                }
-                                for bodypart in bodyparts
-                            },
+                    },
+                    metadata_key_side: {
+                        "name": "ViewSide",
+                        "description": "Side-view pose estimation container.",
+                        "source_software": "MockSourceSoftware",
+                        "scorer": "MockScorer",
+                        "dimensions": [[640, 480]],
+                        "original_videos": ["mock_video_side.mp4"],
+                        "device_metadata_key": shared_device_key,
+                        "skeleton_metadata_key": metadata_key_side,
+                        "PoseEstimationSeries": {
+                            bodypart: {
+                                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                                "description": f"Mock pose estimation series for {bodypart}.",
+                                "unit": "pixels",
+                                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                                "confidence_definition": "Softmax output of the deep neural network.",
+                            }
+                            for bodypart in bodyparts
                         },
                     },
                 },
@@ -155,51 +153,49 @@ class TestPoseEstimationMetadata:
                 device_key_a: {"name": "CameraA", "description": "Camera for run A."},
                 device_key_b: {"name": "CameraB", "description": "Camera for run B."},
             },
-            "Behavior": {
-                "Pose": {
-                    "Skeletons": {
-                        shared_skeleton_key: {"name": "SharedSkeleton", "nodes": bodyparts},
-                    },
-                    "PoseEstimations": {
-                        metadata_key_a: {
-                            "name": "DlcRunA",
-                            "description": "Pose estimation container for DLC run A.",
-                            "source_software": "MockSourceSoftware",
-                            "scorer": "MockScorer",
-                            "dimensions": [[640, 480]],
-                            "original_videos": ["mock_video_a.mp4"],
-                            "device_metadata_key": device_key_a,
-                            "skeleton_metadata_key": shared_skeleton_key,
-                            "PoseEstimationSeries": {
-                                bodypart: {
-                                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
-                                    "description": f"Mock pose estimation series for {bodypart}.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network.",
-                                }
-                                for bodypart in bodyparts
-                            },
+            "Pose": {
+                "Skeletons": {
+                    shared_skeleton_key: {"name": "SharedSkeleton", "nodes": bodyparts},
+                },
+                "PoseEstimations": {
+                    metadata_key_a: {
+                        "name": "DlcRunA",
+                        "description": "Pose estimation container for DLC run A.",
+                        "source_software": "MockSourceSoftware",
+                        "scorer": "MockScorer",
+                        "dimensions": [[640, 480]],
+                        "original_videos": ["mock_video_a.mp4"],
+                        "device_metadata_key": device_key_a,
+                        "skeleton_metadata_key": shared_skeleton_key,
+                        "PoseEstimationSeries": {
+                            bodypart: {
+                                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                                "description": f"Mock pose estimation series for {bodypart}.",
+                                "unit": "pixels",
+                                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                                "confidence_definition": "Softmax output of the deep neural network.",
+                            }
+                            for bodypart in bodyparts
                         },
-                        metadata_key_b: {
-                            "name": "DlcRunB",
-                            "description": "Pose estimation container for DLC run B.",
-                            "source_software": "MockSourceSoftware",
-                            "scorer": "MockScorer",
-                            "dimensions": [[640, 480]],
-                            "original_videos": ["mock_video_b.mp4"],
-                            "device_metadata_key": device_key_b,
-                            "skeleton_metadata_key": shared_skeleton_key,
-                            "PoseEstimationSeries": {
-                                bodypart: {
-                                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
-                                    "description": f"Mock pose estimation series for {bodypart}.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network.",
-                                }
-                                for bodypart in bodyparts
-                            },
+                    },
+                    metadata_key_b: {
+                        "name": "DlcRunB",
+                        "description": "Pose estimation container for DLC run B.",
+                        "source_software": "MockSourceSoftware",
+                        "scorer": "MockScorer",
+                        "dimensions": [[640, 480]],
+                        "original_videos": ["mock_video_b.mp4"],
+                        "device_metadata_key": device_key_b,
+                        "skeleton_metadata_key": shared_skeleton_key,
+                        "PoseEstimationSeries": {
+                            bodypart: {
+                                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                                "description": f"Mock pose estimation series for {bodypart}.",
+                                "unit": "pixels",
+                                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                                "confidence_definition": "Softmax output of the deep neural network.",
+                            }
+                            for bodypart in bodyparts
                         },
                     },
                 },
@@ -238,52 +234,50 @@ class TestPoseEstimationMetadata:
                 device_key_a: {"name": "CameraA", "description": "Camera for session A."},
                 device_key_b: {"name": "CameraB", "description": "Camera for session B."},
             },
-            "Behavior": {
-                "Pose": {
-                    "Skeletons": {
-                        skeleton_key_a: {"name": "SkeletonA", "nodes": bodyparts},
-                        skeleton_key_b: {"name": "SkeletonB", "nodes": bodyparts},
-                    },
-                    "PoseEstimations": {
-                        metadata_key_a: {
-                            "name": "SessionA",
-                            "description": "Pose estimation for session A.",
-                            "source_software": "MockSourceSoftware",
-                            "scorer": "MockScorer",
-                            "dimensions": [[640, 480]],
-                            "original_videos": ["mock_video_a.mp4"],
-                            "device_metadata_key": device_key_a,
-                            "skeleton_metadata_key": skeleton_key_a,
-                            "PoseEstimationSeries": {
-                                bodypart: {
-                                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
-                                    "description": f"Mock pose estimation series for {bodypart}.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network.",
-                                }
-                                for bodypart in bodyparts
-                            },
+            "Pose": {
+                "Skeletons": {
+                    skeleton_key_a: {"name": "SkeletonA", "nodes": bodyparts},
+                    skeleton_key_b: {"name": "SkeletonB", "nodes": bodyparts},
+                },
+                "PoseEstimations": {
+                    metadata_key_a: {
+                        "name": "SessionA",
+                        "description": "Pose estimation for session A.",
+                        "source_software": "MockSourceSoftware",
+                        "scorer": "MockScorer",
+                        "dimensions": [[640, 480]],
+                        "original_videos": ["mock_video_a.mp4"],
+                        "device_metadata_key": device_key_a,
+                        "skeleton_metadata_key": skeleton_key_a,
+                        "PoseEstimationSeries": {
+                            bodypart: {
+                                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                                "description": f"Mock pose estimation series for {bodypart}.",
+                                "unit": "pixels",
+                                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                                "confidence_definition": "Softmax output of the deep neural network.",
+                            }
+                            for bodypart in bodyparts
                         },
-                        metadata_key_b: {
-                            "name": "SessionB",
-                            "description": "Pose estimation for session B.",
-                            "source_software": "MockSourceSoftware",
-                            "scorer": "MockScorer",
-                            "dimensions": [[640, 480]],
-                            "original_videos": ["mock_video_b.mp4"],
-                            "device_metadata_key": device_key_b,
-                            "skeleton_metadata_key": skeleton_key_b,
-                            "PoseEstimationSeries": {
-                                bodypart: {
-                                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
-                                    "description": f"Mock pose estimation series for {bodypart}.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network.",
-                                }
-                                for bodypart in bodyparts
-                            },
+                    },
+                    metadata_key_b: {
+                        "name": "SessionB",
+                        "description": "Pose estimation for session B.",
+                        "source_software": "MockSourceSoftware",
+                        "scorer": "MockScorer",
+                        "dimensions": [[640, 480]],
+                        "original_videos": ["mock_video_b.mp4"],
+                        "device_metadata_key": device_key_b,
+                        "skeleton_metadata_key": skeleton_key_b,
+                        "PoseEstimationSeries": {
+                            bodypart: {
+                                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                                "description": f"Mock pose estimation series for {bodypart}.",
+                                "unit": "pixels",
+                                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                                "confidence_definition": "Softmax output of the deep neural network.",
+                            }
+                            for bodypart in bodyparts
                         },
                     },
                 },
@@ -320,26 +314,24 @@ class TestPoseEstimationMetadata:
         interface = MockPoseEstimationInterface(num_samples=50, num_nodes=3, metadata_key=metadata_key)
 
         metadata = {
-            "Behavior": {
-                "Pose": {
-                    "PoseEstimations": {
-                        metadata_key: {
-                            "name": "PoseNoDeviceNoSkeleton",
-                            "description": "Pose estimation without a device or skeleton.",
-                            "source_software": "MockSourceSoftware",
-                            "scorer": "MockScorer",
-                            # No device, so the per-camera fields (dimensions, original_videos,
-                            # labeled_videos) are omitted too: they are parallel to the cameras.
-                            "PoseEstimationSeries": {
-                                bodypart: {
-                                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
-                                    "description": f"Mock pose estimation series for {bodypart}.",
-                                    "unit": "pixels",
-                                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                                    "confidence_definition": "Softmax output of the deep neural network.",
-                                }
-                                for bodypart in bodyparts
-                            },
+            "Pose": {
+                "PoseEstimations": {
+                    metadata_key: {
+                        "name": "PoseNoDeviceNoSkeleton",
+                        "description": "Pose estimation without a device or skeleton.",
+                        "source_software": "MockSourceSoftware",
+                        "scorer": "MockScorer",
+                        # No device, so the per-camera fields (dimensions, original_videos,
+                        # labeled_videos) are omitted too: they are parallel to the cameras.
+                        "PoseEstimationSeries": {
+                            bodypart: {
+                                "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                                "description": f"Mock pose estimation series for {bodypart}.",
+                                "unit": "pixels",
+                                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                                "confidence_definition": "Softmax output of the deep neural network.",
+                            }
+                            for bodypart in bodyparts
                         },
                     },
                 },
