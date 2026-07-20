@@ -115,8 +115,8 @@ class Test_GuppyInterface:
                     expected_psth_count=24,  # 3 events x 2 recording_sites x 2 features x {corrected, uncorrected}
                     expected_peak_auc_count=12,  # 3 events x 2 recording_sites x 2 features
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
-                    # The mock writes the same coordsForPreProcessing windows for every recording_site; with no
-                    # temporal alignment the offset is 0, so the aligned intervals equal the source.
+                    # The mock writes the same coordsForPreProcessing windows for every recording_site, so the
+                    # expected intervals are identical across recording_sites and equal the source windows.
                     expected_valid_signal_intervals={
                         "dms": [[1.25, 1.75], [2.0, 2.5]],
                         "dls": [[1.25, 1.75], [2.0, 2.5]],
@@ -559,32 +559,7 @@ class Test_GuppyInterface:
             assert cross_correlation.binned_mean is None
             assert cross_correlation.bin_event is None
 
-    # ----------------------------------------------------------------- alignment / roundtrip / errors
-
-    def test_aligned_starting_time_shifts_traces_and_transients(self, interface, case, nwbfile):
-        first_recording_site = case["expected_recording_sites"][0]
-        original_first_timestamp = float(interface.get_original_timestamps()[first_recording_site][0])
-
-        offset = 12.34
-        interface.set_aligned_starting_time(offset)
-        module = self._add(interface, nwbfile, stub_test=False)
-
-        first_trace_name = f"{case['expected_traces'][first_recording_site][0]}_{first_recording_site}"
-        # The regular timebase stays regular under a constant shift, so it is written as starting_time + rate.
-        assert float(module[first_trace_name].starting_time) == pytest.approx(original_first_timestamp + offset)
-
-        for recording_site, features in case["expected_transients"].items():
-            for feature in features:
-                csv_path = case["folder_path"] / f"transientsOccurrences_{feature}_{recording_site}.csv"
-                expected_first_peak = float(pandas.read_csv(csv_path)["timestamps"].iloc[0]) + offset
-                table = module[f"transients_{recording_site}_{feature}"]
-                assert table["timestamp"][0] == pytest.approx(expected_first_peak)
-
-        if case["expected_valid_signal_intervals"]:
-            actual = self._valid_intervals_by_recording_site(module)
-            for recording_site, expected_intervals in case["expected_valid_signal_intervals"].items():
-                expected_shifted = np.asarray(expected_intervals, dtype=float) + offset
-                np.testing.assert_allclose(actual[recording_site], expected_shifted)
+    # ----------------------------------------------------------------- roundtrip / errors
 
     def test_round_trip_write_read(self, interface, case, nwbfile, tmp_path):
         # _GuppyInterface is standalone: it writes a self-contained set of ndx-guppy objects, so the

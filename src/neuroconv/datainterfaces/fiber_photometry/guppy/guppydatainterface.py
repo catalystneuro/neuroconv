@@ -12,7 +12,7 @@ from pydantic import DirectoryPath, validate_call
 from pynwb.core import VectorData
 from pynwb.file import NWBFile
 
-from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools import get_package
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.utils import DeepDict, calculate_regular_series_rate
@@ -35,7 +35,7 @@ _PREFIX_TO_UNIT = dict(cntrl_sig_fit="n.a.", dff="a.u.", z_score="a.u.")
 _BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
 
 
-class _GuppyInterface(BaseTemporalAlignmentInterface):
+class _GuppyInterface(BaseDataInterface):
     """
     Data Interface for converting GuPPy (Guided Photometry Analysis in Python) processed outputs.
 
@@ -174,7 +174,6 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
         self._peak_aucs = peak_aucs
         self._valid_signal_intervals_by_recording_site = valid_signal_intervals_by_recording_site
         self._guppy_parameters = guppy_parameters
-        self._recording_site_to_aligned_timestamps: dict[str, np.ndarray] | None = None
 
     # ------------------------------------------------------------------ #
     # Read-only views of the parsed GuPPy identifiers, for a converter that owns the acquisition /
@@ -615,32 +614,12 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
         )
         return metadata_schema
 
-    def get_original_timestamps(self) -> dict[str, np.ndarray]:
-        """Return the original (GuPPy-corrected) timestamps for each recording_site."""
+    def _read_recording_site_timestamps(self) -> dict[str, np.ndarray]:
+        """Return the GuPPy-emitted (time-corrected) timestamps for each recording_site."""
         return {
             recording_site: self._read_time_correction(recording_site)["timestamps"]
             for recording_site in self._recording_sites
         }
-
-    def get_timestamps(self) -> dict[str, np.ndarray]:
-        """Return the (possibly aligned) timestamps for each recording_site."""
-        if self._recording_site_to_aligned_timestamps is not None:
-            return self._recording_site_to_aligned_timestamps
-        return self.get_original_timestamps()
-
-    def set_aligned_timestamps(self, recording_site_to_aligned_timestamps: dict[str, np.ndarray]) -> None:
-        """Override the per-recording_site timestamps with externally-aligned arrays."""
-        self._recording_site_to_aligned_timestamps = recording_site_to_aligned_timestamps
-
-    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
-        """Shift every recording_site's timestamps by ``aligned_starting_time``."""
-        recording_site_to_timestamps = self.get_timestamps()
-        self.set_aligned_timestamps(
-            {
-                recording_site: timestamps + aligned_starting_time
-                for recording_site, timestamps in recording_site_to_timestamps.items()
-            }
-        )
 
     def add_to_nwbfile(
         self,
@@ -656,9 +635,7 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
         Builds the ``GuppyParameters`` lab metadata, the slim ``GuppyRecordingSitesTable`` and
         ``GuppyEventsTable`` registries, the per-product objects (traces, transients, summary,
         cross-correlation, PSTH, peak/AUC) each referencing its registry rows, and the
-        ``GuppyValidSignalIntervals`` object. Products are written on the timestamps GuPPy emits, or on
-        the externally-aligned timestamps provided via :meth:`set_aligned_timestamps` /
-        :meth:`set_aligned_starting_time`.
+        ``GuppyValidSignalIntervals`` object. Products are written on the timestamps GuPPy emits.
 
         This method takes **no linkage arguments**: it writes only what the GuPPy output defines. The
         registries are slim (names only), and their outward links -- the recording sites' acquisition
@@ -690,8 +667,7 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
             description=processing_module_metadata["description"],
         )
 
-        recording_site_to_original_timestamps = self.get_original_timestamps()
-        recording_site_to_timestamps = self.get_timestamps()
+        recording_site_to_timestamps = self._read_recording_site_timestamps()
         recording_site_to_stub_end_time: dict[str, float] = {}
         bin_basis = self._bin_basis()
 
@@ -709,8 +685,6 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
             ndx_guppy=ndx_guppy,
             processing_module=processing_module,
             recording_sites_table=recording_sites_table,
-            recording_site_to_original_timestamps=recording_site_to_original_timestamps,
-            recording_site_to_timestamps=recording_site_to_timestamps,
         )
         # Derived continuous traces.
         self._add_guppy_derived_response_series_to_nwbfile(
@@ -730,8 +704,6 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
             processing_module=processing_module,
             transients_metadata=guppy_metadata["Transients"],
             recording_sites_table=recording_sites_table,
-            recording_site_to_original_timestamps=recording_site_to_original_timestamps,
-            recording_site_to_timestamps=recording_site_to_timestamps,
             recording_site_to_stub_end_time=recording_site_to_stub_end_time,
             stub_test=stub_test,
         )
@@ -808,8 +780,8 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
 
         Regularly-sampled timestamps are written as ``starting_time`` + ``rate``; otherwise the explicit
         ``timestamps`` vector is written. ``always_write_timestamps`` forces the ``timestamps`` path. Mirrors
-        ``BaseFiberPhotometryInterface._timing_kwargs_from_timestamps`` (this interface extends
-        ``BaseTemporalAlignmentInterface`` rather than the fiber-photometry base, so it cannot inherit it).
+        ``BaseFiberPhotometryInterface._timing_kwargs_from_timestamps`` (this interface does not extend the
+        fiber-photometry base, so it cannot inherit it).
         """
         if not always_write_timestamps:
             rate = calculate_regular_series_rate(series=timestamps)
@@ -873,8 +845,6 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
         processing_module,
         transients_metadata: dict,
         recording_sites_table,
-        recording_site_to_original_timestamps: dict,
-        recording_site_to_timestamps: dict,
         recording_site_to_stub_end_time: dict,
         stub_test: bool,
     ) -> None:
@@ -896,12 +866,6 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
                 )
                 peak_timestamps = occurrences["timestamps"].to_numpy(dtype=float)
                 peak_amplitudes = occurrences["amplitude"].to_numpy(dtype=float)
-                # Peaks are in GuPPy's emitted timebase; map them onto the (possibly aligned) timestamps.
-                peak_timestamps = np.interp(
-                    peak_timestamps,
-                    recording_site_to_original_timestamps[recording_site],
-                    recording_site_to_timestamps[recording_site],
-                )
                 if stub_test:
                     stub_end_time = recording_site_to_stub_end_time.get(recording_site)
                     if stub_end_time is not None:
@@ -1089,16 +1053,12 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
         ndx_guppy,
         processing_module,
         recording_sites_table,
-        recording_site_to_original_timestamps: dict,
-        recording_site_to_timestamps: dict,
     ):
         """Build and add the GuppyValidSignalIntervals object, if any coordsForPreProcessing files exist.
 
         One row per valid ``[start, stop]`` window, each referencing its recording site via a
-        DynamicTableRegion into the GuppyRecordingSitesTable. Each window is shifted from GuPPy's emitted
-        recording timebase onto the (possibly aligned) timestamps by the same scalar offset applied to
-        that recording site's timestamps (they are boundary values, not per-sample timestamps to
-        interpolate against).
+        DynamicTableRegion into the GuppyRecordingSitesTable. The windows are written on GuPPy's emitted
+        recording timebase.
         """
         if not self._valid_signal_intervals_by_recording_site:
             return None
@@ -1118,10 +1078,7 @@ class _GuppyInterface(BaseTemporalAlignmentInterface):
             intervals = self._valid_signal_intervals_by_recording_site.get(recording_site)
             if intervals is None:
                 continue
-            time_offset = float(recording_site_to_timestamps[recording_site][0]) - float(
-                recording_site_to_original_timestamps[recording_site][0]
-            )
-            for start, stop in intervals + time_offset:
+            for start, stop in intervals:
                 valid_signal_intervals.add_interval(
                     start_time=float(start),
                     stop_time=float(stop),
