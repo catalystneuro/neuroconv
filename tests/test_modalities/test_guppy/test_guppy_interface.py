@@ -64,6 +64,14 @@ class Test_GuppyInterface:
     features -- so the expected recording_site/event/product counts match a real two-recording_site session.
     """
 
+    @pytest.fixture(scope="class")
+    def mock_guppy_output_folder(self, tmp_path_factory):
+        """Generate the schema-faithful mock GuPPy output once per test class.
+
+        The interface only reads from this folder (the error/mutation tests copy it first), so it
+        does not need to be regenerated per test."""
+        return generate_mock_guppy_output_folder(tmp_path_factory.mktemp("guppy") / "guppy_output")
+
     @pytest.fixture(
         params=[
             pytest.param(
@@ -133,9 +141,9 @@ class Test_GuppyInterface:
             ),
         ]
     )
-    def case(self, request, tmp_path):
+    def case(self, request, mock_guppy_output_folder):
         case = dict(request.param)
-        case["folder_path"] = generate_mock_guppy_output_folder(tmp_path / "guppy_output")
+        case["folder_path"] = mock_guppy_output_folder
         return case
 
     @pytest.fixture
