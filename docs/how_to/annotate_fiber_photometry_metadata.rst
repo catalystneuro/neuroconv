@@ -10,10 +10,11 @@ the **device models** and **device instances** (optical fiber, excitation source
 **indicator**, and a ``FiberPhotometryTable`` whose rows tie each channel to the hardware and indicator that
 produced it. The recorded signal itself is written as a ``FiberPhotometryResponseSeries``.
 
-A fiber photometry interface reads the signal traces (and, where available, the session start time) from your
-files, but it cannot read the optical hardware, indicator, or table — none of that is embedded in the data.
-You supply it. Rather than build the whole structure by hand, start from ``get_example_metadata()``, which
-returns a complete, realistic template, and edit the fields to match your experiment.
+A fiber photometry interface populates whatever it can read from your files — the signal traces, and often
+the session start time — but the rest of the metadata (the optical hardware, indicator, and table) usually
+needs to be provided by you. There are several ways to assemble it; this guide uses a convenient one: start
+from ``get_example_metadata()``, which returns a complete, realistic template, and edit the fields to match
+your experiment.
 
 
 Start From a Complete Example
@@ -133,8 +134,7 @@ place: changing ``metadata["Devices"]["optical_fiber"]`` updates every row that 
 Edit the Metadata
 -----------------
 
-Overwrite the template values with the real details of your experiment. Only edit the values — leave the keys
-in place, since they are what wire the pieces together.
+Overwrite the template values with the real details of your experiment.
 
 .. code-block:: python
 
@@ -171,6 +171,32 @@ in place, since they are what wire the pieces together.
     ``metadata["Devices"]`` **and** the ``*_metadata_key`` in every row that points to it. For example,
     renaming ``"optical_fiber"`` means changing that key in ``metadata["Devices"]`` and setting each row's
     ``optical_fiber_metadata_key`` to the new name.
+
+
+Add Optional Fields
+-------------------
+
+The example fills in the required and most common fields, but the ``ndx-fiber-photometry`` and
+``ndx-ophys-devices`` specifications define many more optional ones. Add any of them the same way you edit an
+existing value — by setting a new key on the relevant entry.
+
+.. code-block:: python
+
+    # Device models and device instances accept additional descriptive fields.
+    metadata["DeviceModels"]["optical_fiber_model"]["model_number"] = "Fiber Optic Implant"
+    metadata["DeviceModels"]["optical_fiber_model"]["core_diameter_in_um"] = 400.0
+    metadata["DeviceModels"]["photodetector_model"]["gain"] = 1.0e10
+    metadata["DeviceModels"]["photodetector_model"]["gain_unit"] = "V/W"
+    metadata["Devices"]["optical_fiber"]["serial_number"] = "OF-001"
+
+    # So do indicators, table rows, and every other entry.
+    indicators = metadata["FiberPhotometry"]["FiberPhotometryIndicators"]
+    indicators["indicator"]["description"] = "Calcium indicator expressed in VTA."
+
+    # A table row can record the fiber's stereotactic coordinates (AP, ML, DV in mm). A table column
+    # must be present on every row, so add an optional row field to all of them.
+    rows["calcium_signal"]["coordinates"] = (3.0, 1.3, -4.2)
+    rows["isosbestic_control"]["coordinates"] = (3.0, 1.3, -4.2)
 
 
 Run the Conversion
