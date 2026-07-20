@@ -66,11 +66,13 @@ The fiber photometry metadata system follows the same spirit as the ophys and ec
 4. **One shared, keyed-row table.** A file has a single ``FiberPhotometryTable``. Every response series
    references a *region* of its rows by row key, so regions never depend on fragile integer indices.
 
-5. **Runnable defaults with honest sentinels.** ``get_metadata()`` returns a complete, editable
-   scaffold so an interface runs on zero user metadata. Required fields the user must supply are
-   pre-filled with sentinels — ``NaN`` for the required numeric wavelengths and the string
-   ``"PLACEHOLDER"`` for required strings — and ``add_to_nwbfile`` warns about any that survive to
-   write time (or raises, under ``strict=True``).
+5. **No fabricated provenance.** ``get_metadata()`` returns only what the interface can source from the
+   files — the response-series entry (and the session start time where the format embeds it) — and never
+   fabricates devices, indicators, or table rows the data does not contain. With no user metadata an
+   interface writes a bare ``FiberPhotometryResponseSeries``, which is a valid file. The full provenance
+   chain is opt-in: supply it yourself, starting from ``get_example_metadata()`` as an editable template.
+   When a table *is* supplied, ``add_to_nwbfile`` requires the chain to be complete and raises on missing
+   or dangling pieces rather than writing partial provenance.
 
 
 Metadata Structure Overview
@@ -84,7 +86,7 @@ The complete fiber photometry metadata structure (one interface with ``metadata_
         "NWBFile": {...},   # Session-level metadata
         "Subject": {...},   # Subject information
 
-        # ----- Shared, cross-modality device registry (top-level, from #1780) -----
+        # ----- Shared, cross-modality device registry (top-level) -----
 
         # Device models. Each entry carries a `type` naming its concrete ndx-ophys-devices class.
         "DeviceModels": {
@@ -247,11 +249,9 @@ table:
    ``dict_deep_update``, which merges the keyed containers by key), so every interface sees the full set
    of shared rows and devices and whichever runs first can build the complete table.
 
-3. Declaring the same-named shared object with *different* contents in two interfaces is currently a
-   *silent* merge for devices and device models: the shared device registry reuses whichever object was
-   written first and ignores the conflicting metadata. Restoring the loud-error-on-conflict behavior at
-   the registry level is tracked in
-   `#1782 <https://github.com/catalystneuro/neuroconv/issues/1782>`_.
+3. Declaring the same-named shared object with *different* contents in two interfaces is a *silent* merge
+   for devices and device models: the shared device registry reuses whichever object was written first
+   and ignores the conflicting metadata.
 
 Commanded voltage is a special case among the shared containers: it is data-bearing (it reads samples
 from a stream, not just static metadata). Each ``CommandedVoltageSeries`` entry names the input
@@ -260,23 +260,23 @@ series through its ``commanded_voltage_series_metadata_key``. This is how freque
 associate each demodulated signal with the sinusoidal drive that produced it.
 
 
-Default Scaffold and Placeholder Sentinels
-------------------------------------------
+Default Metadata and the Example Template
+-----------------------------------------
 
-``get_metadata()`` returns the NWBFile basics merged with the default ``DeviceModels``, ``Devices``, and
-``FiberPhotometry`` blocks produced by
-:func:`~neuroconv.tools.fiber_photometry.get_default_fiber_photometry_metadata`. The scaffold is a
-complete, runnable structure — one placeholder device (and its model) of each kind in the top-level
-registry, one indicator, one table row, and one response series entry under the interface's
-``metadata_key`` — with required fields pre-filled with sentinels:
+``get_metadata()`` returns only what the interface can derive from the source files: the NWBFile basics,
+the session start time where the format embeds it, and a single response-series entry under the
+interface's ``metadata_key`` (its ``name``, ``description``, and ``unit``). It fabricates no devices,
+indicators, or table rows — none of that is contained in the data. With no further metadata,
+``add_to_nwbfile`` writes a bare ``FiberPhotometryResponseSeries``; this is a valid NWB file, since the
+series' ``fiber_photometry_table_region`` is optional.
 
-- Required **numeric** fields (``excitation_wavelength_in_nm``, ``emission_wavelength_in_nm``,
-  ``numerical_aperture``) default to ``NaN``. The ndx spec forbids null here, so there is no honest
-  numeric sentinel; ``NaN`` is used and flagged.
-- Required **string** fields (``location``, an indicator ``label``, descriptions) default to the
-  distinct sentinel ``"PLACEHOLDER"`` — distinct from a deliberate ``"unknown"`` so that intentionally
-  declaring a field unknown silences the warning.
+To record the optical hardware, indicator, and table, supply that metadata yourself. The base interface
+provides ``get_example_metadata()``, which returns a complete, realistic template — device models,
+devices, an indicator, a two-row ``FiberPhotometryTable``, and a response series referencing both rows —
+with example values to edit to match the experiment (the how-to guide,
+:ref:`annotate_fiber_photometry_metadata`, walks through this).
 
-``add_to_nwbfile`` scans for surviving sentinels and emits a ``UserWarning`` naming each unfilled
-field (or raises, under ``strict=True``). This lets an interface run end-to-end for a quick test while
-nagging about anything that must be set before archiving.
+Provenance is all-or-nothing. ``add_to_nwbfile`` requires the response series'
+``fiber_photometry_table_region`` and the ``FiberPhotometryTable`` to be present together — each row with
+its required fields and resolvable device/indicator references — and raises on anything missing or
+dangling. The writer records real provenance or writes none.
