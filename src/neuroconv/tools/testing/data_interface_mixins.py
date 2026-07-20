@@ -1525,8 +1525,10 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
     it does not reimplement ``check_read_nwb``. The response-series expectations are deliberately *not*
     derived from the interface's own reading methods (that would be circular); they are hand-supplied
     literals. The ``FiberPhotometryTable`` / device / indicator assertions instead validate the
-    metadata → NWB mapping against the metadata used for the conversion. Format idiosyncrasies (e.g.
-    where a session start time comes from) belong in a small dedicated override or unit test.
+    metadata → NWB mapping, and only run when the metadata actually carries a ``FiberPhotometryTable`` —
+    with the bare default an interface writes a lone response series and nothing else. Format
+    idiosyncrasies (e.g. where a session start time comes from) belong in a small dedicated override or
+    unit test.
     """
 
     #: Hand-supplied expected samples of the written ``FiberPhotometryResponseSeries``. With a small
@@ -1538,20 +1540,18 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
     expected_rate: float | None = None
     expected_timestamps: np.ndarray | None = None
 
-    def test_default_metadata_warns_about_placeholders(self, setup_interface):
-        metadata = self.interface.get_metadata()
-        with pytest.warns(UserWarning, match="placeholder"):
-            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
-
     def check_read_nwb(self, nwbfile_path: str):
         metadata = self.interface.get_metadata()
         fiber_photometry_metadata = metadata["FiberPhotometry"]
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
             self._check_response_series(nwbfile, fiber_photometry_metadata)
-            self._check_fiber_photometry_table(nwbfile, fiber_photometry_metadata)
-            self._check_devices(nwbfile, metadata)
-            self._check_indicators(nwbfile, fiber_photometry_metadata)
+            # The provenance chain (table, devices, indicators) is only written when the metadata supplies
+            # it; with the bare default a lone response series is a legal file, so only check what was asked.
+            if "FiberPhotometryTable" in fiber_photometry_metadata:
+                self._check_fiber_photometry_table(nwbfile, fiber_photometry_metadata)
+                self._check_devices(nwbfile, metadata)
+                self._check_indicators(nwbfile, fiber_photometry_metadata)
 
     def _check_response_series(self, nwbfile, fiber_photometry_metadata: dict):
         """The written response series must match the child's hand-supplied expected data and timing."""
@@ -1578,7 +1578,6 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
         assert len(table) == len(rows_metadata)
         for row_index, row_metadata in enumerate(rows_metadata):
             assert table["location"][row_index] == row_metadata["location"]
-            # assert_array_equal treats NaN == NaN as equal, so this also covers placeholder wavelengths.
             for wavelength_field in ("excitation_wavelength_in_nm", "emission_wavelength_in_nm"):
                 assert_array_equal(table[wavelength_field][row_index], row_metadata[wavelength_field])
 
