@@ -174,10 +174,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         This interface reads DANNCE prediction .mat files and converts them to NWB format
         using the ndx-pose extension. It transparently supports both single-animal DANNCE output
         (``pred`` shaped ``(n_frames, 3, n_landmarks)``) and multi-animal sDANNCE output (``pred``
-        shaped ``(n_frames, n_animals, 3, n_landmarks)``, selected via ``animal_index``) -- which
-        shape a given file has is auto-detected at load time and is not necessarily determined by
-        which software produced it, so try this interface regardless of whether your data came from
-        DANNCE or sDANNCE.
+        shaped ``(n_frames, n_animals, 3, n_landmarks)``, selected via ``animal_index``).
 
         Parameters
         ----------
@@ -592,7 +589,14 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             another animal's interface instance). Merged on top of any calibrations already loaded from
             ``calibration_path`` at construction, taking precedence per-camera over those.
         """
-        from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation, PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
+        from ndx_pose import (
+            CalibratedCamera,
+            MultiCameraPoseEstimation,
+            PoseEstimation,
+            PoseEstimationSeries,
+            Skeleton,
+            Skeletons,
+        )
 
         # Build metadata
         default_metadata = DeepDict(self.get_metadata())
