@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
 
 from neuroconv.tools.testing.data_interface_mixins import (
     FiberPhotometryInterfaceTestMixin,
