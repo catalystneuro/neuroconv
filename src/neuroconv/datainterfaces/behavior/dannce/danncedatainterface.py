@@ -8,7 +8,7 @@ from pynwb.image import ImageSeries
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
-from ....utils import DeepDict, calculate_regular_series_rate
+from ....utils import DeepDict, calculate_regular_series_rate, get_base_schema
 
 
 class DANNCEInterface(BaseTemporalAlignmentInterface):
@@ -401,6 +401,111 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         self._timestamps = np.asarray(aligned_timestamps, dtype="float64")
+
+    def get_metadata_schema(self) -> dict:
+        metadata_schema = super().get_metadata_schema()
+
+        skeleton_schema = {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Name of the skeleton"},
+                    "nodes": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of node names (landmarks)",
+                    },
+                    "edges": {
+                        "type": ["array", "null"],
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "minItems": 2,
+                            "maxItems": 2,
+                        },
+                        "description": "List of edges connecting nodes, each edge is a pair of node indices",
+                    },
+                    "subject": {
+                        "type": ["string", "null"],
+                        "description": "Subject ID associated with this skeleton",
+                    },
+                },
+                "required": ["name", "nodes"],
+            },
+        }
+
+        pose_estimations_schema = {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "description": "Metadata for a MultiCameraPoseEstimation group",
+                "properties": {
+                    "name": {"type": "string", "description": "Name of the MultiCameraPoseEstimation group"},
+                    "description": {"type": ["string", "null"], "description": "Description of the pose estimation"},
+                    "source_software": {"type": ["string", "null"], "description": "Name of the software tool used"},
+                    "source_software_version": {"type": ["string", "null"], "description": "Version of the software"},
+                    "scorer": {"type": ["string", "null"], "description": "Name of the scorer or algorithm"},
+                    "skeleton_metadata_key": {
+                        "type": ["string", "null"],
+                        "description": "Key of the associated skeleton in Behavior.Pose.Skeletons",
+                    },
+                    "device_metadata_keys": {
+                        "type": ["array", "null"],
+                        "description": "Keys of the per-camera Device entries in Devices, one per camera.",
+                        "items": {"type": "string"},
+                    },
+                    "PoseEstimationSeries": {
+                        "type": ["object", "null"],
+                        "description": "Dictionary of PoseEstimationSeries, one per landmark",
+                        "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": ["string", "null"], "description": "Name for this series"},
+                                "description": {
+                                    "type": ["string", "null"],
+                                    "description": "Description for this series",
+                                },
+                                "unit": {
+                                    "type": ["string", "null"],
+                                    "description": "Unit of measurement",
+                                    "default": "millimeters",
+                                },
+                                "reference_frame": {
+                                    "type": ["string", "null"],
+                                    "description": "Description of the reference frame",
+                                },
+                                "confidence_definition": {
+                                    "type": ["string", "null"],
+                                    "description": "How the confidence was computed",
+                                },
+                            },
+                            "required": ["name"],
+                        },
+                    },
+                },
+                "required": ["name"],
+            },
+        }
+
+        # `Behavior` is a shared namespace: other interfaces in the same converter (e.g.
+        # ExternalVideoInterface) may write their own top-level keys under it (e.g.
+        # `Behavior.ExternalVideos`), so this must stay open (`additionalProperties: True`) rather
+        # than declaring `Behavior` itself closed -- only `Behavior.Pose` is DANNCE's own namespace
+        # and is therefore fully specified below.
+        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
+        metadata_schema["properties"]["Behavior"]["additionalProperties"] = True
+        metadata_schema["properties"]["Behavior"]["properties"] = {
+            "Pose": {
+                "type": "object",
+                "properties": {
+                    "Skeletons": skeleton_schema,
+                    "PoseEstimations": pose_estimations_schema,
+                },
+            }
+        }
+
+        return metadata_schema
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()

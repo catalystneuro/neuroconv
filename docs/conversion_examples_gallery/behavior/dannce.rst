@@ -64,3 +64,35 @@ animal to the same NWBFile:
     ...     subject_name="rat2",
     ...     metadata_key="PoseEstimationRat2",
     ... )
+
+Combining with source videos
+=============================
+
+Each camera's original video can be linked to DANNCE's 3D pose estimation as its
+``source_video`` -- the calibrated camera ``Device`` created for it then also points to the
+:py:class:`~pynwb.image.ImageSeries` written for that camera. Wiring this up by hand with
+``DANNCEInterface`` and :py:class:`~neuroconv.datainterfaces.ExternalVideoInterface` directly
+requires writing the videos before DANNCE and passing NWB objects between the two interfaces, which
+is easy to get wrong. :py:class:`~neuroconv.datainterfaces.behavior.dannce.dannceconverter.DANNCEConverter`
+does this internally: it combines a ``DANNCEInterface`` with one ``ExternalVideoInterface`` per camera
+and links each camera's video for you.
+
+.. code-block:: python
+
+    >>> from neuroconv.converters import DANNCEConverter
+
+    >>> video_file_paths = {
+    ...     "Camera1": [str(BEHAVIOR_DATA_PATH / "dannce" / "videos" / "Camera1.mp4")],
+    ...     "Camera2": [str(BEHAVIOR_DATA_PATH / "dannce" / "videos" / "Camera2.mp4")],
+    ... }
+    >>> converter = DANNCEConverter(
+    ...     file_path=file_path,
+    ...     video_file_paths=video_file_paths,
+    ...     sampling_rate=30.0,
+    ...     calibration_path=calibration_path,
+    ... )
+    >>> metadata = converter.get_metadata()
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Rattus norvegicus", sex="M", age="P90D")
+    >>>
+    >>> converter.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
