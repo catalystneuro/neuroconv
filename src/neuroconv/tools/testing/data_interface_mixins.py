@@ -1539,6 +1539,9 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
     expected_starting_time: float | None = None
     expected_rate: float | None = None
     expected_timestamps: np.ndarray | None = None
+    #: Expected ``unit`` of the written series. Unit is a property of the data (not editable metadata), set
+    #: when the series is built; uncalibrated fiber photometry defaults to "a.u.".
+    expected_unit: str = "a.u."
 
     def check_read_nwb(self, nwbfile_path: str):
         metadata = self.interface.get_metadata()
@@ -1560,7 +1563,7 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
         assert series_name in nwbfile.acquisition, f"'{series_name}' missing from acquisition."
         response_series = nwbfile.acquisition[series_name]
 
-        assert response_series.unit == series_metadata["unit"]
+        assert response_series.unit == self.expected_unit
         assert_array_equal(response_series.data[:], self.expected_response_series_data)
 
         # A regular series is written as rate + starting_time; an irregular one as explicit timestamps.

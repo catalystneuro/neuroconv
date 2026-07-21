@@ -86,8 +86,8 @@ This prints the full structure you will edit:
     FiberPhotometry:
       fiber_photometry_signal_isosbestic:
         name: FiberPhotometryResponseSeries
-        description: Fiber photometry response series.
-        unit: a.u.
+        description: Multi-fiber photometry recording of GCaMP6s calcium signal and isosbestic
+          control.
         fiber_photometry_table_region:
         - calcium_signal
         - isosbestic_control

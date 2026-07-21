@@ -150,10 +150,10 @@ The complete fiber photometry metadata structure (one interface with ``metadata_
             },
 
             # ----- Per-interface response series, keyed by metadata_key -----
+            # (unit is not metadata — it is set when the series is built; see below)
             "gcamp_dms": {
                 "name": "FiberPhotometryResponseSeries",
                 "description": "GCaMP7b calcium signal in DMS.",
-                "unit": "a.u.",
                 "fiber_photometry_table_region": ["dms_465"],     # list of ROW metadata_keys
                 "fiber_photometry_table_region_description": "DMS calcium signal.",
             },
@@ -265,10 +265,13 @@ Default Metadata and the Example Template
 
 ``get_metadata()`` returns only what the interface can derive from the source files: the NWBFile basics,
 the session start time where the format embeds it, and a single response-series entry under the
-interface's ``metadata_key`` (its ``name``, ``description``, and ``unit``). It fabricates no devices,
-indicators, or table rows — none of that is contained in the data. With no further metadata,
-``add_to_nwbfile`` writes a bare ``FiberPhotometryResponseSeries``; this is a valid NWB file, since the
-series' ``fiber_photometry_table_region`` is optional.
+interface's ``metadata_key`` holding just its ``name``. It fabricates no devices, indicators, or table
+rows — none of that is contained in the data — and no ``description`` (left empty unless a source or user
+supplies one). ``unit`` is deliberately absent: it is a property of the data, not editable metadata, so it
+is set when the ``FiberPhotometryResponseSeries`` is built (defaulting to ``"a.u."`` for uncalibrated
+signals, or the source's calibrated unit if one is reported). With no further metadata, ``add_to_nwbfile``
+writes a bare ``FiberPhotometryResponseSeries``; this is a valid NWB file, since the series'
+``fiber_photometry_table_region`` is optional.
 
 To record the optical hardware, indicator, and table, supply that metadata yourself. The base interface
 provides ``get_example_metadata()``, which returns a complete, realistic template — device models,

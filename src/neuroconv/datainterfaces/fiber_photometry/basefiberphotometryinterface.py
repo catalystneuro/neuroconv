@@ -122,19 +122,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     # ------------------------------------------------------------------
 
     def get_metadata(self) -> DeepDict:
-        """Return metadata for a single ``FiberPhotometryResponseSeries`` (name, description, unit).
-
-        Only the response series is described; no devices, indicators, or ``FiberPhotometryTable`` are
-        included. Passing this metadata to :meth:`add_to_nwbfile` writes just the response series. To also
-        record the optical hardware, indicator, and table, add that metadata under ``"FiberPhotometry"``,
-        ``"Devices"``, and ``"DeviceModels"``; :meth:`get_example_metadata` returns a complete template.
-        """
         metadata = super().get_metadata()
-        series_metadata = dict(
-            name="FiberPhotometryResponseSeries",
-            description="Fiber photometry response series.",
-            unit="a.u.",
-        )
+        series_metadata = dict(name="FiberPhotometryResponseSeries")
         return dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: series_metadata}))
 
     def get_example_metadata(self) -> DeepDict:
@@ -223,6 +212,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ),
         )
         fiber_photometry[self.metadata_key] = dict(
+            description="Multi-fiber photometry recording of GCaMP6s calcium signal and isosbestic control.",
             fiber_photometry_table_region=["calcium_signal", "isosbestic_control"],
             fiber_photometry_table_region_description=(
                 "The calcium-dependent signal and isosbestic control channels recorded from the optical fiber."
@@ -387,9 +377,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         response_series = FiberPhotometryResponseSeries(
             name=series_metadata["name"],
-            description=series_metadata["description"],
+            description=series_metadata.get("description", ""),
             data=data,
-            unit=series_metadata["unit"],
+            unit="a.u.",
             fiber_photometry_table_region=table_region,
             **timing_kwargs,
         )

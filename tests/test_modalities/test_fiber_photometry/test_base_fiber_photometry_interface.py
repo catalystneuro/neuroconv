@@ -47,10 +47,12 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         assert not metadata.get("Devices")
         assert not metadata.get("DeviceModels")
 
+        # The series entry carries only a default name — no fabricated description, and no unit (unit is a
+        # property of the data, supplied when the series is built, not editable metadata).
         series_metadata = fiber_photometry_metadata[interface.metadata_key]
         assert series_metadata["name"] == "FiberPhotometryResponseSeries"
-        assert series_metadata["unit"] == "a.u."
-        assert "description" in series_metadata
+        assert "unit" not in series_metadata
+        assert "description" not in series_metadata
 
     def test_metadata_key_override(self):
         # An explicit metadata_key names the response-series entry instead of the stream-derived default.
@@ -162,7 +164,10 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             # Response series, referencing both the calcium-signal (row 0) and isosbestic-control (row 1) rows.
             response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
             assert response_series.name == "FiberPhotometryResponseSeries"
-            assert response_series.description == "Fiber photometry response series."
+            assert (
+                response_series.description
+                == "Multi-fiber photometry recording of GCaMP6s calcium signal and isosbestic control."
+            )
             assert response_series.unit == "a.u."
             assert response_series.data[:].shape == (100, 2)
             assert response_series.rate == pytest.approx(100.0)
@@ -184,7 +189,8 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
 
             response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
             assert response_series.name == "FiberPhotometryResponseSeries"
-            assert response_series.description == "Fiber photometry response series."
+            # Nothing fabricated: no description was supplied, so it is written empty.
+            assert response_series.description == ""
             assert response_series.unit == "a.u."
             assert response_series.data[:].shape == (100, 2)
             assert response_series.rate == pytest.approx(100.0)
