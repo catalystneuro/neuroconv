@@ -103,6 +103,9 @@ class CSVEventsInterface(BaseEventsInterface):
         )
         self.metadata_key = metadata_key or Path(file_path).stem
         self._read_kwargs = read_kwargs or dict()
+        # Filled on the first _read_source() call and reused thereafter, so the CSV is parsed and
+        # coerced once even though get_metadata and _get_events_data_dict both read it.
+        self._read_source_cache = None
 
         # Each column may fill only one role; a column given for two roles is a construction mistake.
         roles = [
@@ -128,6 +131,9 @@ class CSVEventsInterface(BaseEventsInterface):
         dropped, and the label / value / duration arrays are filtered in lockstep so every returned
         array stays row-aligned.
         """
+        if self._read_source_cache is not None:
+            return self._read_source_cache
+
         timestamps_column = self.source_data["timestamps_column"]
         event_type_column = self.source_data["event_type_column"]
         durations_column = self.source_data["durations_column"]
@@ -174,7 +180,9 @@ class CSVEventsInterface(BaseEventsInterface):
         if durations is not None:
             durations = durations[valid]
         values = {column: array[valid] for column, array in values.items()}
-        return timestamps, labels, values, durations
+
+        self._read_source_cache = (timestamps, labels, values, durations)
+        return self._read_source_cache
 
     def _value_columns_metadata(self) -> dict:
         """Build the shared ``columns`` block (one entry per ``value_columns`` column) seeded on every
