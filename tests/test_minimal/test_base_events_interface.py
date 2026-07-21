@@ -16,13 +16,17 @@ class TestMockEventsInterface:
         Draft7Validator.check_schema(interface.get_metadata_schema())
 
         # The Events block nests event_types under the metadata_key. No EventTables entry is emitted:
-        # a solo type names its own table from its (required) event_name/event_description.
-        events_metadata = interface.get_metadata()["Events"]
-        assert set(events_metadata.keys()) == {"mock_events"}
-        assert set(events_metadata["mock_events"]["event_types"].keys()) == {"events"}
-        entry = events_metadata["mock_events"]["event_types"]["events"]
-        assert entry["event_name"] == "events"
-        assert "event_description" in entry
+        # a solo type names its own table from its event_name. The entry holds nothing else: the default
+        # mock type carries no description and no value columns, so get_metadata reports neither key
+        # rather than emitting an empty description and an empty columns map.
+        expected_metadata = {
+            "mock_events": {
+                "event_types": {
+                    "events": {"event_name": "events"},
+                },
+            },
+        }
+        assert interface.get_metadata()["Events"] == expected_metadata
 
         overridden = MockEventsInterface(metadata_key="my_events").get_metadata()["Events"]
         assert set(overridden.keys()) == {"my_events"}
@@ -32,10 +36,13 @@ class TestMockEventsInterface:
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
-        # The solo type "events" names its table by CamelCasing event_name ("events" -> "Events").
+        # The solo type "events" names its table by CamelCasing event_name ("events" -> "Events"), and
+        # describes it from event_description, which nothing here set: the table's description stays
+        # empty rather than being generated from the source id.
         events = nwbfile.get_events_table("Events")
         assert events.colnames == ("timestamp",)
         assert len(events) == 4
+        assert events.description == ""
 
     def test_events_single_value(self):
         # A point event type carrying one categorical value.
@@ -49,18 +56,58 @@ class TestMockEventsInterface:
         assert len(events) == 4
         # The payload codes [0, 1, 0, 1] map through column_categories["labels"].
         assert list(events["outcome"][:]) == ["go", "no_go", "go", "no_go"]
+        # This mode declares meanings as well as labels, so the column earns a MeaningsTable.
+        assert set(events.meanings_tables.keys()) == {"outcome_meanings"}
+
+    def test_meanings_table_mapping(self):
+        # A MeaningsTable holds a row per meaning the user filled in: explaining "go" and leaving "no_go"
+        # blank gives a one-row table. The cells are unaffected, since they carry the display labels.
+        interface = MockEventsInterface(event_payload="single value")
+        metadata = interface.get_metadata()
+        categories = metadata["Events"]["mock_events"]["event_types"]["events"]["columns"]["outcome"][
+            "column_categories"
+        ]
+        categories["meanings"] = {0: "A go outcome.", 1: ""}
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Events")
+        assert list(events["outcome"][:]) == ["go", "no_go", "go", "no_go"]
+        meanings_table = events.meanings_tables["outcome_meanings"]
+        assert dict(zip(meanings_table["value"][:], meanings_table["meaning"][:])) == {"go": "A go outcome."}
+
+    def test_empty_meanings_adds_no_meanings_table(self):
+        # A meanings map whose entries are all blank explains nothing, so no MeaningsTable is written at
+        # all. The column keeps its display labels.
+        interface = MockEventsInterface(event_payload="single value")
+        metadata = interface.get_metadata()
+        categories = metadata["Events"]["mock_events"]["event_types"]["events"]["columns"]["outcome"][
+            "column_categories"
+        ]
+        categories["meanings"] = {0: "", 1: ""}
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Events")
+        assert list(events["outcome"][:]) == ["go", "no_go", "go", "no_go"]
+        assert (events.meanings_tables or {}) == {}
 
     def test_events_multi_value_payload(self):
-        # A struct payload fans each field into its own column, on the same rows: 'outcome' is
-        # categorical (display labels) and 'amplitude' is numeric (raw values, no MeaningsTable).
+        # A struct payload fans each field into its own column, on the same rows, one per way the writer
+        # treats a value column: 'outcome' declares labels and meanings, 'cue' labels only, and
+        # 'amplitude' no categories at all.
         interface = MockEventsInterface(num_events=3, event_payload="multi value")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
         events = nwbfile.get_events_table("Events")
-        assert set(events.colnames) == {"timestamp", "outcome", "amplitude"}
+        assert set(events.colnames) == {"timestamp", "outcome", "cue", "amplitude"}
         assert list(events["outcome"][:]) == ["go", "no_go", "go"]
+        assert list(events["cue"][:]) == ["tone", "tone", "light"]
         assert list(events["amplitude"][:]) == [0.0, 1.0, 2.0]
+        # Only the column that declares meanings earns a MeaningsTable: 'cue' writes its display labels
+        # without one, and 'amplitude' writes raw values.
+        assert set(events.meanings_tables.keys()) == {"outcome_meanings"}
 
     def test_events_with_duration(self):
         # An event-with-duration type carries per-event durations, so the writer adds a `duration` column.
@@ -147,7 +194,7 @@ class TestMockEventsInterface:
         # fail with a clear message.
         interface = MockEventsInterface(event_payload="timestamps only")
         metadata = interface.get_metadata()
-        metadata["Events"]["mock_events"]["event_types"]["events"]["columns"]["ghost"] = {"column_name": "ghost"}
+        metadata["Events"]["mock_events"]["event_types"]["events"]["columns"] = {"ghost": {"column_name": "ghost"}}
         expected_error = "Event type 'events' declares a column for payload field 'ghost', but its payload has no such field (has [])."
         with pytest.raises(AssertionError, match=re.escape(expected_error)):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
@@ -255,6 +302,41 @@ class TestMockEventsInterface:
         # otherwise-identical (value-less) rows apart.
         assert list(events["timestamp"][:]) == pytest.approx([0.1, 0.2, 0.3, 0.4])
         assert list(events["event_type"][:]) == ["left", "right", "left", "right"]
+
+    def test_empty_event_description_does_not_create_meaning_rows_when_merged(self):
+        # The discriminator's MeaningsTable holds a row per type the user described: describing one of
+        # the two pooled types gives a one-row table.
+        interface = MockEventsInterface(num_event_types=2, num_events=2)
+        metadata = interface.get_metadata()
+        event_types = metadata["Events"]["mock_events"]["event_types"]
+        event_types["events_0"]["table_metadata_key"] = "pooled"
+        event_types["events_1"]["table_metadata_key"] = "pooled"
+        event_types["events_0"]["event_description"] = "Nose pokes into the reward port."
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Pooled")
+        assert "event_type" in events.colnames  # a merge always keeps its rows' identity
+        meanings_table = events.meanings_tables["event_type_meanings"]
+        assert dict(zip(meanings_table["value"][:], meanings_table["meaning"][:])) == {
+            "events_0": "Nose pokes into the reward port."
+        }
+
+    def test_all_empty_event_descriptions_create_no_meanings_table_when_merged(self):
+        # With neither type described the MeaningsTable would map each event_name to "", explaining
+        # nothing, so it is not written at all. The event_type column still is: without it a bare
+        # marker's row would lose its identity.
+        interface = MockEventsInterface(num_event_types=2, num_events=2)
+        metadata = interface.get_metadata()
+        event_types = metadata["Events"]["mock_events"]["event_types"]
+        event_types["events_0"]["table_metadata_key"] = "pooled"
+        event_types["events_1"]["table_metadata_key"] = "pooled"
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Pooled")
+        assert "event_type" in events.colnames
+        assert (events.meanings_tables or {}) == {}
 
     def test_merged_table_is_time_sorted(self):
         # One interface with two event types. The mock staggers each type's timestamps so the types
