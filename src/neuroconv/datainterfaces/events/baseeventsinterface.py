@@ -61,9 +61,11 @@ class BaseEventsInterface(BaseDataInterface):
     objects inside ``nwbfile.events``.
 
     The metadata lives under a per-interface ``metadata_key`` as an ``event_types`` block, one entry
-    per event type keyed by its ``event_type_source_id``. Each entry carries a required
-    ``event_name``/``event_description`` (the type's name and description, both defaulting to the source
-    id), an optional ``table_metadata_key`` (which table it routes into, defaulting to the source id so
+    per event type keyed by its ``event_type_source_id``. Each entry carries a required ``event_name``
+    (seeded from the source id) and an optional ``event_description``: a source carries handles, not
+    prose, so an interface that reads no description omits the key rather than inventing one, and the
+    writer treats an absent description as empty. It also carries
+    an optional ``table_metadata_key`` (which table it routes into, defaulting to the source id so
     each type gets its own table), and a ``columns`` map keyed by ``field_source_id`` (a payload field),
     where each column carries its output ``column_name`` and optional ``column_categories`` (relabelling
     + meanings). A single value gives one column, a struct payload several (sharing the event's rows), a
@@ -73,8 +75,10 @@ class BaseEventsInterface(BaseDataInterface):
     (**solo**, the default), they become the table's object name (CamelCased) and description. When
     several types share a ``table_metadata_key`` (**merge**), the table gets an ``event_type``
     discriminator column holding each row's ``event_name``, plus a ``MeaningsTable`` mapping those to
-    ``event_description``. A merged table's own name/description are derived, or taken from an optional
-    global ``EventTables`` entry (``table_name`` + ``description``) which always has the last word;
+    ``event_description`` for the types that carry one; a merge nobody described gets no such table,
+    since it would explain nothing. A merged table's own name is derived from the ``table_metadata_key``
+    and its description left empty, unless an optional
+    global ``EventTables`` entry (``table_name`` + ``description``) supplies them, which always has the last word;
     ``EventTables`` is only needed to name a merge (including one shared across interfaces). The writer
     is append-capable, so a second interface routing into an existing table merges into it. This
     structure is documented in the events taxonomy and PR #1774
@@ -166,11 +170,13 @@ class BaseEventsInterface(BaseDataInterface):
                         "type": "object",
                         "additionalProperties": {
                             "type": "object",
-                            "required": ["event_name", "event_description"],
+                            "required": ["event_name"],
                             "properties": {
                                 # The type's name and description. Dual role: name/describe the auto-created
                                 # table when the type is solo; label/mean the type in the ``event_type``
-                                # discriminator when merged. Both default to the event_type_source_id.
+                                # discriminator when merged. event_name is seeded from the
+                                # event_type_source_id; event_description is optional, since a source that
+                                # carries no description has none to report (absent is treated as empty).
                                 "event_name": {"type": "string"},
                                 "event_description": {"type": "string"},
                                 # Which table this type routes into (grouping). Optional; defaults to the
@@ -222,9 +228,10 @@ class BaseEventsInterface(BaseDataInterface):
         becomes a table whose object name is the type's ``event_name`` CamelCased and whose description is
         its ``event_description``. A **merge** (several types on one key, a declared ``EventTables`` entry,
         or a table another interface already wrote) gets an ``event_type`` discriminator column holding
-        each row's ``event_name``, plus a ``MeaningsTable`` mapping those to ``event_description``; the
-        merged table's own name/description come from the ``EventTables`` entry when given, else are
-        derived. Value columns are joined per type (a categorical one writes display labels plus a
+        each row's ``event_name``, plus a ``MeaningsTable`` mapping those to ``event_description`` for the
+        types that carry one; the merged table's own name/description come from the ``EventTables`` entry
+        when given, else the name is derived from the ``table_metadata_key`` and the description is left
+        empty. Value columns are joined per type (a categorical one writes display labels plus a
         ``MeaningsTable``), rows a type does not fill get the column's fill value.
 
         The writer is append-capable: if the target table already exists in ``nwbfile.events`` (e.g. a
@@ -257,20 +264,21 @@ class BaseEventsInterface(BaseDataInterface):
 
         table_owners = {}  # table object name -> event_type_source_ids this call wrote into it (to name collisions)
         for table_metadata_key, event_type_source_ids in event_type_source_ids_by_table.items():
-            # Resolve the table name/description: a declared EventTables entry wins, else derive from the
-            # single solo type, else from the pooled types.
+            # Resolve the table name/description: a declared EventTables entry wins, else a solo type
+            # supplies both, else the name comes from the routing key and the description stays empty.
             declared_entry = event_tables_metadata.get(table_metadata_key)
             if declared_entry is not None:  # an EventTables entry always has the last word
                 table_name, description = declared_entry["table_name"], declared_entry["description"]
             elif len(event_type_source_ids) == 1:
                 only = event_types[event_type_source_ids[0]]
-                table_name, description = _to_table_object_name(only["event_name"]), only["event_description"]
+                table_name = _to_table_object_name(only["event_name"])
+                description = only.get("event_description", "")
             else:
-                names = ", ".join(event_types[source_id]["event_name"] for source_id in event_type_source_ids)
-                table_name, description = (
-                    _to_table_object_name(table_metadata_key),
-                    f"Events pooled from types: {names}.",
-                )
+                # An undeclared merge names itself from the routing key. Its description is left empty
+                # for the same reason a solo table's is: only the user can describe the table, and here
+                # there is not even a single type's description to fall back on. Declare an EventTables
+                # entry to name and describe a pooled table.
+                table_name, description = _to_table_object_name(table_metadata_key), ""
 
             existing_table = nwbfile.events.get(table_name) if nwbfile.events is not None else None
             # The user asks to combine several event types into one table by declaring an EventTables entry
@@ -405,7 +413,14 @@ class BaseEventsInterface(BaseDataInterface):
                     description=column_spec.get("description", ""),
                     data=[fill] * n_existing,
                 )
-            meanings = categories.get("meanings") if categories else None
+            # Only a meaning the user actually wrote earns a row: a column whose meanings are all empty
+            # gets no MeaningsTable rather than a table of empty strings, and a partly annotated column
+            # keeps just the entries that were filled in.
+            meanings = {
+                raw_value: meaning
+                for raw_value, meaning in ((categories or {}).get("meanings") or {}).items()
+                if meaning
+            }
             if meanings:
                 # labels and meanings are both keyed by the raw value; the MeaningsTable value is the display
                 # label, matching the column's cells. Create the table the first time the column is seen, else
@@ -430,23 +445,31 @@ class BaseEventsInterface(BaseDataInterface):
 
         # The discriminator carries each type's event_name; create or extend its MeaningsTable (extending
         # lets a second interface add its own types on append) mapping event_name -> event_description.
+        # Only a type the user described earns a row, so a merge nobody annotated gets no MeaningsTable
+        # at all rather than one restating each event_name back at the reader.
         if is_merge:
             column = table["event_type"]
             meanings_table = next(
                 (other for other in (table.meanings_tables or {}).values() if other.target is column), None
             )
-            creating_meanings = meanings_table is None
-            if creating_meanings:
-                meanings_table = MeaningsTable(target=column, description="Meaning of each event type.")
-            existing_values = set(meanings_table["value"].data)
+            existing_values = set(meanings_table["value"].data) if meanings_table is not None else set()
+            described_types = []
             for event_type_source_id in event_type_source_ids:
                 entry = event_types[event_type_source_id]
-                if entry["event_name"] in existing_values:
+                event_name = entry["event_name"]
+                event_description = entry.get("event_description", "")
+                if event_name in existing_values or not event_description:
                     continue
-                meanings_table.add_row(value=entry["event_name"], meaning=entry["event_description"])
-                existing_values.add(entry["event_name"])
-            if creating_meanings:
-                table.add_meanings_table(meanings_table)
+                described_types.append((event_name, event_description))
+                existing_values.add(event_name)
+            if described_types:
+                creating_meanings = meanings_table is None
+                if creating_meanings:
+                    meanings_table = MeaningsTable(target=column, description="Meaning of each event type.")
+                for event_name, event_description in described_types:
+                    meanings_table.add_row(value=event_name, meaning=event_description)
+                if creating_meanings:
+                    table.add_meanings_table(meanings_table)
 
         # Add this interface's rows. A row fills its own columns; every other column on the table (from
         # this or a prior interface) gets that column's fill value ("" for a string column, else NaN).
