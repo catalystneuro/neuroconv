@@ -148,6 +148,35 @@ class TestCSVEventsInterface:
         event_type_meanings = events.meanings_tables["event_type_meanings"]
         assert set(event_type_meanings["value"][:]) == {"a", "b"}
 
+    def test_merged_types_share_a_value_column(self, tmp_path):
+        # Two event types pooled into one table share a value column: both seed the same "outcome"
+        # column, so the merged table carries a single populated "outcome" (not one half-empty column
+        # per type). This is the within-interface shared-column case the base interface enabled.
+        file_path = tmp_path / "trials.csv"
+        file_path.write_text("onset,kind,outcome\n1.0,a,hit\n2.0,b,miss\n3.0,a,miss\n4.0,b,hit\n5.0,a,hit\n")
+        interface = CSVEventsInterface(
+            file_path=file_path,
+            timestamps_column="onset",
+            event_type_column="kind",
+            value_columns=["outcome"],
+        )
+        metadata = interface.get_metadata()
+        metadata["Events"]["EventTables"] = {"trials": {"table_name": "Trials", "description": "Pooled CSV trials."}}
+        for event_type in metadata["Events"]["csv_events"]["event_types"].values():
+            event_type["table_metadata_key"] = "trials"
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        assert list(nwbfile.events.keys()) == ["Trials"]
+        trials = nwbfile.get_events_table("Trials")
+        # A single shared "outcome" column, not "outcome" split per type.
+        assert set(trials.colnames) == {"timestamp", "event_type", "outcome"}
+        # Pooled rows are re-sorted chronologically; outcome stays row-aligned across both types.
+        assert list(trials["timestamp"][:]) == [1.0, 2.0, 3.0, 4.0, 5.0]
+        assert list(trials["event_type"][:]) == ["a", "b", "a", "b", "a"]
+        assert list(trials["outcome"][:]) == ["hit", "miss", "miss", "hit", "hit"]
+
     def test_headerless_int_columns(self, headerless_two_type_file):
         interface = CSVEventsInterface(file_path=headerless_two_type_file, timestamps_column=0, event_type_column=1)
         nwbfile = mock_NWBFile()
