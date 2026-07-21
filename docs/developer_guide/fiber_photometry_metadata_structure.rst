@@ -246,11 +246,10 @@ table:
 
 2. When several interfaces run together, their metadata is merged before writing (by the converter's
    ``dict_deep_update``, which merges the keyed containers by key), so every interface sees the full set
-   of shared rows and devices and whichever runs first can build the complete table.
-
-3. Declaring the same-named shared object with *different* contents in two interfaces is a *silent* merge
-   for devices and device models: the shared device registry reuses whichever object was written first
-   and ignores the conflicting metadata.
+   of shared rows and devices and whichever runs first can build the complete table. Because devices and
+   device models live in the single shared ``metadata["Devices"]`` / ``metadata["DeviceModels"]`` registry
+   keyed by ``metadata_key``, every interface references the same entry by key — there is no per-interface
+   copy of a shared object that could diverge.
 
 Commanded voltage is a special case among the shared containers: it is data-bearing (it reads samples
 from a stream, not just static metadata). Each ``CommandedVoltageSeries`` entry names the input
