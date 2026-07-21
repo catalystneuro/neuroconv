@@ -376,6 +376,11 @@ tdt_fp = [
     "neuroconv[fiber_photometry]",
     "tdt",
 ]
+guppy = [
+    "neuroconv[fiber_photometry]",
+    "ndx-guppy",
+    "tables",
+]
 thor = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
@@ -391,6 +396,7 @@ ophys = [
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
     "neuroconv[femtonics]",
+    "neuroconv[guppy]",
     "neuroconv[inscopix]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
