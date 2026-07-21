@@ -86,7 +86,7 @@ class TestCSVEventsInterface:
         Draft7Validator.check_schema(interface.get_metadata_schema())
 
     def test_single_type_metadata_keyed_by_file_stem(self, interface):
-        event_types = interface.get_metadata()["Events"]["csv_events"]["event_types"]
+        event_types = interface.get_metadata()["Events"]["ttl"]["event_types"]
         assert list(event_types) == ["ttl"]
         assert event_types["ttl"]["event_name"] == "ttl"
         assert "columns" not in event_types["ttl"]  # timestamp-only
@@ -132,7 +132,7 @@ class TestCSVEventsInterface:
         interface = CSVEventsInterface(file_path=two_type_file, timestamps_column="onset", event_type_column="kind")
         metadata = interface.get_metadata()
         metadata["Events"]["EventTables"] = {"events": {"table_name": "Events", "description": "Pooled CSV events."}}
-        for event_type in metadata["Events"]["csv_events"]["event_types"].values():
+        for event_type in metadata["Events"]["events"]["event_types"].values():
             event_type["table_metadata_key"] = "events"
 
         nwbfile = mock_NWBFile()
@@ -154,7 +154,7 @@ class TestCSVEventsInterface:
         interface = CSVEventsInterface(file_path=two_type_file, timestamps_column="onset", event_type_column="kind")
         metadata = interface.get_metadata()
         metadata["Events"]["EventTables"] = {"events": {"table_name": "Events", "description": "Pooled CSV events."}}
-        event_types = metadata["Events"]["csv_events"]["event_types"]
+        event_types = metadata["Events"]["events"]["event_types"]
         for event_type in event_types.values():
             event_type["table_metadata_key"] = "events"
         event_types["a"]["event_description"] = "Left choice."
@@ -182,7 +182,7 @@ class TestCSVEventsInterface:
         )
         metadata = interface.get_metadata()
         metadata["Events"]["EventTables"] = {"trials": {"table_name": "Trials", "description": "Pooled CSV trials."}}
-        for event_type in metadata["Events"]["csv_events"]["event_types"].values():
+        for event_type in metadata["Events"]["trials"]["event_types"].values():
             event_type["table_metadata_key"] = "trials"
 
         nwbfile = mock_NWBFile()
@@ -217,7 +217,7 @@ class TestCSVEventsInterface:
             event_type_column=None,
             value_columns=["amplitude", "outcome"],
         )
-        columns = interface.get_metadata()["Events"]["csv_events"]["event_types"]["trial"]["columns"]
+        columns = interface.get_metadata()["Events"]["trial"]["event_types"]["trial"]["columns"]
         assert columns["amplitude"] == {"column_name": "amplitude"}
         assert columns["outcome"] == {"column_name": "outcome"}
 
@@ -253,7 +253,7 @@ class TestCSVEventsInterface:
             value_columns=["outcome"],
         )
         metadata = interface.get_metadata()
-        metadata["Events"]["csv_events"]["event_types"]["trial"]["columns"]["outcome"]["column_categories"] = {
+        metadata["Events"]["trial"]["event_types"]["trial"]["columns"]["outcome"]["column_categories"] = {
             "labels": {"go": "GO", "no_go": "NoGo"},
             "meanings": {"go": "reward delivered", "no_go": "no reward"},
         }
@@ -357,7 +357,7 @@ class TestCSVEventsInterface:
         file_path = tmp_path / "ttl.csv"
         file_path.write_text("timestamps\n")  # header only, no rows
         interface = CSVEventsInterface(file_path=file_path, timestamps_column="timestamps", event_type_column=None)
-        assert interface.get_metadata()["Events"]["csv_events"]["event_types"] == {}
+        assert interface.get_metadata()["Events"]["ttl"]["event_types"] == {}
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())

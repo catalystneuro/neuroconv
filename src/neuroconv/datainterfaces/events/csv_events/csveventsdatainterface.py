@@ -82,7 +82,8 @@ class CSVEventsInterface(BaseEventsInterface):
             ``NaN``. Default None writes point (timestamp-only) events.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
-            If None (default), ``"csv_events"`` is used.
+            If None (default), the file stem is used, so several CSV events interfaces in one
+            conversion get distinct keys without any manual naming.
         read_kwargs : dict, optional
             Additional keyword arguments forwarded to ``pandas.read_csv``, used to handle format
             quirks such as ``sep``, ``encoding``, ``decimal``, or ``skiprows``. Any value given here
@@ -100,7 +101,7 @@ class CSVEventsInterface(BaseEventsInterface):
             durations_column=durations_column,
             verbose=verbose,
         )
-        self.metadata_key = metadata_key or "csv_events"
+        self.metadata_key = metadata_key or Path(file_path).stem
         self._read_kwargs = read_kwargs or dict()
 
         # Each column may fill only one role; a column given for two roles is a construction mistake.
