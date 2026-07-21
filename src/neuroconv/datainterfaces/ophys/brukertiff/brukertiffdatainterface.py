@@ -1,11 +1,296 @@
 import warnings
+from pathlib import Path
 from typing import Literal
 
+import numpy as np
 from dateutil.parser import parse
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils.dict import DeepDict
+
+
+class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
+    """Interface for Bruker Prairie View OME-TIFF imaging data.
+
+    This interface uses the unified ``BrukerTiffImagingExtractor`` from roiextractors,
+    which handles single-plane, volumetric, and multi-channel data through a single class.
+    Volumetric data is exposed as a 4D series.
+
+    Channels are identified by name (e.g. ``"Ch1"``, ``"Ch2"``); use
+    :meth:`get_available_channels` to list them. When the data contains multiple channels,
+    ``channel_name`` is required.
+
+    The interface emits metadata in the new dict-based format keyed by ``metadata_key``,
+    populating ``Devices``, ``Ophys.ImagingPlanes``, and ``Ophys.MicroscopySeries``.
+    """
+
+    display_name = "Bruker TIFF Imaging"
+    associated_suffixes = (".ome", ".tif", ".xml", ".env")
+    info = "Interface for Bruker Prairie View OME-TIFF imaging data."
+
+    @classmethod
+    def get_extractor_class(cls):
+        from roiextractors import BrukerTiffImagingExtractor
+
+        return BrukerTiffImagingExtractor
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "Folder containing Bruker .ome.tif files and the matching configuration .xml."
+        return source_schema
+
+    def get_metadata_schema(self) -> dict:
+        """Return a schema compatible with the new dict-based Ophys metadata format.
+
+        The base imaging schema requires legacy ``Ophys.Device`` / ``Ophys.ImagingPlane`` /
+        ``Ophys.TwoPhotonSeries`` lists, which this interface does not produce. We bypass those
+        requirements and only validate ``NWBFile`` baseline metadata.
+        """
+        from ....basedatainterface import BaseDataInterface
+
+        return BaseDataInterface.get_metadata_schema(self)
+
+    @classmethod
+    def get_available_channels(cls, folder_path: DirectoryPath) -> list[str]:
+        """Return the channel names available in the Bruker dataset, in acquisition order.
+
+        Channel names are read from the Bruker configuration ``.xml`` (the ``channelName``
+        attribute of each ``<File>`` element), which is authoritative and present for every
+        PrairieView version. This mirrors ``BrukerTiffImagingExtractor`` and avoids the OME-XML
+        path, which fails on PrairieView 5.8+ ``BinaryOnly`` packaging where the ``.ome.tif``
+        files carry no ``<Pixels>`` block.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Folder containing Bruker .ome.tif files and the matching configuration .xml.
+
+        Returns
+        -------
+        list[str]
+            Channel labels in acquisition order (e.g. ``["Ch1", "Ch2"]``).
+        """
+        from xml.etree import ElementTree
+
+        folder_path = Path(folder_path)
+        xml_file_path = folder_path / f"{folder_path.name}.xml"
+        if not xml_file_path.is_file():
+            raise FileNotFoundError(f"Bruker XML configuration file not found at '{xml_file_path}'.")
+
+        xml_root = ElementTree.parse(xml_file_path).getroot()
+        channel_number_to_name = {
+            int(elem.attrib["channel"]): elem.attrib["channelName"] for elem in xml_root.iter("File")
+        }
+        return [channel_number_to_name[number] for number in sorted(channel_number_to_name)]
+
+    @validate_call
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        *,
+        channel_name: str | None = None,
+        metadata_key: str | None = None,
+        verbose: bool = False,
+    ):
+        """
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Folder containing Bruker .ome.tif files and the matching configuration .xml.
+        channel_name : str, optional
+            Channel name (e.g. ``"Ch1"``, ``"Ch2"``). Required when the data has more than one
+            channel. Use :meth:`get_available_channels` to see what is available.
+        metadata_key : str, optional
+            Metadata key for this interface. When ``None``, defaults to ``"bruker_tiff_imaging"``,
+            with a channel suffix when ``channel_name`` is provided (e.g. ``"bruker_tiff_imaging_Ch1"``).
+        verbose : bool, default: False
+        """
+        if metadata_key is None:
+            metadata_key = "bruker_tiff_imaging"
+            if channel_name is not None:
+                metadata_key = f"{metadata_key}_{channel_name}"
+
+        self.channel_name = channel_name
+        super().__init__(
+            folder_path=folder_path,
+            channel_name=channel_name,
+            verbose=verbose,
+            metadata_key=metadata_key,
+        )
+
+    def get_metadata(self) -> DeepDict:
+        """Return metadata in the new dict-based format only.
+
+        Populates ``Devices``, ``Ophys.ImagingPlanes`` and ``Ophys.MicroscopySeries`` keyed by
+        ``self.metadata_key``. Cross-references are wired via ``device_metadata_key`` and
+        ``imaging_plane_metadata_key``.
+        """
+        metadata = super().get_metadata(use_new_metadata_format=True)
+
+        bruker_xml_metadata = self.imaging_extractor._bruker_xml_metadata
+
+        if "date" in bruker_xml_metadata:
+            metadata["NWBFile"]["session_start_time"] = parse(bruker_xml_metadata["date"])
+
+        device_name = "BrukerFluorescenceMicroscope"
+        device_description = f"Version {bruker_xml_metadata['version']}" if "version" in bruker_xml_metadata else None
+        device_entry = {"name": device_name}
+        if device_description is not None:
+            device_entry["description"] = device_description
+        metadata["Devices"] = {self.metadata_key: device_entry}
+
+        name_suffix = self.channel_name if self.channel_name is not None else ""
+        imaging_plane_name = f"ImagingPlane{name_suffix}"
+        photon_series_name = f"TwoPhotonSeries{name_suffix}"
+        is_volumetric = self.imaging_extractor.is_volumetric
+
+        sampling_frequency = float(self.imaging_extractor.get_sampling_frequency())
+        frame_shape = self.imaging_extractor.get_frame_shape()  # (num_rows, num_columns)
+        grid_spacing, origin_coords, field_of_view = self._extract_spatial_metadata(
+            frame_shape=frame_shape, is_volumetric=is_volumetric
+        )
+
+        imaging_plane_entry = {
+            "name": imaging_plane_name,
+            "description": "The imaging plane origin_coords units are in the microscope reference frame.",
+            "device_metadata_key": self.metadata_key,
+            "imaging_rate": sampling_frequency,
+            "excitation_lambda": np.nan,
+            "indicator": "unknown",
+            "location": "unknown",
+            "optical_channel": [
+                {
+                    "name": "OpticalChannel",
+                    "description": "An optical channel of the microscope.",
+                    "emission_lambda": np.nan,
+                }
+            ],
+            "grid_spacing": grid_spacing,
+            "grid_spacing_unit": "meters",
+            "origin_coords": origin_coords,
+            "origin_coords_unit": "micrometers",
+        }
+
+        microscopy_series_entry = {
+            "name": photon_series_name,
+            "unit": "n.a.",
+            "imaging_plane_metadata_key": self.metadata_key,
+            "description": (
+                "The volumetric imaging data acquired from the Bruker Two-Photon Microscope."
+                if is_volumetric
+                else "Imaging data acquired from the Bruker Two-Photon Microscope."
+            ),
+            "field_of_view": field_of_view,
+        }
+        if "scanLinePeriod" in bruker_xml_metadata:
+            microscopy_series_entry["scan_line_rate"] = 1 / float(bruker_xml_metadata["scanLinePeriod"])
+
+        metadata["Ophys"] = {
+            "ImagingPlanes": {self.metadata_key: imaging_plane_entry},
+            "MicroscopySeries": {self.metadata_key: microscopy_series_entry},
+        }
+
+        return metadata
+
+    def _extract_spatial_metadata(
+        self, frame_shape: tuple[int, int], is_volumetric: bool
+    ) -> tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]:
+        """Compute grid_spacing, origin_coords, and field_of_view from the Bruker XML.
+
+        Returns tuples (not lists) because ``dict_deep_update`` collapses repeated
+        values in primitive lists (e.g. ``[7.09e-05, 7.09e-05]`` -> ``[7.09e-05]``)
+        when NWBConverter merges per-interface metadata.
+        """
+        bruker_xml_metadata = self.imaging_extractor._bruker_xml_metadata
+        microns_per_pixel = bruker_xml_metadata["micronsPerPixel"]
+        x_size_meters = float(microns_per_pixel[0]["XAxis"]) / 1e6
+        y_size_meters = float(microns_per_pixel[1]["YAxis"]) / 1e6
+
+        origin_coords = self._determine_position_current(is_volumetric=is_volumetric)
+
+        grid_spacing: tuple[float, ...] = (y_size_meters, x_size_meters)
+        field_of_view: tuple[float, ...] = (y_size_meters * frame_shape[1], x_size_meters * frame_shape[0])
+        if is_volumetric:
+            depths = self._determine_plane_depths(xml_root=self.imaging_extractor._xml_root)
+            if len(depths) >= 2:
+                # grid_spacing z is the inter-plane step; field_of_view z is the total depth extent.
+                step_meters = abs(depths[1] - depths[0]) / 1e6
+                extent_meters = abs(depths[-1] - depths[0]) / 1e6
+                grid_spacing = grid_spacing + (step_meters,)
+                field_of_view = field_of_view + (extent_meters,)
+
+        return grid_spacing, tuple(origin_coords), field_of_view
+
+    def _determine_position_current(self, is_volumetric: bool) -> list[float]:
+        """Return [y, x] (planar) or [y, x, z] (volumetric) microscope-frame positions in micrometers.
+
+        For volumetric data the z value is the first plane's focal position, read from the active
+        ``zDevice``.
+        """
+        xml_root = self.imaging_extractor._xml_root
+        default_position_element = xml_root.find(".//PVStateValue[@key='positionCurrent']")
+        if default_position_element is None:
+            return [0.0, 0.0]
+
+        position_values: list[float] = []
+        for axis in ["YAxis", "XAxis"]:
+            sub_indexed_values = default_position_element.find(f"./SubindexedValues[@index='{axis}']")
+            if sub_indexed_values is None:
+                position_values.append(0.0)
+                continue
+            for sub_indexed_value in sub_indexed_values:
+                position_values.append(float(sub_indexed_value.attrib["value"]))
+
+        if not is_volumetric:
+            return position_values
+
+        # Volumetric: the imaging plane's origin z is the first plane's focal depth.
+        depths = self._determine_plane_depths(xml_root=xml_root)
+        if depths:
+            position_values.append(depths[0])
+        return position_values
+
+    def _determine_plane_depths(self, xml_root) -> list[float]:
+        """Return the ordered, unique focal depths (micrometers) of the acquisition's z-planes.
+
+        The active z device is read from ``zDevice`` (a piezo stage, an electrically tunable lens,
+        etc.); its ``positionCurrent`` is collected across frames and the distinct depths are
+        returned in acquisition order. When ``zDevice`` is absent, falls back to the z sub-device
+        whose value moves away from the reference.
+        """
+        z_device_element = xml_root.find(".//PVStateValue[@key='zDevice']")
+        z_device_index = int(z_device_element.attrib["value"]) if z_device_element is not None else None
+
+        default_z_element = xml_root.find(".//PVStateValue[@key='positionCurrent']/SubindexedValues[@index='ZAxis']")
+        default_z_values = (
+            [float(v.attrib["value"]) for v in default_z_element] if default_z_element is not None else []
+        )
+
+        ordered_depths: list[float] = []
+        for frame in xml_root.findall(".//Frame"):
+            z_values_element = frame.find(".//PVStateValue[@key='positionCurrent']/SubindexedValues[@index='ZAxis']")
+            if z_values_element is None:
+                continue
+            z_values = [float(v.attrib["value"]) for v in z_values_element]
+            if z_device_index is not None and z_device_index < len(z_values):
+                depth = z_values[z_device_index]
+            else:
+                moving = [
+                    z
+                    for index, z in enumerate(z_values)
+                    if index >= len(default_z_values) or default_z_values[index] != z
+                ]
+                if not moving:
+                    continue
+                depth = moving[0]
+            if depth not in ordered_depths:
+                ordered_depths.append(depth)
+
+        return ordered_depths
 
 
 class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
