@@ -9,10 +9,6 @@ from neuroconv.tools.nwb_helpers import (
     _add_device_to_nwbfile,
 )
 
-#: Sentinel written into required string metadata fields the user has not filled in. It is a distinct
-#: value from a deliberate ``"unknown"`` so an intentional "unknown" silences the placeholder warning.
-FIBER_PHOTOMETRY_PLACEHOLDER = "PLACEHOLDER"
-
 #: FiberPhotometryTable row reference fields (``<field>_metadata_key``) mapping to the ndx row column.
 _ROW_DEVICE_KEY_FIELDS = {
     "optical_fiber_metadata_key": "optical_fiber",
@@ -22,87 +18,6 @@ _ROW_DEVICE_KEY_FIELDS = {
     "excitation_filter_metadata_key": "excitation_filter",
     "emission_filter_metadata_key": "emission_filter",
 }
-
-
-def get_default_fiber_photometry_metadata(metadata_key: str) -> dict:
-    """Return the default metadata scaffold for a single-series fiber photometry interface.
-
-    Devices and device models live in the shared top-level ``metadata["Devices"]`` /
-    ``metadata["DeviceModels"]`` registry (added in #1780): each entry carries a ``type`` naming its
-    concrete class and a device links its model with ``device_model_metadata_key``. The remaining fiber
-    photometry containers (indicators, the ``FiberPhotometryTable``, and this interface's response
-    series) live under ``metadata["FiberPhotometry"]``, keyed by ``metadata_key`` and referencing each
-    other — and the shared devices — with ``_metadata_key`` fields. Required fields are pre-filled with
-    sentinels — ``NaN`` for the required numeric wavelengths and :data:`FIBER_PHOTOMETRY_PLACEHOLDER` for
-    required strings — so an interface runs on zero user metadata while ``add_to_nwbfile`` warns about any
-    surviving sentinel. ``metadata_key`` scopes this interface's response-series entry.
-    """
-    placeholder = FIBER_PHOTOMETRY_PLACEHOLDER
-    device_models = {
-        "optical_fiber_model": dict(
-            type="OpticalFiberModel",
-            name="optical_fiber_model",
-            manufacturer=placeholder,
-            numerical_aperture=float("nan"),
-        ),
-        "excitation_source_model": dict(
-            type="ExcitationSourceModel",
-            name="excitation_source_model",
-            manufacturer=placeholder,
-            source_type=placeholder,
-            excitation_mode=placeholder,
-        ),
-        "photodetector_model": dict(
-            type="PhotodetectorModel",
-            name="photodetector_model",
-            manufacturer=placeholder,
-            detector_type=placeholder,
-        ),
-    }
-    devices = {
-        "optical_fiber": dict(
-            type="OpticalFiber",
-            name="optical_fiber",
-            device_model_metadata_key="optical_fiber_model",
-            fiber_insertion=dict(),
-        ),
-        "excitation_source": dict(
-            type="ExcitationSource",
-            name="excitation_source",
-            device_model_metadata_key="excitation_source_model",
-        ),
-        "photodetector": dict(
-            type="Photodetector",
-            name="photodetector",
-            device_model_metadata_key="photodetector_model",
-        ),
-    }
-    fiber_photometry_metadata = dict(
-        FiberPhotometryIndicators={"indicator": dict(name="indicator", label=placeholder)},
-        FiberPhotometryTable=dict(
-            name="fiber_photometry_table",
-            description=placeholder,
-            rows={
-                "row0": dict(
-                    location=placeholder,
-                    excitation_wavelength_in_nm=float("nan"),
-                    emission_wavelength_in_nm=float("nan"),
-                    indicator_metadata_key="indicator",
-                    optical_fiber_metadata_key="optical_fiber",
-                    excitation_source_metadata_key="excitation_source",
-                    photodetector_metadata_key="photodetector",
-                )
-            },
-        ),
-    )
-    fiber_photometry_metadata[metadata_key] = dict(
-        name="FiberPhotometryResponseSeries",
-        description=placeholder,
-        unit="a.u.",
-        fiber_photometry_table_region=["row0"],
-        fiber_photometry_table_region_description=placeholder,
-    )
-    return dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry_metadata)
 
 
 def _assert_metadata_matches_existing(existing_object, metadata: dict, name: str) -> None:
@@ -285,6 +200,25 @@ def add_commanded_voltage_series(
     return commanded_voltage_series
 
 
+def get_fiber_photometry_table(nwbfile: NWBFile):
+    """Return the ``FiberPhotometryTable`` in ``nwbfile``, or ``None`` if none is present.
+
+    Walks ``nwbfile.lab_meta_data`` and returns the first ``FiberPhotometry`` container's table,
+    matching by the ``fiber_photometry_table`` attribute rather than a fixed lab_meta_data key.
+    """
+    fiber_photometry_lab_meta_data = next(
+        (
+            lab_meta_data
+            for lab_meta_data in nwbfile.lab_meta_data.values()
+            if hasattr(lab_meta_data, "fiber_photometry_table")
+        ),
+        None,
+    )
+    if fiber_photometry_lab_meta_data is None:
+        return None
+    return fiber_photometry_lab_meta_data.fiber_photometry_table
+
+
 def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_metadata: dict, devices_metadata: dict):
     """Build the shared ``FiberPhotometry`` lab metadata (viruses, injections, indicators, table).
 
@@ -300,8 +234,9 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
     ndx_fiber_photometry = get_package("ndx_fiber_photometry")
     ndx_ophys_devices = get_package("ndx_ophys_devices")
 
-    if "fiber_photometry" in nwbfile.lab_meta_data:
-        return nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+    existing_table = get_fiber_photometry_table(nwbfile)
+    if existing_table is not None:
+        return existing_table
 
     key_to_viral_vector = {}
     for viral_vector_metadata_key, viral_vector_metadata in fiber_photometry_metadata.get(

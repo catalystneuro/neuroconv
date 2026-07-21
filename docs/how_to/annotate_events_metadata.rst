@@ -52,8 +52,7 @@ Annotation supplies that, and it is just editing the dict ``get_metadata()`` see
 edits that dict; apply the ones you need, then pass the result to ``create_nwbfile``.
 
 **Inspect what the interface extracted.** Print the seeded dict to see the event types the
-interface found (each keyed by its ``event_type_source_id``), the seeded defaults, and the value
-vocabularies discovered from the data:
+interface found (each keyed by its ``event_type_source_id``) and the seeded defaults:
 
 .. code-block:: python
 
@@ -67,22 +66,15 @@ vocabularies discovered from the data:
             "event_types": {
                 "PtAB": {                         # one entry per event type found (its event_type_source_id)
                     "event_name": "PtAB",          # seeded to the source id; names its own table
-                    "event_description": "Events from TDT epoc store 'PtAB'.",
                     "columns": {                  # value columns, keyed by field_source_id
                         "strobe": {               # the strobe value field
                             "column_name": "strobe",   # seeded to the field_source_id
-                            "column_categories": {     # discovered vocabulary; labels/meanings for you to edit
-                                "labels":   {64959: "64959", 65023: "65023", 65535: "65535"},
-                                "meanings": {64959: "", 65023: "", 65535: ""},
-                            },
                         },
                     },
                 },
                 "PC0_": {                         # constant value -> a bare marker (timestamps only)
                     "event_name": "PC0_",
-                    "event_description": "Events from TDT epoc store 'PC0_'.",
-                    "columns": {},                # no value columns
-                },
+                },                                # no columns
             },
         },
     }
@@ -117,7 +109,7 @@ value the hardware emitted to the display text written in its place:
 
 .. code-block:: python
 
-    column["column_categories"]["labels"] = {64959: "left", 65023: "center", 65535: "right"}
+    column["column_categories"] = {"labels": {64959: "left", 65023: "center", 65535: "right"}}
 
 The cells now show the labels instead of the raw codes:
 
@@ -380,6 +372,11 @@ by type:
 
 If a shared type did carry a value (e.g. a labeled choice), it would add its own column, filled only
 on its rows, exactly as in the single-interface case above.
+
+When several pooled types record the *same* quantity, give them one shared column by declaring the
+identical ``column_name`` (with matching ``column_categories`` and ``description``) on each; the writer
+merges them into a single column filled from every type's rows instead of one column per type. Declaring
+the same ``column_name`` with conflicting meanings or descriptions is an error.
 
 If you have a use case not covered here, please open an issue at `NeuroConv GitHub Issues
 <https://github.com/catalystneuro/neuroconv/issues>`_.

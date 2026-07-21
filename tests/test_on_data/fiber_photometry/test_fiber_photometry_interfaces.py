@@ -795,14 +795,6 @@ class TestDoricFiberPhotometryInterfaceCSV(FiberPhotometryInterfaceTestMixin):
         streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
         assert streams == ["ref", "sig"]
 
-    def test_default_metadata_warns_about_placeholders(self, setup_interface):
-        # The CSV export does not embed a session start time (unlike the .doric HDF5 export), so it
-        # must be supplied here for the scaffold to pass the base NWBFile schema.
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-        with pytest.warns(UserWarning, match="placeholder"):
-            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
-
 
 class TestDoricFiberPhotometryInterfaceCSVGroupedHeader(FiberPhotometryInterfaceTestMixin):
     """Tests the older, grouped-header CSV variant of DoricFiberPhotometryInterface.
@@ -829,12 +821,6 @@ class TestDoricFiberPhotometryInterfaceCSVGroupedHeader(FiberPhotometryInterface
     def test_get_available_streams(self):
         streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
         assert streams == ["AIn-1 - Dem (da)", "AIn-1 - Dem (ref)", "AOut-1", "AOut-2", "DI/O-1", "Raw"]
-
-    def test_default_metadata_warns_about_placeholders(self, setup_interface):
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-        with pytest.warns(UserWarning, match="placeholder"):
-            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
 
 
 class TestDoricFiberPhotometryInterfaceLegacyHDF5(FiberPhotometryInterfaceTestMixin):
@@ -864,11 +850,3 @@ class TestDoricFiberPhotometryInterfaceLegacyHDF5(FiberPhotometryInterfaceTestMi
     def test_get_available_streams(self):
         streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
         assert streams == ["Console_AIn-1 - Raw", "Console_AIn-2 - Raw", "Console_DI--O-1"]
-
-    def test_default_metadata_warns_about_placeholders(self, setup_interface):
-        # This legacy export does not embed a 'Created' attribute either, so no session start time
-        # is set automatically.
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-        with pytest.warns(UserWarning, match="placeholder"):
-            self.interface.create_nwbfile(metadata=metadata, stub_test=True)

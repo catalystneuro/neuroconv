@@ -16,13 +16,17 @@ class TestMockEventsInterface:
         Draft7Validator.check_schema(interface.get_metadata_schema())
 
         # The Events block nests event_types under the metadata_key. No EventTables entry is emitted:
-        # a solo type names its own table from its (required) event_name/event_description.
-        events_metadata = interface.get_metadata()["Events"]
-        assert set(events_metadata.keys()) == {"mock_events"}
-        assert set(events_metadata["mock_events"]["event_types"].keys()) == {"events"}
-        entry = events_metadata["mock_events"]["event_types"]["events"]
-        assert entry["event_name"] == "events"
-        assert "event_description" in entry
+        # a solo type names its own table from its event_name. The entry holds nothing else: the default
+        # mock type carries no description and no value columns, so get_metadata reports neither key
+        # rather than emitting an empty description and an empty columns map.
+        expected_metadata = {
+            "mock_events": {
+                "event_types": {
+                    "events": {"event_name": "events"},
+                },
+            },
+        }
+        assert interface.get_metadata()["Events"] == expected_metadata
 
         overridden = MockEventsInterface(metadata_key="my_events").get_metadata()["Events"]
         assert set(overridden.keys()) == {"my_events"}
@@ -32,10 +36,13 @@ class TestMockEventsInterface:
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
-        # The solo type "events" names its table by CamelCasing event_name ("events" -> "Events").
+        # The solo type "events" names its table by CamelCasing event_name ("events" -> "Events"), and
+        # describes it from event_description, which nothing here set: the table's description stays
+        # empty rather than being generated from the source id.
         events = nwbfile.get_events_table("Events")
         assert events.colnames == ("timestamp",)
         assert len(events) == 4
+        assert events.description == ""
 
     def test_events_single_value(self):
         # A point event type carrying one categorical value.
@@ -49,18 +56,58 @@ class TestMockEventsInterface:
         assert len(events) == 4
         # The payload codes [0, 1, 0, 1] map through column_categories["labels"].
         assert list(events["outcome"][:]) == ["go", "no_go", "go", "no_go"]
+        # This mode declares meanings as well as labels, so the column earns a MeaningsTable.
+        assert set(events.meanings_tables.keys()) == {"outcome_meanings"}
+
+    def test_meanings_table_mapping(self):
+        # A MeaningsTable holds a row per meaning the user filled in: explaining "go" and leaving "no_go"
+        # blank gives a one-row table. The cells are unaffected, since they carry the display labels.
+        interface = MockEventsInterface(event_payload="single value")
+        metadata = interface.get_metadata()
+        categories = metadata["Events"]["mock_events"]["event_types"]["events"]["columns"]["outcome"][
+            "column_categories"
+        ]
+        categories["meanings"] = {0: "A go outcome.", 1: ""}
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Events")
+        assert list(events["outcome"][:]) == ["go", "no_go", "go", "no_go"]
+        meanings_table = events.meanings_tables["outcome_meanings"]
+        assert dict(zip(meanings_table["value"][:], meanings_table["meaning"][:])) == {"go": "A go outcome."}
+
+    def test_empty_meanings_adds_no_meanings_table(self):
+        # A meanings map whose entries are all blank explains nothing, so no MeaningsTable is written at
+        # all. The column keeps its display labels.
+        interface = MockEventsInterface(event_payload="single value")
+        metadata = interface.get_metadata()
+        categories = metadata["Events"]["mock_events"]["event_types"]["events"]["columns"]["outcome"][
+            "column_categories"
+        ]
+        categories["meanings"] = {0: "", 1: ""}
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Events")
+        assert list(events["outcome"][:]) == ["go", "no_go", "go", "no_go"]
+        assert (events.meanings_tables or {}) == {}
 
     def test_events_multi_value_payload(self):
-        # A struct payload fans each field into its own column, on the same rows: 'outcome' is
-        # categorical (display labels) and 'amplitude' is numeric (raw values, no MeaningsTable).
+        # A struct payload fans each field into its own column, on the same rows, one per way the writer
+        # treats a value column: 'outcome' declares labels and meanings, 'cue' labels only, and
+        # 'amplitude' no categories at all.
         interface = MockEventsInterface(num_events=3, event_payload="multi value")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
         events = nwbfile.get_events_table("Events")
-        assert set(events.colnames) == {"timestamp", "outcome", "amplitude"}
+        assert set(events.colnames) == {"timestamp", "outcome", "cue", "amplitude"}
         assert list(events["outcome"][:]) == ["go", "no_go", "go"]
+        assert list(events["cue"][:]) == ["tone", "tone", "light"]
         assert list(events["amplitude"][:]) == [0.0, 1.0, 2.0]
+        # Only the column that declares meanings earns a MeaningsTable: 'cue' writes its display labels
+        # without one, and 'amplitude' writes raw values.
+        assert set(events.meanings_tables.keys()) == {"outcome_meanings"}
 
     def test_events_with_duration(self):
         # An event-with-duration type carries per-event durations, so the writer adds a `duration` column.
@@ -147,7 +194,7 @@ class TestMockEventsInterface:
         # fail with a clear message.
         interface = MockEventsInterface(event_payload="timestamps only")
         metadata = interface.get_metadata()
-        metadata["Events"]["mock_events"]["event_types"]["events"]["columns"]["ghost"] = {"column_name": "ghost"}
+        metadata["Events"]["mock_events"]["event_types"]["events"]["columns"] = {"ghost": {"column_name": "ghost"}}
         expected_error = "Event type 'events' declares a column for payload field 'ghost', but its payload has no such field (has [])."
         with pytest.raises(AssertionError, match=re.escape(expected_error)):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
@@ -256,6 +303,41 @@ class TestMockEventsInterface:
         assert list(events["timestamp"][:]) == pytest.approx([0.1, 0.2, 0.3, 0.4])
         assert list(events["event_type"][:]) == ["left", "right", "left", "right"]
 
+    def test_empty_event_description_does_not_create_meaning_rows_when_merged(self):
+        # The discriminator's MeaningsTable holds a row per type the user described: describing one of
+        # the two pooled types gives a one-row table.
+        interface = MockEventsInterface(num_event_types=2, num_events=2)
+        metadata = interface.get_metadata()
+        event_types = metadata["Events"]["mock_events"]["event_types"]
+        event_types["events_0"]["table_metadata_key"] = "pooled"
+        event_types["events_1"]["table_metadata_key"] = "pooled"
+        event_types["events_0"]["event_description"] = "Nose pokes into the reward port."
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Pooled")
+        assert "event_type" in events.colnames  # a merge always keeps its rows' identity
+        meanings_table = events.meanings_tables["event_type_meanings"]
+        assert dict(zip(meanings_table["value"][:], meanings_table["meaning"][:])) == {
+            "events_0": "Nose pokes into the reward port."
+        }
+
+    def test_all_empty_event_descriptions_create_no_meanings_table_when_merged(self):
+        # With neither type described the MeaningsTable would map each event_name to "", explaining
+        # nothing, so it is not written at all. The event_type column still is: without it a bare
+        # marker's row would lose its identity.
+        interface = MockEventsInterface(num_event_types=2, num_events=2)
+        metadata = interface.get_metadata()
+        event_types = metadata["Events"]["mock_events"]["event_types"]
+        event_types["events_0"]["table_metadata_key"] = "pooled"
+        event_types["events_1"]["table_metadata_key"] = "pooled"
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Pooled")
+        assert "event_type" in events.colnames
+        assert (events.meanings_tables or {}) == {}
+
     def test_merged_table_is_time_sorted(self):
         # One interface with two event types. The mock staggers each type's timestamps so the types
         # interleave in time, but each type is generated on its own: "events_0" (-> "left") fires at 0.1
@@ -299,6 +381,244 @@ class TestMockEventsInterface:
         # Each row survived the sort as a unit: event_type still pairs "left" with 0.1/0.3 and "right"
         # with 0.2/0.4 (a sort that moved only the timestamp column would break this).
         assert list(events["event_type"][:]) == ["left", "right", "left", "right"]
+
+    def test_two_event_types_with_same_name_errors(self):
+        # Two event types with the same event_name resolve to the same table name, but neither asked to
+        # combine (no shared table_metadata_key, no EventTables entry): they are two separate tables
+        # colliding on a name. The writer rejects it and points at the two real fixes (rename, or combine
+        # on purpose), rather than advising a merge that was never intended or letting pynwb fail obscurely.
+        interface = MockEventsInterface(num_event_types=2, event_payload="timestamps only")
+        metadata = interface.get_metadata()
+        metadata["Events"]["mock_events"]["event_types"]["events_0"]["event_name"] = "shared"
+        metadata["Events"]["mock_events"]["event_types"]["events_1"]["event_name"] = "shared"
+        expected_error = "Event types 'events_0', 'events_1' resolve to the same events table name 'Shared'"
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
+
+
+class TestSharedColumnAcrossEventTypes:
+    """A value column shared across event types pooled into one ``EventsTable`` (issue #1786).
+
+    All single-interface: one ``MockEventsInterface`` whose event types route to one table via a shared
+    ``table_metadata_key`` and each declare the same ``column_name``. Identical declarations merge into one
+    column filled from every type's rows; declarations that genuinely conflict (different description, or
+    the same code mapped to different meanings) raise. Each test spells out its own metadata in full so it
+    reads on its own.
+    """
+
+    def test_shared_column_across_merged_event_types(self):
+        # The #1786 repro: two event types pooled into one table both write the same column_name
+        # ("outcome") with identical specs. That is one shared column, filled from both types' rows, not a
+        # collision. Formerly this tripped a uniqueness assert; now it merges.
+        interface = MockEventsInterface(num_event_types=2, num_events=2, event_payload="single value")
+        metadata = {
+            "Events": {
+                "EventTables": {"pooled": {"table_name": "Pooled", "description": "Pooled events."}},
+                "mock_events": {
+                    "event_types": {
+                        "events_0": {
+                            "event_name": "left",
+                            "event_description": "Left events.",
+                            "table_metadata_key": "pooled",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {
+                                        "labels": {0: "go", 1: "no_go"},
+                                        "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                                    },
+                                }
+                            },
+                        },
+                        "events_1": {
+                            "event_name": "right",
+                            "event_description": "Right events.",
+                            "table_metadata_key": "pooled",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {
+                                        "labels": {0: "go", 1: "no_go"},
+                                        "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                                    },
+                                }
+                            },
+                        },
+                    }
+                },
+            }
+        }
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Pooled")
+        # A single shared column, not outcome_0 / outcome_1.
+        assert set(events.colnames) == {"timestamp", "event_type", "outcome"}
+        assert len(events) == 4
+        assert list(events["timestamp"][:]) == pytest.approx([0.1, 0.2, 0.3, 0.4])
+        assert list(events["event_type"][:]) == ["left", "right", "left", "right"]
+        # Every row is filled from its own type; no fill-value gaps ("" would mark an unowned row).
+        assert list(events["outcome"][:]) == ["go", "go", "no_go", "no_go"]
+        # Exactly one MeaningsTable for the shared column, created once.
+        assert set(events.meanings_tables.keys()) == {"event_type_meanings", "outcome_meanings"}
+        value_to_meaning = dict(
+            zip(
+                events.meanings_tables["outcome_meanings"]["value"][:],
+                events.meanings_tables["outcome_meanings"]["meaning"][:],
+            )
+        )
+        assert value_to_meaning == {"go": "A go outcome.", "no_go": "A no-go outcome."}
+
+    def test_shared_column_with_conflicting_meanings_raises(self):
+        # Same column_name and the same label "go", but the two types explain it with different meanings.
+        # One MeaningsTable cannot map "go" to two meanings, so this must raise. (Two types giving the same
+        # raw code different labels is NOT a conflict, codes are per-source; only a shared label with two
+        # meanings is.)
+        interface = MockEventsInterface(num_event_types=2, num_events=2, event_payload="single value")
+        metadata = {
+            "Events": {
+                "EventTables": {"pooled": {"table_name": "Pooled", "description": "Pooled events."}},
+                "mock_events": {
+                    "event_types": {
+                        "events_0": {
+                            "event_name": "left",
+                            "event_description": "Left events.",
+                            "table_metadata_key": "pooled",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {
+                                        "labels": {0: "go", 1: "no_go"},
+                                        "meanings": {0: "went", 1: "withheld"},
+                                    },
+                                }
+                            },
+                        },
+                        "events_1": {
+                            "event_name": "right",
+                            "event_description": "Right events.",
+                            "table_metadata_key": "pooled",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {
+                                        "labels": {0: "go", 1: "no_go"},
+                                        "meanings": {0: "proceeded", 1: "withheld"},  # "go" means something else
+                                    },
+                                }
+                            },
+                        },
+                    }
+                },
+            }
+        }
+        expected_error = (
+            "Event types 'left' (interface 'mock_events') and 'right' (interface 'mock_events') disagree on "
+            "column 'outcome' in the shared events table 'Pooled': label 'go' means 'went' vs 'proceeded'"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
+
+    def test_shared_column_with_conflicting_description_raises(self):
+        # Same column_name and categories, but the two types describe it differently. Merging would have to
+        # silently drop one description, so it must raise.
+        interface = MockEventsInterface(num_event_types=2, num_events=2, event_payload="single value")
+        metadata = {
+            "Events": {
+                "EventTables": {"pooled": {"table_name": "Pooled", "description": "Pooled events."}},
+                "mock_events": {
+                    "event_types": {
+                        "events_0": {
+                            "event_name": "left",
+                            "event_description": "Left events.",
+                            "table_metadata_key": "pooled",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "description": "Outcome of the left port.",
+                                    "column_categories": {"labels": {0: "go", 1: "no_go"}},
+                                }
+                            },
+                        },
+                        "events_1": {
+                            "event_name": "right",
+                            "event_description": "Right events.",
+                            "table_metadata_key": "pooled",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "description": "Outcome of the right port.",
+                                    "column_categories": {"labels": {0: "go", 1: "no_go"}},
+                                }
+                            },
+                        },
+                    }
+                },
+            }
+        }
+        expected_error = (
+            "Event types 'left' (interface 'mock_events') and 'right' (interface 'mock_events') disagree on "
+            "column 'outcome' in the shared events table 'Pooled': description 'Outcome of the left port.' vs "
+            "'Outcome of the right port.'"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
+
+    def test_shared_column_reusing_a_code_with_different_labels_merges(self):
+        # Two types share the "outcome" column and both use raw code 0, but map it to different labels
+        # (go vs left). Codes are per-source, so this is a valid heterogeneous merge, not a conflict: each
+        # type's rows render its own label and the column holds the union. Regression: this used to raise a
+        # spurious "raw value 0 is labeled 'go' vs 'left'".
+        interface = MockEventsInterface(num_event_types=2, num_events=2, event_payload="single value")
+        metadata = {
+            "Events": {
+                "EventTables": {"pooled": {"table_name": "Pooled", "description": "Pooled events."}},
+                "mock_events": {
+                    "event_types": {
+                        "events_0": {
+                            "event_name": "left",
+                            "event_description": "Left events.",
+                            "table_metadata_key": "pooled",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {"labels": {0: "go", 1: "no_go"}},
+                                }
+                            },
+                        },
+                        "events_1": {
+                            "event_name": "right",
+                            "event_description": "Right events.",
+                            "table_metadata_key": "pooled",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {"labels": {0: "left", 1: "right"}},
+                                }
+                            },
+                        },
+                    }
+                },
+            }
+        }
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)  # must not raise
+
+        events = nwbfile.get_events_table("Pooled")
+        assert set(events.colnames) == {"timestamp", "event_type", "outcome"}
+        # Each type renders its own label for its own rows; the column is the union of both vocabularies.
+        assert list(events["outcome"][:]) == ["go", "left", "no_go", "right"]
+
+
+class TestEventsAcrossInterfaces:
+    """Events written by several interfaces into one shared ``EventsTable``, the converter-pipeline pattern.
+
+    A converter (``NWBConverter``/``ConverterPipe``) adds each interface in turn by calling its
+    ``add_to_nwbfile`` on the same file; these tests reproduce that by hand with two ``MockEventsInterface``
+    instances (distinct ``metadata_key``) routing into one table via a shared ``table_metadata_key`` and a
+    declared ``EventTables`` entry. The second interface appends to the table the first wrote, which is a
+    different write path from the single-interface merges in ``TestMockEventsInterface``.
+    """
 
     def test_merge_across_two_interfaces(self):
         # Two separate interface instances (distinct metadata_key) route their single type into one shared
@@ -368,45 +688,252 @@ class TestMockEventsInterface:
             "auxiliary": "From the auxiliary board.",
         }
 
-    def test_duplicate_column_name_in_merge_raises(self):
-        # Two event types writing the same column_name ("outcome_0") into one table is a collision,
-        # not a shared column; it must raise rather than silently pool two streams into one column.
-        interface = MockEventsInterface(num_event_types=2, event_payload="single value")
+    def test_shared_column_across_two_interfaces(self):
+        # The cross-interface counterpart of TestSharedColumnAcrossEventTypes.test_shared_column_across_merged_event_types:
+        # both interfaces write the SAME column_name ("outcome") with identical categories. The second
+        # interface appends to the first's column instead of getting its own, so it is one shared column
+        # filled from both, not outcome_a / outcome_b with fill-value gaps.
+        interface_a = MockEventsInterface(metadata_key="events_a", num_events=2, event_payload="single value")
+        interface_b = MockEventsInterface(metadata_key="events_b", num_events=2, event_payload="single value")
+        shared_outcome = {
+            "column_name": "outcome",
+            "column_categories": {
+                "labels": {0: "go", 1: "no_go"},
+                "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+            },
+        }
         metadata = {
             "Events": {
-                "EventTables": {"pooled": {"table_name": "Pooled", "description": "Pooled events."}},
-                "mock_events": {
+                "EventTables": {"shared": {"table_name": "Trials", "description": "Trials from two systems."}},
+                "events_a": {
                     "event_types": {
-                        "events_0": {
+                        "events": {
+                            "event_name": "acquisition",
+                            "event_description": "From the acquisition system.",
+                            "table_metadata_key": "shared",
+                            "columns": {"outcome": shared_outcome},
+                        }
+                    }
+                },
+                "events_b": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "auxiliary",
+                            "event_description": "From the auxiliary board.",
+                            "table_metadata_key": "shared",
+                            "columns": {"outcome": dict(shared_outcome)},
+                        }
+                    }
+                },
+            }
+        }
+        nwbfile = mock_NWBFile()
+        interface_a.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Trials")
+        assert set(events.colnames) == {"timestamp", "event_type", "outcome"}
+        assert len(events) == 4
+        assert list(events["event_type"][:]) == ["acquisition", "auxiliary", "acquisition", "auxiliary"]
+        # One shared column, every row filled from its own interface, no "" gaps.
+        assert list(events["outcome"][:]) == ["go", "go", "no_go", "no_go"]
+        # A created the outcome MeaningsTable; B reused it rather than duplicating.
+        assert set(events.meanings_tables.keys()) == {"event_type_meanings", "outcome_meanings"}
+
+    def test_unset_table_metadata_key_is_not_shared_across_interfaces(self):
+        # An unset table_metadata_key defaults to each type's own event_type_source_id, a per-type handle,
+        # NOT a shared table. Two solo types in different interfaces that both leave it unset are not a merge,
+        # even though they happen to share the default source id "events". Each writes its own table named from
+        # its event_name, with its own independent outcome column, so the differing labels are not a conflict.
+        interface_a = MockEventsInterface(metadata_key="events_a", num_events=2, event_payload="single value")
+        interface_b = MockEventsInterface(metadata_key="events_b", num_events=2, event_payload="single value")
+        metadata = {
+            "Events": {
+                "events_a": {
+                    "event_types": {
+                        "events": {
                             "event_name": "left",
                             "event_description": "Left events.",
-                            "table_metadata_key": "pooled",
-                            "columns": {"outcome": {"column_name": "outcome_0"}},
-                        },
-                        "events_1": {
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {"labels": {0: "go", 1: "no_go"}},
+                                }
+                            },
+                        }
+                    }
+                },
+                "events_b": {
+                    "event_types": {
+                        "events": {
                             "event_name": "right",
                             "event_description": "Right events.",
-                            "table_metadata_key": "pooled",
-                            "columns": {"outcome": {"column_name": "outcome_0"}},
-                        },
+                            # Same column_name, different labels: a conflict ONLY if these shared a table.
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {"labels": {0: "left", 1: "right"}},
+                                }
+                            },
+                        }
+                    }
+                },
+            }
+        }
+        nwbfile = mock_NWBFile()
+        interface_a.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        # Two separate solo tables named from each type's event_name, not one merged table.
+        assert set(nwbfile.events.keys()) == {"Left", "Right"}
+        left = nwbfile.get_events_table("Left")
+        right = nwbfile.get_events_table("Right")
+        # A solo table has no event_type discriminator, and each carries its own independent outcome column.
+        assert "event_type" not in left.colnames
+        assert "event_type" not in right.colnames
+        assert list(left["outcome"][:]) == ["go", "no_go"]
+        assert list(right["outcome"][:]) == ["left", "right"]
+
+    def test_cross_interface_conflicting_shared_column_errors(self):
+        # Two interfaces route into one declared shared table and both write column "outcome", agreeing on the
+        # label "go" but explaining it with different meanings. That is a genuine cross-interface conflict (one
+        # MeaningsTable cannot map "go" two ways); the validator catches it up front (on the first interface's
+        # write, before anything is added) with a message naming both types and their interfaces.
+        interface_a = MockEventsInterface(metadata_key="events_a", num_events=2, event_payload="single value")
+        interface_b = MockEventsInterface(metadata_key="events_b", num_events=2, event_payload="single value")
+        metadata = {
+            "Events": {
+                "EventTables": {"shared": {"table_name": "Trials", "description": "Trials from two systems."}},
+                "events_a": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "acquisition",
+                            "event_description": "From the acquisition system.",
+                            "table_metadata_key": "shared",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {
+                                        "labels": {0: "go", 1: "no_go"},
+                                        "meanings": {0: "went", 1: "withheld"},
+                                    },
+                                }
+                            },
+                        }
+                    }
+                },
+                "events_b": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "auxiliary",
+                            "event_description": "From the auxiliary board.",
+                            "table_metadata_key": "shared",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {
+                                        "labels": {0: "go", 1: "no_go"},
+                                        "meanings": {0: "proceeded", 1: "withheld"},  # "go" means something else
+                                    },
+                                }
+                            },
+                        }
                     }
                 },
             }
         }
         expected_error = (
-            "Two event columns write the same column_name 'outcome_0'. Give each event column a unique column_name."
+            "Event types 'acquisition' (interface 'events_a') and 'auxiliary' (interface 'events_b') disagree "
+            "on column 'outcome' in the shared events table 'Trials': label 'go' means 'went' vs 'proceeded'"
         )
-        with pytest.raises(AssertionError, match=re.escape(expected_error)):
-            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
-
-    def test_merging_into_a_single_type_table_raises(self):
-        # Two solo types resolving to the same table object name cannot share it: the first is written as
-        # a single-type table (no discriminator), so the second has nowhere to record its identity. The
-        # writer rejects it with a clear message rather than letting pynwb fail obscurely.
-        interface = MockEventsInterface(num_event_types=2, event_payload="timestamps only")
-        metadata = interface.get_metadata()
-        metadata["Events"]["mock_events"]["event_types"]["events_0"]["event_name"] = "shared"
-        metadata["Events"]["mock_events"]["event_types"]["events_1"]["event_name"] = "shared"
-        expected_error = "An events table named 'Shared' already exists but is a single-type table"
         with pytest.raises(ValueError, match=re.escape(expected_error)):
-            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
+            interface_a.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
+
+    def test_cross_interface_heterogeneous_shared_column_keeps_all_meanings(self):
+        # Two interfaces write one shared "outcome" column. They agree on the codes they both declare (0, 1),
+        # and interface B additionally declares a code A never does (2 -> "abort"). The declarations are
+        # consistent on the intersection, so they merge; B's extra meaning must be added to the column's
+        # MeaningsTable rather than dropped (the bug this fixes).
+        interface_a = MockEventsInterface(metadata_key="events_a", num_events=2, event_payload="single value")
+        interface_b = MockEventsInterface(metadata_key="events_b", num_events=2, event_payload="single value")
+        shared_labels = {0: "go", 1: "no_go"}
+        shared_meanings = {0: "A go outcome.", 1: "A no-go outcome."}
+        metadata = {
+            "Events": {
+                "EventTables": {"shared": {"table_name": "Trials", "description": "Trials from two systems."}},
+                "events_a": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "acquisition",
+                            "event_description": "From the acquisition system.",
+                            "table_metadata_key": "shared",
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {"labels": shared_labels, "meanings": shared_meanings},
+                                }
+                            },
+                        }
+                    }
+                },
+                "events_b": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "auxiliary",
+                            "event_description": "From the auxiliary board.",
+                            "table_metadata_key": "shared",
+                            # Agrees on 0/1, adds 2 -> "abort" that A never declares.
+                            "columns": {
+                                "outcome": {
+                                    "column_name": "outcome",
+                                    "column_categories": {
+                                        "labels": {**shared_labels, 2: "abort"},
+                                        "meanings": {**shared_meanings, 2: "An aborted trial."},
+                                    },
+                                }
+                            },
+                        }
+                    }
+                },
+            }
+        }
+        nwbfile = mock_NWBFile()
+        interface_a.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Trials")
+        # One MeaningsTable for the shared column, holding the union of both interfaces' meanings, including
+        # B's "abort", which the old writer dropped because the column already existed when B appended.
+        value_to_meaning = dict(
+            zip(
+                events.meanings_tables["outcome_meanings"]["value"][:],
+                events.meanings_tables["outcome_meanings"]["meaning"][:],
+            )
+        )
+        assert value_to_meaning == {
+            "go": "A go outcome.",
+            "no_go": "A no-go outcome.",
+            "abort": "An aborted trial.",
+        }
+
+    def test_combining_into_an_existing_single_type_table_errors(self):
+        # An interface writes its one event type as its own table "Trials" without knowing the table will be
+        # shared (it was handed only its own metadata). A second interface then arrives with metadata that
+        # declares "Trials" as a shared table and routes its type there. The existing "Trials" has no
+        # event_type column and its rows' type was never recorded, so combining errors rather than mislabeling
+        # those rows. This only arises with partial metadata; a converter hands every interface the merged
+        # metadata, so the first writer would build "Trials" as a shared table from the start.
+        interface_a = MockEventsInterface(metadata_key="events_a", num_events=2, event_payload="timestamps only")
+        interface_b = MockEventsInterface(metadata_key="events_b", num_events=2, event_payload="timestamps only")
+        nwbfile = mock_NWBFile()
+
+        metadata_a = interface_a.get_metadata()
+        metadata_a["Events"]["events_a"]["event_types"]["events"]["event_name"] = "Trials"
+        interface_a.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata_a)  # writes a single-type table "Trials"
+
+        metadata_b = interface_b.get_metadata()
+        metadata_b["Events"]["EventTables"] = {"shared": {"table_name": "Trials", "description": "Trials."}}
+        metadata_b["Events"]["events_b"]["event_types"]["events"]["table_metadata_key"] = "shared"
+        expected_error = "already exists but holds a single event type"
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata_b)

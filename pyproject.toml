@@ -117,7 +117,8 @@ medpc = [
     "ndx-events==0.2.2",
 ]
 vame = [
-    "ndx-vame==0.3.1",
+    "ndx-vame>=0.3.2",
+    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
 ]
 behavior = [
     "neuroconv[sleap]",
@@ -133,7 +134,8 @@ behavior = [
 
 ## Events
 csv_events = [
-    "ndx-events==0.2.2",
+    # CSV events now write native pynwb 4.0 EventsTable objects and need only core pandas + pynwb>=4.0;
+    # kept as a stable install alias so `neuroconv[csv_events]` and `neuroconv[events]` remain valid.
 ]
 tdt_events = [
     "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
@@ -371,6 +373,10 @@ tdt_fp = [
 ]
 csv_fp = [
     "neuroconv[fiber_photometry]",
+guppy = [
+    "neuroconv[fiber_photometry]",
+    "ndx-guppy",
+    "tables",
 ]
 thor = [
     "neuroconv[ophys_minimal]",
@@ -387,6 +393,7 @@ ophys = [
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
     "neuroconv[femtonics]",
+    "neuroconv[guppy]",
     "neuroconv[inscopix]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
