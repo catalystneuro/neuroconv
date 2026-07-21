@@ -2,6 +2,7 @@
 
 import re
 
+import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
 from pynwb.event import EventsTable
@@ -937,3 +938,37 @@ class TestEventsAcrossInterfaces:
         expected_error = "already exists but holds a single event type"
         with pytest.raises(ValueError, match=re.escape(expected_error)):
             interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata_b)
+
+
+class TestEventsTemporalAlignment:
+    """Gross temporal alignment on ``BaseEventsInterface``: ``interface.alignment.shift_times`` offsets event times at write.
+
+    The mock's single "events" type has native timestamps ``[0.1, 0.2, 0.3, 0.4]``.
+    """
+
+    def test_unshifted_events_are_written_at_native_times(self):
+        interface = MockEventsInterface()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        written = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
+        np.testing.assert_allclose(written, [0.1, 0.2, 0.3, 0.4])
+
+    def test_shift_times_offsets_written_timestamps_and_accumulates(self):
+        # Relative and rigid: repeated shifts sum, and the written events move by the total.
+        interface = MockEventsInterface()
+        interface.alignment.shift_times(1.0)
+        interface.alignment.shift_times(0.5)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        written = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
+        np.testing.assert_allclose(written, [1.6, 1.7, 1.8, 1.9])
+
+    def test_shift_preserves_durations(self):
+        # A shift moves timestamps but leaves each event's duration unchanged.
+        interface = MockEventsInterface(event_extent="event with duration")
+        interface.alignment.shift_times(5.0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        events = nwbfile.get_events_table("Events")
+        np.testing.assert_allclose(np.asarray(events["timestamp"][:]), [5.1, 5.2, 5.3, 5.4])
+        np.testing.assert_allclose(np.asarray(events["duration"][:]), [0.05, 0.05, 0.05, 0.05])
