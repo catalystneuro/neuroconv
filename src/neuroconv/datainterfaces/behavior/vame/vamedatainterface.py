@@ -3,6 +3,7 @@
 import json
 import warnings
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 from packaging.version import Version
@@ -706,6 +707,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         metadata: dict | None = None,
         *,
         stub_test: bool = False,
+        layers: Literal["faithful", "curated", "both"] = "both",
     ) -> None:
         """Write VAME outputs to an NWBFile as a ``VAMEProject`` container.
 
@@ -737,14 +739,23 @@ class VameInterface(BaseTemporalAlignmentInterface):
             Each series links to its project via ``vame_project_metadata_key``.
         stub_test : bool, default False
             If ``True``, only the first 100 frames of each data array are written.
+        layers : {"faithful", "curated", "both"}, default "both"
+            Which of the two output layers to write. ``"faithful"`` writes only the ``VAMEProject``
+            container and its ``ndx-vame`` series (motif, community, latent space). ``"curated"``
+            writes only the derived ``ndx-ethogram`` products. ``"both"`` (the default) writes both.
+            With ``"curated"`` the faithful ``MotifSeries`` is absent from the file, so each bouts
+            table's ``source`` back-link to it is dropped; the ``source_pose`` and ``source_video``
+            links are external references and are kept.
 
         Notes
         -----
         For each motif run this also writes a curated ``ndx-ethogram`` product derived from the
         per-frame ``MotifSeries``: an ``EthogramBouts`` table (the motif labels run-length-encoded
-        into one row per bout) and its ``Ethogram`` catalogue. The faithful ``MotifSeries`` is kept;
-        the bouts link back to it via ``source``.
+        into one row per bout) and its ``Ethogram`` catalogue. When both layers are written the
+        faithful ``MotifSeries`` is kept and the bouts link back to it via ``source``.
         """
+        write_faithful = layers in ("faithful", "both")
+        write_curated = layers in ("curated", "both")
         from ndx_vame import (
             CommunitySeries,
             LatentSpaceSeries,
@@ -878,17 +889,21 @@ class VameInterface(BaseTemporalAlignmentInterface):
             vame_project.pose_estimation = pose_estimation
 
         behavior_module = get_module(nwbfile, name="behavior", description="processed behavioral data")
-        behavior_module.add(vame_project)
+        if write_faithful:
+            behavior_module.add(vame_project)
 
         # Curated ndx-ethogram products derived from each MotifSeries (kept alongside the faithful
         # series). Resolved from the shared top-level Behavior/Ethograms registry, keyed by
         # f"{metadata_key}_{run_key}". The source MotifSeries is wired directly (this interface holds
         # the object), so no source_metadata_key resolution is needed.
-        if motif_series_objects:
+        if write_curated and motif_series_objects:
             frame_period = 1.0 / rate if rate is not None else float(np.median(np.diff(timestamps)))
             ethograms_metadata = default_metadata["Behavior"].get("Ethograms", {})
             for run_key in self._motif_labels_file_paths:
-                motif_series = motif_series_objects[self._motif_series_key(run_key)]
+                # Drop the source back-link to the faithful MotifSeries when it is not being written,
+                # otherwise the ethogram would link to an object absent from the file. The external
+                # source_pose/source_video links resolve against the file and are kept either way.
+                motif_series = motif_series_objects[self._motif_series_key(run_key)] if write_faithful else None
                 ethogram_metadata = ethograms_metadata.get(f"{self._metadata_key}_{run_key}")
                 self._add_ethogram_for_run(
                     behavior_module=behavior_module,
