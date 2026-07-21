@@ -15,10 +15,9 @@ Child interfaces implement only the format-reading seam:
   converter can be authored before construction).
 * ``_get_stream_data(stream_name)`` — return time-major data for one stream.
 * ``_get_stream_timestamps(stream_name)`` — return the timestamps for one stream.
-* ``get_metadata`` — enrich the base scaffold with whatever the format embeds (e.g. session start time).
+* ``get_metadata`` — enrich the base metadata with whatever the format embeds (e.g. session start time).
 """
 
-import warnings
 from abc import abstractmethod
 
 import numpy as np
@@ -26,17 +25,15 @@ from pynwb.file import NWBFile
 
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...tools.fiber_photometry import (
-    FIBER_PHOTOMETRY_PLACEHOLDER,
     add_commanded_voltage_series,
     add_fiber_photometry_devices,
     add_fiber_photometry_lab_metadata,
-    get_default_fiber_photometry_metadata,
     get_fiber_photometry_table_region,
 )
 from ...utils import DeepDict, dict_deep_update, get_base_schema
 from ...utils.checks import calculate_regular_series_rate
 
-__all__ = ["BaseFiberPhotometryInterface", "FIBER_PHOTOMETRY_PLACEHOLDER"]
+__all__ = ["BaseFiberPhotometryInterface"]
 
 
 class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
@@ -125,16 +122,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     # ------------------------------------------------------------------
 
     def get_metadata(self) -> DeepDict:
-        """Return the NWBFile basics combined with the default top-level ``FiberPhotometry`` scaffold.
-
-        The scaffold (built by :func:`get_default_fiber_photometry_metadata`) pre-fills required
-        fields with sentinels — ``NaN`` for the required numeric wavelengths and
-        :data:`FIBER_PHOTOMETRY_PLACEHOLDER` for required strings — so the interface runs on zero
-        user metadata. ``add_to_nwbfile`` warns about any surviving sentinel.
-        """
         metadata = super().get_metadata()
-        default_fiber_photometry_metadata = get_default_fiber_photometry_metadata(metadata_key=self.metadata_key)
-        return dict_deep_update(metadata, default_fiber_photometry_metadata)
+        series_metadata = dict(name="FiberPhotometryResponseSeries")
+        return dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: series_metadata}))
 
     def get_metadata_schema(self) -> dict:
         """Return a permissive schema for the ``FiberPhotometry`` and top-level device metadata blocks."""
@@ -180,28 +170,30 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 return dict(starting_time=float(timestamps[0]), rate=float(rate))
         return dict(timestamps=timestamps)
 
-    def _warn_about_placeholder_metadata(self, fiber_photometry_metadata: dict, strict: bool) -> None:
-        """Warn (or raise, if ``strict``) about required fields still holding placeholder sentinels."""
-        issues = []
-        for row_key, row in fiber_photometry_metadata.get("FiberPhotometryTable", {}).get("rows", {}).items():
-            if row.get("location") == FIBER_PHOTOMETRY_PLACEHOLDER:
-                issues.append(f"table row '{row_key}' location")
-            for field in ("excitation_wavelength_in_nm", "emission_wavelength_in_nm"):
-                value = row.get(field)
-                if value is None or (isinstance(value, float) and np.isnan(value)):
-                    issues.append(f"table row '{row_key}' {field}")
-        for indicator_key, indicator in fiber_photometry_metadata.get("FiberPhotometryIndicators", {}).items():
-            if indicator.get("label") == FIBER_PHOTOMETRY_PLACEHOLDER:
-                issues.append(f"indicator '{indicator_key}' label")
-        if not issues:
-            return
-        message = (
-            "Fiber photometry metadata still contains placeholder values that should be set before "
-            "archiving: " + "; ".join(issues) + "."
-        )
-        if strict:
-            raise ValueError(message)
-        warnings.warn(message, UserWarning, stacklevel=3)
+    def _validate_metadata(self, fiber_photometry_metadata: dict) -> None:
+        """Enforce that a table region and a ``FiberPhotometryTable`` are provided together, or neither.
+
+        Fiber photometry provenance is all-or-nothing: either supply nothing beyond the response series
+        (a bare series is a legal NWB write, since ``fiber_photometry_table_region`` is optional) or supply
+        the complete chain. This checks the one invariant that would otherwise fail cryptically — a series
+        referencing a table region with no table, or a table with no series referencing it. The remaining
+        completeness (required row fields, resolvable device/indicator references) is enforced loudly by the
+        ``add_*`` helpers when the table is built.
+        """
+        table_present = "FiberPhotometryTable" in fiber_photometry_metadata
+        region_present = "fiber_photometry_table_region" in fiber_photometry_metadata[self.metadata_key]
+        if region_present and not table_present:
+            raise ValueError(
+                f"Response series '{self.metadata_key}' has a 'fiber_photometry_table_region' but no "
+                "'FiberPhotometryTable' metadata is provided. Provide the full FiberPhotometry chain "
+                "(devices, indicators, and table) or remove the table region for a bare response series."
+            )
+        if table_present and not region_present:
+            raise ValueError(
+                "A 'FiberPhotometryTable' is provided but response series "
+                f"'{self.metadata_key}' has no 'fiber_photometry_table_region' referencing it. Add a "
+                "'fiber_photometry_table_region' to the series metadata."
+            )
 
     def add_to_nwbfile(
         self,
@@ -211,14 +203,16 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stub_test: bool = False,
         stub_samples: int = 100,
         always_write_timestamps: bool = False,
-        strict: bool = False,
     ) -> None:
         """Add this interface's ``FiberPhotometryResponseSeries`` (and, once, the shared containers).
 
-        The shared containers (devices, indicators, table, commanded voltage) are added through
-        idempotent helpers, so this method simply calls them; the first interface to run builds them
-        and subsequent interfaces reuse them. Timing is written as ``starting_time`` + ``rate`` when the
-        timestamps are regular, otherwise as an explicit timestamps array.
+        With the default metadata (see :meth:`get_metadata`) this writes only a bare
+        ``FiberPhotometryResponseSeries`` — no devices, indicators, or ``FiberPhotometryTable`` are
+        fabricated. When the full provenance chain is supplied in the metadata, the
+        shared containers (devices, indicators, table, commanded voltage) are added through idempotent
+        helpers: the first interface to run builds them and subsequent interfaces reuse them. Timing is
+        written as ``starting_time`` + ``rate`` when the timestamps are regular, otherwise as an explicit
+        timestamps array.
 
         Parameters
         ----------
@@ -232,63 +226,65 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             The number of samples to write when ``stub_test`` is True.
         always_write_timestamps : bool, default: False
             If True, always write an explicit timestamps array even when the series is regularly sampled.
-        strict : bool, default: False
-            If True, raise instead of warning when required metadata still holds placeholder sentinels.
         """
         from ndx_fiber_photometry import FiberPhotometryResponseSeries
 
         metadata = metadata or self.get_metadata()
         fiber_photometry_metadata = metadata["FiberPhotometry"]
-        self._warn_about_placeholder_metadata(fiber_photometry_metadata, strict=strict)
+        self._validate_metadata(fiber_photometry_metadata)
+        series_metadata = fiber_photometry_metadata[self.metadata_key]
 
         def stub(array: np.ndarray) -> np.ndarray:
             return array[: min(stub_samples, len(array))] if stub_test else array
 
-        # Shared containers — the helpers are idempotent, so these run unconditionally. Devices and
-        # device models live in the top-level ``metadata["Devices"]`` / ``metadata["DeviceModels"]``
-        # registry, so the device helper receives the full metadata.
-        add_fiber_photometry_devices(nwbfile=nwbfile, metadata=metadata)
+        # The shared provenance chain (devices, indicators, table, commanded voltage) is written only when
+        # the user supplies it; ``_validate_metadata`` guarantees the table and this series' table region are
+        # provided together, so ``table_region`` stays None exactly when no ``FiberPhotometryTable`` is given.
+        table_region = None
+        if "FiberPhotometryTable" in fiber_photometry_metadata:
+            add_fiber_photometry_devices(nwbfile=nwbfile, metadata=metadata)
 
-        for commanded_voltage_metadata in fiber_photometry_metadata.get("CommandedVoltageSeries", {}).values():
-            commanded_voltage_stream_name = commanded_voltage_metadata["stream_name"]
-            commanded_voltage_data = np.asarray(self._get_stream_data(stream_name=commanded_voltage_stream_name))
-            index = commanded_voltage_metadata.get("index")
-            if index is not None and commanded_voltage_data.ndim == 2:
-                commanded_voltage_data = commanded_voltage_data[:, index]
-            commanded_voltage_timestamps = self._get_stream_timestamps(stream_name=commanded_voltage_stream_name)
-            add_commanded_voltage_series(
+            for commanded_voltage_metadata in fiber_photometry_metadata.get("CommandedVoltageSeries", {}).values():
+                commanded_voltage_stream_name = commanded_voltage_metadata["stream_name"]
+                commanded_voltage_data = np.asarray(self._get_stream_data(stream_name=commanded_voltage_stream_name))
+                index = commanded_voltage_metadata.get("index")
+                if index is not None and commanded_voltage_data.ndim == 2:
+                    commanded_voltage_data = commanded_voltage_data[:, index]
+                commanded_voltage_timestamps = self._get_stream_timestamps(stream_name=commanded_voltage_stream_name)
+                add_commanded_voltage_series(
+                    nwbfile=nwbfile,
+                    name=commanded_voltage_metadata["name"],
+                    description=commanded_voltage_metadata.get("description", ""),
+                    data=stub(commanded_voltage_data),
+                    unit=commanded_voltage_metadata["unit"],
+                    frequency=commanded_voltage_metadata["frequency"],
+                    timing_kwargs=self._timing_kwargs_from_timestamps(
+                        stub(commanded_voltage_timestamps), always_write_timestamps
+                    ),
+                )
+
+            fiber_photometry_table = add_fiber_photometry_lab_metadata(
                 nwbfile=nwbfile,
-                name=commanded_voltage_metadata["name"],
-                description=commanded_voltage_metadata.get("description", ""),
-                data=stub(commanded_voltage_data),
-                unit=commanded_voltage_metadata["unit"],
-                frequency=commanded_voltage_metadata["frequency"],
-                timing_kwargs=self._timing_kwargs_from_timestamps(
-                    stub(commanded_voltage_timestamps), always_write_timestamps
-                ),
+                fiber_photometry_metadata=fiber_photometry_metadata,
+                devices_metadata=metadata["Devices"],
             )
-
-        fiber_photometry_table = add_fiber_photometry_lab_metadata(
-            nwbfile=nwbfile, fiber_photometry_metadata=fiber_photometry_metadata, devices_metadata=metadata["Devices"]
-        )
+            table_region = get_fiber_photometry_table_region(
+                fiber_photometry_table=fiber_photometry_table,
+                table_rows_metadata=fiber_photometry_metadata["FiberPhotometryTable"]["rows"],
+                row_metadata_keys=series_metadata["fiber_photometry_table_region"],
+                description=series_metadata["fiber_photometry_table_region_description"],
+            )
 
         # Add this interface's single response series.
         data = stub(self._read_response_data())
         timestamps = stub(self.get_timestamps())
         timing_kwargs = self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps)
 
-        series_metadata = fiber_photometry_metadata[self.metadata_key]
-        table_region = get_fiber_photometry_table_region(
-            fiber_photometry_table=fiber_photometry_table,
-            table_rows_metadata=fiber_photometry_metadata["FiberPhotometryTable"]["rows"],
-            row_metadata_keys=series_metadata["fiber_photometry_table_region"],
-            description=series_metadata["fiber_photometry_table_region_description"],
-        )
         response_series = FiberPhotometryResponseSeries(
             name=series_metadata["name"],
-            description=series_metadata["description"],
+            description=series_metadata.get("description", ""),
             data=data,
-            unit=series_metadata["unit"],
+            unit="a.u.",
             fiber_photometry_table_region=table_region,
             **timing_kwargs,
         )
