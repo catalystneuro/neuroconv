@@ -126,101 +126,6 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         series_metadata = dict(name="FiberPhotometryResponseSeries")
         return dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: series_metadata}))
 
-    def get_example_metadata(self) -> DeepDict:
-        """Return a fully specified example of the metadata this interface consumes, with realistic values.
-
-        This is a discovery aid: call it to see the complete provenance chain — device models, devices,
-        an indicator, a ``FiberPhotometryTable`` row, and this interface's response series (referencing the
-        row via ``fiber_photometry_table_region``) — filled with realistic illustrative values. Edit the
-        fields you need, discard the rest, and pass the result to :meth:`add_to_nwbfile`. Each call returns
-        an independent copy. Unlike :meth:`get_metadata`, nothing here is inferred from the source; the
-        values are examples, not defaults.
-        """
-        metadata = self.get_metadata()
-        device_models = dict(
-            optical_fiber_model=dict(
-                type="OpticalFiberModel",
-                name="optical_fiber_model",
-                manufacturer="Doric Lenses",
-                numerical_aperture=0.48,
-            ),
-            excitation_source_model=dict(
-                type="ExcitationSourceModel",
-                name="excitation_source_model",
-                manufacturer="Doric Lenses",
-                source_type="LED",
-                excitation_mode="one-photon",
-            ),
-            photodetector_model=dict(
-                type="PhotodetectorModel",
-                name="photodetector_model",
-                manufacturer="Doric Lenses",
-                detector_type="photodiode",
-            ),
-        )
-        devices = dict(
-            optical_fiber=dict(
-                type="OpticalFiber",
-                name="optical_fiber",
-                device_model_metadata_key="optical_fiber_model",
-                fiber_insertion=dict(depth_in_mm=4.0, insertion_position_ap_in_mm=3.0),
-            ),
-            excitation_source_calcium_signal=dict(
-                type="ExcitationSource",
-                name="excitation_source_calcium_signal",
-                device_model_metadata_key="excitation_source_model",
-            ),
-            excitation_source_isosbestic_control=dict(
-                type="ExcitationSource",
-                name="excitation_source_isosbestic_control",
-                device_model_metadata_key="excitation_source_model",
-            ),
-            photodetector=dict(
-                type="Photodetector",
-                name="photodetector",
-                device_model_metadata_key="photodetector_model",
-            ),
-        )
-        fiber_photometry = dict(
-            FiberPhotometryIndicators=dict(indicator=dict(name="indicator", label="GCaMP6s")),
-            FiberPhotometryTable=dict(
-                name="fiber_photometry_table",
-                description=(
-                    "Each row describes a single fiber photometry channel, linking it to the optical fiber, "
-                    "excitation source, photodetector, and indicator used to acquire it."
-                ),
-                rows=dict(
-                    calcium_signal=dict(
-                        location="VTA",
-                        excitation_wavelength_in_nm=470.0,
-                        emission_wavelength_in_nm=525.0,
-                        indicator_metadata_key="indicator",
-                        optical_fiber_metadata_key="optical_fiber",
-                        excitation_source_metadata_key="excitation_source_calcium_signal",
-                        photodetector_metadata_key="photodetector",
-                    ),
-                    isosbestic_control=dict(
-                        location="VTA",
-                        excitation_wavelength_in_nm=405.0,
-                        emission_wavelength_in_nm=525.0,
-                        indicator_metadata_key="indicator",
-                        optical_fiber_metadata_key="optical_fiber",
-                        excitation_source_metadata_key="excitation_source_isosbestic_control",
-                        photodetector_metadata_key="photodetector",
-                    ),
-                ),
-            ),
-        )
-        fiber_photometry[self.metadata_key] = dict(
-            description="Multi-fiber photometry recording of GCaMP6s calcium signal and isosbestic control.",
-            fiber_photometry_table_region=["calcium_signal", "isosbestic_control"],
-            fiber_photometry_table_region_description=(
-                "The calcium-dependent signal and isosbestic control channels recorded from the optical fiber."
-            ),
-        )
-        example = dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry)
-        return dict_deep_update(metadata, example)
-
     def get_metadata_schema(self) -> dict:
         """Return a permissive schema for the ``FiberPhotometry`` and top-level device metadata blocks."""
         metadata_schema = super().get_metadata_schema()
@@ -281,13 +186,13 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             raise ValueError(
                 f"Response series '{self.metadata_key}' has a 'fiber_photometry_table_region' but no "
                 "'FiberPhotometryTable' metadata is provided. Provide the full FiberPhotometry chain "
-                "(see get_example_metadata) or remove the table region for a bare response series."
+                "(devices, indicators, and table) or remove the table region for a bare response series."
             )
         if table_present and not region_present:
             raise ValueError(
                 "A 'FiberPhotometryTable' is provided but response series "
                 f"'{self.metadata_key}' has no 'fiber_photometry_table_region' referencing it. Add a "
-                "'fiber_photometry_table_region' to the series metadata (see get_example_metadata)."
+                "'fiber_photometry_table_region' to the series metadata."
             )
 
     def add_to_nwbfile(
@@ -303,7 +208,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         With the default metadata (see :meth:`get_metadata`) this writes only a bare
         ``FiberPhotometryResponseSeries`` — no devices, indicators, or ``FiberPhotometryTable`` are
-        fabricated. When the full provenance chain is supplied (see :meth:`get_example_metadata`), the
+        fabricated. When the full provenance chain is supplied in the metadata, the
         shared containers (devices, indicators, table, commanded voltage) are added through idempotent
         helpers: the first interface to run builds them and subsequent interfaces reuse them. Timing is
         written as ``starting_time`` + ``rate`` when the timestamps are regular, otherwise as an explicit

@@ -70,9 +70,8 @@ The fiber photometry metadata system follows the same spirit as the ophys and ec
    files — the response-series entry (and the session start time where the format embeds it) — and never
    fabricates devices, indicators, or table rows the data does not contain. With no user metadata an
    interface writes a bare ``FiberPhotometryResponseSeries``, which is a valid file. The full provenance
-   chain is opt-in: supply it yourself, starting from ``get_example_metadata()`` as an editable template.
-   When a table *is* supplied, ``add_to_nwbfile`` requires the chain to be complete and raises on missing
-   or dangling pieces rather than writing partial provenance.
+   chain is opt-in: supply it yourself. When a table *is* supplied, ``add_to_nwbfile`` requires the chain
+   to be complete and raises on missing or dangling pieces rather than writing partial provenance.
 
 
 Metadata Structure Overview
@@ -260,8 +259,8 @@ series through its ``commanded_voltage_series_metadata_key``. This is how freque
 associate each demodulated signal with the sinusoidal drive that produced it.
 
 
-Default Metadata and the Example Template
------------------------------------------
+Default Metadata
+----------------
 
 ``get_metadata()`` returns only what the interface can derive from the source files: the NWBFile basics,
 the session start time where the format embeds it, and a single response-series entry under the
@@ -273,11 +272,8 @@ signals, or the source's calibrated unit if one is reported). With no further me
 writes a bare ``FiberPhotometryResponseSeries``; this is a valid NWB file, since the series'
 ``fiber_photometry_table_region`` is optional.
 
-To record the optical hardware, indicator, and table, supply that metadata yourself. The base interface
-provides ``get_example_metadata()``, which returns a complete, realistic template — device models,
-devices, an indicator, a two-row ``FiberPhotometryTable``, and a response series referencing both rows —
-with example values to edit to match the experiment (the how-to guide,
-:ref:`annotate_fiber_photometry_metadata`, walks through this).
+To record the optical hardware, indicator, and table, supply that metadata yourself, following the
+complete structure shown in "Metadata Structure Overview" above.
 
 Provenance is all-or-nothing. ``add_to_nwbfile`` requires the response series'
 ``fiber_photometry_table_region`` and the ``FiberPhotometryTable`` to be present together — each row with

@@ -15,6 +15,96 @@ from neuroconv.tools.testing.data_interface_mixins import (
 from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
 
 
+@pytest.fixture
+def full_metadata():
+    """A complete, hand-built fiber photometry metadata chain for the default mock interface.
+
+    Test data (not a public API): device models, devices, an indicator, a two-row ``FiberPhotometryTable``,
+    and the response-series region — the full provenance a user would supply to write everything.
+    """
+    interface = MockFiberPhotometryInterface()
+    metadata = interface.get_metadata()
+    metadata["DeviceModels"] = dict(
+        optical_fiber_model=dict(
+            type="OpticalFiberModel",
+            name="optical_fiber_model",
+            manufacturer="Doric Lenses",
+            numerical_aperture=0.48,
+        ),
+        excitation_source_model=dict(
+            type="ExcitationSourceModel",
+            name="excitation_source_model",
+            manufacturer="Doric Lenses",
+            source_type="LED",
+            excitation_mode="one-photon",
+        ),
+        photodetector_model=dict(
+            type="PhotodetectorModel",
+            name="photodetector_model",
+            manufacturer="Doric Lenses",
+            detector_type="photodiode",
+        ),
+    )
+    metadata["Devices"] = dict(
+        optical_fiber=dict(
+            type="OpticalFiber",
+            name="optical_fiber",
+            device_model_metadata_key="optical_fiber_model",
+            fiber_insertion=dict(depth_in_mm=4.0, insertion_position_ap_in_mm=3.0),
+        ),
+        excitation_source_calcium_signal=dict(
+            type="ExcitationSource",
+            name="excitation_source_calcium_signal",
+            device_model_metadata_key="excitation_source_model",
+        ),
+        excitation_source_isosbestic_control=dict(
+            type="ExcitationSource",
+            name="excitation_source_isosbestic_control",
+            device_model_metadata_key="excitation_source_model",
+        ),
+        photodetector=dict(
+            type="Photodetector",
+            name="photodetector",
+            device_model_metadata_key="photodetector_model",
+        ),
+    )
+    fiber_photometry_metadata = metadata["FiberPhotometry"]
+    fiber_photometry_metadata["FiberPhotometryIndicators"] = dict(indicator=dict(name="indicator", label="GCaMP6s"))
+    fiber_photometry_metadata["FiberPhotometryTable"] = dict(
+        name="fiber_photometry_table",
+        description="Each row describes a single fiber photometry channel.",
+        rows=dict(
+            calcium_signal=dict(
+                location="VTA",
+                excitation_wavelength_in_nm=470.0,
+                emission_wavelength_in_nm=525.0,
+                indicator_metadata_key="indicator",
+                optical_fiber_metadata_key="optical_fiber",
+                excitation_source_metadata_key="excitation_source_calcium_signal",
+                photodetector_metadata_key="photodetector",
+            ),
+            isosbestic_control=dict(
+                location="VTA",
+                excitation_wavelength_in_nm=405.0,
+                emission_wavelength_in_nm=525.0,
+                indicator_metadata_key="indicator",
+                optical_fiber_metadata_key="optical_fiber",
+                excitation_source_metadata_key="excitation_source_isosbestic_control",
+                photodetector_metadata_key="photodetector",
+            ),
+        ),
+    )
+    series_metadata = fiber_photometry_metadata[interface.metadata_key]
+    series_metadata["description"] = (
+        "Multi-fiber photometry recording of GCaMP6s calcium signal and isosbestic control."
+    )
+    series_metadata["fiber_photometry_table_region"] = ["calcium_signal", "isosbestic_control"]
+    series_metadata["fiber_photometry_table_region_description"] = (
+        "The calcium-dependent signal and isosbestic control channels recorded from the optical fiber."
+    )
+    return metadata
+
+
 class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     data_interface_cls = MockFiberPhotometryInterface
     interface_kwargs = dict()
@@ -34,7 +124,7 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     def test_get_metadata_adds_no_provenance(self):
         # A synthetic source has no optical hardware, indicator, or table to describe, so the default
         # metadata fabricates none of it (see #1789) — only the response-series entry and the mock's
-        # session start time. The full chain is opt-in via get_example_metadata.
+        # session start time. The full chain is supplied by the user when they want it.
         interface = MockFiberPhotometryInterface()
         Draft7Validator.check_schema(interface.get_metadata_schema())
 
@@ -104,15 +194,14 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
 
         assert nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100,)
 
-    def test_fully_annotated_metadata_round_trips(self, tmp_path):
-        # The fully annotated path: get_example_metadata supplies the complete provenance chain, and every
-        # piece of it must survive a write/read cycle — device models, devices (with model links and fiber
-        # insertion), the indicator, both table rows in full, the region, and the response series.
+    def test_fully_annotated_metadata_round_trips(self, tmp_path, full_metadata):
+        # The fully annotated path: a complete provenance chain is supplied, and every piece of it must
+        # survive a write/read cycle — device models, devices (with model links and fiber insertion), the
+        # indicator, both table rows in full, the region, and the response series.
         interface = MockFiberPhotometryInterface()
-        metadata = interface.get_example_metadata()
 
         nwbfile_path = tmp_path / "fully_annotated.nwb"
-        nwbfile = interface.create_nwbfile(metadata=metadata)
+        nwbfile = interface.create_nwbfile(metadata=full_metadata)
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
             io.write(nwbfile)
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
