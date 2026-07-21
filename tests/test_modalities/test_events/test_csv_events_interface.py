@@ -241,6 +241,25 @@ class TestCSVEventsInterface:
         assert list(trial["outcome"][:]) == ["go", "no_go", "go"]
         assert not trial.meanings_tables  # nothing annotated -> no MeaningsTable
 
+    def test_numeric_value_column_with_blank_coerces_to_nan(self, tmp_path):
+        # A numeric payload column with a blank cell: keep_default_na=False leaves the blank as the
+        # literal '', which would otherwise promote the whole column to object strings. The per-column
+        # sniff coerces it to float (the blank becoming NaN), while the categorical column stays raw.
+        file_path = tmp_path / "trial.csv"
+        file_path.write_text("onset,amplitude,outcome\n1.0,0.5,go\n2.0,,no_go\n3.0,0.9,go\n")
+        interface = CSVEventsInterface(
+            file_path=file_path,
+            timestamps_column="onset",
+            event_type_column=None,
+            value_columns=["amplitude", "outcome"],
+        )
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        trial = nwbfile.get_events_table("Trial")
+        assert list(trial["amplitude"][:]) == pytest.approx([0.5, float("nan"), 0.9], nan_ok=True)
+        assert list(trial["outcome"][:]) == ["go", "no_go", "go"]
+
     def test_value_column_codebook_added_in_metadata(self, tmp_path):
         # The auto-seed is gone, but the categorical path still works when the user supplies a codebook:
         # a labels map relabels the cells and a meanings map produces a MeaningsTable.

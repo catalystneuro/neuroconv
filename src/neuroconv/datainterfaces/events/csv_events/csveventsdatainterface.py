@@ -162,7 +162,17 @@ class CSVEventsInterface(BaseEventsInterface):
             if durations_column is not None
             else None
         )
-        values = {column: dataframe[column].to_numpy() for column in value_columns}
+        # Payload columns may be numeric or categorical, so sniff each one's type rather than assuming.
+        # keep_default_na=False leaves a blank cell as the literal '', which would otherwise promote an
+        # all-numeric column to object strings (the valid numbers included). Coerce to numeric; if any
+        # non-blank cell fails to parse the column is genuinely categorical, so keep the raw values,
+        # else use the coerced numeric with blank cells as NaN.
+        values = {}
+        for column in value_columns:
+            raw = dataframe[column]
+            coerced = pd.to_numeric(raw, errors="coerce")
+            unparsable = coerced.isna() & (raw.astype(str).str.strip() != "")
+            values[column] = raw.to_numpy() if unparsable.any() else coerced.to_numpy()
 
         # Drop rows with a missing timestamp, keeping every other role column aligned.
         valid = ~np.isnan(timestamps)
