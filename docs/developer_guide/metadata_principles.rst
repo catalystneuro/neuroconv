@@ -12,6 +12,13 @@ The modality-specific pages (:ref:`ophys_metadata_structure`, :ref:`events_metad
 :ref:`fiber_photometry_metadata_structure`) describe the *shape* of each modality's metadata. This
 page describes the rules all of those shapes obey.
 
+These rules constrain **interfaces and converters**, not users. A user building a file or a conversion
+script should know the experiment and supply every value they can; NeuroConv's job is only to convert
+what the source recorded, so an interface or converter must not assert a value the source does not
+contain, any more than it would measure a quantity the instrument did not. The distinction matters
+because a value an automated tool invents is indistinguishable, once written, from one the experimenter
+deliberately entered.
+
 
 Interface metadata is faithful to the source
 ----------------------------------------------
@@ -39,10 +46,6 @@ A placeholder in the dictionary makes it impossible for anything downstream to t
 came from the source, the user, or NeuroConv. Warning about it at write time does not help, since the
 value is written regardless.
 
-An un-annotated conversion therefore produces fields the user still has to fill in, and NWB Inspector
-reports them. That is intended: fill them in rather than quieting the report with something that reads
-like an answer.
-
 See `issue #1557 <https://github.com/catalystneuro/neuroconv/issues/1557>`_ for the discussion.
 
 Staying faithful is not the whole story, though. Some of what a source leaves out is genuinely
@@ -53,18 +56,23 @@ when the interface reports none.
 Placeholders for required fields
 ---------------------------------
 
-NWB requires some fields whether or not anyone supplied them: a ``Device`` needs a name, a
-``DynamicTable`` a description. Where the source has no value, NeuroConv writes a placeholder
-rather than raising, since much of what NWB requires is not in the source formats.
+Some of the fields that NWB objects require are not in the source format files at all: an
+``ElectrodeGroup`` requires a ``location`` (the anatomical target), which the acquisition system does
+not record, and an ``ImagingPlane`` requires an ``excitation_lambda``, which a bare imaging file
+usually does not carry. Where a field has no source value, the decision is:
 
-A placeholder does reach the file, so prefer one that NWB Inspector already flags (see its
-`placeholder best practice
-<https://nwbinspector.readthedocs.io/en/dev/best_practices/general.html#best-practice-placeholders>`_).
-Where no check exists for the field yet, adding one is the better fix than picking a value that passes
-quietly. Keep the string fallbacks few and centralized in one factory per modality
-(`ophys <https://github.com/catalystneuro/neuroconv/blob/a02fb353ea19112b7ef81542f5f05359f3b5498f/src/neuroconv/tools/roiextractors/roiextractors.py#L83>`_,
-`ecephys <https://github.com/catalystneuro/neuroconv/blob/a02fb353ea19112b7ef81542f5f05359f3b5498f/src/neuroconv/tools/spikeinterface/spikeinterface.py#L84>`_) so they can change in
-one place.
+1. **Optional field: omit it.** If NWB does not require it, leave it out entirely rather than writing a
+   blank or a guess. An absent optional field is correct, not incomplete.
+2. **Required field: write a placeholder rather than raising.** A file cannot be written without it, and
+   refusing to run until the user hand-fills every required field would make the common case a wall.
+3. **When required, use a reasonable placeholder.** Prefer a value that at least makes sense for the
+   field (``np.nan`` for a numeric wavelength), and better still one NWB Inspector already flags: it
+   catches empty and known placeholder descriptions (see its `placeholder best practice
+   <https://nwbinspector.readthedocs.io/en/dev/best_practices/general.html#best-practice-placeholders>`_).
+4. **Keep placeholders centralized.** Put the string fallbacks in one factory per modality
+   (`ophys <https://github.com/catalystneuro/neuroconv/blob/a02fb353ea19112b7ef81542f5f05359f3b5498f/src/neuroconv/tools/roiextractors/roiextractors.py#L83>`_,
+   `ecephys <https://github.com/catalystneuro/neuroconv/blob/a02fb353ea19112b7ef81542f5f05359f3b5498f/src/neuroconv/tools/spikeinterface/spikeinterface.py#L84>`_)
+   so they can change in one place.
 
 See `nwb-schema issue #672 <https://github.com/NeurodataWithoutBorders/nwb-schema/issues/672>`_ for
 the discussion.
