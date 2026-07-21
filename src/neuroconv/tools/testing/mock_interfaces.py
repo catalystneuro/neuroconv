@@ -296,8 +296,10 @@ class MockEventsInterface(BaseEventsInterface):
             The payload carried per event (the taxonomy's Payload axis). ``"timestamps only"``
             (default) is a timestamp-only event with no value column; ``"single value"`` carries one
             categorical field (a labeled column with a ``MeaningsTable``); ``"multi value"`` carries a
-            two-field struct that fans into two columns on the same rows (a categorical ``outcome``
-            plus a numeric ``amplitude``). Applies to every event type.
+            three-field struct that fans into three columns on the same rows, one per way the writer
+            treats a value column: ``outcome`` (labels and meanings, so a ``MeaningsTable``), ``cue``
+            (labels but nothing to explain, so no ``MeaningsTable``), and ``amplitude`` (raw numeric
+            values). Applies to every event type.
         verbose : bool, optional
             Whether to print status messages, by default False.
         """
@@ -321,30 +323,55 @@ class MockEventsInterface(BaseEventsInterface):
 
         for index, event_type_source_id in enumerate(self._event_type_source_ids()):
             suffix = "" if self._num_event_types == 1 else f"_{index}"
-            columns = {}
-            if self._event_payload != "timestamps only":
-                # A categorical value column with an editable label -> meaning vocabulary.
-                columns["outcome"] = {
-                    "column_name": f"outcome{suffix}",
-                    "description": "The outcome of each event.",
-                    "column_categories": {
-                        "labels": {0: "go", 1: "no_go"},
-                        "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+            # One branch per payload mode, spelled out in full rather than composed from shared pieces:
+            # between them the modes cover the three ways the writer treats a value column, and stating
+            # each mode's columns outright is what makes which-mode-covers-which readable.
+            if self._event_payload == "timestamps only":
+                # No value column at all.
+                columns = {}
+            elif self._event_payload == "single value":
+                # One categorical column declaring labels and meanings: display labels plus a MeaningsTable.
+                columns = {
+                    "outcome": {
+                        "column_name": f"outcome{suffix}",
+                        "description": "The outcome of each event.",
+                        "column_categories": {
+                            "labels": {0: "go", 1: "no_go"},
+                            "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                        },
                     },
                 }
-            if self._event_payload == "multi value":
-                # A second, non-categorical (numeric) field: written as raw values, no MeaningsTable.
-                columns["amplitude"] = {
-                    "column_name": f"amplitude{suffix}",
-                    "description": "The amplitude of each event.",
+            elif self._event_payload == "multi value":
+                # A struct payload fanned into three columns on the same rows, one per way the writer
+                # treats a value column: 'outcome' as above, 'cue' declaring labels whose meaning is
+                # self-evident (so no meanings and no MeaningsTable), and 'amplitude' as raw numbers.
+                columns = {
+                    "outcome": {
+                        "column_name": f"outcome{suffix}",
+                        "description": "The outcome of each event.",
+                        "column_categories": {
+                            "labels": {0: "go", 1: "no_go"},
+                            "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                        },
+                    },
+                    "cue": {
+                        "column_name": f"cue{suffix}",
+                        "description": "The cue presented with each event.",
+                        "column_categories": {"labels": {0: "tone", 1: "light"}},
+                    },
+                    "amplitude": {
+                        "column_name": f"amplitude{suffix}",
+                        "description": "The amplitude of each event.",
+                    },
                 }
             # No EventTables entry: a solo type names its own table from event_name (CamelCased). A merge
             # test repoints these types' table_metadata_key at a shared key and declares the table there.
-            metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
-                "event_name": event_type_source_id,
-                "event_description": "Mock events.",
-                "columns": columns,
-            }
+            # Only what the source actually carries: no event_description (the mock has none to report),
+            # and no columns key at all for a timestamps-only type.
+            entry = {"event_name": event_type_source_id}
+            if columns:
+                entry["columns"] = columns
+            metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = entry
         return metadata
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
@@ -357,11 +384,17 @@ class MockEventsInterface(BaseEventsInterface):
             # Stagger timestamps across types so pooling several into one table interleaves in time.
             timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
             durations = np.full(self._num_events, duration) if duration is not None else None
-            payload = {}
-            if self._event_payload != "timestamps only":
-                payload["outcome"] = np.arange(self._num_events) % 2  # alternating go / no_go
-            if self._event_payload == "multi value":
-                payload["amplitude"] = np.arange(self._num_events, dtype="float64")
+            # One branch per payload mode, matching the columns get_metadata declares for that mode.
+            if self._event_payload == "timestamps only":
+                payload = {}
+            elif self._event_payload == "single value":
+                payload = {"outcome": np.arange(self._num_events) % 2}  # alternating go / no_go
+            elif self._event_payload == "multi value":
+                payload = {
+                    "outcome": np.arange(self._num_events) % 2,  # alternating go / no_go
+                    "cue": (np.arange(self._num_events) // 2) % 2,  # tone, tone, light, light, ...
+                    "amplitude": np.arange(self._num_events, dtype="float64"),
+                }
             events_data_dict[event_type_source_id] = _EventsData(
                 event_type_source_id=event_type_source_id,
                 timestamps=timestamps,

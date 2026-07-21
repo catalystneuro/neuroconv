@@ -32,8 +32,8 @@ The events metadata system follows the same core principles as the ophys and ece
 1. **Dictionary-Based Organization.** Everything lives under ``metadata["Events"]``, dict-keyed at
    every level: each interface is namespaced by its ``metadata_key``, each event type within it by
    its ``event_metadata_key`` (defaulting to the source's ``event_type_source_id``) under an
-   ``event_types`` block. Each event type carries a required ``event_name`` and ``event_description``
-   (its name and description), and optionally a ``table_metadata_key`` naming a shared output table it
+   ``event_types`` block. Each event type carries a required ``event_name`` and an optional
+   ``event_description``, and optionally a ``table_metadata_key`` naming a shared output table it
    joins. Keying every level lets several interfaces run in one conversion without clashing, and is
    consistent with the rest of the NeuroConv metadata.
 
@@ -52,8 +52,7 @@ The events metadata system follows the same core principles as the ophys and ece
                    "frame_start": {                      # a second event type in the same interface
                        "event_name": "frame_start",
                        "event_description": "Camera frame-start pulses.",
-                       "columns": {},                    # a bare marker: timestamps only
-                   },
+                   },                                    # a bare marker: no columns
                },
            },
        }
@@ -114,8 +113,7 @@ codes and the constant-value ``PC0_`` marker are from TDT demo tanks.
                     "event_name": "reward",            # its label in the shared table's event_type column
                     "event_description": "Reward delivery.",
                     "table_metadata_key": "behavior",       # pooled into the shared table
-                    "columns": {},                    # timestamps only
-                },
+                },                                    # a bare marker: no columns
             },
         },
 
@@ -125,12 +123,10 @@ codes and the constant-value ``PC0_`` marker are from TDT demo tanks.
                     "event_name": "trial_start",
                     "event_description": "Trial-start pulse.",
                     "table_metadata_key": "behavior",       # pooled into the same shared table
-                    "columns": {},
                 },
                 "XD0": {
                     "event_name": "camera_frame",      # solo: names its own table -> "CameraFrame"
                     "event_description": "Camera exposure pulses.",
-                    "columns": {},
                 },
             },
         },
@@ -197,8 +193,9 @@ value columns:
 
 An entry holds:
 
-- ``event_name`` and ``event_description`` , the type's name and description (both required, both
-  defaulting to the ``event_type_source_id``). They have a **dual role by layout**: when the type has
+- ``event_name`` (required) and ``event_description`` (optional) , the type's name and description.
+  Interfaces seed ``event_name`` from the ``event_type_source_id`` and omit ``event_description``,
+  which a source does not carry. They have a **dual role by layout**: when the type has
   its own table (the default), ``event_name`` becomes that table's NWB object name (CamelCased) and
   ``event_description`` its table description; when the type is pooled into a shared table (a merge),
   ``event_name`` becomes the type's label in that table's ``event_type`` discriminator column and
@@ -213,8 +210,8 @@ Each column entry holds:
 
 - ``column_name`` , the column header in the output table (default: the source's field label if it
   carries one, else the ``field_source_id``).
-- ``description`` , a free-text description of the column, written as its ``VectorData`` description
-  in the output table (default: a generic description naming the source).
+- ``description`` (optional) , a free-text description of the column, written as its ``VectorData``
+  description in the output table.
 - ``column_categories`` , the column's value vocabulary (see below); present only for a categorical
   column.
 
@@ -262,7 +259,7 @@ that key in ``EventTables`` to name the pooled table; see :ref:`annotate_events_
 worked example. The same edit shares a table across interfaces, since the table block is global. The
 writer pools the shared types' events into one **time-sorted** table and adds an ``event_type``
 discriminator column holding each row's ``event_name`` (with a ``MeaningsTable`` mapping those names
-to their ``event_description``), so a bare marker (which adds no value column) keeps its identity; each
+to their ``event_description``, for the types that carry one), so a bare marker (which adds no value column) keeps its identity; each
 event type contributes only the value columns it carries, filled on its own rows and empty on the
 others.
 
