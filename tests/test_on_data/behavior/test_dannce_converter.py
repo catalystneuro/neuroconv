@@ -38,8 +38,7 @@ class TestDANNCEConverter(TestCase):
         dannce_folder_path = BEHAVIOR_DATA_PATH / "dannce"
         cls.camera_names = ["Camera1", "Camera2"]
         cls.video_file_paths = {
-            camera_name: [str(dannce_folder_path / "videos" / f"{camera_name}.mp4")]
-            for camera_name in cls.camera_names
+            camera_name: [str(dannce_folder_path / "videos" / f"{camera_name}.mp4")] for camera_name in cls.camera_names
         }
 
         cls.converter = DANNCEConverter(

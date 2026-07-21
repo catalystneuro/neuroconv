@@ -116,7 +116,9 @@ class DANNCEConverter(BaseDataInterface):
         # the base implementation already excludes).
         from ....utils import get_json_schema_from_method_signature
 
-        return get_json_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata", "camera_calibrations"])
+        return get_json_schema_from_method_signature(
+            self.add_to_nwbfile, exclude=["nwbfile", "metadata", "camera_calibrations"]
+        )
 
     def add_to_nwbfile(
         self,
