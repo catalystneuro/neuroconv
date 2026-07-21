@@ -4,9 +4,10 @@ Run from the repository root::
 
     python docs/_static/images/generate_time_alignment_figures.py
 
-Produces four figures:
+Produces five figures:
 
 - ``time_alignment_gross_vs_fine.png``   - the concept figure: a constant offset (gross) beside a growing drift (fine).
+- ``time_alignment_concatenate.png``     - gross alignment: separate trial files tiled onto one session clock.
 - ``time_alignment_interpolation.png``   - fine alignment: frames interpolated onto the reference clock via shared pulses.
 - ``time_alignment_coarse.png``          - a stream slid as a rigid block onto the recording clock.
 - ``time_alignment_moves_together.png`` - an interface's time-bearing objects all shifted by the same offset,
@@ -212,47 +213,6 @@ def build_interpolation():
     )
     fig.tight_layout()
     fig.savefig(OUTDIR / "time_alignment_interpolation.png", dpi=200, bbox_inches="tight")
-
-
-def build_interface_remapped():
-    """Fine twin of build_moves_together: every object of one interface re-timed through the *same* mapping.
-
-    The gross figure moves all objects by one constant offset. This one runs all of them through one per-sample
-    mapping instead: the samples are re-timed (the drift is removed, so internal spacing changes), but because the
-    mapping is the same for every object their relationships to one another survive, just as under a rigid shift.
-    """
-    grid = np.arange(1, 8, 1.0)  # the reference clock instants
-    post = [np.arange(1, 5, 1.0), np.arange(2, 6, 1.0), np.arange(4, 8, 1.0)]  # each object's true reference times
-    k = 1.18  # the source clock runs fast, so loaded samples drift progressively later
-    pre = [1 + (p - 1) * k for p in post]  # the same mapping (anchored at t=1) applied to every object
-
-    def panel(ax, *, ticks_list, title):
-        for gx in grid:  # faint full-height guides at the reference clock instants
-            ax.plot([gx, gx], [-0.35, 2.55], color="0.8", lw=0.9, zorder=1)
-        for y, ticks in zip((2, 1, 0), ticks_list):
-            timeline(ax, y=y, ticks=ticks, label="", color=REF, show_time=False)
-        x_lo, x_hi = 0.4, 9.4
-        ax.add_patch(
-            mpatches.FancyBboxPatch(
-                (x_lo, -0.35),
-                x_hi - x_lo,
-                2.9,
-                boxstyle="round,pad=0.12,rounding_size=0.2",
-                linewidth=1.2,
-                edgecolor="0.5",
-                facecolor="none",
-                linestyle="--",
-            )
-        )
-        ax.text(x_lo, 2.72, "one interface: its time-bearing objects", ha="left", va="bottom", fontsize=9.5, color="0.4")
-        ax.text(grid[-1] + 0.5, -0.35, "reference clock", ha="left", va="center", fontsize=9, color="0.5")
-        clean(ax, xlim=(-0.6, 11.6), ylim=(-0.8, 3.2), title=title)
-
-    fig, axes = plt.subplots(2, 1, figsize=(9, 5.4))
-    panel(axes[0], ticks_list=pre, title="As loaded: every object drifts off the reference clock, further as it runs on")
-    panel(axes[1], ticks_list=post, title="After one shared mapping: every object re-timed, their gaps to one another preserved")
-    fig.tight_layout(h_pad=2.2)
-    fig.savefig(OUTDIR / "time_alignment_interface_remapped.png", dpi=200, bbox_inches="tight")
 
 
 def build_coarse():
