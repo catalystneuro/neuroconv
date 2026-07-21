@@ -117,8 +117,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         Metadata Structure
         ------------------
         With ``use_new_metadata_format=True`` the metadata follows the unified, dict-based layout: a
-        shared top-level ``Devices`` registry plus the pose registries nested under
-        ``metadata["Behavior"]["Pose"]``, cross-referenced by key.
+        shared top-level ``Devices`` registry plus the pose registries under the top-level
+        ``metadata["Pose"]`` modality, cross-referenced by key.
 
         .. code-block:: python
 
@@ -129,33 +129,31 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                         "description": "Camera used for behavioral recording and pose estimation.",
                     }
                 },
-                "Behavior": {
-                    "Pose": {
-                        "Skeletons": {
-                            "deep_lab_cut_metadata_key": {
-                                "name": "SkeletonPoseEstimationDeepLabCut_SubjectName",
-                                "nodes": ["bodypart1", "bodypart2", ...],  # keypoints/bodyparts
-                                "edges": [[0, 1], [1, 2], ...],  # connections between nodes (optional)
-                                "subject": "subject_name",  # links the skeleton to the subject
-                            }
-                        },
-                        "PoseEstimations": {
-                            "deep_lab_cut_metadata_key": {  # keyed by metadata_key
-                                "name": "PoseEstimationDeepLabCut",
-                                "source_software": "DeepLabCut",
-                                "scorer": "...",
-                                "dimensions": [[height, width]],
-                                "original_videos": ["path/to/video.mp4"],
-                                "device_metadata_key": "deep_lab_cut_metadata_key",  # -> metadata["Devices"]
-                                "skeleton_metadata_key": "deep_lab_cut_metadata_key",  # -> Behavior.Pose.Skeletons
-                                "PoseEstimationSeries": {
-                                    "bodypart1": {"name": "PoseEstimationSeriesBodypart1"},
-                                    "bodypart2": {"name": "PoseEstimationSeriesBodypart2"},
-                                    # one entry per bodypart; the dict key is the bodypart name
-                                },
-                            }
-                        },
-                    }
+                "Pose": {
+                    "Skeletons": {
+                        "deep_lab_cut_metadata_key": {
+                            "name": "SkeletonPoseEstimationDeepLabCut_SubjectName",
+                            "nodes": ["bodypart1", "bodypart2", ...],  # keypoints/bodyparts
+                            "edges": [[0, 1], [1, 2], ...],  # connections between nodes (optional)
+                            "subject": "subject_name",  # links the skeleton to the subject
+                        }
+                    },
+                    "PoseEstimations": {
+                        "deep_lab_cut_metadata_key": {  # keyed by metadata_key
+                            "name": "PoseEstimationDeepLabCut",
+                            "source_software": "DeepLabCut",
+                            "scorer": "...",
+                            "dimensions": [[height, width]],
+                            "original_videos": ["path/to/video.mp4"],
+                            "device_metadata_key": "deep_lab_cut_metadata_key",  # -> metadata["Devices"]
+                            "skeleton_metadata_key": "deep_lab_cut_metadata_key",  # -> Pose.Skeletons
+                            "PoseEstimationSeries": {
+                                "bodypart1": {"name": "PoseEstimationSeriesBodypart1"},
+                                "bodypart2": {"name": "PoseEstimationSeriesBodypart2"},
+                                # one entry per bodypart; the dict key is the bodypart name
+                            },
+                        }
+                    },
                 },
             }
 
@@ -268,7 +266,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         dict
             The JSON schema defining the metadata structure.
         """
-        # Canonical (dict-based) shape: top-level Devices and Behavior.Pose.* validate against the
+        # Canonical (dict-based) shape: top-level Devices and top-level Pose.* validate against the
         # base metadata schema, which permits these additional registries. The legacy
         # ``metadata["PoseEstimation"]`` schema is selected while ``use_new_metadata_format`` is False.
         if not use_new_metadata_format:
@@ -563,7 +561,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             }
         }
 
-        metadata["Behavior"]["Pose"]["Skeletons"] = {
+        metadata["Pose"]["Skeletons"] = {
             metadata_key: {
                 "name": skeleton_name,
                 "nodes": bodyparts,
@@ -575,7 +573,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         pose_estimation_series = {
             bodypart: {"name": f"PoseEstimationSeries{bodypart.capitalize()}"} for bodypart in bodyparts
         }
-        metadata["Behavior"]["Pose"]["PoseEstimations"] = {
+        metadata["Pose"]["PoseEstimations"] = {
             metadata_key: {
                 "name": container_name,
                 "source_software": "DeepLabCut",
@@ -633,9 +631,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         )
 
         # Dispatch on the shape of the user-supplied metadata: the dict-based format has the pose
-        # sub-modality at metadata["Behavior"]["Pose"]; anything else (including no metadata) uses the
+        # modality at the top-level metadata["Pose"]; anything else (including no metadata) uses the
         # legacy path. The defaults are fetched in the matching shape, then user metadata is merged on.
-        use_new_metadata_format = metadata is not None and "Pose" in metadata.get("Behavior", {})
+        use_new_metadata_format = metadata is not None and "Pose" in metadata
 
         # Get default metadata
         default_metadata = DeepDict(self.get_metadata(use_new_metadata_format=use_new_metadata_format))

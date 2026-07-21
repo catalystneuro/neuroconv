@@ -117,7 +117,8 @@ medpc = [
     "ndx-events==0.2.2",
 ]
 vame = [
-    "ndx-vame==0.3.1",
+    "ndx-vame>=0.3.2",
+    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
 ]
 behavior = [
     "neuroconv[sleap]",
@@ -370,6 +371,11 @@ tdt_fp = [
     "neuroconv[fiber_photometry]",
     "tdt",
 ]
+guppy = [
+    "neuroconv[fiber_photometry]",
+    "ndx-guppy",
+    "tables",
+]
 thor = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
@@ -385,6 +391,7 @@ ophys = [
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
     "neuroconv[femtonics]",
+    "neuroconv[guppy]",
     "neuroconv[inscopix]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
