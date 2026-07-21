@@ -18,9 +18,9 @@ Time-bearing objects and the offset
 -----------------------------------
 
 Alignment acts on **time-bearing objects**: the objects an interface writes that carry a time coordinate relative to
-``session_start_time``. In a recording interface that is the ``ElectricalSeries``; the ``Device``, the electrodes
-table, and the electrode groups have no time and are untouched. In an events interface it is every event type. A
-``PoseEstimationSeries`` is one, and so is a trials table.
+``session_start_time``. In a recording interface that is the ``ElectricalSeries``; the ``Device``, the ``electrodes``
+table, and the ``ElectrodeGroup`` objects have no time and are untouched. In an events interface it is every
+``EventsTable``. A ``PoseEstimationSeries`` is one, and so is a ``TimeIntervals`` (trials) table.
 
 Each of them carries an **offset**, in seconds::
 
