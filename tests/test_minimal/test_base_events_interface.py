@@ -941,7 +941,7 @@ class TestEventsAcrossInterfaces:
 
 
 class TestEventsTemporalAlignment:
-    """Gross temporal alignment on ``BaseEventsInterface``: ``shift_times`` offsets event times at write.
+    """Gross temporal alignment on ``BaseEventsInterface``: ``interface.alignment.shift_times`` offsets event times at write.
 
     The mock's single "events" type has native timestamps ``[0.1, 0.2, 0.3, 0.4]``.
     """
@@ -956,8 +956,8 @@ class TestEventsTemporalAlignment:
     def test_shift_times_offsets_written_timestamps_and_accumulates(self):
         # Relative and rigid: repeated shifts sum, and the written events move by the total.
         interface = MockEventsInterface()
-        interface.shift_times(1.0)
-        interface.shift_times(0.5)
+        interface.alignment.shift_times(1.0)
+        interface.alignment.shift_times(0.5)
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
         written = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
@@ -966,7 +966,7 @@ class TestEventsTemporalAlignment:
     def test_shift_preserves_durations(self):
         # A shift moves timestamps but leaves each event's duration unchanged.
         interface = MockEventsInterface(event_extent="event with duration")
-        interface.shift_times(5.0)
+        interface.alignment.shift_times(5.0)
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
         events = nwbfile.get_events_table("Events")

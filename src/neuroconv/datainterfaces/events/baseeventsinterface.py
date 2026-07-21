@@ -94,24 +94,11 @@ class BaseEventsInterface(BaseDataInterface):
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
         # coerced once even though get_metadata, add_to_nwbfile, and alignment all read it.
         self._events_data_dict = None
-        # Alignment state by composition: the interface holds the offset applied to its event times at write,
-        # rather than inheriting the array-shaped BaseTemporalAlignmentInterface contract, which does not fit
-        # events. Private and minimal (offset + shift) for now; see neuroconv/_temporal_alignment.py.
-        self._alignment = _TemporalAlignment()
-
-    def shift_times(self, delta: float) -> None:
-        """Shift every event time in this interface by ``delta`` seconds (gross alignment).
-
-        Relative and rigid: repeated calls accumulate, and the spacing between events (and their durations)
-        is preserved. The offset is applied lazily at write, so the internal representation stays in the
-        source clock.
-
-        Parameters
-        ----------
-        delta : float
-            The number of seconds to add to every event time.
-        """
-        self._alignment.shift(delta)
+        # Alignment by composition: the interface holds the offset applied to its event times at write and
+        # exposes it as ``interface.alignment`` (so ``alignment.shift_times``), rather than inheriting the
+        # array-shaped BaseTemporalAlignmentInterface contract, which does not fit events. Minimal (offset +
+        # shift_times) for now; see neuroconv/_temporal_alignment.py.
+        self.alignment = _TemporalAlignment()
 
     @abstractmethod
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
@@ -354,7 +341,7 @@ class BaseEventsInterface(BaseDataInterface):
         # Apply the alignment offset here (lazily, at write): every written timestamp is native + offset, so
         # the cached internal representation stays in the source clock. A shift is rigid, so durations are
         # left unchanged.
-        time_offset = self._alignment.offset
+        time_offset = self.alignment.offset
 
         # Flatten this interface's types into rows (timestamp, event_name, duration, cells) and collect the
         # value-column specs keyed by column_name.
