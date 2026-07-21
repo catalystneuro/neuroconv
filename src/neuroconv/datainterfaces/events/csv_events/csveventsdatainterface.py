@@ -11,16 +11,6 @@ from neuroconv.utils import DeepDict
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
 
 
-def _column_is_numeric(array: np.ndarray) -> bool:
-    """Return whether a value column read from the CSV holds numbers rather than category labels.
-
-    A purely numeric column parses to a numeric numpy dtype; anything with non-numeric text (or blank
-    cells kept as ``''`` by ``keep_default_na=False``) comes back as ``object``. Numeric columns are
-    written as plain value columns; everything else is seeded as a categorical column.
-    """
-    return np.issubdtype(array.dtype, np.number)
-
-
 class CSVEventsInterface(BaseEventsInterface):
     """Data Interface for converting discrete events from a single CSV file.
 
@@ -32,9 +22,8 @@ class CSVEventsInterface(BaseEventsInterface):
       distinct value becomes its own event type and, by default, its own ``pynwb.event.EventsTable``.
       Merging several types into one table with an ``event_type`` discriminator column is opt-in by
       pointing their ``table_metadata_key`` at a shared key in the editable metadata.
-    - ``value_columns`` -- columns carried along as per-event values (payload). A non-numeric column
-      is seeded as a categorical column (an editable raw-value -> label map); a numeric column is
-      written as a plain value column. Both are editable in metadata.
+    - ``value_columns`` -- columns carried along as per-event values (payload). Each becomes a value
+      column named after its source header, carrying the raw cell values.
     - ``durations_column`` -- a column of per-event durations (seconds), making the events durative
       (written to the table's ``duration`` column). A blank cell becomes ``NaN`` (a missing offset).
 
@@ -84,10 +73,9 @@ class CSVEventsInterface(BaseEventsInterface):
             own event type (and, by default, its own ``EventsTable``). Pass None when the file is a
             single event type, in which case it is written as one table named after the file stem.
         value_columns : list of (str or int), optional
-            The columns, if any, carried along as per-event values. Each becomes a column on the event
-            table(s): a non-numeric column is seeded as a categorical column, a numeric column as a
-            plain value column. Default None ignores every column except the timestamp, event-type, and
-            duration columns.
+            The columns, if any, carried along as per-event values. Each becomes a value column on the
+            event table(s), named after its source header and carrying the raw cell values. Default None
+            ignores every column except the timestamp, event-type, and duration columns.
         durations_column : str, int, or None, optional
             The column, if any, holding per-event durations (seconds). When set, the events are durative
             and each duration is written to the table's ``duration`` column; a blank cell becomes
@@ -187,23 +175,13 @@ class CSVEventsInterface(BaseEventsInterface):
         values = {column: array[valid] for column, array in values.items()}
         return timestamps, labels, values, durations
 
-    def _value_columns_metadata(self, values: dict) -> dict:
+    def _value_columns_metadata(self) -> dict:
         """Build the shared ``columns`` block (one entry per ``value_columns`` column) seeded on every
-        event type. A non-numeric column seeds an identity raw-value -> display label map (first-appearance
-        order, editable) marking it categorical; a numeric column is a plain value column."""
+        event type, each declaring its ``column_name`` (the source header)."""
         columns = {}
         for column in self.source_data["value_columns"] or []:
             column_source_id = str(column)
-            column_metadata = {
-                "column_name": column_source_id,
-                "description": f"Values of the '{column_source_id}' column from CSV.",
-            }
-            array = values[column]
-            if not _column_is_numeric(array):
-                column_metadata["column_categories"] = {
-                    "labels": {str(value): str(value) for value in pd.unique(array)}
-                }
-            columns[column_source_id] = column_metadata
+            columns[column_source_id] = {"column_name": column_source_id}
         return columns
 
     def get_metadata(self) -> DeepDict:
@@ -220,34 +198,26 @@ class CSVEventsInterface(BaseEventsInterface):
         """
         metadata = super().get_metadata()
 
-        timestamps, labels, values, _ = self._read_source()
-        columns = self._value_columns_metadata(values)
+        timestamps, labels, _, _ = self._read_source()
+        columns = self._value_columns_metadata()
         event_types = metadata["Events"][self.metadata_key]["event_types"]
 
+        # Declare the structure the CSV carries: which event types exist, their source-derived names,
+        # and any value columns' names.
         if labels is None:
             # A single event type named after the file stem; skip an empty file so no phantom type is seeded.
             if len(timestamps) > 0:
                 file_stem = Path(self.source_data["file_path"]).stem
-                entry = {
-                    "event_name": file_stem,
-                    "event_description": f"Timestamps of the '{file_stem}' events from CSV.",
-                }
+                entry = {"event_name": file_stem}
                 if columns:
                     entry["columns"] = deepcopy(columns)
                 event_types[file_stem] = entry
         else:
             # One event type per distinct label value (first-appearance order); the value seeds the
             # editable event_name and, by default, its own table.
-            event_type_column = self.source_data["event_type_column"]
             for value in pd.unique(labels):
                 event_type_source_id = str(value)
-                entry = {
-                    "event_name": event_type_source_id,
-                    "event_description": (
-                        f"Timestamps of the '{event_type_source_id}' events from CSV "
-                        f"(the '{event_type_column}' column)."
-                    ),
-                }
+                entry = {"event_name": event_type_source_id}
                 if columns:
                     entry["columns"] = deepcopy(columns)
                 event_types[event_type_source_id] = entry

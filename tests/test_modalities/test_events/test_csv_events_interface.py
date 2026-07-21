@@ -144,9 +144,29 @@ class TestCSVEventsInterface:
         # Pooled rows are re-sorted chronologically, event_type naming each row's type.
         assert list(events["timestamp"][:]) == [1.0, 2.0, 3.0, 4.0, 5.0]
         assert list(events["event_type"][:]) == ["a", "b", "a", "b", "a"]
-        # The discriminator carries a MeaningsTable mapping each type to its seeded description.
-        event_type_meanings = events.meanings_tables["event_type_meanings"]
-        assert set(event_type_meanings["value"][:]) == {"a", "b"}
+        # No type was described, so the discriminator gets no MeaningsTable rather than one restating
+        # each event_name back at the reader.
+        assert not events.meanings_tables
+
+    def test_merged_event_type_meanings_from_user_descriptions(self, two_type_file):
+        # When the user describes the pooled types, the event_type discriminator carries a MeaningsTable
+        # mapping each type to its description; an undescribed type earns no row.
+        interface = CSVEventsInterface(file_path=two_type_file, timestamps_column="onset", event_type_column="kind")
+        metadata = interface.get_metadata()
+        metadata["Events"]["EventTables"] = {"events": {"table_name": "Events", "description": "Pooled CSV events."}}
+        event_types = metadata["Events"]["csv_events"]["event_types"]
+        for event_type in event_types.values():
+            event_type["table_metadata_key"] = "events"
+        event_types["a"]["event_description"] = "Left choice."
+        event_types["b"]["event_description"] = "Right choice."
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        events = nwbfile.get_events_table("Events")
+        meanings_tables = list(events.meanings_tables.values())
+        assert len(meanings_tables) == 1
+        meanings = dict(zip(meanings_tables[0]["value"][:], meanings_tables[0]["meaning"][:]))
+        assert meanings == {"a": "Left choice.", "b": "Right choice."}
 
     def test_merged_types_share_a_value_column(self, tmp_path):
         # Two event types pooled into one table share a value column: both seed the same "outcome"
@@ -186,31 +206,44 @@ class TestCSVEventsInterface:
         assert list(nwbfile.get_events_table("A")["timestamp"][:]) == [1.0, 3.0, 5.0]
         assert list(nwbfile.get_events_table("B")["timestamp"][:]) == [2.0, 4.0]
 
-    def test_numeric_value_column_is_plain(self, tmp_path):
-        # A numeric value column is written as a plain column with no category mapping.
-        file_path = tmp_path / "signal.csv"
-        file_path.write_text("onset,amplitude\n1.0,0.5\n2.0,1.5\n3.0,2.5\n")
+    def test_value_column_declares_only_its_name(self, tmp_path):
+        # A value column seeds only its structural column_name: the CSV carries no codebook, so no
+        # description and no column_categories are invented (numeric or not).
+        file_path = tmp_path / "trial.csv"
+        file_path.write_text("onset,amplitude,outcome\n1.0,0.5,go\n2.0,1.5,no_go\n3.0,2.5,go\n")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
             event_type_column=None,
-            value_columns=["amplitude"],
+            value_columns=["amplitude", "outcome"],
         )
-        metadata = interface.get_metadata()
-        # Numeric columns get no column_categories seeded.
-        column = metadata["Events"]["csv_events"]["event_types"]["signal"]["columns"]["amplitude"]
-        assert "column_categories" not in column
+        columns = interface.get_metadata()["Events"]["csv_events"]["event_types"]["trial"]["columns"]
+        assert columns["amplitude"] == {"column_name": "amplitude"}
+        assert columns["outcome"] == {"column_name": "outcome"}
 
+    def test_value_columns_carry_raw_values(self, tmp_path):
+        # Both a numeric and a non-numeric value column write their raw cell values directly, with no
+        # MeaningsTable, since nothing was annotated.
+        file_path = tmp_path / "trial.csv"
+        file_path.write_text("onset,amplitude,outcome\n1.0,0.5,go\n2.0,1.5,no_go\n3.0,2.5,go\n")
+        interface = CSVEventsInterface(
+            file_path=file_path,
+            timestamps_column="onset",
+            event_type_column=None,
+            value_columns=["amplitude", "outcome"],
+        )
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-        signal = nwbfile.get_events_table("Signal")
-        assert set(signal.colnames) == {"timestamp", "amplitude"}
-        assert list(signal["amplitude"][:]) == [0.5, 1.5, 2.5]
-        assert not signal.meanings_tables  # no categorical column -> no MeaningsTable
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-    def test_non_numeric_value_column_is_categorical(self, tmp_path):
-        # A non-numeric value column is seeded as a categorical column; relabelling a value in the
-        # editable metadata maps through on write, proving the category path is used.
+        trial = nwbfile.get_events_table("Trial")
+        assert set(trial.colnames) == {"timestamp", "amplitude", "outcome"}
+        assert list(trial["amplitude"][:]) == [0.5, 1.5, 2.5]
+        assert list(trial["outcome"][:]) == ["go", "no_go", "go"]
+        assert not trial.meanings_tables  # nothing annotated -> no MeaningsTable
+
+    def test_value_column_codebook_added_in_metadata(self, tmp_path):
+        # The auto-seed is gone, but the categorical path still works when the user supplies a codebook:
+        # a labels map relabels the cells and a meanings map produces a MeaningsTable.
         file_path = tmp_path / "trial.csv"
         file_path.write_text("onset,outcome\n1.0,go\n2.0,no_go\n3.0,go\n")
         interface = CSVEventsInterface(
@@ -220,17 +253,20 @@ class TestCSVEventsInterface:
             value_columns=["outcome"],
         )
         metadata = interface.get_metadata()
-        labels = metadata["Events"]["csv_events"]["event_types"]["trial"]["columns"]["outcome"]["column_categories"][
-            "labels"
-        ]
-        assert labels == {"go": "go", "no_go": "no_go"}  # seeded as an identity map
-        labels["go"] = "GO"  # user renames a display label
+        metadata["Events"]["csv_events"]["event_types"]["trial"]["columns"]["outcome"]["column_categories"] = {
+            "labels": {"go": "GO", "no_go": "NoGo"},
+            "meanings": {"go": "reward delivered", "no_go": "no reward"},
+        }
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
         trial = nwbfile.get_events_table("Trial")
         assert set(trial.colnames) == {"timestamp", "outcome"}
-        assert list(trial["outcome"][:]) == ["GO", "no_go", "GO"]
+        assert list(trial["outcome"][:]) == ["GO", "NoGo", "GO"]  # labels mapped through
+        meanings_tables = list(trial.meanings_tables.values())
+        assert len(meanings_tables) == 1
+        meanings = dict(zip(meanings_tables[0]["value"][:], meanings_tables[0]["meaning"][:]))
+        assert meanings == {"GO": "reward delivered", "NoGo": "no reward"}
 
     def test_durations_column(self, tmp_path):
         # A durations column makes the events durative; a blank cell becomes a NaN duration.
