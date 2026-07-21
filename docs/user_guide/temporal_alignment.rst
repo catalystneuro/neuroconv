@@ -1,196 +1,188 @@
 Temporal Alignment
 ==================
 
-Neurophysiology experiments often combine several acquisition systems, and each system keeps its own clock. A
-conversion has to express all of their timings on one shared clock. NeuroConv is deliberately agnostic about what the
-correct timestamps are: it does not try to infer them for you, because only you know how your systems were wired and
-synchronized. What it provides is a small set of methods that let you *set* the timing of your data so that it fits
-the model PyNWB expects.
+Neurophysiology experiments combine several acquisition systems, and each system timestamps its data against its own
+**clock**. A conversion has to bring all of them onto one shared clock, the NWB file's ``session_start_time``: every
+time stored in the file is measured from it.
 
-That model is simple: every time stored in an NWB file is measured from a single ``session_start_time``. When the
-source carries timing information, the interface pre-loads it from the acquisition system, so you begin with the times
-that system actually recorded. Those times are local to that acquisition system, though, and its clock need not
-coincide with the clock of your experimental session. By default the interface writes them unchanged, which amounts to
-assuming the two coincide; when they do not, aligning is how you declare where those times actually belong. NeuroConv
-never resamples or changes the data values; it only sets the timing of the samples you already have.
+NeuroConv is deliberately agnostic about what the correct timestamps are; it does not try to infer them, because only
+you know how your systems were wired and synchronized. When the source carries timing information the interface
+pre-loads it, so you start from the times the acquisition system actually recorded. Those times are on that system's
+clock, which need not coincide with the session clock. By default the interface writes them unchanged, which amounts
+to assuming the two clocks coincide; when they do not, aligning is how you place the system's data on the session
+clock. NeuroConv never resamples or changes the data values; it only sets the timing of the samples you already have.
 
-Time-bearing objects and the offset
------------------------------------
+Gross and fine alignment
+------------------------
 
-Alignment acts on **time-bearing objects**: the objects an interface writes that carry a time coordinate relative to
-``session_start_time``. In a recording interface that is the ``ElectricalSeries``; the ``Device``, the ``electrodes``
-table, and the ``ElectrodeGroup`` objects have no time and are untouched. In an events interface it is every
-``EventsTable``. A ``PoseEstimationSeries`` is one, and so is a ``TimeIntervals`` (trials) table.
+You might record a session as separate trials on the same rig, each file's clock starting near zero. Nothing about any
+single trial is wrong; the trials just have to be laid out one after another on the session timeline, and sliding each
+to the time it began does it, with nothing inside a trial touched. Or a behavior box that ran alongside the recording
+may have started a few seconds later: a single trigger shared between the two tells you the gap, and because both ran
+at the same rate, sliding the box's whole stream by that one number lines them up. Both are **gross alignment**: the
+samples are already correctly spaced on a clock you trust, and only their placement as a whole is off, so a single
+rigid shift fixes it.
 
-Each of them carries an **offset**, in seconds::
+.. image:: ../_static/images/time_alignment_concatenate.png
+   :width: 600px
+   :align: center
+   :alt: Two panels. On the left, three trial files each start near zero, piled at the start of the axis. On the
+         right, each trial is shifted to its own start so the three tile one after another along one session clock,
+         the samples inside each trial untouched.
 
-    output_time = native_time + offset
+Now put a camera next to the electrophysiology. It keeps its own clock, and because the two clocks tick at slightly
+different rates its frame times slide away from the recording, tens of milliseconds by the end of a long session, so
+no single shift fixes both the first frame and the last. Two acquisition systems logging in parallel do the same, each
+free-running on its own oscillator at a nominally identical rate: they drift apart as the session runs on. This is
+**fine alignment**: the streams live on different clocks that drift, so the times themselves have to be rewritten,
+usually by interpolating each stream onto the reference clock through synchronization pulses the systems share.
 
-Every offset starts at ``0.0``, which is the identity: the source times are written exactly as the acquisition system
-recorded them. Aligning is nothing more than changing offsets, and they are applied when the data is written, so the
-times held in memory stay in the source clock.
+.. image:: ../_static/images/time_alignment_gross_vs_fine.png
+   :width: 600px
+   :align: center
+   :alt: Two panels contrasting gross and fine alignment. On the left, a second stream sits at a constant offset from
+         every recording instant, so one rigid shift lines it up. On the right, the gap to each recording instant
+         grows across the session as the clocks drift, so no single shift works and the times must be rewritten.
 
-Note what this deliberately does *not* claim: it says only that these objects have times, not that they share a clock
-with each other or with anything else. Whether two things are co-timed is up to you and your rig, and you express it
-by the offsets you set.
+An operational way to think about this is to ask whether one rigid shift could ever be right: it is gross alignment
+if sliding the stream as a whole lines it up, and fine alignment if sliding makes the beginning line up but leaves
+the end wrong, because the gap itself grows as the session runs on.
 
-Two kinds of alignment
-----------------------
+Gross alignment
+---------------
 
-Two different things can be wrong with a stream's timing, and they need different tools.
+Gross alignment is the case where your data is already on one clock and only its placement is wrong. Every interface
+exposes its alignment methods under ``interface.alignment``, and the whole-interface tool for gross alignment is
+``shift_times``.
 
-**Gross alignment.** The samples are correctly spaced relative to one another, and only the placement of the stream as
-a whole on the shared clock is unknown. Fixing it is a rigid translation: every interval inside the stream survives
-untouched. ``shift_times`` and ``set_offset`` do this, and it is what most conversions need.
-
-**Fine alignment.** The internal structure itself is wrong. Two clocks running at slightly different rates drift apart
-over a session, so no single offset can be right for both the first sample and the last; the per-sample times have to
-be rewritten, usually from a synchronization signal. ``set_times`` does this.
-
-A quick test for which one you have: if sliding the stream can make it right, it is gross. If sliding it makes the
-beginning right and the end wrong, it is fine.
-
-Gross alignment with ``shift_times``
-------------------------------------
-
-``shift_times(delta)`` moves **every time-bearing object in the interface** by ``delta`` seconds. It is a rigid
-translation: the spacing between samples, the gaps between events, and every duration are all preserved, only the
-position on the shared clock changes. It is relative, so repeated calls accumulate.
+``alignment.shift_times(delta)`` moves **every time-bearing object in the interface**, every object it writes that
+carries a time, by ``delta`` seconds. It
+is a rigid translation: the spacing between samples, the gaps between events, and all durations are preserved,
+only the position on the shared clock changes. It is relative, so repeated calls accumulate.
 
 .. code-block:: python
 
-    events_interface.shift_times(3.0)   # every event now sits 3.0 seconds later on the session clock
+    events_interface.alignment.shift_times(3.0)   # every event now sits 3.0 seconds later on the session clock
 
-This is what most conversions need. The canonical case is a secondary system that sends a single pulse to the primary
-system as it starts: that pulse tells you the offset, and one call moves the whole stream onto the shared clock.
+One canonical case is a secondary system that sends a single pulse to the primary system as it starts: that pulse
+tells you the offset, and one call moves the whole stream onto the shared clock. Another is a session recorded as
+separate trial files, each clock starting near zero, where one shift per trial lays them out along the session clock
+with nothing inside a trial touched.
 
 .. image:: ../_static/images/time_alignment_coarse.png
    :alt: A stream slides as a rigid block onto the recording clock, its sample spacing intact.
    :width: 600px
    :align: center
 
-Because the move is rigid, an interface holding several time-bearing objects keeps their relationships exactly: they
-all slide together by the same amount.
+Because the move is rigid, all the objects in the interface keep their relationships exactly: they slide together by
+the same amount. ``alignment.shift_times`` moves the whole set at once, which is what keeps their relative timing
+intact: those objects came off one acquisition system, so their timing relative to one another is already correct. The
+same holds one level up: a converter can shift everything it holds at once, moving all of its interfaces together by
+one amount, as long as each of them exposes an ``alignment``.
 
 .. image:: ../_static/images/time_alignment_moves_together.png
-   :alt: An interface's time-bearing objects all shift together by the offset; the gaps between them never change.
+   :alt: An interface's time-bearing objects all shift together by the same amount; the gaps between them never change.
    :width: 600px
    :align: center
 
-``shift_times`` is the only method that needs no further information: because it adds the *same* delta to every
-offset, it can safely apply to everything the interface holds. Every other operation changes one object relative to
-the others, so it has to say which one, which means first knowing what there is to address.
+Fine alignment
+--------------
 
-Which times actually move
--------------------------
+Fine alignment is the case where the clocks themselves disagree, so no single shift lines things up and the times have
+to be rewritten. There are two ways to do it, and which you use depends on what you already have. The examples here
+assume the interface holds a single time-bearing object, so the calls act on it directly; interfaces with several are
+covered in the next section.
 
-Identifying the times inside an object is per neurodata type, not a single naming rule:
+**Set the times directly.** When you already have the correct per-sample times, from a per-sample synchronization
+signal or any computation you trust, hand them to ``set_times``:
 
-* Well-known types are handled by type: a ``TimeSeries`` moves its ``timestamps`` or ``starting_time``, a ``Units``
-  table its ``spike_times`` and ``obs_intervals``, an ``EventsTable`` its ``timestamp`` column.
-* A generic ``DynamicTable`` (a trials or epochs table, or your own) follows the NWB convention that columns ending in
-  ``_time`` hold times relative to ``session_start_time``, so ``start_time``, ``stop_time`` and any custom
-  ``reward_time`` all move together.
-* **Durations never move.** A duration is a difference between two times, so a rigid shift leaves it unchanged.
+.. code-block:: python
 
-Note that the ``_time`` convention alone is not sufficient, which is why the well-known types carry their own rules:
-``spike_times`` is a time but does not end in ``_time``.
+    imaging_interface.alignment.set_times(frame_times)   # write these times for the object
 
-Addressing individual objects
+**Re-time against a reference clock.** When you do not have the true times, you recover them by comparison with a clock
+you trust, the reference clock.
+
+A stream keeps its timestamps on its own clock. Beyond a constant offset, which a shift already handles, two clocks
+can diverge in ways no shift can absorb: drifting at slightly different rates, or varying irregularly with no single
+rate connecting them at all. When a constant shift cannot reconcile them, you map one clock onto the other point by
+point.
+
+That map comes from events the two clocks share, and two systems on different clocks have none, so you create some.
+Feed one physical signal into both at once and each records the very same events on its own clock; in practice that
+signal is a train of TTL (transistor-transistor logic) pulses, wired into both systems so every pulse is timestamped
+twice. Each pulse is then a pair, its time on the reference clock and its time on the stream's clock, and the pairs pin
+the two together. ``remap_times`` re-expresses the object's timestamps through those pairs, interpolating for the
+samples that fall between pulses:
+
+.. code-block:: python
+
+    # The shared pulses, timestamped on each clock.
+    pulses_local = ...       # on the interface's own clock
+    pulses_reference = ...   # the same pulses on the reference clock
+
+    imaging_interface.alignment.remap_times(
+        stream_sync_times=pulses_local,
+        reference_sync_times=pulses_reference,
+    )
+
+.. image:: ../_static/images/time_alignment_interpolation.png
+   :width: 600px
+   :align: center
+   :alt: The same synchronization pulses, recorded on both a camera clock and the reference clock, pin one clock's
+         times to the other's. Because the pulses are sparser than the camera's frames, a frame that falls between
+         two pulses is placed on the reference clock by interpolating between the surrounding anchors.
+
+Multiple time-bearing objects
 -----------------------------
 
-Everything above moves an interface as a whole. To reach one object, ask the interface what it holds:
+Some interfaces carry only a single object to place in time, a ``TwoPhotonSeries`` in an imaging interface, for
+instance, and the calls in the previous section act on it directly. Others carry several: a pose interface has one
+object per keypoint, an events interface one per event type, and a converter gathers the objects of every interface it
+holds. When there is more than one, you name which you mean.
+
+Alignment acts on an interface's time-bearing objects: the objects it writes that carry a time coordinate relative
+to ``session_start_time``. Which objects those are depends on the interface. A few examples:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Interface
+     - Time-bearing objects
+   * - Recording
+     - the ``ElectricalSeries``
+   * - Events
+     - each ``EventsTable``
+   * - Pose estimation
+     - each ``PoseEstimationSeries``
+   * - Trials or epochs
+     - the ``TimeIntervals`` table
+
+In a generic ``DynamicTable`` (trials, epochs, or one of your own) the time-bearing values are the columns whose names
+end in ``_time``, an NWB convention the `NWB Inspector checks
+<https://nwbinspector.readthedocs.io/en/dev/best_practices/tables.html#timing-columns>`_. Structural and metadata
+objects (a ``Device``, an ``electrodes`` table) carry no time and are left untouched.
+
+``alignment`` exposes those objects as a mapping: its keys enumerate them, and indexing one reaches it, giving you the
+same ``set_times`` / ``remap_times`` / ``shift_times`` on that single object:
 
 .. code-block:: python
 
-    pose_interface.time_bearing_objects   # e.g. ("nose", "left_ear", "tail_base")
-    events_interface.time_bearing_objects # e.g. ("port_entry", "reward")
+    pose_interface.alignment.keys()                    # e.g. ("nose", "left_ear", "tail_base")
 
-Each key names one time-bearing object, and the per-object methods below take it. When an interface holds exactly one
-object the key can be omitted; when it holds several, omitting it raises rather than guessing which you meant.
+    pose_interface.alignment["nose"].set_times(times)
+    pose_interface.alignment["nose"].remap_times(stream_sync_times=pulses_local, reference_sync_times=pulses_reference)
+    pose_interface.alignment["nose"].shift_times(0.5)
 
-That rule is not arbitrary. ``shift_times`` may default to everything because it is rigid: adding one delta to every
-offset leaves the objects in exactly the same relation to one another. An operation that sets a value, rather than
-adding one, does not have that property, giving every object the *same* absolute offset would collapse the differences
-between them, which is precisely the internal structure you wanted to keep. So anything that sets must name its target.
+Two of these do not need a key even when there are several objects, because their correction is the same for all of
+them: ``shift_times`` adds one offset to every object, and ``remap_times`` applies one clock's map to every object (a
+single acquisition clock, one correction). ``set_times`` is the exception, its literal per-sample values belong to one
+object, so with several you must name which.
 
-Setting the offset directly
----------------------------
-
-``shift_times`` moves by a *relative* amount. When you instead know where one object's times should sit, set its
-offset outright:
-
-.. code-block:: python
-
-    pose_interface.set_offset(3.0, key="nose")   # written as native + 3.0, whatever the offset was before
-    pose_interface.get_offset(key="nose")        # -> 3.0
-
-    single_object_interface.set_offset(3.0)      # key optional when there is only one object
-
-The difference from ``shift_times`` matters when an alignment step runs more than once. ``shift_times`` accumulates, so
-calling it twice adds twice; ``set_offset`` is absolute, so calling it twice with the same value leaves the object
-exactly where the first call put it. Use ``set_offset`` when you know where something belongs and the step may be
-re-run, and ``shift_times`` for a correction you want to *add* on top of an existing alignment, a known cable or
-trigger latency, say. ``set_offset(0.0)`` restores an object's source times.
-
-Setting timestamps
-------------------
-
-A single offset is not always enough. When two clocks drift relative to one another, later samples are progressively
-wrong and no rigid shift can fix them, the per-sample times have to be rewritten. For an object whose times are a
-single array, set them directly:
-
-.. code-block:: python
-
-    imaging_interface.set_times(frame_times, key="frames")   # replace one object's times
-    imaging_interface.get_times(key="frames")                # read them back, offset applied
-
-The usual source of those times is a synchronization signal recorded on the primary system, for example a TTL
-(transistor-transistor logic) pulse emitted by the camera on every frame and digitized alongside the electrophysiology.
-When the sync signal is sent only periodically rather than per sample, interpolate between the pulses:
-
-.. code-block:: python
-
-    import numpy as np
-
-    aligned = np.interp(
-        imaging_interface.get_times(key="frames"),
-        pulse_times_as_sent,       # as timestamped by the camera's own clock
-        pulse_times_as_received,   # the same pulses, as digitized by the primary system
-    )
-    imaging_interface.set_times(aligned, key="frames")
-
-Aligning a whole interface to another system
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Everything an interface holds usually came off one acquisition system, so when that system drifts against your
-reference, every one of its objects needs the same correction. The addressable keys make that a loop: interpolate each
-object through the same pair of pulse trains.
-
-.. code-block:: python
-
-    import numpy as np
-
-    # The same synchronization pulses, seen twice: by the drifting system, and by the reference system.
-    pulses_local = ...      # pulse times on the interface's own acquisition clock
-    pulses_reference = ...  # the same pulses, as digitized by the reference system
-
-    for key in interface.time_bearing_objects:
-        interface.set_times(
-            np.interp(interface.get_times(key=key), pulses_local, pulses_reference),
-            key=key,
-        )
-
-Because every object goes through the *same* mapping, their relationships to one another are preserved just as they
-are under a rigid shift; what changes is that the mapping is no longer a constant offset, so drift is removed as well
-as displacement. Objects that do not support ``set_times`` (an events table, a trials table) cannot be corrected this
-way, and if the interface holds any, the loop above will raise on them rather than silently skip them.
-
-Not every time-bearing object supports this, because it needs a single array of times to replace. It applies to a
-``TimeSeries`` and the containers built on one. It does **not** apply to objects whose times are coupled or plural: an
-events table pairs each timestamp with a duration, so replacing the timestamps alone would leave the durations
-describing the old timing, and a trials table holds several ``_time`` columns per row with no single axis to swap.
-Those objects still take ``shift_times`` and ``set_offset``, which move everything they hold coherently.
+A per-object ``shift_times`` breaks the inter-object relationships the whole-interface shift is designed to protect,
+so use it only for a deliberate single-object correction (a fixed cable latency on one stream, say), not to place a
+whole interface.
 
 Alignment in a converter
 ------------------------
@@ -208,13 +200,13 @@ A converter is where alignment usually happens, since that is where several inte
             Behavior=TDTEventsInterface,
         )
 
-        def temporally_align_data_interfaces(self):
+        def temporally_align_data_interfaces(self, metadata=None, conversion_options=None):
             behavior = self.data_interface_objects["Behavior"]
             behavior_offset = ...  # how far the behavior box starts after the recording, however you obtain it
-            behavior.shift_times(behavior_offset)
+            behavior.alignment.shift_times(behavior_offset)
 
-``shift_times`` is the method to reach for here: placing a whole interface means moving everything it holds by one
-amount, which is exactly the rigid case. ``set_offset`` would apply to a single object, so it only stands in for this
-when the interface happens to hold exactly one. Note the tradeoff, since ``shift_times`` accumulates, running the
-alignment step twice on the same live interface shifts twice; build the converter fresh per conversion, or use
-``set_offset`` per object where you need the call to be repeatable.
+Inside this method each interface exposes its full alignment surface under ``alignment``, so you apply whatever each
+stream needs: ``alignment.shift_times`` to reposition one, ``alignment.remap_times`` to re-time a drifting one against
+the reference. Each interface has its own clock and its own correction, so this is a loop over interfaces, never one
+global remap. One caveat applies to any of them: they mutate the live interface, so an alignment step that runs twice
+compounds (a ``shift_times`` would shift twice); build the converter fresh per conversion.
