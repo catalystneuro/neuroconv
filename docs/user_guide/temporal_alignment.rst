@@ -1,137 +1,212 @@
 Temporal Alignment
 ==================
 
-Neurophysiology experiments often involve multiple acquisition systems that need to be synchronized post-hoc, so
-synchronizing time streams across multiple interfaces is of critical importance when performing an NWB conversion. As
-explained in the Best Practices (#TODO: add link), all timing information within an NWB file must be with respect to
-the ``timestamps_reference_time`` of the file, which by default is the ``session_start_time``.
+Neurophysiology experiments combine several acquisition systems, and each system timestamps its data against its own
+**clock**. A conversion has to bring all of them onto one shared clock, the NWB file's ``session_start_time``: every
+time stored in the file is measured from it.
 
-Temporal Alignment Methods
---------------------------
+NeuroConv is deliberately agnostic about what the correct timestamps are; it does not try to infer them, because only
+you know how your systems were wired and synchronized. When the source carries timing information the interface
+pre-loads it, so you start from the times the acquisition system actually recorded. Those times are on that system's
+clock, which need not coincide with the session clock. By default the interface writes them unchanged, which amounts
+to assuming the two clocks coincide; when they do not, aligning is how you place the system's data on the session
+clock. NeuroConv never resamples or changes the data values; it only sets the timing of the samples you already have.
 
-There are several ways to synchronize acquisition systems post-hoc. This tutorial will walk you through the 3 methods
-implemented in NeuroConv. The API also allows you to define an entirely custom method for synchronization.
+Gross and fine alignment
+------------------------
 
-Note that NeuroConv does not resample the data, as this requires a resampling method that can change the values of
-the underlying data. Rather, we aim to provide the timing of the samples in a common clock.
+You might record a session as separate trials on the same rig, each file's clock starting near zero. Nothing about any
+single trial is wrong; the trials just have to be laid out one after another on the session timeline, and sliding each
+to the time it began does it, with nothing inside a trial touched. Or a behavior box that ran alongside the recording
+may have started a few seconds later: a single trigger shared between the two tells you the gap, and because both ran
+at the same rate, sliding the box's whole stream by that one number lines them up. Both are **gross alignment**: the
+samples are already correctly spaced on a clock you trust, and only their placement as a whole is off, so a single
+rigid shift fixes it.
 
-The the code below, we demonstrate extracting times from TTL pulses sent to a SpikeGLX NIDQ channel.
-
-1. Synchronize Start Time
-~~~~~~~~~~~~~~~~~~~~~~~~~
-The simplest method of synchronization is to shift the start time of one acquisition system with respect to another. In
-this approach, a secondary system sends a signal as it is starting, such as a TTL pulse, to a primary system,
-indicating the temporal offset between the two systems. To do this, use the DataInterface method
-:py:meth:`~neuroconv.basetemporalalignmentinterface.BaseTemporalAlignmentInterface.set_aligned_starting_time`.
-The advantage of this approach is its simplicity, but it cannot account for any drift due to misalignment between the
-clocks of the two systems.
-
-.. image:: ../../_static/images/time_alignment_1.png
-   :alt: Diagram of the first method of time alignment, where the start time of the secondary system is shifted to match the primary system.
+.. image:: ../_static/images/time_alignment_concatenate.png
    :width: 600px
    :align: center
+   :alt: Two panels. On the left, three trial files each start near zero, piled at the start of the axis. On the
+         right, each trial is shifted to its own start so the three tile one after another along one session clock,
+         the samples inside each trial untouched.
 
-2. Synchronize Timestamps
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Now put a camera next to the electrophysiology. It keeps its own clock, and because the two clocks tick at slightly
+different rates its frame times slide away from the recording, tens of milliseconds by the end of a long session, so
+no single shift fixes both the first frame and the last. Two acquisition systems logging in parallel do the same, each
+free-running on its own oscillator at a nominally identical rate: they drift apart as the session runs on. This is
+**fine alignment**: the streams live on different clocks that drift, so the times themselves have to be rewritten,
+usually by interpolating each stream onto the reference clock through synchronization pulses the systems share.
 
-Another method is to send a synchronization signals from a secondary system to a primary system on every sample.
-This approach corrects for not only a difference in starting time, but also any drift that may have occurred due to
-slight differences in the clock speeds of the two systems. Examples of this include sending TTL pulses from a camera
-used to acquire optical imaging to a NIDQ board every time a frame is captured or every time a volume scan begins. You
-can then align the timestamps of the secondary system by setting them to the pulse times as received by the primary
-system, aligning the times to that system. Once the timestamps are known they can be set in any DataInterface via the
-DataInterface method
-:py:meth:`~neuroconv.basetemporalalignmentinterface.BaseTemporalAlignmentInterface.set_aligned_timestamps`.
-
-.. image:: ../../_static/images/time_alignment_2.png
-   :alt: Diagram of the second method of time alignment, where the timestamps of the secondary system are aligned to the primary system.
+.. image:: ../_static/images/time_alignment_gross_vs_fine.png
    :width: 600px
    :align: center
+   :alt: Two panels contrasting gross and fine alignment. On the left, a second stream sits at a constant offset from
+         every recording instant, so one rigid shift lines it up. On the right, the gap to each recording instant
+         grows across the session as the clocks drift, so no single shift works and the times must be rewritten.
 
+An operational way to think about this is to ask whether one rigid shift could ever be right: it is gross alignment
+if sliding the stream as a whole lines it up, and fine alignment if sliding makes the beginning line up but leaves
+the end wrong, because the gap itself grows as the session runs on.
 
-3. Synchronize Based on a Synchronization Signal
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Gross alignment
+---------------
 
-Another common way of temporally aligning data between two systems is to send regular signals from secondary systems to
-the primary system. Timestamps recorded by each secondary system must then be aligned using these synchronization
-signals. Since not all timings are sent, an interpolation method must be used to synchronize each timestamp. The
-NeuroConv default behavior for this approach is to linearly interpolate the timestamps given synchronization signal
-via the DataInterface method
-:py:meth:`~neuroconv.basetemporalalignmentinterface.BaseTemporalAlignmentInterface.align_by_interpolation`.
-Note the data values for the series itself is *not* changed during the process, only the timestamp values are
-inferred for common reference time.
+Gross alignment is the case where your data is already on one clock and only its placement is wrong. Every interface
+exposes its alignment methods under ``interface.alignment``, and the whole-interface tool for gross alignment is
+``shift_times``.
 
-.. image:: ../../_static/images/time_alignment_3.png
-   :alt: Diagram of the third method of time alignment, where the timestamps of the secondary system are aligned to the primary system using a synchronization signal.
-   :width: 600px
-   :align: center
-
-To use this type of synchronization, all the user must provide is the mapping determined by the
+``alignment.shift_times(delta)`` moves **every time-bearing object in the interface**, every object it writes that
+carries a time, by ``delta`` seconds. It
+is a rigid translation: the spacing between samples, the gaps between events, and all durations are preserved,
+only the position on the shared clock changes. It is relative, so repeated calls accumulate.
 
 .. code-block:: python
 
-    regular_timestamps_as_seen_by_primary_system = ...
-    regular_timestamps_as_seen_by_secondary_system = ...  # this is generally programmed explicitly, e.g. 1 per second.
+    events_interface.alignment.shift_times(3.0)   # every event now sits 3.0 seconds later on the session clock
 
-    secondary_interface.align_by_interpolation(
-        unaligned_timestamps=regular_timestamps_as_seen_by_secondary_system,
-        aligned_timestamps=regular_timestamps_as_seen_by_primary_system,
-    )
-    # All time reference in the secondary_interface have now been mapped from the secondary to the primary system
+One canonical case is a secondary system that sends a single pulse to the primary system as it starts: that pulse
+tells you the offset, and one call moves the whole stream onto the shared clock. Another is a session recorded as
+separate trial files, each clock starting near zero, where one shift per trial lays them out along the session clock
+with nothing inside a trial touched.
 
-This method can also be used to align downstream annotations or derivations of data streams. For example, suppose you
-have annotated a video with labels for behavior. Those annotations would contains times with respect to the camera, but
-you would want to convert them to the timeframe of the primary system. To achieve this, you could use
+.. image:: ../_static/images/time_alignment_coarse.png
+   :alt: A stream slides as a rigid block onto the recording clock, its sample spacing intact.
+   :width: 600px
+   :align: center
 
-.. code-block:: python
+Because the move is rigid, all the objects in the interface keep their relationships exactly: they slide together by
+the same amount. ``alignment.shift_times`` moves the whole set at once, which is what keeps their relative timing
+intact: those objects came off one acquisition system, so their timing relative to one another is already correct. The
+same holds one level up: a converter can shift everything it holds at once, moving all of its interfaces together by
+one amount, as long as each of them exposes an ``alignment``.
 
-    behavior_annotations_interface.align_by_interpolation(
-        unaligned_timestamps=camera_ttl_sent_times,
-        aligned_timestamps=acquisition_system_ttl_received_times,
-    )
+.. image:: ../_static/images/time_alignment_moves_together.png
+   :alt: An interface's time-bearing objects all shift together by the same amount; the gaps between them never change.
+   :width: 600px
+   :align: center
 
+Fine alignment
+--------------
 
-Extracting synchronization signal
----------------------------------
+Fine alignment is the case where the clocks themselves disagree, so no single shift lines things up and the times have
+to be rewritten. There are two ways to do it, and which you use depends on what you already have. The examples here
+assume the interface holds a single time-bearing object, so the calls act on it directly; interfaces with several are
+covered in the next section.
 
-Synchronization is often received achieved through sending synchronization signals from one acquisition system to
-another. NeuroConv has some convenience methods for extracting times from TTL pulse signals. See the functions
-:py:func:`~.tools.signal_processing.get_rising_frames_from_ttl` and
-:py:func:`~.tools.signal_processing.get_falling_frames_from_ttl`. See also the convenience method
-:py:meth:`~.datainterfaces.ecephys.spikeglx.spikeglxnidqinterface.SpikeGLXNIDQInterface.get_event_times_from_ttl`
-of the
-:py:class:`~.datainterfaces.ecephys.spikeglx.spikeglxnidqinterface.SpikeGLXNIDQInterface` class. Custom approach
-will be required to use other types of synchronization signals.
-
-
-Temporal Alignment within NWBConverter
---------------------------------------
-
-To align data types within an :py:class:`.NWBConverter`, override the method
-:py:meth:`.NWBConverter.temporally_align_data_interfaces`. For example, let's consider a system that has an audio
-stream which sends a TTL pulse to a SpikeGLX system as it starts recording. This requires extracting the
-synchronization TTL pulse times from the NIDQ interface, confirming that only one pulse was detected, and applying
-that as the start time of the audio stream.
+**Set the times directly.** When you already have the correct per-sample times, from a per-sample synchronization
+signal or any computation you trust, hand them to ``set_times``:
 
 .. code-block:: python
 
-    from neuroconv import NWBConverter,
-    from neuroconv.datainterfaces import (
-        SpikeGLXRecordingInterface,
-        AudioDataInterface,
-        SpikeGLXNIDQInterface,
+    imaging_interface.alignment.set_times(frame_times)   # write these times for the object
+
+**Re-time against a reference clock.** When you do not have the true times, you recover them by comparison with a clock
+you trust, the reference clock.
+
+A stream keeps its timestamps on its own clock. Beyond a constant offset, which a shift already handles, two clocks
+can diverge in ways no shift can absorb: drifting at slightly different rates, or varying irregularly with no single
+rate connecting them at all. When a constant shift cannot reconcile them, you map one clock onto the other point by
+point.
+
+That map comes from events the two clocks share, and two systems on different clocks have none, so you create some.
+Feed one physical signal into both at once and each records the very same events on its own clock; in practice that
+signal is a train of TTL (transistor-transistor logic) pulses, wired into both systems so every pulse is timestamped
+twice. Each pulse is then a pair, its time on the reference clock and its time on the stream's clock, and the pairs pin
+the two together. ``remap_times`` re-expresses the object's timestamps through those pairs, interpolating for the
+samples that fall between pulses:
+
+.. code-block:: python
+
+    # The shared pulses, timestamped on each clock.
+    pulses_local = ...       # on the interface's own clock
+    pulses_reference = ...   # the same pulses on the reference clock
+
+    imaging_interface.alignment.remap_times(
+        stream_sync_times=pulses_local,
+        reference_sync_times=pulses_reference,
     )
+
+.. image:: ../_static/images/time_alignment_interpolation.png
+   :width: 600px
+   :align: center
+   :alt: The same synchronization pulses, recorded on both a camera clock and the reference clock, pin one clock's
+         times to the other's. Because the pulses are sparser than the camera's frames, a frame that falls between
+         two pulses is placed on the reference clock by interpolating between the surrounding anchors.
+
+Multiple time-bearing objects
+-----------------------------
+
+Some interfaces carry only a single object to place in time, a ``TwoPhotonSeries`` in an imaging interface, for
+instance, and the calls in the previous section act on it directly. Others carry several: a pose interface has one
+object per keypoint, an events interface one per event type, and a converter gathers the objects of every interface it
+holds. When there is more than one, you name which you mean.
+
+Alignment acts on an interface's time-bearing objects: the objects it writes that carry a time coordinate relative
+to ``session_start_time``. Which objects those are depends on the interface. A few examples:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Interface
+     - Time-bearing objects
+   * - Recording
+     - the ``ElectricalSeries``
+   * - Events
+     - each ``EventsTable``
+   * - Pose estimation
+     - each ``PoseEstimationSeries``
+   * - Trials or epochs
+     - the ``TimeIntervals`` table
+
+In a generic ``DynamicTable`` (trials, epochs, or one of your own) the time-bearing values are the columns whose names
+end in ``_time``, an NWB convention the `NWB Inspector checks
+<https://nwbinspector.readthedocs.io/en/dev/best_practices/tables.html#timing-columns>`_. Structural and metadata
+objects (a ``Device``, an ``electrodes`` table) carry no time and are left untouched.
+
+``alignment`` exposes those objects as a mapping: its keys enumerate them, and indexing one reaches it, giving you the
+same ``set_times`` / ``remap_times`` / ``shift_times`` on that single object:
+
+.. code-block:: python
+
+    pose_interface.alignment.keys()                    # e.g. ("nose", "left_ear", "tail_base")
+
+    pose_interface.alignment["nose"].set_times(times)
+    pose_interface.alignment["nose"].remap_times(stream_sync_times=pulses_local, reference_sync_times=pulses_reference)
+    pose_interface.alignment["nose"].shift_times(0.5)
+
+Two of these do not need a key even when there are several objects, because their correction is the same for all of
+them: ``shift_times`` adds one offset to every object, and ``remap_times`` applies one clock's map to every object (a
+single acquisition clock, one correction). ``set_times`` is the exception, its literal per-sample values belong to one
+object, so with several you must name which.
+
+A per-object ``shift_times`` breaks the inter-object relationships the whole-interface shift is designed to protect,
+so use it only for a deliberate single-object correction (a fixed cable latency on one stream, say), not to place a
+whole interface.
+
+Alignment in a converter
+------------------------
+
+A converter is where alignment usually happens, since that is where several interfaces meet. Override
+:py:meth:`.NWBConverter.temporally_align_data_interfaces` and place each stream on the shared clock:
+
+.. code-block:: python
+
+    from neuroconv import NWBConverter
 
     class ExampleNWBConverter(NWBConverter):
         data_interface_classes = dict(
-            SpikeGLXRecording=SpikeGLXRecordingInterface,
-            SpikeGLXNIDQ=SpikeGLXNIDQInterface,
-            Audio=AudioDataInterface,
+            Recording=SpikeGLXRecordingInterface,
+            Behavior=TDTEventsInterface,
         )
 
-        def temporally_align_data_interfaces(self):
-            nidq_interface = self.data_interface_objects["SpikeGLXNIDQ"]
-            audio_interface = self.data_interface_objects["Audio"]
-            ttl_times = nidq_interface.get_event_times_from_ttl("channel-name")
-            assert len(ttl_times) == 1, "more than one ttl pulse detected"
-            audio_interface.set_aligned_starting_time(ttl_times[0])
+        def temporally_align_data_interfaces(self, metadata=None, conversion_options=None):
+            behavior = self.data_interface_objects["Behavior"]
+            behavior_offset = ...  # how far the behavior box starts after the recording, however you obtain it
+            behavior.alignment.shift_times(behavior_offset)
+
+Inside this method each interface exposes its full alignment surface under ``alignment``, so you apply whatever each
+stream needs: ``alignment.shift_times`` to reposition one, ``alignment.remap_times`` to re-time a drifting one against
+the reference. Each interface has its own clock and its own correction, so this is a loop over interfaces, never one
+global remap. One caveat applies to any of them: they mutate the live interface, so an alignment step that runs twice
+compounds (a ``shift_times`` would shift twice); build the converter fresh per conversion.
