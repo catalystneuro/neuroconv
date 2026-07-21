@@ -107,17 +107,31 @@ class CSVEventsInterface(BaseEventsInterface):
         # coerced once even though get_metadata and _get_events_data_dict both read it.
         self._read_source_cache = None
 
-        # Each column may fill only one role; a column given for two roles is a construction mistake.
-        roles = [
+        # Every column specifier is either a header name (str, for a file with a header row) or a
+        # positional index (int, for a header-less file). They must all be the same kind: the kind is
+        # what decides whether the file is read with a header row, so a mix would read some columns by a
+        # name that does not exist and blow up later as an opaque pandas KeyError.
+        specifiers = [
             timestamps_column,
             event_type_column,
             durations_column,
             *(value_columns or []),
         ]
-        roles = [role for role in roles if role is not None]
-        assert len(roles) == len(
-            set(roles)
-        ), f"Each column may fill only one role, but the same column was assigned more than once: {roles}."
+        specifiers = [specifier for specifier in specifiers if specifier is not None]
+        all_names = all(isinstance(specifier, str) for specifier in specifiers)
+        all_indices = all(isinstance(specifier, int) for specifier in specifiers)
+        if not (all_names or all_indices):
+            raise ValueError(
+                f"Column specifiers mix header names and positional indices ({specifiers}); use one or the other."
+            )
+        # A header row when the columns are named; none when they are positional.
+        self._header = 0 if all_names else None
+
+        # Each column may fill only one role; a column given for two roles is a construction mistake.
+        if len(specifiers) != len(set(specifiers)):
+            raise ValueError(
+                f"Each column may fill only one role, but the same column was assigned more than once: {specifiers}."
+            )
 
     def _read_source(
         self,
@@ -138,15 +152,15 @@ class CSVEventsInterface(BaseEventsInterface):
         event_type_column = self.source_data["event_type_column"]
         durations_column = self.source_data["durations_column"]
         value_columns = self.source_data["value_columns"] or []
-        # An int column specifier means a header-less file (positional columns); a str means a header row.
-        header = None if isinstance(timestamps_column, int) else 0
+        # self._header (set at construction from the column-specifier kind) is 0 for a named header row
+        # and None for a header-less, positionally-indexed file.
         # float_precision="round_trip" uses an exact, platform-independent float parser; pandas's
         # default C parser rounds the final ULP differently across platforms (Linux/Windows vs macOS).
         # keep_default_na=False reads label tokens ('None', 'NA', 'null', a blank cell, ...) literally
         # instead of collapsing them all into a single NaN label. Caller-supplied read_kwargs override
         # these defaults.
         read_kwargs = {
-            "header": header,
+            "header": self._header,
             "float_precision": "round_trip",
             "keep_default_na": False,
             **self._read_kwargs,

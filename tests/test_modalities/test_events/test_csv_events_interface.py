@@ -70,12 +70,21 @@ class TestCSVEventsInterface:
 
     def test_column_used_for_two_roles_raises(self, two_type_file):
         """A column assigned to more than one role is a construction mistake."""
-        with pytest.raises(AssertionError, match="only one role"):
+        with pytest.raises(ValueError, match="only one role"):
             CSVEventsInterface(
                 file_path=two_type_file,
                 timestamps_column="onset",
                 event_type_column="kind",
                 value_columns=["kind"],
+            )
+
+    def test_mixed_name_and_index_specifiers_raise(self, two_type_file):
+        """Column specifiers must all be names or all be positional indices, never a mix."""
+        with pytest.raises(ValueError, match="mix header names and positional indices"):
+            CSVEventsInterface(
+                file_path=two_type_file,
+                timestamps_column="onset",
+                event_type_column=1,
             )
 
     def test_get_metadata_does_not_set_session_start_time(self, interface):
