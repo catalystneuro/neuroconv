@@ -115,10 +115,21 @@ class MultiFileCSVFiberPhotometryInterface(CSVFiberPhotometryInterface):
             if not self._file_has_column(file_path, timestamps_column):
                 continue
             timestamps = self._get_stream_timestamps(stream_name=file_path)
-            assert timestamps.shape == reference_timestamps.shape and np.allclose(timestamps, reference_timestamps), (
-                f"Timestamps in '{file_path}' do not match the first file's timestamps. Only channels "
-                "on a common time axis can be aggregated into one FiberPhotometryResponseSeries; use "
-                "separate interfaces for files that do not share a timebase."
+            assert timestamps.shape == reference_timestamps.shape, (
+                f"Timestamps in '{file_path}' have shape {timestamps.shape}, which does not match the "
+                f"first file's timestamps shape {reference_timestamps.shape}. Only channels on a common "
+                "time axis can be aggregated into one FiberPhotometryResponseSeries; use separate "
+                "interfaces for files that do not share a timebase."
+            )
+            np.testing.assert_array_equal(
+                actual=timestamps,
+                desired=reference_timestamps,
+                err_msg=(
+                    f"Timestamps in '{file_path}' do not match the first file's timestamps. Only "
+                    "channels on a common time axis can be aggregated into one "
+                    "FiberPhotometryResponseSeries; use separate interfaces for files that do not share "
+                    "a timebase."
+                ),
             )
 
     @staticmethod
