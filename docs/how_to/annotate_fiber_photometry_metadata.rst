@@ -122,16 +122,19 @@ The link, for a one-fiber signal + isosbestic recording, looks like this:
 How to Annotate a Single Fiber and Channel
 ------------------------------------------
 
-The simplest case is one fiber and one channel: one table row to fill in, and one series pointing at it.
-We build it outward from the series: create the row and point the series at it, add the devices and
-reference them from the row, add the models those devices use, then the indicator. Each device and the
-indicator is referenced from the row at the step that defines it, and the file is written once at the end.
+The simplest case is one fiber and one channel: one table row, and one series pointing at it. We build it
+in three steps, the row, the indicator it read, and the hardware that recorded it, then write the file.
+Each step below shows the **whole script so far** with the new lines highlighted, so the last block is the
+complete example.
 
-Start from the interface and its seeded metadata. Pass an explicit ``metadata_key`` to name the
-response-series entry, which will be the key under ``metadata["FiberPhotometry"]`` where you write this
-series' metadata:
+**Create the row and point the series at it.** Start from the interface, passing an explicit
+``metadata_key`` to name the response-series entry (the key under ``metadata["FiberPhotometry"]`` where
+this series' metadata lives). A table row then describes one fiber × one excitation channel: fill in the
+values it holds itself, its location and wavelengths, and point the series at the row through
+``fiber_photometry_table_region``:
 
 .. code-block:: python
+   :emphasize-lines: 15-19, 22
 
     from neuroconv.tools.testing import MockFiberPhotometryInterface
 
@@ -141,13 +144,6 @@ series' metadata:
     )
     metadata = interface.get_metadata()
     fiber_photometry = metadata["FiberPhotometry"]
-
-**Create the row and point the series at it.** A table row describes one fiber × one excitation channel.
-Fill in the values it holds itself, its location and wavelengths, then point the series at the row
-through ``fiber_photometry_table_region``. The device and indicator references get added as we define
-those objects below:
-
-.. code-block:: python
 
     row_key = "vta_465"
     fiber_photometry["FiberPhotometryTable"] = {
@@ -162,7 +158,6 @@ those objects below:
         },
     }
     fiber_photometry[metadata_key]["fiber_photometry_table_region"] = [row_key]
-    fiber_photometry[metadata_key]["fiber_photometry_table_region_description"] = "VTA calcium signal."
 
 ``row_key`` does two different jobs here. As the key in the table's ``rows`` dict it **names the row**,
 the row's data is stored under it. In ``fiber_photometry[metadata_key]["fiber_photometry_table_region"] =
@@ -171,10 +166,12 @@ region at that key. Using the same variable for both guarantees the link lands o
 named.
 
 ..
-   NOTE (maintainers): fiber_photometry_table_region_description is a required DynamicTableRegion field
-   that neuroconv currently demands but should default at construction (like ecephys's hardcoded
-   "electrode_table_region"), see Fix 2 in plan_fiber_photometry_device_model_optional.md. It is included
-   here for now so the snippets run; remove it from every recipe once that PR merges.
+   NOTE (maintainers): these recipes assume the two over-strictness fixes tracked in
+   plan_fiber_photometry_device_model_optional.md at the repo root. Fix 1 makes the optical fiber's device
+   model optional, so the recipes define only the three required device instances and no DeviceModels;
+   Fix 2 defaults the DynamicTableRegion description at construction, so the recipes omit
+   fiber_photometry_table_region_description. Both are applied on this branch; the how-to should land only
+   after those two PRs merge, or its snippets will raise KeyError.
 
 .. admonition:: The file so far
    :class: note
@@ -200,9 +197,38 @@ hardware, which is why it lives under ``FiberPhotometry`` rather than in the dev
 then set the row's ``indicator_metadata_key`` to reference it:
 
 .. code-block:: python
+   :emphasize-lines: 24-31
+
+    from neuroconv.tools.testing import MockFiberPhotometryInterface
+
+    metadata_key = "calcium_signal"
+    interface = MockFiberPhotometryInterface(
+        stream_names="signal", channels_per_stream=1, metadata_key=metadata_key
+    )
+    metadata = interface.get_metadata()
+    fiber_photometry = metadata["FiberPhotometry"]
+
+    row_key = "vta_465"
+    fiber_photometry["FiberPhotometryTable"] = {
+        "name": "fiber_photometry_table",
+        "description": "One fiber, one channel.",
+        "rows": {
+            row_key: {
+                "location": "VTA",
+                "excitation_wavelength_in_nm": 470.0,
+                "emission_wavelength_in_nm": 525.0,
+            },
+        },
+    }
+    fiber_photometry[metadata_key]["fiber_photometry_table_region"] = [row_key]
 
     indicator_key = "gcamp"
-    fiber_photometry["FiberPhotometryIndicators"] = {indicator_key: {"name": "gcamp", "label": "GCaMP6s"}}
+    fiber_photometry["FiberPhotometryIndicators"] = {
+        indicator_key: {
+            "name": "gcamp",
+            "label": "GCaMP6s",
+        },
+    }
     fiber_photometry["FiberPhotometryTable"]["rows"][row_key]["indicator_metadata_key"] = indicator_key
 
 .. admonition:: The file so far
@@ -212,11 +238,12 @@ then set the row's ``indicator_metadata_key`` to reference it:
 
    .. code-block:: text
 
-       FiberPhotometryIndicators
-       └── gcamp  ·  "GCaMP6s"
+       acquisition
+       └── FiberPhotometryResponseSeries  ──▶  FiberPhotometryTable · row "vta_465"
 
-       FiberPhotometryTable · row "vta_465"
-           └── indicator          → gcamp
+       FiberPhotometryTable
+       └── vta_465    location=VTA   excitation=470 nm   emission=525 nm
+           └── indicator          → gcamp  ·  "GCaMP6s"
 
 That completes *what* the channel measured. Now we describe *how* it was measured: the hardware that read
 the indicator, so a downstream analyst can trace each trace back to the exact fiber, light source, and
@@ -229,83 +256,69 @@ That is often the most experimentally important metadata in the whole chain, it 
 analyst say which brain region each channel reports. An excitation source can carry the power and
 intensity it was driven at, and a photodetector its gain, the per-recording configuration a reader needs
 to interpret or reproduce the measurement. Define the three devices in the top-level ``Devices`` registry,
-then set the row's reference keys to point at them:
+set the row's reference keys to point at them, and write the file. This is the complete script:
 
 .. code-block:: python
+   :emphasize-lines: 33-60
+
+    from neuroconv.tools.testing import MockFiberPhotometryInterface
+
+    metadata_key = "calcium_signal"
+    interface = MockFiberPhotometryInterface(
+        stream_names="signal", channels_per_stream=1, metadata_key=metadata_key
+    )
+    metadata = interface.get_metadata()
+    fiber_photometry = metadata["FiberPhotometry"]
+
+    row_key = "vta_465"
+    fiber_photometry["FiberPhotometryTable"] = {
+        "name": "fiber_photometry_table",
+        "description": "One fiber, one channel.",
+        "rows": {
+            row_key: {
+                "location": "VTA",
+                "excitation_wavelength_in_nm": 470.0,
+                "emission_wavelength_in_nm": 525.0,
+            },
+        },
+    }
+    fiber_photometry[metadata_key]["fiber_photometry_table_region"] = [row_key]
+
+    indicator_key = "gcamp"
+    fiber_photometry["FiberPhotometryIndicators"] = {
+        indicator_key: {
+            "name": "gcamp",
+            "label": "GCaMP6s",
+        },
+    }
+    fiber_photometry["FiberPhotometryTable"]["rows"][row_key]["indicator_metadata_key"] = indicator_key
 
     optical_fiber_key = "optical_fiber"
     excitation_source_key = "excitation_source_465"
     photodetector_key = "photodetector"
     metadata["Devices"] = {
-        optical_fiber_key: {"type": "OpticalFiber", "name": "optical_fiber",
-                            "fiber_insertion": {"depth_in_mm": 4.0, "insertion_position_ap_in_mm": 3.0}},
-        excitation_source_key: {"type": "ExcitationSource", "name": "excitation_source_465"},
-        photodetector_key: {"type": "Photodetector", "name": "photodetector"},
+        optical_fiber_key: {
+            "type": "OpticalFiber",
+            "name": "optical_fiber",
+            "fiber_insertion": {
+                "depth_in_mm": 4.0,
+                "insertion_position_ap_in_mm": 3.0,
+            },
+        },
+        excitation_source_key: {
+            "type": "ExcitationSource",
+            "name": "excitation_source_465",
+        },
+        photodetector_key: {
+            "type": "Photodetector",
+            "name": "photodetector",
+        },
     }
 
     row = fiber_photometry["FiberPhotometryTable"]["rows"][row_key]
     row["optical_fiber_metadata_key"] = optical_fiber_key
     row["excitation_source_metadata_key"] = excitation_source_key
     row["photodetector_metadata_key"] = photodetector_key
-
-.. admonition:: The file so far
-   :class: note
-
-   The row now resolves to the three physical devices that recorded the channel.
-
-   .. code-block:: text
-
-       Devices
-       ├── optical_fiber
-       ├── excitation_source_465
-       └── photodetector
-
-       FiberPhotometryTable · row "vta_465"
-           ├── optical_fiber      → optical_fiber
-           ├── excitation_source  → excitation_source_465
-           └── photodetector      → photodetector
-
-The devices say which units were used and how, but not their specifications. Those, the fiber's numerical
-aperture, the kind of light source, the detector type, are the same across every recording that used the
-same equipment, so they belong in a shared device model rather than being repeated on each device. We add
-the models next and attach one to each device.
-
-**Add the device models and attach them.** Each model in the top-level ``DeviceModels`` registry carries
-the make and specifications of a piece of hardware; the ``type`` field names its concrete
-ndx-ophys-devices class. Define the models, then point each device at its model:
-
-.. code-block:: python
-
-    optical_fiber_model_key = "optical_fiber_model"
-    excitation_source_model_key = "excitation_source_model"
-    photodetector_model_key = "photodetector_model"
-    metadata["DeviceModels"] = {
-        optical_fiber_model_key: {"type": "OpticalFiberModel", "name": "optical_fiber_model",
-                                  "manufacturer": "Doric Lenses", "numerical_aperture": 0.48},
-        excitation_source_model_key: {"type": "ExcitationSourceModel", "name": "excitation_source_model",
-                                      "manufacturer": "Doric Lenses", "source_type": "LED", "excitation_mode": "one-photon"},
-        photodetector_model_key: {"type": "PhotodetectorModel", "name": "photodetector_model",
-                                  "manufacturer": "Doric Lenses", "detector_type": "photodiode"},
-    }
-    metadata["Devices"][optical_fiber_key]["device_model_metadata_key"] = optical_fiber_model_key
-    metadata["Devices"][excitation_source_key]["device_model_metadata_key"] = excitation_source_model_key
-    metadata["Devices"][photodetector_key]["device_model_metadata_key"] = photodetector_model_key
-
-.. admonition:: The file so far
-   :class: note
-
-   Each device now points at a model describing its make and specifications.
-
-   .. code-block:: text
-
-       DeviceModels
-       ├── optical_fiber_model       ◀── optical_fiber
-       ├── excitation_source_model   ◀── excitation_source_465
-       └── photodetector_model       ◀── photodetector
-
-**Write the file.** With every referenced key now defined, convert:
-
-.. code-block:: python
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
 
@@ -319,9 +332,9 @@ ndx-ophys-devices class. Define the models, then point each device at its model:
 
        FiberPhotometryTable   (1 row)
        └── vta_465    location=VTA   excitation=470 nm   emission=525 nm
-           ├── optical_fiber      → optical_fiber           (model: optical_fiber_model)
-           ├── excitation_source  → excitation_source_465   (model: excitation_source_model)
-           ├── photodetector      → photodetector           (model: photodetector_model)
+           ├── optical_fiber      → optical_fiber
+           ├── excitation_source  → excitation_source_465
+           ├── photodetector      → photodetector
            └── indicator          → gcamp  ·  "GCaMP6s"
 
 Each ``*_metadata_key`` in the row is resolved to the actual NWB object at write time, so you name each
@@ -337,6 +350,7 @@ add a second excitation source, give the table **two rows** (one per channel), a
 keys in the region. The region order must match the channel (stream) order.
 
 .. code-block:: python
+   :emphasize-lines: 52-69, 76
 
     metadata_key = "gcamp_vta"
     interface = MockFiberPhotometryInterface(
@@ -346,9 +360,6 @@ keys in the region. The region order must match the channel (stream) order.
 
     # The metadata keys that wire the blocks together. Each is used both where its object is defined and
     # where another block references it, so the linking is explicit rather than matched by eye.
-    optical_fiber_model_key = "optical_fiber_model"
-    excitation_source_model_key = "excitation_source_model"
-    photodetector_model_key = "photodetector_model"
     optical_fiber_key = "optical_fiber"
     signal_source_key = "excitation_source_465"
     control_source_key = "excitation_source_405"
@@ -357,47 +368,66 @@ keys in the region. The region order must match the channel (stream) order.
     signal_row_key = "vta_465"
     control_row_key = "vta_405"
 
-    metadata["DeviceModels"] = {
-        optical_fiber_model_key: {"type": "OpticalFiberModel", "name": "optical_fiber_model",
-                                  "manufacturer": "Doric Lenses", "numerical_aperture": 0.48},
-        excitation_source_model_key: {"type": "ExcitationSourceModel", "name": "excitation_source_model",
-                                      "manufacturer": "Doric Lenses", "source_type": "LED", "excitation_mode": "one-photon"},
-        photodetector_model_key: {"type": "PhotodetectorModel", "name": "photodetector_model",
-                                  "manufacturer": "Doric Lenses", "detector_type": "photodiode"},
-    }
     # One fiber and one detector, but two excitation sources: the 465 nm signal and the 405 nm isosbestic.
     metadata["Devices"] = {
-        optical_fiber_key: {"type": "OpticalFiber", "name": "optical_fiber",
-                            "device_model_metadata_key": optical_fiber_model_key,
-                            "fiber_insertion": {"depth_in_mm": 4.0, "insertion_position_ap_in_mm": 3.0}},
-        signal_source_key: {"type": "ExcitationSource", "name": "excitation_source_465",
-                            "device_model_metadata_key": excitation_source_model_key},
-        control_source_key: {"type": "ExcitationSource", "name": "excitation_source_405",
-                             "device_model_metadata_key": excitation_source_model_key},
-        photodetector_key: {"type": "Photodetector", "name": "photodetector",
-                            "device_model_metadata_key": photodetector_model_key},
+        optical_fiber_key: {
+            "type": "OpticalFiber",
+            "name": "optical_fiber",
+            "fiber_insertion": {
+                "depth_in_mm": 4.0,
+                "insertion_position_ap_in_mm": 3.0,
+            },
+        },
+        signal_source_key: {
+            "type": "ExcitationSource",
+            "name": "excitation_source_465",
+        },
+        control_source_key: {
+            "type": "ExcitationSource",
+            "name": "excitation_source_405",
+        },
+        photodetector_key: {
+            "type": "Photodetector",
+            "name": "photodetector",
+        },
     }
 
     fiber_photometry = metadata["FiberPhotometry"]
-    fiber_photometry["FiberPhotometryIndicators"] = {indicator_key: {"name": "gcamp", "label": "GCaMP6s"}}
+    fiber_photometry["FiberPhotometryIndicators"] = {
+        indicator_key: {
+            "name": "gcamp",
+            "label": "GCaMP6s",
+        },
+    }
     fiber_photometry["FiberPhotometryTable"] = {
         "name": "fiber_photometry_table",
         "description": "One fiber, signal + isosbestic control.",
         "rows": {
-            signal_row_key: {"location": "VTA", "excitation_wavelength_in_nm": 465.0, "emission_wavelength_in_nm": 525.0,
-                             "indicator_metadata_key": indicator_key, "optical_fiber_metadata_key": optical_fiber_key,
-                             "excitation_source_metadata_key": signal_source_key,
-                             "photodetector_metadata_key": photodetector_key},
-            control_row_key: {"location": "VTA", "excitation_wavelength_in_nm": 405.0, "emission_wavelength_in_nm": 525.0,
-                              "indicator_metadata_key": indicator_key, "optical_fiber_metadata_key": optical_fiber_key,
-                              "excitation_source_metadata_key": control_source_key,
-                              "photodetector_metadata_key": photodetector_key},
+            signal_row_key: {
+                "location": "VTA",
+                "excitation_wavelength_in_nm": 465.0,
+                "emission_wavelength_in_nm": 525.0,
+                "indicator_metadata_key": indicator_key,
+                "optical_fiber_metadata_key": optical_fiber_key,
+                "excitation_source_metadata_key": signal_source_key,
+                "photodetector_metadata_key": photodetector_key,
+            },
+            control_row_key: {
+                "location": "VTA",
+                "excitation_wavelength_in_nm": 405.0,
+                "emission_wavelength_in_nm": 525.0,
+                "indicator_metadata_key": indicator_key,
+                "optical_fiber_metadata_key": optical_fiber_key,
+                "excitation_source_metadata_key": control_source_key,
+                "photodetector_metadata_key": photodetector_key,
+            },
         },
     }
     fiber_photometry[metadata_key]["description"] = "GCaMP6s signal and isosbestic control in VTA."
-    # Region order matches channel (stream) order: signal -> vta_465, control -> vta_405.
+    # The region has one entry per data channel, in the same order as the streams. The series was built
+    # with stream_names ("signal", "control"), so channel 0 is the signal and channel 1 the control; the
+    # region therefore lists [signal_row_key, control_row_key] so each channel points at its own row.
     fiber_photometry[metadata_key]["fiber_photometry_table_region"] = [signal_row_key, control_row_key]
-    fiber_photometry[metadata_key]["fiber_photometry_table_region_description"] = "Signal (465) and isosbestic (405)."
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
 
@@ -434,6 +464,7 @@ signal/isosbestic rows differed in ``excitation_wavelength``. Sharing a timebase
 channels of one series whose region lists both rows.
 
 .. code-block:: python
+   :emphasize-lines: 55-72, 76
 
     metadata_key = "gcamp_striatum"
     interface = MockFiberPhotometryInterface(
@@ -442,9 +473,6 @@ channels of one series whose region lists both rows.
     metadata = interface.get_metadata()
 
     # The metadata keys that wire the blocks together.
-    optical_fiber_model_key = "optical_fiber_model"
-    excitation_source_model_key = "excitation_source_model"
-    photodetector_model_key = "photodetector_model"
     dms_fiber_key = "optical_fiber_dms"
     dls_fiber_key = "optical_fiber_dls"
     excitation_source_key = "excitation_source_465"
@@ -453,47 +481,67 @@ channels of one series whose region lists both rows.
     dms_row_key = "dms_465"
     dls_row_key = "dls_465"
 
-    metadata["DeviceModels"] = {
-        optical_fiber_model_key: {"type": "OpticalFiberModel", "name": "optical_fiber_model",
-                                  "manufacturer": "Doric Lenses", "numerical_aperture": 0.48},
-        excitation_source_model_key: {"type": "ExcitationSourceModel", "name": "excitation_source_model",
-                                      "manufacturer": "Doric Lenses", "source_type": "LED", "excitation_mode": "one-photon"},
-        photodetector_model_key: {"type": "PhotodetectorModel", "name": "photodetector_model",
-                                  "manufacturer": "Doric Lenses", "detector_type": "photodiode"},
-    }
     # Two optical fibers, one per region; a shared excitation source and detector.
     metadata["Devices"] = {
-        dms_fiber_key: {"type": "OpticalFiber", "name": "optical_fiber_dms",
-                        "device_model_metadata_key": optical_fiber_model_key,
-                        "fiber_insertion": {"depth_in_mm": 4.2, "insertion_position_ap_in_mm": 0.8}},
-        dls_fiber_key: {"type": "OpticalFiber", "name": "optical_fiber_dls",
-                        "device_model_metadata_key": optical_fiber_model_key,
-                        "fiber_insertion": {"depth_in_mm": 4.0, "insertion_position_ap_in_mm": 0.5}},
-        excitation_source_key: {"type": "ExcitationSource", "name": "excitation_source_465",
-                                "device_model_metadata_key": excitation_source_model_key},
-        photodetector_key: {"type": "Photodetector", "name": "photodetector",
-                            "device_model_metadata_key": photodetector_model_key},
+        dms_fiber_key: {
+            "type": "OpticalFiber",
+            "name": "optical_fiber_dms",
+            "fiber_insertion": {
+                "depth_in_mm": 4.2,
+                "insertion_position_ap_in_mm": 0.8,
+            },
+        },
+        dls_fiber_key: {
+            "type": "OpticalFiber",
+            "name": "optical_fiber_dls",
+            "fiber_insertion": {
+                "depth_in_mm": 4.0,
+                "insertion_position_ap_in_mm": 0.5,
+            },
+        },
+        excitation_source_key: {
+            "type": "ExcitationSource",
+            "name": "excitation_source_465",
+        },
+        photodetector_key: {
+            "type": "Photodetector",
+            "name": "photodetector",
+        },
     }
 
     fiber_photometry = metadata["FiberPhotometry"]
-    fiber_photometry["FiberPhotometryIndicators"] = {indicator_key: {"name": "gcamp", "label": "GCaMP6s"}}
+    fiber_photometry["FiberPhotometryIndicators"] = {
+        indicator_key: {
+            "name": "gcamp",
+            "label": "GCaMP6s",
+        },
+    }
     fiber_photometry["FiberPhotometryTable"] = {
         "name": "fiber_photometry_table",
         "description": "Two fibers in two regions.",
         "rows": {
-            dms_row_key: {"location": "DMS", "excitation_wavelength_in_nm": 465.0, "emission_wavelength_in_nm": 525.0,
-                          "indicator_metadata_key": indicator_key, "optical_fiber_metadata_key": dms_fiber_key,
-                          "excitation_source_metadata_key": excitation_source_key,
-                          "photodetector_metadata_key": photodetector_key},
-            dls_row_key: {"location": "DLS", "excitation_wavelength_in_nm": 465.0, "emission_wavelength_in_nm": 525.0,
-                          "indicator_metadata_key": indicator_key, "optical_fiber_metadata_key": dls_fiber_key,
-                          "excitation_source_metadata_key": excitation_source_key,
-                          "photodetector_metadata_key": photodetector_key},
+            dms_row_key: {
+                "location": "DMS",
+                "excitation_wavelength_in_nm": 465.0,
+                "emission_wavelength_in_nm": 525.0,
+                "indicator_metadata_key": indicator_key,
+                "optical_fiber_metadata_key": dms_fiber_key,
+                "excitation_source_metadata_key": excitation_source_key,
+                "photodetector_metadata_key": photodetector_key,
+            },
+            dls_row_key: {
+                "location": "DLS",
+                "excitation_wavelength_in_nm": 465.0,
+                "emission_wavelength_in_nm": 525.0,
+                "indicator_metadata_key": indicator_key,
+                "optical_fiber_metadata_key": dls_fiber_key,
+                "excitation_source_metadata_key": excitation_source_key,
+                "photodetector_metadata_key": photodetector_key,
+            },
         },
     }
     fiber_photometry[metadata_key]["description"] = "GCaMP6s in DMS and DLS."
     fiber_photometry[metadata_key]["fiber_photometry_table_region"] = [dms_row_key, dls_row_key]
-    fiber_photometry[metadata_key]["fiber_photometry_table_region_description"] = "DMS and DLS fibers."
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
 
