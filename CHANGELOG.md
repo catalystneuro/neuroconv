@@ -48,6 +48,7 @@
 * Fixed the global compression test failing against `hdf5plugin>=7.0.0`. The test asserted on each filter's free-text description string, which 7.0.0 reworded for LZ4 and Zstd when switching to The HDF Group's bundled implementations (the filter IDs are unchanged). The test now asserts only on the stable numeric filter ID, which is what actually proves the requested filter was applied. [PR #1766](https://github.com/catalystneuro/neuroconv/pull/1766)
 
 ## Features
+* Added `DoricEventsInterface` for converting discrete events from Doric Neuroscience Studio `.doric` (HDF5) digital IO. [PR #1805](https://github.com/catalystneuro/neuroconv/pull/1805)
 * Added `CSVFiberPhotometryInterface` for converting a raw fiber photometry recording from a CSV file, parsed into the `ndx-fiber-photometry` format.  [PR #1754](https://github.com/catalystneuro/neuroconv/pull/1754)
 * Added `MultiFileCSVFiberPhotometryInterface` for aggregating several per-channel CSV files (e.g. GuPPy's per-region files) into one fiber photometry response series, parsed into the `ndx-fiber-photometry` format.  [PR #1754](https://github.com/catalystneuro/neuroconv/pull/1754)
 * Added `_GuppyInterface` for converting [GuPPy](https://github.com/LernerLab/GuPPy) processed fiber photometry outputs, depending on the [`ndx-guppy`](https://github.com/catalystneuro/ndx-guppy) extension. [PR #965](https://github.com/catalystneuro/neuroconv/pull/965)
