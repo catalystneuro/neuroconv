@@ -251,6 +251,18 @@ class DeepDict(defaultdict):
 
         return _to_dict(self)
 
+    def copy(self) -> "DeepDict":
+        """Return a copy of this DeepDict.
+
+        ``defaultdict.copy()`` reconstructs via ``type(self)(self.default_factory, self)``,
+        passing the factory as the first positional argument. ``DeepDict.__init__`` hardcodes
+        its own factory and forwards ``*args`` to ``defaultdict.__init__``, so that call becomes
+        ``defaultdict.__init__(factory, self.default_factory, self)`` and raises ``TypeError``.
+        Rebuilding from ``to_dict()`` sidesteps the incompatible signature, mirroring
+        ``__deepcopy__``. Nested dicts are fresh DeepDicts; leaf (non-dict) values are shared.
+        """
+        return DeepDict(self.to_dict())
+
     def __deepcopy__(self, memodict: dict = {}) -> "DeepDict":
         return DeepDict(deepcopy(self.to_dict()))
 

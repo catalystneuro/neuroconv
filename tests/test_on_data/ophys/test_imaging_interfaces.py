@@ -11,6 +11,7 @@ from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     FemtonicsImagingInterface,
@@ -419,6 +420,178 @@ class TestSbxImagingInterfaceSBX(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
 
+class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMixin):
+    """Tests the unified BrukerTiffImagingInterface against single-channel single-plane data."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    expected_metadata_key = "bruker_tiff_imaging"
+    expected_imaging_rate = 29.873732099062256
+    expected_scan_line_rate = 15840.580398865815
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 2, 20, 15, 58, 25)
+
+        expected_devices = {
+            metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
+        }
+        expected_imaging_plane = {
+            "name": "ImagingPlane",
+            "description": "The imaging plane origin_coords units are in the microscope reference frame.",
+            "device_metadata_key": metadata_key,
+            "imaging_rate": self.expected_imaging_rate,
+            "excitation_lambda": np.nan,
+            "indicator": "unknown",
+            "location": "unknown",
+            "optical_channel": [
+                {
+                    "name": "OpticalChannel",
+                    "description": "An optical channel of the microscope.",
+                    "emission_lambda": np.nan,
+                }
+            ],
+            "grid_spacing": (1.1078125e-06, 1.1078125e-06),
+            "grid_spacing_unit": "meters",
+            "origin_coords": (0.0, 0.0),
+            "origin_coords_unit": "micrometers",
+        }
+        expected_microscopy_series = {
+            "name": "TwoPhotonSeries",
+            "unit": "n.a.",
+            "imaging_plane_metadata_key": metadata_key,
+            "description": "Imaging data acquired from the Bruker Two-Photon Microscope.",
+            "field_of_view": (7.09e-05, 7.09e-05),
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
+        expected_ophys = {
+            "ImagingPlanes": {metadata_key: expected_imaging_plane},
+            "MicroscopySeries": {metadata_key: expected_microscopy_series},
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Ophys"] == expected_ophys
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            assert "BrukerFluorescenceMicroscope" in nwbfile.devices
+            assert "ImagingPlane" in nwbfile.imaging_planes
+            two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
+            assert two_photon_series.rate == self.expected_imaging_rate
+            assert two_photon_series.scan_line_rate == self.expected_scan_line_rate
+            assert two_photon_series.data.shape == (10, 64, 64)
+
+
+class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixin):
+    """Tests the unified BrukerTiffImagingInterface against single-channel volumetric data."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    expected_metadata_key = "bruker_tiff_imaging"
+    expected_volume_rate = 10.314757507168189
+    expected_scan_line_rate = 15842.086085895791
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 11, 3, 11, 20, 34)
+
+        expected_devices = {
+            metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
+        }
+        expected_imaging_plane = {
+            "name": "ImagingPlane",
+            "description": "The imaging plane origin_coords units are in the microscope reference frame.",
+            "device_metadata_key": metadata_key,
+            "imaging_rate": self.expected_volume_rate,
+            "excitation_lambda": np.nan,
+            "indicator": "unknown",
+            "location": "unknown",
+            "optical_channel": [
+                {
+                    "name": "OpticalChannel",
+                    "description": "An optical channel of the microscope.",
+                    "emission_lambda": np.nan,
+                }
+            ],
+            "grid_spacing": (1.1078125e-06, 1.1078125e-06, 0.00026),
+            "grid_spacing_unit": "meters",
+            "origin_coords": (56.215, 14.927, -130.0),
+            "origin_coords_unit": "micrometers",
+        }
+        expected_microscopy_series = {
+            "name": "TwoPhotonSeries",
+            "unit": "n.a.",
+            "imaging_plane_metadata_key": metadata_key,
+            "description": "The volumetric imaging data acquired from the Bruker Two-Photon Microscope.",
+            "field_of_view": (7.09e-05, 7.09e-05, 0.00026),
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
+        expected_ophys = {
+            "ImagingPlanes": {metadata_key: expected_imaging_plane},
+            "MicroscopySeries": {metadata_key: expected_microscopy_series},
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Ophys"] == expected_ophys
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            assert "BrukerFluorescenceMicroscope" in nwbfile.devices
+            two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
+            assert two_photon_series.rate == self.expected_volume_rate
+            assert two_photon_series.data.shape == (5, 64, 64, 2)
+
+
+class TestBrukerTiffImagingInterfaceDualColor(ImagingExtractorInterfaceTestMixin):
+    """Tests the unified BrukerTiffImagingInterface against multi-channel single-plane data."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
+        ),
+        channel_name="Ch1",
+    )
+    optical_series_name = "TwoPhotonSeriesCh1"
+    save_directory = OUTPUT_PATH
+
+
+class TestBrukerTiffImagingInterfaceDisjointPlane(ImagingExtractorInterfaceTestMixin):
+    """Unified interface pinned to a single depth plane of a volumetric acquisition (disjoint layout)."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        ),
+        plane_index=0,
+    )
+    optical_series_name = "TwoPhotonSeriesPlane0"
+    save_directory = OUTPUT_PATH
+
+
+# ---------------------------------------------------------------------------
+# Deprecated interfaces. Will be removed on or after December 2026.
+# These tests exercise the deprecated wrappers and assert the FutureWarning is emitted.
+# ---------------------------------------------------------------------------
+
+
 class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
     interface_kwargs = dict(
@@ -427,6 +600,13 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         )
     )
     save_directory = OUTPUT_PATH
+
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(cls, request):
@@ -506,6 +686,13 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
     )
     save_directory = OUTPUT_PATH
 
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
+
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(self, request):
         cls = request.cls
@@ -581,6 +768,13 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
     )
     save_directory = OUTPUT_PATH
 
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
+
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(cls, request):
 
@@ -641,7 +835,8 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
             / f"{self.data_interface_cls.__name__}_{self.test_name}_test_starting_time_alignment.nwb"
         )
 
-        interface = self.data_interface_cls(**self.interface_kwargs)
+        with pytest.warns(FutureWarning, match="deprecated"):
+            interface = self.data_interface_cls(**self.interface_kwargs)
 
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
@@ -672,6 +867,13 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         stream_name="Ch2",
     )
     save_directory = OUTPUT_PATH
+
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(cls, request):
