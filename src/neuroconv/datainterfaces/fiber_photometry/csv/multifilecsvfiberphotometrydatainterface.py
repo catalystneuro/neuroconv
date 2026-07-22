@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from pydantic import FilePath, validate_call
 
 from .csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
@@ -79,7 +78,7 @@ class MultiFileCSVFiberPhotometryInterface(CSVFiberPhotometryInterface):
         """
         self._file_paths = [str(file_path) for file_path in file_paths]
         self._data_columns = [data_columns] if isinstance(data_columns, (str, int)) else list(data_columns)
-        self._read_kwargs = read_kwargs or dict()
+        self._read_kwargs = self._resolve_read_kwargs(timestamps_column, read_kwargs)
 
         # Up-front check: the first file must contain the timestamps column and its data column(s);
         # every other file must contain its data column(s) (its timestamps, if present, are checked for
@@ -141,10 +140,9 @@ class MultiFileCSVFiberPhotometryInterface(CSVFiberPhotometryInterface):
                 ),
             )
 
-    @staticmethod
-    def _file_has_column(file_path: str, column: str | int) -> bool:
+    def _file_has_column(self, file_path: str, column: str | int) -> bool:
         """Whether a CSV file contains the given column (by header name, or by 0-based position)."""
         if isinstance(column, int):
-            num_columns = pd.read_csv(file_path, nrows=1, header=None).shape[1]
+            num_columns = self._read_csv(file_path, nrows=1).shape[1]
             return column < num_columns
-        return column in list(pd.read_csv(file_path, nrows=0).columns)
+        return column in list(self._read_csv(file_path, nrows=0).columns)

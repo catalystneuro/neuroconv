@@ -85,6 +85,31 @@ class TestCSVFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         with pytest.raises(AssertionError, match="not found"):
             CSVFiberPhotometryInterface(file_path=path, data_columns="missing", timestamps_column="timestamps")
 
+    def test_read_kwargs_propagate_to_column_check_and_data_read(self, tmp_path):
+        """read_kwargs reach both the up-front column check and the data read, not just the latter.
+
+        A semicolon-delimited file: without sep=";" the bare comma parser sees one fused column, so the
+        column check would wrongly reject a column that is present. The dialect must reach every read.
+        """
+        path = tmp_path / "semicolon.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS, "data": SIGNAL_DATA}).to_csv(path, index=False, sep=";")
+        interface = CSVFiberPhotometryInterface(
+            file_path=path, data_columns="data", timestamps_column="timestamps", read_kwargs=dict(sep=";")
+        )
+        np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
+        np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
+
+    def test_get_available_columns_respects_read_kwargs(self, tmp_path):
+        """get_available_columns parses the header with the caller's dialect, not the bare comma parser."""
+        path = tmp_path / "semicolon.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS, "data": SIGNAL_DATA}).to_csv(path, index=False, sep=";")
+        # Bare parser fuses the header into a single column; the ";" dialect splits it correctly.
+        assert CSVFiberPhotometryInterface.get_available_columns(file_path=path) == ["timestamps;data"]
+        assert CSVFiberPhotometryInterface.get_available_columns(file_path=path, read_kwargs=dict(sep=";")) == [
+            "timestamps",
+            "data",
+        ]
+
 
 class TestMultiFileCSVFiberPhotometryInterface:
     """Aggregating several per-channel CSV files into one FiberPhotometryResponseSeries.
@@ -172,3 +197,25 @@ class TestMultiFileCSVFiberPhotometryInterface:
             MultiFileCSVFiberPhotometryInterface(
                 file_paths=[signal_path, control_path], data_columns="data", timestamps_column="timestamps"
             )
+
+    def test_read_kwargs_propagate_across_all_files(self, tmp_path):
+        """read_kwargs reach the per-file column checks and the timestamp-alignment reads for every file.
+
+        Both files are semicolon-delimited: the dialect must reach the first file's column check, the
+        secondary file's _file_has_column probe, and the alignment read -- not just the final data read.
+        """
+        signal_path = tmp_path / "signal.csv"
+        control_path = tmp_path / "control.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS, "data": SIGNAL_DATA}).to_csv(signal_path, index=False, sep=";")
+        pd.DataFrame({"timestamps": TIMESTAMPS, "data": CONTROL_DATA}).to_csv(control_path, index=False, sep=";")
+        interface = MultiFileCSVFiberPhotometryInterface(
+            file_paths=[signal_path, control_path],
+            data_columns="data",
+            timestamps_column="timestamps",
+            read_kwargs=dict(sep=";"),
+        )
+        np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
+        data = interface._read_response_data()
+        assert data.shape == (NUM_SAMPLES, 2)
+        np.testing.assert_array_equal(data[:, 0], SIGNAL_DATA)
+        np.testing.assert_array_equal(data[:, 1], CONTROL_DATA)

@@ -76,10 +76,11 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         """
         file_path = str(file_path)
         self._data_columns = [data_columns] if isinstance(data_columns, (str, int)) else list(data_columns)
-        self._read_kwargs = read_kwargs or dict()
+        self._read_kwargs = self._resolve_read_kwargs(timestamps_column, read_kwargs)
 
         # Up-front check (rather than a pandas read-time error deep in add_to_nwbfile): the file must
-        # contain its data column(s) and the timestamps column.
+        # contain its data column(s) and the timestamps column. Uses the resolved read_kwargs so the
+        # header is parsed with the same dialect the data reads will use.
         self._assert_columns_present(file_path, [timestamps_column, *self._data_columns])
 
         if metadata_key is None:
@@ -97,41 +98,64 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         )
 
     @staticmethod
-    def _assert_columns_present(file_path: str, columns: list[str | int]) -> None:
+    def _resolve_read_kwargs(timestamps_column: str | int, read_kwargs: dict | None) -> dict:
+        """Resolve the canonical ``pandas.read_csv`` kwargs once, for every read this interface makes.
+
+        ``header`` is fixed by how columns are addressed: a positional (``int``) ``timestamps_column``
+        means a header-less file (``header=None``), a named (``str``) one means a header row
+        (``header=0``). ``float_precision="round_trip"`` uses an exact, platform-independent float parser
+        (pandas's default C parser rounds the final ULP differently across platforms). Caller-supplied
+        ``read_kwargs`` override these defaults.
+        """
+        header = None if isinstance(timestamps_column, int) else 0
+        return {"header": header, "float_precision": "round_trip", **(read_kwargs or dict())}
+
+    def _read_csv(self, file_path: str, **call_kwargs) -> pd.DataFrame:
+        """Read a CSV through this interface's resolved ``read_kwargs``, plus any per-call overrides.
+
+        The single ``pandas.read_csv`` entry point for the interface, so every read -- the data reads and
+        the up-front column checks alike -- parses the file with the same dialect.
+        """
+        return pd.read_csv(file_path, **{**self._read_kwargs, **call_kwargs})
+
+    def _assert_columns_present(self, file_path: str, columns: list[str | int]) -> None:
         """Assert that a CSV file contains all of ``columns`` (by header name, or by 0-based position)."""
         # A str column specifier means a headered file; an int means a header-less, positional file.
         header_less = isinstance(columns[0], int)
         if header_less:
-            num_columns = pd.read_csv(file_path, nrows=1, header=None).shape[1]
+            num_columns = self._read_csv(file_path, nrows=1).shape[1]
             missing = [column for column in columns if column >= num_columns]
             assert (
                 not missing
             ), f"Column index(es) {missing} out of range for '{file_path}', which has {num_columns} columns."
         else:
-            available_columns = list(pd.read_csv(file_path, nrows=0).columns)
+            available_columns = list(self._read_csv(file_path, nrows=0).columns)
             missing = [column for column in columns if column not in available_columns]
             assert (
                 not missing
             ), f"Column(s) {missing} not found in '{file_path}'. Available columns: {available_columns}."
 
     @classmethod
-    def get_available_columns(cls, file_path: FilePath) -> list[str]:
+    def get_available_columns(cls, file_path: FilePath, read_kwargs: dict | None = None) -> list[str]:
         """Return the header column names of a CSV file (empty for a header-less file).
 
         A convenience for picking ``data_columns`` / ``timestamps_column`` on a headered file; a
         header-less file is addressed by positional integer indices instead.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            The CSV file to read the header from.
+        read_kwargs : dict, optional
+            Additional keyword arguments forwarded to ``pandas.read_csv`` (e.g. ``sep``, ``encoding``,
+            ``skiprows``) so the header is parsed with the same dialect the interface will read the file
+            with. Pass the same value you would give the interface's ``read_kwargs``. Default is None.
         """
-        return list(pd.read_csv(file_path, nrows=0).columns)
+        return list(pd.read_csv(file_path, nrows=0, **(read_kwargs or dict())).columns)
 
     def _read_dataframe(self, *, file_path: str, columns: list[str | int]) -> pd.DataFrame:
         """Read the given columns of a CSV file into a DataFrame."""
-        # An int column specifier means a header-less file (positional columns); a str means a header row.
-        header = None if isinstance(self.source_data["timestamps_column"], int) else 0
-        # float_precision="round_trip" uses an exact, platform-independent float parser; pandas's
-        # default C parser rounds the final ULP differently across platforms. Caller-supplied
-        # read_kwargs override these defaults.
-        read_kwargs = {"header": header, "float_precision": "round_trip", **self._read_kwargs}
-        return pd.read_csv(file_path, usecols=columns, **read_kwargs)
+        return self._read_csv(file_path, usecols=columns)
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         # stream_name is a file path; return that file's data columns as (num_samples, num_data_columns).
