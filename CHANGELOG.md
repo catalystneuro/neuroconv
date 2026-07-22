@@ -49,6 +49,8 @@
 
 ## Features
 * Added `DoricEventsInterface` for converting discrete events from Doric Neuroscience Studio `.doric` (HDF5) digital IO. [PR #1805](https://github.com/catalystneuro/neuroconv/pull/1805)
+* Added `CSVFiberPhotometryInterface` for converting a raw fiber photometry recording from a CSV file, parsed into the `ndx-fiber-photometry` format.  [PR #1754](https://github.com/catalystneuro/neuroconv/pull/1754)
+* Added `MultiFileCSVFiberPhotometryInterface` for aggregating several per-channel CSV files (e.g. GuPPy's per-region files) into one fiber photometry response series, parsed into the `ndx-fiber-photometry` format.  [PR #1754](https://github.com/catalystneuro/neuroconv/pull/1754)
 * Added `_GuppyInterface` for converting [GuPPy](https://github.com/LernerLab/GuPPy) processed fiber photometry outputs, depending on the [`ndx-guppy`](https://github.com/catalystneuro/ndx-guppy) extension. [PR #965](https://github.com/catalystneuro/neuroconv/pull/965)
 * `TDTEventsInterface` now supports events that have a duration, writing each event's duration to the `EventsTable` `duration` column, instead of raising. [PR #1781](https://github.com/catalystneuro/neuroconv/pull/1781)
 * Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
