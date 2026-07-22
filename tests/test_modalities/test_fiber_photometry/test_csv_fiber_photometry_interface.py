@@ -134,7 +134,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns="data",
             timestamps_column="timestamps",
-            demux={"by": "column", "column": "LedState", "value": 1},
+            demux_config={"by": "column", "column": "LedState", "value": 1},
         )
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
@@ -147,10 +147,16 @@ class TestCSVFiberPhotometryDemux:
         interleaved_data[1::2] = CONTROL_DATA
         pd.DataFrame({"a": np.repeat(TIMESTAMPS, 2), "b": interleaved_data}).to_csv(path, index=False, header=False)
         signal = CSVFiberPhotometryInterface(
-            file_path=path, data_columns=1, timestamps_column=0, demux={"by": "stride", "channels": 2, "index": 0}
+            file_path=path,
+            data_columns=1,
+            timestamps_column=0,
+            demux_config={"by": "stride", "channels": 2, "index": 0},
         )
         control = CSVFiberPhotometryInterface(
-            file_path=path, data_columns=1, timestamps_column=0, demux={"by": "stride", "channels": 2, "index": 1}
+            file_path=path,
+            data_columns=1,
+            timestamps_column=0,
+            demux_config={"by": "stride", "channels": 2, "index": 1},
         )
         np.testing.assert_array_equal(signal.get_original_timestamps(), TIMESTAMPS)
         np.testing.assert_array_equal(signal._read_response_data(), SIGNAL_DATA)
@@ -169,7 +175,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns=1,
             timestamps_column=0,
-            demux={"by": "stride", "channels": 2, "index": 0, "skip_rows": 1},
+            demux_config={"by": "stride", "channels": 2, "index": 0, "skip_rows": 1},
         )
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
 
@@ -182,7 +188,7 @@ class TestCSVFiberPhotometryDemux:
                 file_path=path,
                 data_columns="data",
                 timestamps_column="timestamps",
-                demux={"by": "column", "column": "LedState", "value": 1},
+                demux_config={"by": "column", "column": "LedState", "value": 1},
             )
 
     def test_stride_demux_index_beyond_channels_raises(self, tmp_path):
@@ -191,7 +197,10 @@ class TestCSVFiberPhotometryDemux:
         pd.DataFrame({"a": TIMESTAMPS, "b": SIGNAL_DATA}).to_csv(path, index=False, header=False)
         with pytest.raises(ValidationError, match="must be <"):
             CSVFiberPhotometryInterface(
-                file_path=path, data_columns=1, timestamps_column=0, demux={"by": "stride", "channels": 2, "index": 2}
+                file_path=path,
+                data_columns=1,
+                timestamps_column=0,
+                demux_config={"by": "stride", "channels": 2, "index": 2},
             )
 
 

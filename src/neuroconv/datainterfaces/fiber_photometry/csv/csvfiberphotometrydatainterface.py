@@ -32,7 +32,7 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
     (with distinct ``metadata_key`` values) in a converter.
 
     For an **interleaved** file, where the excitation channels are multiplexed frame-by-frame down the
-    rows, pass a ``demux`` config selecting the one channel this interface reads: ``{"by": "column",
+    rows, pass a ``demux_config`` selecting the one channel this interface reads: ``{"by": "column",
     ...}`` when a column labels each row's channel (e.g. a Neurophotometrics ``LedState``), or ``{"by":
     "stride", ...}`` when the channels cycle in a fixed order in a header-less file. So one interleaved
     file yields one channel per interface; instantiate one per channel and compose them in a converter.
@@ -54,7 +54,7 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         *,
         data_columns: str | int | list[str | int],
         timestamps_column: str | int,
-        demux: DemuxConfig | None = None,
+        demux_config: DemuxConfig | None = None,
         metadata_key: str | None = None,
         read_kwargs: dict | None = None,
         verbose: bool = False,
@@ -72,7 +72,7 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         timestamps_column : str or int
             The column holding the timestamps (seconds) for the series' time axis. A column name for a
             CSV with a header row, or a positional index (0-based) for a header-less CSV.
-        demux : dict or None, optional
+        demux_config : dict or None, optional
             For an interleaved file (excitation channels multiplexed frame-by-frame down the rows), a
             config selecting the one channel this interface reads. Two shapes, chosen by ``by``:
             ``{"by": "column", "column": <col>, "value": <v>}`` reads the rows whose ``column`` equals
@@ -93,14 +93,14 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         file_path = str(file_path)
         self._data_columns = [data_columns] if isinstance(data_columns, (str, int)) else list(data_columns)
         self._read_kwargs = self._resolve_read_kwargs(timestamps_column, read_kwargs)
-        self._demux = demux
+        self._demux_config = demux_config
 
         # Up-front check (rather than a pandas read-time error deep in add_to_nwbfile): the file must
         # contain its data column(s), the timestamps column, and, for a column demux, the label column.
         # Uses the resolved read_kwargs so the header is parsed with the same dialect the data reads use.
         columns_present = [timestamps_column, *self._data_columns]
-        if isinstance(demux, ColumnDemux):
-            columns_present.append(demux.column)
+        if isinstance(demux_config, ColumnDemux):
+            columns_present.append(demux_config.column)
         self._assert_columns_present(file_path, columns_present)
 
         if metadata_key is None:
@@ -183,15 +183,15 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         """
         # Demux is a single-file feature set only in this class's __init__; a subclass that reuses this
         # read path without demuxing (MultiFileCSVFiberPhotometryInterface) simply never sets it.
-        demux = getattr(self, "_demux", None)
-        if demux is None:
+        demux_config = getattr(self, "_demux_config", None)
+        if demux_config is None:
             return self._read_csv(file_path, usecols=columns)
-        if isinstance(demux, ColumnDemux):
-            read_columns = columns if demux.column in columns else [*columns, demux.column]
+        if isinstance(demux_config, ColumnDemux):
+            read_columns = columns if demux_config.column in columns else [*columns, demux_config.column]
             dataframe = self._read_csv(file_path, usecols=read_columns)
-            return dataframe[dataframe[demux.column] == demux.value]
+            return dataframe[dataframe[demux_config.column] == demux_config.value]
         dataframe = self._read_csv(file_path, usecols=columns)
-        return dataframe.iloc[demux.skip_rows :].iloc[demux.index :: demux.channels]
+        return dataframe.iloc[demux_config.skip_rows :].iloc[demux_config.index :: demux_config.channels]
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         # stream_name is a file path; return that file's data columns as (num_samples, num_data_columns).
