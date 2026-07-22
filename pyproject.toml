@@ -373,6 +373,7 @@ tdt_fp = [
 ]
 csv_fp = [
     "neuroconv[fiber_photometry]",
+]
 guppy = [
     "neuroconv[fiber_photometry]",
     "ndx-guppy",
