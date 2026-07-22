@@ -49,7 +49,7 @@ class NPMEventsInterface(CSVEventsInterface):
             corresponding factor to convert them to seconds.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
-            If None (default), ``"npm_events"`` is used.
+            If None (default), the file stem is used (inherited from :class:`.CSVEventsInterface`).
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
@@ -58,6 +58,6 @@ class NPMEventsInterface(CSVEventsInterface):
             timestamps_column=0,
             event_type_column=1,
             time_unit=time_unit,
-            metadata_key=metadata_key or "npm_events",
+            metadata_key=metadata_key,
             verbose=verbose,
         )

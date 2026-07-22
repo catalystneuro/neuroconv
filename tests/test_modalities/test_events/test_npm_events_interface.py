@@ -50,9 +50,12 @@ class TestNPMEventsInterface:
         assert list(stim_table["timestamp"][:]) == [1.0, 3.0, 5.0]
         assert list(nwbfile.get_events_table("Noise")["timestamp"][:]) == [2.0, 4.0]
 
-    def test_default_metadata_key(self, interface):
-        """NPM namespaces its metadata under "npm_events" by default (not the CSV file-stem default)."""
-        assert list(interface.get_metadata()["Events"]["npm_events"]["event_types"]) == ["stim", "noise"]
+    def test_metadata_key_defaults_to_file_stem(self, tmp_path):
+        """With no metadata_key, NPM inherits CSVEventsInterface's default: the file stem."""
+        file_path = tmp_path / "session_42_events.csv"
+        file_path.write_text("\n".join(f"{onset},{label}" for onset, label in TWO_TYPE_ROWS) + "\n")
+        interface = NPMEventsInterface(file_path=file_path)
+        assert list(interface.get_metadata()["Events"]["session_42_events"]["event_types"]) == ["stim", "noise"]
 
     def test_time_unit_forwarded(self, two_type_file):
         """time_unit is forwarded to CSVEventsInterface, dividing the raw onset times by 1000."""
@@ -70,7 +73,7 @@ class TestNPMEventsInterface:
     def test_numeric_label_file(self, numeric_label_file):
         """A two-column event file with a numeric label column is a single event type '1'."""
         interface = NPMEventsInterface(file_path=numeric_label_file)
-        assert list(interface.get_metadata()["Events"]["npm_events"]["event_types"]) == ["1"]
+        assert list(interface.get_metadata()["Events"]["npm_events_numeric"]["event_types"]) == ["1"]
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
