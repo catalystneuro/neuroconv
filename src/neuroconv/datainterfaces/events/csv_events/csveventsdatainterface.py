@@ -1,6 +1,7 @@
 import warnings
 from copy import deepcopy
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -10,13 +11,16 @@ from neuroconv.utils import DeepDict
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
 
+_TIME_UNIT_TO_DIVISOR = {"seconds": 1.0, "milliseconds": 1e3, "microseconds": 1e6}
+
 
 class CSVEventsInterface(BaseEventsInterface):
     """Data Interface for converting discrete events from a single CSV file.
 
     This is a general-purpose CSV events reader: the caller points at one CSV file and assigns each
-    column a role. Every row is one event occurrence at ``timestamps_column`` (seconds); the other
-    roles are optional:
+    column a role. Every row is one event occurrence at ``timestamps_column`` (in ``time_unit``,
+    seconds by default -- pass ``time_unit`` when the file records onsets in milliseconds or
+    microseconds); the other roles are optional:
 
     - ``event_type_column`` -- the column, if any, whose value names the *type* of each event. Each
       distinct value becomes its own event type and, by default, its own ``pynwb.event.EventsTable``.
@@ -24,8 +28,9 @@ class CSVEventsInterface(BaseEventsInterface):
       pointing their ``table_metadata_key`` at a shared key in the editable metadata.
     - ``value_columns`` -- columns carried along as per-event values (payload). Each becomes a value
       column named after its source header, carrying the raw cell values.
-    - ``durations_column`` -- a column of per-event durations (seconds), making the events durative
-      (written to the table's ``duration`` column). A blank cell becomes ``NaN`` (a missing offset).
+    - ``durations_column`` -- a column of per-event durations (in ``time_unit``), making the events
+      durative (written to the table's ``duration`` column). A blank cell becomes ``NaN`` (a missing
+      offset).
 
     Columns without an assigned role are ignored.
 
@@ -54,6 +59,7 @@ class CSVEventsInterface(BaseEventsInterface):
         event_type_column: str | int | None,
         value_columns: list[str | int] | None = None,
         durations_column: str | int | None = None,
+        time_unit: Literal["seconds", "milliseconds", "microseconds"] = "seconds",
         metadata_key: str | None = None,
         read_kwargs: dict | None = None,
         verbose: bool = False,
@@ -65,8 +71,8 @@ class CSVEventsInterface(BaseEventsInterface):
         file_path : FilePath
             The path to the CSV file holding the events.
         timestamps_column : str or int
-            The column holding the event timestamps (seconds). A column name for a CSV with a header
-            row, or a positional index (0-based) for a header-less CSV.
+            The column holding the event timestamps (in ``time_unit``, seconds by default). A column
+            name for a CSV with a header row, or a positional index (0-based) for a header-less CSV.
         event_type_column : str, int, or None
             The column, if any, that names the type of each event. Pass a column name or index when the
             file holds several event types told apart by that column: each distinct value becomes its
@@ -77,9 +83,13 @@ class CSVEventsInterface(BaseEventsInterface):
             event table(s), named after its source header and carrying the raw cell values. Default None
             ignores every column except the timestamp, event-type, and duration columns.
         durations_column : str, int, or None, optional
-            The column, if any, holding per-event durations (seconds). When set, the events are durative
-            and each duration is written to the table's ``duration`` column; a blank cell becomes
-            ``NaN``. Default None writes point (timestamp-only) events.
+            The column, if any, holding per-event durations (in ``time_unit``, seconds by default). When
+            set, the events are durative and each duration is written to the table's ``duration`` column;
+            a blank cell becomes ``NaN``. Default None writes point (timestamp-only) events.
+        time_unit : {"seconds", "milliseconds", "microseconds"}, optional
+            The unit of the ``timestamps_column`` and ``durations_column`` values, default = "seconds".
+            Both are divided by the corresponding factor to convert them to seconds; ``value_columns``
+            are left untouched (they are arbitrary payload, not time).
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
             If None (default), the file stem is used, so several CSV events interfaces in one
@@ -102,6 +112,7 @@ class CSVEventsInterface(BaseEventsInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or Path(file_path).stem
+        self._time_unit = time_unit
         self._read_kwargs = read_kwargs or dict()
         # Filled on the first _read_source() call and reused thereafter, so the CSV is parsed and
         # coerced once even though get_metadata and _get_events_data_dict both read it.
@@ -176,6 +187,14 @@ class CSVEventsInterface(BaseEventsInterface):
             if durations_column is not None
             else None
         )
+        # Scale the time-valued columns from their source unit to seconds. Timestamps and durations share
+        # the recording's time base, so both are scaled by the same factor; value_columns are arbitrary
+        # payload and are left untouched. NaN / divisor stays NaN, so dropped/missing cells are preserved.
+        divisor = _TIME_UNIT_TO_DIVISOR[self._time_unit]
+        if divisor != 1.0:
+            timestamps = timestamps / divisor
+            if durations is not None:
+                durations = durations / divisor
         # Payload columns may be numeric or categorical, so sniff each one's type rather than assuming.
         # keep_default_na=False leaves a blank cell as the literal '', which would otherwise promote an
         # all-numeric column to object strings (the valid numbers included). Coerce to numeric; if any
