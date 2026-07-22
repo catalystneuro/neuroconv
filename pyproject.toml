@@ -134,7 +134,8 @@ behavior = [
 
 ## Events
 csv_events = [
-    "ndx-events==0.2.2",
+    # CSV events now write native pynwb 4.0 EventsTable objects and need only core pandas + pynwb>=4.0;
+    # kept as a stable install alias so `neuroconv[csv_events]` and `neuroconv[events]` remain valid.
 ]
 tdt_events = [
     "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
