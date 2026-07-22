@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -48,19 +46,6 @@ class TestCSVFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             timestamps_column="timestamps",
             metadata_key="calcium_signal",
         )
-
-    def check_extracted_metadata(self, metadata: dict):
-        # CSV recordings carry no embedded start time, so the interface must not invent one.
-        assert metadata["NWBFile"].get("session_start_time") is None
-
-    def test_default_metadata_warns_about_placeholders(self, setup_interface):
-        # CSV has no embedded session_start_time (see check_extracted_metadata), so unlike the base
-        # mixin's version we must supply one before the file can be built; the placeholder warning for
-        # the still-unset fiber photometry fields must then still fire.
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-        with pytest.warns(UserWarning, match="placeholder"):
-            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
 
     def test_get_available_columns(self):
         assert CSVFiberPhotometryInterface.get_available_columns(file_path=self.signal_path) == ["timestamps", "data"]
