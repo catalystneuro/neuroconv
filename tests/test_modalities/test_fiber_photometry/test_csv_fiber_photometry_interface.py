@@ -151,6 +151,17 @@ class TestMultiFileCSVFiberPhotometryInterface:
                 file_paths=[signal_path, control_path], data_columns="data", timestamps_column="timestamps"
             )
 
+    def test_timestampless_file_wrong_length_raises(self, tmp_path):
+        """A timestamp-less secondary file of the wrong length fails loudly at construction."""
+        signal_path = tmp_path / "signal.csv"
+        control_path = tmp_path / "control.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS, "data": SIGNAL_DATA}).to_csv(signal_path, index=False)  # 20 rows
+        pd.DataFrame({"data": CONTROL_DATA[:10]}).to_csv(control_path, index=False)  # 10 rows, no timestamps
+        with pytest.raises(AssertionError, match="rows"):
+            MultiFileCSVFiberPhotometryInterface(
+                file_paths=[signal_path, control_path], data_columns="data", timestamps_column="timestamps"
+            )
+
     def test_missing_data_column_raises_at_construction(self, tmp_path):
         """A file missing a named data column fails loudly up front, not at read time."""
         signal_path = tmp_path / "signal.csv"

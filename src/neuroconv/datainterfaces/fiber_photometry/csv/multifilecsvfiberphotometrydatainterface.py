@@ -21,8 +21,9 @@ class MultiFileCSVFiberPhotometryInterface(CSVFiberPhotometryInterface):
 
     Because only channels on a common timebase can share one series, the first file must contain the
     ``timestamps_column``. Secondary files may omit it (their timestamps would be redundant); when a
-    secondary file *does* contain it, the interface asserts it matches the first file's timestamps, so
-    files that do not share a timebase fail loudly instead of producing a silently mis-timed series.
+    secondary file *does* contain it, the interface asserts it matches the first file's timestamps, and
+    when it omits it the interface asserts its row count matches, so files that do not share a timebase
+    fail loudly instead of producing a silently mis-timed series.
 
     For the common single-file case, use :class:`.CSVFiberPhotometryInterface` instead. To write
     several *separate* series (e.g. a signal and an isosbestic control) sharing one
@@ -101,18 +102,26 @@ class MultiFileCSVFiberPhotometryInterface(CSVFiberPhotometryInterface):
             metadata_key=metadata_key,
             verbose=verbose,
         )
-        self._assert_timestamps_aligned(timestamps_column)
+        self._assert_files_aligned(timestamps_column)
 
-    def _assert_timestamps_aligned(self, timestamps_column: str | int) -> None:
-        """Assert that every file carrying the timestamps column agrees with the first file's timebase.
+    def _assert_files_aligned(self, timestamps_column: str | int) -> None:
+        """Assert that every secondary file shares the first file's timebase length.
 
-        Only channels on a common time axis can be column-stacked into one series. Secondary files may
-        omit their (redundant) timestamps column; those that keep it must match the first file, so
-        misaligned files fail loudly instead of being silently pinned to the first file's timestamps.
+        Only channels on a common time axis can be column-stacked into one series. A secondary file that
+        keeps its (redundant) timestamps column must match the first file's timestamps; one that omits it
+        must at least match the first file's row count. Either way, misaligned files fail loudly here
+        instead of surfacing as an opaque stacking error later in ``_read_response_data``.
         """
         reference_timestamps = self._get_stream_timestamps(stream_name=self._file_paths[0])
         for file_path in self._file_paths[1:]:
             if not self._file_has_column(file_path, timestamps_column):
+                num_rows = self._get_stream_data(stream_name=file_path).shape[0]
+                assert num_rows == reference_timestamps.shape[0], (
+                    f"Data in '{file_path}' has {num_rows} rows, which does not match the first file's "
+                    f"{reference_timestamps.shape[0]} rows. Only channels on a common time axis can be "
+                    "aggregated into one FiberPhotometryResponseSeries; use separate interfaces for files "
+                    "that do not share a timebase."
+                )
                 continue
             timestamps = self._get_stream_timestamps(stream_name=file_path)
             assert timestamps.shape == reference_timestamps.shape, (
