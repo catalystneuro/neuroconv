@@ -12,3 +12,11 @@ Doric Fiber Photometry
 TDT Fiber Photometry
 --------------------
 .. automodule:: neuroconv.datainterfaces.fiber_photometry.tdt.tdtfiberphotometrydatainterface
+
+CSV Fiber Photometry
+--------------------
+.. automodule:: neuroconv.datainterfaces.fiber_photometry.csv.csvfiberphotometrydatainterface
+
+Multi-File CSV Fiber Photometry
+-------------------------------
+.. automodule:: neuroconv.datainterfaces.fiber_photometry.csv.multifilecsvfiberphotometrydatainterface
