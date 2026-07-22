@@ -77,35 +77,47 @@ class DANNCEConverter(BaseDataInterface):
         self.verbose = verbose
         self._camera_names = list(video_file_paths.keys())
 
-        self.data_interface_objects: dict[str, BaseDataInterface] = {
-            "DANNCE": DANNCEInterface(
-                file_path=file_path,
-                frametimes_file_path=frametimes_file_path,
-                sampling_rate=sampling_rate,
-                landmark_names=landmark_names,
-                subject_name=subject_name,
-                metadata_key=metadata_key,
-                camera_names=self._camera_names,
-                calibration_path=calibration_path,
-                animal_index=animal_index,
-                verbose=verbose,
-            )
-        }
-        for camera_name, file_paths in video_file_paths.items():
-            self.data_interface_objects[f"Video{camera_name}"] = ExternalVideoInterface(
+        self._dannce_interface = DANNCEInterface(
+            file_path=file_path,
+            frametimes_file_path=frametimes_file_path,
+            sampling_rate=sampling_rate,
+            landmark_names=landmark_names,
+            subject_name=subject_name,
+            metadata_key=metadata_key,
+            camera_names=self._camera_names,
+            calibration_path=calibration_path,
+            animal_index=animal_index,
+            verbose=verbose,
+        )
+        self._video_interfaces: dict[str, ExternalVideoInterface] = {
+            camera_name: ExternalVideoInterface(
                 file_paths=file_paths,
                 metadata_key=f"video_{camera_name}",
                 video_name=f"Video{camera_name}",
                 verbose=verbose,
             )
+            for camera_name, file_paths in video_file_paths.items()
+        }
+
+        self.data_interface_objects: dict[str, BaseDataInterface] = {
+            "DANNCE": self._dannce_interface,
+            **{f"Video{camera_name}": interface for camera_name, interface in self._video_interfaces.items()},
+        }
 
     def get_metadata(self) -> DeepDict:
-        metadata = self.data_interface_objects["DANNCE"].get_metadata()
+        metadata = self._dannce_interface.get_metadata()
         for camera_name in self._camera_names:
-            video_interface = self.data_interface_objects[f"Video{camera_name}"]
+            video_interface = self._video_interfaces[camera_name]
             video_metadata = video_interface.get_metadata()
+            # Point the video at the same camera Device DANNCE already registered (under `camera_name`
+            # in `metadata["Devices"]`), dropping the video interface's own default device entry (see
+            # ExternalVideoInterface.__init__: `f"{metadata_key}_camera"`), so the two interfaces share
+            # one Device (e.g. a calibrated one) instead of each creating their own -- see the matching
+            # `create_camera_devices` call in `add_to_nwbfile`.
+            video_metadata["Devices"].pop(f"{video_interface.metadata_key}_camera", None)
             video_metadata["Behavior"]["ExternalVideos"][video_interface.metadata_key].update(
                 description=f"Source video recorded by camera '{camera_name}'.",
+                device_metadata_key=camera_name,
             )
             metadata = dict_deep_update(metadata, video_metadata)
         return metadata
@@ -148,9 +160,17 @@ class DANNCEConverter(BaseDataInterface):
         """
         metadata_copy = deepcopy(metadata)
 
+        # Pre-create each camera's Device (calibrated, if calibration data is available) before
+        # writing the videos, so that when each ExternalVideoInterface resolves its device_metadata_key
+        # (pointed at the same camera_name entry by get_metadata, above), it reuses this Device instead
+        # of creating its own -- Device creation is idempotent on name.
+        self._dannce_interface.create_camera_devices(
+            nwbfile=nwbfile, metadata=metadata_copy, camera_calibrations=camera_calibrations
+        )
+
         source_videos = {}
         for camera_name in self._camera_names:
-            video_interface = self.data_interface_objects[f"Video{camera_name}"]
+            video_interface = self._video_interfaces[camera_name]
             video_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata_copy,
@@ -159,8 +179,7 @@ class DANNCEConverter(BaseDataInterface):
             image_series_name = metadata_copy["Behavior"]["ExternalVideos"][video_interface.metadata_key]["name"]
             source_videos[camera_name] = nwbfile.acquisition[image_series_name]
 
-        dannce_interface = self.data_interface_objects["DANNCE"]
-        dannce_interface.add_to_nwbfile(
+        self._dannce_interface.add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata_copy,
             stub_test=stub_test,

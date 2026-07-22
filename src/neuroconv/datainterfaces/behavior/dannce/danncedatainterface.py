@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
+from pynwb.device import Device
 from pynwb.image import ImageSeries
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -551,6 +552,80 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
 
         return metadata
 
+    def create_camera_devices(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict | None = None,
+        camera_calibrations: dict[str, dict] | None = None,
+    ) -> dict[str, Device]:
+        """
+        Create (or reuse, if already present by name) one Device per camera in ``self._camera_names``.
+
+        Exposed as a standalone step -- also used internally by ``add_to_nwbfile`` -- for callers that
+        need the camera Device to already exist in the ``NWBFile`` before ``add_to_nwbfile`` runs. For
+        example, an interface that writes each camera's source video with its own default camera Device
+        can instead be pointed at the (identically named) Device created here first: since Device
+        creation is idempotent on name, both interfaces end up sharing one Device -- e.g. a calibrated
+        one, if ``camera_calibrations`` (or ``calibration_path`` at construction) is provided -- instead
+        of each creating their own.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file to add the camera Device(s) to.
+        metadata : dict, optional
+            Metadata dictionary. If provided, overrides default metadata from ``get_metadata()``.
+        camera_calibrations : dict of str to dict, optional
+            Intrinsic/extrinsic calibration parameters for each camera, keyed by camera name; see
+            ``add_to_nwbfile`` for the expected shape. Merged on top of any calibrations already loaded
+            from ``calibration_path`` at construction, taking precedence per-camera over those.
+
+        Returns
+        -------
+        dict of str to Device
+            The Device (a ``CalibratedCamera`` if calibration data is available, otherwise a plain
+            ``Device``) for each camera, keyed by camera name.
+        """
+        from ndx_pose import CalibratedCamera
+
+        default_metadata = DeepDict(self.get_metadata())
+        if metadata:
+            default_metadata.deep_update(metadata)
+        devices_registry = default_metadata["Devices"]
+
+        # Calibrations loaded from calibration_path at construction are the default; an explicit
+        # camera_calibrations argument here overrides individual cameras on top of those.
+        camera_calibrations = {**(self._camera_calibrations or {}), **(camera_calibrations or {})}
+
+        cameras = {}
+        for camera_name in self._camera_names:
+            device_metadata = devices_registry[camera_name]
+            device_name = device_metadata["name"]
+
+            if device_name not in nwbfile.devices:
+                calibration = camera_calibrations.get(camera_name)
+                if calibration is not None:
+                    camera = CalibratedCamera(
+                        name=device_name,
+                        description=device_metadata.get("description", "Camera used for pose estimation."),
+                        intrinsic_matrix=calibration["intrinsic_matrix"],
+                        rotation_matrix=calibration.get("rotation_matrix"),
+                        translation_vector=calibration.get("translation_vector"),
+                        distortion_coefficients=calibration.get("distortion_coefficients"),
+                    )
+                    nwbfile.add_device(camera)
+                else:
+                    camera = nwbfile.create_device(
+                        name=device_name,
+                        description=device_metadata.get("description", "Camera used for pose estimation."),
+                    )
+            else:
+                camera = nwbfile.devices[device_name]
+
+            cameras[camera_name] = camera
+
+        return cameras
+
     def get_conversion_options_schema(self) -> dict:
         # `source_videos`/`camera_calibrations` carry live `pynwb.ImageSeries`/array objects, not
         # JSON-serializable values, so they cannot be represented in a JSON schema and must be
@@ -611,7 +686,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             ``calibration_path`` at construction, taking precedence per-camera over those.
         """
         from ndx_pose import (
-            CalibratedCamera,
             MultiCameraPoseEstimation,
             PoseEstimation,
             PoseEstimationSeries,
@@ -625,7 +699,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             default_metadata.deep_update(metadata)
 
         metadata_key = self.metadata_key or "PoseEstimationDANNCE"
-        devices_registry = default_metadata["Devices"]
         skeletons_registry = default_metadata["Behavior"]["Pose"]["Skeletons"]
         pose_estimations_registry = default_metadata["Behavior"]["Pose"]["PoseEstimations"]
         container_metadata = pose_estimations_registry[metadata_key]
@@ -705,40 +778,19 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         # same NWBFile with matching camera_names (e.g., one interface instance per animal_index)
         # share and reuse the same camera Devices.
         source_videos = source_videos or {}
-        # Calibrations loaded from calibration_path at construction are the default; an explicit
-        # camera_calibrations argument here overrides individual cameras on top of those.
-        camera_calibrations = {**(self._camera_calibrations or {}), **(camera_calibrations or {})}
+        cameras = self.create_camera_devices(
+            nwbfile=nwbfile, metadata=default_metadata, camera_calibrations=camera_calibrations
+        )
         camera_pose_estimations = []
         for camera_name in container_metadata["device_metadata_keys"]:
-            device_metadata = devices_registry[camera_name]
-            device_name = device_metadata["name"]
-
-            if device_name not in nwbfile.devices:
-                calibration = camera_calibrations.get(camera_name)
-                if calibration is not None:
-                    camera = CalibratedCamera(
-                        name=device_name,
-                        description=device_metadata.get("description", "Camera used for pose estimation."),
-                        intrinsic_matrix=calibration["intrinsic_matrix"],
-                        rotation_matrix=calibration.get("rotation_matrix"),
-                        translation_vector=calibration.get("translation_vector"),
-                        distortion_coefficients=calibration.get("distortion_coefficients"),
-                    )
-                    nwbfile.add_device(camera)
-                else:
-                    camera = nwbfile.create_device(
-                        name=device_name,
-                        description=device_metadata.get("description", "Camera used for pose estimation."),
-                    )
-            else:
-                camera = nwbfile.devices[device_name]
+            camera = cameras[camera_name]
 
             # Per-camera PoseEstimation child: DANNCE/sDANNCE only produce triangulated 3D world-space
             # landmarks (no raw per-camera 2D data), so this child carries no pose_estimation_series of
             # its own -- it exists solely to formally link the camera Device (and, when available, that
             # camera's source video) under the MultiCameraPoseEstimation container.
             camera_pose_estimation = PoseEstimation(
-                name=f"{device_name}PoseEstimation",
+                name=f"{camera.name}PoseEstimation",
                 device=camera,
                 source_video=source_videos.get(camera_name),
             )

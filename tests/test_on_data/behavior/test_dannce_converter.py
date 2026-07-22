@@ -98,15 +98,21 @@ class TestDANNCEConverter(TestCase):
             assert isinstance(pe, MultiCameraPoseEstimation)
             assert len(pe.pose_estimations) == len(self.camera_names)
 
-            # Each camera Device is calibrated and its per-camera PoseEstimation child links back
-            # to that same camera's ImageSeries written above.
+            # Exactly one Device per camera -- the video's ImageSeries and DANNCE's per-camera
+            # PoseEstimation child must share the same calibrated Device, not each create their own
+            # (e.g. no separate "VideoCameraN Camera Device" alongside "CameraN").
+            assert set(nwbfile.devices.keys()) == set(self.camera_names)
+
             for camera_name in self.camera_names:
                 device = nwbfile.devices[camera_name]
                 assert isinstance(device, CalibratedCamera)
 
+                video = nwbfile.acquisition[f"Video{camera_name}"]
+                assert video.device is device
+
                 camera_pose_estimation = pe.pose_estimations[f"{camera_name}PoseEstimation"]
                 assert camera_pose_estimation.device is device
-                assert camera_pose_estimation.source_video is nwbfile.acquisition[f"Video{camera_name}"]
+                assert camera_pose_estimation.source_video is video
 
             for pose_estimation_series in pe.pose_estimation_series.values():
                 assert pose_estimation_series.data.shape[0] == 100  # stub_test truncates DANNCE to 100 frames
