@@ -191,10 +191,9 @@ class CSVEventsInterface(BaseEventsInterface):
         # the recording's time base, so both are scaled by the same factor; value_columns are arbitrary
         # payload and are left untouched. NaN / divisor stays NaN, so dropped/missing cells are preserved.
         divisor = _TIME_UNIT_TO_DIVISOR[self._time_unit]
-        if divisor != 1.0:
-            timestamps = timestamps / divisor
-            if durations is not None:
-                durations = durations / divisor
+        timestamps = timestamps / divisor
+        if durations is not None:
+            durations = durations / divisor
         # Payload columns may be numeric or categorical, so sniff each one's type rather than assuming.
         # keep_default_na=False leaves a blank cell as the literal '', which would otherwise promote an
         # all-numeric column to object strings (the valid numbers included). Coerce to numeric; if any
