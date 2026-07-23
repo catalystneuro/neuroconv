@@ -5,8 +5,11 @@ from ._mock._mock_dataset_models import (
     mock_ZarrDatasetIOConfiguration,
 )
 from .mock_files import generate_path_expander_demo_ibl
+from .mock_guppy import generate_mock_guppy_output_folder
 from .mock_interfaces import (
     MockBehaviorEventInterface,
+    MockEventsInterface,
+    MockFiberPhotometryInterface,
     MockSpikeGLXNIDQInterface,
     MockRecordingInterface,
     MockImagingInterface,

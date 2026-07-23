@@ -139,6 +139,27 @@ jobs:
             deactivate
           fi
 
+      - name: Test guppy machinery
+        shell: bash
+        run: |
+          # Create guppy environment
+          python -m venv env_guppy
+          # Activate guppy environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_guppy/Scripts/activate
+          else
+            source env_guppy/bin/activate
+          fi
+          python -m pip install -U pip
+          python -m pip install ".[guppy]"
+          python -m pip install --group test
+          python -m pytest tests/test_modalities/test_guppy -vv -rsx -n auto --dist loadscope
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
+
       - name: Test behavior machinery
         shell: bash
         run: |
@@ -154,6 +175,27 @@ jobs:
           python -m pip install ".[behavior]"
           python -m pip install --group test
           python -m pytest tests/test_modalities/test_behavior -vv -rsx -n auto --dist loadscope
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            deactivate
+          else
+            deactivate
+          fi
+
+      - name: Test events machinery
+        shell: bash
+        run: |
+          # Create events environment
+          python -m venv env_events
+          # Activate events environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_events/Scripts/activate
+          else
+            source env_events/bin/activate
+          fi
+          python -m pip install -U pip
+          python -m pip install ".[events]"
+          python -m pip install --group test
+          python -m pytest tests/test_modalities/test_events -vv -rsx -n auto --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
           else

@@ -10,6 +10,7 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
+from .behavior.vame.vamedatainterface import VameInterface
 from .behavior.video.externalvideointerface import ExternalVideoInterface
 from .behavior.video.internalvideointerface import InternalVideoInterface
 
@@ -80,6 +81,7 @@ from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
+from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
 
 # Ophys
 from .ophys.brukertiff.brukertiffdatainterface import (
@@ -109,7 +111,12 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
-from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
+from .fiber_photometry.csv.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
+from .fiber_photometry.csv.multifilecsvfiberphotometrydatainterface import (
+    MultiFileCSVFiberPhotometryInterface,
+)
+from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
+from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
 
@@ -119,6 +126,11 @@ from .image.imageinterface import ImageInterface
 # Text
 from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
+
+# Events
+from .events.csv_events.csveventsdatainterface import CSVEventsInterface
+from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
+from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
     # Ecephys
@@ -169,6 +181,7 @@ interface_list = [
     XClustSortingInterface,
     # Icephys
     AbfInterface,
+    AxonIntracellularInterface,
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
@@ -187,6 +200,9 @@ interface_list = [
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
+    CSVFiberPhotometryInterface,
+    MultiFileCSVFiberPhotometryInterface,
+    DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
     NPMFiberPhotometryInterface,
     NPMLegacyFiberPhotometryInterface,
@@ -204,11 +220,16 @@ interface_list = [
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
     MedPCInterface,
+    VameInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
     # Image
     ImageInterface,
+    # Events
+    CSVEventsInterface,
+    DoricEventsInterface,
+    TDTEventsInterface,
 ]
 
 interfaces_by_category = dict(
@@ -236,6 +257,10 @@ interfaces_by_category = dict(
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
         "NPMFiberPhotometry": NPMFiberPhotometryInterface,
         "NPMLegacyFiberPhotometry": NPMLegacyFiberPhotometryInterface,
+        "DoricFiberPhotometry": DoricFiberPhotometryInterface,
+        "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+        "CSVFiberPhotometry": CSVFiberPhotometryInterface,
+        "MultiFileCSVFiberPhotometry": MultiFileCSVFiberPhotometryInterface,
     },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
@@ -244,7 +269,7 @@ interfaces_by_category = dict(
         IntanAnalog=IntanAnalogInterface,
         IntanStim=IntanStimInterface,
     ),
-    icephys=dict(Abf=AbfInterface),
+    icephys=dict(Abf=AbfInterface, AxonIntracellular=AxonIntracellularInterface),
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
@@ -252,6 +277,7 @@ interfaces_by_category = dict(
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
         LightningPose=LightningPoseDataInterface,
+        Vame=VameInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
@@ -259,5 +285,10 @@ interfaces_by_category = dict(
     ),
     image=dict(
         Image=ImageInterface,
+    ),
+    events=dict(
+        CSVEvents=CSVEventsInterface,
+        DoricEvents=DoricEventsInterface,
+        TDTEvents=TDTEventsInterface,
     ),
 )

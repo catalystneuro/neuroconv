@@ -79,7 +79,6 @@ Suite2p Segmentation
 
 
 Fiber Photometry
-================
 
 TDT Fiber Photometry
 --------------------
