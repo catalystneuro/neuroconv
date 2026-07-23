@@ -21,6 +21,13 @@ class NPMEventsInterface(CSVEventsInterface):
     are otherwise written as-is: they remain in the recording's raw time base. NPM recordings carry no
     embedded recording-start timestamp, so :meth:`get_metadata` does NOT populate
     ``NWBFile/session_start_time``; the user must supply it via editable metadata.
+
+    This interface targets the standalone Bonsai stimuli CSV *only*. NPM can also embed discrete events
+    directly in the photometry/signal CSV, alongside the fluorescence columns: older firmware writes each
+    digital I/O line (e.g. ``Stimulation``, ``Output0``/``Output1``, ``Input0``/``Input1``) as its own
+    0/1-per-frame column, while newer firmware bit-packs those same lines into the ``Flags``/``LedState``
+    column. This interface's fixed headerless two-column layout does not fit that photometry CSV; use
+    :class:`.CSVEventsInterface` directly to select the relevant columns from it.
     """
 
     keywords = ("events", "Neurophotometrics")

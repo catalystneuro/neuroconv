@@ -19,6 +19,13 @@ consistent install command.
 
     pip install "neuroconv[npm_events]"
 
+This interface targets the standalone Bonsai stimuli CSV only. NPM can also embed discrete events
+directly in the photometry/signal CSV, alongside the fluorescence columns: older firmware writes each
+digital I/O line (e.g. ``Stimulation``, ``Output0``/``Output1``, ``Input0``/``Input1``) as its own
+0/1-per-frame column, while newer firmware bit-packs those same lines into the ``Flags``/``LedState``
+column. That layout does not fit this interface's fixed headerless two columns; use the general-purpose
+:doc:`csv_events` interface directly to select the relevant columns from the photometry CSV.
+
 NPM recordings carry no embedded recording-start timestamp, so ``session_start_time`` must be
 supplied explicitly in the metadata.
 
@@ -49,4 +56,6 @@ supplied explicitly in the metadata.
 
 .. seealso::
 
-    - :doc:`csv_events` for the general-purpose CSV events reader this interface is built on.
+    - :doc:`csv_events` for the general-purpose CSV events reader this interface is built on, and the
+      route to take when the events live in the photometry/signal CSV rather than the standalone
+      stimuli CSV.
