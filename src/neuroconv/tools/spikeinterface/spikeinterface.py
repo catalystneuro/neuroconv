@@ -189,6 +189,7 @@ def add_recording_to_nwbfile(
     metadata: dict | None = None,
     *,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
+    data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
     es_key: str | None = None,
     iterator_type: str = "v2",
     iterator_options: dict | None = None,
@@ -235,6 +236,15 @@ def add_recording_to_nwbfile(
         - 'raw': save it in acquisition
         - 'processed': save it as FilteredEphys, in a processing module
         - 'lfp': save it as LFP, in a processing module
+    data_representation : {'digital_counts', 'physical_units'}, default: 'digital_counts'
+        How the trace values are materialized in the stored data array.
+        - 'digital_counts': store the raw integer samples and carry the per-channel gain in
+          ``channel_conversion`` (or a scalar ``conversion`` when homogeneous) and the offset in the
+          scalar ``offset``. Faithful and compact, but requires a common offset across channels.
+        - 'physical_units': apply each channel's gain and offset and store float physical values, so
+          the scalar ``offset`` is 0 and no ``channel_conversion`` is needed. This is the only
+          representation that can hold heterogeneous per-channel offsets (and gains) in a single
+          series, at the cost of float storage and no lossless integer round-trip.
     es_key : str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series.
         Used with the old list-based metadata format; ignored when ``metadata_key`` is provided.
@@ -287,6 +297,7 @@ def add_recording_to_nwbfile(
             segment_index=segment_index,
             metadata=metadata,
             write_as=write_as,
+            data_representation=data_representation,
             es_key=es_key,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
@@ -416,6 +427,7 @@ def _add_recording_segment_to_nwbfile(
     metadata: dict | None = None,
     segment_index: int = 0,
     write_as: Literal["raw", "processed", "lfp"] = "raw",
+    data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
     es_key: str | None = None,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -467,7 +479,19 @@ def _add_recording_segment_to_nwbfile(
     )
     eseries_kwargs["electrodes"] = electrode_table_region
 
-    if recording.has_scaleable_traces():
+    if data_representation == "physical_units":
+        if not recording.has_scaleable_traces():
+            raise ValueError(
+                "data_representation='physical_units' requires the recording to have gains and offsets "
+                "to convert the samples to microvolts, but this recording has none."
+            )
+        # The traces are written already in microvolts (each channel's gain and offset folded in), so
+        # only the microvolt-to-volt factor remains and the shared offset is zero. This is the only
+        # representation that can hold heterogeneous per-channel gains and offsets in a single series.
+        eseries_kwargs["conversion"] = 1e-6
+        eseries_kwargs["offset"] = 0.0
+        # No channel_conversion: the per-channel gain is already applied to the stored data.
+    elif recording.has_scaleable_traces():
         # Spikeinterface gains and offsets are gains and offsets to micro volts.
         # The units of the ElectricalSeries should be volts so we scale correspondingly.
         micro_to_volts_conversion_factor = 1e-6
@@ -501,6 +525,7 @@ def _add_recording_segment_to_nwbfile(
     ephys_data_iterator = _recording_traces_to_hdmf_iterator(
         recording=recording,
         segment_index=segment_index,
+        data_representation=data_representation,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
     )
@@ -1368,7 +1393,7 @@ def _check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment
 def _recording_traces_to_hdmf_iterator(
     recording: BaseRecording,
     segment_index: int = None,
-    return_scaled: bool = False,
+    data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
     iterator_type: str | None = "v2",
     iterator_options: dict = None,
 ) -> AbstractDataChunkIterator:
@@ -1380,8 +1405,9 @@ def _recording_traces_to_hdmf_iterator(
         A recording extractor from spikeinterface
     segment_index : int, optional
         The recording segment to add to the NWBFile.
-    return_scaled : bool, defaults to False
-        When True recording extractor objects from spikeinterface return their traces in microvolts.
+    data_representation : {"digital_counts", "physical_units"}, defaults to "digital_counts"
+        "physical_units" materializes the traces in microvolts (each channel's gain and offset applied);
+        "digital_counts" keeps the raw sample values.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -1409,14 +1435,18 @@ def _recording_traces_to_hdmf_iterator(
 
     iterator_options = dict() if iterator_options is None else iterator_options
 
+    # "physical_units" materializes the traces in microvolts (gains and offsets folded in);
+    # "digital_counts" keeps the raw sample values.
+    return_in_uV = data_representation == "physical_units"
+
     if iterator_type is None:
         _check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
-        traces_as_iterator = recording.get_traces(return_scaled=return_scaled, segment_index=segment_index)
+        traces_as_iterator = recording.get_traces(return_in_uV=return_in_uV, segment_index=segment_index)
     elif iterator_type == "v2":
         traces_as_iterator = SpikeInterfaceRecordingDataChunkIterator(
             recording=recording,
             segment_index=segment_index,
-            return_scaled=return_scaled,
+            return_in_uV=return_in_uV,
             **iterator_options,
         )
     else:
@@ -1447,6 +1477,14 @@ def _report_variable_offset(recording: BaseRecording) -> None:
     message_lines.append("Multiple offsets were found per channel IDs:")
     for offset, ids in offset_to_channel_ids.items():
         message_lines.append(f"  Offset {offset}: Channel IDs {ids}")
+    message_lines.append("")
+    message_lines.append(
+        "A single ElectricalSeries can store only one scalar offset. To write these channels as one "
+        "series anyway, pass data_representation='physical_units' to add_recording_to_nwbfile (this "
+        "folds each channel's offset into the data and writes float physical values). Alternatively, "
+        "drop the channels that do not share the common offset with "
+        "recording.remove_channels(remove_channel_ids=[...]) and write them as their own series."
+    )
     message = "\n".join(message_lines)
 
     raise ValueError(message)

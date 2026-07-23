@@ -341,7 +341,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         # Test equality of data in Volts. Data in spikeextractors is in microvolts when scaled
         extracted_data = electrical_series.data[:]
         data_in_volts = extracted_data * channel_conversion_vector + offset_scalar
-        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e-6
+        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_in_uV=True) * 1e-6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_variable_offsets_assertion(self):
@@ -2466,6 +2466,65 @@ class TestAddRecording:
         # per-``write_as`` defaults, not the placeholder factory.
         assert "ElectricalSeriesRaw" in nwbfile.acquisition
         assert len(nwbfile.electrodes) == recording.get_num_channels()
+
+    def test_physical_units_writes_single_series_with_heterogeneous_offset(self):
+        """`data_representation='physical_units'` folds each channel's gain and offset into float
+        data, so channels with heterogeneous offsets fit in one ElectricalSeries."""
+        recording = generate_recording(num_channels=5, durations=[0.1])
+        recording = recording.rename_channels(new_channel_ids=["a", "b", "c", "d", "e"])
+        recording.set_channel_gains(gains=[1.0, 1.0, 2.0, 2.0, 3.0])
+        recording.set_channel_offsets(offsets=[0.0, 0.0, 1.0, 1.0, 2.0])  # heterogeneous offsets
+
+        nwbfile = mock_NWBFile()
+        add_recording_to_nwbfile(
+            recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
+        )
+
+        electrical_series = nwbfile.acquisition["ElectricalSeriesRaw"]
+        # The heterogeneous offsets are folded into the data: one series, scalar offset 0, only the
+        # microvolt-to-volt conversion, and no per-channel channel_conversion.
+        assert electrical_series.offset == 0.0
+        assert electrical_series.conversion == 1e-6
+        assert electrical_series.channel_conversion is None
+
+        stored_data = electrical_series.data[:]
+        assert np.issubdtype(stored_data.dtype, np.floating)
+        assert stored_data.shape[1] == 5  # all five channels in a single series
+        expected_microvolts = recording.get_traces(segment_index=0, return_in_uV=True)
+        np.testing.assert_array_almost_equal(stored_data, expected_microvolts)
+
+    def test_physical_units_error_points_to_option_on_heterogeneous_offset(self):
+        """The default (`digital_counts`) still rejects heterogeneous offsets, and the error points
+        the user at the `physical_units` option."""
+        recording = generate_recording(num_channels=5, durations=[0.1])
+        recording.set_channel_gains(gains=[1, 1, 1, 1, 1])
+        recording.set_channel_offsets(offsets=[0, 0, 1, 1, 2])  # heterogeneous offsets
+
+        nwbfile = mock_NWBFile()
+        expected_error_msg = (
+            "A single ElectricalSeries can store only one scalar offset. To write these channels as one "
+            "series anyway, pass data_representation='physical_units' to add_recording_to_nwbfile (this "
+            "folds each channel's offset into the data and writes float physical values). Alternatively, "
+            "drop the channels that do not share the common offset with "
+            "recording.remove_channels(remove_channel_ids=[...]) and write them as their own series."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+    def test_physical_units_requires_scaleable_traces(self):
+        """`physical_units` needs gains and offsets on the recording; without them it errors clearly."""
+        traces = np.ones(shape=(10, 3), dtype="float32")
+        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)  # no gains/offsets
+
+        nwbfile = mock_NWBFile()
+        expected_error_msg = (
+            "data_representation='physical_units' requires the recording to have gains and offsets "
+            "to convert the samples to microvolts, but this recording has none."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            add_recording_to_nwbfile(
+                recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
+            )
 
     def test_full_metadata_specification(self):
         """User-supplied fields land on every created object and the cross-links resolve.
