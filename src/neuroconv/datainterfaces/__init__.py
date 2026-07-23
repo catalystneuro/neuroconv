@@ -125,6 +125,7 @@ from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 # Events
 from .events.csv_events.csveventsdatainterface import CSVEventsInterface
+from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
@@ -221,6 +222,7 @@ interface_list = [
     ImageInterface,
     # Events
     CSVEventsInterface,
+    DoricEventsInterface,
     TDTEventsInterface,
 ]
 
@@ -277,6 +279,7 @@ interfaces_by_category = dict(
     ),
     events=dict(
         CSVEvents=CSVEventsInterface,
+        DoricEvents=DoricEventsInterface,
         TDTEvents=TDTEventsInterface,
     ),
 )
