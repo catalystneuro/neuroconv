@@ -99,7 +99,7 @@ class IntanDigitalInterface(BaseEventsInterface):
         # int(...) because native_order is a numpy int16 (neo's header dtype); plain int keys match the
         # user's plain-int ``bits`` and render as ``[0]`` rather than ``[np.int16(0)]`` in the "bit not
         # present" error message (numpy 2.x reprs scalars with the ``np.int16(...)`` prefix).
-        self._bit_to_channel = {
+        self._bit_to_channel_id = {
             int(native_channel_order[channel_id]): channel_id
             for channel_id in self.recording_extractor.get_channel_ids()
         }
@@ -149,7 +149,7 @@ class IntanDigitalInterface(BaseEventsInterface):
                 "detect": "high_period",
                 "event_name": str(channel_id),
             }
-            for bit, channel_id in self._bit_to_channel.items()
+            for bit, channel_id in self._bit_to_channel_id.items()
         }
 
     def _validate_event_specs(self, event_specs: dict) -> None:
@@ -180,10 +180,10 @@ class IntanDigitalInterface(BaseEventsInterface):
                     f"event_specs field '{field_source_id}' declares a coded/multi-bit word (bits={bits}). Coded words need a "
                     "strobe line to be read safely and are not supported yet; pass one bit per entry."
                 )
-            if bits[0] not in self._bit_to_channel:
+            if bits[0] not in self._bit_to_channel_id:
                 raise ValueError(
                     f"event_specs field '{field_source_id}' references bit {bits[0]}, which is not present in stream "
-                    f"'{self._stream_name}'. Available bit positions are {sorted(self._bit_to_channel)}."
+                    f"'{self._stream_name}'. Available bit positions are {sorted(self._bit_to_channel_id)}."
                 )
             detect = entry.get("detect", "high_period")
             if detect not in valid_detect:
@@ -208,7 +208,7 @@ class IntanDigitalInterface(BaseEventsInterface):
 
         events_data_dict = {}
         for event_type_source_id, spec in self._resolved_fields.items():
-            channel_id = self._bit_to_channel[spec["bit"]]
+            channel_id = self._bit_to_channel_id[spec["bit"]]
             trace = recording.get_traces(channel_ids=[channel_id])  # (n_samples, 1), values 0/1
             # threshold=0.5 because the line is strictly 0/1; discretize_trace returns durations in frames.
             onset_frames, duration_frames = discretize_trace(trace, spec["detect"], threshold=0.5)
