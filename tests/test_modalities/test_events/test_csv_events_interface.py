@@ -314,6 +314,58 @@ class TestCSVEventsInterface:
         assert list(bouts["timestamp"][:]) == [1.0, 2.0, 3.0]
         assert list(bouts["duration"][:]) == pytest.approx([0.5, 0.25, float("nan")], nan_ok=True)
 
+    def test_time_unit_scales_timestamps(self, tmp_path):
+        # A millisecond time unit divides the raw timestamps by 1000 to convert them to seconds.
+        file_path = tmp_path / "ttl.csv"
+        file_path.write_text("timestamps\n1500\n2500\n3500\n")
+        interface = CSVEventsInterface(
+            file_path=file_path,
+            timestamps_column="timestamps",
+            event_type_column=None,
+            time_unit="milliseconds",
+        )
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        assert list(nwbfile.get_events_table("Ttl")["timestamp"][:]) == pytest.approx([1.5, 2.5, 3.5])
+
+    def test_time_unit_scales_timestamps_and_durations(self, tmp_path):
+        # Timestamps and durations share the recording's time base, so both are scaled by the unit; a
+        # blank duration stays NaN through the division.
+        file_path = tmp_path / "bouts.csv"
+        file_path.write_text('onset,dur\n1000,500\n2000,250\n3000,""\n')
+        interface = CSVEventsInterface(
+            file_path=file_path,
+            timestamps_column="onset",
+            event_type_column=None,
+            durations_column="dur",
+            time_unit="milliseconds",
+        )
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        bouts = nwbfile.get_events_table("Bouts")
+        assert list(bouts["timestamp"][:]) == pytest.approx([1.0, 2.0, 3.0])
+        assert list(bouts["duration"][:]) == pytest.approx([0.5, 0.25, float("nan")], nan_ok=True)
+
+    def test_time_unit_leaves_value_columns_unscaled(self, tmp_path):
+        # value_columns are arbitrary payload, not time, so the unit conversion must not touch them.
+        file_path = tmp_path / "trial.csv"
+        file_path.write_text("onset,amplitude\n1000,500\n2000,250\n")
+        interface = CSVEventsInterface(
+            file_path=file_path,
+            timestamps_column="onset",
+            event_type_column=None,
+            value_columns=["amplitude"],
+            time_unit="milliseconds",
+        )
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        trial = nwbfile.get_events_table("Trial")
+        assert list(trial["timestamp"][:]) == pytest.approx([1.0, 2.0])
+        assert list(trial["amplitude"][:]) == [500, 250]  # unscaled
+
     def test_missing_timestamps_are_dropped(self, single_type_file_with_nans):
         interface = CSVEventsInterface(
             file_path=single_type_file_with_nans,
