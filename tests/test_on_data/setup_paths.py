@@ -15,6 +15,10 @@ project_root_path = Path(__file__).parent.parent.parent
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
     print("Running GIN tests on Github CI!")
+elif os.getenv("NEUROCONV_TEST_DATA_PATH"):
+    # Worktree-friendly override: set NEUROCONV_TEST_DATA_PATH once in your shell and every git
+    # worktree inherits it, so there is no per-tree gin_test_config.json to create and edit.
+    LOCAL_PATH = Path(os.environ["NEUROCONV_TEST_DATA_PATH"])
 else:
     # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
