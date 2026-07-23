@@ -20,12 +20,14 @@ frame-by-frame, distinguished by a ``Flags``/``LedState`` column, and each remai
 channel (with distinct ``metadata_key`` values) and combine them in a converter. For the older
 header-less NPM format, use :doc:`NPMLegacyFiberPhotometryInterface <npm_legacy_fp>` instead.
 
-Discovering channels and regions
+Discovering channels and columns
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Two classmethods (callable before construction) report what to pass: ``get_available_led_states``
-returns the ``Flags``/``LedState`` values (one per interleaved channel, plus the startup frame you
-skip), and ``get_available_regions`` returns the region column names to choose ``data_columns`` from.
+returns the ``Flags``/``LedState`` values (one per interleaved channel, plus any startup frame you
+skip), and the inherited ``get_available_columns`` lists the file's column names to choose
+``data_columns`` from (the region columns, alongside metadata columns like ``FrameCounter`` and the
+timestamp/state columns).
 
 Convert NPM Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -45,11 +47,11 @@ supplied explicitly in the metadata.
 
     >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM" / "led_multiplexing" / "by_column" / "PagCeAVgatFear_14421.csv"
 
-    >>> # Discover the channels (Flags/LedState values) and region columns before construction.
+    >>> # Discover the channels (Flags/LedState values) and the file's columns before construction.
     >>> NPMFiberPhotometryInterface.get_available_led_states(file_path=file_path)
     [16, 17, 18]
-    >>> NPMFiberPhotometryInterface.get_available_regions(file_path=file_path)
-    ['Region0G', 'Region1G', 'Region2G']
+    >>> NPMFiberPhotometryInterface.get_available_columns(file_path=file_path)
+    ['FrameCounter', 'Timestamp', 'Flags', 'Region0G', 'Region1G', 'Region2G']
 
     >>> # One interface reads one channel; Flags 17 is the isosbestic channel here.
     >>> interface = NPMFiberPhotometryInterface(file_path=file_path, led_state=17, data_columns="Region0G", metadata_key="isosbestic_region0", verbose=False)

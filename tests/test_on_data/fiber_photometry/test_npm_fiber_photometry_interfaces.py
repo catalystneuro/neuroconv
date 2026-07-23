@@ -7,6 +7,7 @@ explicit timestamps array rather than a rate.
 """
 
 import numpy as np
+import pytest
 
 from neuroconv.datainterfaces import (
     NPMFiberPhotometryInterface,
@@ -47,10 +48,6 @@ class TestNPMFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         states = self.data_interface_cls.get_available_led_states(self.interface_kwargs["file_path"])
         assert states == [16, 17, 18]
 
-    def test_get_available_regions(self):
-        regions = self.data_interface_cls.get_available_regions(self.interface_kwargs["file_path"])
-        assert regions == ["Region0G", "Region1G", "Region2G"]
-
 
 class TestNPMLegacyFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     """The legacy (header-less, row-cycling) NPM interface reading the by-row multiplexed stub."""
@@ -75,16 +72,22 @@ class TestNPMLegacyFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
 
 
 class TestNPMTimestampColumnSelection:
-    """The multi-timestamp NPM file exercises ``timestamps_column`` selection."""
+    """The multi-timestamp NPM file (SystemTimestamp/ComputerTimestamp, no ``Timestamp``) exercises
+    ``timestamps_column`` selection: the default fails loudly, an explicit column is used."""
 
     file_path = str(NPM_DATA_PATH / "multi_timestamp" / "signals.csv")
 
-    def test_defaults_to_first_timestamp_column(self):
-        interface = NPMFiberPhotometryInterface(file_path=self.file_path, led_state=1, data_columns="G0")
-        assert interface.source_data["timestamps_column"] == "SystemTimestamp"
+    def test_default_timestamp_column_missing_fails_loudly(self):
+        with pytest.raises(AssertionError, match="Timestamp"):
+            NPMFiberPhotometryInterface(file_path=self.file_path, led_state=1, data_columns="G0")
+
+    def test_system_timestamp_column_is_used(self):
+        interface = NPMFiberPhotometryInterface(
+            file_path=self.file_path, led_state=1, data_columns="G0", timestamps_column="SystemTimestamp"
+        )
         np.testing.assert_allclose(interface.get_original_timestamps()[:3], [1800.69552, 1800.820544, 1800.945536])
 
-    def test_explicit_timestamp_column_is_used(self):
+    def test_computer_timestamp_column_is_used(self):
         interface = NPMFiberPhotometryInterface(
             file_path=self.file_path, led_state=1, data_columns="G0", timestamps_column="ComputerTimestamp"
         )

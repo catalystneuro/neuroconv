@@ -31,8 +31,9 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
     the one channel whose state equals ``led_state`` (auto-detecting which of ``Flags``/``LedState``
     the file uses) and writes the selected region column(s) as one ``FiberPhotometryResponseSeries``.
 
-    Use :meth:`get_available_led_states` and :meth:`get_available_regions` to discover what to pass.
-    For the older header-less NPM format, use :class:`.NPMLegacyFiberPhotometryInterface`.
+    Use :meth:`get_available_led_states` to discover the channels; the region column names come from
+    the inherited :meth:`get_available_columns`. For the older header-less NPM format, use
+    :class:`.NPMLegacyFiberPhotometryInterface`.
     """
 
     display_name = "NPMFiberPhotometry"
@@ -46,7 +47,7 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         *,
         led_state: int,
         data_columns: str | list[str],
-        timestamps_column: str | None = None,
+        timestamps_column: Literal["Timestamp", "SystemTimestamp", "ComputerTimestamp"] = "Timestamp",
         time_unit: Literal["seconds", "milliseconds", "microseconds"] = "seconds",
         metadata_key: str | None = None,
         read_kwargs: dict | None = None,
@@ -63,11 +64,12 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
             interface reads (see :meth:`get_available_led_states`).
         data_columns : str or list of str
             The region column name(s) whose samples are column-stacked into this interface's single
-            ``FiberPhotometryResponseSeries`` (see :meth:`get_available_regions`).
-        timestamps_column : str, optional
-            The name of the timestamps column to use for the series' time axis. When None (default),
-            the first ``timestamp``-like column is used; pass an explicit name to choose among files
-            with several (e.g. both ``SystemTimestamp`` and ``ComputerTimestamp``).
+            ``FiberPhotometryResponseSeries`` (see :meth:`get_available_columns`).
+        timestamps_column : {"Timestamp", "SystemTimestamp", "ComputerTimestamp"}, default: "Timestamp"
+            The timestamps column to use for the series' time axis. Single-timestamp NPM files name it
+            ``Timestamp`` (the default). A file with both ``SystemTimestamp`` and ``ComputerTimestamp``
+            has no ``Timestamp`` column, so the default fails loudly there and you must pick one
+            explicitly. For any other column name, use ``CSVFiberPhotometryInterface`` directly.
         time_unit : {"seconds", "milliseconds", "microseconds"}, optional
             The unit of the selected timestamp column, default = "seconds".
         metadata_key : str, optional
@@ -82,8 +84,6 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         """
         data_columns_list = [data_columns] if isinstance(data_columns, str) else list(data_columns)
         state_column = self._detect_state_column(file_path, read_kwargs)
-        if timestamps_column is None:
-            timestamps_column = self._detect_timestamps_column(file_path, read_kwargs)
         if metadata_key is None:
             metadata_key = self._default_metadata_key(file_path, led_state, data_columns_list)
 
@@ -110,22 +110,6 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         state = pd.read_csv(file_path, usecols=[state_column], **(read_kwargs or dict()))[state_column]
         return sorted(int(value) for value in pd.unique(state))
 
-    @classmethod
-    def get_available_regions(cls, file_path: FilePath, read_kwargs: dict | None = None) -> list[str]:
-        """Return the region column names of the file (its non-metadata columns).
-
-        The ``Flags``/``LedState``, ``FrameCounter``, and ``timestamp``-like columns are excluded;
-        the remainder are the region-of-interest columns to choose ``data_columns`` from.
-        """
-        columns = cls.get_available_columns(file_path, read_kwargs=read_kwargs)
-        state_column = cls._detect_state_column(file_path, read_kwargs)
-        excluded = {str(state_column).lower(), "framecounter"}
-        return [
-            column
-            for column in columns
-            if str(column).lower() not in excluded and "timestamp" not in str(column).lower()
-        ]
-
     @staticmethod
     def _detect_state_column(file_path: FilePath, read_kwargs: dict | None) -> str:
         """Return the file's channel-state column, i.e. its ``Flags`` or ``LedState`` column."""
@@ -138,15 +122,6 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
             f"Modern NPM files must contain a 'Flags' or 'LedState' column. Found columns: {columns}. "
             "For the older header-less NPM format, use NPMLegacyFiberPhotometryInterface instead."
         )
-
-    @staticmethod
-    def _detect_timestamps_column(file_path: FilePath, read_kwargs: dict | None) -> str:
-        """Return the first ``timestamp``-like column of the file."""
-        columns = CSVFiberPhotometryInterface.get_available_columns(file_path, read_kwargs=read_kwargs)
-        timestamp_columns = [column for column in columns if "timestamp" in str(column).lower()]
-        if not timestamp_columns:
-            raise ValueError(f"No 'timestamp' column found in '{file_path}'. Available columns: {columns}.")
-        return timestamp_columns[0]
 
     @staticmethod
     def _default_metadata_key(file_path: FilePath, led_state: int, data_columns: list[str]) -> str:

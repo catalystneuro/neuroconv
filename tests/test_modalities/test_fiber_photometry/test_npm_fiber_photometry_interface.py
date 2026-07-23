@@ -11,6 +11,7 @@ text round-trips losslessly and the written arrays compare exactly-equal on ever
 import numpy as np
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 from neuroconv.datainterfaces import (
     NPMFiberPhotometryInterface,
@@ -113,14 +114,6 @@ class TestNPMFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         """All state values are surfaced, including the startup frame (16) the user then skips."""
         assert NPMFiberPhotometryInterface.get_available_led_states(self.file_path) == [16, 17, 18]
 
-    def test_get_available_regions(self):
-        """The region columns are surfaced, excluding FrameCounter, timestamp, and the state column."""
-        assert NPMFiberPhotometryInterface.get_available_regions(self.file_path) == [
-            "Region0G",
-            "Region1G",
-            "Region2G",
-        ]
-
     def test_default_metadata_key_distinct_per_channel(self):
         """Two interfaces reading the same file get distinct auto-generated metadata keys."""
         isosbestic = NPMFiberPhotometryInterface(file_path=self.file_path, led_state=17, data_columns="Region0G")
@@ -134,8 +127,16 @@ class TestNPMFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         with pytest.raises(ValueError, match="Flags"):
             NPMFiberPhotometryInterface(file_path=path, led_state=17, data_columns="Region0G")
 
-    def test_timestamps_column_selection(self, tmp_path):
-        """With several timestamp columns, the first is used by default and a name overrides it."""
+    def test_default_timestamp_column_reads_the_timestamp_column(self):
+        """The default ``Timestamp`` is used for the standard single-timestamp file."""
+        interface = NPMFiberPhotometryInterface(file_path=self.file_path, led_state=17, data_columns="Region0G")
+        assert interface.source_data["timestamps_column"] == "Timestamp"
+        np.testing.assert_array_equal(
+            interface.get_original_timestamps(), np.arange(NUM_CHANNEL_SAMPLES) / CHANNEL_RATE
+        )
+
+    def test_dual_timestamp_file_requires_explicit_column(self, tmp_path):
+        """A file with SystemTimestamp/ComputerTimestamp has no ``Timestamp``, so the default fails loudly."""
         frame = _build_modern_npm_frame(state_column="LedState")
         # A second, 10x-coarser timestamp column; the demuxed channel's first value distinguishes them.
         frame.insert(2, "ComputerTimestamp", frame["Timestamp"] * 10.0)
@@ -143,16 +144,27 @@ class TestNPMFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         path = tmp_path / "two_timestamps.csv"
         frame.to_csv(path, index=False)
 
-        default = NPMFiberPhotometryInterface(file_path=path, led_state=17, data_columns="Region0G")
-        assert default.source_data["timestamps_column"] == "SystemTimestamp"
-        np.testing.assert_array_equal(default.get_original_timestamps(), np.arange(NUM_CHANNEL_SAMPLES) / CHANNEL_RATE)
+        with pytest.raises(AssertionError, match="Timestamp"):
+            NPMFiberPhotometryInterface(file_path=path, led_state=17, data_columns="Region0G")
 
-        chosen = NPMFiberPhotometryInterface(
+        system = NPMFiberPhotometryInterface(
+            file_path=path, led_state=17, data_columns="Region0G", timestamps_column="SystemTimestamp"
+        )
+        np.testing.assert_array_equal(system.get_original_timestamps(), np.arange(NUM_CHANNEL_SAMPLES) / CHANNEL_RATE)
+
+        computer = NPMFiberPhotometryInterface(
             file_path=path, led_state=17, data_columns="Region0G", timestamps_column="ComputerTimestamp"
         )
         np.testing.assert_array_equal(
-            chosen.get_original_timestamps(), 10.0 * np.arange(NUM_CHANNEL_SAMPLES) / CHANNEL_RATE
+            computer.get_original_timestamps(), 10.0 * np.arange(NUM_CHANNEL_SAMPLES) / CHANNEL_RATE
         )
+
+    def test_unknown_timestamp_column_rejected(self):
+        """timestamps_column is a closed set; an out-of-set name is rejected before construction."""
+        with pytest.raises(ValidationError):
+            NPMFiberPhotometryInterface(
+                file_path=self.file_path, led_state=17, data_columns="Region0G", timestamps_column="WallClock"
+            )
 
 
 def _build_legacy_npm_frame() -> pd.DataFrame:
@@ -207,7 +219,5 @@ class TestNPMLegacyFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
 
     def test_index_beyond_channels_raises(self):
         """A stride index >= number_of_channels addresses no channel and is rejected up front."""
-        from pydantic import ValidationError
-
         with pytest.raises(ValidationError, match="must be <"):
             NPMLegacyFiberPhotometryInterface(file_path=self.file_path, number_of_channels=2, index=2, data_columns=1)
