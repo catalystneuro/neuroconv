@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from pydantic import FilePath, validate_call
 
-from ._demux import ColumnDemux, DemuxConfig
+from ._demux import ColumnDemux, DemuxConfig, StrideDemux
 from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 
 
@@ -72,14 +72,14 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         timestamps_column : str or int
             The column holding the timestamps (seconds) for the series' time axis. A column name for a
             CSV with a header row, or a positional index (0-based) for a header-less CSV.
-        demux_config : dict or None, optional
+        demux_config : ColumnDemux, StrideDemux, or None, optional
             For an interleaved file (excitation channels multiplexed frame-by-frame down the rows), a
-            config selecting the one channel this interface reads. Two shapes, chosen by ``by``:
-            ``{"by": "column", "column": <col>, "value": <v>}`` reads the rows whose ``column`` equals
-            ``value`` (e.g. a Neurophotometrics ``LedState``); ``{"by": "stride", "channels": <k>,
-            "index": <i>, "skip_rows": <n>}`` reads every ``k``-th row starting at ``i`` after dropping
-            ``n`` leading rows. Default None reads every row (no demux). Compose one interface per
-            channel in a converter.
+            config selecting the one channel this interface reads. Two shapes:
+            ``ColumnDemux(column=<col>, value=<v>)`` reads the rows whose ``column`` equals ``value``
+            (e.g. a Neurophotometrics ``LedState``); ``StrideDemux(channels=<k>, index=<i>,
+            skip_rows=<n>)`` reads every ``k``-th row starting at ``i`` after dropping ``n`` leading
+            rows. Default None reads every row (no demux). Compose one interface per channel in a
+            converter.
         metadata_key : str, optional
             Key under ``metadata["FiberPhotometry"]`` holding this interface's response-series
             metadata. When ``None`` (default), it is generated from the file name.
@@ -190,8 +190,9 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
             read_columns = columns if demux_config.column in columns else [*columns, demux_config.column]
             dataframe = self._read_csv(file_path, usecols=read_columns)
             return dataframe[dataframe[demux_config.column] == demux_config.value]
-        dataframe = self._read_csv(file_path, usecols=columns)
-        return dataframe.iloc[demux_config.skip_rows :].iloc[demux_config.index :: demux_config.channels]
+        elif isinstance(demux_config, StrideDemux):
+            dataframe = self._read_csv(file_path, usecols=columns)
+            return dataframe.iloc[demux_config.skip_rows :].iloc[demux_config.index :: demux_config.channels]
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         # stream_name is a file path; return that file's data columns as (num_samples, num_data_columns).
