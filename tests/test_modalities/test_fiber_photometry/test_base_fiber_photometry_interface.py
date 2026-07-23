@@ -263,6 +263,39 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             assert response_series.starting_time == 0.0
             assert list(response_series.fiber_photometry_table_region.data[:]) == [0, 1]
 
+    def test_optical_fiber_without_model_round_trips(self, tmp_path, full_metadata):
+        # The optical fiber's device model is optional: ndx-ophys-devices makes ``model`` an optional link,
+        # and the canonical device helper already treats ``device_model_metadata_key`` as optional. Dropping
+        # the fiber's model must still write the fiber, its fiber_insertion, and the rest of the chain.
+        # This exercises the optical-fiber branch of add_fiber_photometry_devices with no model to resolve,
+        # which previously raised ``KeyError: 'device_model_metadata_key'`` before writing anything.
+        full_metadata["Devices"]["optical_fiber"].pop("device_model_metadata_key")
+        full_metadata["DeviceModels"].pop("optical_fiber_model")
+
+        interface = MockFiberPhotometryInterface()
+        nwbfile_path = tmp_path / "model_less_fiber.nwb"
+        nwbfile = interface.create_nwbfile(metadata=full_metadata)
+        with NWBHDF5IO(nwbfile_path, mode="w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(nwbfile_path, mode="r") as io:
+            read_nwbfile = io.read()
+
+            # The fiber is written with no model, but everything else about it survives.
+            optical_fiber = read_nwbfile.devices["optical_fiber"]
+            assert optical_fiber.model is None
+            assert optical_fiber.fiber_insertion.depth_in_mm == 4.0
+            assert optical_fiber.fiber_insertion.insertion_position_ap_in_mm == 3.0
+
+            # Only the fiber's model was dropped; the other two devices keep theirs.
+            assert "optical_fiber_model" not in read_nwbfile.device_models
+            assert read_nwbfile.devices["excitation_source_calcium_signal"].model.name == "excitation_source_model"
+            assert read_nwbfile.devices["photodetector"].model.name == "photodetector_model"
+
+            # The row still references the fiber, and the response series still round-trips.
+            table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+            assert table["optical_fiber"][0].name == "optical_fiber"
+            assert read_nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100, 2)
+
     def test_minimally_annotated_metadata_round_trips(self, tmp_path):
         # The minimally annotated path: the default metadata describes only the response series, so the file
         # must contain exactly that and nothing fabricated — no table region, no devices, no lab metadata.
