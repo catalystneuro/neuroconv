@@ -9,8 +9,7 @@ a boolean ``True``/``False`` annotation, or a numeric code). Each distinct label
 written as its own ``pynwb.event.EventsTable`` (onset timestamps) into ``nwbfile.events``. The raw
 onset times are scaled to seconds by ``time_unit``.
 
-How the event types map onto tables -- one table per type by default, or several types merged into a
-single table -- is driven entirely by the editable events metadata. See :ref:`annotate_events_metadata`
+How the event types map onto tables is driven entirely by the editable events metadata. See :ref:`annotate_events_metadata`
 for the full metadata format.
 
 NPM events need only NeuroConv's core dependencies, but the ``npm_events`` extra is available for a
