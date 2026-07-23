@@ -128,6 +128,7 @@ Events
     :maxdepth: 1
 
     CSV Events <events/csv_events>
+    Doric Events <events/doric_events>
     TDT Events <events/tdt_events>
 
 
