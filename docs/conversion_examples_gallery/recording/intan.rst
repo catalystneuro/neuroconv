@@ -1,7 +1,7 @@
 Intan Data Conversion
 ---------------------
 
-This guide covers the conversion of Intan data, including both amplifier data (primary neural recordings) and analog data (auxiliary inputs, ADC inputs, DC amplifiers) from RHD2000 and RHS2000 systems.
+This guide covers the conversion of Intan data, including amplifier data (primary neural recordings), analog data (auxiliary inputs, ADC inputs, DC amplifiers), stimulation current, and digital TTL lines (converted to discrete events) from RHD2000 and RHS2000 systems.
 
 Install NeuroConv with the additional dependencies necessary for reading Intan data.
 
@@ -273,6 +273,67 @@ with the conversion factor derived automatically from the ``stim_step_size`` in 
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_stim = output_folder / "intan_stim_conversion.nwb"
     >>> interface_stim.run_conversion(nwbfile_path=nwbfile_path_stim, metadata=metadata_stim, overwrite=True)
+
+Intan Digital Data Conversion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Convert Intan digital TTL lines to discrete events using
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intandigitalinterface.IntanDigitalInterface`.
+The controller packs its 16 digital input (or output) lines into one 16-bit word per sample; this
+interface carves individual lines out of that word, edge-detects each, and writes them as
+``pynwb.event.EventsTable`` objects into ``nwbfile.events``.
+
+With no ``event_specs`` (the default), every digital line that actually toggles is derived as one
+event, using the lossless ``"high_period"`` reading (a durative event per pulse, with a duration).
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from neuroconv.datainterfaces import IntanDigitalInterface
+    >>>
+    >>> file_path_digital = f"{ECEPHY_DATA_PATH}/intan/intan_fps_test_231117_052500/info.rhd"
+    >>>
+    >>> interface_digital = IntanDigitalInterface(
+    ...     file_path=file_path_digital,
+    ...     stream_name="USB board digital input channel",
+    ...     verbose=False,
+    ... )
+    >>>
+    >>> metadata_digital = interface_digital.get_metadata()
+    >>> # session_start_time is required but not available on intan
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata_digital["NWBFile"].update(session_start_time=session_start_time)
+    >>> metadata_digital["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> nwbfile_path_digital = output_folder / "intan_digital_conversion.nwb"
+    >>> interface_digital.run_conversion(nwbfile_path=nwbfile_path_digital, metadata=metadata_digital, overwrite=True)
+
+To name specific lines and choose what to detect, pass an ``event_specs`` keyed by the format's
+bit positions (not the reader's channel names, so a saved config does not depend on the backend).
+Each entry is ``{"bits": [i], "detect": ...}`` where ``detect`` is one of ``"rising"`` or
+``"falling"`` (point events at that edge) or ``"high_period"`` / ``"low_period"`` (durative events
+with a duration, the latter for an active-low line):
+
+.. code-block:: python
+
+    >>> interface_digital = IntanDigitalInterface(
+    ...     file_path=file_path_digital,
+    ...     stream_name="USB board digital input channel",
+    ...     event_specs={
+    ...         # The key ("camera_sync") is a name you choose for whatever device is wired to that
+    ...         # line; it is not read from the file. Only the bit position ("bits": [0]) comes from
+    ...         # Intan. With no event_specs, lines are named after their native header channel name.
+    ...         "camera_sync": {"bits": [0], "detect": "rising"},
+    ...     },
+    ...     verbose=False,
+    ... )
+
+To skip digital events entirely, do not construct this interface (or ``exclude_streams`` the digital
+word in the converter); an empty ``event_specs={}`` raises rather than silently writing nothing.
+When several lines should share one events table, point their ``table_metadata_key`` at a common key
+in the editable metadata (see the events metadata guide). ``IntanConverter`` also routes the digital
+input/output streams to this interface automatically with the default config.
 
 .. _intan-split-files:
 
