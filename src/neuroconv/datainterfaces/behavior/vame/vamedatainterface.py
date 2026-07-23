@@ -707,7 +707,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         metadata: dict | None = None,
         *,
         stub_test: bool = False,
-        layers: Literal["faithful", "curated", "both"] = "both",
+        data_to_write: Literal["algorithm_output", "ethogram", "both"] = "both",
     ) -> None:
         """Write VAME outputs to an NWBFile as a ``VAMEProject`` container.
 
@@ -739,13 +739,13 @@ class VameInterface(BaseTemporalAlignmentInterface):
             Each series links to its project via ``vame_project_metadata_key``.
         stub_test : bool, default False
             If ``True``, only the first 100 frames of each data array are written.
-        layers : {"faithful", "curated", "both"}, default "both"
-            Which of the two output layers to write. ``"faithful"`` writes only the ``VAMEProject``
-            container and its ``ndx-vame`` series (motif, community, latent space). ``"curated"``
-            writes only the derived ``ndx-ethogram`` products. ``"both"`` (the default) writes both.
-            With ``"curated"`` the faithful ``MotifSeries`` is absent from the file, so each bouts
-            table's ``source`` back-link to it is dropped; the ``source_pose`` and ``source_video``
-            links are external references and are kept.
+        data_to_write : {"algorithm_output", "ethogram", "both"}, default "both"
+            Which of the two outputs to write. ``"algorithm_output"`` writes only the ``VAMEProject``
+            container and its faithful ``ndx-vame`` series (motif, community, latent space).
+            ``"ethogram"`` writes only the derived, curated ``ndx-ethogram`` products. ``"both"`` (the
+            default) writes both. With ``"ethogram"`` the faithful ``MotifSeries`` is absent from the
+            file, so each bouts table's ``source`` back-link to it is dropped; the ``source_pose`` and
+            ``source_video`` links are external references and are kept.
 
         Notes
         -----
@@ -754,8 +754,8 @@ class VameInterface(BaseTemporalAlignmentInterface):
         into one row per bout) and its ``Ethogram`` catalogue. When both layers are written the
         faithful ``MotifSeries`` is kept and the bouts link back to it via ``source``.
         """
-        write_faithful = layers in ("faithful", "both")
-        write_curated = layers in ("curated", "both")
+        write_faithful = data_to_write in ("algorithm_output", "both")
+        write_curated = data_to_write in ("ethogram", "both")
         from ndx_vame import (
             CommunitySeries,
             LatentSpaceSeries,

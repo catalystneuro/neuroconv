@@ -329,23 +329,23 @@ class TestVameInterfaceEthogram:
             assert bouts.source.name == "MotifSeriesKmeans"
             assert behavior["VAMEProjectEthogramKmeans"].exclusive
 
-    def test_layers_faithful_writes_project_without_ethogram(self):
+    def test_data_to_write_algorithm_output_writes_project_without_ethogram(self):
         interface = VameInterface(**self.interface_kwargs)
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata(), layers="faithful")
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata(), data_to_write="algorithm_output")
         behavior = nwbfile.processing["behavior"]
         assert "VAMEProject" in behavior.data_interfaces
         assert "VAMEProjectEthogramBoutsKmeans" not in behavior.data_interfaces
         assert "VAMEProjectEthogramKmeans" not in behavior.data_interfaces
 
-    def test_layers_curated_writes_ethogram_without_project_and_drops_source(self, tmp_path):
-        # curated-only: the faithful MotifSeries is absent, so the bouts' source back-link is dropped
+    def test_data_to_write_ethogram_writes_without_project_and_drops_source(self, tmp_path):
+        # ethogram-only: the faithful MotifSeries is absent, so the bouts' source back-link is dropped
         # to None. A source-less ndx-ethogram must still be a valid, writable file, hence the roundtrip.
         interface = VameInterface(**self.interface_kwargs)
         metadata = interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1).astimezone()
         path = tmp_path / "vame_curated.nwb"
-        interface.run_conversion(nwbfile_path=str(path), metadata=metadata, overwrite=True, layers="curated")
+        interface.run_conversion(nwbfile_path=str(path), metadata=metadata, overwrite=True, data_to_write="ethogram")
         with NWBHDF5IO(path=str(path), mode="r", load_namespaces=True) as io:
             behavior = io.read().processing["behavior"]
             assert "VAMEProject" not in behavior.data_interfaces
