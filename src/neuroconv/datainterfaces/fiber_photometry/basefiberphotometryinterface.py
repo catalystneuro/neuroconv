@@ -272,7 +272,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 fiber_photometry_table=fiber_photometry_table,
                 table_rows_metadata=fiber_photometry_metadata["FiberPhotometryTable"]["rows"],
                 row_metadata_keys=series_metadata["fiber_photometry_table_region"],
-                description=series_metadata["fiber_photometry_table_region_description"],
+                description=series_metadata.get(
+                    "fiber_photometry_table_region_description", "fiber_photometry_table_region"
+                ),
             )
 
         # Add this interface's single response series.
