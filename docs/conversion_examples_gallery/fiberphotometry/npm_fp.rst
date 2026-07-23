@@ -17,10 +17,8 @@ frame-by-frame, distinguished by a ``Flags``/``LedState`` column, and each remai
 :doc:`CSVFiberPhotometryInterface <csv_fp>`: it auto-detects whether the file uses ``Flags`` or
 ``LedState`` and reads the one channel whose state equals ``led_state`` into a single
 ``FiberPhotometryResponseSeries``. Because each interface writes one series, you instantiate one per
-channel (with distinct ``metadata_key`` values) and combine them in a converter. The startup frame
-(an all-LEDs-on first frame, e.g. ``Flags=16``) is excluded for free by not being any interface's
-``led_state``. For the older header-less NPM format, use
-:doc:`NPMLegacyFiberPhotometryInterface <npm_legacy_fp>` instead.
+channel (with distinct ``metadata_key`` values) and combine them in a converter. For the older
+header-less NPM format, use :doc:`NPMLegacyFiberPhotometryInterface <npm_legacy_fp>` instead.
 
 Discovering channels and regions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

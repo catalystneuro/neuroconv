@@ -30,16 +30,9 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
     or ``LedState`` column: each row belongs to whichever excitation LED was on. This interface reads
     the one channel whose state equals ``led_state`` (auto-detecting which of ``Flags``/``LedState``
     the file uses) and writes the selected region column(s) as one ``FiberPhotometryResponseSeries``.
-    The startup/calibration frame (an all-LEDs-on first frame, e.g. ``Flags=16``/``LedState=7``) is
-    excluded for free by not being any interface's ``led_state``.
 
     Use :meth:`get_available_led_states` and :meth:`get_available_regions` to discover what to pass.
     For the older header-less NPM format, use :class:`.NPMLegacyFiberPhotometryInterface`.
-
-    Notes
-    -----
-    NPM recordings carry no embedded recording-start timestamp, so :meth:`get_metadata` does NOT
-    populate ``NWBFile/session_start_time``; the user must supply it via editable metadata.
     """
 
     display_name = "NPMFiberPhotometry"
@@ -109,9 +102,9 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
     def get_available_led_states(cls, file_path: FilePath, read_kwargs: dict | None = None) -> list[int]:
         """Return the sorted unique values of the file's ``Flags``/``LedState`` column.
 
-        Each value is one interleaved channel to pass as ``led_state`` -- except the startup frame
-        (e.g. ``Flags=16``/``LedState=7``), which appears here but is simply left unread by not being
-        any interface's ``led_state``.
+        Each value is one interleaved channel to pass as ``led_state``. A startup/calibration frame
+        (an all-LEDs-on first frame, e.g. ``Flags=16``/``LedState=7``) can appear here as an extra
+        value that is not one of the recording channels.
         """
         state_column = cls._detect_state_column(file_path, read_kwargs)
         state = pd.read_csv(file_path, usecols=[state_column], **(read_kwargs or dict()))[state_column]
@@ -173,11 +166,6 @@ class NPMLegacyFiberPhotometryInterface(CSVFiberPhotometryInterface):
 
     Legacy NPM timestamps are typically in milliseconds, so ``time_unit`` defaults to
     ``"milliseconds"``. For the modern header-bearing format, use :class:`.NPMFiberPhotometryInterface`.
-
-    Notes
-    -----
-    NPM recordings carry no embedded recording-start timestamp, so :meth:`get_metadata` does NOT
-    populate ``NWBFile/session_start_time``; the user must supply it via editable metadata.
     """
 
     display_name = "NPMLegacyFiberPhotometry"
