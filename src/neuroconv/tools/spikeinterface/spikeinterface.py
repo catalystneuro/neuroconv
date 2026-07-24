@@ -110,7 +110,7 @@ def _get_ecephys_metadata_placeholders():
             },
         },
         # ElectricalSeries entries are not part of the placeholders: the pipeline already
-        # determines defaults for ``name`` and ``description`` from ``write_as`` inside
+        # determines defaults for ``name`` and ``description`` from ``parent_container`` inside
         # ``_add_recording_segment_to_nwbfile``. Users who want to customize either field
         # pass their own ``metadata["Ecephys"]["ElectricalSeries"][metadata_key]`` entry.
     }
@@ -261,7 +261,7 @@ def add_recording_to_nwbfile(
     metadata_key : str, optional
         Key in ``metadata["Ecephys"]["ElectricalSeries"]`` identifying the series to write.
         When provided, uses the dict-based metadata format and ``es_key`` is ignored.
-        When omitted, the series name and description come from the per-``write_as`` defaults
+        When omitted, the series name and description come from the per-``parent_container`` defaults
         in :func:`_add_recording_segment_to_nwbfile`.
 
     Notes
@@ -280,17 +280,11 @@ def add_recording_to_nwbfile(
         parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
             write_as
         ]
-    _parent_container_to_write_as = {
-        "acquisition": "raw",
-        "processing/LFP": "lfp",
-        "processing/FilteredEphys": "processed",
-    }
-    if parent_container not in _parent_container_to_write_as:
+    if parent_container not in ("acquisition", "processing/LFP", "processing/FilteredEphys"):
         raise ValueError(
             f"Argument parent_container ({parent_container}) should be one of "
             "'acquisition', 'processing/LFP', or 'processing/FilteredEphys'!"
         )
-    write_as = _parent_container_to_write_as[parent_container]
 
     if metadata is not None and metadata_key is None and _is_dict_based_metadata(metadata):
         raise ValueError(
@@ -313,7 +307,7 @@ def add_recording_to_nwbfile(
             nwbfile=nwbfile,
             segment_index=segment_index,
             metadata=metadata,
-            write_as=write_as,
+            parent_container=parent_container,
             es_key=es_key,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
@@ -453,7 +447,7 @@ def _add_recording_segment_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
     segment_index: int = 0,
-    write_as: Literal["raw", "processed", "lfp"] = "raw",
+    parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
     es_key: str | None = None,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -466,28 +460,37 @@ def _add_recording_segment_to_nwbfile(
     See add_recording_to_nwbfile for details.
     """
 
-    assert write_as in [
-        "raw",
-        "processed",
-        "lfp",
-    ], f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
+    assert parent_container in [
+        "acquisition",
+        "processing/LFP",
+        "processing/FilteredEphys",
+    ], (
+        f"'parent_container' should be 'acquisition', 'processing/LFP' or 'processing/FilteredEphys', "
+        f"but instead received value {parent_container}"
+    )
 
-    modality_signature = write_as.upper() if write_as == "lfp" else write_as.capitalize()
+    modality_signature = {"acquisition": "Raw", "processing/LFP": "LFP", "processing/FilteredEphys": "Processed"}[
+        parent_container
+    ]
     default_name = f"ElectricalSeries{modality_signature}"
-    default_description = dict(raw="Raw acquired data", lfp="Processed data - LFP", processed="Processed data")
+    default_description = {
+        "acquisition": "Raw acquired data",
+        "processing/LFP": "Processed data - LFP",
+        "processing/FilteredEphys": "Processed data",
+    }
 
-    eseries_kwargs = dict(name=default_name, description=default_description[write_as])
+    eseries_kwargs = dict(name=default_name, description=default_description[parent_container])
 
     # Select and/or create module if lfp or processed data is to be stored.
-    if write_as in ["lfp", "processed"]:
+    if parent_container in ["processing/LFP", "processing/FilteredEphys"]:
         ecephys_mod = get_module(
             nwbfile=nwbfile,
             name="ecephys",
             description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
         )
-        if write_as == "lfp" and "LFP" not in ecephys_mod.data_interfaces:
+        if parent_container == "processing/LFP" and "LFP" not in ecephys_mod.data_interfaces:
             ecephys_mod.add(pynwb.ecephys.LFP(name="LFP"))
-        if write_as == "processed" and "Processed" not in ecephys_mod.data_interfaces:
+        if parent_container == "processing/FilteredEphys" and "Processed" not in ecephys_mod.data_interfaces:
             ecephys_mod.add(pynwb.ecephys.FilteredEphys(name="Processed"))
 
     # The add_electrodes adds a column with channel name to the electrode table.
@@ -588,11 +591,11 @@ def _add_recording_segment_to_nwbfile(
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
-    if write_as == "raw":
+    if parent_container == "acquisition":
         nwbfile.add_acquisition(es)
-    elif write_as == "processed":
+    elif parent_container == "processing/FilteredEphys":
         ecephys_mod.data_interfaces["Processed"].add_electrical_series(es)
-    elif write_as == "lfp":
+    elif parent_container == "processing/LFP":
         ecephys_mod.data_interfaces["LFP"].add_electrical_series(es)
 
 
