@@ -216,8 +216,8 @@ class DANNCEConverter(BaseDataInterface):
         # pair predictions with the wrong camera timestamps.
         primary_camera_name = self._camera_names[0]
         primary_camera_frametimes = camera_frametimes[primary_camera_name]
-        sample_id = self._dannce_interface.sample_id
-        n_predicted_samples = sample_id.shape[0]
+        video_frame_indices = self._dannce_interface.video_frame_indices
+        n_predicted_samples = video_frame_indices.shape[0]
         n_video_frames = primary_camera_frametimes.shape[0]
         if n_predicted_samples != n_video_frames:
             raise ValueError(
@@ -229,7 +229,7 @@ class DANNCEConverter(BaseDataInterface):
                 "come from the same recording session."
             )
 
-        self._dannce_interface.set_aligned_timestamps(primary_camera_frametimes[sample_id.astype(int)])
+        self._dannce_interface.set_aligned_timestamps(primary_camera_frametimes[video_frame_indices.astype(int)])
 
         self._video_interfaces: dict[str, ExternalVideoInterface] = {}
         for camera_name in self._camera_names:

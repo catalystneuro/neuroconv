@@ -337,9 +337,9 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self._p_max = p_max  # shape: (n_samples, n_landmarks)
 
     @property
-    def sample_id(self) -> np.ndarray:
-        """The ``sampleID`` field loaded from the prediction file: for each predicted sample, the
-        (0-indexed) index of the corresponding video frame within the session, shape ``(n_samples,)``.
+    def video_frame_indices(self) -> np.ndarray:
+        """For each predicted sample, the (0-indexed) index of the corresponding video frame within
+        the session, shape ``(n_samples,)`` -- loaded from the prediction file's ``sampleID`` field.
         Used by :class:`~neuroconv.datainterfaces.behavior.dannce.dannceconverter.DANNCEConverter` to
         index into a camera's per-frame timestamps (e.g. from a frametimes file) to build this
         interface's aligned timestamps."""
