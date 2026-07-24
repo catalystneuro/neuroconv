@@ -68,6 +68,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
         ignore_integrity_checks: bool = False,
         saved_files_are_split: bool = False,
     ):
@@ -82,6 +83,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
             Verbose
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to the value of ``es_key``.
         ignore_integrity_checks : bool, default: False
             If True, data that violates integrity assumptions will be loaded. At the moment the only integrity
             check performed is that timestamps are continuous. If False, an error will be raised if the check fails.
@@ -130,6 +133,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             file_path=self.file_path,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
             ignore_integrity_checks=ignore_integrity_checks,
         )
 
