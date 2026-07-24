@@ -25,7 +25,8 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         metadata: dict | None = None,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
-        write_as: Literal["raw", "lfp", "processed"] = "lfp",
+        parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "processing/LFP",
+        write_as: Literal["raw", "lfp", "processed"] | None = None,
         write_electrical_series: bool = True,
         iterator_type: str = "v2",
         iterator_options: dict | None = None,
@@ -63,11 +64,23 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             iterator_type = positional_values.get("iterator_type", iterator_type)
             iterator_options = positional_values.get("iterator_options", iterator_options)
 
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of BaseLFPExtractorInterface.add_to_nwbfile() is deprecated and will be "
+                "removed on or after December 2026. Use 'parent_container' instead "
+                "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
+                write_as
+            ]
+
         return super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
-            write_as=write_as,
+            parent_container=parent_container,
             write_electrical_series=write_electrical_series,
             iterator_type=iterator_type,
             iterator_options=iterator_options,

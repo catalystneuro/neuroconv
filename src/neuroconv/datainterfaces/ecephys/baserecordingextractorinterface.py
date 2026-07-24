@@ -1,3 +1,4 @@
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -344,7 +345,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         metadata: dict | None = None,
         *,
         stub_test: bool = False,
-        write_as: Literal["raw", "lfp", "processed"] = "raw",
+        parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
+        write_as: Literal["raw", "lfp", "processed"] | None = None,
         write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
@@ -365,11 +367,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_as : {'raw', 'processed', 'lfp'}, default='raw'
-            Specifies how to save the trace data in the NWB file. Options are:
-            - 'raw': Save the data in the acquisition group.
-            - 'processed': Save the data as FilteredEphys in a processing module.
-            - 'lfp': Save the data as LFP in a processing module.
+        parent_container : {'acquisition', 'processing/LFP', 'processing/FilteredEphys'}, default: 'acquisition'
+            Which NWB container to write the trace data to. Options are:
+            - 'acquisition': raw acquired data, in the acquisition group.
+            - 'processing/LFP': an ``LFP`` container in the ecephys processing module.
+            - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
+        write_as : {'raw', 'processed', 'lfp'}, optional
+            Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
+            'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
 
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
@@ -406,6 +411,18 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
             explicitly, regardless of whether the sampling rate is uniform.
         """
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of BaseRecordingExtractorInterface.add_to_nwbfile() is deprecated and "
+                "will be removed on or after December 2026. Use 'parent_container' instead "
+                "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
+                write_as
+            ]
+
         from ...tools.spikeinterface import (
             _stub_recording,
             add_recording_metadata_to_nwbfile,
@@ -430,7 +447,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
-                write_as=write_as,
+                parent_container=parent_container,
                 es_key=self.es_key,
                 iterator_type=iterator_type,
                 iterator_options=iterator_options,

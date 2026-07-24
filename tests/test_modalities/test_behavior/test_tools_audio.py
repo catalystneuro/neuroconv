@@ -30,7 +30,7 @@ class TestAddAcousticWaveformSeries(TestCase):
             size=(self.num_frames,), low=np.iinfo(dtype).min, high=np.iinfo(dtype).max, dtype=dtype
         )
 
-    def test_add_series_with_default_write_as(self):
+    def test_add_series_with_default_parent_container(self):
         add_acoustic_waveform_series(
             acoustic_series=self.data,
             rate=self.sampling_rate,
@@ -47,12 +47,12 @@ class TestAddAcousticWaveformSeries(TestCase):
             rate=self.sampling_rate,
             nwbfile=self.nwbfile,
             metadata=self.audio_metadata,
-            write_as="acquisition",
+            parent_container="acquisition",
         )
 
         self.assertIn(self.audio_metadata["name"], self.nwbfile.acquisition)
 
-    def test_add_series_with_incorrect_write_as(self):
+    def test_add_series_with_incorrect_parent_container(self):
         expected_error_message = "Acoustic series can be written either as 'stimulus' or 'acquisition'."
         with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
             add_acoustic_waveform_series(
@@ -60,7 +60,7 @@ class TestAddAcousticWaveformSeries(TestCase):
                 rate=self.sampling_rate,
                 nwbfile=self.nwbfile,
                 metadata=self.audio_metadata,
-                write_as="test",
+                parent_container="test",
             )
 
     def test_add_series_under_same_name(self):
