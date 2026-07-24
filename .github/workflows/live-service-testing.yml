@@ -21,12 +21,12 @@ on:
         required: true
       DANDI_SANDBOX_API_KEY:
         required: true
-      EMBER_API_KEY:
+      EMBER_SANDBOX_API_KEY:
         required: true
 
 env:
   DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
-  EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
+  EMBER_SANDBOX_API_KEY: ${{ secrets.EMBER_SANDBOX_API_KEY }}
 
 jobs:
   run:
@@ -72,8 +72,8 @@ jobs:
             missing_vars+=("DANDI_SANDBOX_API_KEY")
           fi
 
-          if [ -z "$EMBER_API_KEY" ] || [ "$EMBER_API_KEY" = "" ]; then
-            missing_vars+=("EMBER_API_KEY")
+          if [ -z "$EMBER_SANDBOX_API_KEY" ] || [ "$EMBER_SANDBOX_API_KEY" = "" ]; then
+            missing_vars+=("EMBER_SANDBOX_API_KEY")
           fi
 
           if [ -z "$AWS_ACCESS_KEY_ID" ] || [ "$AWS_ACCESS_KEY_ID" = "" ]; then
@@ -106,7 +106,7 @@ jobs:
           echo "::endgroup::"
         env:
           DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
-          EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
+          EMBER_SANDBOX_API_KEY: ${{ secrets.EMBER_SANDBOX_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}

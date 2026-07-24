@@ -12,9 +12,9 @@ from neuroconv.tools.nwb_helpers import (
     make_nwbfile_from_metadata,
 )
 
-EMBER_API_KEY = os.getenv("EMBER_API_KEY")
-if EMBER_API_KEY is not None:
-    del os.environ["EMBER_API_KEY"]  # Will only remove within this test run
+EMBER_SANDBOX_API_KEY = os.getenv("EMBER_SANDBOX_API_KEY")
+if EMBER_SANDBOX_API_KEY is not None:
+    del os.environ["EMBER_SANDBOX_API_KEY"]  # Will only remove within this test run
 
 DANDI_SANDBOX_API_KEY = os.getenv("DANDI_SANDBOX_API_KEY")
 HAVE_DANDI_KEY = DANDI_SANDBOX_API_KEY is not None and DANDI_SANDBOX_API_KEY != ""  # can be "" from external forks
