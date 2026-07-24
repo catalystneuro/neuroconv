@@ -301,17 +301,23 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
     expected_electrical_series = {
         "ElectricalSeries": dict(name="ElectricalSeries", description="Acquisition traces for the ElectricalSeries.")
     }
+    # The three fixtures carry different channel-group sets, so the expected groups are pinned per fixture.
+    expected_group_names = {
+        "rhd": ("0", "1", "2"),
+        "one-file-per-channel": ("0", "1"),
+        "one-file-per-signal": ("0", "1"),
+    }
 
     def check_extracted_metadata(self, metadata: dict):
         assert self.interface.metadata_key == self.expected_metadata_key
         assert metadata["Devices"] == self.expected_devices
         assert metadata["Ecephys"]["ElectricalSeries"] == self.expected_electrical_series
 
-        # The three fixtures differ in how many channel groups they carry, so the group set is not pinned;
-        # every entry must be exactly {name: <group name>, device_metadata_key: "intan_device"}.
-        electrode_groups = metadata["Ecephys"]["ElectrodeGroups"]
-        for group_name, group in electrode_groups.items():
-            assert group == dict(name=group_name, device_metadata_key="intan_device")
+        expected_electrode_groups = {
+            group_name: dict(name=group_name, device_metadata_key="intan_device")
+            for group_name in self.expected_group_names[self.test_name]
+        }
+        assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Old list-based format: the Intan device lives in the Ecephys.Device list and every
