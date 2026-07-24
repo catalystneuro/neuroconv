@@ -111,6 +111,21 @@ class TestCSVFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             "data",
         ]
 
+    def test_time_unit_scales_timestamps_to_seconds(self, tmp_path):
+        """A non-second time_unit scales the timestamps column to seconds; the default leaves it as-is."""
+        # Timestamps in milliseconds: 1000 * (k / 128), exactly representable, so ms/1e3 == TIMESTAMPS.
+        path = tmp_path / "milliseconds.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS * 1e3, "data": SIGNAL_DATA}).to_csv(path, index=False)
+
+        milliseconds = CSVFiberPhotometryInterface(
+            file_path=path, data_columns="data", timestamps_column="timestamps", time_unit="milliseconds"
+        )
+        np.testing.assert_array_equal(milliseconds.get_original_timestamps(), TIMESTAMPS)
+
+        # The default (seconds) applies no scaling, so the raw millisecond values come back unchanged.
+        default = CSVFiberPhotometryInterface(file_path=path, data_columns="data", timestamps_column="timestamps")
+        np.testing.assert_array_equal(default.get_original_timestamps(), TIMESTAMPS * 1e3)
+
 
 class TestCSVFiberPhotometryDemux:
     """Demultiplexing one channel out of an interleaved single-file recording.
