@@ -47,6 +47,7 @@
 * Fixed the global compression test failing against `hdf5plugin>=7.0.0`. The test asserted on each filter's free-text description string, which 7.0.0 reworded for LZ4 and Zstd when switching to The HDF Group's bundled implementations (the filter IDs are unchanged). The test now asserts only on the stable numeric filter ID, which is what actually proves the requested filter was applied. [PR #1766](https://github.com/catalystneuro/neuroconv/pull/1766)
 
 ## Features
+* Added `DoricCSVEventsInterface` for converting discrete events from Doric Neuroscience Studio CSV exports. [PR #1817](https://github.com/catalystneuro/neuroconv/pull/1817)
 * `CSVEventsInterface` now accepts a `time_unit` argument (`seconds`, `milliseconds`, or `microseconds`) that scales the timestamp and duration columns to seconds. [PR #1809](https://github.com/catalystneuro/neuroconv/pull/1809)
 * Added `DoricEventsInterface` for converting discrete events from Doric Neuroscience Studio `.doric` (HDF5) digital IO. [PR #1805](https://github.com/catalystneuro/neuroconv/pull/1805)
 * Added `CSVFiberPhotometryInterface` for converting a raw fiber photometry recording from a CSV file, parsed into the `ndx-fiber-photometry` format; it can demultiplex an interleaved recording (excitation channels multiplexed frame-by-frame down the rows) via a `demux_config`, reading one channel per interface. [PR #1754](https://github.com/catalystneuro/neuroconv/pull/1754) [PR #1808](https://github.com/catalystneuro/neuroconv/pull/1808)
