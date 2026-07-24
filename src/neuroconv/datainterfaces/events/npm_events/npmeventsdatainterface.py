@@ -1,5 +1,6 @@
 from typing import Literal
 
+import pandas as pd
 from pydantic import FilePath, validate_call
 
 from ..csv_events.csveventsdatainterface import CSVEventsInterface
@@ -17,6 +18,9 @@ class NPMEventsInterface(CSVEventsInterface):
 
     Notes
     -----
+    Note that we *assume* the second column is the event **type**. Each distinct value becomes its own
+    event type/table rather than a per-event value/payload column.
+
     The raw onset times are scaled to seconds by ``time_unit`` (see :class:`.CSVEventsInterface`) but
     are otherwise written as-is: they remain in the recording's raw time base. NPM recordings carry no
     embedded recording-start timestamp, so :meth:`get_metadata` does NOT populate
@@ -60,6 +64,20 @@ class NPMEventsInterface(CSVEventsInterface):
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
+        # We assume column 1 is the event *type* (one table per distinct value), not a per-event value/
+        # payload column. Every NPM stimuli file we have seen behaves this way, but the vendor manual
+        # never pins the two-column format down -- it documents a KeyDown time/label example and a
+        # separate 5-column Digital IOs log, without specifying that the second column is the type, not a
+        # value. This is a convention matched to our examples, not a documented guarantee; do not treat
+        # it as gospel.
+        number_of_columns = pd.read_csv(file_path, header=None, nrows=1).shape[1]
+        if number_of_columns > 2:
+            raise ValueError(
+                f"NPMEventsInterface expects a headerless two-column CSV (onset time, event type), but "
+                f"this file has {number_of_columns} columns. Neurophotometrics also produces richer event "
+                f"files (e.g. the 5-column Digital IOs log), which this interface does not support. Please "
+                f"open an issue at https://github.com/catalystneuro/neuroconv/issues if you need it."
+            )
         super().__init__(
             file_path=file_path,
             timestamps_column=0,

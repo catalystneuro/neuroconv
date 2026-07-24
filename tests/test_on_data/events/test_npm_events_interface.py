@@ -186,3 +186,17 @@ class TestNPMEventsInterface:
         file_path = NPM_EVENTS_PATH / "event_type_as_string" / "bl72bl82_12feb2024_stimuli.csv"
         with pytest.raises(ValidationError):
             NPMEventsInterface(file_path=file_path, time_unit="nanoseconds")
+
+    def test_more_than_two_columns_raises(self, tmp_path):
+        """The fixed two-column mapping would silently misread NPM's richer event files (e.g. the
+        5-column Digital IOs log), so a file with more than two columns is refused up front. No gin
+        fixture exists for that layout, so a representative 5-column file is generated here."""
+        file_path = tmp_path / "digital_ios.csv"
+        rows = [
+            "0.0,1,0,DigitalCh1,KeyDown",
+            "1.0,0,1,DigitalCh2,KeyUp",
+        ]
+        file_path.write_text("\n".join(rows) + "\n")
+
+        with pytest.raises(ValueError, match="headerless two-column CSV"):
+            NPMEventsInterface(file_path=file_path)
