@@ -26,8 +26,8 @@ label, an internal numeric code, or a store or line name (e.g. a TDT store ``PtA
 Design Principles
 -----------------
 
-The events metadata system follows the same core principles as the ophys and ecephys systems (see
-:ref:`ophys_metadata_structure`), specialized to discrete events:
+The events metadata system follows the same core principles as every modality (see
+:ref:`metadata_principles`), specialized to discrete events:
 
 1. **Dictionary-Based Organization.** Everything lives under ``metadata["Events"]``, dict-keyed at
    every level: each interface is namespaced by its ``metadata_key``, each event type within it by
@@ -152,7 +152,8 @@ When ``None``, the interface derives a unique, source-derived snake_case key fro
 tank or block name), so even two instances of the *same* interface in one converter get distinct
 keys with zero configuration. This is more robust than a hardcoded default (a fixed
 ``"SpikeGLXNIDQ"`` would collide the moment two NIDQ interfaces share a converter). An explicit
-value lets the caller pick a stable, readable name, or deliberately reuse a key.
+value lets the caller pick a stable, readable name, or deliberately reuse a key. See
+:ref:`metadata_key_naming` for the cross-modality rule.
 
 Its **role is disambiguation across interfaces**: every interface's columns live under its own
 ``metadata_key``, so two interfaces can expose the same ``event_type_source_id`` (two tanks both with a

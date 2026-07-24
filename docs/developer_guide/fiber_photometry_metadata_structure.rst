@@ -29,8 +29,8 @@ interface point its response series at the table rows it needs.
 Design Principles
 -----------------
 
-The fiber photometry metadata system follows the same spirit as the ophys and ecephys systems (see
-:ref:`ophys_metadata_structure`), specialized to the ndx-fiber-photometry data model:
+The fiber photometry metadata system follows the same spirit as every modality (see
+:ref:`metadata_principles`), specialized to the ndx-fiber-photometry data model:
 
 1. **Its own top-level block, but shared devices.** The fiber-photometry-specific metadata (indicators,
    viruses/injections, the ``FiberPhotometryTable``, commanded voltage, and the response series) lives
@@ -52,7 +52,7 @@ The fiber photometry metadata system follows the same spirit as the ophys and ec
    voltage, and the table's rows) are keyed this way, and each interface's response series is keyed by
    its own ``metadata_key``. Keying every level lets several interfaces run in one conversion without
    clashing and merges cleanly across interfaces (dicts merge by key), and it decouples an object's
-   routing handle from its NWB ``name``.
+   routing handle from its NWB ``name`` (see :ref:`metadata_key_naming`).
 
 3. **Linking is by ``_metadata_key``, resolved at write time.** Entries reference each other with
    ``<thing>_metadata_key`` fields holding the *key* of the referenced entry — a device names its model
@@ -68,7 +68,7 @@ The fiber photometry metadata system follows the same spirit as the ophys and ec
 
 5. **No fabricated provenance.** ``get_metadata()`` returns only what the interface can source from the
    files — the response-series entry (and the session start time where the format embeds it) — and never
-   fabricates devices, indicators, or table rows the data does not contain. With no user metadata an
+   fabricates devices, indicators, or table rows the data does not contain (see :ref:`metadata_principles`). With no user metadata an
    interface writes a bare ``FiberPhotometryResponseSeries``, which is a valid file. The full provenance
    chain is opt-in: supply it yourself. When a table *is* supplied, ``add_to_nwbfile`` requires the chain
    to be complete and raises on missing or dangling pieces rather than writing partial provenance.
@@ -180,7 +180,7 @@ of their own response-series keys. This split is deliberate — the response ser
 output (one per interface), while the hardware is shared file-wide.
 
 Note that the response series' NWB ``name`` (``"FiberPhotometryResponseSeries"`` by default) is
-distinct from its ``metadata_key``. The key identifies the interface's entry; the ``name`` names the
+distinct from its ``metadata_key`` (see :ref:`metadata_key_naming`). The key identifies the interface's entry; the ``name`` names the
 object written to the file. Combine multiple interfaces in a converter and give each a distinct
 ``metadata_key`` (and typically a distinct series ``name``) to write several series into one file.
 
@@ -263,7 +263,7 @@ Default Metadata
 
 ``get_metadata()`` returns only what the interface can derive from the source files: the NWBFile basics,
 the session start time where the format embeds it, and a single response-series entry under the
-interface's ``metadata_key`` holding just its ``name``. It fabricates no devices, indicators, or table
+interface's ``metadata_key`` holding just its ``name`` (see :ref:`metadata_principles`). It fabricates no devices, indicators, or table
 rows — none of that is contained in the data — and no ``description`` (left empty unless a source or user
 supplies one). ``unit`` is deliberately absent: it is a property of the data, not editable metadata, so it
 is set when the ``FiberPhotometryResponseSeries`` is built (defaulting to ``"a.u."`` for uncalibrated
