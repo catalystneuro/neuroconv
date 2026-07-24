@@ -1,0 +1,387 @@
+"""Generate a tiny, schema-faithful GuPPy output folder for testing.
+
+GuPPy (Guided Photometry Analysis in Python) writes a ``<session>_output_<N>`` folder full of
+derived fiber-photometry products. The real folders are ~100 MB because every condition file
+carries a long time/lag/sample axis. None of that bulk is needed to exercise ``_GuppyInterface``'s
+parsing and writing logic, so this module reproduces the *format* of each file GuPPy emits (with
+tiny arrays) without any dependency on GuPPy itself.
+
+Each private writer reproduces a documented on-disk format -- its filename pattern plus the HDF5
+dataset keys / DataFrame columns / dtypes that ``_GuppyInterface`` reads -- described in its own
+docstring, with no dependency on GuPPy's internals. These layouts were captured from real GuPPy
+output.
+"""
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+import h5py
+import numpy as np
+import pandas
+
+# Default topology mirrors the ``Photo_249_391-200721-120136_stubbed`` TDT tank: two recording_sites, three
+# behavioral events, two transient features, one cross-correlation pair. The store ids
+# (Dv1A/Dv2A/Dv3B/Dv4B) and event epocs (LNRW/LNnR/PrtR) are the ones that tank actually exposes, so
+# ``TDTFiberPhotometryGuppyConverter`` can be driven against it with these defaults unchanged.
+_DEFAULT_RECORDING_SITE_TO_STORES = {
+    "dms": {"signal": "Dv2A", "control": "Dv1A"},
+    "dls": {"signal": "Dv4B", "control": "Dv3B"},
+}
+_DEFAULT_EVENT_STORE_TO_NAME = {
+    "LNRW": "rewarded_nose_pokes",
+    "LNnR": "unrewarded_nose_pokes",
+    "PrtR": "port_entries",
+}
+_SESSION_ID = "mock_guppy_session"
+
+
+def generate_mock_guppy_output_folder(
+    folder_path: str | Path,
+    *,
+    recording_site_to_stores: dict[str, dict[str, str]] | None = None,
+    event_store_to_name: dict[str, str] | None = None,
+    features: tuple[str, ...] = ("z_score", "dff"),
+    trace_prefixes: tuple[str, ...] = ("cntrl_sig_fit", "dff", "z_score"),
+    cross_correlation_pairs: tuple[tuple[str, str], ...] = (("dls", "dms"),),
+    session_start_time: datetime = datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
+    sampling_rate: float = 200.0,
+    num_samples: int = 400,
+    num_psth_timepoints: int = 50,
+    num_trials: int = 4,
+    peak_start_points: tuple[float, ...] = (-5.0, 0.0, 5.0),
+    peak_end_points: tuple[float, ...] = (0.0, 3.0, 10.0),
+    valid_signal_intervals: tuple[tuple[float, float], ...] = ((1.25, 1.75), (2.0, 2.5)),
+    bin_size_in_trials: int = 3,
+    guppy_version: str = "2.0.0a7",
+    zscore_method: str = "standard z-score",
+) -> Path:
+    """Write a tiny GuPPy ``<session>_output`` folder to ``folder_path`` and return it.
+
+    The generated folder is a faithful (but ~kilobyte-scale) replica of a real GuPPy output: the
+    filenames, HDF5 keys, DataFrame columns/index labels, and dtypes match what ``_GuppyInterface``
+    reads. All arrays are internally consistent -- trace length equals timestamp length, transient
+    peaks fall inside the trace window, and every event file for one condition shares an identical
+    x-axis -- so the interface's ``*_matches_source`` assertions hold by construction.
+
+    Parameters
+    ----------
+    folder_path : str or Path
+        Directory to create and populate (created if missing).
+    recording_site_to_stores : dict, optional
+        ``{recording_site: {"signal": <store>, "control": <store>}}``. Defaults to the two-recording_site
+        ``dms``/``dls`` topology with the acquisition store ids of the reference fixture. Override
+        the store ids to match a real TDT tank (for the converter test).
+    event_store_to_name : dict, optional
+        ``{acquisition_store: event_name}`` for the behavioral events. Defaults to the three
+        ``LNRW``/``LNnR``/``PrtR`` epocs the Photo_249 tank exposes.
+    features : tuple of str, optional
+        Transient/PSTH/cross-correlation features to emit (``z_score``, ``dff``).
+    trace_prefixes : tuple of str, optional
+        Derived continuous trace prefixes to emit.
+    cross_correlation_pairs : tuple of (str, str), optional
+        ``(reference_recording_site, target_recording_site)`` pairs to emit cross-correlations for.
+    session_start_time : datetime, optional
+        Written into ``timeCorrection_<recording_site>.hdf5`` as ``timeRecStart``; drives
+        ``get_metadata()["NWBFile"]["session_start_time"]``.
+    sampling_rate, num_samples : float, int, optional
+        Shape of the derived traces and their timestamps. ``num_samples / sampling_rate`` must
+        exceed ~1 s so the first timestamp is > 0.5 s and the 1-s stub window is non-empty.
+    num_psth_timepoints, num_trials : int, optional
+        Shape of the PSTH / cross-correlation matrices.
+    peak_start_points, peak_end_points : tuple of float, optional
+        Peak/AUC analysis windows; also written to the parameters file (NaN-padded like GuPPy).
+    valid_signal_intervals : tuple of (float, float), optional
+        ``[start, stop]`` valid-signal (artifact-free) windows written to
+        ``coordsForPreProcessing_<recording_site>.npy`` for every recording_site, and reflected by ``removeArtifacts``
+        in the parameters file. Pass an empty tuple to emit no coords files (the no-artifact-removal
+        case). The windows must fall inside the trace timebase.
+    bin_size_in_trials : int, optional
+        Trials per bin for the ``bin_(a-b)`` columns ("# of trials" binning mode).
+    guppy_version, zscore_method : str, optional
+        Provenance values written to ``GuPPyParamtersUsed.json``.
+
+    Returns
+    -------
+    Path
+        The populated ``folder_path``.
+    """
+    folder_path = Path(folder_path)
+    folder_path.mkdir(parents=True, exist_ok=True)
+
+    recording_site_to_stores = (
+        recording_site_to_stores if recording_site_to_stores is not None else _DEFAULT_RECORDING_SITE_TO_STORES
+    )
+    event_store_to_name = event_store_to_name if event_store_to_name is not None else _DEFAULT_EVENT_STORE_TO_NAME
+    recording_sites = list(recording_site_to_stores)
+    event_names = list(event_store_to_name.values())
+
+    # Trace timebase: start ~1 s in (the lights-on delay) so the first timestamp is > 0.5 s.
+    timestamps = 1.0 + np.arange(num_samples, dtype=np.float64) / sampling_rate
+    # Trial onset times labeling the PSTH/peak-AUC trial columns (distinct floats).
+    trial_onsets = [10.0 * (index + 1) for index in range(num_trials)]
+    bin_edges = _trial_bin_edges(num_trials=num_trials, bin_size_in_trials=bin_size_in_trials)
+    peri_event_time = np.linspace(-5.0, 10.0, num_psth_timepoints)
+    lag_axis = np.linspace(-5.0, 5.0, num_psth_timepoints)
+
+    _write_stores_list(
+        folder_path, recording_site_to_stores=recording_site_to_stores, event_store_to_name=event_store_to_name
+    )
+    _write_parameters(
+        folder_path,
+        guppy_version=guppy_version,
+        zscore_method=zscore_method,
+        peak_start_points=peak_start_points,
+        peak_end_points=peak_end_points,
+        bin_size_in_trials=bin_size_in_trials,
+        remove_artifacts=bool(valid_signal_intervals),
+    )
+
+    for recording_site in recording_sites:
+        _write_time_correction(
+            folder_path,
+            recording_site=recording_site,
+            timestamps=timestamps,
+            sampling_rate=sampling_rate,
+            session_start_time=session_start_time,
+        )
+        if valid_signal_intervals:
+            _write_valid_signal_intervals(folder_path, recording_site=recording_site, intervals=valid_signal_intervals)
+        for prefix in trace_prefixes:
+            _write_trace(folder_path, prefix=prefix, recording_site=recording_site, num_samples=num_samples)
+        for feature in features:
+            _write_transients_occurrences(folder_path, feature=feature, recording_site=recording_site)
+            _write_freq_and_amp(folder_path, feature=feature, recording_site=recording_site)
+
+    for event_name in event_names:
+        for recording_site in recording_sites:
+            for feature in features:
+                for baseline_corrected in (True, False):
+                    _write_psth(
+                        folder_path,
+                        event=event_name,
+                        recording_site=recording_site,
+                        feature=feature,
+                        baseline_corrected=baseline_corrected,
+                        peri_event_time=peri_event_time,
+                        trial_onsets=trial_onsets,
+                        bin_edges=bin_edges,
+                    )
+                _write_peak_auc(
+                    folder_path,
+                    event=event_name,
+                    recording_site=recording_site,
+                    feature=feature,
+                    trial_onsets=trial_onsets,
+                    bin_edges=bin_edges,
+                    num_windows=len(peak_start_points),
+                )
+
+    cross_correlation_folder = folder_path / "cross_correlation_output"
+    cross_correlation_folder.mkdir(exist_ok=True)
+    for event_name in event_names:
+        for feature in features:
+            for recording_site_1, recording_site_2 in cross_correlation_pairs:
+                _write_cross_correlation(
+                    cross_correlation_folder,
+                    event=event_name,
+                    feature=feature,
+                    recording_site_1=recording_site_1,
+                    recording_site_2=recording_site_2,
+                    lag_axis=lag_axis,
+                    trial_onsets=trial_onsets,
+                    bin_edges=bin_edges,
+                )
+
+    return folder_path
+
+
+def _trial_bin_edges(num_trials: int, bin_size_in_trials: int) -> list[tuple[int, int]]:
+    """Consecutive ``(start, stop)`` trial-index bins, as GuPPy uses in "# of trials" mode."""
+    edges = []
+    start = 0
+    while start < num_trials:
+        edges.append((start, min(start + bin_size_in_trials, num_trials)))
+        start += bin_size_in_trials
+    return edges
+
+
+def _write_stores_list(folder_path, recording_site_to_stores, event_store_to_name) -> None:
+    """Two-row ``storesList.csv`` (row 0 = acquisition store ids, row 1 = GuPPy store labels).
+
+    Written via ``np.savetxt(..., delimiter=",", fmt="%s")``.
+    """
+    store_ids, store_labels = [], []
+    for recording_site, stores in recording_site_to_stores.items():
+        store_ids.append(stores["control"])
+        store_labels.append(f"control_{recording_site}")
+        store_ids.append(stores["signal"])
+        store_labels.append(f"signal_{recording_site}")
+    for store, event_name in event_store_to_name.items():
+        store_ids.append(store)
+        store_labels.append(event_name)
+    rows = np.asarray([store_ids, store_labels], dtype=str)
+    np.savetxt(folder_path / "storesList.csv", rows, delimiter=",", fmt="%s")
+
+
+def _write_valid_signal_intervals(folder_path, recording_site, intervals) -> None:
+    """``coordsForPreProcessing_<recording_site>.npy`` -- the artifact-removal boundary coordinates.
+
+    A 2-D float array whose column 0 is a flat, even-length sequence of interval boundaries
+    ``[start, stop, start, stop, ...]`` (seconds). ``_GuppyInterface`` reads column 0, checks it is
+    even-length, and reshapes it to ``(num_intervals, 2)`` ``[start, stop]`` pairs. Column 1 mirrors
+    the boundary amplitudes GuPPy stores alongside each coordinate (unread by the interface).
+    """
+    boundaries = np.asarray(intervals, dtype=np.float64).reshape(-1)
+    coords = np.column_stack([boundaries, np.zeros_like(boundaries)])
+    np.save(folder_path / f"coordsForPreProcessing_{recording_site}.npy", coords)
+
+
+def _write_parameters(
+    folder_path,
+    guppy_version,
+    zscore_method,
+    peak_start_points,
+    peak_end_points,
+    bin_size_in_trials,
+    remove_artifacts,
+) -> None:
+    """``GuPPyParamtersUsed.json`` written via ``json.dump``.
+
+    ``peak_startPoint``/``peak_endPoint`` are padded to length 10 with NaN exactly as GuPPy does;
+    ``_GuppyInterface`` strips the NaN padding back to the real windows.
+    """
+    pad_length = 10
+    start_padded = list(peak_start_points) + [float("nan")] * (pad_length - len(peak_start_points))
+    end_padded = list(peak_end_points) + [float("nan")] * (pad_length - len(peak_end_points))
+    parameters = dict(
+        guppy_version=guppy_version,
+        isosbestic_control=True,
+        filter_window=100.0,
+        removeArtifacts=remove_artifacts,
+        artifactsRemovalMethod="concatenate",
+        zscore_method=zscore_method,
+        baselineWindowStart=0.0,
+        baselineWindowEnd=180.0,
+        nSecPrev=-5.0,
+        nSecPost=10.0,
+        timeInterval=1.0,
+        bin_psth_trials=bin_size_in_trials,
+        use_time_or_trials="# of trials",
+        baselineCorrectionStart=-5.0,
+        baselineCorrectionEnd=0.0,
+        peak_startPoint=start_padded,
+        peak_endPoint=end_padded,
+        moving_window=15.0,
+        highAmpFilt=2.0,
+        transientsThresh=2.0,
+    )
+    with open(folder_path / "GuPPyParamtersUsed.json", "w", encoding="utf-8") as parameters_file:
+        json.dump(parameters, parameters_file, indent=4)
+
+
+def _write_trace(folder_path, prefix, recording_site, num_samples) -> None:
+    """``<prefix>_<recording_site>.hdf5`` with a single 1-D float64 dataset under key ``data``."""
+    data = np.linspace(-1.0, 1.0, num_samples, dtype=np.float64)
+    with h5py.File(folder_path / f"{prefix}_{recording_site}.hdf5", "w") as trace_file:
+        trace_file.create_dataset("data", data=data, maxshape=(None,), chunks=True)
+
+
+def _write_time_correction(folder_path, recording_site, timestamps, sampling_rate, session_start_time) -> None:
+    """``timeCorrection_<recording_site>.hdf5`` with four keyed datasets: ``timeRecStart``, ``timestampNew``,
+    ``sampling_rate``, ``correctionIndex``.
+    """
+    time_rec_start = np.asarray([session_start_time.timestamp()], dtype=np.float64)
+    correction_index = np.arange(timestamps.shape[0], dtype=np.int64)
+    with h5py.File(folder_path / f"timeCorrection_{recording_site}.hdf5", "w") as time_correction_file:
+        time_correction_file.create_dataset("timeRecStart", data=time_rec_start)
+        time_correction_file.create_dataset("timestampNew", data=timestamps, maxshape=(None,), chunks=True)
+        time_correction_file.create_dataset("sampling_rate", data=np.asarray([sampling_rate], dtype=np.float32))
+        time_correction_file.create_dataset("correctionIndex", data=correction_index, maxshape=(None,), chunks=True)
+
+
+def _write_transients_occurrences(folder_path, feature, recording_site) -> None:
+    """``transientsOccurrences_<feature>_<recording_site>.csv`` with columns ``timestamps``, ``amplitude``.
+
+    Written as a DataFrame via ``to_csv`` (leading integer index column). The peaks sit inside the
+    trace window; a couple fall beyond the 1-s stub window on purpose.
+    """
+    peaks = np.array([[1.2, 0.9], [1.5, 1.4], [1.8, 0.7], [2.5, 1.1]], dtype=np.float64)
+    dataframe = pandas.DataFrame(peaks, index=np.arange(peaks.shape[0]), columns=["timestamps", "amplitude"])
+    dataframe.to_csv(folder_path / f"transientsOccurrences_{feature}_{recording_site}.csv")
+
+
+def _write_freq_and_amp(folder_path, feature, recording_site) -> None:
+    """``freqAndAmp_<feature>_<recording_site>.h5`` -- one row, columns ``freq (events/min)``, ``amplitude``.
+
+    Written as a DataFrame via ``to_hdf(key="df")``.
+    """
+    dataframe = pandas.DataFrame([[28.7, 2.18]], index=[_SESSION_ID], columns=["freq (events/min)", "amplitude"])
+    dataframe.to_hdf(folder_path / f"freqAndAmp_{feature}_{recording_site}.h5", key="df", mode="w")
+
+
+def _event_matrix_dataframe(axis, trial_onsets, bin_edges) -> pandas.DataFrame:
+    """Build the shared PSTH / cross-correlation DataFrame layout.
+
+    Columns: one float-named column per trial onset, then ``bin_(a-b)``/``bin_err_(a-b)`` pairs,
+    then ``timestamps``, ``mean``, ``err`` -- all float32.
+    """
+    num_points = axis.shape[0]
+    data = {}
+    trial_columns = np.linspace(-0.5, 0.5, num_points, dtype=np.float32)
+    for index, onset in enumerate(trial_onsets):
+        data[repr(float(onset))] = trial_columns + 0.01 * index
+    for start, stop in bin_edges:
+        data[f"bin_({start}-{stop})"] = np.full(num_points, 0.1 * (start + 1), dtype=np.float32)
+        data[f"bin_err_({start}-{stop})"] = np.full(num_points, 0.01, dtype=np.float32)
+    data["timestamps"] = axis.astype(np.float32)
+    data["mean"] = trial_columns
+    data["err"] = np.full(num_points, 0.05, dtype=np.float32)
+    return pandas.DataFrame(data)
+
+
+def _write_psth(
+    folder_path, event, recording_site, feature, baseline_corrected, peri_event_time, trial_onsets, bin_edges
+) -> None:
+    """PSTH ``.h5`` -- ``<event>_<recording_site>_<feature>_<recording_site>.h5`` (+ ``baselineUncorrected`` variant).
+
+    Written as a DataFrame via ``to_hdf(key="df")``.
+    """
+    suffix = "" if baseline_corrected else "baselineUncorrected_"
+    filename = f"{event}_{recording_site}_{suffix}{feature}_{recording_site}.h5"
+    dataframe = _event_matrix_dataframe(peri_event_time, trial_onsets, bin_edges)
+    dataframe.to_hdf(folder_path / filename, key="df", mode="w")
+
+
+def _write_cross_correlation(
+    folder_path, event, feature, recording_site_1, recording_site_2, lag_axis, trial_onsets, bin_edges
+) -> None:
+    """Cross-correlation ``.h5`` -- ``corr_<event>_<feature>_<recording_site_1>_<recording_site_2>.h5``.
+
+    Written as a DataFrame via ``to_hdf(key="df")``.
+    """
+    filename = f"corr_{event}_{feature}_{recording_site_1}_{recording_site_2}.h5"
+    dataframe = _event_matrix_dataframe(lag_axis, trial_onsets, bin_edges)
+    dataframe.to_hdf(folder_path / filename, key="df", mode="w")
+
+
+def _write_peak_auc(folder_path, event, recording_site, feature, trial_onsets, bin_edges, num_windows) -> None:
+    """Peak/AUC ``.h5`` -- ``peak_AUC_<event>_<recording_site>_<feature>_<recording_site>.h5``.
+
+    Columns are ``peak_pos_<w>``/``peak_neg_<w>``/``area_<w>`` per window; index rows are
+    ``<session>_<onset>`` per trial, ``<session>_bin_(a-b)``, and ``<session>_mean``. Written as a
+    DataFrame via ``to_hdf(key="df")``.
+    """
+    columns = []
+    for window in range(1, num_windows + 1):
+        columns.extend([f"peak_pos_{window}", f"peak_neg_{window}", f"area_{window}"])
+
+    index = [f"{_SESSION_ID}_{repr(float(onset))}" for onset in trial_onsets]
+    index += [f"{_SESSION_ID}_bin_({start}-{stop})" for start, stop in bin_edges]
+    index += [f"{_SESSION_ID}_mean"]
+
+    values = np.arange(len(index) * len(columns), dtype=np.float64).reshape(len(index), len(columns))
+    dataframe = pandas.DataFrame(values, index=index, columns=columns)
+    dataframe.to_hdf(
+        folder_path / f"peak_AUC_{event}_{recording_site}_{feature}_{recording_site}.h5", key="df", mode="w"
+    )

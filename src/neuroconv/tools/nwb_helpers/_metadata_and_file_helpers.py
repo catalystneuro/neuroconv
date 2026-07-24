@@ -11,6 +11,7 @@ from typing import Literal
 
 from pydantic import FilePath
 from pynwb import NWBFile, read_nwb
+from pynwb.device import Device, DeviceModel
 from pynwb.file import Subject
 
 from . import (
@@ -18,6 +19,11 @@ from . import (
     BackendConfiguration,
     configure_backend,
     get_default_backend_configuration,
+)
+from ._device_types import (
+    _DEVICE_MODEL_TYPE_SOURCES,
+    _DEVICE_TYPE_SOURCES,
+    _resolve_type,
 )
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import validate_metadata
@@ -189,35 +195,93 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
             nwbfile.create_device(**dict(defaults, **device_metadata))
 
 
-def _add_device_to_nwbfile(
-    *,
+def _add_device_model_to_nwbfile(
     nwbfile: NWBFile,
-    device_metadata: dict,
+    *,
+    metadata: dict,
+    metadata_key: str,
 ):
     """
-    Add a device to an NWBFile.
+    Add the ``metadata["DeviceModels"][metadata_key]`` device model to an NWBFile's ``device_models``.
 
-    If a device with the same name already exists, the existing device is
-    returned without creating a duplicate.
+    Follows the canonical ``(nwbfile, metadata, metadata_key)`` pattern used across NeuroConv: the key
+    is resolved against the full metadata. Idempotent on ``name`` (a model already present is returned
+    unchanged). The entry may carry a ``"type"`` field naming the concrete class (e.g.
+    ``"OpticalFiberModel"``); when omitted, a plain ``pynwb.device.DeviceModel`` is created.
 
-    Parameters
-    ----------
-    nwbfile : NWBFile
-        The NWB file to add the device to.
-    device_metadata : dict
-        Dictionary describing the device. Must contain at least a ``"name"`` key.
+    Returns
+    -------
+    DeviceModel
+        The DeviceModel object (either newly created or existing).
+    """
+    device_models_metadata = metadata.get("DeviceModels", {})
+    if metadata_key not in device_models_metadata:
+        raise ValueError(
+            f"device_model_metadata_key '{metadata_key}' is not present in metadata['DeviceModels'] "
+            f"(available: {list(device_models_metadata)})."
+        )
+    device_model_metadata = device_models_metadata[metadata_key]
+
+    model_name = device_model_metadata["name"]
+    if model_name in nwbfile.device_models:
+        return nwbfile.device_models[model_name]
+
+    model_kwargs = {key: value for key, value in device_model_metadata.items() if key != "type"}
+    model_class = _resolve_type(
+        device_model_metadata.get("type", "DeviceModel"), sources=_DEVICE_MODEL_TYPE_SOURCES, base_class=DeviceModel
+    )
+    device_model = model_class(**model_kwargs)
+    nwbfile.add_device_model(device_model)
+    return device_model
+
+
+def _add_device_to_nwbfile(
+    nwbfile: NWBFile,
+    *,
+    metadata: dict | None = None,
+    metadata_key: str | None = None,
+    device_metadata: dict | None = None,
+):
+    """
+    Add a device to an NWBFile. Idempotent on ``name`` (an existing device is returned unchanged).
+
+    Two calling forms:
+
+    * **Canonical** ``(nwbfile, metadata, metadata_key)`` — the shape all callers should converge on,
+      matching the rest of NeuroConv. Resolves ``metadata["Devices"][metadata_key]`` and, if the entry
+      carries a ``device_model_metadata_key``, adds that model (idempotently, on demand) and links it.
+    * **Transitional** ``(nwbfile, device_metadata)`` — a pre-resolved entry dict, for callers that
+      build the entry themselves (e.g. placeholder or deprecated-nested-device fallbacks). This form
+      will be removed once those callers can pass ``metadata`` + ``metadata_key``.
+
+    In either form the entry may carry a ``"type"`` field naming the concrete class (e.g.
+    ``"OpticalFiber"``); when omitted, a plain ``pynwb.device.Device`` is created.
 
     Returns
     -------
     Device
         The Device object (either newly created or existing).
     """
-    device_name = device_metadata["name"]
+    if metadata_key is not None:
+        device_metadata = metadata["Devices"][metadata_key]
+        device_model_metadata_key = device_metadata.get("device_model_metadata_key")
+        if device_model_metadata_key is not None:
+            model = _add_device_model_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata, metadata_key=device_model_metadata_key
+            )
+            device_metadata = {**device_metadata, "model": model}
+    elif device_metadata is None:
+        raise ValueError("Provide either `metadata` + `metadata_key` (canonical) or `device_metadata` (transitional).")
 
+    device_name = device_metadata["name"]
     if device_name in nwbfile.devices:
         return nwbfile.devices[device_name]
 
-    device = nwbfile.create_device(**device_metadata)
+    internal_keys = ("type", "device_model_metadata_key")
+    device_kwargs = {key: value for key, value in device_metadata.items() if key not in internal_keys}
+    device_class = _resolve_type(device_metadata.get("type", "Device"), sources=_DEVICE_TYPE_SOURCES, base_class=Device)
+    device = device_class(**device_kwargs)
+    nwbfile.add_device(device)
     return device
 
 

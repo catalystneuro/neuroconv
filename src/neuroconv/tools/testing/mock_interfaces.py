@@ -1,5 +1,5 @@
 import warnings
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
 import numpy as np
@@ -16,6 +16,13 @@ from ...datainterfaces.ecephys.baserecordingextractorinterface import (
 )
 from ...datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
+)
+from ...datainterfaces.events.baseeventsinterface import (
+    BaseEventsInterface,
+    _EventsData,
+)
+from ...datainterfaces.fiber_photometry.basefiberphotometryinterface import (
+    BaseFiberPhotometryInterface,
 )
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
@@ -243,6 +250,237 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
         nwbfile.add_acquisition(table)
 
 
+class MockEventsInterface(BaseEventsInterface):
+    """A configurable mock events interface for exercising the ``EventsTable`` writer without a real
+    acquisition format.
+
+    Generates ``num_event_types`` synthetic event types, each keyed by its own id (``"events"`` for a
+    single type, else ``"events_0" .. "events_{N-1}"``) and, by default, its own table. Their shape is
+    set by two taxonomy axes describing the generated *data*: ``event_extent`` (point vs event with
+    duration) and ``event_payload`` (timestamps only / a single categorical value / a multi-value
+    struct); both apply to every type. Timestamps are staggered across types so pooling several into
+    one table interleaves in time. Data is deterministic (no ``seed`` needed). Everything else a test
+    exercises, renaming a column, merging types into one table (repoint their ``table_metadata_key``),
+    dropping the meanings map, lives in the returned metadata and is driven by editing it, not by a
+    constructor flag.
+    """
+
+    def __init__(
+        self,
+        *,
+        metadata_key: str | None = None,
+        num_event_types: int = 1,
+        num_events: int = 4,
+        event_extent: Literal["point event", "event with duration"] = "point event",
+        event_payload: Literal["timestamps only", "single value", "multi value"] = "timestamps only",
+        verbose: bool = False,
+    ):
+        """Initialize a mock events interface.
+
+        Parameters
+        ----------
+        metadata_key : str, optional
+            The key under ``metadata["Events"]`` namespacing this interface's ``event_types``.
+            If None (default), ``"mock_events"`` is used.
+        num_event_types : int, optional
+            How many event types (streams) to generate, by default 1. Each gets its own id and, by
+            default, its own table; a test merges them by repointing their ``table_metadata_key`` at a
+            shared table.
+        num_events : int, optional
+            Number of events (timestamps) generated per event type, by default 4.
+        event_extent : {"point event", "event with duration"}, optional
+            The temporal extent of the generated events (the taxonomy's Extent axis). ``"point event"``
+            (default) generates timestamp-only events; ``"event with duration"`` gives each event a
+            duration, so the writer adds a ``duration`` column. Applies to every event type.
+        event_payload : {"timestamps only", "single value", "multi value"}, optional
+            The payload carried per event (the taxonomy's Payload axis). ``"timestamps only"``
+            (default) is a timestamp-only event with no value column; ``"single value"`` carries one
+            categorical field (a labeled column with a ``MeaningsTable``); ``"multi value"`` carries a
+            three-field struct that fans into three columns on the same rows, one per way the writer
+            treats a value column: ``outcome`` (labels and meanings, so a ``MeaningsTable``), ``cue``
+            (labels but nothing to explain, so no ``MeaningsTable``), and ``amplitude`` (raw numeric
+            values). Applies to every event type.
+        verbose : bool, optional
+            Whether to print status messages, by default False.
+        """
+        self._num_event_types = num_event_types
+        self._num_events = num_events
+        self._event_extent = event_extent
+        self._event_payload = event_payload
+        super().__init__(verbose=verbose)
+        self.metadata_key = metadata_key or "mock_events"
+
+    def _event_type_source_ids(self) -> list[str]:
+        # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
+        # their tables and column names) stay unique.
+        if self._num_event_types == 1:
+            return ["events"]
+        return [f"events_{index}" for index in range(self._num_event_types)]
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+
+        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+            suffix = "" if self._num_event_types == 1 else f"_{index}"
+            # One branch per payload mode, spelled out in full rather than composed from shared pieces:
+            # between them the modes cover the three ways the writer treats a value column, and stating
+            # each mode's columns outright is what makes which-mode-covers-which readable.
+            if self._event_payload == "timestamps only":
+                # No value column at all.
+                columns = {}
+            elif self._event_payload == "single value":
+                # One categorical column declaring labels and meanings: display labels plus a MeaningsTable.
+                columns = {
+                    "outcome": {
+                        "column_name": f"outcome{suffix}",
+                        "description": "The outcome of each event.",
+                        "column_categories": {
+                            "labels": {0: "go", 1: "no_go"},
+                            "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                        },
+                    },
+                }
+            elif self._event_payload == "multi value":
+                # A struct payload fanned into three columns on the same rows, one per way the writer
+                # treats a value column: 'outcome' as above, 'cue' declaring labels whose meaning is
+                # self-evident (so no meanings and no MeaningsTable), and 'amplitude' as raw numbers.
+                columns = {
+                    "outcome": {
+                        "column_name": f"outcome{suffix}",
+                        "description": "The outcome of each event.",
+                        "column_categories": {
+                            "labels": {0: "go", 1: "no_go"},
+                            "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                        },
+                    },
+                    "cue": {
+                        "column_name": f"cue{suffix}",
+                        "description": "The cue presented with each event.",
+                        "column_categories": {"labels": {0: "tone", 1: "light"}},
+                    },
+                    "amplitude": {
+                        "column_name": f"amplitude{suffix}",
+                        "description": "The amplitude of each event.",
+                    },
+                }
+            # No EventTables entry: a solo type names its own table from event_name (CamelCased). A merge
+            # test repoints these types' table_metadata_key at a shared key and declares the table there.
+            # Only what the source actually carries: no event_description (the mock has none to report),
+            # and no columns key at all for a timestamps-only type.
+            entry = {"event_name": event_type_source_id}
+            if columns:
+                entry["columns"] = columns
+            metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = entry
+        return metadata
+
+    def _get_events_data_dict(self) -> dict[str, _EventsData]:
+        if self._events_data_dict is not None:
+            return self._events_data_dict
+
+        duration = 0.05 if self._event_extent == "event with duration" else None
+        events_data_dict = {}
+        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+            # Stagger timestamps across types so pooling several into one table interleaves in time.
+            timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
+            durations = np.full(self._num_events, duration) if duration is not None else None
+            # One branch per payload mode, matching the columns get_metadata declares for that mode.
+            if self._event_payload == "timestamps only":
+                payload = {}
+            elif self._event_payload == "single value":
+                payload = {"outcome": np.arange(self._num_events) % 2}  # alternating go / no_go
+            elif self._event_payload == "multi value":
+                payload = {
+                    "outcome": np.arange(self._num_events) % 2,  # alternating go / no_go
+                    "cue": (np.arange(self._num_events) // 2) % 2,  # tone, tone, light, light, ...
+                    "amplitude": np.arange(self._num_events, dtype="float64"),
+                }
+            events_data_dict[event_type_source_id] = _EventsData(
+                event_type_source_id=event_type_source_id,
+                timestamps=timestamps,
+                durations=durations,
+                payload=payload,
+            )
+
+        self._events_data_dict = events_data_dict
+        return self._events_data_dict
+
+
+class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
+    """A mock acquisition fiber photometry interface backed by synthetic data.
+
+    Writes one ``FiberPhotometryResponseSeries`` from a synthetic trace, so the
+    ``ndx-fiber-photometry`` write/read path is exercised with no data on disk.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        stream_names: str | list[str] = ("signal", "control"),
+        channels_per_stream: int | list[int] = 1,
+        num_samples: int = 100,
+        sampling_rate: float = 100.0,
+        seed: int = 0,
+        metadata_key: str | None = None,
+        verbose: bool = False,
+    ):
+        """Initialize a mock fiber photometry interface.
+
+        Parameters
+        ----------
+        stream_names : str or list of str, default: ("signal", "control")
+            One name per source stream; the streams are column-stacked into the response series.
+        channels_per_stream : int or list of int, default: 1
+            How many channels each stream carries. An ``int`` applies to every stream; a list gives a
+            count per stream, so a multi-fiber store can be mixed with a single-channel one. A stream
+            with one channel reads as a 1-D array, one with several as ``(num_samples, channels)``,
+            which is the shape a real multi-fiber acquisition store returns.
+        num_samples : int, default: 100
+            Number of samples in the synthetic response series.
+        sampling_rate : float, default: 100.0
+            Sampling rate (Hz) of the synthetic response series.
+        seed : int, default: 0
+            Seed for the synthetic data.
+        metadata_key : str, optional
+            Override the response-series metadata key (default derived from ``stream_names``).
+        verbose : bool, default: False
+            Whether to print status messages.
+        """
+        stream_name_list = [stream_names] if isinstance(stream_names, str) else list(stream_names)
+        if isinstance(channels_per_stream, int):
+            channels_per_stream = [channels_per_stream] * len(stream_name_list)
+        elif len(channels_per_stream) != len(stream_name_list):
+            raise ValueError(
+                f"channels_per_stream has {len(channels_per_stream)} entries but there are "
+                f"{len(stream_name_list)} stream(s); they must match one-to-one."
+            )
+        self._channels_per_stream = [int(count) for count in channels_per_stream]
+        self._num_samples = int(num_samples)
+        self._sampling_rate = float(sampling_rate)
+        self._seed = int(seed)
+        super().__init__(stream_names=stream_name_list, metadata_key=metadata_key, verbose=verbose)
+
+    def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
+        # Deterministic per-stream synthetic trace (a distinct seed per stream so channels differ).
+        index = self.stream_names.index(stream_name)
+        rng = np.random.default_rng(self._seed + index)
+        num_channels = self._channels_per_stream[index]
+        # Drawing a 1-D array for a single channel (rather than slicing an (N, 1) one) keeps the
+        # default draw identical to the single-channel case.
+        size = self._num_samples if num_channels == 1 else (self._num_samples, num_channels)
+        return rng.standard_normal(size).astype("float64")
+
+    def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
+        return np.arange(self._num_samples, dtype="float64") / self._sampling_rate
+
+    def get_metadata(self) -> DeepDict:
+        """Return the base metadata with a fixed session start time; no fiber photometry provenance."""
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        return metadata
+
+
 class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
     """
     A mock SpikeGLX interface for testing purposes.
@@ -332,6 +570,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("metadata_key", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
@@ -346,6 +585,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         seed: int = 0,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
         set_probe: bool = False,
     ):
         # Handle deprecated positional arguments
@@ -394,6 +634,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             seed=seed,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
         )
 
         self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
@@ -406,7 +647,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             probe.set_contact_ids(contact_ids)
             self.recording_extractor = self.recording_extractor.set_probe(probe, group_mode="by_probe")
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Get metadata for the recording interface.
 
@@ -415,7 +656,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         dict
             The metadata dictionary containing NWBFile metadata with session start time.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
@@ -912,8 +1153,8 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
     def get_metadata(self) -> DeepDict:
         """Get metadata for the mock pose estimation interface in the dict-based shape.
 
-        Returns metadata with top-level ``metadata["Devices"]`` and the pose sub-modality at
-        ``metadata["Behavior"]["Pose"]`` holding ``Skeletons`` and ``PoseEstimations`` registries,
+        Returns metadata with top-level ``metadata["Devices"]`` and the top-level pose modality at
+        ``metadata["Pose"]`` holding ``Skeletons`` and ``PoseEstimations`` registries,
         all keyed by ``self.metadata_key`` and cross-referenced via ``device_metadata_key`` and
         ``skeleton_metadata_key``.
         """
@@ -942,27 +1183,25 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
                 "description": "Mock camera device for pose estimation testing.",
             }
         }
-        metadata["Behavior"] = {
-            "Pose": {
-                "Skeletons": {
-                    self.metadata_key: {
-                        "name": skeleton_name,
-                        "nodes": self.nodes,
-                        "edges": self.edges.tolist(),
-                    },
+        metadata["Pose"] = {
+            "Skeletons": {
+                self.metadata_key: {
+                    "name": skeleton_name,
+                    "nodes": self.nodes,
+                    "edges": self.edges.tolist(),
                 },
-                "PoseEstimations": {
-                    self.metadata_key: {
-                        "name": container_name,
-                        "description": f"Mock pose estimation data from {self.source_software}.",
-                        "source_software": self.source_software,
-                        "scorer": self.scorer,
-                        "dimensions": [[640, 480]],
-                        "original_videos": ["mock_video.mp4"],
-                        "device_metadata_key": self.metadata_key,
-                        "skeleton_metadata_key": self.metadata_key,
-                        "PoseEstimationSeries": pose_estimation_series_entries,
-                    },
+            },
+            "PoseEstimations": {
+                self.metadata_key: {
+                    "name": container_name,
+                    "description": f"Mock pose estimation data from {self.source_software}.",
+                    "source_software": self.source_software,
+                    "scorer": self.scorer,
+                    "dimensions": [[640, 480]],
+                    "original_videos": ["mock_video.mp4"],
+                    "device_metadata_key": self.metadata_key,
+                    "skeleton_metadata_key": self.metadata_key,
+                    "PoseEstimationSeries": pose_estimation_series_entries,
                 },
             },
         }
@@ -976,7 +1215,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
-        pose_metadata = metadata["Behavior"]["Pose"]
+        pose_metadata = metadata["Pose"]
         container_entry = pose_metadata["PoseEstimations"][self.metadata_key]
 
         behavior_module = get_module(nwbfile, "behavior")

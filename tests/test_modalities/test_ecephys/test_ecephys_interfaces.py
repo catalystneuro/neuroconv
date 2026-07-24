@@ -206,6 +206,42 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface
     interface_kwargs = dict(num_channels=4, durations=[0.100])
 
+    def check_extracted_metadata(self, metadata: dict):
+        # New dict-based format: the interface emits only the ElectricalSeries entry keyed by
+        # metadata_key. The device and electrode groups are filled by the pipeline placeholders, so
+        # they are deliberately absent here (mirrors the ophys interfaces, which assert
+        # "Devices" not in metadata).
+        assert "Devices" not in metadata
+        metadata_key = self.interface.metadata_key
+        assert metadata["Ecephys"] == {
+            "ElectricalSeries": {
+                metadata_key: {
+                    "name": metadata_key,
+                    "description": f"Acquisition traces for the {metadata_key}.",
+                }
+            }
+        }
+
+    def test_metadata_key_passed_to_add_recording(self, setup_interface):
+        from unittest.mock import patch
+
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        interface = MockRecordingInterface(num_channels=4, durations=[0.100], metadata_key="probeA")
+
+        # Dict-based metadata routes metadata_key through to the pipeline.
+        new_metadata = interface.get_metadata(use_new_metadata_format=True)
+        with patch("neuroconv.tools.spikeinterface.add_recording_to_nwbfile") as mock_add:
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=new_metadata)
+            assert mock_add.call_args.kwargs["metadata_key"] == "probeA"
+
+        # Old list-based metadata must pass metadata_key=None so the pipeline routes through es_key
+        # (the two are mutually exclusive downstream).
+        old_metadata = interface.get_metadata()
+        with patch("neuroconv.tools.spikeinterface.add_recording_to_nwbfile") as mock_add:
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=old_metadata)
+            assert mock_add.call_args.kwargs["metadata_key"] is None
+
     def test_stub(self, setup_interface):
         interface = self.interface
         metadata = interface.get_metadata()
