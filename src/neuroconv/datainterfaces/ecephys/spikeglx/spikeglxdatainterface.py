@@ -145,11 +145,18 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 electrical_series_name += f"{device}"
 
             self.es_key = electrical_series_name
-            # ``metadata_key`` defaults to ``es_key``, but the base set it from the (None) ``es_key``
-            # passed to ``super().__init__`` before this interface computed the real name. Re-sync it,
-            # unless the user passed an explicit ``metadata_key`` (which must not be clobbered).
-            if metadata_key is None:
-                self.metadata_key = electrical_series_name
+            # The interface owns the ElectricalSeries object name, disambiguated per stream/probe and
+            # computed here independently of ``es_key`` (legacy, to be removed).
+            self._series_name = electrical_series_name
+        else:
+            # A user-supplied ``es_key`` (legacy) is still honored as the name override until it is removed.
+            self._series_name = es_key
+
+        # ``metadata_key`` is the dict key; default it from the interface's own series name rather than from
+        # ``es_key`` (keep the two decoupled since ``es_key`` will be removed). The base seeded it from the
+        # (None) ``es_key`` before the name was known, so set it here unless the user passed one explicitly.
+        if metadata_key is None:
+            self.metadata_key = self._series_name
 
         # Set electrode properties from probe information
         probe = self.recording_extractor.get_probe()
@@ -219,12 +226,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         if use_new_metadata_format:
             metadata = super().get_metadata(use_new_metadata_format=True)
-            # FOLLOW-UP (name vs metadata_key decoupling): the base sets the ElectricalSeries
-            # ``name`` to ``self.metadata_key``, which fuses the object name with the dict key. The
-            # sensible name here is the per-stream, probe-disambiguated ``self.es_key``
-            # (``ElectricalSeriesAP`` / ``ElectricalSeriesLF``, with an ``Imec{n}`` suffix for
-            # multiple probes) — the interface should own that name independently of the key. Not
-            # done here to keep this PR to the device/group migration.
+            # The base names the ElectricalSeries after ``metadata_key`` (the dict key). Override it with
+            # the interface-owned, stream/probe-disambiguated name so a custom ``metadata_key`` re-keys the
+            # entry without renaming the written series.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = self._series_name
 
             session_start_time = self._get_session_start_time()
             if session_start_time:

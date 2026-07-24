@@ -765,6 +765,14 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
             serial_number="18194809281",
         )
 
+    def test_metadata_key_does_not_rename_series(self):
+        # A custom metadata_key re-keys the ElectricalSeries entry but must not rename the written series;
+        # the name stays interface-owned (the stream/probe-disambiguated name).
+        interface = SpikeGLXRecordingInterface(**self.interface_kwargs, metadata_key="custom_key")
+        electrical_series = interface.get_metadata(use_new_metadata_format=True)["Ecephys"]["ElectricalSeries"]
+        assert list(electrical_series) == ["custom_key"]
+        assert electrical_series["custom_key"]["name"] == "ElectricalSeriesAP"
+
 
 class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
