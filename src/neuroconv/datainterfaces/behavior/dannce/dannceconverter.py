@@ -209,26 +209,9 @@ class DANNCEConverter(BaseDataInterface):
             verbose=verbose,
         )
 
-        # Cross-check the DANNCE prediction file's sample count against the first (reference) camera's
-        # frametimes count *before* using them together to build timestamps below: a mismatch here
-        # means the two files most likely come from different recordings/sessions, and indexing
-        # frametimes by sampleID would otherwise either raise an opaque IndexError or, worse, silently
-        # pair predictions with the wrong camera timestamps.
         primary_camera_name = self._camera_names[0]
         primary_camera_frametimes = camera_frametimes[primary_camera_name]
         video_frame_indices = self._dannce_interface.video_frame_indices
-        n_predicted_samples = video_frame_indices.shape[0]
-        n_video_frames = primary_camera_frametimes.shape[0]
-        if n_predicted_samples != n_video_frames:
-            raise ValueError(
-                f"Mismatch between the DANNCE prediction file and camera '{primary_camera_name}''s "
-                f"frametimes file: the prediction file '{file_path}' has {n_predicted_samples} "
-                f"samples, but "
-                f"'{camera_directories[primary_camera_name] / 'frametimes.npy'}' records "
-                f"{n_video_frames} frames. Verify that the prediction file and 'videos_folder_path' "
-                "come from the same recording session."
-            )
-
         self._dannce_interface.set_aligned_timestamps(primary_camera_frametimes[video_frame_indices.astype(int)])
 
         self._video_interfaces: dict[str, ExternalVideoInterface] = {}

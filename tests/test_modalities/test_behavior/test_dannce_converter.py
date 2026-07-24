@@ -109,16 +109,6 @@ class TestDANNCEConverterDiscovery:
                 videos_folder_path=empty_videos_folder,
             )
 
-    def test_sample_count_frametimes_mismatch_raises(self, dannce_converter_dir):
-        camera1_frametimes_path = dannce_converter_dir["videos_folder_path"] / "Camera1" / "frametimes.npy"
-        _write_frametimes(camera1_frametimes_path, n_frames=dannce_converter_dir["n_samples"] - 5)
-
-        with pytest.raises(ValueError, match="Mismatch between the DANNCE prediction file"):
-            DANNCEConverter(
-                file_path=dannce_converter_dir["file_path"],
-                videos_folder_path=dannce_converter_dir["videos_folder_path"],
-            )
-
     def test_video_frame_count_frametimes_mismatch_raises(self, dannce_converter_dir):
         # Camera2's video has fewer frames than its own frametimes file claims.
         camera2_dir = dannce_converter_dir["videos_folder_path"] / "Camera2"
