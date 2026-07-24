@@ -60,6 +60,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         stream_id: str,
         verbose: bool = False,
         es_key: str | None = None,
+        metadata_key: str | None = None,
     ):
         """
         Parameters
@@ -73,6 +74,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Whether to output verbose text.
         es_key : str, optional
             The key to access the metadata of the ElectricalSeries.
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to the value of ``es_key``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -121,6 +124,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             folder_path=folder_path,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
         )
 
         signal_info_key = (0, self.stream_id)  # Key format is (segment_index, stream_id)
@@ -142,8 +146,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
             self.es_key = electrical_series_name
             # ``metadata_key`` defaults to ``es_key``, but the base set it from the (None) ``es_key``
-            # passed to ``super().__init__`` before this interface computed the real name, so re-sync it.
-            self.metadata_key = electrical_series_name
+            # passed to ``super().__init__`` before this interface computed the real name. Re-sync it,
+            # unless the user passed an explicit ``metadata_key`` (which must not be clobbered).
+            if metadata_key is None:
+                self.metadata_key = electrical_series_name
 
         # Set electrode properties from probe information
         probe = self.recording_extractor.get_probe()
