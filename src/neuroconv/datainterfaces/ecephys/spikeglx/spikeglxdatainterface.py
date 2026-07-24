@@ -141,6 +141,9 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 electrical_series_name += f"{device}"
 
             self.es_key = electrical_series_name
+            # ``metadata_key`` defaults to ``es_key``, but the base set it from the (None) ``es_key``
+            # passed to ``super().__init__`` before this interface computed the real name, so re-sync it.
+            self.metadata_key = electrical_series_name
 
         # Set electrode properties from probe information
         probe = self.recording_extractor.get_probe()
@@ -207,7 +210,71 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         if "inter_sample_shift" in self.recording_extractor.get_property_keys():
             self.recording_extractor.delete_property(key="inter_sample_shift")
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+
+            session_start_time = self._get_session_start_time()
+            if session_start_time:
+                metadata["NWBFile"]["session_start_time"] = session_start_time
+
+            # The probe device is recorded in the top-level ``Devices`` registry and every electrode
+            # group links to it via ``device_metadata_key``, so the Neuropixels provenance survives to
+            # the file instead of the pipeline's synthesized default device. The key encodes the probe
+            # (``imec0``, ``imec1``, ...) so the AP and LF streams of one probe share a single device
+            # while distinct probes stay separate when a converter merges their metadata.
+            device = self._get_device_metadata_from_probe()
+            probe_name = self._signals_info_dict["device"].capitalize()  # Imec0, Imec1, etc.
+            device["name"] = f"Neuropixels{probe_name}"
+            device_metadata_key = f"neuropixels_{self._signals_info_dict['device']}"  # e.g. neuropixels_imec0
+            metadata["Devices"] = {device_metadata_key: device}
+
+            metadata["Ecephys"]["ElectrodeGroups"] = {
+                group_name: dict(
+                    name=group_name,
+                    description=f"A group representing probe/shank '{group_name}'.",
+                    location="unknown",
+                    device_metadata_key=device_metadata_key,
+                )
+                for group_name in set(self.recording_extractor.get_property("group_name"))
+            }
+
+            # Electrode-table column descriptions are orthogonal to the device/group dict migration and
+            # keep their list shape here; folding electrode-level metadata into the dict format is a
+            # separate, still-unsettled follow-up.
+            metadata["Ecephys"]["Electrodes"] = [
+                dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
+                dict(
+                    name="electrode_name",
+                    description=(
+                        "The unique name of this electrode. Derived from probe contact identifiers. "
+                        "Multiple channels (e.g., AP and LF bands) from the same physical electrode "
+                        "will share the same electrode_name."
+                    ),
+                ),
+                dict(name="contact_shapes", description="The shape of the electrode"),
+                dict(
+                    name="adc_group",
+                    description=(
+                        "The ADC (Analog-to-Digital Converter) index to which each electrode is connected. "
+                        "This hardware configuration determines which channels are sampled simultaneously."
+                    ),
+                ),
+                dict(
+                    name="adc_sample_order",
+                    description=(
+                        "The sampling order index (0-based) of this electrode within its ADC group. "
+                        "Combined with adc_group, this determines the precise temporal offset of each channel's samples."
+                    ),
+                ),
+            ]
+            if self.recording_extractor.get_probe().get_shank_count() > 1:
+                metadata["Ecephys"]["Electrodes"].append(
+                    dict(name="shank_ids", description="The shank id of the electrode")
+                )
+
+            return metadata
+
         metadata = super().get_metadata()
         session_start_time = self._get_session_start_time()
         if session_start_time:
