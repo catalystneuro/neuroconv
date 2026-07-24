@@ -2397,7 +2397,7 @@ class TestWriteSortingAnalyzer(TestCase):
             add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
-                parent_container="units",
+                parent_container="canonical",
                 units_name="units1",
             )
 
