@@ -147,6 +147,12 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             from ....tools.spikeinterface.spikeinterface import _get_group_name
 
             metadata = super().get_metadata(use_new_metadata_format=True)
+            # FOLLOW-UP (name vs metadata_key decoupling): the base sets the ElectricalSeries ``name``
+            # to ``self.metadata_key``, fusing the object name with the dict key. Intan is single-stream,
+            # so the sensible name is the fixed ``"ElectricalSeries"`` — which the old-format branch below
+            # already sets explicitly (``ecephys_metadata[self.es_key]["name"] = "ElectricalSeries"``); the
+            # new path should do the same, independently of the key. Not done here to keep this PR to the
+            # device/group migration.
 
             device_metadata_key = "intan_device"
             metadata["Devices"] = {
