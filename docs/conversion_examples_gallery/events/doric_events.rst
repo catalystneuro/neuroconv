@@ -6,13 +6,13 @@ Convert discrete events (digital IO) from Doric Neuroscience Studio recordings t
 Convert from a .doric HDF5 file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use :py:class:`~neuroconv.datainterfaces.events.doric_events.doriceventsdatainterface.DoricEventsInterface` for the ``.doric`` HDF5 layout. Each digital line's rising edges are detected as event onsets; ``session_start_time`` is read from the file's ``Created`` attribute when present.
+Use :py:class:`~neuroconv.datainterfaces.events.doric_events.doriceventsdatainterface.DoricEventsInterface` for the modern ``.doric`` HDF5 layout (root group ``DataAcquisition``). The ``DigitalIO`` lines are edge-detected; by default each line is read as a ``high_period`` (onset at the rising edge, duration to the falling edge). ``session_start_time`` is read from the file's ``Created`` attribute when present.
 
 .. code-block:: python
 
     >>> from neuroconv.datainterfaces import DoricEventsInterface
 
-    >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"
+    >>> file_path = OPHYS_DATA_PATH / "events_datasets" / "doric" / "root_is_data_acquisition" / "single_line.doric"
 
     >>> interface = DoricEventsInterface(file_path=file_path, verbose=False)
 
