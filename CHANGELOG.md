@@ -49,6 +49,7 @@
 
 ## Features
 * Added `IntanDigitalInterface` for converting Intan digital TTL lines into discrete events. Lines are selected and edge-detected via an `event_specs` argument keyed by the format's bit positions (backend-independent), writing native `pynwb.event.EventsTable` objects. Single-bit lines are supported; coded multi-bit words are deferred. [PR #1812](https://github.com/catalystneuro/neuroconv/pull/1812)
+* `IntanConverter` now routes the digital input/output words to `IntanDigitalInterface` automatically, so digital TTL lines are converted to discrete events with no extra wiring. [PR #1819](https://github.com/catalystneuro/neuroconv/pull/1819)
 * `CSVEventsInterface` now accepts a `time_unit` argument (`seconds`, `milliseconds`, or `microseconds`) that scales the timestamp and duration columns to seconds. [PR #1809](https://github.com/catalystneuro/neuroconv/pull/1809)
 * Added `DoricEventsInterface` for converting discrete events from Doric Neuroscience Studio `.doric` (HDF5) digital IO. [PR #1805](https://github.com/catalystneuro/neuroconv/pull/1805)
 * Added `CSVFiberPhotometryInterface` for converting a raw fiber photometry recording from a CSV file, parsed into the `ndx-fiber-photometry` format; it can demultiplex an interleaved recording (excitation channels multiplexed frame-by-frame down the rows) via a `demux_config`, reading one channel per interface. [PR #1754](https://github.com/catalystneuro/neuroconv/pull/1754) [PR #1808](https://github.com/catalystneuro/neuroconv/pull/1808)

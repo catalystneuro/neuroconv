@@ -1,9 +1,11 @@
+import warnings
 from pathlib import Path
 
 from pydantic import FilePath, validate_call
 
 from .intananaloginterface import IntanAnalogInterface
 from .intandatainterface import IntanRecordingInterface
+from .intandigitalinterface import IntanDigitalInterface
 from .intanstiminterface import IntanStimInterface
 from ....nwbconverter import ConverterPipe
 from ....utils import get_json_schema_from_method_signature
@@ -16,7 +18,10 @@ class IntanConverter(ConverterPipe):
     Auto-discovers all streams present in the file header and instantiates the
     appropriate sub-interface for each: IntanRecordingInterface for the amplifier
     stream, IntanAnalogInterface for analog streams (auxiliary, ADC inputs/outputs,
-    DC amplifier), and IntanStimInterface for the RHS stim channel.
+    DC amplifier), IntanStimInterface for the RHS stim channel, and
+    IntanDigitalInterface for the digital input/output words (every enabled line is stored
+    as a high pulse: the event timestamp is the 0->1 rise and the duration is the span to the
+    1->0 fall, assuming active-high lines; a line that never toggles is written as an empty table).
     """
 
     display_name = "Intan Converter"
@@ -65,6 +70,16 @@ class IntanConverter(ConverterPipe):
             "interface": IntanStimInterface,
             "metadata_key": "time_series_intan_stim",
         },
+        "USB board digital input channel": {
+            "interface_name": "DigitalInput",
+            "interface": IntanDigitalInterface,
+            "metadata_key": "intan_digital_input",
+        },
+        "USB board digital output channel": {
+            "interface_name": "DigitalOutput",
+            "interface": IntanDigitalInterface,
+            "metadata_key": "intan_digital_output",
+        },
     }
 
     @classmethod
@@ -93,8 +108,7 @@ class IntanConverter(ConverterPipe):
         -------
         list of str
             All stream names reported by the file header (including streams not
-            currently routed by this converter, such as digital inputs/outputs
-            and supply voltage).
+            currently routed by this converter, such as supply voltage).
         """
         from neo.rawio import IntanRawIO
 
@@ -115,7 +129,11 @@ class IntanConverter(ConverterPipe):
         Auto-discover and route all Intan streams in a .rhd or .rhs file.
 
         Streams present in the file header that do not have a routed sub-interface
-        (digital input/output, supply voltage) are skipped automatically.
+        (supply voltage) are skipped automatically. Digital input/output words are
+        routed to ``IntanDigitalInterface`` with its default config, storing every
+        enabled line as a high pulse (onset at the 0->1 rise, duration to the 1->0
+        fall, assuming active-high lines; a line that never toggles becomes an empty table); pass
+        their names to ``exclude_streams`` to skip them.
 
         Parameters
         ----------
@@ -155,9 +173,23 @@ class IntanConverter(ConverterPipe):
             if stream_name not in self._STREAM_TO_INTERFACE:
                 continue
             entry = self._STREAM_TO_INTERFACE[stream_name]
+            if saved_files_are_split and entry["interface"] is IntanDigitalInterface:
+                # IntanDigitalInterface has no saved_files_are_split support: there is no test data with
+                # both split files and digital lines, so the concatenation path is unverified for events.
+                # Skip the digital stream rather than convert it wrong, and invite the data.
+                warnings.warn(
+                    f"Skipping digital stream '{stream_name}': IntanDigitalInterface does not support "
+                    "saved_files_are_split (time-split / rotated recordings) yet, because there is no test "
+                    "data covering split files with digital lines. If you have such a recording, please open "
+                    "an issue at https://github.com/catalystneuro/neuroconv/issues so we can add support and "
+                    "a test.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                continue
             interface_kwargs = dict(file_path=file_path)
             interface_kwargs.update({k: v for k, v in entry.items() if k not in self._ROUTING_KEYS})
-            if entry["interface"] is IntanAnalogInterface:
+            if entry["interface"] in (IntanAnalogInterface, IntanDigitalInterface):
                 interface_kwargs["stream_name"] = stream_name
             elif entry["interface"] is IntanRecordingInterface:
                 interface_kwargs["es_key"] = interface_kwargs.pop("metadata_key")
