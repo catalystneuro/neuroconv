@@ -43,18 +43,20 @@ Digital and coded channels as events
 Derive discrete events from the digital and coded channels with
 :py:class:`~neuroconv.datainterfaces.events.inscopix_gpio_events.inscopixgpioeventsdatainterface.InscopixGpioEventsInterface`,
 which writes each channel as a ``pynwb.event.EventsTable`` into ``nwbfile.events``. Selection is
-explicit: name each channel in ``events_config`` and say how to read it. ``reading`` picks which
-value-transitions become events , ``"changes"`` (default, every change), ``"rising"``/``"falling"``
-(only where the value increases/decreases), or ``"interval"`` (each increase paired with the next
-decrease, giving a duration). ``levels`` optionally cuts a coded line into bands, written as a
-categorical column.
+explicit: name each channel in ``events_config`` and say how to read it. ``detect`` picks which
+value-transitions become events, sharing its vocabulary and default with ``IntanDigitalInterface``:
+``"high_period"``/``"low_period"`` (a durative reading pairing each edge with the next opposite edge,
+giving a duration), ``"rising"``/``"falling"`` (only the up/down transitions, as point events), or
+``"changes"`` (every value transition, carrying the value it changed to). A plain digital line defaults
+to ``"high_period"``; a ``levels`` line defaults to ``"changes"``. ``levels`` optionally cuts a coded
+line into bands, written as a categorical column.
 
 .. code-block:: python
 
     >>> from neuroconv.datainterfaces import InscopixGpioEventsInterface
     >>>
     >>> events_config = {
-    ...     "BNC Sync Output": {"reading": "rising"},                       # frame-clock pulses
+    ...     "BNC Sync Output": {"detect": "rising"},                       # frame-clock pulses
     ...     "GPIO-2": {"levels": [136, 152, 192], "field": "concentration"},  # odor concentration code
     ... }
     >>> interface = InscopixGpioEventsInterface(file_path=file_path, events_config=events_config, verbose=False)

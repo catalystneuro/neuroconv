@@ -19,7 +19,7 @@ GPIO_FILE_PATH = str(OPHYS_DATA_PATH / "analog_datasets" / "inscopix" / "gpio" /
 # ``BNC Sync Output`` is a 0/1 frame clock (9 rising edges); ``GPIO-2`` is the odor-concentration code
 # (amplitudes 128/144/160/224, cut into four bands -> 334 band-change events).
 EVENTS_CONFIG = {
-    "BNC Sync Output": {"reading": "rising"},
+    "BNC Sync Output": {"detect": "rising"},
     "GPIO-2": {"levels": [136, 152, 192], "field": "concentration"},
 }
 
@@ -103,11 +103,11 @@ def test_coded_line_writes_categorical_column(interface):
     assert set(table["concentration"].data) == {"0", "1", "2", "3"}
 
 
-def test_interval_reading_writes_durations():
-    # A digital line read as intervals carries a duration column.
+def test_high_period_reading_writes_durations():
+    # A digital line read as high periods carries a duration column.
     interface = InscopixGpioEventsInterface(
         file_path=GPIO_FILE_PATH,
-        events_config={"BNC Sync Output": {"reading": "interval"}},
+        events_config={"BNC Sync Output": {"detect": "high_period"}},
     )
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
@@ -117,7 +117,7 @@ def test_interval_reading_writes_durations():
 
 def test_unknown_channel_raises():
     interface = InscopixGpioEventsInterface(
-        file_path=GPIO_FILE_PATH, events_config={"NotAChannel": {"reading": "rising"}}
+        file_path=GPIO_FILE_PATH, events_config={"NotAChannel": {"detect": "rising"}}
     )
     with pytest.raises(ValueError, match="not present in the file"):
         interface.get_metadata()

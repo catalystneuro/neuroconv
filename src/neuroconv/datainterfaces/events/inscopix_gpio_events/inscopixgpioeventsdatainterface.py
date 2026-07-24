@@ -9,9 +9,14 @@ from ...ophys.inscopix.inscopixgpiodatainterface import (
     _read_gpio,
     get_gpio_channel_inventory,
 )
+from ....tools.signal_processing import discretize_trace
 from ....utils import DeepDict
 
-_VALID_READINGS = ("changes", "rising", "falling", "interval")
+# The reading vocabulary is shared with IntanDigitalInterface: a plain digital line is edge-detected the
+# same way in both (via ``discretize_trace``), with the same durative ``high_period`` default. ``changes``
+# is an Inscopix-only extra for a multi-value/coded line, which ``discretize_trace`` (binary by design)
+# cannot express, so it keeps its own minimal path here.
+_VALID_DETECT = ("changes", "rising", "falling", "high_period", "low_period")
 
 
 class InscopixGpioEventsInterface(BaseEventsInterface):
@@ -20,7 +25,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
     Inscopix stores each channel as a sparse ``(timestamp, amplitude)`` change-point sequence (bracketed
     by an opening sample at the recording start and a closing held-value sample at the end). Discrete
     events are *derived* from those change-points; this interface writes each configured channel as a
-    ``pynwb.event.EventsTable`` into ``nwbfile.events``. It never stores the raw trace , that is the
+    ``pynwb.event.EventsTable`` into ``nwbfile.events``. It never stores the raw trace, that is the
     additive, independent job of :class:`.InscopixGpioInterface`.
 
     Selection is explicit (the file records no analog-vs-event flag): name each channel in
@@ -29,17 +34,24 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
     - ``levels`` (optional): cut the amplitude into band indices with ``numpy.digitize`` (N cut points
       -> bands ``0..N``). Omit it and the value is the raw amplitude. A coded line (an odor-concentration
       code) uses this; the band index becomes a categorical column.
-    - ``reading`` (default ``"changes"``): which value-transitions become events. An event happens where
-      the value actually changes vs the previous sample (so the opening/closing boundary samples, which
-      are not changes, never produce events, and no ``amplitude > 0`` threshold is assumed):
+    - ``detect`` (default ``"high_period"`` for a plain line, ``"changes"`` for a ``levels`` line): how
+      the line's transitions become events. The naming and default match
+      :class:`.IntanDigitalInterface`, and for a plain digital line the four edge readings are delegated
+      to the shared :func:`~neuroconv.tools.signal_processing.discretize_trace`, so both interfaces
+      produce events the same way:
 
-      - ``"changes"`` , every transition (carrying the value it changed to);
-      - ``"rising"`` / ``"falling"`` , only transitions where the value increased / decreased;
-      - ``"interval"`` , each increase paired with the next decrease, giving an onset + ``duration``.
+      - ``"high_period"`` , each rising edge paired with the next falling edge (onset + ``duration``);
+      - ``"low_period"`` , each falling edge paired with the next rising edge (onset + ``duration``);
+      - ``"rising"`` / ``"falling"`` , only the up / down transitions, as point events;
+      - ``"changes"`` , every value transition (carrying the value it changed to). This is Inscopix-only:
+        a multi-value/coded line has no equivalent in ``discretize_trace`` (which is binary), so it keeps
+        its own path. A raw line's transitions are thresholded at the trace mean (so a non-zero-baseline
+        binary line such as 48/64 still reads "rising = value increased").
 
     A value column is written for a ``levels`` line (the band, categorical) and for ``"changes"`` on a
-    raw line (the raw value); ``rising``/``falling``/``interval`` on a raw line are timestamp-only (the
-    direction is implied).
+    raw line (the raw value); the binary edge readings on a raw line are timestamp-only (the direction is
+    implied). A ``levels`` (coded) line keeps its band-comparison edge logic for every ``detect`` (its
+    band identity has no binary equivalent), and always carries the band.
     """
 
     keywords = ("events", "inscopix", "gpio")
@@ -63,9 +75,10 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         file_path : FilePath
             Path to the ``.gpio`` Inscopix file.
         events_config : dict
-            Maps a channel name to how it is read: ``{"reading": ..., "levels": [...], "field": ...}``.
-            ``reading`` is one of ``"changes"`` (default), ``"rising"``, ``"falling"``, ``"interval"``;
-            ``levels`` (optional) quantizes the amplitude into band indices; ``field`` (optional, default
+            Maps a channel name to how it is read: ``{"detect": ..., "levels": [...], "field": ...}``.
+            ``detect`` is one of ``"high_period"`` (the default for a plain line), ``"low_period"``,
+            ``"rising"``, ``"falling"``, or ``"changes"`` (the default for a ``levels`` line); ``levels``
+            (optional) quantizes the amplitude into band indices; ``field`` (optional, default
             ``"value"``) names the value column. A channel not listed is not written. Use
             :meth:`get_available_channels` to inspect the file first.
         metadata_key : str, optional
@@ -86,7 +99,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         """Seed one ``event_types`` entry per configured channel.
 
         A ``levels`` line gets a categorical value column (band index, with a ``labels`` map); a
-        ``"changes"`` raw line gets a plain numeric value column; a directional reading on a raw line is
+        ``"changes"`` raw line gets a plain numeric value column; an edge reading on a raw line is
         timestamp-only (empty ``columns``).
         """
         metadata = super().get_metadata()
@@ -147,62 +160,104 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
 
 
 def _derive_events(channel_name, entry, timestamps_seconds, amplitudes) -> _EventsData | None:
-    """Turn one channel's change-points into an :class:`_EventsData`, per its ``levels``/``reading``.
+    """Turn one channel's change-points into an :class:`_EventsData`, per its ``levels``/``detect``.
 
-    Events occur at value transitions (``value[i] != value[i-1]``), which excludes the opening sample
-    and any repeated closing sample by construction; ``rising``/``falling`` compare the value to the
-    previous one (no ``amplitude > 0`` threshold), so a non-zero-baseline line (e.g. 48/64) works.
+    A plain (non-``levels``) line is edge-detected exactly as ``IntanDigitalInterface`` does, via the
+    shared :func:`~neuroconv.tools.signal_processing.discretize_trace`; ``changes`` on a plain line keeps
+    its own value-carrying transition path (``discretize_trace`` is binary). A ``levels`` (coded) line
+    keeps a band-comparison path for every reading, because its band identity has no binary equivalent.
     """
-    reading = entry.get("reading", "changes")
-    if reading not in _VALID_READINGS:
-        raise ValueError(
-            f"Invalid reading '{reading}' for channel '{channel_name}'; expected one of {_VALID_READINGS}."
-        )
-    field = entry.get("field", "value")
     leveled = "levels" in entry
-    values = np.digitize(amplitudes, entry["levels"]) if leveled else amplitudes
+    detect = entry.get("detect")
+    if detect is None:  # a plain line defaults to Intan's ``high_period``; a coded line to its transitions
+        detect = "changes" if leveled else "high_period"
+    if detect not in _VALID_DETECT:
+        raise ValueError(f"Invalid detect '{detect}' for channel '{channel_name}'; expected one of {_VALID_DETECT}.")
+    field = entry.get("field", "value")
 
-    transitions = np.flatnonzero(values[1:] != values[:-1]) + 1  # indices where the value actually changed
-    if len(transitions) == 0:
+    if leveled:
+        bands = np.digitize(amplitudes, entry["levels"])
+        return _derive_from_bands(channel_name, detect, field, timestamps_seconds, bands)
+    return _derive_from_trace(channel_name, detect, field, timestamps_seconds, amplitudes)
+
+
+def _derive_from_trace(channel_name, detect, field, timestamps_seconds, amplitudes) -> _EventsData | None:
+    """Derive events from a plain (raw) line: ``changes`` carries the value; the four edge readings route
+    through :func:`~neuroconv.tools.signal_processing.discretize_trace`, timestamp-only.
+
+    ``discretize_trace`` returns onset frame indices into the change-point array and, for a durative
+    reading, per-event durations **in frames** (the close index minus the onset index, ``NaN`` where the
+    interval never closes). The change-points are irregularly spaced, so a frame delta is not a fixed
+    period: the onset frame plus the frame duration is the close index, and the duration in seconds is the
+    difference of the two change-point timestamps.
+    """
+    if detect == "changes":  # every transition, carrying the value it changed to (Inscopix-only path)
+        transitions = np.flatnonzero(amplitudes[1:] != amplitudes[:-1]) + 1
+        if len(transitions) == 0:
+            return None
+        return _EventsData(
+            event_type_source_id=channel_name,
+            timestamps=timestamps_seconds[transitions],
+            durations=None,
+            payload={field: amplitudes[transitions]},
+        )
+
+    # Default threshold (the trace mean) so a non-zero-baseline binary line (e.g. 48/64) still reads
+    # "rising = value increased" rather than assuming an ``amplitude > 0`` high state.
+    onset_frames, duration_frames = discretize_trace(amplitudes, detect)
+    if len(onset_frames) == 0:
         return None
-    previous, current, times = (
-        values[transitions - 1],
-        values[transitions],
-        timestamps_seconds[transitions],
+    durations = None
+    if duration_frames is not None:
+        durations = np.full(len(onset_frames), np.nan)
+        matched = ~np.isnan(duration_frames)
+        close_frames = (onset_frames[matched] + duration_frames[matched]).astype("int64")
+        durations[matched] = timestamps_seconds[close_frames] - timestamps_seconds[onset_frames[matched]]
+    return _EventsData(
+        event_type_source_id=channel_name,
+        timestamps=timestamps_seconds[onset_frames],
+        durations=durations,
+        payload={},
     )
 
-    if reading == "rising":
+
+def _derive_from_bands(channel_name, detect, field, timestamps_seconds, bands) -> _EventsData | None:
+    """Derive events from a ``levels`` (coded) line by comparing band indices, always carrying the band.
+
+    ``discretize_trace`` is binary and would erase the band identity, so a coded line keeps this
+    Inscopix-specific path: ``changes`` keeps every band transition, ``rising``/``high_period`` keep the
+    band increases, ``falling``/``low_period`` the band decreases, and a durative reading pairs each onset
+    with the next opposite-direction band change.
+    """
+    transitions = np.flatnonzero(bands[1:] != bands[:-1]) + 1  # indices where the band actually changed
+    if len(transitions) == 0:
+        return None
+    previous, current, times = bands[transitions - 1], bands[transitions], timestamps_seconds[transitions]
+
+    if detect in ("rising", "high_period"):
         keep = current > previous
-    elif reading == "falling":
+    elif detect in ("falling", "low_period"):
         keep = current < previous
-    else:  # "changes" keeps all transitions; "interval" onsets are the rising transitions
-        keep = np.ones(len(transitions), dtype=bool) if reading == "changes" else current > previous
+    else:  # "changes"
+        keep = np.ones(len(transitions), dtype=bool)
     if not keep.any():
         return None
-    event_times, event_values = times[keep], current[keep]
+    event_times, event_bands = times[keep], current[keep]
 
     durations = None
-    if reading == "interval":
-        falling_times = times[current < previous]
+    if detect in ("high_period", "low_period"):
+        opposite = times[current < previous] if detect == "high_period" else times[current > previous]
         durations = np.full(len(event_times), np.nan)
-        if len(falling_times):
-            positions = np.searchsorted(falling_times, event_times, side="right")
-            valid = positions < len(falling_times)
-            durations[valid] = falling_times[positions[valid]] - event_times[valid]
-
-    # A coded (leveled) line always carries its band; a raw line carries its value only for "changes".
-    if leveled:
-        payload = {field: event_values.astype(int)}
-    elif reading == "changes":
-        payload = {field: event_values}
-    else:
-        payload = {}
+        if len(opposite):
+            positions = np.searchsorted(opposite, event_times, side="right")
+            valid = positions < len(opposite)
+            durations[valid] = opposite[positions[valid]] - event_times[valid]
 
     return _EventsData(
         event_type_source_id=channel_name,
         timestamps=event_times,
         durations=durations,
-        payload=payload,
+        payload={field: event_bands.astype(int)},
     )
 
 

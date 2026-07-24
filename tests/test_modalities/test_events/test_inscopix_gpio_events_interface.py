@@ -3,6 +3,10 @@
 These exercise the pure ``_derive_events`` function on synthetic change-point arrays (opening sample,
 changes, closing sample), so they need neither pyisx nor the ``.gpio`` fixture. End-to-end behavior on
 the real file is covered in ``tests/test_on_data/events``.
+
+The ``detect`` vocabulary and its ``high_period`` default are shared with ``IntanDigitalInterface``; a
+plain (raw) line's edge readings route through the same ``discretize_trace`` helper, while ``changes``
+(and every reading on a ``levels`` line) keeps an Inscopix-specific value/band-carrying path.
 """
 
 import numpy as np
@@ -28,45 +32,49 @@ class TestReadingsOnADigitalLine:
     amps = [0.0, 1.0, 0.0, 1.0, 0.0]
 
     def test_changes_keeps_every_transition_with_value(self):
-        event = _derive({"reading": "changes"}, self.times, self.amps)
+        event = _derive({"detect": "changes"}, self.times, self.amps)
         assert event.timestamps.tolist() == [1.0, 2.0, 3.0, 4.0]
         assert event.payload["value"].tolist() == [1.0, 0.0, 1.0, 0.0]
         assert event.durations is None
 
     def test_rising_is_timestamp_only(self):
-        event = _derive({"reading": "rising"}, self.times, self.amps)
+        event = _derive({"detect": "rising"}, self.times, self.amps)
         assert event.timestamps.tolist() == [1.0, 3.0]  # the 0->1 transitions
         assert event.payload == {}  # raw line + directional reading -> no value column
 
     def test_falling(self):
-        event = _derive({"reading": "falling"}, self.times, self.amps)
+        event = _derive({"detect": "falling"}, self.times, self.amps)
         assert event.timestamps.tolist() == [2.0, 4.0]
 
-    def test_interval_pairs_rise_with_next_fall(self):
-        event = _derive({"reading": "interval"}, self.times, self.amps)
+    def test_high_period_pairs_rise_with_next_fall(self):
+        event = _derive({"detect": "high_period"}, self.times, self.amps)
         assert event.timestamps.tolist() == [1.0, 3.0]
         assert event.durations.tolist() == [1.0, 1.0]
 
-    def test_default_reading_is_changes(self):
+    def test_default_detect_is_high_period(self):
+        # A plain line with no ``detect`` reads as ``high_period``, matching IntanDigitalInterface.
         event = _derive({}, self.times, self.amps)
-        assert event.timestamps.tolist() == [1.0, 2.0, 3.0, 4.0]
+        assert event.timestamps.tolist() == [1.0, 3.0]
+        assert event.durations.tolist() == [1.0, 1.0]
 
 
 def test_opening_and_closing_boundary_samples_are_not_events():
     # (0, 0) opening, one real change to 1, then a closing sample repeating the held value 1.
-    event = _derive({"reading": "changes"}, [0.0, 5.0, 10.0], [0.0, 1.0, 1.0])
+    event = _derive({"detect": "changes"}, [0.0, 5.0, 10.0], [0.0, 1.0, 1.0])
     assert event.timestamps.tolist() == [5.0]  # only the real change; opening and closing repeat dropped
 
 
 def test_rising_works_on_a_nonzero_baseline_line():
     # A 48/64 line: "rising" must mean "value increased", not "amplitude > 0" (which would call all high).
-    event = _derive({"reading": "rising"}, [0.0, 1.0, 2.0, 3.0], [48.0, 64.0, 48.0, 64.0])
+    # discretize_trace thresholds at the trace mean, so the 48->64 crossings are the rising edges.
+    event = _derive({"detect": "rising"}, [0.0, 1.0, 2.0, 3.0], [48.0, 64.0, 48.0, 64.0])
     assert event.timestamps.tolist() == [1.0, 3.0]  # the 48->64 increases
 
 
 class TestLevels:
     def test_bands_and_categorical_value(self):
-        # digitize([0,100,200,0], [50,150]) -> bands [0,1,2,0]; a coded line always carries its band.
+        # digitize([0,100,200,0], [50,150]) -> bands [0,1,2,0]; a coded line defaults to "changes" and
+        # always carries its band.
         event = _derive(
             {"levels": [50, 150], "field": "concentration"},
             [0.0, 1.0, 2.0, 3.0],
@@ -76,8 +84,9 @@ class TestLevels:
         assert event.payload["concentration"].tolist() == [1, 2, 0]
 
     def test_rising_on_a_coded_line_keeps_the_band(self):
+        # A coded line keeps its band-comparison path (discretize_trace is binary and would erase bands).
         event = _derive(
-            {"levels": [50, 150], "reading": "rising"},
+            {"levels": [50, 150], "detect": "rising"},
             [0.0, 1.0, 2.0],
             [0.0, 100.0, 200.0],
         )
@@ -86,9 +95,9 @@ class TestLevels:
 
 
 def test_flat_channel_yields_none():
-    assert _derive({"reading": "changes"}, [0.0, 1.0], [5.0, 5.0]) is None
+    assert _derive({"detect": "changes"}, [0.0, 1.0], [5.0, 5.0]) is None
 
 
-def test_invalid_reading_raises():
-    with pytest.raises(ValueError, match="Invalid reading"):
-        _derive({"reading": "both"}, [0.0, 1.0], [0.0, 1.0])
+def test_invalid_detect_raises():
+    with pytest.raises(ValueError, match="Invalid detect"):
+        _derive({"detect": "both"}, [0.0, 1.0], [0.0, 1.0])
