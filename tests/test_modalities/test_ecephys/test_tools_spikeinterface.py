@@ -2643,8 +2643,10 @@ class TestAddRecording:
         electrodes_df = nwbfile.electrodes.to_dataframe()
         assert all(row_group is group for row_group in electrodes_df["group"])
 
-    def test_missing_required_electrode_group_field_raises(self):
-        """When an electrode group entry is missing schema-required fields, a clear error is raised."""
+    def test_missing_electrode_group_fields_are_defaulted(self):
+        """An electrode group entry that omits description/location is not rejected; the write path fills
+        those required NWB fields from the default template instead of raising, so an interface can
+        provide just a name and a device link."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
         nwbfile = mock_NWBFile()
 
@@ -2655,7 +2657,7 @@ class TestAddRecording:
                 "ElectrodeGroups": {
                     channel_groups[0]: {
                         "name": channel_groups[0],
-                        # description and location intentionally omitted
+                        # description and location intentionally omitted -> defaulted at write time
                         "device_metadata_key": "d",
                     },
                 },
@@ -2665,21 +2667,18 @@ class TestAddRecording:
             },
         }
 
-        expected_error = re.escape(
-            "Electrode group metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. "
-            "If missing, a placeholder can be used instead:\n"
-            "  description: 'no description'\n"
-            "  location: 'unknown'"
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
         )
-        with pytest.raises(ValueError, match=expected_error):
-            add_recording_to_nwbfile(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                metadata_key="series",
-                iterator_type=None,
-            )
+
+        group = nwbfile.electrode_groups[channel_groups[0]]
+        assert group.description == "no description"
+        assert group.location == "unknown"
+        assert group.device.name == "Device"
 
     def test_missing_metadata_key_raises(self):
         """An unknown metadata_key raises with the available keys listed."""

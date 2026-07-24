@@ -2,11 +2,10 @@ import warnings
 from pathlib import Path
 
 from pydantic import FilePath
-from pynwb.ecephys import ElectricalSeries
 
 from ._utils import _warn_if_split_siblings_detected
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import DeepDict, get_schema_from_hdmf_class
+from ....utils import DeepDict
 
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
@@ -69,6 +68,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
         ignore_integrity_checks: bool = False,
         saved_files_are_split: bool = False,
     ):
@@ -83,6 +83,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
             Verbose
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to the value of ``es_key``.
         ignore_integrity_checks : bool, default: False
             If True, data that violates integrity assumptions will be loaded. At the moment the only integrity
             check performed is that timestamps are continuous. If False, an error will be raised if the check fails.
@@ -131,27 +133,47 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             file_path=self.file_path,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
             ignore_integrity_checks=ignore_integrity_checks,
         )
 
         super().__init__(**init_kwargs)
 
-    def get_metadata_schema(self) -> dict:
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        return metadata_schema
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        system = self.file_path.suffix  # .rhd or .rhs
+        device_description = {".rhd": "RHD Recording System", ".rhs": "RHS Stim/Recording System"}[system]
 
-    def get_metadata(self) -> DeepDict:
+        if use_new_metadata_format:
+            from ....tools.spikeinterface.spikeinterface import _get_group_name
+
+            metadata = super().get_metadata(use_new_metadata_format=True)
+            # The base names the ElectricalSeries after ``metadata_key`` (the dict key). Intan is
+            # single-stream, so override it with the fixed ``"ElectricalSeries"`` (matching the old-format
+            # branch below) so a custom ``metadata_key`` re-keys the entry without renaming the series.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeries"
+
+            device_metadata_key = "intan_device"
+            metadata["Devices"] = {
+                device_metadata_key: dict(name="Intan", description=device_description, manufacturer="Intan"),
+            }
+
+            # Link every channel group to the Intan device so it is written to the NWBFile. Devices are
+            # created lazily when an electrode group references them; without this linkage the pipeline
+            # would synthesize its own default device instead of the Intan one. Only the fields the source
+            # actually carries are emitted (name + the device link); the required ``description``/
+            # ``location`` are defaulted by the write pipeline, not invented here.
+            channel_group_names = set(_get_group_name(recording=self.recording_extractor).tolist())
+            metadata["Ecephys"]["ElectrodeGroups"] = {
+                group_name: dict(name=group_name, device_metadata_key=device_metadata_key)
+                for group_name in channel_group_names
+            }
+
+            return metadata
+
         metadata = super().get_metadata()
         ecephys_metadata = metadata["Ecephys"]
 
         # Add device
-
-        system = self.file_path.suffix  # .rhd or .rhs
-        device_description = {".rhd": "RHD Recording System", ".rhs": "RHS Stim/Recording System"}[system]
-
         intan_device = dict(
             name="Intan",
             description=device_description,
@@ -165,8 +187,5 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             electrode_group["device"] = intan_device["name"]
 
         ecephys_metadata[self.es_key]["name"] = "ElectricalSeries"
-        ecephys_metadata.update(
-            ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="Raw acquisition traces."),
-        )
 
         return metadata

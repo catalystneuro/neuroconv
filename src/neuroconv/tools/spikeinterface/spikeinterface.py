@@ -157,18 +157,15 @@ def _add_electrode_groups_to_nwbfile(
         for group_name in sorted(missing_channel_group_names)
     ]
 
-    required_fields = ("name", "description", "location")
     for group_metadata in (*user_entries, *auto_entries):
         group_kwargs = group_metadata.copy()
 
-        missing_fields = [field for field in required_fields if field not in group_kwargs]
-        if missing_fields:
-            placeholder_hint = "\n".join(f"  {field}: {default_group_template[field]!r}" for field in missing_fields)
-            raise ValueError(
-                "Electrode group metadata is missing required fields.\n"
-                "For a complete NWB file, the following fields should be provided. "
-                f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-            )
+        # ``description`` and ``location`` are required by the NWB ``ElectrodeGroup`` object but are often
+        # unknown to an interface, which may provide only a name and a device link. Fill any missing one
+        # from the default template at write time, rather than forcing the interface's get_metadata to emit
+        # a placeholder; this is the same template already applied to the auto-synthesized entries above.
+        for field in ("description", "location"):
+            group_kwargs.setdefault(field, default_group_template[field])
 
         if group_kwargs["name"] in nwbfile.electrode_groups:
             continue
