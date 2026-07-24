@@ -291,6 +291,14 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Intan"
 
+    def test_metadata_key_does_not_rename_series(self):
+        # A custom metadata_key re-keys the ElectricalSeries entry but must not rename the written series;
+        # the name stays the fixed interface-owned "ElectricalSeries".
+        interface = IntanRecordingInterface(**self.interface_kwargs, metadata_key="custom_key")
+        electrical_series = interface.get_metadata(use_new_metadata_format=True)["Ecephys"]["ElectricalSeries"]
+        assert list(electrical_series) == ["custom_key"]
+        assert electrical_series["custom_key"]["name"] == "ElectricalSeries"
+
 
 class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = IntanRecordingInterface
