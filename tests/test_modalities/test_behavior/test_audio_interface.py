@@ -87,18 +87,18 @@ class TestAudioInterface(AudioInterfaceTestMixin):
 
         assert len(audio_metadata) == self.num_audio_files
 
-    def test_incorrect_write_as(self):
+    def test_incorrect_parent_container(self):
         with pytest.raises(jsonschema.exceptions.ValidationError):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
                 metadata=self.metadata,
-                conversion_options=dict(Audio=dict(write_as="bad_option")),
+                conversion_options=dict(Audio=dict(parent_container="bad_option")),
                 overwrite=True,
             )
 
-    def test_write_as_acquisition(self):
-        conversion_opts = dict(Audio=dict(write_as="acquisition"))
-        nwbfile_path = str(self.test_dir / "audio_write_as_acquisition.nwb")
+    def test_parent_container_acquisition(self):
+        conversion_opts = dict(Audio=dict(parent_container="acquisition"))
+        nwbfile_path = str(self.test_dir / "audio_parent_container_acquisition.nwb")
         self.nwb_converter.run_conversion(
             nwbfile_path=nwbfile_path,
             metadata=self.metadata,
