@@ -188,7 +188,8 @@ def add_recording_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
     *,
-    write_as: Literal["raw", "processed", "lfp"] = "raw",
+    parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
+    write_as: Literal["raw", "processed", "lfp"] | None = None,
     es_key: str | None = None,
     iterator_type: str = "v2",
     iterator_options: dict | None = None,
@@ -230,11 +231,14 @@ def add_recording_to_nwbfile(
 
             metadata["Ecephys"]["ElectricalSeries"] = dict(name=my_name, description=my_description)
 
-    write_as : {'raw', 'processed', 'lfp'}
-        How to save the traces data in the nwb file. Options:
-        - 'raw': save it in acquisition
-        - 'processed': save it as FilteredEphys, in a processing module
-        - 'lfp': save it as LFP, in a processing module
+    parent_container : {'acquisition', 'processing/LFP', 'processing/FilteredEphys'}, default: 'acquisition'
+        Which NWB container to write the traces to. Options:
+        - 'acquisition': raw acquired data, in ``nwbfile.acquisition``.
+        - 'processing/LFP': an ``LFP`` container in the ecephys processing module.
+        - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
+    write_as : {'raw', 'processed', 'lfp'}, optional
+        Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
+        'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
     es_key : str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series.
         Used with the old list-based metadata format; ignored when ``metadata_key`` is provided.
@@ -265,6 +269,29 @@ def add_recording_to_nwbfile(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
+    if write_as is not None:
+        warnings.warn(
+            "The 'write_as' parameter of add_recording_to_nwbfile is deprecated and will be removed "
+            "on or after December 2026. Use 'parent_container' instead "
+            "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
+            FutureWarning,
+            stacklevel=2,
+        )
+        parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
+            write_as
+        ]
+    _parent_container_to_write_as = {
+        "acquisition": "raw",
+        "processing/LFP": "lfp",
+        "processing/FilteredEphys": "processed",
+    }
+    if parent_container not in _parent_container_to_write_as:
+        raise ValueError(
+            f"Argument parent_container ({parent_container}) should be one of "
+            "'acquisition', 'processing/LFP', or 'processing/FilteredEphys'!"
+        )
+    write_as = _parent_container_to_write_as[parent_container]
+
     if metadata is not None and metadata_key is None and _is_dict_based_metadata(metadata):
         raise ValueError(
             "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
@@ -309,7 +336,7 @@ def add_sorting_to_nwbfile(
     waveform_sds: np.ndarray | None = None,
     unit_electrode_indices: list[list[int]] | None = None,
     *,
-    parent_container: Literal["canonical", "processing"] = "canonical",
+    parent_container: Literal["units", "processing"] = "units",
     null_values_for_properties: dict | None = None,
     waveform_data_dict: dict | None = None,
 ):
@@ -331,12 +358,12 @@ def add_sorting_to_nwbfile(
         and values will be used as descriptions in the Units table.
     skip_properties : list of str, optional
         Unit properties to exclude from writing.
-    parent_container : {'canonical', 'processing'}, default: 'canonical'
+    parent_container : {'units', 'processing'}, default: 'units'
         Where to save the units table in the nwb file. Options:
-        - 'canonical' will save it to the official NWBFile.units position; recommended only for the final form of the data.
+        - 'units' will save it to the official NWBFile.units position; recommended only for the final form of the data.
         - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
     units_name : str, default: 'units'
-        The name of the units table. If parent_container == 'canonical', then units_name must also be 'units'.
+        The name of the units table. If parent_container == 'units', then units_name must also be 'units'.
     units_description : str, optional
         Description for the Units table (e.g., sorting method, curation details).
     waveform_means : np.ndarray, optional
@@ -363,11 +390,11 @@ def add_sorting_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead ('units' maps to 'canonical').",
+            "on or after December 2026. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
-        parent_container = "canonical" if write_as == "units" else write_as
+        parent_container = write_as
 
     # Handle backwards compatibility for waveform parameters
     if waveform_data_dict is not None:
@@ -397,10 +424,10 @@ def add_sorting_to_nwbfile(
     _resolution = 1.0 / sorting.get_sampling_frequency()
 
     assert parent_container in [
-        "canonical",
+        "units",
         "processing",
-    ], f"Argument parent_container ({parent_container}) should be one of 'canonical' or 'processing'!"
-    write_in_processing_module = False if parent_container == "canonical" else True
+    ], f"Argument parent_container ({parent_container}) should be one of 'units' or 'processing'!"
+    write_in_processing_module = False if parent_container == "units" else True
 
     _add_units_table_to_nwbfile(
         sorting=sorting,
@@ -1927,7 +1954,8 @@ def write_recording_to_nwbfile(
     metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
-    write_as: Literal["raw", "processed", "lfp"] = "raw",
+    parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
+    write_as: Literal["raw", "processed", "lfp"] | None = None,
     es_key: str | None = None,
     *,
     iterator_type: str | None = "v2",
@@ -1991,11 +2019,14 @@ def write_recording_to_nwbfile(
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
+    parent_container: {'acquisition', 'processing/LFP', 'processing/FilteredEphys'}, default: 'acquisition'
+        Which NWB container to write the traces to.
+        - 'acquisition' writes raw acquired data to ``nwbfile.acquisition``
+        - 'processing/LFP' writes an ``LFP`` container in the ecephys processing module
+        - 'processing/FilteredEphys' writes a ``FilteredEphys`` container in the ecephys processing module
     write_as: {'raw', 'processed', 'lfp'}, optional
-        How to save the traces data in the nwb file.
-        - 'raw' will save it in acquisition
-        - 'processed' will save it as FilteredEphys, in a processing module
-        - 'lfp' will save it as LFP, in a processing module
+        Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
+        'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
     es_key: str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series
     iterator_type: {"v2",  None}
@@ -2079,11 +2110,22 @@ def write_recording_to_nwbfile(
                 )
             nwbfile = make_nwbfile_from_metadata(metadata=metadata)
 
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of write_recording_to_nwbfile is deprecated and will be removed "
+                "on or after December 2026. Use 'parent_container' instead "
+                "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
+                write_as
+            ]
         add_recording_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            write_as=write_as,
+            parent_container=parent_container,
             es_key=es_key,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
@@ -2112,11 +2154,24 @@ def write_recording_to_nwbfile(
         with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
             nwbfile = io.read()
 
+            if write_as is not None:
+                warnings.warn(
+                    "The 'write_as' parameter of write_recording_to_nwbfile is deprecated and will be removed "
+                    "on or after December 2026. Use 'parent_container' instead "
+                    "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
+                    FutureWarning,
+                    stacklevel=2,
+                )
+                parent_container = {
+                    "raw": "acquisition",
+                    "lfp": "processing/LFP",
+                    "processed": "processing/FilteredEphys",
+                }[write_as]
             add_recording_to_nwbfile(
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
-                write_as=write_as,
+                parent_container=parent_container,
                 es_key=es_key,
                 iterator_type=iterator_type,
                 iterator_options=iterator_options,
@@ -2582,7 +2637,7 @@ def write_sorting_to_nwbfile(
     waveform_sds: np.ndarray | None = None,
     unit_electrode_indices=None,
     *,
-    parent_container: Literal["canonical", "processing"] = "canonical",
+    parent_container: Literal["units", "processing"] = "units",
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     append_on_disk_nwbfile: bool = False,
@@ -2620,12 +2675,12 @@ def write_sorting_to_nwbfile(
         custom unit column.
     skip_properties : list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
-    parent_container : {'canonical', 'processing'}, default: 'canonical'
+    parent_container : {'units', 'processing'}, default: 'units'
         Where to save the units table in the nwb file. Options:
-        - 'canonical' will save it to the official NWBFile.units position; recommended only for the final form of the data.
+        - 'units' will save it to the official NWBFile.units position; recommended only for the final form of the data.
         - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
     units_name : str, default: 'units'
-        The name of the units table. If parent_container == 'canonical', then units_name must also be 'units'.
+        The name of the units table. If parent_container == 'units', then units_name must also be 'units'.
     units_description : str, default: 'Autogenerated by neuroconv.'
     waveform_means : np.ndarray, optional
         Waveform mean (template) for each unit. Shape: (num_units, num_samples, num_channels).
@@ -2660,11 +2715,11 @@ def write_sorting_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead ('units' maps to 'canonical').",
+            "on or after December 2026. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
-        parent_container = "canonical" if write_as == "units" else write_as
+        parent_container = write_as
 
     appending_to_in_memory_nwbfile = nwbfile is not None
     file_initially_exists = nwbfile_path.exists()
@@ -2773,7 +2828,7 @@ def add_sorting_analyzer_to_nwbfile(
     units_name: str = "units",
     units_description: str = "Autogenerated by neuroconv.",
     *,
-    parent_container: Literal["canonical", "processing"] = "canonical",
+    parent_container: Literal["units", "processing"] = "units",
     null_values_for_properties: dict | None = None,
 ):
     """
@@ -2812,12 +2867,12 @@ def add_sorting_analyzer_to_nwbfile(
         custom unit column.
     skip_properties : list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
-    parent_container : {'canonical', 'processing'}, default: 'canonical'
+    parent_container : {'units', 'processing'}, default: 'units'
         Where to save the units table in the nwb file. Options:
-        - 'canonical' will save it to the official NWBFile.units position; recommended only for the final form of the data.
+        - 'units' will save it to the official NWBFile.units position; recommended only for the final form of the data.
         - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
     units_name : str, optional, default: 'units'
-        The name of the units table. If parent_container == 'canonical', then units_name must also be 'units'.
+        The name of the units table. If parent_container == 'units', then units_name must also be 'units'.
     units_description : str, default: 'Autogenerated by neuroconv.'
     null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
@@ -2828,20 +2883,20 @@ def add_sorting_analyzer_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead ('units' maps to 'canonical').",
+            "on or after December 2026. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
-        parent_container = "canonical" if write_as == "units" else write_as
+        parent_container = write_as
 
     # TODO: move into add_units
     assert parent_container in [
-        "canonical",
+        "units",
         "processing",
-    ], f"Argument parent_container ({parent_container}) should be one of 'canonical' or 'processing'!"
-    if parent_container == "canonical":
+    ], f"Argument parent_container ({parent_container}) should be one of 'units' or 'processing'!"
+    if parent_container == "units":
         assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
-    write_in_processing_module = False if parent_container == "canonical" else True
+    write_in_processing_module = False if parent_container == "units" else True
 
     # retrieve templates and stds
     template_extension = sorting_analyzer.get_extension("templates")
@@ -2928,7 +2983,7 @@ def write_sorting_analyzer_to_nwbfile(
     units_name: str = "units",
     units_description: str = "Autogenerated by neuroconv.",
     *,
-    parent_container: Literal["canonical", "processing"] = "canonical",
+    parent_container: Literal["units", "processing"] = "units",
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     append_on_disk_nwbfile: bool = False,
@@ -2978,12 +3033,12 @@ def write_sorting_analyzer_to_nwbfile(
         custom unit column.
     skip_properties: list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
-    parent_container : {'canonical', 'processing'}, default: 'canonical'
+    parent_container : {'units', 'processing'}, default: 'units'
         Where to save the units table in the nwb file. Options:
-        - 'canonical' will save it to the official NWBFile.units position; recommended only for the final form of the data.
+        - 'units' will save it to the official NWBFile.units position; recommended only for the final form of the data.
         - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
     units_name : str, default: 'units'
-        The name of the units table. If parent_container == 'canonical', then units_name must also be 'units'.
+        The name of the units table. If parent_container == 'units', then units_name must also be 'units'.
     units_description : str, default: 'Autogenerated by neuroconv.'
     backend : {"hdf5", "zarr"}, optional
         The type of backend to use when writing the file.
@@ -3012,11 +3067,11 @@ def write_sorting_analyzer_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead ('units' maps to 'canonical').",
+            "on or after December 2026. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
-        parent_container = "canonical" if write_as == "units" else write_as
+        parent_container = write_as
 
     # Ensure metadata exists
     if metadata is None:
