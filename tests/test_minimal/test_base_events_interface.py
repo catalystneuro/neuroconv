@@ -4,6 +4,7 @@ import re
 
 import pytest
 from jsonschema.validators import Draft7Validator
+from pynwb import NWBHDF5IO
 from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -43,6 +44,28 @@ class TestMockEventsInterface:
         assert events.colnames == ("timestamp",)
         assert len(events) == 4
         assert events.description == ""
+
+    def test_event_type_with_no_events_writes_empty_table(self, tmp_path):
+        """An event type with zero occurrences is written as a zero-row EventsTable rather than being
+        rejected. A source that enumerates its channels from a header (an Intan digital word) relies on
+        this to write an enabled-but-idle line faithfully instead of dropping it or erroring. The empty
+        table survives a disk roundtrip; whether it is acceptable for archival is the NWB Inspector's
+        call, not the writer's."""
+        interface = MockEventsInterface(num_events=0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        events = nwbfile.get_events_table("Events")
+        assert len(events) == 0
+        assert events.colnames == ("timestamp",)
+
+        path = tmp_path / "empty_events.nwb"
+        with NWBHDF5IO(path, "w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(path, "r") as io:
+            read_events = io.read().get_events_table("Events")
+            assert len(read_events) == 0
+            assert read_events.colnames == ("timestamp",)
 
     def test_events_single_value(self):
         # A point event type carrying one categorical value.
