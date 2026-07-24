@@ -189,3 +189,51 @@ class TestDoricEventsMultiLine:
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         assert set(nwbfile.events.keys()) == {"CAM1"}
+
+
+class TestDoricEventsLegacyTraces:
+    """The legacy "EPConsole" ``.doric`` layout (root group ``Traces``) is read by the same interface.
+
+    Here digital lines are the ``DI--O-*`` streams nested as ``Traces/<console>/<stream>/<stream>`` on a
+    shared per-console ``Time(s)`` base, not ``DigitalIO`` datasets. ``varied_intervals.doric`` carries one
+    line ``DI--O-1`` with five real behavioral pulses of varied duration (0.82-3.56 s) at the native
+    ~12 kHz float64 clock, and no ``Created`` attribute.
+    """
+
+    FILE_PATH = OPHYS_DATA_PATH / "events_datasets" / "doric" / "root_is_traces" / "varied_intervals.doric"
+
+    @pytest.fixture
+    def interface(self):
+        return DoricEventsInterface(file_path=self.FILE_PATH)
+
+    def test_get_metadata(self, interface):
+        metadata = interface.get_metadata()
+
+        # The lone DI--O-1 line is discovered from the Traces layout and seeded, named after the line.
+        expected_events_metadata = {
+            "doric_events": {
+                "event_types": {
+                    "DI--O-1": {"event_name": "DI--O-1"},
+                },
+            },
+        }
+        assert metadata["Events"] == expected_events_metadata
+
+        # Legacy files carry no root "Created" attribute, so session_start_time is not populated.
+        assert "session_start_time" not in metadata["NWBFile"]
+
+    def test_add_to_nwbfile(self, interface):
+        """The default high_period reading recovers the five varied-duration pulses from the DI--O-1 line."""
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2024, 1, 1)  # not in the file; supply for the write
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("DI--O-1")
+        assert events.colnames == ("timestamp", "duration")
+
+        # Five pulses; onsets read from the shared Time(s) base, durations exact from the native clock.
+        expected_timestamps = [0.300, 2.640, 5.170, 9.330, 10.800]
+        expected_durations = [1.740, 1.930, 3.560, 0.870, 0.820]
+        np.testing.assert_allclose(events["timestamp"][:], expected_timestamps, atol=1e-3)
+        np.testing.assert_allclose(events["duration"][:], expected_durations, atol=1e-3)
