@@ -199,8 +199,9 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         stub_frames: int = 1000,
-        write_as: Literal["stimulus", "acquisition"] = "stimulus",
+        parent_container: Literal["stimulus", "acquisition"] = "stimulus",
         iterator_options: dict | None = None,
+        write_as: Literal["stimulus", "acquisition"] | None = None,
     ):
         """
         Parameters
@@ -210,22 +211,32 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         metadata : dict, optional
         stub_test : bool, default: False
         stub_frames : int, default: 1000
-        write_as : {'stimulus', 'acquisition'}
+        parent_container : {'stimulus', 'acquisition'}
             The acoustic waveform series can be added to the NWB file either as
             "stimulus" or as "acquisition".
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
+        write_as : {'stimulus', 'acquisition'}, optional
+            Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
 
         Returns
         -------
         NWBFile
         """
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of AudioInterface.add_to_nwbfile() is deprecated and will be removed "
+                "on or after December 2026. Use 'parent_container' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = write_as
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
                 "stub_test",
                 "stub_frames",
-                "write_as",
+                "parent_container",
                 "iterator_options",
             ]
             num_positional_args_before_args = 2  # nwbfile, metadata
@@ -248,7 +259,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             )
             stub_test = positional_values.get("stub_test", stub_test)
             stub_frames = positional_values.get("stub_frames", stub_frames)
-            write_as = positional_values.get("write_as", write_as)
+            parent_container = positional_values.get("parent_container", parent_container)
             iterator_options = positional_values.get("iterator_options", iterator_options)
 
         import scipy
@@ -292,7 +303,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 nwbfile=nwbfile,
                 rate=sampling_rate,
                 metadata=acoustic_waveform_series_metadata,
-                write_as=write_as,
+                parent_container=parent_container,
                 starting_time=starting_times[file_index],
                 iterator_options=iterator_options,
             )
