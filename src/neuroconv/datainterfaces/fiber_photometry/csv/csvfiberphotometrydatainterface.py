@@ -1,6 +1,7 @@
 """Interface for fiber photometry data stored in a CSV file."""
 
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -8,6 +9,8 @@ from pydantic import FilePath, validate_call
 
 from ._demux import ColumnDemux, DemuxConfig, StrideDemux
 from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
+
+_TIME_UNIT_TO_DIVISOR = {"seconds": 1.0, "milliseconds": 1e3, "microseconds": 1e6}
 
 
 class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
@@ -55,6 +58,7 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         data_columns: str | int | list[str | int],
         timestamps_column: str | int,
         demux_config: DemuxConfig | None = None,
+        time_unit: Literal["seconds", "milliseconds", "microseconds"] = "seconds",
         metadata_key: str | None = None,
         read_kwargs: dict | None = None,
         verbose: bool = False,
@@ -70,8 +74,9 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
             ``FiberPhotometryResponseSeries``. A column name (for a CSV with a header row) or a
             positional index (0-based, for a header-less CSV).
         timestamps_column : str or int
-            The column holding the timestamps (seconds) for the series' time axis. A column name for a
-            CSV with a header row, or a positional index (0-based) for a header-less CSV.
+            The column holding the timestamps (in ``time_unit``, seconds by default) for the series'
+            time axis. A column name for a CSV with a header row, or a positional index (0-based) for a
+            header-less CSV.
         demux_config : ColumnDemux, StrideDemux, or None, optional
             For an interleaved file (excitation channels multiplexed frame-by-frame down the rows), a
             config selecting the one channel this interface reads. Two shapes:
@@ -80,6 +85,9 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
             skip_rows=<n>)`` reads every ``k``-th row starting at ``i`` after dropping ``n`` leading
             rows. Default None reads every row (no demux). Compose one interface per channel in a
             converter.
+        time_unit : {"seconds", "milliseconds", "microseconds"}, optional
+            The unit of ``timestamps_column``; the timestamps are scaled to seconds on read. Default is
+            "seconds" (no scaling).
         metadata_key : str, optional
             Key under ``metadata["FiberPhotometry"]`` holding this interface's response-series
             metadata. When ``None`` (default), it is generated from the file name.
@@ -94,6 +102,7 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         self._data_columns = [data_columns] if isinstance(data_columns, (str, int)) else list(data_columns)
         self._read_kwargs = self._resolve_read_kwargs(timestamps_column, read_kwargs)
         self._demux_config = demux_config
+        self._time_unit = time_unit
 
         # Up-front check (rather than a pandas read-time error deep in add_to_nwbfile): the file must
         # contain its data column(s), the timestamps column, and, for a column demux, the label column.
@@ -200,7 +209,9 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         return dataframe[self._data_columns].to_numpy()
 
     def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
-        # stream_name is a file path; the series' time axis is the timestamps column of that file.
+        # stream_name is a file path; the series' time axis is the timestamps column of that file,
+        # scaled from ``_time_unit`` to seconds.
         timestamps_column = self.source_data["timestamps_column"]
         dataframe = self._read_dataframe(file_path=stream_name, columns=[timestamps_column])
-        return dataframe[timestamps_column].to_numpy().astype("float64")
+        timestamps = dataframe[timestamps_column].to_numpy().astype("float64")
+        return timestamps / _TIME_UNIT_TO_DIVISOR[self._time_unit]

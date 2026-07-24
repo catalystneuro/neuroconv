@@ -1,6 +1,7 @@
 """Interface aggregating several per-channel CSV files into one fiber photometry response series."""
 
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -46,6 +47,7 @@ class MultiFileCSVFiberPhotometryInterface(CSVFiberPhotometryInterface):
         *,
         data_columns: str | int | list[str | int],
         timestamps_column: str | int,
+        time_unit: Literal["seconds", "milliseconds", "microseconds"] = "seconds",
         metadata_key: str | None = None,
         read_kwargs: dict | None = None,
         verbose: bool = False,
@@ -63,9 +65,12 @@ class MultiFileCSVFiberPhotometryInterface(CSVFiberPhotometryInterface):
             interface's single ``FiberPhotometryResponseSeries``. A column name (for CSVs with a
             header row) or a positional index (0-based, for header-less CSVs).
         timestamps_column : str or int
-            The column holding the timestamps (seconds) for the series' time axis, read from the first
-            file. A column name for CSVs with a header row, or a positional index (0-based) for
-            header-less CSVs.
+            The column holding the timestamps (in ``time_unit``, seconds by default) for the series'
+            time axis, read from the first file. A column name for CSVs with a header row, or a
+            positional index (0-based) for header-less CSVs.
+        time_unit : {"seconds", "milliseconds", "microseconds"}, optional
+            The unit of ``timestamps_column``; the timestamps are scaled to seconds on read. Default is
+            "seconds" (no scaling).
         metadata_key : str, optional
             Key under ``metadata["FiberPhotometry"]`` holding this interface's response-series
             metadata. When ``None`` (default), it is generated from the file names.
@@ -79,6 +84,7 @@ class MultiFileCSVFiberPhotometryInterface(CSVFiberPhotometryInterface):
         self._file_paths = [str(file_path) for file_path in file_paths]
         self._data_columns = [data_columns] if isinstance(data_columns, (str, int)) else list(data_columns)
         self._read_kwargs = self._resolve_read_kwargs(timestamps_column, read_kwargs)
+        self._time_unit = time_unit
 
         # Up-front check: the first file must contain the timestamps column and its data column(s);
         # every other file must contain its data column(s) (its timestamps, if present, are checked for
