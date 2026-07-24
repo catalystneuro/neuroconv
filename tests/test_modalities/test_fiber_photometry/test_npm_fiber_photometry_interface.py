@@ -204,13 +204,14 @@ class TestNPMLegacyFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             number_of_channels=2,
             index=0,
             data_columns=1,
+            time_unit="milliseconds",
             metadata_key="isosbestic_column1",
         )
 
     def test_index_selects_cyclic_channel(self):
         """``index`` reads every other row; milliseconds are scaled to seconds via ``time_unit``."""
         signal = NPMLegacyFiberPhotometryInterface(
-            file_path=self.file_path, number_of_channels=2, index=1, data_columns=1
+            file_path=self.file_path, number_of_channels=2, index=1, data_columns=1, time_unit="milliseconds"
         )
         np.testing.assert_array_equal(signal._read_response_data(), SIGNAL_DATA)
         np.testing.assert_allclose(

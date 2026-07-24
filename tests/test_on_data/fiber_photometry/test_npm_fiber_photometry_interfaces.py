@@ -58,6 +58,7 @@ class TestNPMLegacyFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         number_of_channels=2,
         index=0,
         data_columns=1,
+        time_unit="milliseconds",
         metadata_key="isosbestic_column1",
     )
     conversion_options = dict(stub_test=True, stub_samples=5)

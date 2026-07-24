@@ -17,9 +17,10 @@ number_of_channels``).
 :doc:`CSVFiberPhotometryInterface <csv_fp>`: with no header to key on, you pass how many channels are
 interleaved (``number_of_channels``) and which one this interface reads (``index``), and it reads the
 selected region column(s) into a single ``FiberPhotometryResponseSeries``. Columns are addressed by
-0-based position. Legacy NPM timestamps are typically in milliseconds, so ``time_unit`` defaults to
-``"milliseconds"`` (scaled to seconds on read). Because each interface writes one series, you
-instantiate one per channel (with distinct ``metadata_key`` values) and combine them in a converter.
+0-based position. Legacy NPM timestamps are typically in milliseconds, so pass
+``time_unit="milliseconds"`` to scale them to seconds on read (``time_unit`` defaults to
+``"seconds"``). Because each interface writes one series, you instantiate one per channel (with
+distinct ``metadata_key`` values) and combine them in a converter.
 For the modern header-bearing NPM format (with a ``Flags``/``LedState`` column), use
 :doc:`NPMFiberPhotometryInterface <npm_fp>` instead.
 
@@ -44,7 +45,7 @@ column 1 is the region of interest:
 
     >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM" / "led_multiplexing" / "by_row" / "PagCeAVgatFear_1512_1.csv"
 
-    >>> interface = NPMLegacyFiberPhotometryInterface(file_path=file_path, number_of_channels=2, index=0, data_columns=1, metadata_key="isosbestic_column1", verbose=False)
+    >>> interface = NPMLegacyFiberPhotometryInterface(file_path=file_path, number_of_channels=2, index=0, data_columns=1, time_unit="milliseconds", metadata_key="isosbestic_column1", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # NPM recordings have no embedded start time, so it must be set explicitly.
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))

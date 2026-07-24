@@ -139,8 +139,9 @@ class NPMLegacyFiberPhotometryInterface(CSVFiberPhotometryInterface):
     column to key on, the user specifies how many channels were interleaved (``number_of_channels``)
     and which one this interface reads (``index``); columns are addressed by 0-based position.
 
-    Legacy NPM timestamps are typically in milliseconds, so ``time_unit`` defaults to
-    ``"milliseconds"``. For the modern header-bearing format, use :class:`.NPMFiberPhotometryInterface`.
+    Legacy NPM timestamps are typically in milliseconds; pass ``time_unit="milliseconds"`` for such a
+    file (``time_unit`` defaults to ``"seconds"``). For the modern header-bearing format, use
+    :class:`.NPMFiberPhotometryInterface`.
     """
 
     display_name = "NPMLegacyFiberPhotometry"
@@ -157,7 +158,7 @@ class NPMLegacyFiberPhotometryInterface(CSVFiberPhotometryInterface):
         data_columns: int | list[int],
         timestamps_column: int = 0,
         skip_rows: int = 0,
-        time_unit: Literal["seconds", "milliseconds", "microseconds"] = "milliseconds",
+        time_unit: Literal["seconds", "milliseconds", "microseconds"] = "seconds",
         metadata_key: str | None = None,
         read_kwargs: dict | None = None,
         verbose: bool = False,
@@ -179,8 +180,9 @@ class NPMLegacyFiberPhotometryInterface(CSVFiberPhotometryInterface):
             The 0-based positional index of the timestamps column.
         skip_rows : int, default: 0
             Number of leading rows to drop before the cyclic alignment (e.g. calibration frames).
-        time_unit : {"seconds", "milliseconds", "microseconds"}, default: "milliseconds"
-            The unit of the timestamps column.
+        time_unit : {"seconds", "milliseconds", "microseconds"}, default: "seconds"
+            The unit of the timestamps column. Legacy NPM timestamps are typically in milliseconds, so
+            pass ``time_unit="milliseconds"`` for such a file.
         metadata_key : str, optional
             Key under ``metadata["FiberPhotometry"]`` for this interface's response-series metadata.
             When None (default), a key distinct per ``(index, data_columns)`` is generated, so several
