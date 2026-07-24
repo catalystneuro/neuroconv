@@ -48,6 +48,7 @@
 
 ## Features
 * `CSVEventsInterface` now accepts a `time_unit` argument (`seconds`, `milliseconds`, or `microseconds`) that scales the timestamp and duration columns to seconds. [PR #1809](https://github.com/catalystneuro/neuroconv/pull/1809)
+* Added `NPMEventsInterface` for converting discrete events from raw Neurophotometrics (NPM) headerless two-column stimuli CSVs. Built on `CSVEventsInterface`, the rows are split by unique event-type label and each label is written as its own `pynwb.event.EventsTable` into `nwbfile.events`. [PR #1757](https://github.com/catalystneuro/neuroconv/pull/1757)
 * Added `DoricEventsInterface` for converting discrete events from Doric Neuroscience Studio `.doric` (HDF5) digital IO. [PR #1805](https://github.com/catalystneuro/neuroconv/pull/1805)
 * Added `CSVFiberPhotometryInterface` for converting a raw fiber photometry recording from a CSV file, parsed into the `ndx-fiber-photometry` format; it can demultiplex an interleaved recording (excitation channels multiplexed frame-by-frame down the rows) via a `demux_config`, reading one channel per interface. [PR #1754](https://github.com/catalystneuro/neuroconv/pull/1754) [PR #1808](https://github.com/catalystneuro/neuroconv/pull/1808)
 * Added `MultiFileCSVFiberPhotometryInterface` for aggregating several per-channel CSV files (e.g. GuPPy's per-region files) into one fiber photometry response series, parsed into the `ndx-fiber-photometry` format.  [PR #1754](https://github.com/catalystneuro/neuroconv/pull/1754)
