@@ -93,42 +93,18 @@ class TestStreamDiscoveryAndRouting:
         assert "RHS2000 amplifier channel" in streams
         assert "USB board ADC input channel" in streams
         assert "Stim channel" in streams
-        # Digital streams are present in the header and route to IntanDigitalInterface.
+        # Digital streams are present in the header but unrouted.
         assert "USB board digital input channel" in streams
 
     @pytest.mark.parametrize(
         "file_path, expected_interface_names",
         [
-            # RHS traditional: digital input/output words route to IntanDigitalInterface.
-            (
-                RHS_TRADITIONAL,
-                {
-                    "Recording",
-                    "AnalogADCInput",
-                    "AnalogADCOutput",
-                    "Stim",
-                    "DigitalInput",
-                    "DigitalOutput",
-                },
-            ),
-            # Only fixture exercising the auxiliary stream (digital input present, no digital output).
-            (
-                RHD_FILE_PER_SIGNAL,
-                {"Recording", "AnalogAuxiliary", "AnalogADCInput", "DigitalInput"},
-            ),
+            # RHS traditional: digital streams present in the header are skipped (no IntanDigitalInterface yet).
+            (RHS_TRADITIONAL, {"Recording", "AnalogADCInput", "AnalogADCOutput", "Stim"}),
+            # Only fixture exercising the auxiliary stream.
+            (RHD_FILE_PER_SIGNAL, {"Recording", "AnalogAuxiliary", "AnalogADCInput"}),
             # Only fixture exercising the DC Amplifier stream.
-            (
-                RHS_FILE_PER_SIGNAL,
-                {
-                    "Recording",
-                    "AnalogADCInput",
-                    "AnalogADCOutput",
-                    "AnalogDC",
-                    "Stim",
-                    "DigitalInput",
-                    "DigitalOutput",
-                },
-            ),
+            (RHS_FILE_PER_SIGNAL, {"Recording", "AnalogADCInput", "AnalogADCOutput", "AnalogDC", "Stim"}),
         ],
         ids=["rhs_traditional", "rhd_file_per_signal", "rhs_file_per_signal"],
     )
