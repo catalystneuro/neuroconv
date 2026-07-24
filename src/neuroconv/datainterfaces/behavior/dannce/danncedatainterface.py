@@ -41,10 +41,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         source_schema["properties"]["file_path"][
             "description"
         ] = "Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat)."
-        if "frametimes_file_path" in source_schema["properties"]:
-            source_schema["properties"]["frametimes_file_path"][
-                "description"
-            ] = "Optional path to a frametimes.npy file (shape (2, n_frames); row 1 = seconds) for per-frame timestamps."
         return source_schema
 
     @staticmethod
@@ -171,8 +167,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePath,
         *,
-        frametimes_file_path: FilePath | None = None,
-        video_file_path: FilePath | None = None,
         sampling_rate: float | None = None,
         landmark_names: list[str] | None = None,
         subject_name: str = "ind1",
@@ -196,20 +190,9 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat or save_data_MAX.mat).
-        frametimes_file_path : FilePath, optional
-            Path to a ``frametimes.npy`` file (the campy / pCampi standard used by DANNCE rigs)
-            with shape ``(2, n_video_frames)`` where row 1 holds per-frame timestamps in seconds
-            from session start. Timestamps are indexed by the sampleID field to obtain the
-            timestamp for each prediction. Takes precedence over ``video_file_path`` and
-            ``sampling_rate``.
-        video_file_path : FilePath, optional
-            Path to one of the source video files used for DANNCE prediction. Used to extract
-            per-frame timestamps, which are then indexed by the sampleID field to obtain the
-            timestamps for each prediction. Takes precedence over ``sampling_rate``.
         sampling_rate : float, optional
             The sampling rate in Hz of the pose estimation data. Used to compute timestamps from
-            the sampleID field. Ignored if ``frametimes_file_path`` or ``video_file_path`` is
-            provided. If none are provided, timestamps must be set externally via
+            the sampleID field. If not provided, timestamps must be set externally via
             ``set_aligned_timestamps()`` before conversion.
         landmark_names : list of str, optional
             Names for each tracked landmark/body part. Must match the number of landmarks in the
@@ -282,8 +265,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
 
         self._animal_index = animal_index
         self._sampling_rate = sampling_rate
-        self._video_file_path = Path(video_file_path) if video_file_path is not None else None
-        self._frametimes_file_path = Path(frametimes_file_path) if frametimes_file_path is not None else None
         self._timestamps = None
 
         # Load data from .mat file
@@ -301,16 +282,10 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         else:
             self._landmark_names = [f"landmark_{i}" for i in range(n_landmarks)]
 
-        # Compute timestamps:
-        # frametimes_file_path > video_file_path > sampling_rate
-        if frametimes_file_path is not None:
-            self._timestamps = self._get_timestamps_from_frametimes()
-        elif video_file_path is not None:
-            self._timestamps = self._get_timestamps_from_video()
-        elif sampling_rate is not None:
+        if sampling_rate is not None:
             self._timestamps = self._sample_id / sampling_rate
 
-        super().__init__(file_path=file_path, video_file_path=video_file_path, verbose=verbose)
+        super().__init__(file_path=file_path, verbose=verbose)
 
     def _load_dannce_data(self, file_path: Path) -> None:
         """Load and parse the DANNCE/sDANNCE .mat prediction file.
@@ -361,38 +336,23 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self._pred = pred  # shape: (n_samples, 3, n_landmarks)
         self._p_max = p_max  # shape: (n_samples, n_landmarks)
 
-    def _get_timestamps_from_video(self, stub_test: bool = False) -> np.ndarray:
-        """Extract timestamps from the video file, indexed by sampleID."""
-        from ..video.video_utils import VideoCaptureContext
-
-        sample_id = self._sample_id[:100] if stub_test else self._sample_id
-        max_frames = int(sample_id.max()) + 1 if stub_test and sample_id.size > 0 else None
-        with VideoCaptureContext(file_path=str(self._video_file_path)) as video:
-            all_timestamps = video.get_video_timestamps(max_frames=max_frames)
-
-        frame_indices = sample_id.astype(int)
-        return np.asarray(all_timestamps[frame_indices], dtype="float64")
-
-    def _get_timestamps_from_frametimes(self, stub_test: bool = False) -> np.ndarray:
-        """Extract timestamps from a frametimes.npy file, indexed by sampleID."""
-        frametimes = np.load(str(self._frametimes_file_path))  # shape (2, n_video_frames)
-        all_timestamps = frametimes[1]  # row 1 = elapsed seconds
-        sample_id = self._sample_id[:100] if stub_test else self._sample_id
-        frame_indices = sample_id.astype(int)
-        return np.asarray(all_timestamps[frame_indices], dtype="float64")
+    @property
+    def sample_id(self) -> np.ndarray:
+        """The ``sampleID`` field loaded from the prediction file: for each predicted sample, the
+        (0-indexed) index of the corresponding video frame within the session, shape ``(n_samples,)``.
+        Used by :class:`~neuroconv.datainterfaces.behavior.dannce.dannceconverter.DANNCEConverter` to
+        index into a camera's per-frame timestamps (e.g. from a frametimes file) to build this
+        interface's aligned timestamps."""
+        return self._sample_id
 
     def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
-        if self._frametimes_file_path is not None:
-            return self._get_timestamps_from_frametimes(stub_test=stub_test)
-        if self._video_file_path is not None:
-            return self._get_timestamps_from_video(stub_test=stub_test)
         if self._sampling_rate is not None:
             sample_id = self._sample_id[:100] if stub_test else self._sample_id
             return sample_id / self._sampling_rate
         raise ValueError(
-            "Cannot compute original timestamps without a frametimes file, video file, or sampling rate. "
-            "Provide 'frametimes_file_path', 'video_file_path', or 'sampling_rate' when initializing the "
-            "interface, or use 'set_aligned_timestamps()' to set timestamps directly."
+            "Cannot compute original timestamps without a sampling rate. "
+            "Provide 'sampling_rate' when initializing the interface, or use 'set_aligned_timestamps()' "
+            "to set timestamps directly."
         )
 
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:

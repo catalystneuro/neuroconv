@@ -29,20 +29,6 @@ def dannce_mat_file(tmp_path):
 
 
 @pytest.fixture
-def frametimes_npy_file(tmp_path, dannce_mat_file):
-    """Create a synthetic frametimes.npy file sized to the DANNCE fixture."""
-    _, n_samples, _, _, _ = dannce_mat_file
-    n_video_frames = n_samples + 50  # a few more frames than DANNCE predictions
-    frame_indices = np.arange(1, n_video_frames + 1, dtype="float64")
-    seconds = np.linspace(0.0, 3.0, n_video_frames, dtype="float64")
-    frametimes = np.stack([frame_indices, seconds], axis=0)  # shape (2, n_video_frames)
-
-    file_path = tmp_path / "frametimes.npy"
-    np.save(str(file_path), frametimes)
-    return file_path, seconds
-
-
-@pytest.fixture
 def multi_animal_dannce_mat_file(tmp_path):
     """Create a synthetic multi-animal (sDANNCE-style) prediction .mat file (2 animals)."""
     n_samples = 80
@@ -255,38 +241,6 @@ class TestDANNCEInterfaceTimestamps:
         interface.set_aligned_timestamps(custom_timestamps)
 
         np.testing.assert_array_equal(interface.get_timestamps(), custom_timestamps)
-
-    def test_timestamps_from_frametimes_file(self, dannce_mat_file, frametimes_npy_file):
-        file_path, n_samples, _, _, _ = dannce_mat_file
-        frametimes_path, seconds = frametimes_npy_file
-
-        interface = DANNCEInterface(file_path=file_path, frametimes_file_path=frametimes_path)
-        timestamps = interface.get_timestamps()
-
-        expected = seconds[np.arange(n_samples)]
-        np.testing.assert_allclose(timestamps, expected)
-
-    def test_frametimes_takes_precedence(self, dannce_mat_file, frametimes_npy_file):
-        file_path, n_samples, _, _, _ = dannce_mat_file
-        frametimes_path, seconds = frametimes_npy_file
-
-        interface = DANNCEInterface(file_path=file_path, frametimes_file_path=frametimes_path, sampling_rate=30.0)
-        timestamps = interface.get_timestamps()
-
-        expected = seconds[np.arange(n_samples)]
-        np.testing.assert_allclose(timestamps, expected)
-        # Confirm sampling_rate was not used (frametimes took precedence).
-        sampling_rate_timestamps = np.arange(n_samples) / 30.0
-        assert not np.allclose(timestamps, sampling_rate_timestamps)
-
-    def test_get_original_timestamps_from_frametimes(self, dannce_mat_file, frametimes_npy_file):
-        file_path, n_samples, _, _, _ = dannce_mat_file
-        frametimes_path, seconds = frametimes_npy_file
-
-        interface = DANNCEInterface(file_path=file_path, frametimes_file_path=frametimes_path)
-        timestamps = interface.get_original_timestamps()
-
-        np.testing.assert_allclose(timestamps, seconds[np.arange(n_samples)])
 
 
 class TestDANNCEInterfaceMetadata:

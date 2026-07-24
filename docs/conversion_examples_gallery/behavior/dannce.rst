@@ -77,18 +77,20 @@ is easy to get wrong. :py:class:`~neuroconv.datainterfaces.behavior.dannce.dannc
 does this internally: it combines a ``DANNCEInterface`` with one ``ExternalVideoInterface`` per camera
 and links each camera's video for you.
 
+Videos are discovered from a single ``videos_folder_path``: the DANNCE/campy ``videos`` folder,
+containing one subdirectory per camera (e.g. ``Camera1``, ``Camera2``, ...), each with that camera's
+video file(s) and a ``frametimes.npy`` file (the campy/pCamPI capture standard). Each camera's own
+frametimes align its video, and the first camera's frametimes (indexed by the DANNCE prediction
+file's ``sampleID`` field) align the DANNCE pose estimation -- no ``sampling_rate`` is needed.
+
 .. code-block:: python
 
     >>> from neuroconv.converters import DANNCEConverter
 
-    >>> video_file_paths = {
-    ...     "Camera1": [str(BEHAVIOR_DATA_PATH / "dannce" / "videos" / "Camera1.mp4")],
-    ...     "Camera2": [str(BEHAVIOR_DATA_PATH / "dannce" / "videos" / "Camera2.mp4")],
-    ... }
+    >>> videos_folder_path = BEHAVIOR_DATA_PATH / "dannce" / "videos"
     >>> converter = DANNCEConverter(
     ...     file_path=file_path,
-    ...     video_file_paths=video_file_paths,
-    ...     sampling_rate=30.0,
+    ...     videos_folder_path=videos_folder_path,
     ...     calibration_path=calibration_path,
     ... )
     >>> metadata = converter.get_metadata()

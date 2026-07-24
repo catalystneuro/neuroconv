@@ -5,11 +5,13 @@ from importlib.metadata import version as importlib_version
 from pathlib import Path
 from warnings import warn
 
+import numpy as np
 import pytest
 from hdmf.testing import TestCase
 from packaging import version
 from pynwb import NWBHDF5IO
 from pynwb.image import ImageSeries
+from scipy.io import loadmat
 
 from neuroconv.converters import DANNCEConverter
 from neuroconv.tools import get_module
@@ -37,14 +39,10 @@ class TestDANNCEConverter(TestCase):
     def setUpClass(cls) -> None:
         dannce_folder_path = BEHAVIOR_DATA_PATH / "dannce"
         cls.camera_names = ["Camera1", "Camera2"]
-        cls.video_file_paths = {
-            camera_name: [str(dannce_folder_path / "videos" / f"{camera_name}.mp4")] for camera_name in cls.camera_names
-        }
 
         cls.converter = DANNCEConverter(
             file_path=str(dannce_folder_path / "save_data_MAX.mat"),
-            video_file_paths=cls.video_file_paths,
-            sampling_rate=30.0,
+            videos_folder_path=str(dannce_folder_path / "videos"),
             calibration_path=str(dannce_folder_path / "calibration"),
             metadata_key="PoseEstimationDANNCE",
         )
@@ -115,3 +113,53 @@ class TestDANNCEConverter(TestCase):
 
             for pose_estimation_series in pe.pose_estimation_series.values():
                 assert pose_estimation_series.data.shape[0] == 100  # stub_test truncates DANNCE to 100 frames
+
+    def test_dannce_timestamps_from_camera1_frametimes(self):
+        """The DANNCE pose estimation timestamps must come from indexing Camera1's frametimes
+        (its 'videos_folder_path' reference camera) by the prediction file's sampleID field."""
+        dannce_folder_path = BEHAVIOR_DATA_PATH / "dannce"
+        frametimes = np.load(str(dannce_folder_path / "videos" / "Camera1" / "frametimes.npy"))
+        sample_id = np.squeeze(loadmat(str(dannce_folder_path / "save_data_MAX.mat"))["sampleID"]).astype(int)
+        expected_timestamps = frametimes[1][sample_id]
+
+        np.testing.assert_allclose(self.converter._dannce_interface.get_timestamps(), expected_timestamps)
+
+
+@pytest.mark.skipif(
+    ndx_pose_version < version.parse("0.3.0"),
+    reason="DANNCEInterface requires ndx-pose version >= 0.3.0",
+)
+class TestDANNCEConverterFrametimesMismatch(TestCase):
+    """Real-data coverage for the sample-count-vs-frametimes-count check: constructing the converter
+    must fail loudly (rather than silently misaligning or raising an opaque IndexError downstream) when
+    the DANNCE prediction file and the reference camera's frametimes file disagree on frame count."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.test_dir = Path(tempfile.mkdtemp())
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        try:
+            shutil.rmtree(cls.test_dir)
+        except PermissionError:
+            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
+
+    def test_mismatched_frametimes_raises(self):
+        dannce_folder_path = BEHAVIOR_DATA_PATH / "dannce"
+
+        # Build a videos folder that mirrors the real one, but with Camera1's frametimes file
+        # truncated so it no longer matches the DANNCE prediction file's sample count.
+        mismatched_videos_folder_path = self.test_dir / "videos"
+        shutil.copytree(str(dannce_folder_path / "videos"), str(mismatched_videos_folder_path))
+
+        camera1_frametimes_path = mismatched_videos_folder_path / "Camera1" / "frametimes.npy"
+        frametimes = np.load(str(camera1_frametimes_path))
+        np.save(str(camera1_frametimes_path), frametimes[:, :-50])  # drop the last 50 frames
+
+        with self.assertRaisesRegex(ValueError, "Mismatch between the DANNCE prediction file"):
+            DANNCEConverter(
+                file_path=str(dannce_folder_path / "save_data_MAX.mat"),
+                videos_folder_path=str(mismatched_videos_folder_path),
+                calibration_path=str(dannce_folder_path / "calibration"),
+            )
