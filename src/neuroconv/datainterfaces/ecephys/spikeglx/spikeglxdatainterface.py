@@ -219,6 +219,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         if use_new_metadata_format:
             metadata = super().get_metadata(use_new_metadata_format=True)
+            # FOLLOW-UP (name vs metadata_key decoupling): the base sets the ElectricalSeries
+            # ``name`` to ``self.metadata_key``, which fuses the object name with the dict key. The
+            # sensible name here is the per-stream, probe-disambiguated ``self.es_key``
+            # (``ElectricalSeriesAP`` / ``ElectricalSeriesLF``, with an ``Imec{n}`` suffix for
+            # multiple probes) — the interface should own that name independently of the key. Not
+            # done here to keep this PR to the device/group migration.
 
             session_start_time = self._get_session_start_time()
             if session_start_time:
