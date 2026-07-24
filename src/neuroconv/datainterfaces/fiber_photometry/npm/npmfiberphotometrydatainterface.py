@@ -139,9 +139,8 @@ class NPMLegacyFiberPhotometryInterface(CSVFiberPhotometryInterface):
     column to key on, the user specifies how many channels were interleaved (``number_of_channels``)
     and which one this interface reads (``index``); columns are addressed by 0-based position.
 
-    Legacy NPM timestamps are typically in milliseconds; pass ``time_unit="milliseconds"`` for such a
-    file (``time_unit`` defaults to ``"seconds"``). For the modern header-bearing format, use
-    :class:`.NPMFiberPhotometryInterface`.
+    Pass ``time_unit`` to match the unit of the file's timestamps column (defaults to ``"seconds"``).
+    For the modern header-bearing format, use :class:`.NPMFiberPhotometryInterface`.
     """
 
     display_name = "NPMLegacyFiberPhotometry"
@@ -181,8 +180,7 @@ class NPMLegacyFiberPhotometryInterface(CSVFiberPhotometryInterface):
         skip_rows : int, default: 0
             Number of leading rows to drop before the cyclic alignment (e.g. calibration frames).
         time_unit : {"seconds", "milliseconds", "microseconds"}, default: "seconds"
-            The unit of the timestamps column. Legacy NPM timestamps are typically in milliseconds, so
-            pass ``time_unit="milliseconds"`` for such a file.
+            The unit of the timestamps column; the timestamps are scaled to seconds on read.
         metadata_key : str, optional
             Key under ``metadata["FiberPhotometry"]`` for this interface's response-series metadata.
             When None (default), a key distinct per ``(index, data_columns)`` is generated, so several

@@ -17,10 +17,10 @@ number_of_channels``).
 :doc:`CSVFiberPhotometryInterface <csv_fp>`: with no header to key on, you pass how many channels are
 interleaved (``number_of_channels``) and which one this interface reads (``index``), and it reads the
 selected region column(s) into a single ``FiberPhotometryResponseSeries``. Columns are addressed by
-0-based position. Legacy NPM timestamps are typically in milliseconds, so pass
-``time_unit="milliseconds"`` to scale them to seconds on read (``time_unit`` defaults to
-``"seconds"``). Because each interface writes one series, you instantiate one per channel (with
-distinct ``metadata_key`` values) and combine them in a converter.
+0-based position. ``time_unit`` sets the unit of the timestamps column and scales it to seconds on
+read (default ``"seconds"``; the example file below is in milliseconds). Because each interface
+writes one series, you instantiate one per channel (with distinct ``metadata_key`` values) and
+combine them in a converter.
 For the modern header-bearing NPM format (with a ``Flags``/``LedState`` column), use
 :doc:`NPMFiberPhotometryInterface <npm_fp>` instead.
 
