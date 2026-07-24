@@ -262,19 +262,16 @@ class TestVameInterfaceEthogram:
         sampling_frequency_hz=30.0,
     )
 
-    def _add_to_nwbfile(self, **add_kwargs):
-        interface = VameInterface(**self.interface_kwargs)
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata(), **add_kwargs)
-        return nwbfile.processing["behavior"]
-
     def test_metadata_has_ethogram_entries(self):
         ethograms = VameInterface(**self.interface_kwargs).get_metadata()["Behavior"]["Ethograms"]
         assert ethograms["VAMEProject_kmeans"]["EthogramBouts"]["name"] == "VAMEProjectEthogramBoutsKmeans"
         assert ethograms["VAMEProject_kmeans"]["Ethogram"]["name"] == "VAMEProjectEthogramKmeans"
 
     def test_bouts_are_motif_labels_run_length_encoded(self):
-        bouts = self._add_to_nwbfile()["VAMEProjectEthogramBoutsKmeans"]
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata())
+        bouts = nwbfile.processing["behavior"]["VAMEProjectEthogramBoutsKmeans"]
         labels = np.load(MOTIF_LABELS_PATH).astype(np.int32)
         run_starts = np.concatenate(([0], np.flatnonzero(np.diff(labels)) + 1))
         # One row per maximal run; the label is that run's motif id as text.
@@ -289,7 +286,10 @@ class TestVameInterfaceEthogram:
         assert bouts.source_software.startswith("VAME")
 
     def test_catalogue_covers_full_cluster_space_with_community_category(self):
-        catalogue = self._add_to_nwbfile()["VAMEProjectEthogramKmeans"]
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata())
+        catalogue = nwbfile.processing["behavior"]["VAMEProjectEthogramKmeans"]
         assert len(catalogue) == 15  # n_clusters from config, including motifs absent this session.
         assert catalogue.exclusive
         assert list(catalogue["behavior"][:]) == [str(index) for index in range(15)]
@@ -306,7 +306,10 @@ class TestVameInterfaceEthogram:
             assert catalogue["category"][motif_id] == expected_category
 
     def test_bouts_link_to_source_motif_series_and_catalogue(self):
-        behavior = self._add_to_nwbfile()
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata())
+        behavior = nwbfile.processing["behavior"]
         bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
         assert bouts.source is behavior["VAMEProject"].motif_series["MotifSeriesKmeans"]
         assert bouts.ethogram is behavior["VAMEProjectEthogramKmeans"]
@@ -324,6 +327,30 @@ class TestVameInterfaceEthogram:
             bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
             assert len(bouts) == expected_runs
             assert bouts.source.name == "MotifSeriesKmeans"
+            assert behavior["VAMEProjectEthogramKmeans"].exclusive
+
+    def test_data_to_write_algorithm_output_writes_project_without_ethogram(self):
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata(), data_to_write="algorithm_output")
+        behavior = nwbfile.processing["behavior"]
+        assert "VAMEProject" in behavior.data_interfaces
+        assert "VAMEProjectEthogramBoutsKmeans" not in behavior.data_interfaces
+        assert "VAMEProjectEthogramKmeans" not in behavior.data_interfaces
+
+    def test_data_to_write_ethogram_writes_without_project_and_drops_source(self, tmp_path):
+        # ethogram-only: the faithful MotifSeries is absent, so the bouts' source back-link is dropped
+        # to None. A source-less ndx-ethogram must still be a valid, writable file, hence the roundtrip.
+        interface = VameInterface(**self.interface_kwargs)
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1).astimezone()
+        path = tmp_path / "vame_curated.nwb"
+        interface.run_conversion(nwbfile_path=str(path), metadata=metadata, overwrite=True, data_to_write="ethogram")
+        with NWBHDF5IO(path=str(path), mode="r", load_namespaces=True) as io:
+            behavior = io.read().processing["behavior"]
+            assert "VAMEProject" not in behavior.data_interfaces
+            bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
+            assert bouts.source is None
             assert behavior["VAMEProjectEthogramKmeans"].exclusive
 
 
@@ -538,6 +565,29 @@ class TestVameInterfaceIrregularTimestamps:
 class TestVameInterfacePoseEstimationLink:
     """add_to_nwbfile links a VAMEProject to an existing PoseEstimation container."""
 
+    def test_metadata_schema_permits_sibling_behavior_registries(self):
+        """Behavior stays open for other interfaces' registries so a Video+VAME converter validates.
+
+        VAME must not close its Behavior node, otherwise a sibling registry written by another
+        behavior interface (e.g. a video interface's Behavior/InternalVideos) is rejected as an
+        additional property when the combined metadata is validated against VAME's schema in a
+        converter.
+        """
+        from neuroconv.utils.json_schema import validate_metadata
+
+        interface = VameInterface(
+            file_path=str(CONFIG_PATH),
+            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
+        )
+
+        behavior_metadata = dict(interface.get_metadata()["Behavior"])
+        # A sibling registry another behavior interface would contribute (shape mirrors the video interfaces).
+        behavior_metadata["InternalVideos"] = {"video_0": {"name": "Video0"}}
+        behavior_schema = interface.get_metadata_schema()["properties"]["Behavior"]
+
+        # Raises jsonschema.ValidationError if the Behavior node rejects the sibling key.
+        validate_metadata(behavior_metadata, behavior_schema)
+
     def test_links_pose_estimation_when_key_is_set(self):
         interface = VameInterface(
             file_path=str(CONFIG_PATH),
@@ -554,11 +604,11 @@ class TestVameInterfacePoseEstimationLink:
         pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_metadata)
 
         pose_key = pose_estimation_interface.metadata_key
-        pose_container_name = pose_metadata["Behavior"]["Pose"]["PoseEstimations"][pose_key]["name"]
+        pose_container_name = pose_metadata["Pose"]["PoseEstimations"][pose_key]["name"]
 
         vame_metadata = interface.get_metadata()
         # The pose registry must be present for the key to resolve (strict lookup, no name fallback).
-        vame_metadata["Behavior"]["Pose"] = pose_metadata["Behavior"]["Pose"]
+        vame_metadata["Pose"] = pose_metadata["Pose"]
         vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = pose_key
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 
@@ -578,14 +628,14 @@ class TestVameInterfacePoseEstimationLink:
         pose_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0, metadata_key="DLC")
         pose_interface.set_aligned_timestamps(aligned_timestamps)
         pose_meta = pose_interface.get_metadata()
-        pose_meta["Behavior"]["Pose"]["PoseEstimations"]["DLC"]["name"] = "PoseEstimationDeepLabCut"
+        pose_meta["Pose"]["PoseEstimations"]["DLC"]["name"] = "PoseEstimationDeepLabCut"
 
         nwbfile = mock_NWBFile()
         pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_meta)
 
         vame_metadata = interface.get_metadata()
         vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = "DLC"
-        vame_metadata["Behavior"]["Pose"] = pose_meta["Behavior"]["Pose"]
+        vame_metadata["Pose"] = pose_meta["Pose"]
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 
         project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
@@ -609,7 +659,7 @@ class TestVameInterfacePoseEstimationLink:
         pose_key = pose_interface.metadata_key
 
         vame_metadata = interface.get_metadata()
-        vame_metadata["Behavior"]["Pose"] = pose_metadata["Behavior"]["Pose"]
+        vame_metadata["Pose"] = pose_metadata["Pose"]
         vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = pose_key
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 

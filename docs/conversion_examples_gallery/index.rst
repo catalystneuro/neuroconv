@@ -101,6 +101,8 @@ Fiber Photometry
 
     Doric Fiber Photometry <fiberphotometry/doric_fp>
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    CSV Fiber Photometry <fiberphotometry/csv_fp>
+    Multi-File CSV Fiber Photometry <fiberphotometry/multifile_csv_fp>
 
 Behavior
 --------
@@ -126,6 +128,7 @@ Events
     :maxdepth: 1
 
     CSV Events <events/csv_events>
+    Doric Events <events/doric_events>
     TDT Events <events/tdt_events>
 
 

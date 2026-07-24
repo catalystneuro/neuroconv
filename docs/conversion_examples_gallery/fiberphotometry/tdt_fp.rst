@@ -138,9 +138,6 @@ Convert TDT Fiber Photometry data to NWB using
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
-    >>> # get_metadata() returns an editable scaffold; the required fiber photometry fields (excitation/
-    >>> # emission wavelengths, indicator, location, ...) are pre-filled with placeholder values that
-    >>> # should be replaced before archiving. add_to_nwbfile warns about any that remain unset.
 
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path =  f"{path_to_save_nwbfile}"

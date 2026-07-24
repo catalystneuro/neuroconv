@@ -39,7 +39,8 @@ The ophys metadata system is built on several core principles:
 
 5. **Provenance-First get_metadata()**
    The ``get_metadata()`` method returns only values extracted from the source data, not defaults.
-   Defaults are applied at NWB object creation time.
+   Defaults are applied at NWB object creation time. This is not specific to ophys; see
+   :ref:`metadata_principles` for the rule and its rationale.
 
 
 Metadata Structure Overview

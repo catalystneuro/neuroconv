@@ -3,6 +3,7 @@
 import json
 import warnings
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 from packaging.version import Version
@@ -41,7 +42,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     "VameProjects": {
                         "VAMEProject": {                       # keyed by metadata_key (default "VAMEProject")
                             "name": "VAMEProject",
-                            "pose_estimation_metadata_key": "DLC",  # optional, -> Behavior/Pose/PoseEstimations
+                            "pose_estimation_metadata_key": "DLC",  # optional, -> Pose/PoseEstimations
                             "video_metadata_key": "video_0",   # optional, -> Behavior/InternalVideos|ExternalVideos
                         }
                     },
@@ -84,7 +85,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
     - ``motif_series_metadata_key`` in a ``CommunitySeries`` entry is automatically set to the matching
       run's ``MotifSeries`` key when the same run exists in ``motif_labels_file_paths``.
     - ``pose_estimation_metadata_key`` must name a ``PoseEstimation`` entry (in
-      ``Behavior/Pose/PoseEstimations``) whose container is already present in the NWB file when
+      ``Pose/PoseEstimations``) whose container is already present in the NWB file when
       :meth:`add_to_nwbfile` is called (i.e. the pose estimation interface must run first).
     - ``video_metadata_key`` optionally names a video entry (in ``Behavior/InternalVideos`` or
       ``Behavior/ExternalVideos``) whose ``ImageSeries`` is already present in the NWB file; each
@@ -366,7 +367,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 },
                 "pose_estimation_metadata_key": {
                     "type": ["string", "null"],
-                    "description": "Key of a PoseEstimation entry (in Behavior/Pose/PoseEstimations) to link to.",
+                    "description": "Key of a PoseEstimation entry (in Pose/PoseEstimations) to link to.",
                 },
                 "video_metadata_key": {
                     "type": ["string", "null"],
@@ -453,6 +454,11 @@ class VameInterface(BaseTemporalAlignmentInterface):
         }
 
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
+        # Leave the Behavior node open so sibling registries from other interfaces (e.g. a video
+        # interface's Behavior/InternalVideos) survive schema validation when VAME is combined in a
+        # converter. VAME's own Vame and Ethograms sub-schemas below keep additionalProperties: False,
+        # so its content stays strictly validated.
+        metadata_schema["properties"]["Behavior"]["additionalProperties"] = True
         metadata_schema["properties"]["Behavior"]["properties"] = {
             "Vame": {
                 "type": "object",
@@ -701,6 +707,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         metadata: dict | None = None,
         *,
         stub_test: bool = False,
+        data_to_write: Literal["algorithm_output", "ethogram", "both"] = "both",
     ) -> None:
         """Write VAME outputs to an NWBFile as a ``VAMEProject`` container.
 
@@ -732,14 +739,23 @@ class VameInterface(BaseTemporalAlignmentInterface):
             Each series links to its project via ``vame_project_metadata_key``.
         stub_test : bool, default False
             If ``True``, only the first 100 frames of each data array are written.
+        data_to_write : {"algorithm_output", "ethogram", "both"}, default "both"
+            Which of the two outputs to write. ``"algorithm_output"`` writes only the ``VAMEProject``
+            container and its faithful ``ndx-vame`` series (motif, community, latent space).
+            ``"ethogram"`` writes only the derived, curated ``ndx-ethogram`` products. ``"both"`` (the
+            default) writes both. With ``"ethogram"`` the faithful ``MotifSeries`` is absent from the
+            file, so each bouts table's ``source`` back-link to it is dropped; the ``source_pose`` and
+            ``source_video`` links are external references and are kept.
 
         Notes
         -----
         For each motif run this also writes a curated ``ndx-ethogram`` product derived from the
         per-frame ``MotifSeries``: an ``EthogramBouts`` table (the motif labels run-length-encoded
-        into one row per bout) and its ``Ethogram`` catalogue. The faithful ``MotifSeries`` is kept;
-        the bouts link back to it via ``source``.
+        into one row per bout) and its ``Ethogram`` catalogue. When both layers are written the
+        faithful ``MotifSeries`` is kept and the bouts link back to it via ``source``.
         """
+        write_faithful = data_to_write in ("algorithm_output", "both")
+        write_curated = data_to_write in ("ethogram", "both")
         from ndx_vame import (
             CommunitySeries,
             LatentSpaceSeries,
@@ -820,16 +836,16 @@ class VameInterface(BaseTemporalAlignmentInterface):
             community_series_objects[community_key] = CommunitySeries(**community_kwargs)
 
         # Optional link to an upstream PoseEstimation container, resolved strictly through the
-        # Behavior/Pose/PoseEstimations registry. The key is a registry address, not the object name,
+        # top-level Pose/PoseEstimations registry. The key is a registry address, not the object name,
         # so it must be registered; there is no name fallback.
         pose_estimation = None
         pose_estimation_key = project_metadata.get("pose_estimation_metadata_key")
         if pose_estimation_key is not None:
-            pose_estimations_registry = default_metadata.get("Behavior", {}).get("Pose", {}).get("PoseEstimations", {})
+            pose_estimations_registry = default_metadata.get("Pose", {}).get("PoseEstimations", {})
             if pose_estimation_key not in pose_estimations_registry:
                 raise ValueError(
                     f"pose_estimation_metadata_key '{pose_estimation_key}' was not found in "
-                    f"metadata['Behavior']['Pose']['PoseEstimations']. Available keys: "
+                    f"metadata['Pose']['PoseEstimations']. Available keys: "
                     f"{list(pose_estimations_registry)}."
                 )
             pose_container_name = pose_estimations_registry[pose_estimation_key]["name"]
@@ -873,17 +889,21 @@ class VameInterface(BaseTemporalAlignmentInterface):
             vame_project.pose_estimation = pose_estimation
 
         behavior_module = get_module(nwbfile, name="behavior", description="processed behavioral data")
-        behavior_module.add(vame_project)
+        if write_faithful:
+            behavior_module.add(vame_project)
 
         # Curated ndx-ethogram products derived from each MotifSeries (kept alongside the faithful
         # series). Resolved from the shared top-level Behavior/Ethograms registry, keyed by
         # f"{metadata_key}_{run_key}". The source MotifSeries is wired directly (this interface holds
         # the object), so no source_metadata_key resolution is needed.
-        if motif_series_objects:
+        if write_curated and motif_series_objects:
             frame_period = 1.0 / rate if rate is not None else float(np.median(np.diff(timestamps)))
             ethograms_metadata = default_metadata["Behavior"].get("Ethograms", {})
             for run_key in self._motif_labels_file_paths:
-                motif_series = motif_series_objects[self._motif_series_key(run_key)]
+                # Drop the source back-link to the faithful MotifSeries when it is not being written,
+                # otherwise the ethogram would link to an object absent from the file. The external
+                # source_pose/source_video links resolve against the file and are kept either way.
+                motif_series = motif_series_objects[self._motif_series_key(run_key)] if write_faithful else None
                 ethogram_metadata = ethograms_metadata.get(f"{self._metadata_key}_{run_key}")
                 self._add_ethogram_for_run(
                     behavior_module=behavior_module,
