@@ -72,9 +72,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_as_lfp(self):
-        write_as = "lfp"
+        parent_container = "processing/LFP"
         add_recording_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            parent_container=parent_container,
         )
 
         processing_module = self.nwbfile.processing
@@ -93,9 +96,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_as_processing(self):
-        write_as = "processed"
+        parent_container = "processing/FilteredEphys"
         add_recording_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            parent_container=parent_container,
         )
 
         processing_module = self.nwbfile.processing
@@ -186,14 +192,17 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         self.test_recording_extractor.set_channel_groups(original_groups)
 
-    def test_invalid_write_as_argument_assertion(self):
-        write_as = "any_other_string_that_is_not_raw_lfp_or_processed"
+    def test_invalid_parent_container_argument(self):
+        parent_container = "not_a_valid_container"
 
-        reg_expression = f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
+        reg_expression = "should be one of 'acquisition', 'processing/LFP', or 'processing/FilteredEphys'"
 
-        with self.assertRaisesRegex(AssertionError, reg_expression):
+        with self.assertRaisesRegex(ValueError, reg_expression):
             add_recording_to_nwbfile(
-                recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+                recording=self.test_recording_extractor,
+                nwbfile=self.nwbfile,
+                iterator_type=None,
+                parent_container=parent_container,
             )
 
 
@@ -1493,7 +1502,7 @@ class TestAddSpatialSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            write_as="processing",
+            parent_container="processing",
             iterator_type=None,
         )
 
@@ -1856,7 +1865,7 @@ class TestAddUnitsTable(TestCase):
             nwbfile=self.nwbfile,
             units_name=units_table_name,
             units_description=unit_table_description,
-            write_as="processing",
+            parent_container="processing",
         )
 
         ecephys_mod = get_module(
@@ -2397,7 +2406,7 @@ class TestWriteSortingAnalyzer(TestCase):
             add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
-                write_as="units",
+                parent_container="units",
                 units_name="units1",
             )
 
@@ -2527,7 +2536,7 @@ class TestAddRecording:
         assert group.location == "V1"
         assert group.device is device
 
-        # ElectricalSeries lives in acquisition (write_as="raw" default), user fields applied
+        # ElectricalSeries lives in acquisition (parent_container="acquisition" default), user fields applied
         series = nwbfile.acquisition["ElectricalSeriesAP"]
         assert series.name == "ElectricalSeriesAP"
         assert series.description == "Raw AP traces"
