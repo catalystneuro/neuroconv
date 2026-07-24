@@ -50,9 +50,6 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
     info = "Data Interface for converting fiber photometry data from a CSV file."
     associated_suffixes = ("csv",)
 
-    # Timestamps timescale; ``__init__`` sets this per instance, defaulting to seconds (no scaling).
-    _time_unit = "seconds"
-
     @validate_call
     def __init__(
         self,
