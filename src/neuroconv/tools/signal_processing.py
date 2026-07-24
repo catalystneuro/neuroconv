@@ -61,6 +61,63 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = Non
     return falling_frames
 
 
+def discretize_trace(
+    trace: np.ndarray,
+    detect: str,
+    threshold: float | None = None,
+) -> tuple[np.ndarray, np.ndarray | None]:
+    """
+    Discretize a trace into event onset frames and, for a durative reading, per-event durations.
+
+    This is the format-agnostic edge-detection step shared by signal-encoded events sources (e.g.
+    digital TTL (transistor-transistor logic) lines from Intan, SpikeGLX NIDQ, an analog photodiode):
+    the trace is thresholded into a binary line, and the same rising/falling structure can then be read
+    as point events or as durative high/low periods, and only the caller knows which the experiment
+    intends.
+
+    Parameters
+    ----------
+    trace : numpy.ndarray
+        A one-dimensional signal. A strictly 0/1 digital line, or any trace thresholded into one.
+    detect : {"rising", "falling", "high_period", "low_period"}
+        What to detect. ``"rising"``/``"falling"`` return the up/down transition frames as point
+        events. ``"high_period"`` pairs each rising edge with the next falling edge (onset + high span);
+        ``"low_period"`` pairs each falling edge with the next rising edge (onset + low span).
+    threshold : float, optional
+        The on/off threshold passed through to :func:`get_rising_frames_from_ttl` /
+        :func:`get_falling_frames_from_ttl`. The mean of the trace is used by default; pass ``0.5`` for
+        a strictly 0/1 digital line.
+
+    Returns
+    -------
+    onset_frames : numpy.ndarray
+        The frame indices of the event onsets.
+    durations : numpy.ndarray or None
+        ``None`` for a point reading (``"rising"``/``"falling"``). For a durative reading, per-event
+        durations **in frames** (the caller converts to seconds with the sampling period). An onset with
+        no closing edge in the trace gets a ``NaN`` duration (a truncated interval).
+    """
+    valid = ("rising", "falling", "high_period", "low_period")
+    if detect not in valid:
+        raise ValueError(f"Invalid detect '{detect}'. Valid values are {list(valid)}.")
+
+    rising = get_rising_frames_from_ttl(trace, threshold=threshold)
+    falling = get_falling_frames_from_ttl(trace, threshold=threshold)
+    if detect == "rising":
+        return rising, None
+    if detect == "falling":
+        return falling, None
+
+    onsets, closes = (rising, falling) if detect == "high_period" else (falling, rising)
+    # For each onset, the first close strictly after it; onsets and closes strictly alternate on a
+    # binary line, so this pairs each onset to its own closing edge.
+    close_index = np.searchsorted(closes, onsets, side="right")
+    durations = np.full(onsets.shape, np.nan, dtype="float64")
+    matched = close_index < len(closes)
+    durations[matched] = closes[close_index[matched]] - onsets[matched]  # in frames
+    return onsets, durations
+
+
 def _run_length_encode_labels(
     labels: np.ndarray,
     timestamps: np.ndarray,
