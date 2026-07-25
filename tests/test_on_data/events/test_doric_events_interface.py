@@ -72,6 +72,11 @@ class TestDoricEventsSingleLine:
         with pytest.raises(ValueError, match="not one of the file's lines"):
             DoricEventsInterface(file_path=self.FILE_PATH, event_specs={"NoSuchLine": {"detect": "rising"}})
 
+    def test_entry_without_detect_raises(self):
+        """A half-filled event_specs entry fails at construction rather than falling back to a default."""
+        with pytest.raises(ValueError, match="does not set 'detect'"):
+            DoricEventsInterface(file_path=self.FILE_PATH, event_specs={"Camera1": {}})
+
 
 class TestDoricEventsMultiLine:
     """``multi_line.doric`` carries three toggling lines and no embedded session timestamp.

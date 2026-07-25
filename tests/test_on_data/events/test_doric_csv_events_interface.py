@@ -64,6 +64,11 @@ class TestDoricCSVEvents:
         assert events_table.colnames == ("timestamp",)
         assert np.allclose(events_table["timestamp"][:], [15.9069085, 30.8718085, 45.8699085])
 
+    def test_entry_without_detect_raises(self):
+        """A half-filled event_specs entry fails at construction rather than falling back to a default."""
+        with pytest.raises(ValueError, match="does not set 'detect'"):
+            DoricCSVEventsInterface(file_path=FILE_PATH, event_specs={"DI/O-1": {}})
+
     def test_unknown_digital_line_raises(self):
         """event_specs naming a column that is not a Digital I/O line fails loudly at construction."""
         with pytest.raises(ValueError, match="not one of the file's lines"):

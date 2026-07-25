@@ -56,9 +56,10 @@ class DoricEventsInterface(BaseEventsInterface):
             ``DigitalIO`` dataset key, e.g. ``{"Camera1": {"detect": "high_period"}}``). ``detect`` is
             one of ``"rising"`` / ``"falling"`` (a point event at each edge) or ``"high_period"`` /
             ``"low_period"`` (a durative event, onset at one edge and duration to the next opposite
-            edge), default ``"high_period"`` (lossless for an active-high line; use ``"low_period"`` for
-            an active-low line). If None (default), every digital line in the file is read as a
-            ``high_period``. When given, only the named lines are read (selection by inclusion).
+            edge); every named line must set it (a half-filled entry raises). If None (default), every
+            digital line in the file is read as a ``high_period`` (lossless for an active-high line; use
+            ``"low_period"`` for an active-low line). When given, only the named lines are read
+            (selection by inclusion).
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
             If None (default), ``"doric_events"`` is used.
@@ -73,17 +74,18 @@ class DoricEventsInterface(BaseEventsInterface):
         # available_event_lines: source_id (the DigitalIO dataset key, e.g. "Camera1") -> its
         # {data_path, time_path} handle in the HDF5 file.
         self._available_event_lines = self._discover_event_sources(self.source_data["file_path"])
-        # Validate user-passed specs eagerly (fail-fast at construction); the None default is trusted.
+        # Validate user-passed specs eagerly (fail-fast at construction), including that every named line
+        # states its own detect: a spec is all-or-nothing, never half-filled from a default.
         if event_specs is not None:
             validate_event_specs(event_specs, self._available_event_lines)
         else:
-            # Default selection: read every discovered event line.
-            event_specs = {source_id: {} for source_id in self._available_event_lines}
-        # Resolve every entry to a complete spec here, so self._event_specs is the finished, ready-to-read
-        # plan: one entry per selected line, each carrying its detect. The default reading is "high_period",
-        # the lossless durative one (onset at the rising edge, duration to the falling edge, for an
-        # active-high line); a user entry's own "detect" overrides it (it comes last in the merge).
-        self._event_specs = {source_id: {"detect": "high_period", **entry} for source_id, entry in event_specs.items()}
+            # The default spec, used only when the caller passes none: read every discovered event line
+            # as a "high_period", the lossless durative reading (onset at the rising edge, duration to
+            # the falling edge, for an active-high line).
+            event_specs = {source_id: {"detect": "high_period"} for source_id in self._available_event_lines}
+        # Either way self._event_specs is the finished, ready-to-read plan: one entry per selected line,
+        # each carrying its detect. Nothing about the reading is left for _get_events_data_dict to fill.
+        self._event_specs = event_specs
 
     @staticmethod
     def _discover_event_sources(file_path) -> dict[str, dict]:
