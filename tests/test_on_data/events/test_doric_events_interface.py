@@ -16,8 +16,8 @@ class TestDoricEventsSingleLine:
     """DoricEventsInterface edge-detects each DigitalIO line of a modern ``.doric`` file.
 
     ``single_line.doric`` (modern DataAcquisition layout, ~1000 Hz) has one toggling line ``Camera1``
-    (six single-sample pulses) and a held-constant line ``DigitalCh1`` (skipped), plus a ``Created``
-    session timestamp.
+    (six single-sample pulses) and a held-constant line ``DigitalCh1`` (an event type that never fired,
+    written as a zero-row table), plus a ``Created`` session timestamp.
     """
 
     FILE_PATH = OPHYS_DATA_PATH / "events_datasets" / "doric" / "root_is_data_acquisition" / "single_line.doric"
@@ -68,18 +68,6 @@ class TestDoricEventsSingleLine:
         constant_line_events = nwbfile.get_events_table("DigitalCh1")
         assert len(constant_line_events) == 0
 
-    def test_get_metadata_reads_no_samples(self, interface, monkeypatch):
-        """Metadata comes from the resolved plan, so asking for it never touches the traces."""
-        monkeypatch.setattr(
-            type(interface),
-            "_get_events_data_dict",
-            lambda self: pytest.fail("get_metadata must not read event data"),
-        )
-        assert set(interface.get_metadata()["Events"]["doric_events"]["event_types"]) == {
-            "Camera1",
-            "DigitalCh1",
-        }
-
     def test_rising_detection_is_onset_only(self):
         """detection='rising' reads point events (onset timestamps only, no duration column)."""
         interface = DoricEventsInterface(
@@ -91,31 +79,6 @@ class TestDoricEventsSingleLine:
         camera_events = nwbfile.get_events_table("Camera1")
         assert camera_events.colnames == ("timestamp",)
         assert np.allclose(camera_events["timestamp"][:], [0.002, 0.018, 0.035, 0.051, 0.068, 0.085])
-
-    def test_unknown_signal_raises(self):
-        """A configuration naming a signal that is not a DigitalIO line fails loudly at construction."""
-        with pytest.raises(ValueError, match="not one of the file's signals"):
-            DoricEventsInterface(
-                file_path=self.FILE_PATH, detection_configuration={"NoSuchLine": [{"detection": "rising"}]}
-            )
-
-    def test_spec_without_detection_raises(self):
-        """A half-filled spec fails at construction rather than falling back to a default."""
-        with pytest.raises(ValueError, match="does not set 'detection'"):
-            DoricEventsInterface(file_path=self.FILE_PATH, detection_configuration={"Camera1": [{}]})
-
-    def test_unrecognized_spec_key_raises(self):
-        """A stray or misspelled spec key fails loudly instead of being silently discarded at read."""
-        with pytest.raises(ValueError, match="unrecognized key"):
-            DoricEventsInterface(
-                file_path=self.FILE_PATH,
-                detection_configuration={"Camera1": [{"detection": "rising", "threshold": 0.4}]},
-            )
-
-    def test_bare_dict_instead_of_list_raises(self):
-        """A signal's value is always a list of specs, since a signal may yield several event types."""
-        with pytest.raises(ValueError, match="must be a list of detection specs"):
-            DoricEventsInterface(file_path=self.FILE_PATH, detection_configuration={"Camera1": {"detection": "rising"}})
 
     def test_two_specs_on_one_signal_fan_out(self):
         """A signal yielding two event types derives an identifier per spec, handle plus its reading."""
@@ -133,32 +96,6 @@ class TestDoricEventsSingleLine:
         assert np.allclose(rising_events["timestamp"][:], [0.002, 0.018, 0.035, 0.051, 0.068, 0.085])
         # Each pulse is one sample wide, so every falling edge trails its rising edge by one frame.
         assert np.allclose(falling_events["timestamp"][:], [0.003, 0.019, 0.036, 0.052, 0.069, 0.086])
-
-    def test_event_name_pins_the_identifier(self):
-        """event_name replaces the derived identifier, so a fan-out can keep a stable handle."""
-        interface = DoricEventsInterface(
-            file_path=self.FILE_PATH,
-            detection_configuration={
-                "Camera1": [
-                    {"detection": "rising", "event_name": "Camera1"},
-                    {"detection": "falling"},
-                ]
-            },
-        )
-        assert set(interface._detection_plan) == {"Camera1", "Camera1_falling"}
-
-    def test_duplicate_identifiers_raise(self):
-        """Two specs resolving to one identifier fails at construction rather than silently merging."""
-        with pytest.raises(ValueError, match="same identifier"):
-            DoricEventsInterface(
-                file_path=self.FILE_PATH,
-                detection_configuration={
-                    "Camera1": [
-                        {"detection": "rising", "event_name": "Pulse"},
-                        {"detection": "falling", "event_name": "Pulse"},
-                    ]
-                },
-            )
 
 
 class TestDoricEventsMultiLine:

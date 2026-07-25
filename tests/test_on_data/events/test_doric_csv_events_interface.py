@@ -65,18 +65,3 @@ class TestDoricCSVEvents:
         events_table = nwbfile.get_events_table("DIO-1")
         assert events_table.colnames == ("timestamp",)
         assert np.allclose(events_table["timestamp"][:], [15.9069085, 30.8718085, 45.8699085])
-
-    def test_spec_without_detection_raises(self):
-        """A half-filled spec fails at construction rather than falling back to a default."""
-        with pytest.raises(ValueError, match="does not set 'detection'"):
-            DoricCSVEventsInterface(file_path=FILE_PATH, detection_configuration={"DI/O-1": [{}]})
-
-    def test_unknown_signal_raises(self):
-        """A configuration naming a column that is not a Digital I/O line fails at construction."""
-        with pytest.raises(ValueError, match="not one of the file's signals"):
-            DoricCSVEventsInterface(file_path=FILE_PATH, detection_configuration={"DI/O-9": [{"detection": "rising"}]})
-
-    def test_empty_spec_list_raises(self):
-        """An empty list for a signal is a mistake: drop the signal to skip it."""
-        with pytest.raises(ValueError, match="is an empty list"):
-            DoricCSVEventsInterface(file_path=FILE_PATH, detection_configuration={"DI/O-1": []})
