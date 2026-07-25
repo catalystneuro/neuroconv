@@ -280,7 +280,9 @@ class CSVEventsInterface(BaseEventsInterface):
         A single-type file (no ``event_type_column``) yields one :class:`_EventsData` keyed by the file
         stem. A labeled file yields one record per distinct label value, each carrying that value's rows.
         ``value_columns`` become the payload field-map and ``durations_column`` the per-event durations;
-        an event type that drops to zero rows is skipped (the record forbids empty timestamps).
+        an event type that drops to zero rows is skipped, since a CSV with no rows carries no event to
+        represent (distinct from a recorded-but-idle line, which a source that enumerates its channels,
+        such as a digital word, does write as an empty table).
         """
         if self._events_data_dict is not None:
             return self._events_data_dict

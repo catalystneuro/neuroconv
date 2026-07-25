@@ -159,15 +159,17 @@ def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
         if "fiber_insertion" not in device_metadata:
             _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key)
             continue
-        # Optical fiber: build the nested FiberInsertion and resolve the model, then use the helper's
-        # transitional form (a pre-resolved entry dict) since the canonical form cannot build sub-objects.
+        # Optical fiber: build the nested FiberInsertion and, if one is given, resolve the model, then use
+        # the helper's transitional form (a pre-resolved entry dict) since the canonical form cannot build
+        # sub-objects. The model is optional, mirroring the canonical helper's ``.get`` treatment.
         ndx_ophys_devices = get_package("ndx_ophys_devices")
-        model = _add_device_model_to_nwbfile(
-            nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata["device_model_metadata_key"]
-        )
         resolved = {key: value for key, value in device_metadata.items() if key != "device_model_metadata_key"}
         resolved["fiber_insertion"] = ndx_ophys_devices.FiberInsertion(**device_metadata["fiber_insertion"])
-        resolved["model"] = model
+        device_model_metadata_key = device_metadata.get("device_model_metadata_key")
+        if device_model_metadata_key is not None:
+            resolved["model"] = _add_device_model_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata, metadata_key=device_model_metadata_key
+            )
         _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=resolved)
 
 
