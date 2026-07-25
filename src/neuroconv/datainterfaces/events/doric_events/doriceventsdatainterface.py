@@ -29,7 +29,7 @@ class DoricEventsInterface(BaseEventsInterface):
     info = "Data Interface for converting discrete events (digital IO) from Doric Neuroscience Studio files."
     associated_suffixes = ("doric",)
     # strptime format of the .doric HDF5 "Created" attribute, parsed for session_start_time.
-    _created_format = "%a %b %d %H:%M:%S %Y"
+    _session_start_time_format = "%a %b %d %H:%M:%S %Y"
 
     @validate_call
     def __init__(
@@ -56,7 +56,7 @@ class DoricEventsInterface(BaseEventsInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "doric_events"
-        self._event_source_paths = self._discover_event_sources(self.source_data["file_path"])
+        self._available_event_lines = self._discover_event_sources(self.source_data["file_path"])
 
     @staticmethod
     def _discover_event_sources(file_path) -> dict[str, dict]:
@@ -68,10 +68,10 @@ class DoricEventsInterface(BaseEventsInterface):
         """
         import h5py
 
-        event_source_paths: dict[str, dict] = {}
+        event_line_paths: dict[str, dict] = {}
         with h5py.File(file_path, "r") as f:
             if "DataAcquisition" not in f:
-                return event_source_paths
+                return event_line_paths
 
             def _visit(name: str, obj) -> None:
                 if not isinstance(obj, h5py.Group):
@@ -84,28 +84,28 @@ class DoricEventsInterface(BaseEventsInterface):
                     item = obj[key]
                     if isinstance(item, h5py.Dataset) and item.ndim == 1:
                         # The digital line's name is its event_type_source_id (identity-in-header).
-                        event_source_paths[key] = {
+                        event_line_paths[key] = {
                             "data_path": f"DataAcquisition/{name}/{key}",
                             "time_path": f"DataAcquisition/{name}/Time",
                         }
 
             f["DataAcquisition"].visititems(_visit)
-        return event_source_paths
+        return event_line_paths
 
     def _get_session_start_time(self) -> datetime | None:
         """Parse the session start time from the file's ``Created`` attribute, if present."""
         import h5py
 
         with h5py.File(self.source_data["file_path"], "r") as f:
-            created_str = f.attrs.get("Created", "")
-        if not created_str:
+            session_start_time_string = f.attrs.get("Created", "")
+        if not session_start_time_string:
             return None
         try:
-            return datetime.strptime(created_str, self._created_format)
+            return datetime.strptime(session_start_time_string, self._session_start_time_format)
         except ValueError:
             warnings.warn(
-                f"Could not parse 'Created' attribute from .doric file (got {created_str!r}). "
-                f"Expected format: '{self._created_format}'. Session start time will not be set automatically."
+                f"Could not parse 'Created' attribute from .doric file (got {session_start_time_string!r}). "
+                f"Expected format: '{self._session_start_time_format}'. Session start time will not be set automatically."
             )
             return None
 
@@ -151,7 +151,7 @@ class DoricEventsInterface(BaseEventsInterface):
 
         events_data_dict = {}
         with h5py.File(self.source_data["file_path"], "r") as f:
-            for event_type_source_id, paths in self._event_source_paths.items():
+            for event_type_source_id, paths in self._available_event_lines.items():
                 data = np.asarray(f[paths["data_path"]][:])
                 time = np.asarray(f[paths["time_path"]][:])
                 # A digital line is a densely sampled 0/1 trace; its events are the rising edges (a
