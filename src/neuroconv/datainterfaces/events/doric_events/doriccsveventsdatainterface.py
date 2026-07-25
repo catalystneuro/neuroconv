@@ -31,9 +31,6 @@ class DoricCSVEventsInterface(BaseEventsInterface):
     display_name = "DoricCSVEvents"
     info = "Data Interface for converting discrete events (digital IO) from Doric Neuroscience Studio CSV exports."
     associated_suffixes = ("csv",)
-    # The reading a digital line defaults to when event_specs does not set one: the lossless durative
-    # reading (onset at the rising edge, duration to the falling edge, for an active-high line).
-    _default_detect = "high_period"
 
     @validate_call
     def __init__(
@@ -70,9 +67,21 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         )
         self.metadata_key = metadata_key or "doric_events"
         self._time_column, digital_columns = self._discover_columns(self.source_data["file_path"])
-        # available_lines: source_id (the column name, e.g. "DI/O-1") -> its (group, name) column handle.
-        self._available_lines = {str(column[1]): column for column in digital_columns}
-        self._resolved_specs = self._resolve_event_specs(event_specs)
+        # available_event_lines: source_id (the column name, e.g. "DI/O-1") -> its (group, name) column
+        # handle. Every digital line is an event line: whether it fired is a property of this recording,
+        # not of intent, so a line that never toggles is still a (possibly empty) event type.
+        self._available_event_lines = {str(column[1]): column for column in digital_columns}
+        # Validate user-passed specs eagerly (fail-fast at construction); the None default is trusted.
+        if event_specs is not None:
+            validate_event_specs(event_specs, self._available_event_lines)
+        else:
+            # Default selection: read every discovered event line.
+            event_specs = {source_id: {} for source_id in self._available_event_lines}
+        # Resolve every entry to a complete spec here, so self._event_specs is the finished, ready-to-read
+        # plan: one entry per selected line, each carrying its detect. The default reading is "high_period",
+        # the lossless durative one (onset at the rising edge, duration to the falling edge, for an
+        # active-high line); a user entry's own "detect" overrides it (it comes last in the merge).
+        self._event_specs = {source_id: {"detect": "high_period", **entry} for source_id, entry in event_specs.items()}
 
     @staticmethod
     def _read_doric_csv(file_path):
@@ -108,31 +117,6 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         digital_columns = [column for column in columns if "digital" in str(column[0]).lower()]
         time_column = time_columns[0] if time_columns else None
         return time_column, digital_columns
-
-    def _resolve_event_specs(self, event_specs: dict | None) -> dict:
-        """Turn ``event_specs`` into resolved fields ``{event_type_source_id: {"detect", "column"}}``.
-
-        ``None`` produces the code default (:meth:`_default_event_specs`); a user dict is first validated
-        (:func:`~neuroconv.tools.events.validate_event_specs`, which raises). Both are then parsed into
-        the internal shape here. Each digital line's column name (e.g. ``DI/O-1``) is its
-        ``event_type_source_id`` (identity-in-header).
-        """
-        if event_specs is None:
-            event_specs = self._default_event_specs()
-        else:
-            validate_event_specs(event_specs, self._available_lines)
-        return {
-            source_id: {"detect": entry.get("detect", self._default_detect), "column": self._available_lines[source_id]}
-            for source_id, entry in event_specs.items()
-        }
-
-    def _default_event_specs(self) -> dict:
-        """The code default (no user ``event_specs``): every digital line with the default ``detect``.
-
-        Trusted (not user input), so it skips validation and flows straight into the parse; a line that
-        never toggles is skipped later in :meth:`_get_events_data_dict`.
-        """
-        return {source_id: {"detect": self._default_detect} for source_id in self._available_lines}
 
     def get_metadata(self) -> DeepDict:
         """
@@ -176,10 +160,11 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         frame_period = float(np.median(np.diff(time)))  # regular DoricStudio clock; duration frames -> seconds
 
         events_data_dict = {}
-        for event_type_source_id, spec in self._resolved_specs.items():
-            data = dataframe[spec["column"]].to_numpy(dtype="float64")
+        for event_type_source_id, entry in self._event_specs.items():
+            column = self._available_event_lines[event_type_source_id]
+            data = dataframe[column].to_numpy(dtype="float64")
             # A digital line is a densely sampled 0/1 trace; threshold=0.5 discretizes it strictly.
-            onset_frames, duration_frames = discretize_trace(data, spec["detect"], threshold=0.5)
+            onset_frames, duration_frames = discretize_trace(data, entry["detect"], threshold=0.5)
             if onset_frames.size == 0:
                 continue  # a line with no matching edge has no event; skip it entirely
             onsets = time[onset_frames]
