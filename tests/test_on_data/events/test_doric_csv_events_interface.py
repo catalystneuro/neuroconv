@@ -54,9 +54,11 @@ class TestDoricCSVEvents:
         expected_durations = [0.9628, 2.0003, 2.0003]  # rise-to-fall span of each pulse, in seconds
         assert np.allclose(events_table["duration"][:], expected_durations, atol=1e-4)
 
-    def test_rising_detect_is_onset_only(self):
-        """detect='rising' reads point events (onset timestamps only, no duration column)."""
-        interface = DoricCSVEventsInterface(file_path=FILE_PATH, event_specs={"DI/O-1": {"detect": "rising"}})
+    def test_rising_detection_is_onset_only(self):
+        """detection='rising' reads point events (onset timestamps only, no duration column)."""
+        interface = DoricCSVEventsInterface(
+            file_path=FILE_PATH, detection_configuration={"DI/O-1": [{"detection": "rising"}]}
+        )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -64,12 +66,17 @@ class TestDoricCSVEvents:
         assert events_table.colnames == ("timestamp",)
         assert np.allclose(events_table["timestamp"][:], [15.9069085, 30.8718085, 45.8699085])
 
-    def test_entry_without_detect_raises(self):
-        """A half-filled event_specs entry fails at construction rather than falling back to a default."""
-        with pytest.raises(ValueError, match="does not set 'detect'"):
-            DoricCSVEventsInterface(file_path=FILE_PATH, event_specs={"DI/O-1": {}})
+    def test_spec_without_detection_raises(self):
+        """A half-filled spec fails at construction rather than falling back to a default."""
+        with pytest.raises(ValueError, match="does not set 'detection'"):
+            DoricCSVEventsInterface(file_path=FILE_PATH, detection_configuration={"DI/O-1": [{}]})
 
-    def test_unknown_digital_line_raises(self):
-        """event_specs naming a column that is not a Digital I/O line fails loudly at construction."""
-        with pytest.raises(ValueError, match="not one of the file's lines"):
-            DoricCSVEventsInterface(file_path=FILE_PATH, event_specs={"DI/O-9": {"detect": "rising"}})
+    def test_unknown_signal_raises(self):
+        """A configuration naming a column that is not a Digital I/O line fails at construction."""
+        with pytest.raises(ValueError, match="not one of the file's signals"):
+            DoricCSVEventsInterface(file_path=FILE_PATH, detection_configuration={"DI/O-9": [{"detection": "rising"}]})
+
+    def test_empty_spec_list_raises(self):
+        """An empty list for a signal is a mistake: drop the signal to skip it."""
+        with pytest.raises(ValueError, match="is an empty list"):
+            DoricCSVEventsInterface(file_path=FILE_PATH, detection_configuration={"DI/O-1": []})
