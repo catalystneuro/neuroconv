@@ -21,7 +21,8 @@ class DoricCSVEventsInterface(BaseEventsInterface):
     signal holding a list of detection specs, since a signal can yield more than one event type. Each
     event type is written as its own ``pynwb.event.EventsTable`` into ``nwbfile.events``. By default
     every line is read as a ``high_period`` (each rising edge is an event onset, its duration the span to
-    the next falling edge). A line that never toggles is skipped.
+    the next falling edge). A line that never toggles still yields its event type, written as a zero-row
+    table, since the type existed in the recording and nothing fired.
 
     This reads the DoricStudio CSV export only; the ``.doric`` HDF5 layouts are handled by
     :class:`.DoricEventsInterface`. The CSV export carries no session start time, so the user must
@@ -72,12 +73,12 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         )
         self.metadata_key = metadata_key or "doric_events"
         self._time_column, digital_columns = self._discover_columns(self.source_data["file_path"])
-        # available_signals: signal_source_id (the column name, e.g. "DI/O-1") -> its descriptor, holding
-        # the (group, name) column handle. The header group "Digital I/O" is what settles the kind
-        # structurally, with no data read, so conditioning is always omittable here and a cut is never
-        # legal. Whether a line fired is a property of this recording, not of intent, so a line that
-        # never toggles is still a (possibly empty) event type.
-        self._available_signals = {str(column[1]): {"kind": "line", "column": column} for column in digital_columns}
+        # available_signals: signal_source_id (the column name, e.g. "DI/O-1") -> its (group, name)
+        # column handle. The header group "Digital I/O" makes every discovered signal a digital line,
+        # settled structurally with no data read, so no signal conditioning arises for this format.
+        # Whether a line fired is a property of this recording, not of intent, so a line that never
+        # toggles is still a (possibly empty) event type.
+        self._available_signals = {str(column[1]): {"column": column} for column in digital_columns}
         # Validate a caller-supplied configuration eagerly (fail-fast at construction); the None default
         # is trusted. A spec is all-or-nothing, never half-filled from a default.
         if detection_configuration is not None:
@@ -146,8 +147,10 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         # Identity-in-header: each digital column name is its own event type. The column name is kept as
         # the event_type_source_id, but the human-facing event_name drops the "/" (an NWB object name
         # cannot contain a slash), so "DI/O-1" seeds a table named "DIO-1". Only lines that carry at
-        # least one event appear (a constant line is skipped), matching _get_events_data_dict.
-        for event_type_source_id in self._get_events_data_dict():
+        # least one event appear. Seeded from the resolved plan rather than from the events themselves,
+        # so metadata costs no data read: whether a line happened to fire does not change which event
+        # types the configuration asked for.
+        for event_type_source_id in self._detection_plan:
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id.replace("/", "")
             }
@@ -176,8 +179,6 @@ class DoricCSVEventsInterface(BaseEventsInterface):
             data = dataframe[column].to_numpy(dtype="float64")
             # A digital line is a densely sampled 0/1 trace; threshold=0.5 discretizes it strictly.
             onset_frames, duration_frames = discretize_trace(data, spec["detection"], threshold=0.5)
-            if onset_frames.size == 0:
-                continue  # an event type with no matching edge has no event; skip it entirely
             onsets = time[onset_frames]
             durations = None if duration_frames is None else duration_frames * frame_period
             events_data_dict[event_type_source_id] = _EventsData(

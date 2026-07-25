@@ -29,12 +29,15 @@ class TestDoricEventsSingleLine:
     def test_get_metadata(self, interface):
         metadata = interface.get_metadata()
 
-        # Only Camera1 is seeded (the constant DigitalCh1 carries no event), named after the line
-        # (identity-in-header, no source prose).
+        # Every discovered line is seeded, named after the line (identity-in-header, no source prose).
+        # DigitalCh1 is constant in this file and appears anyway: whether a line fired is a property of
+        # the recording, not of the configuration, so metadata is seeded from the resolved plan and
+        # costs no data read.
         expected_events_metadata = {
             "doric_events": {
                 "event_types": {
                     "Camera1": {"event_name": "Camera1"},
+                    "DigitalCh1": {"event_name": "DigitalCh1"},
                 },
             },
         }
@@ -44,7 +47,7 @@ class TestDoricEventsSingleLine:
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 6, 24, 13, 58, 38)
 
     def test_add_to_nwbfile(self, interface):
-        """The default detect is high_period: onset at each rising edge, duration to the falling edge."""
+        """The default detection is high_period: onset at each rising edge, duration to the falling edge."""
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
@@ -56,6 +59,26 @@ class TestDoricEventsSingleLine:
 
         # Single-sample pulses at ~1000 Hz: each high period is one frame (~0.001 s).
         assert np.allclose(camera_events["duration"][:], [0.001] * 6, atol=1e-6)
+
+    def test_unfired_line_writes_a_zero_row_table(self, interface):
+        """A constant line is still an event type: the type existed in the recording, nothing fired."""
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        constant_line_events = nwbfile.get_events_table("DigitalCh1")
+        assert len(constant_line_events) == 0
+
+    def test_get_metadata_reads_no_samples(self, interface, monkeypatch):
+        """Metadata comes from the resolved plan, so asking for it never touches the traces."""
+        monkeypatch.setattr(
+            type(interface),
+            "_get_events_data_dict",
+            lambda self: pytest.fail("get_metadata must not read event data"),
+        )
+        assert set(interface.get_metadata()["Events"]["doric_events"]["event_types"]) == {
+            "Camera1",
+            "DigitalCh1",
+        }
 
     def test_rising_detection_is_onset_only(self):
         """detection='rising' reads point events (onset timestamps only, no duration column)."""
@@ -93,16 +116,6 @@ class TestDoricEventsSingleLine:
         """A signal's value is always a list of specs, since a signal may yield several event types."""
         with pytest.raises(ValueError, match="must be a list of detection specs"):
             DoricEventsInterface(file_path=self.FILE_PATH, detection_configuration={"Camera1": {"detection": "rising"}})
-
-    def test_thresholds_on_a_line_raises(self):
-        """A .doric line is already a 0/1 signal, so a cut is not a legal conditioning step for it."""
-        with pytest.raises(ValueError, match="already\n?\\s*a single digital line"):
-            DoricEventsInterface(
-                file_path=self.FILE_PATH,
-                detection_configuration={
-                    "Camera1": [{"signal_conditioning": {"thresholds": [0.5]}, "detection": "rising"}]
-                },
-            )
 
     def test_two_specs_on_one_signal_fan_out(self):
         """A signal yielding two event types derives an identifier per spec, handle plus its reading."""

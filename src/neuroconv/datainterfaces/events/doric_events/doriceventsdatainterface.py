@@ -22,8 +22,9 @@ class DoricEventsInterface(BaseEventsInterface):
     specs, since a signal can yield more than one event type. Each event type is written as its own
     ``pynwb.event.EventsTable`` into ``nwbfile.events``. By default every line is read as a
     ``high_period`` (each rising edge is an event onset, its duration the span to the next falling edge).
-    A line that never toggles is skipped. ``session_start_time`` is read from the file's ``Created``
-    attribute when present.
+    A line that never toggles still yields its event type, written as a zero-row table, since the type
+    existed in the recording and nothing fired. ``session_start_time`` is read from the file's
+    ``Created`` attribute when present.
 
     Only the modern ``.doric`` HDF5 layout (root group ``DataAcquisition``) is read here; the legacy
     "EPConsole" layout is not yet supported, and the DoricStudio CSV export is handled by
@@ -76,8 +77,8 @@ class DoricEventsInterface(BaseEventsInterface):
         )
         self.metadata_key = metadata_key or "doric_events"
         # available_signals: signal_source_id (the DigitalIO dataset key, e.g. "Camera1") -> its
-        # descriptor. Every .doric digital line is kind "line", already a 0/1 signal, so conditioning is
-        # always omittable here and a cut is never legal.
+        # {data_path, time_path} handle. Every discovered signal is a digital line, already a 0/1 signal,
+        # so no signal conditioning arises for this format.
         self._available_signals = self._discover_signals(self.source_data["file_path"])
         # Validate a caller-supplied configuration eagerly (fail-fast at construction); the None default
         # is trusted. A spec is all-or-nothing, never half-filled from a default.
@@ -102,7 +103,8 @@ class DoricEventsInterface(BaseEventsInterface):
         Walks ``DataAcquisition`` for ``DigitalIO`` groups (a group whose leaf name is ``DigitalIO``
         holding a ``Time`` dataset) and treats each non-Time 1-D dataset as a digital line. The line's
         dataset key is its ``signal_source_id`` (identity-in-header, e.g. ``Camera1``, ``DigitalCh1``).
-        The ``DigitalIO`` group is what settles the kind structurally, with no data read.
+        Membership of a ``DigitalIO`` group is what makes every discovered signal a digital line, and it
+        is settled structurally with no data read.
         """
         import h5py
 
@@ -123,7 +125,6 @@ class DoricEventsInterface(BaseEventsInterface):
                     if isinstance(item, h5py.Dataset) and item.ndim == 1:
                         # The digital line's name is its signal_source_id (identity-in-header).
                         available_signals[key] = {
-                            "kind": "line",
                             "data_path": f"DataAcquisition/{name}/{key}",
                             "time_path": f"DataAcquisition/{name}/Time",
                         }
@@ -166,9 +167,10 @@ class DoricEventsInterface(BaseEventsInterface):
 
         # Each event_type_source_id resolved from the configuration is its own event type, and event_name
         # (the human-facing label) defaults to that identifier. A .doric file ships no meaning for a line,
-        # so only the name is seeded here. Only event types that carry at least one event appear (a
-        # constant line is skipped), matching _get_events_data_dict.
-        for event_type_source_id in self._get_events_data_dict():
+        # so only the name is seeded here. Seeded from the resolved plan rather than from the events
+        # themselves, so metadata costs no data read: whether a line happened to fire does not change
+        # which event types the configuration asked for.
+        for event_type_source_id in self._detection_plan:
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }
@@ -182,7 +184,7 @@ class DoricEventsInterface(BaseEventsInterface):
         :func:`discretize_trace`) into onset frames and, for a durative reading, per-event durations. The
         onset timestamps are read from that signal's ``Time`` dataset; durations (in frames) are scaled to
         seconds by the file's sampling period. An event type with no event (a constant line, or one that
-        never opens) is skipped, so the empty state never reaches the writer.
+        never opens) keeps its entry with empty timestamps, which the writer renders as a zero-row table.
 
         A ``.doric`` line is already a ``0``/``1`` signal, so no conditioning runs here and the reading is
         applied to the signal's own values.
@@ -201,8 +203,6 @@ class DoricEventsInterface(BaseEventsInterface):
                 frame_period = float(np.median(np.diff(time)))  # regular Doric clock; duration frames -> seconds
                 # A digital line is a densely sampled 0/1 trace; threshold=0.5 discretizes it strictly.
                 onset_frames, duration_frames = discretize_trace(data, spec["detection"], threshold=0.5)
-                if onset_frames.size == 0:
-                    continue  # an event type with no matching edge has no event; skip it entirely
                 onsets = time[onset_frames]
                 durations = None if duration_frames is None else duration_frames * frame_period
                 events_data_dict[event_type_source_id] = _EventsData(
