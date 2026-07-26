@@ -16,8 +16,8 @@ class TestDoricEventsSingleLine:
     """DoricEventsInterface edge-detects each DigitalIO line of a modern ``.doric`` file.
 
     ``single_line.doric`` (modern DataAcquisition layout, ~1000 Hz) has one toggling line ``Camera1``
-    (six single-sample pulses) and a held-constant line ``DigitalCh1`` (skipped), plus a ``Created``
-    session timestamp.
+    (six single-sample pulses) and a held-constant line ``DigitalCh1`` (an event type that never fired,
+    written as a zero-row table), plus a ``Created`` session timestamp.
     """
 
     FILE_PATH = OPHYS_DATA_PATH / "events_datasets" / "doric" / "root_is_data_acquisition" / "single_line.doric"
@@ -29,12 +29,15 @@ class TestDoricEventsSingleLine:
     def test_get_metadata(self, interface):
         metadata = interface.get_metadata()
 
-        # Only Camera1 is seeded (the constant DigitalCh1 carries no event), named after the line
-        # (identity-in-header, no source prose).
+        # Every discovered line is seeded, named after the line (identity-in-header, no source prose).
+        # DigitalCh1 is constant in this file and appears anyway: whether a line fired is a property of
+        # the recording, not of the configuration, so metadata is seeded from the resolved plan and
+        # costs no data read.
         expected_events_metadata = {
             "doric_events": {
                 "event_types": {
                     "Camera1": {"event_name": "Camera1"},
+                    "DigitalCh1": {"event_name": "DigitalCh1"},
                 },
             },
         }
@@ -44,7 +47,7 @@ class TestDoricEventsSingleLine:
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 6, 24, 13, 58, 38)
 
     def test_add_to_nwbfile(self, interface):
-        """The default detect is high_period: onset at each rising edge, duration to the falling edge."""
+        """The default detection is high_period: onset at each rising edge, duration to the falling edge."""
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
@@ -57,9 +60,19 @@ class TestDoricEventsSingleLine:
         # Single-sample pulses at ~1000 Hz: each high period is one frame (~0.001 s).
         assert np.allclose(camera_events["duration"][:], [0.001] * 6, atol=1e-6)
 
-    def test_rising_detect_is_onset_only(self):
-        """detect='rising' reads point events (onset timestamps only, no duration column)."""
-        interface = DoricEventsInterface(file_path=self.FILE_PATH, event_specs={"Camera1": {"detect": "rising"}})
+    def test_unfired_line_writes_a_zero_row_table(self, interface):
+        """A constant line is still an event type: the type existed in the recording, nothing fired."""
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        constant_line_events = nwbfile.get_events_table("DigitalCh1")
+        assert len(constant_line_events) == 0
+
+    def test_rising_detection_is_onset_only(self):
+        """detection='rising' reads point events (onset timestamps only, no duration column)."""
+        interface = DoricEventsInterface(
+            file_path=self.FILE_PATH, detection_configuration={"Camera1": [{"detection": "rising"}]}
+        )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
@@ -67,10 +80,22 @@ class TestDoricEventsSingleLine:
         assert camera_events.colnames == ("timestamp",)
         assert np.allclose(camera_events["timestamp"][:], [0.002, 0.018, 0.035, 0.051, 0.068, 0.085])
 
-    def test_unknown_line_raises(self):
-        """event_specs naming a line that is not a DigitalIO line fails loudly at construction."""
-        with pytest.raises(ValueError, match="not one of the file's lines"):
-            DoricEventsInterface(file_path=self.FILE_PATH, event_specs={"NoSuchLine": {"detect": "rising"}})
+    def test_two_specs_on_one_signal_fan_out(self):
+        """A signal yielding two event types derives an identifier per spec, handle plus its reading."""
+        interface = DoricEventsInterface(
+            file_path=self.FILE_PATH,
+            detection_configuration={"Camera1": [{"detection": "rising"}, {"detection": "falling"}]},
+        )
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        # The derived identifiers are the addressing keys; each CamelCases into its table's object name.
+        assert set(interface._detection_plan) == {"Camera1_rising", "Camera1_falling"}
+        rising_events = nwbfile.get_events_table("Camera1Rising")
+        falling_events = nwbfile.get_events_table("Camera1Falling")
+        assert np.allclose(rising_events["timestamp"][:], [0.002, 0.018, 0.035, 0.051, 0.068, 0.085])
+        # Each pulse is one sample wide, so every falling edge trails its rising edge by one frame.
+        assert np.allclose(falling_events["timestamp"][:], [0.003, 0.019, 0.036, 0.052, 0.069, 0.086])
 
 
 class TestDoricEventsMultiLine:
@@ -182,7 +207,9 @@ class TestDoricEventsMultiLine:
 
     def test_selection_by_inclusion(self):
         """Naming one line derives only that line; the others are not written."""
-        interface = DoricEventsInterface(file_path=self.FILE_PATH, event_specs={"CAM1": {"detect": "high_period"}})
+        interface = DoricEventsInterface(
+            file_path=self.FILE_PATH, detection_configuration={"CAM1": [{"detection": "high_period"}]}
+        )
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime(2024, 1, 1)
