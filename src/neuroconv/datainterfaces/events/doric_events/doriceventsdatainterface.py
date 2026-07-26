@@ -73,6 +73,7 @@ class DoricEventsInterface(BaseEventsInterface):
         """
         super().__init__(
             file_path=file_path,
+            detection_configuration=detection_configuration,
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "doric_events"
