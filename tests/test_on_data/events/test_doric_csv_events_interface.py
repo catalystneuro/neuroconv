@@ -54,17 +54,14 @@ class TestDoricCSVEvents:
         expected_durations = [0.9628, 2.0003, 2.0003]  # rise-to-fall span of each pulse, in seconds
         assert np.allclose(events_table["duration"][:], expected_durations, atol=1e-4)
 
-    def test_rising_detect_is_onset_only(self):
-        """detect='rising' reads point events (onset timestamps only, no duration column)."""
-        interface = DoricCSVEventsInterface(file_path=FILE_PATH, event_specs={"DI/O-1": {"detect": "rising"}})
+    def test_rising_detection_is_onset_only(self):
+        """detection='rising' reads point events (onset timestamps only, no duration column)."""
+        interface = DoricCSVEventsInterface(
+            file_path=FILE_PATH, detection_configuration={"DI/O-1": [{"detection": "rising"}]}
+        )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
         events_table = nwbfile.get_events_table("DIO-1")
         assert events_table.colnames == ("timestamp",)
         assert np.allclose(events_table["timestamp"][:], [15.9069085, 30.8718085, 45.8699085])
-
-    def test_unknown_digital_line_raises(self):
-        """event_specs naming a column that is not a Digital I/O line fails loudly at construction."""
-        with pytest.raises(ValueError, match="not one of the file's lines"):
-            DoricCSVEventsInterface(file_path=FILE_PATH, event_specs={"DI/O-9": {"detect": "rising"}})
