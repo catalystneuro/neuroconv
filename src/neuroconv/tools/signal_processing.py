@@ -61,6 +61,8 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = Non
     return falling_frames
 
 
+# NOTE: copied from the Intan digital PR (#1812) to unblock the Doric CSV events interface; de-duplicate
+# when that PR merges (both add this same function to this module).
 def discretize_trace(
     trace: np.ndarray,
     detect: str,

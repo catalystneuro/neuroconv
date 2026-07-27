@@ -111,6 +111,21 @@ class TestCSVFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             "data",
         ]
 
+    def test_time_unit_scales_timestamps_to_seconds(self, tmp_path):
+        """A non-second time_unit scales the timestamps column to seconds; the default leaves it as-is."""
+        # Timestamps in milliseconds: 1000 * (k / 128), exactly representable, so ms/1e3 == TIMESTAMPS.
+        path = tmp_path / "milliseconds.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS * 1e3, "data": SIGNAL_DATA}).to_csv(path, index=False)
+
+        milliseconds = CSVFiberPhotometryInterface(
+            file_path=path, data_columns="data", timestamps_column="timestamps", time_unit="milliseconds"
+        )
+        np.testing.assert_array_equal(milliseconds.get_original_timestamps(), TIMESTAMPS)
+
+        # The default (seconds) applies no scaling, so the raw millisecond values come back unchanged.
+        default = CSVFiberPhotometryInterface(file_path=path, data_columns="data", timestamps_column="timestamps")
+        np.testing.assert_array_equal(default.get_original_timestamps(), TIMESTAMPS * 1e3)
+
 
 class TestCSVFiberPhotometryDemux:
     """Demultiplexing one channel out of an interleaved single-file recording.
@@ -242,6 +257,21 @@ class TestMultiFileCSVFiberPhotometryInterface:
         """With no explicit metadata_key, it is derived from all file names, in order."""
         assert interface.metadata_key == "fiber_photometry_sample_signal_channel_sample_control_channel"
         assert interface.metadata_key in interface.get_metadata()["FiberPhotometry"]
+
+    def test_time_unit_scales_timestamps_to_seconds(self, tmp_path):
+        """time_unit scales the (first file's) timestamps to seconds; alignment is checked post-scaling."""
+        signal_path = tmp_path / "signal.csv"
+        control_path = tmp_path / "control.csv"
+        # Both files carry millisecond timestamps; 1000 * (k / 128) is exact, so ms/1e3 == TIMESTAMPS.
+        pd.DataFrame({"timestamps": TIMESTAMPS * 1e3, "data": SIGNAL_DATA}).to_csv(signal_path, index=False)
+        pd.DataFrame({"timestamps": TIMESTAMPS * 1e3, "data": CONTROL_DATA}).to_csv(control_path, index=False)
+        interface = MultiFileCSVFiberPhotometryInterface(
+            file_paths=[signal_path, control_path],
+            data_columns="data",
+            timestamps_column="timestamps",
+            time_unit="milliseconds",
+        )
+        np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
 
     def test_secondary_file_may_omit_timestamps_column(self, tmp_path):
         """A secondary file whose (redundant) timestamps column is absent is still aggregated."""
