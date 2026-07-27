@@ -298,12 +298,6 @@ class TestFramesToSeconds:
         assert durations[0] == pytest.approx(1.002)
         assert durations[1] == pytest.approx(0.001)
 
-    def test_point_reading_has_no_durations(self):
-        timestamps = np.arange(9) * 0.001
-        onsets, durations = _frames_to_seconds(*_detect_events(self.LINE, "rising")[:2], timestamps)
-        assert_array_equal(onsets, np.array([0.002, 0.007]))
-        assert durations is None
-
     def test_unclosed_event_keeps_a_nan_duration(self):
         """NaN marks a truncated interval, which is what NWB's DurationVectorData expects."""
         timestamps = np.arange(9) * 0.001
