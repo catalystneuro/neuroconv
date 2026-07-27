@@ -272,7 +272,7 @@ class DoricEventsInterface(BaseEventsInterface):
                         event_type_source_id=event_type_source_id,
                         timestamps=onsets,
                         durations=durations,
-                        payload={} if values is None else {"value": values},
+                        payload={"value": values} if values is not None else {},
                     )
 
         self._events_data_dict = events_data_dict
