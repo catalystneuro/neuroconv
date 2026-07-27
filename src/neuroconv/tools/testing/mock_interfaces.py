@@ -32,8 +32,8 @@ from ...datainterfaces.ophys.basesegmentationextractorinterface import (
 )
 from ...tools.events import (
     _get_event_type_source_ids,
-    _resolve_detection_plan,
-    _validate_detection_configuration,
+    resolve_detection_plan,
+    validate_detection_configuration,
 )
 from ...tools.nwb_helpers import get_module
 from ...tools.signal_processing import (
@@ -560,7 +560,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # One construction-time check, on the default as well as on a caller-supplied configuration: the
         # default is machine-built but its inputs are not, so it too can resolve two event types to the
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
-        _validate_detection_configuration(detection_configuration, self._available_signals)
+        validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
     SIGNAL_SOURCE_ID = "word"
@@ -664,7 +664,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # Built here rather than held on the interface: the configuration is the source of truth, and the
         # plan is pure and cheap to rebuild. Grouped by signal, so the word is packed once however many
         # bits are carved out of it. This is the loop a sixteen-bit Intan or NIDQ interface will copy.
-        detection_plan = _resolve_detection_plan(self._detection_configuration)
+        detection_plan = resolve_detection_plan(self._detection_configuration)
 
         timestamps = self._get_timestamps()
         events_data_dict = {}

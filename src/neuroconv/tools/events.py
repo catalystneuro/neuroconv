@@ -1,16 +1,19 @@
 """Tools for the discrete-events data interfaces."""
 
+# TODO before the next release: make validate_detection_configuration and resolve_detection_plan
+# private. Nothing here has shipped in a tagged release, so the rename costs no deprecation, and
+# everything in this module is interface-internal rather than a surface anyone should import.
+
 # The alternative cuts: three routes to a discrete-valued signal, exactly one of which may appear in a
 # spec's signal_conditioning. Which one is legal is decided by the signal's kind, not by the caller.
+# These are also the *only* settings signal_conditioning recognizes: hysteresis and debounce are designed
+# but unbuilt, so they hit the unrecognized-key error rather than validating and doing nothing, which is
+# the silent-discard failure this validation exists to remove. They land with their implementation.
 _CUTS = ("bits", "thresholds", "binarize")
-# hysteresis and debounce are designed but unbuilt, so they are deliberately *not* recognized here and
-# hit the unrecognized-key error: a knob that validates but does nothing is the silent-discard failure
-# this validation exists to remove. They land with their implementation.
-_CONDITIONING_KEYS = _CUTS
 _SPEC_KEYS = ("signal_conditioning", "detection", "event_name")
 
 
-def _validate_detection_configuration(detection_configuration: dict, available_signals: dict) -> None:
+def validate_detection_configuration(detection_configuration: dict, available_signals: dict) -> None:
     """Validate a ``detection_configuration``, raising ``ValueError`` on a bad entry.
 
     The one construction-time check. It answers both "is this well formed" (per-spec structure, checked
@@ -107,11 +110,11 @@ def _validate_spec(spec: dict, signal_source_id: str, kind: str | None) -> None:
             f"signal_conditioning for '{signal_source_id}' must be a dict of conditioning settings, got "
             f"{type(conditioning).__name__}."
         )
-    unknown_keys = set(conditioning) - set(_CONDITIONING_KEYS)
+    unknown_keys = set(conditioning) - set(_CUTS)
     if unknown_keys:
         raise ValueError(
             f"signal_conditioning for '{signal_source_id}' has unrecognized key(s) {sorted(unknown_keys)}. "
-            f"Valid settings are {list(_CONDITIONING_KEYS)}."
+            f"Valid settings are {list(_CUTS)}."
         )
     cuts = [cut for cut in _CUTS if cut in conditioning]
     if len(cuts) > 1:
@@ -214,7 +217,7 @@ def _resolve_event_types(detection_configuration: dict) -> list[tuple[str, str, 
     return event_types
 
 
-def _resolve_detection_plan(detection_configuration: dict) -> dict[str, list[tuple[str, dict]]]:
+def resolve_detection_plan(detection_configuration: dict) -> dict[str, list[tuple[str, dict]]]:
     """Resolve a ``detection_configuration`` into ``{signal_source_id: [(event_type_source_id, spec), ...]}``.
 
     The structure the read walks, built from the ``detection_configuration`` alone. It is **grouped by
