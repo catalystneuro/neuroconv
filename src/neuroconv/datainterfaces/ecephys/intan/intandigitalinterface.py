@@ -1,34 +1,50 @@
-from typing import Literal
+from functools import partial
 
 from pydantic import FilePath, validate_call
 
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
-from ....tools.signal_processing import discretize_trace
+from ....tools.events import (
+    _get_event_type_source_ids,
+    resolve_detection_plan,
+    validate_detection_configuration,
+)
+from ....tools.signal_processing import (
+    _condition_signal,
+    _detect_events,
+    _frames_to_seconds,
+)
+
+# The two digital words an Intan controller records. A file carries either, both, or neither, and the
+# lines of both share the amplifier's sampling rate and timeline, so one interface covers whichever are
+# present.
+_DIGITAL_STREAM_NAMES = ("USB board digital input channel", "USB board digital output channel")
 
 
 class IntanDigitalInterface(BaseEventsInterface):
-    """Data interface for converting Intan digital TTL channels to discrete events.
+    """Data interface for converting Intan digital TTL lines to discrete events.
 
-    The Intan controller packs its 16 digital input (or output) lines into a single 16-bit word per
-    sample; bit *i* of that word is digital line *i*. This interface carves individual lines out of
-    that word and edge-detects each one into events, written as ``pynwb.event.EventsTable`` objects in
+    The Intan controller packs its 16 digital input lines (and its 16 digital output lines) into one
+    16-bit word per sample, and the header names every line it recorded. This interface reads each named
+    line and edge-detects it into events, written as ``pynwb.event.EventsTable`` objects in
     ``nwbfile.events`` (via :class:`.BaseEventsInterface`).
 
-    By default every **enabled** line the header exposes becomes its own event type, stored as a
-    **high pulse**: the event's timestamp is the rising (0->1) edge and its duration is the span to the
-    falling (1->0) edge (the ``high_period`` reading). A line that was recorded but never toggles is
-    still written, as an empty (zero-row) table, faithful to the source (the line existed, nothing
-    fired). The high-pulse reading assumes an **active-high** line (idles low, pulses high); an
-    active-low device (idles high, pulses low) should set ``detect: "low_period"`` on an explicit
-    ``event_specs`` entry.
+    **Lines are addressed by the header's own name**, the ``native_channel_name`` the Intan software
+    wrote (``DIGITAL-IN-01``, ``DIN-00``, ``DIGITAL-OUT-05``), which is what the acquisition software
+    shows. That name is a genuine source handle rather than a rendering of the bit position, and it is
+    not derivable from one: the naming scheme changed across Intan software versions, so bit 0 is
+    ``DIN-00`` in an older file and ``DIGITAL-IN-01`` in a newer one. Because every line is named
+    individually, the name alone does the addressing, and one interface instance covers both digital
+    words without being told which to read.
 
-    The digital line as a continuous waveform is not stored here; that is
-    :class:`.IntanAnalogInterface`'s job. This is a purely additive, opt-in product that derives
-    discrete events from the line.
+    By default every line the header exposes becomes its own event type, read as a **high pulse**: the
+    event's timestamp is the rising (0->1) edge and its duration is the span to the falling (1->0) edge
+    (the ``high_period`` reading). A line that was recorded but never toggles is still written, as an
+    empty (zero-row) table, faithful to the source (the line existed, nothing fired). The high-pulse
+    reading assumes an **active-high** line (idles low, pulses high); an active-low device (idles high,
+    pulses low) wants ``"low_period"``.
 
-    Selection and interpretation are set by ``event_specs`` (see ``__init__``), which is keyed by the
-    format's **bit positions**, not by the reader's demultiplexed channel names, so a saved spec does
-    not depend on the backend.
+    The digital line as a continuous waveform is not stored here; that is :class:`.IntanAnalogInterface`'s
+    job. This is a purely additive, opt-in product that derives discrete events from the line.
     """
 
     display_name = "Intan Digital"
@@ -41,9 +57,8 @@ class IntanDigitalInterface(BaseEventsInterface):
         self,
         file_path: FilePath,
         *,
+        detection_configuration: dict[str, list[dict]] | None = None,
         metadata_key: str | None = None,
-        stream_name: Literal["USB board digital input channel", "USB board digital output channel"],
-        event_specs: dict | None = None,
         verbose: bool = False,
     ):
         """Initialize the IntanDigitalInterface.
@@ -53,189 +68,140 @@ class IntanDigitalInterface(BaseEventsInterface):
         file_path : FilePath
             Path to either a ``.rhd`` or a ``.rhs`` file. Time-split (rotated) recordings are not
             supported by this interface; pass a single recording.
-        stream_name : str
-            The digital stream to read, one of ``"USB board digital input channel"`` or
-            ``"USB board digital output channel"``. It selects the digital word the ``bits`` are carved
-            from.
-        event_specs : dict, optional
-            One spec per event, keyed by a field name, each an entry of the form
-            ``{"bits": [i], "detect": ...}``:
+        detection_configuration : dict, optional
+            Which digital lines to read and how, keyed by the line's ``signal_source_id`` (the header's
+            name for it, e.g. ``{"DIGITAL-IN-01": [{"detection": "rising"}]}``). Each value is a **list**
+            of detection specs, one per event type derived from that line, since a line can yield more
+            than one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point event at each
+            edge) or ``"high_period"`` / ``"low_period"`` (a durative event, onset at one edge and
+            duration to the next opposite edge), and it is required. ``signal_conditioning`` is omitted
+            for an Intan digital line, which is already a ``0``/``1`` signal. An optional ``event_name``
+            replaces the derived identifier and pins it against later edits.
 
-            - ``bits`` : a **one-element** list holding the bit position of the line in the digital word.
-              A list of length > 1 (a coded word) is not supported yet and raises ``ValueError``.
-            - ``detect`` : how the line's transitions become events, one of ``"rising"`` (a point event
-              at each 0->1), ``"falling"`` (a point event at each 1->0), ``"high_period"`` (a durative
-              event, onset at 0->1 and duration to the next 1->0), or ``"low_period"`` (a durative event,
-              onset at 1->0 and duration to the next 0->1, for an active-low line). Defaults to
-              ``"high_period"``, which is lossless.
-
-            If None (default), every enabled digital line in the word is derived as its own
-            ``"high_period"`` event (a high pulse: onset at the 0->1 rise, duration to the 1->0 fall),
-            which assumes active-high lines; set ``detect: "low_period"`` for an active-low device. A
-            line that never toggles is still written, as an empty (zero-row) table, so the recorded set
-            of lines is preserved. An empty dict ``{}`` raises ``ValueError`` (to skip digital events
-            entirely, do not construct this interface, or exclude the stream in the converter). A field
-            naming a bit position absent from the word raises ``ValueError``.
+            If None (default), every line the header exposes is read as a ``"high_period"``, lossless for
+            an active-high line; use ``"low_period"`` for an active-low one. When given, only the named
+            lines are read. Use :meth:`get_available_signals` to see what a file offers.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata. If
             None (default), ``"intan_digital"`` is used.
         verbose : bool, default: False
             Whether to print status messages.
         """
-        from spikeinterface.extractors import read_intan
-
         file_path = str(file_path)
-        self.recording_extractor = read_intan(
-            file_path=file_path,
-            stream_name=stream_name,
-            all_annotations=True,
-        )
-
-        # Map each bit position to its demultiplexed channel id. neo already splits the packed word into
-        # per-line channels; native_channel_order[channel_id] is that line's bit position, so this is the
-        # "bit -> backend data" seam. Keying the public spec by bit (not by these channel names) keeps
-        # the spec independent of the reader.
-        native_channel_order = self.recording_extractor.neo_reader.native_channel_order
-        # int(...) because native_order is a numpy int16 (neo's header dtype); plain int keys match the
-        # user's plain-int ``bits`` and render as ``[0]`` rather than ``[np.int16(0)]`` in the "bit not
-        # present" error message (numpy 2.x reprs scalars with the ``np.int16(...)`` prefix).
-        self._bit_to_channel_id = {
-            int(native_channel_order[channel_id]): channel_id
-            for channel_id in self.recording_extractor.get_channel_ids()
+        # One extractor per digital word present, held because reading a line's trace goes through the
+        # word that carries it. Building them reads the header only, so construction stays cheap.
+        self._recording_extractors = self._read_digital_streams(file_path)
+        # available_signals: signal_source_id (the header's channel name) -> its descriptor. Every
+        # discovered signal is a "line" because the word is already demultiplexed into strictly 0/1
+        # per-line traces, which is settled structurally and is what lets the validator reject both a
+        # 'bits' carve (there is no packed word left to carve) and a 'thresholds' cut (already a line).
+        self._available_signals = {
+            str(channel_id): {"kind": "line", "stream_name": stream_name, "channel_id": channel_id}
+            for stream_name, recording in self._recording_extractors.items()
+            for channel_id in recording.get_channel_ids()
         }
-
-        self._stream_name = stream_name
-        self._resolved_fields = self._resolve_event_specs(event_specs)
+        if detection_configuration is None:
+            # The default, used only when the caller passes none: read every line as a "high_period", the
+            # lossless durative reading (onset at the rising edge, duration to the falling edge).
+            detection_configuration = {
+                signal_source_id: [{"detection": "high_period"}] for signal_source_id in self._available_signals
+            }
+        # One construction-time check, on the default as well as on a caller-supplied configuration: the
+        # default is machine-built but its inputs are not, so it too can resolve two event types to the
+        # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
+        validate_detection_configuration(detection_configuration, self._available_signals)
+        self._detection_configuration = detection_configuration
 
         super().__init__(
             file_path=file_path,
-            stream_name=stream_name,
-            event_specs=event_specs,
+            detection_configuration=detection_configuration,
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "intan_digital"
 
-    def _resolve_event_specs(self, event_specs: dict | None) -> dict:
-        """Turn ``event_specs`` into resolved fields ``{event_type_source_id: {"bit", "detect", "event_name"}}``.
+    @staticmethod
+    def _read_digital_streams(file_path) -> dict:
+        """Return ``stream_name -> recording`` for whichever digital words the file carries.
 
-        Three separate steps: ``None`` produces the code default (:meth:`_default_resolved_fields`); a dict
-        is first validated (:meth:`_validate_event_specs`, which raises) and then parsed into the internal
-        shape here. Keeping validation in its own method is deliberate: its structural half (``bits`` is a
-        non-empty list, ``detect`` is a valid value) is the part a pydantic model or a shared
-        ``validate_event_specs`` could take over later, leaving this method to parse and default-synthesize.
+        A file may hold the input word, the output word, both, or neither, so the streams present are
+        read from the header rather than named by the caller.
         """
-        if event_specs is None:
-            return self._default_resolved_fields()
+        from spikeinterface.extractors import get_neo_streams, read_intan
 
-        self._validate_event_specs(event_specs)
-        # Parse (validated input): pull the single bit out, default detect, name the event after the field.
+        stream_names, _ = get_neo_streams("intan", file_path=file_path)
         return {
-            field_source_id: {
-                "bit": entry["bits"][0],
-                "detect": entry.get("detect", "high_period"),
-                "event_name": field_source_id,
-            }
-            for field_source_id, entry in event_specs.items()
+            stream_name: read_intan(file_path=file_path, stream_name=stream_name, all_annotations=True)
+            for stream_name in _DIGITAL_STREAM_NAMES
+            if stream_name in stream_names
         }
 
-    def _default_resolved_fields(self) -> dict:
-        """The code default (no ``event_specs``): one ``high_period`` event per enabled line, source id
-        and name the line's native channel name. Not user input, so nothing to validate; every enabled
-        line is derived in :meth:`_get_events_data_dict` (a line that never toggles becomes an empty
-        table)."""
+    @classmethod
+    def get_available_signals(cls, file_path) -> dict[str, dict]:
+        """Return ``signal_source_id -> {kind, stream_name, channel_id}`` for every digital line in a file.
+
+        What to call before writing a ``detection_configuration``: the keys are exactly the names it
+        accepts, and the ``stream_name`` says which digital word each line came off.
+        """
         return {
-            str(channel_id): {
-                "bit": bit,
-                "detect": "high_period",
-                "event_name": str(channel_id),
-            }
-            for bit, channel_id in self._bit_to_channel_id.items()
+            str(channel_id): {"kind": "line", "stream_name": stream_name, "channel_id": channel_id}
+            for stream_name, recording in cls._read_digital_streams(str(file_path)).items()
+            for channel_id in recording.get_channel_ids()
         }
 
-    def _validate_event_specs(self, event_specs: dict) -> None:
-        """Raise ``ValueError`` on any invalid entry. Structural checks (``bits`` a non-empty list,
-        ``detect`` a valid value) and file-dependent semantic checks (bit present in the word, coded-word
-        deferral) are both here; the structural half is what could later move to pydantic."""
-        valid_detect = ("rising", "falling", "high_period", "low_period")
+    def get_metadata(self) -> dict:
+        """Seed one ``event_types`` entry per event type the configuration resolves to.
 
-        # An empty dict is almost always a mistake (or confusion with None). Unlike NIDQ, whose combined
-        # analog+digital interface reads {} as "keep the analog, drop the digital half", a digital-only
-        # interface has no other half to keep, so {} would mean "build an interface that does nothing".
-        # Raise with guidance instead of that silent no-op.
-        if not event_specs:
-            raise ValueError(
-                "event_specs is empty. Pass None (the default) to derive every enabled line, or name "
-                "at least one line, e.g. {'sync': {'bits': [0]}}. To skip digital events entirely, do not "
-                "construct this interface (or exclude the stream in the converter)."
-            )
-
-        for field_source_id, entry in event_specs.items():
-            bits = entry.get("bits")
-            if not isinstance(bits, list) or len(bits) == 0:
-                raise ValueError(
-                    f"event_specs field '{field_source_id}' must set 'bits' to a non-empty list, got {bits!r}."
-                )
-            if len(bits) > 1:
-                raise ValueError(
-                    f"event_specs field '{field_source_id}' declares a coded/multi-bit word (bits={bits}). Coded words need a "
-                    "strobe line to be read safely and are not supported yet; pass one bit per entry."
-                )
-            if bits[0] not in self._bit_to_channel_id:
-                raise ValueError(
-                    f"event_specs field '{field_source_id}' references bit {bits[0]}, which is not present in stream "
-                    f"'{self._stream_name}'. Available bit positions are {sorted(self._bit_to_channel_id)}."
-                )
-            detect = entry.get("detect", "high_period")
-            if detect not in valid_detect:
-                raise ValueError(
-                    f"event_specs field '{field_source_id}' has invalid detect '{detect}'. Valid values are {list(valid_detect)}."
-                )
+        Header-only by design: the entries come from the configuration rather than from the events, so
+        which event types are listed is decided by what was asked for rather than by which lines happened
+        to fire, and constructing or inspecting metadata never loads sample data (the traces are read only
+        in :meth:`add_to_nwbfile`). An Intan file ships no prose for a digital line and a line carries no
+        value column, so each entry is just an ``event_name``.
+        """
+        metadata = super().get_metadata()
+        event_types = metadata["Events"][self.metadata_key]["event_types"]
+        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+            event_types[event_type_source_id] = {"event_name": event_type_source_id}
+        return metadata
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
-        """Read each resolved line, edge-detect it per ``detect``, and emit one :class:`_EventsData`.
+        """Read each selected line, edge-detect it per its spec, and emit one :class:`_EventsData`, cached.
 
-        Every enabled line the header exposes gets an entry, so the written set is decided by the format
-        (which lines were recorded), not by which lines happened to fire: a line that never toggles yields
-        an empty :class:`_EventsData` and is written as a zero-row table (truth to the source, the line was
-        recorded, nothing fired). This is also the only place the digital traces are read; ``get_metadata``
-        stays header-only, so constructing the interface and inspecting metadata never load sample data.
+        Each line is read once however many event types it yields. Onset and offset **frames** are turned
+        into seconds by asking the recording for the time of those frames, which is where Intan differs
+        from the other signal-encoded sources: it derives its clock from the sampling rate instead of
+        storing one, so the clock is passed as a callable and only the frames the events landed on are
+        ever computed. Materialising a whole recording's timestamps to read a handful of edges would cost
+        324 million values for three hours at 30 kHz.
+
+        An event type with no event (a line that never toggles) keeps its entry with empty timestamps,
+        which the writer renders as a zero-row table.
         """
         if self._events_data_dict is not None:
             return self._events_data_dict
 
-        recording = self.recording_extractor
-        fs = recording.get_sampling_frequency()
+        # Built here rather than held on the interface: the configuration is the source of truth, and the
+        # plan is pure and cheap to rebuild. Grouped by signal, so a line is read once however many event
+        # types it yields.
+        detection_plan = resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
-        for event_type_source_id, spec in self._resolved_fields.items():
-            channel_id = self._bit_to_channel_id[spec["bit"]]
-            trace = recording.get_traces(channel_ids=[channel_id])  # (n_samples, 1), values 0/1
-            # threshold=0.5 because the line is strictly 0/1; discretize_trace returns durations in frames.
-            onset_frames, duration_frames = discretize_trace(trace, spec["detect"], threshold=0.5)
-            timestamps = recording.sample_index_to_time(onset_frames.astype("int64"), segment_index=0)
-            durations = None if duration_frames is None else duration_frames / fs
-            events_data_dict[event_type_source_id] = _EventsData(
-                event_type_source_id=event_type_source_id,
-                timestamps=timestamps,
-                durations=durations,
-                payload={},  # a single line carries no value column
-            )
+        for signal_source_id, detection_specs in detection_plan.items():
+            descriptor = self._available_signals[signal_source_id]
+            recording = self._recording_extractors[descriptor["stream_name"]]
+            # (n_samples, 1) from a single-channel selection; the reading works on the line itself.
+            trace = recording.get_traces(channel_ids=[descriptor["channel_id"]])[:, 0]
+            read_clock = partial(recording.sample_index_to_time, segment_index=0)
+            for event_type_source_id, spec in detection_specs:
+                # An Intan digital line arrives already demultiplexed into a 0/1 trace, so no conditioning
+                # applies and the reading is taken from the line's own values, with no cut anywhere.
+                conditioned = _condition_signal(trace, spec.get("signal_conditioning"))
+                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, read_clock)
+                events_data_dict[event_type_source_id] = _EventsData(
+                    event_type_source_id=event_type_source_id,
+                    timestamps=onsets,
+                    durations=durations,
+                )
 
         self._events_data_dict = events_data_dict
         return self._events_data_dict
-
-    def get_metadata(self) -> dict:
-        """Seed one ``event_types`` entry per enabled line, named from ``event_specs`` or the header.
-
-        Header-only by design: it lists every resolved line (the enabled lines of the digital word, or the
-        lines the user named) without reading the traces, so which lines are listed is decided by the
-        format, not by which lines fired, and constructing or inspecting metadata never loads sample data
-        (the traces are read only in :meth:`add_to_nwbfile`). A single line is timestamp-only or durative
-        and carries no value column, so each entry is just an ``event_name`` (no ``event_description``, no
-        ``columns``), matching how a bare TDT epoc seeds.
-        """
-        metadata = super().get_metadata()
-        event_types = metadata["Events"][self.metadata_key]["event_types"]
-        for event_type_source_id, spec in self._resolved_fields.items():
-            event_types[event_type_source_id] = {"event_name": spec["event_name"]}
-        return metadata
