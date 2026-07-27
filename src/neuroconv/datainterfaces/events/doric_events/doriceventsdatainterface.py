@@ -258,11 +258,11 @@ class DoricEventsInterface(BaseEventsInterface):
 
         events_data_dict = {}
         with h5py.File(self.source_data["file_path"], "r") as f:
-            for signal_source_id, event_type_specs in detection_plan.items():
+            for signal_source_id, detection_specs in detection_plan.items():
                 paths = self._available_signals[signal_source_id]
                 data = np.asarray(f[paths["data_path"]][:], dtype="float64")
                 time = np.asarray(f[paths["time_path"]][:], dtype="float64")
-                for event_type_source_id, spec in event_type_specs:
+                for event_type_source_id, spec in detection_specs:
                     # A .doric digital line is already a 0/1 signal, so no conditioning applies and the
                     # reading is taken from the signal's own values, with no cut anywhere.
                     conditioned = _condition_signal(data, spec.get("signal_conditioning"))
