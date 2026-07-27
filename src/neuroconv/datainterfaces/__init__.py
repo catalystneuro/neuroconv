@@ -114,7 +114,6 @@ from .fiber_photometry.csv.multifilecsvfiberphotometrydatainterface import (
 from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
 from .fiber_photometry.npm.npmfiberphotometrydatainterface import (
     NPMFiberPhotometryInterface,
-    NPMLegacyFiberPhotometryInterface,
 )
 from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
@@ -207,7 +206,6 @@ interface_list = [
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
     NPMFiberPhotometryInterface,
-    NPMLegacyFiberPhotometryInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
@@ -260,7 +258,6 @@ interfaces_by_category = dict(
     fiber_photometry={
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
         "NPMFiberPhotometry": NPMFiberPhotometryInterface,
-        "NPMLegacyFiberPhotometry": NPMLegacyFiberPhotometryInterface,
         "DoricFiberPhotometry": DoricFiberPhotometryInterface,
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
         "CSVFiberPhotometry": CSVFiberPhotometryInterface,

@@ -24,7 +24,3 @@ Multi-File CSV Fiber Photometry
 NPM Fiber Photometry
 --------------------
 .. autoclass:: neuroconv.datainterfaces.fiber_photometry.npm.npmfiberphotometrydatainterface.NPMFiberPhotometryInterface
-
-NPM Legacy Fiber Photometry
----------------------------
-.. autoclass:: neuroconv.datainterfaces.fiber_photometry.npm.npmfiberphotometrydatainterface.NPMLegacyFiberPhotometryInterface

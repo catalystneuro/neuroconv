@@ -11,16 +11,19 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class ColumnDemux(BaseModel):
-    """Demultiplex an interleaved file by a label column: read the rows where ``column == value``.
+    """Demultiplex an interleaved file by a label column: read the rows whose ``column`` matches ``value``.
 
     For a file whose excitation channels are multiplexed frame-by-frame down the rows with a column
     naming each row's channel (e.g. a Neurophotometrics ``LedState``), this selects one channel; a
-    startup frame is excluded simply by not being any interface's ``value``.
+    startup frame is excluded simply by not being any interface's ``value``. ``value`` may be a list,
+    in which case the rows whose ``column`` equals *any* of the listed values are read -- used when
+    several distinct label values denote the same channel (e.g. NPM ``LedState`` codes that share an
+    excitation LED but differ in their digital-line bits).
     """
 
     by: Literal["column"] = "column"
     column: str | int
-    value: str | int
+    value: str | int | list[str | int]
 
 
 class StrideDemux(BaseModel):

@@ -1,17 +1,13 @@
-"""Interfaces for raw Neurophotometrics (NPM) fiber photometry data.
+"""Interface for raw Neurophotometrics (NPM) fiber photometry data.
 
 NPM is a raw acquisition format that interleaves the excitation channels frame-by-frame down the
 rows of a single CSV: an isosbestic channel and one or more signal channels are multiplexed, and
-each remaining column (e.g. ``Region0G``) is a region of interest. The modern format labels each
-row's channel with a ``Flags``/``LedState`` column; the older, header-less format cycles the
-channels in a fixed row order with no label column.
-
-De-interleaving one channel out of such a file is exactly what :class:`.CSVFiberPhotometryInterface`
-does through its ``demux_config``, so these interfaces are thin wrappers: they translate NPM's shape
-into a demux config (a :class:`.ColumnDemux` for the modern format, a :class:`.StrideDemux` for the
-legacy one) and defer everything else -- reading, the response series, the device/table assembly --
-to the CSV base. Each interface still writes exactly one ``FiberPhotometryResponseSeries``; compose
-one per channel in a converter.
+each remaining column (e.g. ``Region0G``) is a region of interest. Each row is labelled by a
+``Flags``/``LedState`` column, whose value is a packed word: the three lowest bits encode which
+excitation LED was on (``001`` = 415 nm, ``010`` = 470 nm, ``100`` = 560 nm) and the higher bits are
+digital TTL lines. Two rows that share an excitation LED but differ in a TTL line therefore carry
+different ``LedState`` values (e.g. ``17`` and ``273`` are both 415 nm), so a channel is selected by
+masking the three lowest bits rather than by matching the raw value.
 """
 
 from pathlib import Path
@@ -22,22 +18,31 @@ from pydantic import FilePath, validate_call
 
 from ..csv.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
 
+# The three lowest bits of a Flags/LedState word encode the excitation LED; the higher bits are
+# digital TTL lines. Mask to these bits to recover the wavelength regardless of the TTL state.
+_EXCITATION_BITS = 0b111
+_WAVELENGTH_TO_CODE = {415: 1, 470: 2, 560: 4}
+_CODE_TO_WAVELENGTH = {code: wavelength for wavelength, code in _WAVELENGTH_TO_CODE.items()}
+
 
 class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
-    """Interface for a modern (``Flags``/``LedState``-labeled) Neurophotometrics CSV file.
+    """Interface for a Neurophotometrics CSV file (a ``Flags``/``LedState``-labeled acquisition).
 
-    The modern NPM file is a header-bearing CSV whose channel multiplexing is driven by a ``Flags``
-    or ``LedState`` column: each row belongs to whichever excitation LED was on. This interface reads
-    the one channel whose state equals ``led_state`` (auto-detecting which of ``Flags``/``LedState``
-    the file uses) and writes the selected region column(s) as one ``FiberPhotometryResponseSeries``.
+    The NPM file is a header-bearing CSV whose channel multiplexing is driven by a ``Flags`` or
+    ``LedState`` column: each row belongs to whichever excitation LED was on, encoded in the three
+    lowest bits of that column's packed word. This interface reads the one excitation channel given
+    by ``excitation_wavelength_in_nm`` and writes the selected region column(s) as one
+    ``FiberPhotometryResponseSeries``.
 
-    Use :meth:`get_available_led_states` to discover the channels; the region column names come from
-    the inherited :meth:`get_available_columns`. For the older header-less NPM format, use
-    :class:`.NPMLegacyFiberPhotometryInterface`.
+    Use :meth:`get_available_excitation_wavelengths` to discover the channels; the region column
+    names come from the inherited :meth:`get_available_columns`.
+
+    Header-less Neurophotometrics output has no NPM-specific structure and
+    should be read with :class:`.CSVFiberPhotometryInterface` directly.
     """
 
     display_name = "NPMFiberPhotometry"
-    info = "Interface for raw fiber photometry data from modern Neurophotometrics files."
+    info = "Interface for raw fiber photometry data from Neurophotometrics files."
     associated_suffixes = ("csv",)
 
     @validate_call
@@ -45,7 +50,7 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         self,
         file_path: FilePath,
         *,
-        led_state: int,
+        excitation_wavelength_in_nm: Literal[415, 470, 560],
         data_columns: str | list[str],
         timestamps_column: Literal["Timestamp", "SystemTimestamp", "ComputerTimestamp"] = "Timestamp",
         time_unit: Literal["seconds", "milliseconds", "microseconds"] = "seconds",
@@ -58,10 +63,9 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         Parameters
         ----------
         file_path : FilePath
-            The raw modern NPM CSV file.
-        led_state : int
-            The value of the file's ``Flags``/``LedState`` column identifying the one channel this
-            interface reads (see :meth:`get_available_led_states`).
+            The raw NPM CSV file.
+        excitation_wavelength_in_nm : {415, 470, 560}
+            The excitation LED identifying the one channel this interface reads.
         data_columns : str or list of str
             The region column name(s) whose samples are column-stacked into this interface's single
             ``FiberPhotometryResponseSeries`` (see :meth:`get_available_columns`).
@@ -74,8 +78,8 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
             The unit of the selected timestamp column, default = "seconds".
         metadata_key : str, optional
             Key under ``metadata["FiberPhotometry"]`` for this interface's response-series metadata.
-            When None (default), a key distinct per ``(led_state, data_columns)`` is generated, so
-            several interfaces reading the same file do not collide.
+            When None (default), a key distinct per ``(excitation_wavelength_in_nm, data_columns)`` is
+            generated, so several interfaces reading the same file do not collide.
         read_kwargs : dict, optional
             Additional keyword arguments forwarded to ``pandas.read_csv`` to handle format quirks
             (e.g. ``sep``, ``encoding``, ``decimal``). Default is None.
@@ -84,14 +88,23 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         """
         data_columns_list = [data_columns] if isinstance(data_columns, str) else list(data_columns)
         state_column = self._detect_state_column(file_path, read_kwargs)
+
+        code = _WAVELENGTH_TO_CODE[excitation_wavelength_in_nm]
+        state_values = self._read_state_values(file_path, state_column, read_kwargs)
+        matching_states = [value for value in state_values if value & _EXCITATION_BITS == code]
+        assert matching_states, (
+            f"No rows with excitation wavelength {excitation_wavelength_in_nm} nm in '{file_path}'. "
+            f"Available wavelengths: {self.get_available_excitation_wavelengths(file_path, read_kwargs)}."
+        )
+
         if metadata_key is None:
-            metadata_key = self._default_metadata_key(file_path, led_state, data_columns_list)
+            metadata_key = self._default_metadata_key(file_path, excitation_wavelength_in_nm, data_columns_list)
 
         super().__init__(
             file_path=file_path,
             data_columns=data_columns_list,
             timestamps_column=timestamps_column,
-            demux_config={"by": "column", "column": state_column, "value": led_state},
+            demux_config={"by": "column", "column": state_column, "value": matching_states},
             time_unit=time_unit,
             metadata_key=metadata_key,
             read_kwargs=read_kwargs,
@@ -99,14 +112,21 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         )
 
     @classmethod
-    def get_available_led_states(cls, file_path: FilePath, read_kwargs: dict | None = None) -> list[int]:
-        """Return the sorted unique values of the file's ``Flags``/``LedState`` column.
+    def get_available_excitation_wavelengths(cls, file_path: FilePath, read_kwargs: dict | None = None) -> list[int]:
+        """Return the excitation wavelengths (nm) present in the file, sorted.
 
-        Each value is one interleaved channel to pass as ``led_state``. A startup/calibration frame
-        (an all-LEDs-on first frame, e.g. ``Flags=16``/``LedState=7``) can appear here as an extra
-        value that is not one of the recording channels.
+        Each row's ``Flags``/``LedState`` word is masked to its three lowest bits to recover the
+        excitation LED; the single-LED codes (``001``/``010``/``100``) map to 415/470/560 nm. Codes
+        that are not a single excitation LED -- no LED on (a startup/initialization frame) or several
+        LEDs on together -- are not fiber photometry channels and are left out.
         """
         state_column = cls._detect_state_column(file_path, read_kwargs)
+        codes = {value & _EXCITATION_BITS for value in cls._read_state_values(file_path, state_column, read_kwargs)}
+        return sorted(_CODE_TO_WAVELENGTH[code] for code in codes if code in _CODE_TO_WAVELENGTH)
+
+    @staticmethod
+    def _read_state_values(file_path: FilePath, state_column: str, read_kwargs: dict | None) -> list[int]:
+        """Return the sorted unique values of the file's ``Flags``/``LedState`` column."""
         state = pd.read_csv(file_path, usecols=[state_column], **(read_kwargs or dict()))[state_column]
         return sorted(int(value) for value in pd.unique(state))
 
@@ -119,94 +139,12 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
             if candidate in lower_to_actual:
                 return lower_to_actual[candidate]
         raise ValueError(
-            f"Modern NPM files must contain a 'Flags' or 'LedState' column. Found columns: {columns}. "
-            "For the older header-less NPM format, use NPMLegacyFiberPhotometryInterface instead."
+            f"NPM files must contain a 'Flags' or 'LedState' column. Found columns: {columns}. "
+            "Header-less Neurophotometrics output should be read with CSVFiberPhotometryInterface instead."
         )
 
     @staticmethod
-    def _default_metadata_key(file_path: FilePath, led_state: int, data_columns: list[str]) -> str:
+    def _default_metadata_key(file_path: FilePath, excitation_wavelength_in_nm: int, data_columns: list[str]) -> str:
         stem = Path(file_path).stem.replace(" ", "_").strip("_").lower()
         regions = "_".join(str(column).replace(" ", "_").lower() for column in data_columns)
-        return f"fiber_photometry_{stem}_ledstate{led_state}_{regions}"
-
-
-class NPMLegacyFiberPhotometryInterface(CSVFiberPhotometryInterface):
-    """Interface for a legacy (header-less, row-cycling) Neurophotometrics CSV file.
-
-    The legacy NPM file is a header-less CSV: the first column is the timestamp and the remaining
-    columns are region-of-interest values, with the interleaved channels stored in a fixed
-    row-cycling order (row ``i`` belongs to channel ``i % number_of_channels``). With no label
-    column to key on, the user specifies how many channels were interleaved (``number_of_channels``)
-    and which one this interface reads (``index``); columns are addressed by 0-based position.
-
-    Pass ``time_unit`` to match the unit of the file's timestamps column (defaults to ``"seconds"``).
-    For the modern header-bearing format, use :class:`.NPMFiberPhotometryInterface`.
-    """
-
-    display_name = "NPMLegacyFiberPhotometry"
-    info = "Interface for raw fiber photometry data from legacy (header-less) Neurophotometrics files."
-    associated_suffixes = ("csv",)
-
-    @validate_call
-    def __init__(
-        self,
-        file_path: FilePath,
-        *,
-        number_of_channels: int,
-        index: int,
-        data_columns: int | list[int],
-        timestamps_column: int = 0,
-        skip_rows: int = 0,
-        time_unit: Literal["seconds", "milliseconds", "microseconds"] = "seconds",
-        metadata_key: str | None = None,
-        read_kwargs: dict | None = None,
-        verbose: bool = False,
-    ):
-        """Initialize the NPMLegacyFiberPhotometryInterface.
-
-        Parameters
-        ----------
-        file_path : FilePath
-            The raw legacy NPM CSV file.
-        number_of_channels : int
-            The number of interleaved channels (rows cycle through the channels in order).
-        index : int
-            The 0-based index of the cyclic channel this interface reads (must be < number_of_channels).
-        data_columns : int or list of int
-            The 0-based positional index(es) of the region column(s) whose samples are column-stacked
-            into this interface's single ``FiberPhotometryResponseSeries``.
-        timestamps_column : int, default: 0
-            The 0-based positional index of the timestamps column.
-        skip_rows : int, default: 0
-            Number of leading rows to drop before the cyclic alignment (e.g. calibration frames).
-        time_unit : {"seconds", "milliseconds", "microseconds"}, default: "seconds"
-            The unit of the timestamps column; the timestamps are scaled to seconds on read.
-        metadata_key : str, optional
-            Key under ``metadata["FiberPhotometry"]`` for this interface's response-series metadata.
-            When None (default), a key distinct per ``(index, data_columns)`` is generated, so several
-            interfaces reading the same file do not collide.
-        read_kwargs : dict, optional
-            Additional keyword arguments forwarded to ``pandas.read_csv``. Default is None.
-        verbose : bool, default: False
-            Whether to print status messages.
-        """
-        data_columns_list = [data_columns] if isinstance(data_columns, int) else list(data_columns)
-        if metadata_key is None:
-            metadata_key = self._default_metadata_key(file_path, index, data_columns_list)
-
-        super().__init__(
-            file_path=file_path,
-            data_columns=data_columns_list,
-            timestamps_column=timestamps_column,
-            demux_config={"by": "stride", "channels": number_of_channels, "index": index, "skip_rows": skip_rows},
-            time_unit=time_unit,
-            metadata_key=metadata_key,
-            read_kwargs=read_kwargs,
-            verbose=verbose,
-        )
-
-    @staticmethod
-    def _default_metadata_key(file_path: FilePath, index: int, data_columns: list[int]) -> str:
-        stem = Path(file_path).stem.replace(" ", "_").strip("_").lower()
-        regions = "_".join(str(column) for column in data_columns)
-        return f"fiber_photometry_{stem}_channel{index}_columns{regions}"
+        return f"fiber_photometry_{stem}_{excitation_wavelength_in_nm}nm_{regions}"

@@ -81,7 +81,8 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
             For an interleaved file (excitation channels multiplexed frame-by-frame down the rows), a
             config selecting the one channel this interface reads. Two shapes:
             ``ColumnDemux(column=<col>, value=<v>)`` reads the rows whose ``column`` equals ``value``
-            (e.g. a Neurophotometrics ``LedState``); ``StrideDemux(channels=<k>, index=<i>,
+            (e.g. a Neurophotometrics ``LedState``), where ``value`` may be a list to match any of
+            several label values denoting the same channel; ``StrideDemux(channels=<k>, index=<i>,
             skip_rows=<n>)`` reads every ``k``-th row starting at ``i`` after dropping ``n`` leading
             rows. Default None reads every row (no demux). Compose one interface per channel in a
             converter.
@@ -198,7 +199,8 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         if isinstance(demux_config, ColumnDemux):
             read_columns = columns if demux_config.column in columns else [*columns, demux_config.column]
             dataframe = self._read_csv(file_path, usecols=read_columns)
-            return dataframe[dataframe[demux_config.column] == demux_config.value]
+            values = demux_config.value if isinstance(demux_config.value, list) else [demux_config.value]
+            return dataframe[dataframe[demux_config.column].isin(values)]
         elif isinstance(demux_config, StrideDemux):
             dataframe = self._read_csv(file_path, usecols=columns)
             return dataframe.iloc[demux_config.skip_rows :].iloc[demux_config.index :: demux_config.channels]
