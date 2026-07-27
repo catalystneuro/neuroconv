@@ -43,10 +43,8 @@ class TestTimestampOnlyEventType(TDTEventsInterfaceMixin):
         expected_metadata = {
             "tdt_events": {
                 "event_types": {
-                    "Tick": {
-                        "event_name": "Tick",
-                        "event_description": "Onset times of the TDT epoc 'Tick'.",
-                    },
+                    # A tank carries no prose of its own, so no description is reported at all.
+                    "Tick": {"event_name": "Tick"},
                 },
             },
         }
@@ -71,16 +69,11 @@ class TestEventTypeWithValueColumn(TDTEventsInterfaceMixin):
         expected_metadata = {
             "tdt_events": {
                 "event_types": {
+                    # The strobe column is seeded bare: a tank ships no codebook, so the labels and the
+                    # descriptions are the user's to add rather than invented from the codes themselves.
                     "PAB_": {
                         "event_name": "PAB_",
-                        "event_description": "Onset times of the TDT epoc 'PAB_', labeled by strobe value.",
-                        "columns": {
-                            "strobe": {
-                                "column_name": "strobe",
-                                "description": "Strobe code for each 'PAB_' event.",
-                                "column_categories": {"labels": {0: "0", 16: "16", 2064: "2064"}},
-                            },
-                        },
+                        "columns": {"strobe": {"column_name": "strobe"}},
                     },
                 },
             },
@@ -93,8 +86,10 @@ class TestEventTypeWithValueColumn(TDTEventsInterfaceMixin):
 
         pab_events = nwbfile.get_events_table("PAB")  # "PAB_", trailing padding "_" dropped
         assert len(pab_events) == 30
-        # The 30 events cycle through the three codes.
-        assert list(pab_events["strobe"][:]) == ["16", "2064", "0"] * 10
+        # The 30 events cycle through the three codes, written raw: no labels were declared, so nothing
+        # relabels them and no MeaningsTable claims to say what they mean.
+        assert list(pab_events["strobe"][:]) == [16, 2064, 0] * 10
+        assert (pab_events.meanings_tables or {}) == {}
 
 
 class TestEventTypeWithDurations(TDTEventsInterfaceMixin):
@@ -110,9 +105,9 @@ class TestEventTypeWithDurations(TDTEventsInterfaceMixin):
         expected_metadata = {
             "tdt_events": {
                 "event_types": {
-                    "s1s_": {"event_name": "s1s_", "event_description": "Onset times of the TDT epoc 's1s_'."},
-                    "s4s_": {"event_name": "s4s_", "event_description": "Onset times of the TDT epoc 's4s_'."},
-                    "sms_": {"event_name": "sms_", "event_description": "Onset times of the TDT epoc 'sms_'."},
+                    "s1s_": {"event_name": "s1s_"},
+                    "s4s_": {"event_name": "s4s_"},
+                    "sms_": {"event_name": "sms_"},
                 },
             },
         }

@@ -262,19 +262,16 @@ class TestVameInterfaceEthogram:
         sampling_frequency_hz=30.0,
     )
 
-    def _add_to_nwbfile(self, **add_kwargs):
-        interface = VameInterface(**self.interface_kwargs)
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata(), **add_kwargs)
-        return nwbfile.processing["behavior"]
-
     def test_metadata_has_ethogram_entries(self):
         ethograms = VameInterface(**self.interface_kwargs).get_metadata()["Behavior"]["Ethograms"]
         assert ethograms["VAMEProject_kmeans"]["EthogramBouts"]["name"] == "VAMEProjectEthogramBoutsKmeans"
         assert ethograms["VAMEProject_kmeans"]["Ethogram"]["name"] == "VAMEProjectEthogramKmeans"
 
     def test_bouts_are_motif_labels_run_length_encoded(self):
-        bouts = self._add_to_nwbfile()["VAMEProjectEthogramBoutsKmeans"]
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata())
+        bouts = nwbfile.processing["behavior"]["VAMEProjectEthogramBoutsKmeans"]
         labels = np.load(MOTIF_LABELS_PATH).astype(np.int32)
         run_starts = np.concatenate(([0], np.flatnonzero(np.diff(labels)) + 1))
         # One row per maximal run; the label is that run's motif id as text.
@@ -289,7 +286,10 @@ class TestVameInterfaceEthogram:
         assert bouts.source_software.startswith("VAME")
 
     def test_catalogue_covers_full_cluster_space_with_community_category(self):
-        catalogue = self._add_to_nwbfile()["VAMEProjectEthogramKmeans"]
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata())
+        catalogue = nwbfile.processing["behavior"]["VAMEProjectEthogramKmeans"]
         assert len(catalogue) == 15  # n_clusters from config, including motifs absent this session.
         assert catalogue.exclusive
         assert list(catalogue["behavior"][:]) == [str(index) for index in range(15)]
@@ -306,7 +306,10 @@ class TestVameInterfaceEthogram:
             assert catalogue["category"][motif_id] == expected_category
 
     def test_bouts_link_to_source_motif_series_and_catalogue(self):
-        behavior = self._add_to_nwbfile()
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata())
+        behavior = nwbfile.processing["behavior"]
         bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
         assert bouts.source is behavior["VAMEProject"].motif_series["MotifSeriesKmeans"]
         assert bouts.ethogram is behavior["VAMEProjectEthogramKmeans"]
@@ -324,6 +327,30 @@ class TestVameInterfaceEthogram:
             bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
             assert len(bouts) == expected_runs
             assert bouts.source.name == "MotifSeriesKmeans"
+            assert behavior["VAMEProjectEthogramKmeans"].exclusive
+
+    def test_data_to_write_algorithm_output_writes_project_without_ethogram(self):
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata(), data_to_write="algorithm_output")
+        behavior = nwbfile.processing["behavior"]
+        assert "VAMEProject" in behavior.data_interfaces
+        assert "VAMEProjectEthogramBoutsKmeans" not in behavior.data_interfaces
+        assert "VAMEProjectEthogramKmeans" not in behavior.data_interfaces
+
+    def test_data_to_write_ethogram_writes_without_project_and_drops_source(self, tmp_path):
+        # ethogram-only: the faithful MotifSeries is absent, so the bouts' source back-link is dropped
+        # to None. A source-less ndx-ethogram must still be a valid, writable file, hence the roundtrip.
+        interface = VameInterface(**self.interface_kwargs)
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1).astimezone()
+        path = tmp_path / "vame_curated.nwb"
+        interface.run_conversion(nwbfile_path=str(path), metadata=metadata, overwrite=True, data_to_write="ethogram")
+        with NWBHDF5IO(path=str(path), mode="r", load_namespaces=True) as io:
+            behavior = io.read().processing["behavior"]
+            assert "VAMEProject" not in behavior.data_interfaces
+            bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
+            assert bouts.source is None
             assert behavior["VAMEProjectEthogramKmeans"].exclusive
 
 

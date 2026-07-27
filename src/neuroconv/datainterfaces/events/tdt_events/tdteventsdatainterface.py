@@ -85,24 +85,13 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
             is_strobe = not _data_is_counter(data)
 
             # One EventsTable per epoc store; event_name defaults to the store name. A counter store is
-            # timestamp-only (no columns); a real strobe gets one categorical 'strobe' column (keyed by
-            # its payload field) with an editable code -> label map.
-            event_description = f"Onset times of the TDT epoc '{epoc_name}'."
-            entry = {"event_name": epoc_name, "event_description": event_description}
+            # timestamp-only (no columns); a real strobe gets one 'strobe' column (keyed by its payload
+            # field) carrying the raw codes. A tank ships no codebook and no prose: what an epoc records
+            # and what its codes mean live in the experimenter's head, so the description and the column's
+            # labels are simply absent here rather than generated from the store name.
+            entry = {"event_name": epoc_name}
             if is_strobe:
-                entry["event_description"] = f"Onset times of the TDT epoc '{epoc_name}', labeled by strobe value."
-                entry["columns"] = {
-                    "strobe": {
-                        "column_name": "strobe",
-                        "description": f"Strobe code for each '{epoc_name}' event.",
-                        "column_categories": {
-                            "labels": {
-                                _normalize_strobe_value(value): str(_normalize_strobe_value(value))
-                                for value in np.unique(data)
-                            }
-                        },
-                    }
-                }
+                entry["columns"] = {"strobe": {"column_name": "strobe"}}
             metadata["Events"][self.metadata_key]["event_types"][epoc_name] = entry
         return metadata
 
