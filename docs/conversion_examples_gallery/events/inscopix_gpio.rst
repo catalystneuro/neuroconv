@@ -42,24 +42,36 @@ Digital and coded channels as events
 
 Derive discrete events from the digital and coded channels with
 :py:class:`~neuroconv.datainterfaces.events.inscopix_gpio_events.inscopixgpioeventsdatainterface.InscopixGpioEventsInterface`,
-which writes each channel as a ``pynwb.event.EventsTable`` into ``nwbfile.events``. Selection is
-explicit: name each channel in ``events_config`` and say how to read it. ``detect`` picks which
-value-transitions become events, sharing its vocabulary and default with ``IntanDigitalInterface``:
+which writes each derived event type as a ``pynwb.event.EventsTable`` into ``nwbfile.events``. Selection
+is explicit: name each channel in ``detection_configuration`` and give it a list of detection specs, one
+per event type you want from it. A spec's ``detection`` picks which transitions become events:
 ``"high_period"``/``"low_period"`` (a durative reading pairing each edge with the next opposite edge,
 giving a duration), ``"rising"``/``"falling"`` (only the up/down transitions, as point events), or
-``"changes"`` (every value transition, carrying the value it changed to). A plain digital line defaults
-to ``"high_period"``; a ``levels`` line defaults to ``"changes"``. ``levels`` optionally cuts a coded
-line into bands, written as a categorical column.
+``"value_change"`` (a point event at every transition).
+
+A channel that is already two-valued needs no ``signal_conditioning`` at all, whatever its levels: a
+``0``/``1`` line and a line at 48 and 64 both read correctly with no cut, since a rising edge is simply a
+transition to the higher value. A multi-level channel needs ``{"thresholds": [...]}`` to say where to
+cut. To keep the levels of a coded channel apart, cut it once per level and give each spec its own
+``event_name``, as below: each cut becomes a durative event type with real start and stop times, and the
+level the channel occupies at any instant is how many of them are open, so nothing is lost.
 
 .. code-block:: python
 
     >>> from neuroconv.datainterfaces import InscopixGpioEventsInterface
     >>>
-    >>> events_config = {
-    ...     "BNC Sync Output": {"detect": "rising"},                       # frame-clock pulses
-    ...     "GPIO-2": {"levels": [136, 152, 192], "field": "concentration"},  # odor concentration code
+    >>> detection_configuration = {
+    ...     # A 0/1 frame clock, already a line, so no conditioning.
+    ...     "BNC Sync Output": [{"detection": "rising"}],
+    ...     # A four-level odor-concentration code, cut once per level.
+    ...     "GPIO-2": [
+    ...         {"signal_conditioning": {"thresholds": [136]}, "detection": "high_period", "event_name": "odor_low"},
+    ...         {"signal_conditioning": {"thresholds": [192]}, "detection": "high_period", "event_name": "odor_high"},
+    ...     ],
     ... }
-    >>> interface = InscopixGpioEventsInterface(file_path=file_path, events_config=events_config, verbose=False)
+    >>> interface = InscopixGpioEventsInterface(
+    ...     file_path=file_path, detection_configuration=detection_configuration, verbose=False
+    ... )
     >>>
     >>> metadata = interface.get_metadata()
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

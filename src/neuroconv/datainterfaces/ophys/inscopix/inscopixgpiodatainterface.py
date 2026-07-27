@@ -30,8 +30,8 @@ def get_gpio_channel_inventory(file_path) -> list[dict]:
     The Inscopix file records no analog-vs-digital flag (see the format notes), so which channels are
     continuous signals versus discrete events is a human call. This returns, per channel, its name,
     sample count, and value set/range, so a user can eyeball which lines are 0/1 (digital), which are
-    multi-level codes, and which are continuous, and pick ``exclude_channels`` / ``events_config`` /
-    ``levels`` accordingly.
+    multi-level codes, and which are continuous, and pick ``exclude_channels`` /
+    ``detection_configuration`` / ``thresholds`` accordingly.
 
     Returns
     -------
