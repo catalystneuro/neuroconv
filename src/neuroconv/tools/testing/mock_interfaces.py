@@ -672,13 +672,12 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
             signal = self._get_signal(signal_source_id)
             for event_type_source_id, spec in detection_specs:
                 conditioned = _condition_signal(signal, spec.get("signal_conditioning"))
-                onset_frames, offset_frames, values = _detect_events(conditioned, spec["detection"])
+                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
                 onsets, durations = _frames_to_seconds(onset_frames, offset_frames, timestamps)
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
                     timestamps=onsets,
                     durations=durations,
-                    payload={} if values is None else {"value": values},
                 )
 
         self._events_data_dict = events_data_dict

@@ -138,55 +138,72 @@ class TestReadings:
             )
             assert interface._get_events_data_dict()["word"].durations is not None
 
-    def test_value_change_is_the_only_reading_with_a_payload(self):
-        """A banded trace read as value_change keeps the new band; every reading else resolves state away.
+    def test_value_change_is_what_a_multi_valued_signal_admits(self):
+        """The four edge readings need a line; value_change is the one a banded trace accepts.
 
-        Banded rather than a coded word: reading several bits together is deferred until its strobe
-        guard exists, so `thresholds` is the only shipped route to a more-than-two-valued signal.
+        It carries no payload: every transition is the same event type. Telling them apart is a
+        conditioning job, covered by the fan-out test below.
         """
-        coded = MockSignalEncodedEventsInterface(
+        interface = MockSignalEncodedEventsInterface(
             analog_waveforms={"stim_level": "levels"},
             detection_configuration={
                 "stim_level": [{"signal_conditioning": {"thresholds": [1.0, 2.0, 3.0]}, "detection": "value_change"}]
             },
         )
-        plain = MockSignalEncodedEventsInterface(digital_line_waveforms={0: "pulses"})
 
-        assert "value" in coded._get_events_data_dict()["stim_level"].payload
-        assert plain._get_events_data_dict()["word"].payload == {}
+        events = interface._get_events_data_dict()["stim_level"]
+        assert events.payload == {}
+        assert events.durations is None  # a point reading: a transition has no extent
 
 
-class TestPayload:
-    """A payload-carrying reading has to survive to a written column once its column is declared.
+class TestCutsInsteadOfPayloads:
+    """Distinguishing values is conditioning's job, not a value column's.
 
-    A field the metadata never declares is silently dropped by the writer today; refusing that is a
-    separate fix to the shared writer, tracked in the events ongoing-work notes.
+    One spec per distinction on the same signal, each named, each durative. This is what replaced the
+    payload-carrying ``value_change``, and it is lossless: the band at any instant is how many cut
+    points are currently exceeded, so the per-cut tables carry the whole trajectory.
     """
 
-    def _coded_interface(self):
-        """A banded analog trace: the shipped route to a payload, since a coded word is deferred."""
+    CUTS = [1.0, 2.0, 3.0]
+
+    def _interface(self):
         return MockSignalEncodedEventsInterface(
             analog_waveforms={"stim_level": "levels"},
             detection_configuration={
-                "stim_level": [{"signal_conditioning": {"thresholds": [1.0, 2.0, 3.0]}, "detection": "value_change"}]
+                "stim_level": [
+                    {
+                        "signal_conditioning": {"thresholds": [cut]},
+                        "detection": "high_period",
+                        "event_name": f"Above{index}",
+                    }
+                    for index, cut in enumerate(self.CUTS)
+                ]
             },
         )
 
-    def test_a_declared_payload_field_reaches_the_written_table(self):
-        """Declaring the column is the user's, not the interface's: get_metadata seeds only names."""
-        interface = self._coded_interface()
-        metadata = interface.get_metadata()
-        entry = metadata["Events"]["mock_signal_encoded_events"]["event_types"]["stim_level"]
-        assert "columns" not in entry  # nothing about the reading leaks into metadata
-        entry["columns"] = {"value": {"column_name": "band"}}
+    def test_each_cut_is_its_own_named_durative_event_type(self):
+        """What the value column could not give: real start and stop times per distinction."""
+        events = self._interface()._get_events_data_dict()
 
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        assert set(events) == {"Above0", "Above1", "Above2"}
+        for event in events.values():
+            assert event.durations is not None
+            assert event.payload == {}
 
-        table = nwbfile.get_events_table("StimLevel")
-        np.testing.assert_array_equal(
-            table["band"][:], interface._get_events_data_dict()["stim_level"].payload["value"]
-        )
+    def test_the_cuts_reconstruct_the_band_trajectory_exactly(self):
+        """The lossless claim the design rests on, checked against the banding it replaced."""
+        interface = self._interface()
+        timestamps = interface._get_timestamps()
+        trace = interface._get_signal("stim_level")
+        bands = np.searchsorted(self.CUTS, trace, side="right")
+
+        reconstructed = np.zeros(trace.size, dtype="int64")
+        for event in interface._get_events_data_dict().values():
+            for onset, duration in zip(event.timestamps, event.durations):
+                stop = timestamps[-1] + 1 if np.isnan(duration) else onset + duration
+                reconstructed[(timestamps >= onset) & (timestamps < stop)] += 1
+
+        np.testing.assert_array_equal(reconstructed, bands)
 
 
 class TestTimebase:
@@ -232,17 +249,18 @@ class TestMetadata:
 class TestAnalogSignals:
     """The other half of the conditioning vocabulary: cuts on a continuous trace."""
 
-    def test_thresholds_band_a_multi_level_trace(self):
-        """No edge reading can read four levels, so the caller says where to cut and reads the bands."""
+    def test_a_single_cut_turns_an_analog_trace_into_a_readable_line(self):
+        """`thresholds` exists to make a line out of a continuous trace, which edge readings then read."""
         interface = MockSignalEncodedEventsInterface(
             analog_waveforms={"photodiode": "levels"},
             detection_configuration={
-                "photodiode": [{"signal_conditioning": {"thresholds": [1.0, 2.0, 3.0]}, "detection": "value_change"}]
+                "photodiode": [{"signal_conditioning": {"thresholds": [2.0]}, "detection": "high_period"}]
             },
         )
 
         events = interface._get_events_data_dict()["photodiode"]
-        np.testing.assert_array_equal(events.payload["value"], [1, 2, 3, 0])
+        assert events.timestamps.size == 1  # the trace rises through 2.0 once and stays up to the end
+        assert events.durations is not None
 
     def test_binarize_reads_a_trace_that_is_a_line_only_conceptually(self):
         """A TTL through an analog input sits near two amplitudes with jitter on every sample."""

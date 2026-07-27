@@ -234,36 +234,39 @@ class TestDetectEvents:
         assert "threshold" not in inspect.signature(_detect_events).parameters
 
     def test_rising_and_falling_are_point_events(self):
-        onsets, offsets, values = _detect_events(self.LINE, detection="rising")
+        onsets, offsets = _detect_events(self.LINE, detection="rising")
         assert_array_equal(onsets, np.array([2, 7]))
-        assert offsets is None and values is None
+        assert offsets is None
 
-        onsets, offsets, values = _detect_events(self.LINE, detection="falling")
+        onsets, offsets = _detect_events(self.LINE, detection="falling")
         assert_array_equal(onsets, np.array([5, 8]))
-        assert offsets is None and values is None
+        assert offsets is None
 
     def test_high_period_pairs_rising_to_next_falling(self):
-        onsets, offsets, _ = _detect_events(self.LINE, detection="high_period")
+        onsets, offsets = _detect_events(self.LINE, detection="high_period")
         assert_array_equal(onsets, np.array([2, 7]))
         assert_array_equal(offsets, np.array([5.0, 8.0]))
 
     def test_low_period_offset_is_nan_when_unclosed(self):
-        onsets, offsets, _ = _detect_events(self.LINE, detection="low_period")
+        onsets, offsets = _detect_events(self.LINE, detection="low_period")
         assert_array_equal(onsets, np.array([5, 8]))
         assert offsets[0] == 7.0
         assert np.isnan(offsets[1])  # the last low span never closes
 
-    def test_value_change_carries_the_new_value(self):
-        """The one reading that does not resolve the state away, so the only one with a payload."""
+    def test_value_change_is_the_reading_a_multi_valued_signal_admits(self):
+        """Every transition is one event type, with nothing to tell them apart and so nothing carried.
+
+        The four edge readings would be refused here by the backstop; distinguishing the bands is a
+        conditioning job (one cut per distinction), not something this reading encodes.
+        """
         banded = np.array([0, 0, 1, 1, 2, 0])
-        onsets, offsets, values = _detect_events(banded, detection="value_change")
+        onsets, offsets = _detect_events(banded, detection="value_change")
         assert_array_equal(onsets, np.array([2, 4, 5]))
         assert offsets is None
-        assert_array_equal(values, np.array([1, 2, 0]))
 
     def test_a_signal_that_never_toggles_yields_no_events(self):
         """One distinct value passes the backstop: it must convert to a zero-row table, not fail."""
-        onsets, offsets, _ = _detect_events(np.ones(10), detection="high_period")
+        onsets, offsets = _detect_events(np.ones(10), detection="high_period")
         assert onsets.size == 0
 
     def test_edge_reading_on_a_multi_level_signal_raises(self):
