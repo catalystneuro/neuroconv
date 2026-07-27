@@ -285,8 +285,8 @@ edge-detects it, and writes them as ``pynwb.event.EventsTable`` objects into ``n
 
 Lines are addressed by the header's own name (``DIGITAL-IN-01``, ``DIN-00``, ``DIGITAL-OUT-05``), which
 is what the acquisition software shows. Because every line is named individually, one interface covers
-whichever digital words the file carries and there is no stream to pick. Call
-``IntanDigitalInterface.get_available_signals(file_path)`` to see the names a file offers.
+whichever digital words the file carries and there is no stream to pick. To see the names a file offers,
+construct the interface with no configuration and read the event types off ``get_metadata()``.
 
 With no ``detection_configuration`` (the default), every line the header exposes is derived as one event
 type, using the lossless ``"high_period"`` reading (a durative event per pulse, with a duration). A line

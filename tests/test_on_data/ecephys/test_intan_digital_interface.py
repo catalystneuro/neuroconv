@@ -36,10 +36,10 @@ class TestIntanDigitalInterface:
         expected_events = {"my_ttl": {"event_types": {"DIGITAL-IN-01": {"event_name": "DIGITAL-IN-01"}}}}
         assert metadata["Events"] == expected_events
 
-    def test_get_available_signals(self):
-        """The inventory a user reads before writing a configuration: its keys are exactly the names the
-        configuration accepts, and each says which digital word the line came off."""
-        available_signals = IntanDigitalInterface.get_available_signals(self.FILE_PATH)
+    def test_available_signals_descriptor(self):
+        """The inventory the validator checks a configuration against: its keys are the names the
+        configuration may use, and each says which digital word the line came off."""
+        available_signals = IntanDigitalInterface(file_path=self.FILE_PATH)._available_signals
 
         assert list(available_signals) == ["DIGITAL-IN-01"]
         assert available_signals["DIGITAL-IN-01"]["stream_name"] == "USB board digital input channel"
@@ -158,7 +158,7 @@ class TestIntanDigitalBothWords:
         The two words share the amplifier's sampling rate and timeline, and their header names cannot
         collide (DIGITAL-IN-* against DIGITAL-OUT-*), so one keyspace addresses both.
         """
-        available_signals = IntanDigitalInterface.get_available_signals(self.FILE_PATH)
+        available_signals = IntanDigitalInterface(file_path=self.FILE_PATH)._available_signals
 
         assert len(available_signals) == 25  # 9 input lines + 16 output lines
         streams = {descriptor["stream_name"] for descriptor in available_signals.values()}

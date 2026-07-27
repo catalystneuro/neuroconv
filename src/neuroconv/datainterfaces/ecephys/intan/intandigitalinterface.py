@@ -80,7 +80,7 @@ class IntanDigitalInterface(BaseEventsInterface):
 
             If None (default), every line the header exposes is read as a ``"high_period"``, lossless for
             an active-high line; use ``"low_period"`` for an active-low one. When given, only the named
-            lines are read. Use :meth:`get_available_signals` to see what a file offers.
+            lines are read.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata. If
             None (default), ``"intan_digital"`` is used.
@@ -95,11 +95,7 @@ class IntanDigitalInterface(BaseEventsInterface):
         # discovered signal is a "line" because the word is already demultiplexed into strictly 0/1
         # per-line traces, which is settled structurally and is what lets the validator reject both a
         # 'bits' carve (there is no packed word left to carve) and a 'thresholds' cut (already a line).
-        self._available_signals = {
-            str(channel_id): {"kind": "line", "stream_name": stream_name, "channel_id": channel_id}
-            for stream_name, recording in self._recording_extractors.items()
-            for channel_id in recording.get_channel_ids()
-        }
+        self._available_signals = self._get_available_signals(self._recording_extractors)
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every line as a "high_period", the
             # lossless durative reading (onset at the rising edge, duration to the falling edge).
@@ -135,16 +131,16 @@ class IntanDigitalInterface(BaseEventsInterface):
             if stream_name in stream_names
         }
 
-    @classmethod
-    def get_available_signals(cls, file_path) -> dict[str, dict]:
-        """Return ``signal_source_id -> {kind, stream_name, channel_id}`` for every digital line in a file.
+    @staticmethod
+    def _get_available_signals(recording_extractors: dict) -> dict[str, dict]:
+        """Return ``signal_source_id -> {kind, stream_name, channel_id}`` for every digital line.
 
-        What to call before writing a ``detection_configuration``: the keys are exactly the names it
-        accepts, and the ``stream_name`` says which digital word each line came off.
+        The validator's inventory: its keys are the names a ``detection_configuration`` may use, and the
+        rest of each descriptor is this interface's own addressing, which is why it is private.
         """
         return {
             str(channel_id): {"kind": "line", "stream_name": stream_name, "channel_id": channel_id}
-            for stream_name, recording in cls._read_digital_streams(str(file_path)).items()
+            for stream_name, recording in recording_extractors.items()
             for channel_id in recording.get_channel_ids()
         }
 
