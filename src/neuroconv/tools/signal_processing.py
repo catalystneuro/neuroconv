@@ -61,7 +61,7 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = Non
     return falling_frames
 
 
-_DETECTION_READINGS = ("rising", "falling", "high_period", "low_period", "value_change")
+_DETECTION_READINGS = ("rising", "falling", "high_period", "low_period")
 _BINARIZE_METHODS = ("midpoint", "mean")
 
 
@@ -174,7 +174,7 @@ def _binarize(trace: np.ndarray, method: str) -> np.ndarray:
 def _detect_events(
     discrete_trace: np.ndarray,
     detection: str,
-) -> tuple[np.ndarray, np.ndarray | None, np.ndarray | None]:
+) -> tuple[np.ndarray, np.ndarray | None]:
     """Read a discrete-valued signal's transitions as events, in frame indices.
 
     The second of the two stages (the first is :func:`_condition_signal`). It takes **no threshold**:
@@ -200,11 +200,10 @@ def _detect_events(
     ----------
     discrete_trace : numpy.ndarray
         A discrete-valued signal, as returned by :func:`_condition_signal`.
-    detection : {"rising", "falling", "high_period", "low_period", "value_change"}
+    detection : {"rising", "falling", "high_period", "low_period"}
         Which transitions become events. ``"rising"`` and ``"falling"`` give a point event at each edge.
         ``"high_period"`` pairs each rising edge with the next falling one, and ``"low_period"`` the
-        reverse, giving a durative event. ``"value_change"`` emits an event at every transition and
-        keeps the new value as the event's payload; it is the only reading that carries one.
+        reverse, giving a durative event.
 
     Returns
     -------
@@ -214,8 +213,6 @@ def _detect_events(
         ``None`` for a point reading. For a durative reading, the closing frame of each event, as
         ``float64`` so an event with no closing edge in the trace can carry ``NaN`` (a truncated
         interval).
-    values : numpy.ndarray or None
-        ``None`` except for ``"value_change"``, where it is the new value at each transition.
 
     Raises
     ------
@@ -229,13 +226,7 @@ def _detect_events(
     discrete_trace = np.asarray(discrete_trace)
     difference = np.diff(discrete_trace)
 
-    if detection == "value_change":
-        # Any transition is an event, and the new value rides along as the payload. This is the one
-        # reading that does not resolve the state away, so it is the only one with a value column.
-        change_frames = np.flatnonzero(difference) + 1
-        return change_frames, None, discrete_trace[change_frames]
-
-    # The read-time backstop. The four edge readings are only meaningful on a two-valued signal: with
+    # The read-time backstop. Every reading here is only meaningful on a two-valued signal: with
     # three or more levels there is no fact about which of them count as high. "At most two", not
     # exactly two, because a line that never toggles has one value and must still convert (to a
     # zero-row table) rather than fail.
@@ -244,15 +235,15 @@ def _detect_events(
         raise ValueError(
             f"detection '{detection}' needs a two-valued signal, but this one has {distinct_values.size} "
             "distinct values. Condition it into a line first, with 'thresholds' for an analog trace or "
-            "'binarize' for a numerically noisy one, or read it as 'value_change'."
+            "'binarize' for a numerically noisy one."
         )
 
     rising_frames = np.flatnonzero(difference > 0) + 1
     falling_frames = np.flatnonzero(difference < 0) + 1
     if detection == "rising":
-        return rising_frames, None, None
+        return rising_frames, None
     if detection == "falling":
-        return falling_frames, None, None
+        return falling_frames, None
 
     onset_frames, closing_frames = (
         (rising_frames, falling_frames) if detection == "high_period" else (falling_frames, rising_frames)
@@ -263,7 +254,7 @@ def _detect_events(
     offset_frames = np.full(onset_frames.shape, np.nan, dtype="float64")
     matched = close_index < len(closing_frames)
     offset_frames[matched] = closing_frames[close_index[matched]]
-    return onset_frames, offset_frames, None
+    return onset_frames, offset_frames
 
 
 def _frames_to_seconds(

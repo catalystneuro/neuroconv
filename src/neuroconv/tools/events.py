@@ -265,9 +265,7 @@ def _get_event_type_source_ids(detection_configuration: dict) -> list[str]:
     """The identifiers a ``detection_configuration`` resolves to, in configuration order.
 
     Everything ``get_metadata`` sees of the configuration, deliberately. Metadata names event types; it
-    has no business with how they are read, so it gets identifiers and not specs. Keeping the seam here
-    is what stops a metadata question (does this event type carry a payload?) from pulling the detection
-    vocabulary into the metadata layer.
+    has no business with how they are read, so it gets identifiers and not specs.
     """
     return [event_type_source_id for event_type_source_id, _, _ in _resolve_event_types(detection_configuration)]
 
