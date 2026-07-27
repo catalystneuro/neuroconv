@@ -82,12 +82,6 @@ several series sharing one ``FiberPhotometryTable``.
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Eastern"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
-    >>> # get_metadata() returns an editable scaffold; the required fiber photometry fields (excitation/
-    >>> # emission wavelengths, indicator, location, ...) are pre-filled with placeholder values that
-    >>> # should be replaced before archiving. add_to_nwbfile warns about any that remain unset.
-    >>> # See :ref:`fiber_photometry_metadata_structure` for the full metadata format reference
-    >>> # (device models, devices, indicators, and the FiberPhotometryTable), and how to fill in the
-    >>> # scaffold above with real values via dict_deep_update.
 
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = Path("doric_fiber_photometry.nwb")

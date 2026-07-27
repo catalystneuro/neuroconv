@@ -266,7 +266,7 @@ def _add_pose_estimation_to_nwbfile(
     Adds pose estimation data to an nwbfile using ndx-pose v0.2.0+
 
     When ``use_new_metadata_format`` is True the container/skeleton/device are read from the
-    dict-based shape (``metadata["Behavior"]["Pose"]`` registries + top-level ``Devices``, linked by
+    dict-based shape (top-level ``metadata["Pose"]`` registries + top-level ``Devices``, linked by
     ``device_metadata_key``/``skeleton_metadata_key``); otherwise from the legacy
     ``metadata["PoseEstimation"]`` block. Only this metadata resolution differs between the two
     formats; everything downstream is shared.
@@ -330,7 +330,7 @@ def _add_pose_estimation_to_nwbfile(
     # Resolve the container / skeleton / device. This is the only part that differs between the
     # legacy and dict-based formats (the default_metadata built above is only used by the legacy path).
     if use_new_metadata_format:
-        pose_metadata = metadata["Behavior"]["Pose"]
+        pose_metadata = metadata["Pose"]
         container_metadata = pose_metadata["PoseEstimations"][metadata_key]
         skeleton_metadata = pose_metadata["Skeletons"][container_metadata["skeleton_metadata_key"]]
         device_metadata = metadata["Devices"][container_metadata["device_metadata_key"]]
