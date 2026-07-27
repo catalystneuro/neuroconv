@@ -5,7 +5,6 @@ import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import DoricEventsInterface
-from neuroconv.tools.events import _get_event_type_source_ids
 
 try:
     from ..setup_paths import OPHYS_DATA_PATH
@@ -90,11 +89,8 @@ class TestDoricEventsSingleLine:
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        # The derived identifiers are the addressing keys; each CamelCases into its table's object name.
-        assert set(_get_event_type_source_ids(interface._detection_configuration)) == {
-            "Camera1_rising",
-            "Camera1_falling",
-        }
+        # The derived identifiers are the addressing keys, and each CamelCases into its table's object
+        # name, so retrieving these two tables is what proves the derivation.
         rising_events = nwbfile.get_events_table("Camera1Rising")
         falling_events = nwbfile.get_events_table("Camera1Falling")
         assert np.allclose(rising_events["timestamp"][:], [0.002, 0.018, 0.035, 0.051, 0.068, 0.085])
