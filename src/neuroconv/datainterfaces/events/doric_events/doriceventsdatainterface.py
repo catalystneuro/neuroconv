@@ -89,7 +89,7 @@ class DoricEventsInterface(BaseEventsInterface):
         # available_signals: signal_source_id (the line's dataset key, e.g. "Camera1" or "DI--O-1") -> its
         # descriptor. The layout is what makes every discovered signal kind "line", settled structurally
         # with no data read, which is what lets the validator reject a cut on it.
-        self._available_signals = self._discover_signals(self.source_data["file_path"])
+        self._available_signals = self._get_available_signals(self.source_data["file_path"])
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every discovered line as a
             # "high_period", the lossless durative reading (onset at the rising edge, duration to the
@@ -104,7 +104,7 @@ class DoricEventsInterface(BaseEventsInterface):
         self._detection_configuration = detection_configuration
 
     @staticmethod
-    def _discover_signals(file_path) -> dict[str, dict]:
+    def _get_available_signals(file_path) -> dict[str, dict]:
         """Return ``signal_source_id -> {kind, data_path, time_path}`` for every digital line in the file.
 
         Dispatches on the root group to cover both ``.doric`` generations: ``DataAcquisition`` is the
