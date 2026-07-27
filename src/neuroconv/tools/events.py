@@ -245,8 +245,9 @@ def resolve_detection_plan(detection_configuration: dict) -> dict[str, list[tupl
     Returns
     -------
     dict
-        ``signal_source_id -> [(event_type_source_id, spec), ...]``, one entry per signal to read and one
-        pair per event type to derive from it.
+        ``signal_source_id -> [(event_type_source_id, spec), ...]``, one entry per signal to read and,
+        inside it, one spec per event type to derive from that signal, each paired with the identifier it
+        resolves to.
 
     Raises
     ------

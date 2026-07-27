@@ -225,7 +225,8 @@ class DoricEventsInterface(BaseEventsInterface):
         # so only the name is seeded here. Seeded from the resolved plan rather than from the events
         # themselves, so metadata costs no data read: whether a line happened to fire does not change
         # which event types the configuration asked for.
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        event_source_type_ids = _get_event_type_source_ids(self._detection_configuration)
+        for event_type_source_id in event_source_type_ids:
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }
@@ -257,11 +258,11 @@ class DoricEventsInterface(BaseEventsInterface):
 
         events_data_dict = {}
         with h5py.File(self.source_data["file_path"], "r") as f:
-            for signal_source_id, event_types in detection_plan.items():
+            for signal_source_id, event_type_specs in detection_plan.items():
                 paths = self._available_signals[signal_source_id]
                 data = np.asarray(f[paths["data_path"]][:], dtype="float64")
                 time = np.asarray(f[paths["time_path"]][:], dtype="float64")
-                for event_type_source_id, spec in event_types:
+                for event_type_source_id, spec in event_type_specs:
                     # A .doric digital line is already a 0/1 signal, so no conditioning applies and the
                     # reading is taken from the signal's own values, with no cut anywhere.
                     conditioned = _condition_signal(data, spec.get("signal_conditioning"))

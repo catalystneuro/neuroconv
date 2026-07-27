@@ -183,10 +183,10 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         detection_plan = resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
-        for signal_source_id, event_types in detection_plan.items():
+        for signal_source_id, event_type_specs in detection_plan.items():
             column = self._available_signals[signal_source_id]["column"]
             data = dataframe[column].to_numpy(dtype="float64")
-            for event_type_source_id, spec in event_types:
+            for event_type_source_id, spec in event_type_specs:
                 # A DoricStudio digital column is already a 0/1 signal, so no conditioning applies and
                 # the reading is taken from the signal's own values, with no cut anywhere.
                 conditioned = _condition_signal(data, spec.get("signal_conditioning"))
