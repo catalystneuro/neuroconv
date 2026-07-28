@@ -174,13 +174,32 @@ class AxonIntracellularInterface(BaseDataInterface):
         self._sampling_rate = float(reader.get_signal_sampling_rate())
 
     # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to all
-    # of them. The device is per run, the electrode per response channel, and the series key is the user's
-    # `metadata_key` if given, else the electrode key. Each series entry links to its electrode key and each
-    # electrode to its device key (see get_metadata), and those links are editable, so two series can be pointed
-    # at one electrode to share it.
+    # of them. The electrode is per response channel and the series key is the user's `metadata_key` if given,
+    # else the electrode key. Each series entry links to its electrode key and each electrode to its device key
+    # (see get_metadata), and those links are editable, so two series can be pointed at one electrode to share it.
+    # The device is the exception: it identifies the amplifier, which runs share, not the run itself.
+    @property
+    def _amplifier_name(self) -> str | None:
+        """The amplifier model the telegraph header reports, or None when the file reports none.
+
+        Read from the ABF File Support Pack ``nTelegraphInstrument`` constants. Absent for ABF v1 (no telegraph
+        block) or a manual / unknown instrument, in which case the device is named generically and no model is
+        invented for it.
+        """
+        telegraph_device = {15: "Axopatch 200B", 24: "MultiClamp 700", 27: "Axoclamp 900"}
+        adc_info = self._reader._axon_info.get("listADCInfo")
+        instrument_code = int(adc_info[0].get("nTelegraphInstrument", 0)) if adc_info else 0
+        return telegraph_device.get(instrument_code)
+
     @property
     def _device_metadata_key(self) -> str:
-        return self._run_identity
+        # Keyed by the amplifier rather than the run: the registry holds one key per device name, so several runs
+        # recorded on one amplifier have to meet at a single entry once a converter merges their metadata. Files
+        # whose header reports no model share the one fallback key, as they share the generic device name.
+        amplifier_name = self._amplifier_name
+        if amplifier_name is None:
+            return "amplifier"
+        return amplifier_name.lower().replace(" ", "_")
 
     @property
     def _electrode_metadata_key(self) -> str:
@@ -201,13 +220,7 @@ class AxonIntracellularInterface(BaseDataInterface):
         if start_time is not None:
             metadata["NWBFile"]["session_start_time"] = start_time
 
-        # Amplifier model from the telegraph header (ABF File Support Pack nTelegraphInstrument constants). Absent
-        # for ABF v1 (no telegraph block) or a manual/unknown instrument; we don't invent a model here, the
-        # write-time placeholder supplies a generic device name instead.
-        telegraph_device = {15: "Axopatch 200B", 24: "MultiClamp 700", 27: "Axoclamp 900"}
-        adc_info = info.get("listADCInfo")
-        instrument_code = int(adc_info[0].get("nTelegraphInstrument", 0)) if adc_info else 0
-        amplifier_name = telegraph_device.get(instrument_code)
+        amplifier_name = self._amplifier_name
 
         # The metadata-dict keys were seeded at construction. Each series entry stores its electrode_metadata_key as
         # an editable link: repointing two series at one electrode key merges them onto a single electrode; distinct
@@ -223,8 +236,9 @@ class AxonIntracellularInterface(BaseDataInterface):
                 "description": "Axon Instruments amplifier (telegraph-reported model).",
             }
         else:
-            # No telegraph model: don't invent a name (the write-time placeholder fills it); just describe the type.
-            device_metadata = {"description": "Axon Instruments amplifier."}
+            # No telegraph model: the model stays unstated in the description, but NWB requires the object to
+            # carry a name (as it does for the series), so a generic one is given rather than a model invented.
+            device_metadata = {"name": "AxonAmplifier", "description": "Axon Instruments amplifier."}
         metadata["Devices"] = {device_metadata_key: device_metadata}
         metadata["Icephys"]["IntracellularElectrodes"] = {
             electrode_metadata_key: {
