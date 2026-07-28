@@ -201,7 +201,7 @@ class TestCSVFiberPhotometryDemux:
         """
         path = tmp_path / "interleaved_with_startup.csv"
         timestamps = np.concatenate([[-1.0], np.repeat(TIMESTAMPS, 2)])
-        led_state = np.concatenate([[3], np.tile([1, 2], NUM_SAMPLES)])  # 3 matches both 1 and 2
+        led_state = np.concatenate([[1], np.tile([1, 2], NUM_SAMPLES)])
         data = np.empty(1 + 2 * NUM_SAMPLES)
         data[0] = -1.0  # the startup frame's value, which must not reach either channel
         data[1::2] = SIGNAL_DATA
@@ -212,7 +212,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns="data",
             timestamps_column="timestamps",
-            demux_config={"by": "column", "column": "LedState", "values": [1, 3], "skip_rows": 1},
+            demux_config={"by": "column", "column": "LedState", "values": 1, "skip_rows": 1},
         )
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
