@@ -224,13 +224,6 @@ def _detect_events(
         raise ValueError(f"Invalid detection '{detection}'. Valid readings are {list(_DETECTION_READINGS)}.")
 
     discrete_trace = np.asarray(discrete_trace)
-    if np.issubdtype(discrete_trace.dtype, np.unsignedinteger):
-        # Differencing an unsigned dtype wraps, so a 1 -> 0 fall comes back as 65535 rather than -1 and
-        # every falling edge reads as a rising one. Silent and total: a line would report twice its real
-        # events, all of them "rising", and a durative reading would give every event a NaN duration
-        # because no closing edge is ever found. Promote to a signed type wide enough to hold the
-        # difference before taking it. Intan hands over its digital lines as uint16.
-        discrete_trace = discrete_trace.astype(np.promote_types(discrete_trace.dtype, np.int8))
     difference = np.diff(discrete_trace)
 
     # The read-time backstop. Every reading here is only meaningful on a two-valued signal: with
