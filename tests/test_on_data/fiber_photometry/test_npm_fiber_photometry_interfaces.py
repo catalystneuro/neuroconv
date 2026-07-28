@@ -334,8 +334,33 @@ class TestNPMMultiTimestampSystemClock(FiberPhotometryInterfaceTestMixin):
             data_columns="G0",
             timestamps_column="ComputerTimestamp",
         )
-        np.testing.assert_allclose(
-            interface.get_original_timestamps()[:3], [35205063.952, 35205189.0654, 35205313.9613]
+        # The ComputerTimestamp values of the same 20 rows the SystemTimestamp run above reads.
+        np.testing.assert_array_equal(
+            interface.get_original_timestamps(),
+            np.array(
+                [
+                    35205063.952,
+                    35205189.0654,
+                    35205313.9613,
+                    35205437.7307,
+                    35205562.0603,
+                    35205687.7617,
+                    35205813.4242,
+                    35205939.0534,
+                    35206062.7216,
+                    35206188.4197,
+                    35206313.0116,
+                    35206438.6732,
+                    35206562.3455,
+                    35206687.9764,
+                    35206813.6738,
+                    35206937.3426,
+                    35207062.9684,
+                    35207188.6684,
+                    35207312.3412,
+                    35207437.9666,
+                ]
+            ),
         )
 
     def test_default_timestamp_column_missing_fails_loudly(self):

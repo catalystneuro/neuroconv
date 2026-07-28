@@ -9,44 +9,22 @@ Fiber Photometry data.
     pip install "neuroconv[npm_fp]"
 
 The NPM format is a raw acquisition format that stores **interleaved** channels in a single
-multi-column CSV. An isosbestic channel and one or more signal channels are multiplexed
-frame-by-frame, distinguished by a ``Flags``/``LedState`` column, and each remaining column (e.g.
-``Region0G``) is a region of interest. The ``Flags``/``LedState`` value is a packed word whose three
-lowest bits are one flag per excitation LED (415, 470, and 560 nm) and whose higher bits are digital
-TTL lines. Two things follow: a single excitation channel can appear under several ``LedState``
-values that differ only in their TTL bits (``17`` and ``273`` are both 415 nm), and one value can
-carry two excitations at once when a rig strobes two LEDs in the same frame (``6`` is 470 nm and
-560 nm together, their emission bands landing in different region columns).
+multi-column CSV: the excitation channels are multiplexed frame-by-frame, labeled by a
+``Flags``/``LedState`` column, and each remaining column (e.g. ``Region0G``) is a region of interest.
 
-``NPMFiberPhotometryInterface`` is a thin wrapper over
-:doc:`CSVFiberPhotometryInterface <csv_fp>`: it auto-detects whether the file uses ``Flags`` or
-``LedState`` and reads the channel for a given ``excitation_wavelength_in_nm`` -- every frame whose
-word has that wavelength's bit set, whatever else is set alongside it -- into a single
-``FiberPhotometryResponseSeries``. Because each interface writes one series, you instantiate one per
-channel (with distinct ``metadata_key`` values) and combine them in a converter.
+``NPMFiberPhotometryInterface`` reads the one channel named by ``excitation_wavelength_in_nm`` into a
+single ``FiberPhotometryResponseSeries``, so instantiate one interface per channel (with distinct
+``metadata_key`` values) and combine them in a converter.
 
-For a simultaneously-strobed frame, choose the region columns carrying the emission band you want:
-in a ``LedState`` 6 frame the 470 nm measurement is in the green columns and the 560 nm measurement
-is in the red ones, so two interfaces read the same rows through different ``data_columns``.
-
-Many recordings open with an initialization frame written with every excitation bit set. It is not a
-measurement -- the frame is typically dark -- so it is dropped rather than being included in all
-three channels at once.
+Two classmethods, callable before construction, report what to pass:
+``get_available_excitation_wavelengths`` lists the excitation wavelengths (nm) present in the file,
+and the inherited ``get_available_columns`` lists the column names to choose ``data_columns`` from.
+For how the ``Flags``/``LedState`` word maps frames onto channels, see the
+:py:class:`interface's API documentation <neuroconv.datainterfaces.fiber_photometry.npm.npmfiberphotometrydatainterface.NPMFiberPhotometryInterface>`.
 
 Header-less Neurophotometrics output (Bonsai's stock ``CsvWriter``, without the ``Flags``/
 ``LedState`` column) has no NPM-specific structure and should be read with the generic
 :doc:`CSVFiberPhotometryInterface <csv_fp>` instead.
-
-Discovering channels and columns
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Two classmethods (callable before construction) report what to pass:
-``get_available_excitation_wavelengths`` returns the excitation wavelengths (nm) present in the file
-(any wavelength whose bit is set in some frame, so a simultaneously-strobed pair reports both; the
-initialization frame is not counted), and the inherited ``get_available_columns`` lists the file's
-column names to choose ``data_columns``
-from (the region columns, alongside metadata columns like ``FrameCounter`` and the timestamp/state
-columns).
 
 Convert NPM Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

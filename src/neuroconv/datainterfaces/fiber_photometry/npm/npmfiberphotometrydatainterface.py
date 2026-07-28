@@ -103,6 +103,10 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
 
         code = _WAVELENGTH_TO_CODE[excitation_wavelength_in_nm]
         skip_rows, state_values = self._read_state_values(file_path, state_column, read_kwargs)
+        # ``value & code`` keeps only the bits set in both, so ``value & code == code`` asks "is this
+        # wavelength's bit set in the row's word?", ignoring whatever else is set alongside it. For
+        # 415 nm (code 1) that matches 17 (0b10001) and 273 (0b100010001), which differ only in their
+        # TTL bits, but not 2 (0b10), which is 470 nm alone.
         matching_states = [value for value in state_values if value & code == code]
         assert matching_states, (
             f"No rows with excitation wavelength {excitation_wavelength_in_nm} nm in '{file_path}'. "
@@ -138,6 +142,8 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         """
         state_column = cls._detect_state_column(file_path, read_kwargs)
         _, state_values = cls._read_state_values(file_path, state_column, read_kwargs)
+        # ``value & code == code`` is the same bit test used to select a channel in __init__: the
+        # wavelength is present when its bit is set in some row's word, alone or alongside others.
         return sorted(
             wavelength
             for wavelength, code in _WAVELENGTH_TO_CODE.items()
@@ -156,6 +162,10 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         frame later in the recording untouched.
         """
         state = pd.read_csv(file_path, usecols=[state_column], **(read_kwargs or dict()))[state_column]
+        # ``& _EXCITATION_BITS`` masks off the TTL bits, leaving just the three excitation flags;
+        # comparing that to _EXCITATION_BITS asks whether all three are set. So 7 (0b111) and 23
+        # (0b10111, one TTL line high) both read as a startup frame, while 6 (0b110), a genuine
+        # two-LED frame, does not.
         skip_rows = 1 if int(state.iloc[0]) & _EXCITATION_BITS == _EXCITATION_BITS else 0
         return skip_rows, sorted(int(value) for value in pd.unique(state.iloc[skip_rows:]))
 
