@@ -178,17 +178,6 @@ class TestConditionSignal:
         assert_array_equal(_condition_signal(line), line)
         assert_array_equal(_condition_signal(line, None), line)
 
-    def test_one_bit_gives_a_line_and_several_give_a_coded_value(self):
-        word = np.array([0, 1, 3, 3, 2, 0], dtype="int64")
-        assert_array_equal(_condition_signal(word, {"bits": [0]}), np.array([0, 1, 1, 1, 0, 0]))
-        assert_array_equal(_condition_signal(word, {"bits": [1]}), np.array([0, 0, 1, 1, 1, 0]))
-        # Least-significant first, so [0, 1] reconstructs the two-bit word itself.
-        assert_array_equal(_condition_signal(word, {"bits": [0, 1]}), word)
-
-    def test_thresholds_give_a_band_index(self):
-        trace = np.array([0.1, 0.1, 2.0, 2.0, 4.0, 0.1])
-        assert_array_equal(_condition_signal(trace, {"thresholds": [1.0, 3.0]}), np.array([0, 0, 1, 1, 2, 0]))
-
     def test_binarize_midpoint_is_invariant_under_windowing(self):
         """The midpoint is unmoved by any sample between the two levels, so a stub cuts where the full run does."""
         full = np.array([48.0, 48.2, 64.0, 63.8, 48.1, 55.0, 64.0])
@@ -207,17 +196,18 @@ class TestConditionSignal:
 
     def test_conditioning_preserves_length(self):
         """The contract detection depends on: frame indices must still address the caller's timestamps."""
-        trace = np.array([0.1, 2.0, 4.0, 0.1, 2.0])
-        for conditioning in ({"thresholds": [1.0, 3.0]}, {"binarize": "midpoint"}, None):
+        trace = np.array([48.0, 64.0, 48.0, 64.0, 48.0])
+        for conditioning in ({"binarize": "midpoint"}, None):
             assert _condition_signal(trace, conditioning).size == trace.size
 
-    def test_two_cuts_raise(self):
-        with pytest.raises(ValueError, match="more than one cut"):
-            _condition_signal(np.array([0, 1]), {"bits": [0], "thresholds": [0.5]})
+    def test_conditioning_without_a_cut_raises(self):
+        """A designed but unbuilt setting is rejected rather than accepted and silently ignored."""
+        with pytest.raises(ValueError, match="sets no cut"):
+            _condition_signal(np.array([0.0, 1.0]), {"debounce": 3})
 
-    def test_unsorted_thresholds_raise(self):
-        with pytest.raises(ValueError, match="strictly increasing"):
-            _condition_signal(np.array([0.0, 1.0]), {"thresholds": [3.0, 1.0]})
+    def test_invalid_binarize_method_raises(self):
+        with pytest.raises(ValueError, match="Invalid binarize method"):
+            _condition_signal(np.array([0.0, 1.0]), {"binarize": "not_a_method"})
 
 
 class TestDetectEvents:

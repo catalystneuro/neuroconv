@@ -7,8 +7,8 @@ from neuroconv.utils import DeepDict
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools.events import (
     _get_event_type_source_ids,
-    resolve_detection_plan,
-    validate_detection_configuration,
+    _resolve_detection_plan,
+    _validate_detection_configuration,
 )
 from ....tools.signal_processing import (
     _condition_signal,
@@ -82,11 +82,11 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         self.metadata_key = metadata_key or "doric_events"
         self._time_column, digital_columns = self._discover_columns(self.source_data["file_path"])
         # available_signals: signal_source_id (the column name, e.g. "DI/O-1") -> its (group, name)
-        # descriptor. The header group "Digital I/O" makes every discovered signal kind "line", settled
-        # structurally with no data read, which is what lets the validator reject a cut on it.
+        # column handle. The header group "Digital I/O" makes every discovered signal a digital line,
+        # settled structurally with no data read, so no signal conditioning arises for this format.
         # Whether a line fired is a property of this recording, not of intent, so a line that never
         # toggles is still a (possibly empty) event type.
-        self._available_signals = {str(column[1]): {"kind": "line", "column": column} for column in digital_columns}
+        self._available_signals = {str(column[1]): {"column": column} for column in digital_columns}
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every discovered line as a
             # "high_period", the lossless durative reading (onset at the rising edge, duration to the
@@ -96,8 +96,8 @@ class DoricCSVEventsInterface(BaseEventsInterface):
             }
         # One construction-time check, on the default as well as on a caller-supplied configuration: the
         # default is machine-built but its inputs are not, so it too can resolve two event types to the
-        # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
-        validate_detection_configuration(detection_configuration, self._available_signals)
+        # same identifier. Validation covers structure and identifier resolution alike.
+        _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
     @staticmethod
@@ -180,7 +180,7 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         # Built here rather than held on the interface: the configuration is the source of truth, and the
         # plan is pure and cheap to rebuild. Grouped by signal, so a column is extracted once however
         # many event types it yields.
-        detection_plan = resolve_detection_plan(self._detection_configuration)
+        detection_plan = _resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
         for signal_source_id, detection_specs in detection_plan.items():

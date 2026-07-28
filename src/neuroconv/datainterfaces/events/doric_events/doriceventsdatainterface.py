@@ -11,8 +11,8 @@ from neuroconv.utils import DeepDict
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools.events import (
     _get_event_type_source_ids,
-    resolve_detection_plan,
-    validate_detection_configuration,
+    _resolve_detection_plan,
+    _validate_detection_configuration,
 )
 from ....tools.signal_processing import (
     _condition_signal,
@@ -87,8 +87,8 @@ class DoricEventsInterface(BaseEventsInterface):
         )
         self.metadata_key = metadata_key or "doric_events"
         # available_signals: signal_source_id (the line's dataset key, e.g. "Camera1" or "DI--O-1") -> its
-        # descriptor. The layout is what makes every discovered signal kind "line", settled structurally
-        # with no data read, which is what lets the validator reject a cut on it.
+        # descriptor. The layout is what makes every discovered signal a digital line, settled
+        # structurally with no data read, so no signal conditioning arises for this format.
         self._available_signals = self._get_available_signals(self.source_data["file_path"])
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every discovered line as a
@@ -100,12 +100,12 @@ class DoricEventsInterface(BaseEventsInterface):
         # One construction-time check, on the default as well as on a caller-supplied configuration: the
         # default is machine-built but its inputs are not, so it too can resolve two event types to the
         # same identifier. Validation covers structure and identifier resolution alike.
-        validate_detection_configuration(detection_configuration, self._available_signals)
+        _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
     @staticmethod
     def _get_available_signals(file_path) -> dict[str, dict]:
-        """Return ``signal_source_id -> {kind, data_path, time_path}`` for every digital line in the file.
+        """Return ``signal_source_id -> {data_path, time_path}`` for every digital line in the file.
 
         Dispatches on the root group to cover both ``.doric`` generations: ``DataAcquisition`` is the
         modern layout and ``Traces`` is the legacy "EPConsole" one (the two are named after the root
@@ -146,7 +146,6 @@ class DoricEventsInterface(BaseEventsInterface):
                 item = obj[key]
                 if isinstance(item, h5py.Dataset) and item.ndim == 1:
                     available_signals[key] = {
-                        "kind": "line",
                         "data_path": f"DataAcquisition/{name}/{key}",
                         "time_path": f"DataAcquisition/{name}/Time",
                     }
@@ -181,7 +180,6 @@ class DoricEventsInterface(BaseEventsInterface):
                 line = stream.get(stream_name)  # the same-named nested dataset holds the trace
                 if isinstance(line, h5py.Dataset) and line.ndim == 1:
                     available_signals[stream_name] = {
-                        "kind": "line",
                         "data_path": f"Traces/{console_name}/{stream_name}/{stream_name}",
                         "time_path": time_path,
                     }
@@ -254,7 +252,7 @@ class DoricEventsInterface(BaseEventsInterface):
         # Built here rather than held on the interface: the configuration is the source of truth, and the
         # plan is pure and cheap to rebuild. Grouped by signal, so a signal is read once however many
         # event types it yields.
-        detection_plan = resolve_detection_plan(self._detection_configuration)
+        detection_plan = _resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
         with h5py.File(self.source_data["file_path"], "r") as f:

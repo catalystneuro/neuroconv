@@ -82,14 +82,8 @@ def _condition_signal(trace: np.ndarray, signal_conditioning: dict | None = None
     trace : numpy.ndarray
         A one-dimensional sampled signal.
     signal_conditioning : dict, optional
-        How to reach a discrete-valued signal. Exactly one *cut* may appear, and which one is legal is
-        decided by the signal rather than by the caller:
-
-        - ``{"bits": [i, ...]}`` selects bit positions out of a packed integer word. One position gives
-          a ``0``/``1`` line; several are read together, least-significant first, as one coded value.
-        - ``{"thresholds": [c, ...]}`` cuts at the values you supply, giving a band index: one cut is
-          binary, several give ``0 .. len(thresholds)``.
-        - ``{"binarize": "midpoint"}`` cuts at a value computed from the data.
+        How to reach a discrete-valued signal. ``{"binarize": "midpoint"}`` (or ``"mean"``) cuts a
+        two-level but numerically noisy trace at a value computed from the data itself.
 
         If None (default), the trace is returned unchanged, which asserts it is already discrete-valued.
         That is the ordinary case for a recorded digital line.
@@ -102,60 +96,25 @@ def _condition_signal(trace: np.ndarray, signal_conditioning: dict | None = None
     Raises
     ------
     ValueError
-        If more than one cut is given, or a cut's parameters are unusable.
+        If the conditioning names no cut, or a cut's parameters are unusable.
     """
     if not signal_conditioning:
-        # Omission asserts the signal is already a line, or already discrete-valued for a coded reading.
-        # Whether that assertion holds is checked structurally by the interface at construction, and by
-        # the backstop in _detect_events at read time.
+        # Omission asserts the signal is already discrete-valued. Whether that assertion holds is
+        # checked by the backstop in _detect_events at read time.
         return np.asarray(trace)
 
-    cuts = [cut for cut in ("bits", "thresholds", "binarize") if cut in signal_conditioning]
-    if len(cuts) > 1:
-        raise ValueError(
-            f"signal_conditioning sets more than one cut ({cuts}). 'bits', 'thresholds' and 'binarize' "
-            "are alternative routes to a discrete-valued signal, so exactly one of them applies."
-        )
-    if not cuts:
+    if "binarize" not in signal_conditioning:
         # Reachable only by calling this directly, since an interface's validator rejects an unrecognized
-        # conditioning key first. Named settings that are designed but unbuilt ('hysteresis', 'debounce')
-        # land here, so the message says the key is not implemented rather than letting a bare KeyError out.
+        # conditioning key first. Routes that are designed but unbuilt ('bits' for a packed word,
+        # 'thresholds' for an analog trace, 'hysteresis', 'debounce') land here, so the message says the
+        # key is not implemented rather than letting a bare KeyError out.
         raise ValueError(
-            f"signal_conditioning {sorted(signal_conditioning)} sets no cut. One of 'bits', 'thresholds' "
-            "or 'binarize' is required; pass None to leave a signal that is already discrete-valued "
-            "unconditioned. Any other setting is not implemented."
+            f"signal_conditioning {sorted(signal_conditioning)} sets no cut. 'binarize' is required; "
+            "pass None to leave a signal that is already discrete-valued unconditioned. Any other "
+            "setting is not implemented."
         )
 
-    trace = np.asarray(trace)
-    if "bits" in signal_conditioning:
-        return _select_bits(trace=trace, bits=signal_conditioning["bits"])
-    if "thresholds" in signal_conditioning:
-        return _cut_at_thresholds(trace=trace, thresholds=signal_conditioning["thresholds"])
-    return _binarize(trace=trace, method=signal_conditioning["binarize"])
-
-
-def _select_bits(trace: np.ndarray, bits) -> np.ndarray:
-    """Pull bit positions out of a packed integer word, several read together as one coded value."""
-    bits = list(bits)
-    if not bits:
-        raise ValueError("signal_conditioning 'bits' is empty; name at least one bit position.")
-    word = np.asarray(trace).astype("int64")
-    # Least-significant first, so bits [0, 1] reads bit 0 as the low bit of the resulting code. A single
-    # position therefore gives a plain 0/1 line, which is the common case.
-    value = np.zeros(word.shape, dtype="int64")
-    for position, bit in enumerate(bits):
-        value |= ((word >> int(bit)) & 1) << position
-    return value
-
-
-def _cut_at_thresholds(trace: np.ndarray, thresholds) -> np.ndarray:
-    """Cut a trace at caller-supplied values, giving a band index in ``0 .. len(thresholds)``."""
-    thresholds = np.asarray(list(thresholds), dtype="float64")
-    if thresholds.size == 0:
-        raise ValueError("signal_conditioning 'thresholds' is empty; give at least one cut point.")
-    if np.any(np.diff(thresholds) <= 0):
-        raise ValueError(f"signal_conditioning 'thresholds' must be strictly increasing, got {list(thresholds)}.")
-    return np.searchsorted(thresholds, np.asarray(trace, dtype="float64"), side="right")
+    return _binarize(trace=np.asarray(trace), method=signal_conditioning["binarize"])
 
 
 def _binarize(trace: np.ndarray, method: str) -> np.ndarray:
@@ -234,8 +193,8 @@ def _detect_events(
     if distinct_values.size > 2:
         raise ValueError(
             f"detection '{detection}' needs a two-valued signal, but this one has {distinct_values.size} "
-            "distinct values. Condition it into a line first, with 'thresholds' for an analog trace or "
-            "'binarize' for a numerically noisy one."
+            "distinct values. Condition it into a line first, with 'binarize' for a numerically noisy "
+            "one."
         )
 
     rising_frames = np.flatnonzero(difference > 0) + 1
