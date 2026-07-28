@@ -1,10 +1,10 @@
 """Tools for the discrete-events data interfaces."""
 
-# The cuts: routes to a discrete-valued signal, at most one of which may appear in a spec's
-# signal_conditioning. This is also the *only* setting signal_conditioning recognizes; bit selection for
-# a packed word, thresholds for an analog trace, and the designed but unbuilt hysteresis and debounce
-# all hit the unrecognized-key error rather than validating and doing nothing, which is the
-# silent-discard failure this validation exists to remove. Each lands with the interface that reads it.
+# A detection spec holds the reading, optionally a name for the event type it produces, and optionally
+# the conditioning that reaches a discrete-valued signal. Of the conditioning vocabulary only binarize
+# is here: bits, thresholds, and the deferred hysteresis and debounce land with the first interface that
+# needs them, alongside the shared mock. Until then they hit the unrecognized-key error rather than
+# validating and doing nothing.
 _CUTS = ("binarize",)
 _SPEC_KEYS = ("signal_conditioning", "detection", "event_name")
 
@@ -25,9 +25,9 @@ def _validate_detection_configuration(detection_configuration: dict, available_s
     state each spec in full. A half-filled spec is an error rather than a silent fallback, so the
     reading an event type is written with is always one the caller chose.
 
-    The ``detection`` *value* is deliberately not checked here:
-    :func:`~neuroconv.tools.signal_processing._detect_events` is the single source of truth for the
-    reading vocabulary and raises on an invalid one.
+    The ``detection`` *value* is deliberately not checked here: the edge detector
+    (:func:`~neuroconv.tools.signal_processing._detect_events`) is the single source of truth for its
+    valid values and raises on an invalid one.
 
     Parameters
     ----------
@@ -41,8 +41,8 @@ def _validate_detection_configuration(detection_configuration: dict, available_s
     ------
     ValueError
         If the configuration is empty, names a signal not in ``available_signals``, gives a signal
-        something other than a non-empty list, or holds a malformed spec: an unrecognized key or no
-        ``detection``. Also if two event types reach the same identifier (rule 4).
+        something other than a non-empty list, or holds a spec with an unrecognized key or no
+        ``detection``. Also if two event types resolve to the same identifier.
     """
     if not detection_configuration:
         raise ValueError(
@@ -68,10 +68,7 @@ def _validate_detection_configuration(detection_configuration: dict, available_s
             )
         for spec in specs:
             _validate_spec(spec=spec, signal_source_id=signal_source_id)
-    # Rule 4 is a property of the *derived* identifiers rather than of the configuration text, so the
-    # only way to check it is to derive. Resolving is what raises it, and it is free inside the loop
-    # that computes the identifiers, which is why it lives there rather than being restated here.
-    _resolve_event_types(detection_configuration)
+    _resolve_event_types(detection_configuration)  # raises if two event types resolve to one identifier
 
 
 def _validate_spec(spec: dict, signal_source_id: str) -> None:
@@ -122,8 +119,7 @@ def _resolve_event_types(detection_configuration: dict) -> list[tuple[str, str, 
     1. One spec for a signal: the identifier is the ``signal_source_id`` unchanged, which keeps a
        zero-configuration conversion's identifiers equal to the strings the acquisition software shows.
     2. Several specs: the identifier is the signal handle plus the spec's reading, giving
-       ``DIN-01_rising`` / ``DIN-01_falling``. It is built from the reading rather than from the spec's
-       position in the list, so reordering a list renames nothing.
+       ``DIN-01_rising`` and ``DIN-01_falling``.
     3. A spec's ``event_name`` replaces the derived identifier entirely. Set it when you want an
        identifier pinned against later edits, since a signal going from one spec to several moves it
        from rule 1 to rule 2 and the derived form changes.
@@ -168,7 +164,9 @@ def _resolve_detection_plan(detection_configuration: dict) -> dict[str, list[tup
     metadata and the writer present event types in.
 
     An event type is (what you read) times (how you read it), so a signal yielding one event type keeps
-    its own handle as the identifier and a signal yielding several fans out. The derivation rules are in
+    its own handle as the identifier and a signal yielding several fans out. Derivation is content-based
+    rather than positional: an identifier depends on its own spec's reading and never on the spec's
+    position in the list, so reordering a list renames nothing. The rules are in
     :func:`_resolve_event_types`.
 
     Build it where it is read rather than holding it on the interface: it is pure and cheap, so rebuilding
