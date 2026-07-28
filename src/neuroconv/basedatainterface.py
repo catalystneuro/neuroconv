@@ -26,7 +26,7 @@ from .utils import (
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import _NWBMetaDataEncoder, _NWBSourceDataEncoder
+from .utils.json_schema import _NWBSourceDataEncoder, validate_metadata
 
 
 class BaseDataInterface(ABC):
@@ -105,18 +105,13 @@ class BaseDataInterface(ABC):
 
     def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
-        encoder = _NWBMetaDataEncoder()
-        # The encoder produces a serialized object, so we deserialized it for comparison
-
-        serialized_metadata = encoder.encode(metadata)
-        decoded_metadata = json.loads(serialized_metadata)
         metdata_schema = self.get_metadata_schema()
         if append_mode:
             # Eliminate required from NWBFile
             nwbfile_schema = metdata_schema["properties"]["NWBFile"]
             nwbfile_schema.pop("required", None)
 
-        validate(instance=decoded_metadata, schema=metdata_schema)
+        validate_metadata(metadata=metadata, schema=metdata_schema)
 
     def get_conversion_options_schema(self) -> dict:
         """
