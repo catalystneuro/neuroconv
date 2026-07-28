@@ -14,15 +14,16 @@ class ColumnDemux(BaseModel):
     """Demultiplex an interleaved file by a label column: read the rows whose ``column`` matches ``values``.
 
     For a file whose excitation channels are multiplexed frame-by-frame down the rows with a column
-    naming each row's channel (e.g. a Neurophotometrics ``LedState``), this selects one channel; a
-    startup frame is excluded simply by not being any interface's ``values``. ``values`` is a single
-    label value or a list of them, in which case the rows whose ``column`` equals *any* of the listed
-    values are read -- used when several distinct label values denote the same channel (e.g. NPM
-    ``LedState`` codes that share an excitation LED but differ in their digital-line bits).
+    naming each row's channel (e.g. a Neurophotometrics ``LedState``), this selects one channel.
+    ``values`` is a single label value or a list of them, in which case the rows whose ``column``
+    equals *any* of the listed values are read -- used when several distinct label values denote the
+    same channel (e.g. NPM ``LedState`` codes that share an excitation LED but differ in their
+    digital-line bits).
 
-    ``skip_rows`` drops leading rows before the label is consulted, for a startup frame whose label
-    would otherwise select it into a channel (e.g. an NPM initialization frame written with every
-    excitation bit set, which matches every wavelength).
+    A startup frame carrying a label of its own is excluded for free, by not matching any interface's
+    ``values``. ``skip_rows`` is for the case where that is not enough: it drops leading rows before
+    the label is consulted, for a startup frame whose label *does* match (e.g. an NPM initialization
+    frame written with every excitation bit set, which matches every wavelength).
     """
 
     by: Literal["column"] = "column"
