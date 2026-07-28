@@ -318,11 +318,14 @@ def _add_imaging_plane_to_nwbfile(
     # Resolve device. Entries without a ``device_metadata_key`` fall back to the placeholder device,
     # which is exposed through the registry under its default key so every device is added by the
     # canonical path.
-    device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None) or "default_metadata_key"
-    default_device_metadata = _get_ophys_metadata_placeholders()["Devices"]["default_metadata_key"]
-    devices_metadata = {
-        "Devices": {"default_metadata_key": default_device_metadata, **(metadata or {}).get("Devices", {})}
-    }
+    device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
+    devices_metadata = {"Devices": dict((metadata or {}).get("Devices", {}))}
+    if device_metadata_key is None:
+        # Only synthesize the placeholder when nothing was referenced, so a user device that happens
+        # to share the placeholder's name is not turned into a duplicate-name conflict.
+        device_metadata_key = "default_metadata_key"
+        placeholder = _get_ophys_metadata_placeholders()["Devices"]["default_metadata_key"]
+        devices_metadata["Devices"].setdefault(device_metadata_key, placeholder)
     imaging_plane_kwargs["device"] = _add_device_to_nwbfile(
         nwbfile=nwbfile, metadata=devices_metadata, metadata_key=device_metadata_key
     )

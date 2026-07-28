@@ -27,7 +27,7 @@ from ._device_types import (
     _resolve_type,
 )
 from ...utils.dict import DeepDict, load_dict_from_file
-from ...utils.json_schema import validate_metadata
+from ...utils.json_schema import _validate_device_registry_names, validate_metadata
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -215,6 +215,7 @@ def _add_device_model_to_nwbfile(
     DeviceModel
         The DeviceModel object (either newly created or existing).
     """
+    _validate_device_registry_names(metadata)
     device_models_metadata = metadata.get("DeviceModels", {})
     if metadata_key not in device_models_metadata:
         raise ValueError(
@@ -265,6 +266,9 @@ def _add_device_to_nwbfile(
         The Device object (either newly created or existing).
     """
     if metadata_key is not None:
+        if metadata is None:
+            raise ValueError("Provide `metadata` with `metadata_key`.")
+        _validate_device_registry_names(metadata)
         device_metadata = metadata["Devices"][metadata_key]
         device_model_metadata_key = device_metadata.get("device_model_metadata_key")
         if device_model_metadata_key is not None:

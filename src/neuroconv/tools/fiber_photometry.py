@@ -103,7 +103,7 @@ def add_ophys_device(
     """Add an optical physiology device instance to an NWBFile object.
 
     ``device_metadata["model"]`` is the *name* of an already-added device model; the caller resolves any
-    ``model_metadata_key`` reference to that name before calling this function.
+    ``device_model_metadata_key`` reference to that name before calling this function.
     """
     valid_device_types = [
         "ExcitationSource",

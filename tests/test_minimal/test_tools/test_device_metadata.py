@@ -65,6 +65,29 @@ class TestAddDeviceModel:
             _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata={"DeviceModels": {}}, metadata_key="absent")
 
 
+@pytest.mark.parametrize(
+    ("registry_name", "add_entry"),
+    [
+        ("Devices", _add_device_to_nwbfile),
+        ("DeviceModels", _add_device_model_to_nwbfile),
+    ],
+)
+@pytest.mark.parametrize(
+    "second_entry",
+    [{"name": "shared"}, {"name": "shared", "manufacturer": "Other"}],
+    ids=["identical", "different"],
+)
+def test_duplicate_registry_names_raise(registry_name, add_entry, second_entry):
+    metadata = {registry_name: {"a": {"name": "shared"}, "b": second_entry}}
+    nwbfile = mock_NWBFile()
+
+    with pytest.raises(ValueError, match="keys 'a' and 'b' use name 'shared'"):
+        add_entry(nwbfile=nwbfile, metadata=metadata, metadata_key="a")
+
+    container = nwbfile.devices if registry_name == "Devices" else nwbfile.device_models
+    assert len(container) == 0
+
+
 class TestAddDeviceCanonical:
     def test_default_type_is_plain_device(self):
         nwbfile = mock_NWBFile()
@@ -72,6 +95,14 @@ class TestAddDeviceCanonical:
         device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="d")
         assert type(device) is Device
         assert nwbfile.devices["d1"].description == "a probe"
+
+    def test_idempotent_on_metadata_key(self):
+        nwbfile = mock_NWBFile()
+        metadata = {"Devices": {"d": {"name": "d1"}}}
+        first = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="d")
+        second = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="d")
+        assert first is second
+        assert len(nwbfile.devices) == 1
 
     def test_pulls_and_links_model_on_demand(self):
         nwbfile = mock_NWBFile()
@@ -102,7 +133,7 @@ class TestDuplicateRegistryNames:
         """Identical entries raise as loudly as conflicting ones: declaring twice is the mistake."""
         metadata = {registry_name: {"first": {"name": "shared"}, "second": second_entry}}
 
-        with pytest.raises(ValueError, match="is claimed by two metadata keys: 'first' and 'second'"):
+        with pytest.raises(ValueError, match="keys 'first' and 'second' use name 'shared'"):
             _validate_device_registry_names(metadata=metadata)
 
     def test_distinct_names_pass(self):
@@ -133,7 +164,7 @@ class TestDuplicateRegistryNames:
         nwbfile = mock_NWBFile()
         metadata = {"Devices": {"first": {"name": "shared"}, "second": {"name": "shared"}}}
 
-        with pytest.raises(ValueError, match="is claimed by two metadata keys"):
+        with pytest.raises(ValueError, match="use name 'shared'"):
             validate_metadata(metadata=metadata, schema={})
 
         assert len(nwbfile.devices) == 0
@@ -145,7 +176,7 @@ class TestDuplicateRegistryNames:
         metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, 12, 0, 0)
         metadata["Devices"] = {"first": {"name": "shared"}, "second": {"name": "shared"}}
 
-        with pytest.raises(ValueError, match="is claimed by two metadata keys"):
+        with pytest.raises(ValueError, match="use name 'shared'"):
             interface.validate_metadata(metadata=metadata)
 
 

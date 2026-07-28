@@ -159,7 +159,9 @@ class NWBConverter:
             nwbfile_schema = metadata_schema["properties"]["NWBFile"]
             nwbfile_schema.pop("required", None)
 
-        validate_metadata(metadata=metadata, schema=metadata_schema, verbose=self.verbose)
+        validate_metadata(metadata=metadata, schema=metadata_schema)
+        if self.verbose:
+            print("Metadata is valid!")
 
     def get_conversion_options_schema(self) -> dict:
         """
