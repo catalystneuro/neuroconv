@@ -2510,7 +2510,9 @@ def _add_units_table_to_nwbfile(
         unit_names_used_previously = []
         if "unit_name" in units_table_previous_columns:
             unit_names_used_previously = units_table["unit_name"].data
-        has_electrodes_column = "electrodes" in units_table.colnames
+        # Electrodes are only used to discriminate between units with the same name when the
+        # current call actually provides them; otherwise there is nothing to compare against.
+        has_electrodes_column = "electrodes" in units_table.colnames and unit_electrode_indices is not None
 
         rows_in_data = [index for index in range(num_units)]
         if not has_electrodes_column:
@@ -2522,8 +2524,11 @@ def _add_units_table_to_nwbfile(
                     rows_to_add.append(index)
                 else:
                     unit_name = unit_name_array[index]
-                    previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]].electrodes
-                    if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
+                    # `index=True` returns the electrode indices of the row as they are stored,
+                    # without dereferencing them into a DataFrame of the electrodes table.
+                    matching_rows = np.where(units_table["unit_name"][:] == unit_name)[0]
+                    previous_electrodes = units_table["electrodes"].get(matching_rows[0], index=True)
+                    if list(previous_electrodes) != list(unit_electrode_indices[index]):
                         rows_to_add.append(index)
 
     # Add rows for pre-existing columns. Each row needs values for all existing columns;
@@ -2533,7 +2538,13 @@ def _add_units_table_to_nwbfile(
     # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
     # See https://github.com/catalystneuro/neuroconv/issues/1629
     if len(rows_to_add) > 0:
-        for property in properties_requiring_null_values - {"electrodes"}:  # TODO, fix electrodes
+        for property in properties_requiring_null_values:
+            # An empty region is the null value for units added without electrode indices to a
+            # table that already has an `electrodes` column; passing no value at all makes pynwb
+            # write `None` into the DynamicTableRegion and fail when hdmf checks its bounds.
+            if property == "electrodes":
+                null_values_for_row[property] = []
+                continue
             sample_data = units_table[property][:][0]
             null_value = _get_null_value_for_property(
                 property=property,

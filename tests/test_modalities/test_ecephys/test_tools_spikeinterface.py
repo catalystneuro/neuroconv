@@ -2070,6 +2070,34 @@ class TestAddUnitsTable(TestCase):
         assert units_table["electrodes"][2]["channel_name"].item() == "C"
         assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
 
+    def test_add_units_without_electrodes_to_a_table_that_has_them(self):
+        """Units with no electrode indices can be appended to a table that already has the column.
+
+        This happens with multiple probes when the electrodes of the second one cannot be matched
+        (e.g. its group names are not in the electrodes table); those units get an empty region.
+        """
+        recording = generate_recording(num_channels=4, durations=[1.0])
+        recording = recording.rename_channels(new_channel_ids=["A", "B", "C", "D"])
+        add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
+
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_1,
+            nwbfile=self.nwbfile,
+            unit_electrode_indices=[[0], [1], [2], [3]],
+        )
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        units_table = self.nwbfile.units
+        unit_names = list(units_table["unit_name"].data)
+        self.assertListEqual(unit_names, ["a", "b", "c", "d", "e", "f"])
+
+        # Reads the stored electrode indices without building a DataFrame; indexing directly also
+        # raises on an empty region in memory until https://github.com/hdmf-dev/hdmf/pull/1549 is released.
+        electrodes_of_units = units_table["electrodes"]
+        assert list(electrodes_of_units.get(0, index=True)) == [0]
+        assert list(electrodes_of_units.get(4, index=True)) == []
+        assert list(electrodes_of_units.get(5, index=True)) == []
+
 
 class TestWaveformParametersAdditionToUnitsTable:
     """Tests for waveform_data_dict parameter and related metadata propagation."""
