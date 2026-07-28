@@ -53,7 +53,7 @@ supplied explicitly in the metadata.
 
     >>> from neuroconv.datainterfaces import NPMFiberPhotometryInterface
 
-    >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM" / "led_multiplexing" / "by_column" / "PagCeAVgatFear_14421.csv"
+    >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM" / "header_and_state_column" / "three_green_regions.csv"
 
     >>> # Discover the excitation wavelengths and the file's columns before construction.
     >>> NPMFiberPhotometryInterface.get_available_excitation_wavelengths(file_path=file_path)
