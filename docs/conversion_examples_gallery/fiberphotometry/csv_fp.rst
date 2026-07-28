@@ -29,7 +29,7 @@ channel its own column, so one row is one channel at one timepoint. Pass a ``dem
 single channel out of such a file. There are two shapes, chosen by ``by``:
 
 - ``{"by": "column", "column": ..., "values": ...}`` when a column labels each row's channel (e.g. a
-  Neurophotometrics ``LedState``): reads the rows whose ``column`` equals ``values``. Pass a list for
+  Neurophotometrics ``LedState``): reads the rows whose ``column`` is ``values``. Pass a list for
   ``values`` when several distinct label values denote the same channel. A startup frame carrying a
   label of its own is excluded for free, by not matching any interface's ``values``; when its label
   *does* match (an NPM initialization frame sets every excitation bit, so it matches every

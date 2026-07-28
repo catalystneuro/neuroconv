@@ -154,6 +154,44 @@ class TestCSVFiberPhotometryDemux:
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
 
+    def test_column_demux_reads_several_labels_as_one_channel(self, tmp_path):
+        """A list of ``values`` reads every row matching any of them as the same channel.
+
+        One excitation channel can appear under several label values (an NPM ``LedState`` code carries
+        digital-line bits alongside the excitation bits, so the same LED is written as 1 on some frames
+        and 9 on others), and all of them belong to the one channel.
+        """
+        path = tmp_path / "interleaved_multi_label.csv"
+        # The signal rows alternate between the two codes for their LED; the control rows are always 2.
+        led_state = np.tile([1, 2, 9, 2], NUM_SAMPLES // 2)
+        data = np.empty(2 * NUM_SAMPLES)
+        data[0::2] = SIGNAL_DATA
+        data[1::2] = CONTROL_DATA
+        pd.DataFrame({"timestamps": np.repeat(TIMESTAMPS, 2), "LedState": led_state, "data": data}).to_csv(
+            path, index=False
+        )
+
+        both_codes = CSVFiberPhotometryInterface(
+            file_path=path,
+            data_columns="data",
+            timestamps_column="timestamps",
+            demux_config={"by": "column", "column": "LedState", "values": [1, 9]},
+        )
+        np.testing.assert_array_equal(both_codes.get_original_timestamps(), TIMESTAMPS)
+        np.testing.assert_array_equal(both_codes._read_response_data(), SIGNAL_DATA)
+
+    def test_column_demux_empty_values_raises(self, tmp_path):
+        """An empty ``values`` list matches no rows at all, so it is rejected up front."""
+        path = tmp_path / "interleaved.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS, "LedState": 1, "data": SIGNAL_DATA}).to_csv(path, index=False)
+        with pytest.raises(ValidationError, match="at least 1 item"):
+            CSVFiberPhotometryInterface(
+                file_path=path,
+                data_columns="data",
+                timestamps_column="timestamps",
+                demux_config={"by": "column", "column": "LedState", "values": []},
+            )
+
     def test_column_demux_skips_leading_rows(self, tmp_path):
         """``skip_rows`` drops a leading frame whose label would otherwise select it into the channel.
 
