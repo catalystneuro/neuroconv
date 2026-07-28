@@ -23,6 +23,7 @@ from . import (
 from ._device_types import (
     _DEVICE_MODEL_TYPE_SOURCES,
     _DEVICE_TYPE_SOURCES,
+    _build_inline_containers,
     _resolve_type,
 )
 from ...utils.dict import DeepDict, load_dict_from_file
@@ -231,6 +232,7 @@ def _add_device_model_to_nwbfile(
     model_class = _resolve_type(
         device_model_metadata.get("type", "DeviceModel"), sources=_DEVICE_MODEL_TYPE_SOURCES, base_class=DeviceModel
     )
+    model_kwargs = _build_inline_containers(target_class=model_class, kwargs=model_kwargs)
     device_model = model_class(**model_kwargs)
     nwbfile.add_device_model(device_model)
     return device_model
@@ -284,6 +286,7 @@ def _add_device_to_nwbfile(
     internal_keys = ("type", "device_model_metadata_key")
     device_kwargs = {key: value for key, value in device_metadata.items() if key not in internal_keys}
     device_class = _resolve_type(device_metadata.get("type", "Device"), sources=_DEVICE_TYPE_SOURCES, base_class=Device)
+    device_kwargs = _build_inline_containers(target_class=device_class, kwargs=device_kwargs)
     device = device_class(**device_kwargs)
     nwbfile.add_device(device)
     return device
