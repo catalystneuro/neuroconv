@@ -28,9 +28,12 @@ Some CSVs **interleave** the excitation channels frame-by-frame down the rows ra
 channel its own column, so one row is one channel at one timepoint. Pass a ``demux_config`` to read a
 single channel out of such a file. There are two shapes, chosen by ``by``:
 
-- ``{"by": "column", "column": ..., "value": ...}`` when a column labels each row's channel (e.g. a
-  Neurophotometrics ``LedState``): reads the rows whose ``column`` equals ``value``. A startup frame is
-  excluded simply by not being any interface's ``value``.
+- ``{"by": "column", "column": ..., "values": ...}`` when a column labels each row's channel (e.g. a
+  Neurophotometrics ``LedState``): reads the rows whose ``column`` equals ``values``. Pass a list for
+  ``values`` when several distinct label values denote the same channel. A startup frame carrying a
+  label of its own is excluded for free, by not matching any interface's ``values``; when its label
+  *does* match (an NPM initialization frame sets every excitation bit, so it matches every
+  wavelength), pass ``"skip_rows": n`` to drop the ``n`` leading rows before the label is consulted.
 - ``{"by": "stride", "channels": k, "index": i, "skip_rows": n}`` when a header-less file cycles the
   channels in a fixed order with no label column: reads every ``k``-th row from offset ``i`` after
   dropping ``n`` leading calibration rows.
@@ -43,11 +46,11 @@ The interface stays single-series, so instantiate one interface per channel (wit
     # A LedState column labels each row's excitation channel; one interface per channel.
     signal = CSVFiberPhotometryInterface(
         file_path=interleaved_path, data_columns="Region0G", timestamps_column="Timestamp",
-        demux_config={"by": "column", "column": "LedState", "value": 2}, metadata_key="signal",
+        demux_config={"by": "column", "column": "LedState", "values": 2}, metadata_key="signal",
     )
     isosbestic = CSVFiberPhotometryInterface(
         file_path=interleaved_path, data_columns="Region0G", timestamps_column="Timestamp",
-        demux_config={"by": "column", "column": "LedState", "value": 1}, metadata_key="isosbestic",
+        demux_config={"by": "column", "column": "LedState", "values": 1}, metadata_key="isosbestic",
     )
 
 Convert CSV Fiber Photometry data to NWB

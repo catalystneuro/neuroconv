@@ -136,7 +136,7 @@ class TestCSVFiberPhotometryDemux:
     """
 
     def test_column_demux_reads_one_labeled_channel(self, tmp_path):
-        """A column demux reads only the rows whose label column equals ``value``."""
+        """A column demux reads only the rows whose label column equals ``values``."""
         path = tmp_path / "interleaved.csv"
         # LedState 1 (signal) and 2 (control) alternate down the rows on a shared timebase.
         frame = pd.DataFrame(
@@ -149,10 +149,35 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns="data",
             timestamps_column="timestamps",
-            demux_config={"by": "column", "column": "LedState", "value": 1},
+            demux_config={"by": "column", "column": "LedState", "values": 1},
         )
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
+
+    def test_column_demux_skips_leading_rows(self, tmp_path):
+        """``skip_rows`` drops a leading frame whose label would otherwise select it into the channel.
+
+        A startup frame labeled with every channel's value at once (an NPM initialization frame sets
+        every excitation bit, so it matches whichever wavelength is asked for) belongs to no channel,
+        and its label alone cannot exclude it.
+        """
+        path = tmp_path / "interleaved_with_startup.csv"
+        timestamps = np.concatenate([[-1.0], np.repeat(TIMESTAMPS, 2)])
+        led_state = np.concatenate([[3], np.tile([1, 2], NUM_SAMPLES)])  # 3 matches both 1 and 2
+        data = np.empty(1 + 2 * NUM_SAMPLES)
+        data[0] = -1.0  # the startup frame's value, which must not reach either channel
+        data[1::2] = SIGNAL_DATA
+        data[2::2] = CONTROL_DATA
+        pd.DataFrame({"timestamps": timestamps, "LedState": led_state, "data": data}).to_csv(path, index=False)
+
+        interface = CSVFiberPhotometryInterface(
+            file_path=path,
+            data_columns="data",
+            timestamps_column="timestamps",
+            demux_config={"by": "column", "column": "LedState", "values": [1, 3], "skip_rows": 1},
+        )
+        np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
+        np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
 
     def test_stride_demux_reads_one_cyclic_channel(self, tmp_path):
         """A stride demux reads every ``channels``-th row from ``index`` (header-less, no label column)."""
@@ -203,7 +228,7 @@ class TestCSVFiberPhotometryDemux:
                 file_path=path,
                 data_columns="data",
                 timestamps_column="timestamps",
-                demux_config={"by": "column", "column": "LedState", "value": 1},
+                demux_config={"by": "column", "column": "LedState", "values": 1},
             )
 
     def test_stride_demux_index_beyond_channels_raises(self, tmp_path):

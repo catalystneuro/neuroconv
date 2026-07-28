@@ -80,8 +80,10 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         demux_config : ColumnDemux, StrideDemux, or None, optional
             For an interleaved file (excitation channels multiplexed frame-by-frame down the rows), a
             config selecting the one channel this interface reads. Two shapes:
-            ``ColumnDemux(column=<col>, value=<v>)`` reads the rows whose ``column`` equals ``value``
-            (e.g. a Neurophotometrics ``LedState``); ``StrideDemux(channels=<k>, index=<i>,
+            ``ColumnDemux(column=<col>, values=<v>, skip_rows=<n>)`` reads the rows whose ``column``
+            equals ``values`` (e.g. a Neurophotometrics ``LedState``), where ``values`` may be a list
+            to match any of several label values denoting the same channel and ``n`` leading rows are
+            dropped before the label is consulted; ``StrideDemux(channels=<k>, index=<i>,
             skip_rows=<n>)`` reads every ``k``-th row starting at ``i`` after dropping ``n`` leading
             rows. Default None reads every row (no demux). Compose one interface per channel in a
             converter.
@@ -197,8 +199,9 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
             return self._read_csv(file_path, usecols=columns)
         if isinstance(demux_config, ColumnDemux):
             read_columns = columns if demux_config.column in columns else [*columns, demux_config.column]
-            dataframe = self._read_csv(file_path, usecols=read_columns)
-            return dataframe[dataframe[demux_config.column] == demux_config.value]
+            dataframe = self._read_csv(file_path, usecols=read_columns).iloc[demux_config.skip_rows :]
+            values = demux_config.values if isinstance(demux_config.values, list) else [demux_config.values]
+            return dataframe[dataframe[demux_config.column].isin(values)]
         elif isinstance(demux_config, StrideDemux):
             dataframe = self._read_csv(file_path, usecols=columns)
             return dataframe.iloc[demux_config.skip_rows :].iloc[demux_config.index :: demux_config.channels]
