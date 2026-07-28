@@ -274,6 +274,24 @@ class TestDetectEvents:
         with pytest.raises(ValueError, match="needs a two-valued signal"):
             _detect_events(np.array([0, 1, 2, 1, 0]), detection="rising")
 
+    def test_an_unsigned_line_reads_the_same_as_a_signed_one(self):
+        """Differencing an unsigned dtype wraps, which would turn every fall into a rise.
+
+        Intan hands its digital lines over as uint16, so this is a real input rather than a synthetic
+        one, and the failure it guards is silent: the line would report both its edges as rising, and a
+        durative reading would give every event a NaN duration for want of a closing edge.
+        """
+        for dtype in ("uint8", "uint16", "uint32", "uint64"):
+            unsigned = self.LINE.astype(dtype)
+            assert_array_equal(_detect_events(unsigned, "rising")[0], np.array([2, 7]))
+            assert_array_equal(_detect_events(unsigned, "falling")[0], np.array([5, 8]))
+            onsets, offsets = _detect_events(unsigned, "high_period")
+            assert_array_equal(onsets, np.array([2, 7]))
+            assert_array_equal(offsets, np.array([5.0, 8.0]))
+            # value_change on an unsigned trace is unaffected either way (it only asks whether the
+            # difference is non-zero), but it shares the same diff, so it is checked with the rest.
+            assert_array_equal(_detect_events(unsigned, "value_change")[0], np.array([2, 5, 7, 8]))
+
     def test_invalid_detection_raises(self):
         with pytest.raises(ValueError, match="Invalid detection"):
             _detect_events(self.LINE, detection="nope")
