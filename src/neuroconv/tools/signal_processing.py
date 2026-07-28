@@ -75,7 +75,8 @@ def _detect_events(
 
     It takes **no threshold**: on a two-valued signal a rising edge is simply the transition from the
     lower value to the higher one, so there is nothing to choose. Turning a many-valued trace into a
-    line is a separate step, and it lands with the first interface that records one.
+    line is a separate step, and it lands with the first interface that records one, together with the
+    check that rejects a trace that never had one applied.
 
     Parameters
     ----------
@@ -98,20 +99,11 @@ def _detect_events(
     Raises
     ------
     ValueError
-        If ``detect`` is not a known reading, or the trace has more than two distinct values, which
-        means it is not a line and there is no fact about which of its values count as high.
+        If ``detect`` is not a known reading.
     """
     valid = ("rising", "falling", "high_period", "low_period")
     if detect not in valid:
         raise ValueError(f"Invalid detect '{detect}'. Valid values are {list(valid)}.")
-
-    # "At most two", not exactly two: a line that never toggles has one value and must still convert
-    # (to a zero-row table) rather than fail.
-    distinct_values = np.unique(trace)
-    if distinct_values.size > 2:
-        raise ValueError(
-            f"detect '{detect}' needs a two-valued trace, but this one has {distinct_values.size} " "distinct values."
-        )
 
     rising = get_rising_frames_from_ttl(trace)
     falling = get_falling_frames_from_ttl(trace)

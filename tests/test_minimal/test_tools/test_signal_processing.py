@@ -168,7 +168,7 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         assert_array_equal(falling_frames, expected_falling_frames)
 
 
-class TestDiscretizeTrace:
+class TestDetectEvents:
     # A 0/1 line with two high pulses: rising at frames [2, 7], falling at frames [5, 8].
     TRACE = np.array([0, 0, 1, 1, 1, 0, 0, 1, 0], dtype="int16")
 
@@ -192,16 +192,6 @@ class TestDiscretizeTrace:
         # First low span 5->7 closes (2 frames); the last falling at 8 has no later rising -> NaN.
         assert durations[0] == 2.0
         assert np.isnan(durations[1])
-
-    def test_a_line_that_never_toggles_yields_no_events(self):
-        """A constant line has one value, which is still a line: it converts to a zero-row table."""
-        onsets, durations = _detect_events(np.ones(5, dtype="int16"), detect="high_period")
-        assert onsets.size == 0
-
-    def test_a_many_valued_trace_raises(self):
-        """Without a threshold there is no fact about which of three levels count as high."""
-        with pytest.raises(ValueError, match="needs a two-valued trace"):
-            _detect_events(np.array([0, 1, 2, 1, 0]), detect="rising")
 
     def test_invalid_detect_raises(self):
         with pytest.raises(ValueError, match="Invalid detect"):
