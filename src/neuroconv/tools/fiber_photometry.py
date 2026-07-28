@@ -148,29 +148,14 @@ def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
     :func:`~neuroconv.tools.nwb_helpers._add_device_model_to_nwbfile` /
     :func:`~neuroconv.tools.nwb_helpers._add_device_to_nwbfile` helpers, idempotently by name. Each
     device links its model with ``device_model_metadata_key``, resolved on demand by the canonical
-    helper. Optical fibers are the one special case: each carries a nested ``fiber_insertion`` dict,
-    built here into an ``ndx_ophys_devices.FiberInsertion`` and passed through the helper's pre-resolved
-    (transitional) form.
+    helper, and an optical fiber's nested ``fiber_insertion`` dict is built into an
+    ``ndx_ophys_devices.FiberInsertion`` by the same helper, so every entry takes one path.
     """
     for device_model_metadata_key in metadata.get("DeviceModels", {}):
         _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_model_metadata_key)
 
-    for device_metadata_key, device_metadata in metadata.get("Devices", {}).items():
-        if "fiber_insertion" not in device_metadata:
-            _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key)
-            continue
-        # Optical fiber: build the nested FiberInsertion and, if one is given, resolve the model, then use
-        # the helper's transitional form (a pre-resolved entry dict) since the canonical form cannot build
-        # sub-objects. The model is optional, mirroring the canonical helper's ``.get`` treatment.
-        ndx_ophys_devices = get_package("ndx_ophys_devices")
-        resolved = {key: value for key, value in device_metadata.items() if key != "device_model_metadata_key"}
-        resolved["fiber_insertion"] = ndx_ophys_devices.FiberInsertion(**device_metadata["fiber_insertion"])
-        device_model_metadata_key = device_metadata.get("device_model_metadata_key")
-        if device_model_metadata_key is not None:
-            resolved["model"] = _add_device_model_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, metadata_key=device_model_metadata_key
-            )
-        _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=resolved)
+    for device_metadata_key in metadata.get("Devices", {}):
+        _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key)
 
 
 def add_commanded_voltage_series(

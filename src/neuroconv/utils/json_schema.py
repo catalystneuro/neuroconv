@@ -436,6 +436,35 @@ def get_metadata_schema_for_icephys() -> dict[str, Any]:
     return schema
 
 
+def _validate_device_registry_names(metadata: dict[str, dict]) -> None:
+    """
+    Assert that each device or device model ``name`` is claimed by a single metadata key.
+
+    The writers are idempotent on the NWB ``name``: an object of that name already on the file is
+    returned untouched, without consulting the incoming metadata. Two keys resolving to one name
+    would therefore be merged silently, and the second key's fields dropped. Two keys describing one
+    shared object is an authoring mistake regardless of whether their contents agree, so this raises
+    on any repeated name; genuine sharing is expressed by two interfaces referencing one key.
+    """
+    for registry_name, object_description in (("Devices", "device"), ("DeviceModels", "device model")):
+        registry = metadata.get(registry_name)
+        if not isinstance(registry, dict):
+            continue
+
+        metadata_key_by_name = {}
+        for metadata_key, entry in registry.items():
+            name = entry.get("name") if isinstance(entry, dict) else None
+            if not isinstance(name, str):
+                continue
+            if name in metadata_key_by_name:
+                raise ValueError(
+                    f"The {object_description} name '{name}' is claimed by two metadata keys: "
+                    f"'{metadata_key_by_name[name]}' and '{metadata_key}'. Declare the "
+                    f"{object_description} once and reference that single key from both places."
+                )
+            metadata_key_by_name[name] = metadata_key
+
+
 def validate_metadata(metadata: dict[str, dict], schema: dict[str, dict], verbose: bool = False):
     """Validate metadata against a schema."""
     encoder = _NWBMetaDataEncoder()
@@ -444,5 +473,6 @@ def validate_metadata(metadata: dict[str, dict], schema: dict[str, dict], verbos
     serialized_metadata = encoder.encode(metadata)
     decoded_metadata = json.loads(serialized_metadata)
     validate(instance=decoded_metadata, schema=schema)
+    _validate_device_registry_names(metadata=metadata)
     if verbose:
         print("Metadata is valid!")

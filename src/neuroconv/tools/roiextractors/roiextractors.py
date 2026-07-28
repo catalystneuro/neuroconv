@@ -13,7 +13,6 @@ from pynwb.ophys import (
     ImageSegmentation,
     ImagingPlane,
     OnePhotonSeries,
-    OpticalChannel,
     PlaneSegmentation,
     RoiResponseSeries,
     TwoPhotonSeries,
@@ -42,6 +41,7 @@ from ..nwb_helpers import (
     get_module,
     make_nwbfile_from_metadata,
 )
+from ..nwb_helpers._device_types import _build_inline_containers
 from ..nwb_helpers._metadata_and_file_helpers import (
     _add_device_to_nwbfile,
     _resolve_backend,
@@ -315,20 +315,21 @@ def _add_imaging_plane_to_nwbfile(
     if imaging_plane_name in nwbfile.imaging_planes:
         return nwbfile.imaging_planes[imaging_plane_name]
 
-    # Resolve device
-    device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
-    if device_metadata_key is not None:
-        device_metadata = metadata["Devices"][device_metadata_key]
-    else:
-        device_metadata = _get_ophys_metadata_placeholders()["Devices"]["default_metadata_key"]
-    device = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
+    # Resolve device. Entries without a ``device_metadata_key`` fall back to the placeholder device,
+    # which is exposed through the registry under its default key so every device is added by the
+    # canonical path.
+    device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None) or "default_metadata_key"
+    default_device_metadata = _get_ophys_metadata_placeholders()["Devices"]["default_metadata_key"]
+    devices_metadata = {
+        "Devices": {"default_metadata_key": default_device_metadata, **(metadata or {}).get("Devices", {})}
+    }
+    imaging_plane_kwargs["device"] = _add_device_to_nwbfile(
+        nwbfile=nwbfile, metadata=devices_metadata, metadata_key=device_metadata_key
+    )
 
-    imaging_plane_kwargs["device"] = device
-
-    # Convert optical channel metadata dicts to OpticalChannel objects
-    imaging_plane_kwargs["optical_channel"] = [
-        OpticalChannel(**channel_metadata) for channel_metadata in imaging_plane_kwargs["optical_channel"]
-    ]
+    # ``optical_channel`` is written inline as a list of dicts and built into OpticalChannel objects
+    # by the shared primitive, which reads the target type off ImagingPlane's own constructor spec.
+    imaging_plane_kwargs = _build_inline_containers(target_class=ImagingPlane, kwargs=imaging_plane_kwargs)
 
     imaging_plane = ImagingPlane(**imaging_plane_kwargs)
     nwbfile.add_imaging_plane(imaging_plane)

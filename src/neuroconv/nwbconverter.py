@@ -32,8 +32,8 @@ from .utils import (
 from .utils.dict import DeepDict
 from .utils.json_schema import (
     _NWBConversionOptionsEncoder,
-    _NWBMetaDataEncoder,
     _NWBSourceDataEncoder,
+    validate_metadata,
 )
 
 
@@ -153,21 +153,13 @@ class NWBConverter:
 
     def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
-        encoder = _NWBMetaDataEncoder()
-
-        # We do this to ensure that python objects are in string format for the JSON schema
-        encoded_metadta = encoder.encode(metadata)
-        decoded_metadata = json.loads(encoded_metadta)
-
         metadata_schema = self.get_metadata_schema()
         if append_mode:
             # Eliminate required from NWBFile
             nwbfile_schema = metadata_schema["properties"]["NWBFile"]
             nwbfile_schema.pop("required", None)
 
-        validate(instance=decoded_metadata, schema=metadata_schema)
-        if self.verbose:
-            print("Metadata is valid!")
+        validate_metadata(metadata=metadata, schema=metadata_schema, verbose=self.verbose)
 
     def get_conversion_options_schema(self) -> dict:
         """

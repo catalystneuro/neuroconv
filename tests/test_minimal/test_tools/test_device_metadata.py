@@ -5,8 +5,11 @@ extension installed. The lazy extension-resolution path (``type`` naming an ndx 
 in ``tests/test_modalities/test_fiber_photometry`` where ``ndx-ophys-devices`` is available.
 """
 
+from datetime import datetime
+
 import pytest
 from pynwb.device import Device, DeviceModel
+from pynwb.ophys import ImagingPlane, OpticalChannel
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import (
@@ -16,7 +19,14 @@ from neuroconv.tools.nwb_helpers import (
 from neuroconv.tools.nwb_helpers._device_types import (
     _DEVICE_MODEL_TYPE_SOURCES,
     _DEVICE_TYPE_SOURCES,
+    _build_inline_containers,
+    _get_inline_container_class,
     _resolve_type,
+)
+from neuroconv.tools.testing.mock_interfaces import MockBehaviorEventInterface
+from neuroconv.utils.json_schema import (
+    _validate_device_registry_names,
+    validate_metadata,
 )
 
 
@@ -77,3 +87,107 @@ class TestAddDeviceCanonical:
         nwbfile = mock_NWBFile()
         with pytest.raises(ValueError, match="Provide either"):
             _add_device_to_nwbfile(nwbfile=nwbfile)
+
+
+class TestDuplicateRegistryNames:
+    """A device or device model ``name`` must be claimed by exactly one metadata key."""
+
+    @pytest.mark.parametrize("registry_name", ["Devices", "DeviceModels"])
+    @pytest.mark.parametrize(
+        "second_entry",
+        [{"name": "shared"}, {"name": "shared", "description": "a different description"}],
+        ids=["identical_entries", "conflicting_entries"],
+    )
+    def test_two_keys_one_name_raises(self, registry_name, second_entry):
+        """Identical entries raise as loudly as conflicting ones: declaring twice is the mistake."""
+        metadata = {registry_name: {"first": {"name": "shared"}, "second": second_entry}}
+
+        with pytest.raises(ValueError, match="is claimed by two metadata keys: 'first' and 'second'"):
+            _validate_device_registry_names(metadata=metadata)
+
+    def test_distinct_names_pass(self):
+        metadata = {
+            "Devices": {"a": {"name": "DeviceA"}, "b": {"name": "DeviceB"}},
+            "DeviceModels": {"a": {"name": "ModelA"}, "b": {"name": "ModelB"}},
+        }
+
+        _validate_device_registry_names(metadata=metadata)
+
+    def test_same_name_across_the_two_registries_passes(self):
+        """``Devices`` and ``DeviceModels`` are separate namespaces in the NWB file."""
+        metadata = {"Devices": {"a": {"name": "shared"}}, "DeviceModels": {"a": {"name": "shared"}}}
+
+        _validate_device_registry_names(metadata=metadata)
+
+    @pytest.mark.parametrize(
+        "metadata",
+        [{}, {"Devices": {}}, {"Devices": None}, {"Devices": {"a": None}}, {"Devices": {"a": {}}}],
+        ids=["no_registry", "empty", "not_a_dict", "entry_not_a_dict", "entry_without_name"],
+    )
+    def test_incomplete_metadata_is_left_to_the_schema(self, metadata):
+        """Shape errors belong to JSON schema validation, so this check skips rather than raises."""
+        _validate_device_registry_names(metadata=metadata)
+
+    def test_raises_before_anything_is_written(self):
+        """The failure must arrive before a partially populated file exists."""
+        nwbfile = mock_NWBFile()
+        metadata = {"Devices": {"first": {"name": "shared"}, "second": {"name": "shared"}}}
+
+        with pytest.raises(ValueError, match="is claimed by two metadata keys"):
+            validate_metadata(metadata=metadata, schema={})
+
+        assert len(nwbfile.devices) == 0
+
+    def test_reported_through_an_interface(self):
+        """The check reaches users through the ordinary interface validation entry point."""
+        interface = MockBehaviorEventInterface()
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, 12, 0, 0)
+        metadata["Devices"] = {"first": {"name": "shared"}, "second": {"name": "shared"}}
+
+        with pytest.raises(ValueError, match="is claimed by two metadata keys"):
+            interface.validate_metadata(metadata=metadata)
+
+
+class TestInlineContainerBuilder:
+    """Sub-objects written inline as metadata dicts become the container the constructor declares."""
+
+    def test_list_valued_argument_is_built(self):
+        kwargs = {
+            "name": "ImagingPlane",
+            "optical_channel": [{"name": "channel", "description": "a channel", "emission_lambda": 500.0}],
+        }
+
+        built = _build_inline_containers(target_class=ImagingPlane, kwargs=kwargs)
+
+        assert all(isinstance(channel, OpticalChannel) for channel in built["optical_channel"])
+        assert built["optical_channel"][0].emission_lambda == 500.0
+
+    def test_link_valued_argument_is_left_alone(self):
+        """``ImagingPlane.device`` declares a ``Device``, but a device is linked, never inlined."""
+        device = Device(name="Microscope")
+
+        built = _build_inline_containers(target_class=ImagingPlane, kwargs={"device": device})
+
+        assert built["device"] is device
+
+    def test_plain_arguments_are_untouched(self):
+        kwargs = {"name": "ImagingPlane", "excitation_lambda": 600.0, "location": "unknown"}
+
+        assert _build_inline_containers(target_class=ImagingPlane, kwargs=dict(kwargs)) == kwargs
+
+    def test_link_type_is_not_reported_as_inline(self):
+        assert _get_inline_container_class(Device) == (None, False)
+
+    def test_list_accepting_container_type_is_reported(self):
+        container_class, accepts_list = _get_inline_container_class((list, OpticalChannel))
+
+        assert container_class is OpticalChannel
+        assert accepts_list is True
+
+    def test_string_named_type_is_skipped(self):
+        """hdmf allows a type named by string; those are links (``OpticalFiber.model``) here."""
+        assert _get_inline_container_class("DeviceModel") == (None, False)
+
+    def test_non_container_type_is_skipped(self):
+        assert _get_inline_container_class(str) == (None, False)
