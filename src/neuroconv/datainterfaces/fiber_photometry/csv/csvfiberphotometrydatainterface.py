@@ -80,10 +80,10 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         demux_config : ColumnDemux, StrideDemux, or None, optional
             For an interleaved file (excitation channels multiplexed frame-by-frame down the rows), a
             config selecting the one channel this interface reads. Two shapes:
-            ``ColumnDemux(column=<col>, values=<v>, skip_rows=<n>)`` reads the rows whose ``column``
-            is ``values`` (e.g. a Neurophotometrics ``LedState``), where ``values`` may be a list to
-            match any of several label values denoting the same channel and ``n`` leading rows are
-            dropped before the label is consulted; ``StrideDemux(channels=<k>, index=<i>,
+            ``ColumnDemux(column=<col>, values=<v>, skip_rows=<n>)`` reads the rows a label column
+            (e.g. a Neurophotometrics ``LedState``) marks as this channel's, after dropping ``n``
+            leading rows; ``v`` is that channel's label, or a list of them when more than one label
+            names it. ``StrideDemux(channels=<k>, index=<i>,
             skip_rows=<n>)`` reads every ``k``-th row starting at ``i`` after dropping ``n`` leading
             rows. Default None reads every row (no demux). Compose one interface per channel in a
             converter.
@@ -188,10 +188,10 @@ class CSVFiberPhotometryInterface(BaseFiberPhotometryInterface):
         """Read the given columns of a CSV file into a DataFrame, demultiplexed to this channel.
 
         With a column demux the label column is read alongside ``columns``, the leading ``skip_rows`` are
-        dropped, and only the rows whose value in that column is one of ``values`` are kept; with a
-        stride demux the leading ``skip_rows`` are dropped and every ``channels``-th row from ``index``
-        is taken. Data and timestamps go through this same method, so both are demuxed identically and
-        stay row-aligned.
+        dropped, and only the rows carrying one of this channel's labels are kept; with a stride demux
+        the leading ``skip_rows`` are dropped and every ``channels``-th row from ``index`` is taken.
+        Data and timestamps go through this same method, so both are demuxed identically and stay
+        row-aligned.
         """
         # Demux is a single-file feature set only in this class's __init__; a subclass that reuses this
         # read path without demuxing (MultiFileCSVFiberPhotometryInterface) simply never sets it.

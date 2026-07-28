@@ -136,7 +136,7 @@ class TestCSVFiberPhotometryDemux:
     """
 
     def test_column_demux_reads_one_labeled_channel(self, tmp_path):
-        """A column demux reads only the rows whose label column equals ``values``."""
+        """A column demux reads only the rows carrying this channel's label."""
         path = tmp_path / "interleaved.csv"
         # LedState 1 (signal) and 2 (control) alternate down the rows on a shared timebase.
         frame = pd.DataFrame(
@@ -155,11 +155,11 @@ class TestCSVFiberPhotometryDemux:
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
 
     def test_column_demux_reads_several_labels_as_one_channel(self, tmp_path):
-        """A list of ``values`` reads every row matching any of them as the same channel.
+        """A list of labels reads the rows carrying any of them as one channel.
 
-        One excitation channel can appear under several label values (an NPM ``LedState`` code carries
-        digital-line bits alongside the excitation bits, so the same LED is written as 1 on some frames
-        and 9 on others), and all of them belong to the one channel.
+        One channel can be named by more than one label: an NPM ``LedState`` packs the digital input
+        lines into the same integer as the excitation LED, so a single LED is written as several
+        distinct codes -- here 1 and 9 for the signal.
         """
         path = tmp_path / "interleaved_multi_label.csv"
         # The signal rows alternate between the two codes for their LED; the control rows are always 2.
@@ -181,7 +181,7 @@ class TestCSVFiberPhotometryDemux:
         np.testing.assert_array_equal(both_codes._read_response_data(), SIGNAL_DATA)
 
     def test_column_demux_empty_values_raises(self, tmp_path):
-        """An empty ``values`` list matches no rows at all, so it is rejected up front."""
+        """An empty label list selects no rows at all, so it is rejected up front."""
         path = tmp_path / "interleaved.csv"
         pd.DataFrame({"timestamps": TIMESTAMPS, "LedState": 1, "data": SIGNAL_DATA}).to_csv(path, index=False)
         with pytest.raises(ValidationError, match="at least 1 item"):
