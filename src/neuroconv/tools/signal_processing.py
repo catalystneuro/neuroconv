@@ -61,6 +61,8 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = Non
     return falling_frames
 
 
+# NOTE: copied from the Intan digital PR (#1812) to unblock the Doric CSV events interface; de-duplicate
+# when that PR merges (both add this same function to this module).
 def _detect_events(
     trace: np.ndarray,
     detect: str,
@@ -75,8 +77,7 @@ def _detect_events(
 
     It takes **no threshold**: on a two-valued signal a rising edge is simply the transition from the
     lower value to the higher one, so there is nothing to choose. Turning a many-valued trace into a
-    line is a separate step, and it lands with the first interface that records one, together with the
-    check that rejects a trace that never had one applied.
+    line is a separate step, and it lands with the first interface that records one.
 
     Parameters
     ----------
@@ -95,11 +96,6 @@ def _detect_events(
         ``None`` for a point reading (``"rising"``/``"falling"``). For a durative reading, per-event
         durations **in frames** (the caller converts to seconds with the sampling period). An onset with
         no closing edge in the trace gets a ``NaN`` duration (a truncated interval).
-
-    Raises
-    ------
-    ValueError
-        If ``detect`` is not a known reading.
     """
     valid = ("rising", "falling", "high_period", "low_period")
     if detect not in valid:
