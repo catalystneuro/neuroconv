@@ -59,7 +59,8 @@ class DoricCSVEventsInterface(BaseEventsInterface):
             detection specs, one per event type derived from that line, since a line can yield more than
             one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point event at each
             edge) or ``"high_period"`` / ``"low_period"`` (a durative event, onset at one edge and
-            duration to the next opposite edge), and it is required. An optional
+            duration to the next opposite edge), and it is required. ``signal_conditioning`` is omitted
+            for a DoricStudio digital column, which is already a ``0``/``1`` signal. An optional
             ``event_name`` replaces the derived identifier and pins it against later edits. If None
             (default), every digital line in the file is read as a ``high_period``, lossless for an
             active-high line; use ``"low_period"`` for an active-low one. When given, only the named
@@ -148,9 +149,9 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         # Identity-in-header: each digital column name is its own event type. The column name is kept as
         # the event_type_source_id, but the human-facing event_name drops the "/" (an NWB object name
         # cannot contain a slash), so "DI/O-1" seeds a table named "DIO-1". Only lines that carry at
-        # least one event appear. Derived from the configuration rather than from the events or the plan,
-        # so metadata costs no data read and does not depend on a plan existing: whether a line happened
-        # to fire does not change which event types the configuration asked for.
+        # least one event appear. Derived from the configuration rather than from the events themselves,
+        # so metadata costs no data read: whether a line happened to fire does not change which event
+        # types the configuration asked for.
         for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id.replace("/", "")
@@ -161,11 +162,11 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         """Build the internal event representation by edge-detecting each digital line, cached.
 
         Each selected digital line becomes one :class:`_EventsData` keyed by its ``event_type_source_id``
-        (the column name): its trace is read per the line's ``detection`` into onset frames and, for a
-        durative reading, offset frames. Both are then indexed into the shared ``Time(s)`` column, so a
-        duration is the elapsed clock time between the two edges rather than a frame count times an
-        assumed sampling period. A line that never toggles keeps its entry with empty timestamps, which
-        the writer renders as a zero-row table.
+        (the column name): its trace is edge-detected per the line's ``detect`` (via
+        :func:`_detect_events`) into onset frames and, for a durative reading, per-event durations. The
+        onset timestamps are read from the shared ``Time(s)`` column; durations (in frames) are scaled to
+        seconds by the file's sampling period. A line with no event (constant, or never opening) is
+        skipped, so the empty state never reaches the writer.
         """
         if self._events_data_dict is not None:
             return self._events_data_dict

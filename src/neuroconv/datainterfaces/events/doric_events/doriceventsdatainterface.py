@@ -64,7 +64,8 @@ class DoricEventsInterface(BaseEventsInterface):
             is a **list** of detection specs, one per event type derived from that line, since a line can
             yield more than one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point
             event at each edge) or ``"high_period"`` / ``"low_period"`` (a durative event, onset at one
-            edge and duration to the next opposite edge), and it is required. An optional
+            edge and duration to the next opposite edge), and it is required. ``signal_conditioning`` is
+            omitted for a ``.doric`` line, which is already a ``0``/``1`` signal. An optional
             ``event_name`` replaces the derived identifier and pins it against later edits. If None
             (default), every digital line in the file is read as a ``high_period``, lossless for an
             active-high line; use ``"low_period"`` for an active-low one. When given, only the named
@@ -82,8 +83,8 @@ class DoricEventsInterface(BaseEventsInterface):
         )
         self.metadata_key = metadata_key or "doric_events"
         # available_signals: signal_source_id (the line's dataset key, e.g. "Camera1" or "DI--O-1") -> its
-        # descriptor. The layout is what makes every discovered signal a digital line, settled
-        # structurally with no data read, so no signal conditioning arises for this format.
+        # {data_path, time_path} handle. Every discovered signal is a digital line, already a 0/1 signal,
+        # so no signal conditioning arises for this format.
         self._available_signals = self._get_available_signals(self.source_data["file_path"])
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every discovered line as a

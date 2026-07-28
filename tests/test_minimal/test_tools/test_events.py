@@ -64,14 +64,14 @@ class TestResolveDetectionPlan:
 
     def test_one_spec_keeps_the_signal_handle(self):
         """Rule 1 keeps a zero-configuration conversion's identifiers equal to the acquisition strings."""
-        detection_plan = resolve_detection_plan({"DI/O-1": [{"detection": "high_period"}]})
+        plan = resolve_detection_plan({"DI/O-1": [{"detection": "high_period"}]})
 
-        assert detection_plan == {"DI/O-1": [("DI/O-1", {"detection": "high_period"})]}
+        assert plan == {"DI/O-1": [("DI/O-1", {"detection": "high_period"})]}
 
     def test_several_specs_fan_out_on_the_reading(self):
-        detection_plan = resolve_detection_plan({"DI/O-1": [{"detection": "rising"}, {"detection": "falling"}]})
+        plan = resolve_detection_plan({"DI/O-1": [{"detection": "rising"}, {"detection": "falling"}]})
 
-        assert detection_plan == {
+        assert plan == {
             "DI/O-1": [
                 ("DI/O-1_rising", {"detection": "rising"}),
                 ("DI/O-1_falling", {"detection": "falling"}),
