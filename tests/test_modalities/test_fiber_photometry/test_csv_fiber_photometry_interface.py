@@ -136,7 +136,7 @@ class TestCSVFiberPhotometryDemux:
     """
 
     def test_column_demux_reads_one_labeled_channel(self, tmp_path):
-        """A column demux reads only the rows whose label column equals ``value``."""
+        """A column demux reads only the rows whose label column equals ``values``."""
         path = tmp_path / "interleaved.csv"
         # LedState 1 (signal) and 2 (control) alternate down the rows on a shared timebase.
         frame = pd.DataFrame(
@@ -149,7 +149,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns="data",
             timestamps_column="timestamps",
-            demux_config={"by": "column", "column": "LedState", "value": 1},
+            demux_config={"by": "column", "column": "LedState", "values": 1},
         )
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
@@ -174,7 +174,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns="data",
             timestamps_column="timestamps",
-            demux_config={"by": "column", "column": "LedState", "value": [1, 3], "skip_rows": 1},
+            demux_config={"by": "column", "column": "LedState", "values": [1, 3], "skip_rows": 1},
         )
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
@@ -228,7 +228,7 @@ class TestCSVFiberPhotometryDemux:
                 file_path=path,
                 data_columns="data",
                 timestamps_column="timestamps",
-                demux_config={"by": "column", "column": "LedState", "value": 1},
+                demux_config={"by": "column", "column": "LedState", "values": 1},
             )
 
     def test_stride_demux_index_beyond_channels_raises(self, tmp_path):

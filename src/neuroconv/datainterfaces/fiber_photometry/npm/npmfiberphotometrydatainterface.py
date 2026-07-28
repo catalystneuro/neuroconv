@@ -119,7 +119,7 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
             demux_config={
                 "by": "column",
                 "column": state_column,
-                "value": matching_states,
+                "values": matching_states,
                 "skip_rows": skip_rows,
             },
             time_unit=time_unit,
