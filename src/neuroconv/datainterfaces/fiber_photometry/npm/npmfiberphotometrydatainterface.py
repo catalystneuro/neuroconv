@@ -104,9 +104,19 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         code = _WAVELENGTH_TO_CODE[excitation_wavelength_in_nm]
         skip_rows, state_values = self._read_state_values(file_path, state_column, read_kwargs)
         # ``value & code`` keeps only the bits set in both, so ``value & code == code`` asks "is this
-        # wavelength's bit set in the row's word?", ignoring whatever else is set alongside it. For
-        # 415 nm (code 1) that matches 17 (0b10001) and 273 (0b100010001), which differ only in their
-        # TTL bits, but not 2 (0b10), which is 470 nm alone.
+        # wavelength's bit set in the row's word?", ignoring whatever else is set alongside it. Traced
+        # for 415 nm (code 1 = 0b001), over the words this format actually produces:
+        #     2   = 0b000000010 -> 2 & 1 == 0, no match: 470 nm alone
+        #     17  = 0b000010001 -> 17 & 1 == 1, matches: a TTL bit above the excitation changes nothing
+        #     273 = 0b100010001 -> 273 & 1 == 1, matches: likewise, a different TTL line
+        #     6   = 0b000000110 -> 6 & 1 == 0, no match: 470 nm and 560 nm strobed together, no 415 nm
+        #     7   = 0b000000111 -> 7 & 1 == 1, matches: all three strobed, so 415 nm really is present
+        # Testing the wavelength's bit alone, rather than the whole masked word, is what lets a compound
+        # word reach every channel it belongs to: 6 is claimed by both 470 nm (6 & 2 == 2) and 560 nm
+        # (6 & 4 == 4), where an exact match on the masked word would equal neither code and drop the
+        # frame from both channels. The flip side is 7: it now matches every wavelength, so an all-LEDs
+        # startup frame can no longer be excluded by its label and must be dropped by position instead
+        # (``skip_rows``, see :meth:`_read_state_values`).
         matching_states = [value for value in state_values if value & code == code]
         assert matching_states, (
             f"No rows with excitation wavelength {excitation_wavelength_in_nm} nm in '{file_path}'. "
@@ -164,8 +174,13 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         state = pd.read_csv(file_path, usecols=[state_column], **(read_kwargs or dict()))[state_column]
         # ``& _EXCITATION_BITS`` masks off the TTL bits, leaving just the three excitation flags;
         # comparing that to _EXCITATION_BITS asks whether all three are set. So 7 (0b111) and 23
-        # (0b10111, one TTL line high) both read as a startup frame, while 6 (0b110), a genuine
-        # two-LED frame, does not.
+        # (0b10111, one TTL line high) both read as a startup frame, while 6 (0b110) -- a genuine
+        # 470 nm + 560 nm frame -- does not, and is left in place for both of those channels.
+        #
+        # Only the first row is tested, so an all-three-strobe frame occurring later in the recording is
+        # kept and reaches all three channels, which is what such a frame means. A startup frame coded 0
+        # or 16 instead of 7 needs no test at all: with no excitation bit set it matches no wavelength's
+        # bit and drops out of every channel on its own.
         skip_rows = 1 if int(state.iloc[0]) & _EXCITATION_BITS == _EXCITATION_BITS else 0
         return skip_rows, sorted(int(value) for value in pd.unique(state.iloc[skip_rows:]))
 
