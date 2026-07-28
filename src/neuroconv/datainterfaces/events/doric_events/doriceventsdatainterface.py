@@ -11,14 +11,10 @@ from neuroconv.utils import DeepDict
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools.events import (
     _get_event_type_source_ids,
-    _resolve_detection_plan,
-    _validate_detection_configuration,
+    resolve_detection_plan,
+    validate_detection_configuration,
 )
-from ....tools.signal_processing import (
-    _condition_signal,
-    _detect_events,
-    _frames_to_seconds,
-)
+from ....tools.signal_processing import _detect_events
 
 
 class DoricEventsInterface(BaseEventsInterface):
@@ -68,8 +64,7 @@ class DoricEventsInterface(BaseEventsInterface):
             is a **list** of detection specs, one per event type derived from that line, since a line can
             yield more than one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point
             event at each edge) or ``"high_period"`` / ``"low_period"`` (a durative event, onset at one
-            edge and duration to the next opposite edge), and it is required. ``signal_conditioning`` is
-            omitted for a ``.doric`` line, which is already a ``0``/``1`` signal. An optional
+            edge and duration to the next opposite edge), and it is required. An optional
             ``event_name`` replaces the derived identifier and pins it against later edits. If None
             (default), every digital line in the file is read as a ``high_period``, lossless for an
             active-high line; use ``"low_period"`` for an active-low one. When given, only the named
@@ -100,7 +95,7 @@ class DoricEventsInterface(BaseEventsInterface):
         # One construction-time check, on the default as well as on a caller-supplied configuration: the
         # default is machine-built but its inputs are not, so it too can resolve two event types to the
         # same identifier. Validation covers structure and identifier resolution alike.
-        _validate_detection_configuration(detection_configuration, self._available_signals)
+        validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
     @staticmethod
@@ -234,15 +229,14 @@ class DoricEventsInterface(BaseEventsInterface):
         """Build the internal event representation by edge-detecting each selected line, cached.
 
         Each entry of the resolved plan becomes one :class:`_EventsData` keyed by its
-        ``event_type_source_id``: its signal's trace is read per the spec's ``detection`` into onset
-        frames and, for a durative reading, offset frames. Both are then indexed into that signal's
-        ``Time`` dataset, so a duration is the elapsed clock time between the two edges rather than a
-        frame count times an assumed sampling period. An event type with no event (a constant line, or
-        one that never opens) keeps its entry with empty timestamps, which the writer renders as a
-        zero-row table.
+        ``event_type_source_id``: its signal's trace is edge-detected per the spec's ``detection`` (via
+        :func:`_detect_events`) into onset frames and, for a durative reading, per-event durations. The
+        onset timestamps are read from that signal's ``Time`` dataset; durations (in frames) are scaled to
+        seconds by the file's sampling period. An event type with no event (a constant line, or one that
+        never opens) keeps its entry with empty timestamps, which the writer renders as a zero-row table.
 
-        A ``.doric`` line is already a ``0``/``1`` signal, so no conditioning runs here and the reading is
-        applied to the signal's own values.
+        A ``.doric`` line is already a ``0``/``1`` signal, so the reading is applied to the signal's own
+        values.
         """
         if self._events_data_dict is not None:
             return self._events_data_dict
@@ -252,7 +246,7 @@ class DoricEventsInterface(BaseEventsInterface):
         # Built here rather than held on the interface: the configuration is the source of truth, and the
         # plan is pure and cheap to rebuild. Grouped by signal, so a signal is read once however many
         # event types it yields.
-        detection_plan = _resolve_detection_plan(self._detection_configuration)
+        detection_plan = resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
         with h5py.File(self.source_data["file_path"], "r") as f:
@@ -260,12 +254,11 @@ class DoricEventsInterface(BaseEventsInterface):
                 paths = self._available_signals[signal_source_id]
                 data = np.asarray(f[paths["data_path"]][:], dtype="float64")
                 time = np.asarray(f[paths["time_path"]][:], dtype="float64")
+                frame_period = float(np.median(np.diff(time)))  # regular Doric clock; frames -> seconds
                 for event_type_source_id, spec in detection_specs:
-                    # A .doric digital line is already a 0/1 signal, so no conditioning applies and the
-                    # reading is taken from the signal's own values, with no cut anywhere.
-                    conditioned = _condition_signal(data, spec.get("signal_conditioning"))
-                    onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                    onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)
+                    onset_frames, duration_frames = _detect_events(data, spec["detection"])
+                    onsets = time[onset_frames]
+                    durations = None if duration_frames is None else duration_frames * frame_period
                     events_data_dict[event_type_source_id] = _EventsData(
                         event_type_source_id=event_type_source_id,
                         timestamps=onsets,

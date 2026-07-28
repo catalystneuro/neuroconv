@@ -4,7 +4,6 @@ from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 
 from neuroconv.tools.signal_processing import (
-    _condition_signal,
     _detect_events,
     get_falling_frames_from_ttl,
     get_rising_frames_from_ttl,
@@ -169,89 +168,41 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
         assert_array_equal(falling_frames, expected_falling_frames)
 
 
-class TestConditionSignal:
-    """Conditioning is signal-to-signal: it returns a discrete-valued signal of the same length."""
-
-    def test_omission_returns_the_trace_unchanged(self):
-        """Omitting conditioning asserts the signal is already discrete-valued, the recorded-line case."""
-        line = np.array([0, 0, 1, 1, 0], dtype="int16")
-        assert_array_equal(_condition_signal(line), line)
-        assert_array_equal(_condition_signal(line, None), line)
-
-    def test_binarize_midpoint_is_invariant_under_windowing(self):
-        """The midpoint is unmoved by any sample between the two levels, so a stub cuts where the full run does."""
-        full = np.array([48.0, 48.2, 64.0, 63.8, 48.1, 55.0, 64.0])
-        stub = full[:4]
-        assert_array_equal(
-            _condition_signal(full, {"binarize": "midpoint"})[:4], _condition_signal(stub, {"binarize": "midpoint"})
-        )
-
-    def test_binarize_mean_moves_with_the_window(self):
-        """Why the mean is not the default: the same samples cut differently depending on what you sliced."""
-        full = np.array([48.0, 48.0, 48.0, 48.0, 64.0, 64.0])
-        stub = full[3:]
-        assert _condition_signal(full, {"binarize": "mean"})[3] == 0
-        assert _condition_signal(stub, {"binarize": "mean"})[0] == 0
-        assert full.mean() != stub.mean()
-
-    def test_conditioning_preserves_length(self):
-        """The contract detection depends on: frame indices must still address the caller's timestamps."""
-        trace = np.array([48.0, 64.0, 48.0, 64.0, 48.0])
-        for conditioning in ({"binarize": "midpoint"}, None):
-            assert _condition_signal(trace, conditioning).size == trace.size
-
-    def test_conditioning_without_a_cut_raises(self):
-        """A designed but unbuilt setting is rejected rather than accepted and silently ignored."""
-        with pytest.raises(ValueError, match="sets no cut"):
-            _condition_signal(np.array([0.0, 1.0]), {"debounce": 3})
-
-    def test_invalid_binarize_method_raises(self):
-        with pytest.raises(ValueError, match="Invalid binarize method"):
-            _condition_signal(np.array([0.0, 1.0]), {"binarize": "not_a_method"})
-
-
-class TestDetectEvents:
-    """Detection is signal-to-events, in frame indices, and takes no threshold."""
-
+class TestDiscretizeTrace:
     # A 0/1 line with two high pulses: rising at frames [2, 7], falling at frames [5, 8].
-    LINE = np.array([0, 0, 1, 1, 1, 0, 0, 1, 0], dtype="int16")
-
-    def test_takes_no_threshold(self):
-        """The acceptance test for the split: if a threshold survived here, conditioning did not move."""
-        import inspect
-
-        assert "threshold" not in inspect.signature(_detect_events).parameters
+    TRACE = np.array([0, 0, 1, 1, 1, 0, 0, 1, 0], dtype="int16")
 
     def test_rising_and_falling_are_point_events(self):
-        onsets, offsets = _detect_events(self.LINE, detection="rising")
+        onsets, durations = _detect_events(self.TRACE, detect="rising")
         assert_array_equal(onsets, np.array([2, 7]))
-        assert offsets is None
+        assert durations is None
 
-        onsets, offsets = _detect_events(self.LINE, detection="falling")
+        onsets, durations = _detect_events(self.TRACE, detect="falling")
         assert_array_equal(onsets, np.array([5, 8]))
-        assert offsets is None
+        assert durations is None
 
     def test_high_period_pairs_rising_to_next_falling(self):
-        onsets, offsets = _detect_events(self.LINE, detection="high_period")
+        onsets, durations = _detect_events(self.TRACE, detect="high_period")
         assert_array_equal(onsets, np.array([2, 7]))
-        assert_array_equal(offsets, np.array([5.0, 8.0]))
+        assert_array_equal(durations, np.array([3.0, 1.0]))  # frames: 5-2 and 8-7
 
-    def test_low_period_offset_is_nan_when_unclosed(self):
-        onsets, offsets = _detect_events(self.LINE, detection="low_period")
+    def test_low_period_pairs_falling_to_next_rising_with_nan_when_unclosed(self):
+        onsets, durations = _detect_events(self.TRACE, detect="low_period")
         assert_array_equal(onsets, np.array([5, 8]))
-        assert offsets[0] == 7.0
-        assert np.isnan(offsets[1])  # the last low span never closes
+        # First low span 5->7 closes (2 frames); the last falling at 8 has no later rising -> NaN.
+        assert durations[0] == 2.0
+        assert np.isnan(durations[1])
 
-    def test_a_signal_that_never_toggles_yields_no_events(self):
-        """One distinct value passes the backstop: it must convert to a zero-row table, not fail."""
-        onsets, offsets = _detect_events(np.ones(10), detection="high_period")
+    def test_a_line_that_never_toggles_yields_no_events(self):
+        """A constant line has one value, which is still a line: it converts to a zero-row table."""
+        onsets, durations = _detect_events(np.ones(5, dtype="int16"), detect="high_period")
         assert onsets.size == 0
 
-    def test_edge_reading_on_a_multi_level_signal_raises(self):
-        """The read-time backstop: with three levels there is no fact about which count as high."""
-        with pytest.raises(ValueError, match="needs a two-valued signal"):
-            _detect_events(np.array([0, 1, 2, 1, 0]), detection="rising")
+    def test_a_many_valued_trace_raises(self):
+        """Without a threshold there is no fact about which of three levels count as high."""
+        with pytest.raises(ValueError, match="needs a two-valued trace"):
+            _detect_events(np.array([0, 1, 2, 1, 0]), detect="rising")
 
-    def test_invalid_detection_raises(self):
-        with pytest.raises(ValueError, match="Invalid detection"):
-            _detect_events(self.LINE, detection="nope")
+    def test_invalid_detect_raises(self):
+        with pytest.raises(ValueError, match="Invalid detect"):
+            _detect_events(self.TRACE, detect="nope")

@@ -1,5 +1,6 @@
 """Interface for discrete events (digital IO) from Doric Neuroscience Studio CSV exports."""
 
+import numpy as np
 from pydantic import FilePath, validate_call
 
 from neuroconv.utils import DeepDict
@@ -7,14 +8,10 @@ from neuroconv.utils import DeepDict
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools.events import (
     _get_event_type_source_ids,
-    _resolve_detection_plan,
-    _validate_detection_configuration,
+    resolve_detection_plan,
+    validate_detection_configuration,
 )
-from ....tools.signal_processing import (
-    _condition_signal,
-    _detect_events,
-    _frames_to_seconds,
-)
+from ....tools.signal_processing import _detect_events
 
 
 class DoricCSVEventsInterface(BaseEventsInterface):
@@ -62,8 +59,7 @@ class DoricCSVEventsInterface(BaseEventsInterface):
             detection specs, one per event type derived from that line, since a line can yield more than
             one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point event at each
             edge) or ``"high_period"`` / ``"low_period"`` (a durative event, onset at one edge and
-            duration to the next opposite edge), and it is required. ``signal_conditioning`` is omitted
-            for a DoricStudio digital column, which is already a ``0``/``1`` signal. An optional
+            duration to the next opposite edge), and it is required. An optional
             ``event_name`` replaces the derived identifier and pins it against later edits. If None
             (default), every digital line in the file is read as a ``high_period``, lossless for an
             active-high line; use ``"low_period"`` for an active-low one. When given, only the named
@@ -97,7 +93,7 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         # One construction-time check, on the default as well as on a caller-supplied configuration: the
         # default is machine-built but its inputs are not, so it too can resolve two event types to the
         # same identifier. Validation covers structure and identifier resolution alike.
-        _validate_detection_configuration(detection_configuration, self._available_signals)
+        validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
     @staticmethod
@@ -176,22 +172,21 @@ class DoricCSVEventsInterface(BaseEventsInterface):
 
         dataframe = self._read_doric_csv(self.source_data["file_path"])
         time = dataframe[self._time_column].to_numpy(dtype="float64")
+        frame_period = float(np.median(np.diff(time)))  # regular DoricStudio clock; duration frames -> seconds
 
         # Built here rather than held on the interface: the configuration is the source of truth, and the
         # plan is pure and cheap to rebuild. Grouped by signal, so a column is extracted once however
         # many event types it yields.
-        detection_plan = _resolve_detection_plan(self._detection_configuration)
+        detection_plan = resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
         for signal_source_id, detection_specs in detection_plan.items():
             column = self._available_signals[signal_source_id]["column"]
             data = dataframe[column].to_numpy(dtype="float64")
             for event_type_source_id, spec in detection_specs:
-                # A DoricStudio digital column is already a 0/1 signal, so no conditioning applies and
-                # the reading is taken from the signal's own values, with no cut anywhere.
-                conditioned = _condition_signal(data, spec.get("signal_conditioning"))
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)
+                onset_frames, duration_frames = _detect_events(data, spec["detection"])
+                onsets = time[onset_frames]
+                durations = None if duration_frames is None else duration_frames * frame_period
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
                     timestamps=onsets,
