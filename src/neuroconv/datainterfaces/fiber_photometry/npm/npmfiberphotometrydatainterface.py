@@ -3,11 +3,18 @@
 NPM is a raw acquisition format that interleaves the excitation channels frame-by-frame down the
 rows of a single CSV: an isosbestic channel and one or more signal channels are multiplexed, and
 each remaining column (e.g. ``Region0G``) is a region of interest. Each row is labelled by a
-``Flags``/``LedState`` column, whose value is a packed word: the three lowest bits encode which
-excitation LED was on (``001`` = 415 nm, ``010`` = 470 nm, ``100`` = 560 nm) and the higher bits are
-digital TTL lines. Two rows that share an excitation LED but differ in a TTL line therefore carry
-different ``LedState`` values (e.g. ``17`` and ``273`` are both 415 nm), so a channel is selected by
-masking the three lowest bits rather than by matching the raw value.
+``Flags``/``LedState`` column, whose value is a packed word: the three lowest bits are one flag per
+excitation LED (``001`` = 415 nm, ``010`` = 470 nm, ``100`` = 560 nm) and the higher bits are digital
+TTL lines.
+
+Two consequences follow, and a channel is selected by testing its own excitation bit rather than by
+comparing the whole word or the whole masked word:
+
+- Rows that share an excitation LED but differ in a TTL line carry different values (``17`` and
+  ``273`` are both 415 nm), so matching the raw value returns only part of a channel.
+- Several excitation bits can be set at once, because a rig can strobe two LEDs in the same frame
+  (``6`` = 470 nm and 560 nm together, their emission bands landing in different region columns), so
+  matching the masked word exactly misses those frames entirely.
 """
 
 from pathlib import Path
@@ -18,21 +25,26 @@ from pydantic import FilePath, validate_call
 
 from ..csv.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
 
-# The three lowest bits of a Flags/LedState word encode the excitation LED; the higher bits are
-# digital TTL lines. Mask to these bits to recover the wavelength regardless of the TTL state.
+# The three lowest bits of a Flags/LedState word are one flag per excitation LED; the higher bits are
+# digital TTL lines. A wavelength's rows are those whose word has that wavelength's bit set, whatever
+# else is set alongside it.
 _EXCITATION_BITS = 0b111
 _WAVELENGTH_TO_CODE = {415: 1, 470: 2, 560: 4}
-_CODE_TO_WAVELENGTH = {code: wavelength for wavelength, code in _WAVELENGTH_TO_CODE.items()}
 
 
 class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
     """Interface for a Neurophotometrics CSV file (a ``Flags``/``LedState``-labeled acquisition).
 
     The NPM file is a header-bearing CSV whose channel multiplexing is driven by a ``Flags`` or
-    ``LedState`` column: each row belongs to whichever excitation LED was on, encoded in the three
-    lowest bits of that column's packed word. This interface reads the one excitation channel given
-    by ``excitation_wavelength_in_nm`` and writes the selected region column(s) as one
-    ``FiberPhotometryResponseSeries``.
+    ``LedState`` column: each row records which excitation LEDs were on, one flag per LED in the three
+    lowest bits of that column's packed word. This interface reads the one excitation channel given by
+    ``excitation_wavelength_in_nm`` -- every row whose word has that wavelength's bit set -- and writes
+    the selected region column(s) as one ``FiberPhotometryResponseSeries``.
+
+    A frame that strobes two LEDs at once therefore belongs to both of their channels, and the caller
+    picks the region columns carrying the emission band of interest: in a ``LedState`` 6 frame (470 nm
+    and 560 nm together) the 470 nm measurement is in the green columns and the 560 nm measurement is
+    in the red ones, sharing a timestamp.
 
     Use :meth:`get_available_excitation_wavelengths` to discover the channels; the region column
     names come from the inherited :meth:`get_available_columns`.
@@ -90,8 +102,8 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         state_column = self._detect_state_column(file_path, read_kwargs)
 
         code = _WAVELENGTH_TO_CODE[excitation_wavelength_in_nm]
-        state_values = self._read_state_values(file_path, state_column, read_kwargs)
-        matching_states = [value for value in state_values if value & _EXCITATION_BITS == code]
+        skip_rows, state_values = self._read_state_values(file_path, state_column, read_kwargs)
+        matching_states = [value for value in state_values if value & code == code]
         assert matching_states, (
             f"No rows with excitation wavelength {excitation_wavelength_in_nm} nm in '{file_path}'. "
             f"Available wavelengths: {self.get_available_excitation_wavelengths(file_path, read_kwargs)}."
@@ -104,7 +116,12 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
             file_path=file_path,
             data_columns=data_columns_list,
             timestamps_column=timestamps_column,
-            demux_config={"by": "column", "column": state_column, "value": matching_states},
+            demux_config={
+                "by": "column",
+                "column": state_column,
+                "value": matching_states,
+                "skip_rows": skip_rows,
+            },
             time_unit=time_unit,
             metadata_key=metadata_key,
             read_kwargs=read_kwargs,
@@ -115,20 +132,32 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
     def get_available_excitation_wavelengths(cls, file_path: FilePath, read_kwargs: dict | None = None) -> list[int]:
         """Return the excitation wavelengths (nm) present in the file, sorted.
 
-        Each row's ``Flags``/``LedState`` word is masked to its three lowest bits to recover the
-        excitation LED; the single-LED codes (``001``/``010``/``100``) map to 415/470/560 nm. Codes
-        that are not a single excitation LED -- no LED on (a startup/initialization frame) or several
-        LEDs on together -- are not fiber photometry channels and are left out.
+        A wavelength is present when any frame has its excitation bit set, so a frame that strobes two
+        LEDs at once (e.g. ``LedState`` 6) reports both of them. A leading startup frame is not a
+        measurement and does not contribute; see :meth:`_read_state_values`.
         """
         state_column = cls._detect_state_column(file_path, read_kwargs)
-        codes = {value & _EXCITATION_BITS for value in cls._read_state_values(file_path, state_column, read_kwargs)}
-        return sorted(_CODE_TO_WAVELENGTH[code] for code in codes if code in _CODE_TO_WAVELENGTH)
+        _, state_values = cls._read_state_values(file_path, state_column, read_kwargs)
+        return sorted(
+            wavelength
+            for wavelength, code in _WAVELENGTH_TO_CODE.items()
+            if any(value & code == code for value in state_values)
+        )
 
     @staticmethod
-    def _read_state_values(file_path: FilePath, state_column: str, read_kwargs: dict | None) -> list[int]:
-        """Return the sorted unique values of the file's ``Flags``/``LedState`` column."""
+    def _read_state_values(file_path: FilePath, state_column: str, read_kwargs: dict | None) -> tuple[int, list[int]]:
+        """Return the number of leading startup frames and the sorted unique state values after them.
+
+        Some recordings open with an initialization frame that is not a measurement: it is written with
+        every excitation bit set (``7``, or ``23`` when a digital output is high alongside) while the
+        frame itself is dark. Treating it as a measurement would put the same dark sample at the head of
+        all three wavelength channels at once, so it is dropped. It is identified by position -- the
+        first row, with all three excitation bits set -- which leaves a genuine simultaneous-excitation
+        frame later in the recording untouched.
+        """
         state = pd.read_csv(file_path, usecols=[state_column], **(read_kwargs or dict()))[state_column]
-        return sorted(int(value) for value in pd.unique(state))
+        skip_rows = 1 if int(state.iloc[0]) & _EXCITATION_BITS == _EXCITATION_BITS else 0
+        return skip_rows, sorted(int(value) for value in pd.unique(state.iloc[skip_rows:]))
 
     @staticmethod
     def _detect_state_column(file_path: FilePath, read_kwargs: dict | None) -> str:

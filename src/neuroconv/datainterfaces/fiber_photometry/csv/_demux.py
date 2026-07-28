@@ -19,11 +19,16 @@ class ColumnDemux(BaseModel):
     in which case the rows whose ``column`` equals *any* of the listed values are read -- used when
     several distinct label values denote the same channel (e.g. NPM ``LedState`` codes that share an
     excitation LED but differ in their digital-line bits).
+
+    ``skip_rows`` drops leading rows before the label is consulted, for a startup frame whose label
+    would otherwise select it into a channel (e.g. an NPM initialization frame written with every
+    excitation bit set, which matches every wavelength).
     """
 
     by: Literal["column"] = "column"
     column: str | int
     value: str | int | list[str | int]
+    skip_rows: int = Field(default=0, ge=0)
 
 
 class StrideDemux(BaseModel):

@@ -13,7 +13,7 @@ this module is organized to match, one round-trip class per fixture and channel:
 - ``multi_led_state_per_wavelength`` -- one excitation written under two state values (415 nm as both
   17 and 273), which is what the bit masking exists for.
 - ``multi_wavelength_per_led_state`` -- the inverse: ``LedState`` 6 is 470 nm and 560 nm strobed in one
-  frame, landing in different columns. **Not supported yet**; those two classes are expected to fail.
+  frame, landing in different columns, so that frame belongs to both channels.
 - ``red_and_green_emission`` -- three excitations and both emission bands as columns.
 - ``startup_state_zero`` -- a startup frame coded 0 rather than 7 or 16.
 - ``multiplexed_by_file`` -- one excitation per file, on two time axes that never coincide.
@@ -926,12 +926,8 @@ class TestNPMSimultaneousExcitation470(FiberPhotometryInterfaceTestMixin):
     ``LedState`` alternates 6 (470 + 560 together) and 1 (415 alone), and the file contains no 2
     anywhere. The two simultaneous excitations do not interfere because their emission bands land in
     different columns, so a single LedState==6 frame carries a valid 470 nm measurement in G0/G2 and a
-    valid 560 nm measurement in R1/R3 on a shared timestamp.
-
-    EXPECTED TO FAIL: the interface matches the whole masked state word (``state & 0b111 == code``), so
-    6 matches neither 470 (2) nor 560 (4) and construction raises "No rows with excitation wavelength
-    470 nm ... Available wavelengths: [415]" for data the file does hold.
-    """
+    valid 560 nm measurement in R1/R3 on a shared timestamp. Matching the masked state word exactly
+    would find no 470 nm rows at all here, since 6 equals neither 2 nor 4."""
 
     data_interface_cls = NPMFiberPhotometryInterface
     interface_kwargs = dict(
@@ -1017,9 +1013,8 @@ class TestNPMSimultaneousExcitation470(FiberPhotometryInterfaceTestMixin):
 class TestNPMSimultaneousExcitation560(FiberPhotometryInterfaceTestMixin):
     """Round-trip the 560 nm half of the same simultaneously-strobed frames, in the red columns.
 
-    EXPECTED TO FAIL for the same reason as the 470 nm class above: LedState 6 masks to 6, which does
-    not equal the 560 nm code of 4.
-    """
+    The same rows as the 470 nm class above, on the same timestamps, read through different columns --
+    which is what "one frame, two excitations" means."""
 
     data_interface_cls = NPMFiberPhotometryInterface
     interface_kwargs = dict(
@@ -1113,16 +1108,17 @@ class TestNPMFiberPhotometryConstruction:
             pytest.param(MULTI_LED_STATE_PER_WAVELENGTH_FILE, [415, 470], id="multi_led_state_per_wavelength"),
             pytest.param(RED_AND_GREEN_EMISSION_FILE, [415, 470, 560], id="red_and_green_emission"),
             pytest.param(STARTUP_STATE_ZERO_FILE, [415, 470, 560], id="startup_state_zero"),
+            # The startup frame is all-bits-set, so without excluding it these would report all three.
             pytest.param(MULTIPLEXED_BY_FILE_415, [415], id="multiplexed_by_file_415"),
             pytest.param(MULTIPLEXED_BY_FILE_470, [470], id="multiplexed_by_file_470"),
-            # EXPECTED TO FAIL: LedState 6 is 470 nm and 560 nm together, but masks to 6, which is not a
-            # single-LED code, so only the 415 nm frames are surfaced.
+            # LedState 6 is 470 nm and 560 nm strobed together, so both are present despite neither
+            # ever appearing on its own.
             pytest.param(MULTI_WAVELENGTH_PER_LED_STATE_FILE, [415, 470, 560], id="multi_wavelength_per_led_state"),
         ],
     )
     def test_get_available_excitation_wavelengths(self, file_path, expected_wavelengths):
-        """Every recording's channels are discoverable before construction; non-channel frames (no LED
-        on, or several LEDs on together) are left out."""
+        """Every recording's channels are discoverable before construction: a wavelength is present when
+        any frame has its bit set, and the leading startup frame does not count as a measurement."""
         assert NPMFiberPhotometryInterface.get_available_excitation_wavelengths(file_path) == expected_wavelengths
 
     def test_absent_wavelength_raises(self):
