@@ -149,7 +149,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns="data",
             timestamps_column="timestamps",
-            demux_config={"by": "column", "column": "LedState", "values": 1},
+            demux_configuration={"by": "column", "column": "LedState", "values": 1},
         )
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
@@ -175,7 +175,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns="data",
             timestamps_column="timestamps",
-            demux_config={"by": "column", "column": "LedState", "values": [1, 9]},
+            demux_configuration={"by": "column", "column": "LedState", "values": [1, 9]},
         )
         np.testing.assert_array_equal(both_codes.get_original_timestamps(), TIMESTAMPS)
         np.testing.assert_array_equal(both_codes._read_response_data(), SIGNAL_DATA)
@@ -189,7 +189,7 @@ class TestCSVFiberPhotometryDemux:
                 file_path=path,
                 data_columns="data",
                 timestamps_column="timestamps",
-                demux_config={"by": "column", "column": "LedState", "values": []},
+                demux_configuration={"by": "column", "column": "LedState", "values": []},
             )
 
     def test_column_demux_skips_leading_rows(self, tmp_path):
@@ -212,7 +212,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns="data",
             timestamps_column="timestamps",
-            demux_config={"by": "column", "column": "LedState", "values": 1, "skip_rows": 1},
+            demux_configuration={"by": "column", "column": "LedState", "values": 1, "skip_rows": 1},
         )
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
@@ -228,13 +228,13 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns=1,
             timestamps_column=0,
-            demux_config={"by": "stride", "channels": 2, "index": 0},
+            demux_configuration={"by": "stride", "channels": 2, "index": 0},
         )
         control = CSVFiberPhotometryInterface(
             file_path=path,
             data_columns=1,
             timestamps_column=0,
-            demux_config={"by": "stride", "channels": 2, "index": 1},
+            demux_configuration={"by": "stride", "channels": 2, "index": 1},
         )
         np.testing.assert_array_equal(signal.get_original_timestamps(), TIMESTAMPS)
         np.testing.assert_array_equal(signal._read_response_data(), SIGNAL_DATA)
@@ -253,7 +253,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns=1,
             timestamps_column=0,
-            demux_config={"by": "stride", "channels": 2, "index": 0, "skip_rows": 1},
+            demux_configuration={"by": "stride", "channels": 2, "index": 0, "skip_rows": 1},
         )
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
 
@@ -266,7 +266,7 @@ class TestCSVFiberPhotometryDemux:
                 file_path=path,
                 data_columns="data",
                 timestamps_column="timestamps",
-                demux_config={"by": "column", "column": "LedState", "values": 1},
+                demux_configuration={"by": "column", "column": "LedState", "values": 1},
             )
 
     def test_stride_demux_index_beyond_channels_raises(self, tmp_path):
@@ -278,7 +278,7 @@ class TestCSVFiberPhotometryDemux:
                 file_path=path,
                 data_columns=1,
                 timestamps_column=0,
-                demux_config={"by": "stride", "channels": 2, "index": 2},
+                demux_configuration={"by": "stride", "channels": 2, "index": 2},
             )
 
 

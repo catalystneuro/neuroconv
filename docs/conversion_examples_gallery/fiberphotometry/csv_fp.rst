@@ -25,7 +25,7 @@ Interleaved (multiplexed) files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Some CSVs **interleave** the excitation channels frame-by-frame down the rows rather than giving each
-channel its own column, so one row is one channel at one timepoint. Pass a ``demux_config`` to read a
+channel its own column, so one row is one channel at one timepoint. Pass a ``demux_configuration`` to read a
 single channel out of such a file. There are two shapes, chosen by ``by``:
 
 - ``{"by": "column", "column": ..., "values": ...}`` when a column labels each row's channel (e.g. a
@@ -48,11 +48,11 @@ The interface stays single-series, so instantiate one interface per channel (wit
     # A LedState column labels each row's excitation channel; one interface per channel.
     signal = CSVFiberPhotometryInterface(
         file_path=interleaved_path, data_columns="Region0G", timestamps_column="Timestamp",
-        demux_config={"by": "column", "column": "LedState", "values": 2}, metadata_key="signal",
+        demux_configuration={"by": "column", "column": "LedState", "values": 2}, metadata_key="signal",
     )
     isosbestic = CSVFiberPhotometryInterface(
         file_path=interleaved_path, data_columns="Region0G", timestamps_column="Timestamp",
-        demux_config={"by": "column", "column": "LedState", "values": 1}, metadata_key="isosbestic",
+        demux_configuration={"by": "column", "column": "LedState", "values": 1}, metadata_key="isosbestic",
     )
 
 Convert CSV Fiber Photometry data to NWB

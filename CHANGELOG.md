@@ -1,6 +1,7 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Renamed `CSVFiberPhotometryInterface`'s `demux_config` parameter to `demux_configuration`, and the `DemuxConfig` type alias to `DemuxConfiguration`, so it matches how neuroconv spells its other configuration objects (`backend_configuration`, `detection_configuration`, `dataset_io_configuration`). The parameter has not appeared in a release, so there is no deprecation path. [PR #1830](https://github.com/catalystneuro/neuroconv/pull/1830)
 * Renamed the container-selection parameter `write_as` to `parent_container` (now keyword-only) across the audio, spatial-series, sorting, and recording functions, so a single keyword selects the destination NWB container everywhere. The old `write_as` keyword still works but emits a `FutureWarning` and will be removed on or after December 2026. For the recording functions the values are now `{"acquisition", "processing/LFP", "processing/FilteredEphys"}` (the deprecated `write_as` maps `"raw" -> "acquisition"`, `"lfp" -> "processing/LFP"`, `"processed" -> "processing/FilteredEphys"`). [PR #1760](https://github.com/catalystneuro/neuroconv/pull/1760)
 * Bumped minimum `pynwb` version to `>=4.0.0`. [PR #1769](https://github.com/catalystneuro/neuroconv/pull/1769)
 * Migrated `TDTFiberPhotometryInterface` to a single-series interface that selects input streams via the new `stream_names` argument. Constructing without `stream_names` is deprecated and will be removed on or after January 2027. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)

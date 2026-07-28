@@ -1,8 +1,9 @@
-"""Demux configs for :class:`.CSVFiberPhotometryInterface`.
+"""Demux configurations for :class:`.CSVFiberPhotometryInterface`.
 
-An interleaved CSV multiplexes the excitation channels frame-by-frame down the rows; a demux config
-selects the one channel a single interface reads, either by a label column or by row parity. These
-are validation-only value objects: a caller passes a plain ``dict`` and the interface coerces it.
+An interleaved CSV multiplexes the excitation channels frame-by-frame down the rows; a demux
+configuration selects the one channel a single interface reads, either by a label column or by row
+parity. These are validation-only value objects: a caller passes a plain ``dict`` and the interface
+coerces it.
 """
 
 from typing import Annotated, Literal
@@ -52,5 +53,6 @@ class StrideDemux(BaseModel):
         return self
 
 
-# One interface reads one channel; the demux config says which, by a label column or by row parity.
-DemuxConfig = Annotated[ColumnDemux | StrideDemux, Field(discriminator="by")]
+# One interface reads one channel; the demux configuration says which, by a label column or by row
+# parity.
+DemuxConfiguration = Annotated[ColumnDemux | StrideDemux, Field(discriminator="by")]
