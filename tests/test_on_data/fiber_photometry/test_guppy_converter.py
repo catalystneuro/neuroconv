@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
 
-import numpy as np
 import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv.converters import TDTFiberPhotometryGuppyConverter
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
+from neuroconv.utils import dict_deep_update
 
 from ..setup_paths import OPHYS_DATA_PATH
 
@@ -32,6 +32,119 @@ EXPECTED_RESPONSE_SERIES_NAMES = {"dms_signal", "dms_control", "dls_signal", "dl
 EXPECTED_EVENT_TO_COUNT = {"port_entries": 49, "unrewarded_nose_pokes": 1457, "rewarded_nose_pokes": 50}
 MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 
+# The FiberPhotometry provenance chain is the user's to supply (see
+# docs/developer_guide/fiber_photometry_metadata_structure.rst) -- no interface fabricates it. Row
+# order here fixes the acquisition table layout the converter links the GuPPy recording sites to:
+# dms signal/control first, then dls, i.e. rows 0-3.
+DEVICE_METADATA = {
+    "DeviceModels": {
+        "optical_fiber_model": {
+            "type": "OpticalFiberModel",
+            "name": "optical_fiber_model",
+            "manufacturer": "Doric Lenses",
+            "numerical_aperture": 0.48,
+        },
+        "excitation_source_model": {
+            "type": "ExcitationSourceModel",
+            "name": "excitation_source_model",
+            "manufacturer": "Doric Lenses",
+            "source_type": "LED",
+            "excitation_mode": "one-photon",
+        },
+        "photodetector_model": {
+            "type": "PhotodetectorModel",
+            "name": "photodetector_model",
+            "manufacturer": "Doric Lenses",
+            "detector_type": "photodiode",
+        },
+    },
+    "Devices": {
+        "optical_fiber_dms": {
+            "type": "OpticalFiber",
+            "name": "optical_fiber_dms",
+            "device_model_metadata_key": "optical_fiber_model",
+            "fiber_insertion": {"depth_in_mm": 2.8, "insertion_position_ap_in_mm": 0.8},
+        },
+        "optical_fiber_dls": {
+            "type": "OpticalFiber",
+            "name": "optical_fiber_dls",
+            "device_model_metadata_key": "optical_fiber_model",
+            "fiber_insertion": {"depth_in_mm": 3.5, "insertion_position_ap_in_mm": 0.1},
+        },
+        "excitation_source_465": {
+            "type": "ExcitationSource",
+            "name": "excitation_source_465",
+            "device_model_metadata_key": "excitation_source_model",
+        },
+        "excitation_source_405": {
+            "type": "ExcitationSource",
+            "name": "excitation_source_405",
+            "device_model_metadata_key": "excitation_source_model",
+        },
+        "photodetector": {
+            "type": "Photodetector",
+            "name": "photodetector",
+            "device_model_metadata_key": "photodetector_model",
+        },
+    },
+}
+FIBER_PHOTOMETRY_METADATA = {
+    "FiberPhotometryIndicators": {
+        "gcamp": {"name": "gcamp", "label": "GCaMP7b", "description": "GCaMP7b calcium indicator."},
+    },
+    "FiberPhotometryTable": {
+        "name": "fiber_photometry_table",
+        "description": "Dual-site (DMS/DLS) dual-wavelength fiber photometry setup.",
+        "rows": {
+            "dms_signal": {
+                "location": "DMS",
+                "excitation_wavelength_in_nm": 465.0,
+                "emission_wavelength_in_nm": 525.0,
+                "indicator_metadata_key": "gcamp",
+                "optical_fiber_metadata_key": "optical_fiber_dms",
+                "excitation_source_metadata_key": "excitation_source_465",
+                "photodetector_metadata_key": "photodetector",
+            },
+            "dms_control": {
+                "location": "DMS",
+                "excitation_wavelength_in_nm": 405.0,
+                "emission_wavelength_in_nm": 525.0,
+                "indicator_metadata_key": "gcamp",
+                "optical_fiber_metadata_key": "optical_fiber_dms",
+                "excitation_source_metadata_key": "excitation_source_405",
+                "photodetector_metadata_key": "photodetector",
+            },
+            "dls_signal": {
+                "location": "DLS",
+                "excitation_wavelength_in_nm": 465.0,
+                "emission_wavelength_in_nm": 525.0,
+                "indicator_metadata_key": "gcamp",
+                "optical_fiber_metadata_key": "optical_fiber_dls",
+                "excitation_source_metadata_key": "excitation_source_465",
+                "photodetector_metadata_key": "photodetector",
+            },
+            "dls_control": {
+                "location": "DLS",
+                "excitation_wavelength_in_nm": 405.0,
+                "emission_wavelength_in_nm": 525.0,
+                "indicator_metadata_key": "gcamp",
+                "optical_fiber_metadata_key": "optical_fiber_dls",
+                "excitation_source_metadata_key": "excitation_source_405",
+                "photodetector_metadata_key": "photodetector",
+            },
+        },
+    },
+}
+# Each acquisition series points at its own row; the converter reads these regions to work out which
+# rows belong to which GuPPy recording site.
+SERIES_METADATA = {
+    metadata_key: {
+        "fiber_photometry_table_region": [metadata_key],
+        "fiber_photometry_table_region_description": f"The {metadata_key} acquisition fiber.",
+    }
+    for metadata_key in ("dms_signal", "dms_control", "dls_signal", "dls_control")
+}
+
 
 class TestTDTFiberPhotometryGuppyConverter:
     @pytest.fixture
@@ -45,6 +158,15 @@ class TestTDTFiberPhotometryGuppyConverter:
             guppy_folder_path=guppy_output_folder,
         )
 
+    @pytest.fixture
+    def metadata(self, converter):
+        """The converter's metadata with the user-supplied FiberPhotometry provenance chain merged in."""
+        metadata = converter.get_metadata()
+        metadata = dict_deep_update(metadata, DEVICE_METADATA)
+        metadata["FiberPhotometry"] = dict_deep_update(metadata["FiberPhotometry"], FIBER_PHOTOMETRY_METADATA)
+        metadata["FiberPhotometry"] = dict_deep_update(metadata["FiberPhotometry"], SERIES_METADATA)
+        return metadata
+
     def test_construction_creates_all_interfaces(self, converter):
         assert set(converter.data_interface_objects) == EXPECTED_TDT_INTERFACE_NAMES | {"TDTEvents", "Guppy"}
 
@@ -55,9 +177,10 @@ class TestTDTFiberPhotometryGuppyConverter:
     def test_metadata_preserves_guppy_schema(self, converter):
         metadata = converter.get_metadata()
         assert "Guppy" in metadata["FiberPhotometry"]
-        guppy_metadata = metadata["FiberPhotometry"]["Guppy"]
-        # Renamed away from the GuppyInterface default of "fiber_photometry" to avoid
-        # colliding with the TDT FiberPhotometry lab_meta_data object of the same name.
+        guppy_metadata_key = converter.data_interface_objects["Guppy"].metadata_key
+        guppy_metadata = metadata["FiberPhotometry"]["Guppy"][guppy_metadata_key]
+        # Renamed away from the interface default of "fiber_photometry" to avoid colliding with the
+        # TDT FiberPhotometry lab_meta_data object of the same name.
         assert guppy_metadata["ProcessingModule"]["name"] == "guppy"
         # Traces is a dict keyed by the derived object name.
         trace_names = set(guppy_metadata["Traces"].keys())
@@ -65,11 +188,12 @@ class TestTDTFiberPhotometryGuppyConverter:
 
     def test_metadata_schema_includes_both_subinterfaces(self, converter):
         schema = converter.get_metadata_schema()
-        assert "Guppy" in schema["properties"]["FiberPhotometry"]["properties"]
+        guppy_metadata_key = converter.data_interface_objects["Guppy"].metadata_key
+        assert guppy_metadata_key in schema["properties"]["FiberPhotometry"]["properties"]["Guppy"]["properties"]
 
-    def test_run_conversion_writes_acquisition_and_processing(self, converter, tmp_path):
+    def test_run_conversion_writes_acquisition_and_processing(self, converter, metadata, tmp_path):
         nwbfile_path = tmp_path / "tdt_guppy_converter.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), overwrite=True, stub_test=True)
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True, stub_test=True)
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
@@ -136,9 +260,9 @@ class TestTDTFiberPhotometryGuppyConverter:
             "PrtR": "port_entries",
         }
 
-    def test_run_conversion_merges_events_and_links_registry(self, converter, tmp_path):
+    def test_run_conversion_merges_events_and_links_registry(self, converter, metadata, tmp_path):
         nwbfile_path = tmp_path / "tdt_guppy_events.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), overwrite=True, stub_test=True)
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True, stub_test=True)
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
@@ -157,19 +281,24 @@ class TestTDTFiberPhotometryGuppyConverter:
                 assert set(referenced["event_type"]) == {event_name}
                 assert len(referenced) == EXPECTED_EVENT_TO_COUNT[event_name]
 
-    def test_derive_recording_site_to_table_rows(self, converter):
-        """Each recording site owns the table-row indices of its signal + control acquisition series."""
-        recording_site_to_rows = converter._derive_recording_site_to_table_rows(converter.get_metadata())
+    def test_derive_recording_site_to_table_rows(self, converter, metadata):
+        """Each recording site owns the table-row indices its series declared as their regions."""
+        recording_site_to_rows = converter._derive_recording_site_to_table_rows(metadata)
         assert recording_site_to_rows == {"dms": [0, 1], "dls": [2, 3]}
 
-    def test_missing_table_row_raises(self, converter):
-        """A recording site whose acquisition row is missing from the table fails loudly."""
-        metadata = converter.get_metadata()
+    def test_missing_table_row_raises(self, converter, metadata):
+        """A series referencing a row key the table does not define fails loudly."""
         del metadata["FiberPhotometry"]["FiberPhotometryTable"]["rows"]["dms_signal"]
         with pytest.raises(AssertionError, match="not present"):
             converter._derive_recording_site_to_table_rows(metadata)
 
-    def test_guppy_timestamps_in_nwb_are_native(self, converter, tmp_path):
+    def test_missing_table_region_raises(self, converter, metadata):
+        """A series that declares no table region fails loudly rather than linking nothing."""
+        del metadata["FiberPhotometry"]["dms_signal"]["fiber_photometry_table_region"]
+        with pytest.raises(AssertionError, match="declares no 'fiber_photometry_table_region'"):
+            converter._derive_recording_site_to_table_rows(metadata)
+
+    def test_guppy_timestamps_in_nwb_are_native(self, converter, metadata, tmp_path):
         """GuPPy traces keep their native timestamps -- no cross-system offset is applied.
 
         GuPPy and TDT share the recording-start origin, so GuPPy's emitted timestamps already sit
@@ -177,19 +306,16 @@ class TestTDTFiberPhotometryGuppyConverter:
         shoved to the TDT stream start (0.0).
         """
         nwbfile_path = tmp_path / "tdt_guppy_alignment.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), overwrite=True, stub_test=True)
-
-        guppy_interface = converter.data_interface_objects["Guppy"]
-        native_recording_site_to_timestamps = guppy_interface.get_original_timestamps()
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True, stub_test=True)
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
             processing_module = nwbfile.processing["guppy"]
             for recording_site in EXPECTED_RECORDING_SITES:
-                native_timestamps = native_recording_site_to_timestamps[recording_site]
                 dff_series = processing_module.data_interfaces[f"dff_{recording_site}"]
-                assert dff_series.timestamps is not None, f"Expected timestamps on dff_{recording_site}."
-                written = np.asarray(dff_series.timestamps[:])
-                np.testing.assert_allclose(written, native_timestamps[: written.shape[0]], atol=1e-9)
-                # ~1s lights-on delay preserved, not shifted to the TDT stream start of 0.0.
-                assert written[0] > 0.5
+                # The mock GuPPy timebase is regular (1.0 + arange(n) / 200 Hz), so it is written as
+                # starting_time + rate. The 1 s lights-on delay is preserved rather than being shifted
+                # to the TDT stream start of 0.0.
+                assert dff_series.timestamps is None
+                assert float(dff_series.starting_time) == pytest.approx(1.0)
+                assert float(dff_series.rate) == pytest.approx(200.0)

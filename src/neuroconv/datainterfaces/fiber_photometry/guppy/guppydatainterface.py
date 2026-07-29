@@ -57,8 +57,8 @@ class _GuppyInterface(BaseDataInterface):
     ``fiber_photometry_table_region`` into the acquisition ``FiberPhotometryTable``, and the events'
     ``events`` DynamicTableRegion into the merged ``EventsTable`` (see ``TDTFiberPhotometryGuppyConverter``).
     Run standalone, the file is valid without those two links. The converter reaches the parsed identifiers
-    it needs to build the links through the :attr:`recording_sites`, :attr:`event_names`, and
-    :attr:`recording_site_to_store_ids` read-only views.
+    it needs to build the links through the :attr:`recording_sites`, :attr:`event_names`,
+    :attr:`recording_site_to_store_ids`, and :attr:`event_store_to_event_name` read-only views.
 
     All products are placed in a ``ProcessingModule`` (default name ``fiber_photometry``).
     """
@@ -195,6 +195,16 @@ class _GuppyInterface(BaseDataInterface):
     def recording_site_to_store_ids(self) -> dict[str, dict[str, str]]:
         """``{recording_site: {"signal": <store_id>, "control": <store_id>}}`` from storesList.csv."""
         return {recording_site: dict(stores) for recording_site, stores in self._recording_site_to_store_ids.items()}
+
+    @property
+    def event_store_to_event_name(self) -> dict[str, str]:
+        """``{store_id: event_name}`` for the behavioral event stores listed in storesList.csv.
+
+        A converter that also writes the raw acquisition's events needs this to keep exactly the
+        stores GuPPy processed and give each the human-readable name recorded there (e.g. the
+        ``PrtR`` store becomes the ``port_entries`` event type).
+        """
+        return dict(self._event_store_to_event_name)
 
     @staticmethod
     def _discover_recording_sites(stores_list_path: Path) -> list[str]:

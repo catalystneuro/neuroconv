@@ -262,9 +262,6 @@ interfaces_by_category = dict(
         "CSVFiberPhotometry": CSVFiberPhotometryInterface,
         "MultiFileCSVFiberPhotometry": MultiFileCSVFiberPhotometryInterface,
     },
-    processed_fiber_photometry={
-        "Guppy": GuppyInterface,
-    },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
