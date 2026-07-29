@@ -65,7 +65,6 @@ several series sharing one ``FiberPhotometryTable``.
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from pathlib import Path
     >>> from zoneinfo import ZoneInfo
 
     >>> from neuroconv.datainterfaces import DoricFiberPhotometryInterface
