@@ -300,8 +300,8 @@ class Test_GuppyInterface:
     def test_registries(self, interface, case, nwbfile):
         module = self._add(interface, nwbfile, stub_test=True)
 
-        # The registries are slim: names only. Their outward links (fiber rows, events rows) are left
-        # unpopulated by the interface -- a converter fills them in later.
+        # Standalone, the interface builds the minimal registries: names only. The outward links (fiber
+        # rows, events rows) require a converter that owns those tables and authors the registries itself.
         recording_sites_table = module["recording_sites"]
         assert recording_sites_table.neurodata_type == "GuppyRecordingSitesTable"
         assert list(recording_sites_table["recording_site"].data) == case["expected_recording_sites"]

@@ -214,7 +214,7 @@ class TestTDTFiberPhotometryGuppyConverter:
             assert list(recording_sites_table["recording_site"].data) == list(EXPECTED_RECORDING_SITES)
             assert processing_module["events"].neurodata_type == "GuppyEventsTable"
 
-            # The converter enriched the (slim) recording-sites registry with the acquisition fiber link:
+            # The converter authored the recording-sites registry with the acquisition fiber link:
             # each site's signal + control rows, in site order -> flat [0, 1, 2, 3].
             flat_fiber_indices = list(recording_sites_table["fiber_photometry_table_region"].target.data[:])
             assert flat_fiber_indices == [0, 1, 2, 3]
