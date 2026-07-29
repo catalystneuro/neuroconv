@@ -1,4 +1,5 @@
 import importlib.util
+import warnings
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -91,6 +92,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         icephys_experiment_type: str = "voltage_clamp",
         skip_electrodes: tuple[int] = (),
     ):
@@ -108,6 +110,33 @@ class BaseIcephysInterface(BaseExtractorInterface):
         skip_electrodes : tuple, optional
             Electrode IDs to skip. Defaults to ().
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "icephys_experiment_type",
+                "skip_electrodes",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to BaseIcephysInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            icephys_experiment_type = positional_values.get("icephys_experiment_type", icephys_experiment_type)
+            skip_electrodes = positional_values.get("skip_electrodes", skip_electrodes)
+
         from ...tools.neo import add_neo_to_nwb
 
         if nwbfile is None:

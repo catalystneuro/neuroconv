@@ -57,14 +57,22 @@ def test_configuration_on_time_series(iterator: callable, backend: Literal["hdf5
 def test_configuration_on_electrical_series_with_non_wrapped_data(backend: Literal["hdf5", "zarr"]):
     # Test that ElectricalSeries is chunked appropriately even if data is passed as an array
     # See https://github.com/catalystneuro/neuroconv/issues/1099
-    from pynwb.testing.mock.ecephys import mock_ElectricalSeries
+    from pynwb.testing.mock.ecephys import (
+        mock_ElectricalSeries,
+        mock_electrodes,
+        mock_ElectrodesTable,
+    )
     from pynwb.testing.mock.file import mock_NWBFile
 
     data = np.ones((10_000, 128))
 
     nwbfile = mock_NWBFile()
 
-    es = mock_ElectricalSeries(data=data, name="ElectricalSeries")
+    # mock_electrodes sizes the region to n_electrodes but hardcodes a 5-row table, so the default
+    # electrodes built for 128 channels point out of bounds and hdmf>=4 rejects them at construction.
+    # Pass an explicitly sized table until the pynwb mock is fixed upstream.
+    electrodes = mock_electrodes(n_electrodes=128, table=mock_ElectrodesTable(n_rows=128))
+    es = mock_ElectricalSeries(data=data, name="ElectricalSeries", electrodes=electrodes)
     nwbfile.add_acquisition(es)
     dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
 
@@ -79,7 +87,7 @@ def test_configuration_on_electrical_series_with_non_wrapped_data(backend: Liter
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configuration_on_external_image_series(backend: Literal["hdf5", "zarr"]):
     nwbfile = mock_NWBFile()
-    image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0, format="external")
+    image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0, format="external", num_samples=1)
     nwbfile.add_acquisition(image_series)
 
     dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))

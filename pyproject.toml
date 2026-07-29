@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.9.2"
+version = "0.9.4"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -41,7 +41,7 @@ dependencies = [
     "h5py>=3.9.0",
     "hdmf>=4.1.1",
     "hdmf_zarr>=0.11",
-    "pynwb>=3.0.0",
+    "pynwb>=4.0.0",
     "pydantic>=2.0",
     "typing_extensions>=4.1.0",
     "psutil>=5.8.0",
@@ -89,7 +89,7 @@ text = [
 
 ## Behavior
 audio = [
-    "ndx-sound>=0.2.2",
+    "ndx-sound>=0.2.3",  # 0.2.3 fixes the starting_time dtype so the spec resolves under hdmf>=6
     "scipy", # for scipy.io.wavfile
 ]
 sleap = [
@@ -114,7 +114,11 @@ lightningpose = [
     "neuroconv[video]",
 ]
 medpc = [
-    "ndx-events==0.2.1",
+    "ndx-events==0.2.2",
+]
+vame = [
+    "ndx-vame>=0.3.2",
+    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
 ]
 behavior = [
     "neuroconv[sleap]",
@@ -124,14 +128,34 @@ behavior = [
     "neuroconv[video]",
     "neuroconv[lightningpose]",
     "neuroconv[medpc]",
+    "neuroconv[vame]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
+]
+
+## Events
+csv_events = [
+    # CSV events now write native pynwb 4.0 EventsTable objects and need only core pandas + pynwb>=4.0;
+    # kept as a stable install alias so `neuroconv[csv_events]` and `neuroconv[events]` remain valid.
+]
+npm_events = [
+    # NPM events are a headerless CSV written as native pynwb 4.0 EventsTable objects (via CSVEventsInterface),
+    # so they need only core pandas + pynwb>=4.0; kept as a stable install alias so `neuroconv[npm_events]`
+    # and `neuroconv[events]` remain valid.
+]
+tdt_events = [
+    "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
+]
+events = [
+    "neuroconv[csv_events]",
+    "neuroconv[npm_events]",
+    "neuroconv[tdt_events]",
 ]
 
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.103.0",
-    "neo>=0.14.3",
+    "spikeinterface>=0.104.7",
+    "neo>=0.14.5",
 ]
 alphaomega = [
     "neuroconv[ecephys_minimal]",
@@ -167,6 +191,9 @@ maxwell = [
     "neuroconv[ecephys_minimal]",
 ]
 mcsraw = [
+    "neuroconv[ecephys_minimal]",
+]
+mda = [
     "neuroconv[ecephys_minimal]",
 ]
 mearec = [
@@ -208,12 +235,15 @@ spikegadgets = [
 spikeglx = [
     "neuroconv[ecephys_minimal]",
     "probeinterface>=0.3.1",  # For ADC multiplexing properties (adc_group, adc_sample_order)
-    "ndx-events==0.2.1",  # For adding events from the nidq recording
+    "ndx-events==0.2.2",  # For adding events from the nidq recording
 ]
 tdt = [
     "neuroconv[ecephys_minimal]",
 ]
 whitematter = [
+    "neuroconv[ecephys_minimal]",
+]
+xclust = [
     "neuroconv[ecephys_minimal]",
 ]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
@@ -228,6 +258,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[kilosort]",
     "neuroconv[maxwell]",
     "neuroconv[mcsraw]",
+    "neuroconv[mda]",
     "neuroconv[mearec]",
     "neuroconv[neuralynx]",
     "neuroconv[neuroscope]",
@@ -240,6 +271,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[spikeglx]",
     "neuroconv[tdt]",
     "neuroconv[whitematter]",
+    "neuroconv[xclust]",
 ]
 
 ## Icephys
@@ -264,7 +296,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>0.7.2",
+    "roiextractors>=0.8.0",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
@@ -337,9 +369,21 @@ suite2p = [
     "natsort",
     "neuroconv[ophys_minimal]",
 ]
+doric_fp = [
+    "neuroconv[fiber_photometry]",
+    "h5py>=3",
+]
 tdt_fp = [
     "neuroconv[fiber_photometry]",
     "tdt",
+]
+csv_fp = [
+    "neuroconv[fiber_photometry]",
+]
+guppy = [
+    "neuroconv[fiber_photometry]",
+    "ndx-guppy",
+    "tables",
 ]
 thor = [
     "neuroconv[ophys_minimal]",
@@ -351,10 +395,12 @@ tiff = [
 ]
 ophys = [
     "neuroconv[brukertiff]",
+    "neuroconv[doric_fp]",
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
     "neuroconv[femtonics]",
+    "neuroconv[guppy]",
     "neuroconv[inscopix]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
@@ -364,6 +410,7 @@ ophys = [
     "neuroconv[sima]",
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
+    "neuroconv[csv_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
@@ -375,6 +422,7 @@ full = [
     "neuroconv[dandi]",
     "neuroconv[behavior]",
     "neuroconv[ecephys]",
+    "neuroconv[events]",
     "neuroconv[icephys]",
     "neuroconv[image]",
     "neuroconv[ophys]",
@@ -386,14 +434,18 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst' --ignore=docs/conversion_examples_gallery/fiberphotometry/tdt_fp.rst" # TODO: remove skip when https://github.com/catalystneuro/neuroconv/issues/1429 is fixed
+addopts = "-ra --doctest-glob='*.rst'"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
     "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
     "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
     "error:Importing classes at __init__ has been deprecated in favor of only importing function-size wrappers and will be removed in 0.105.0.*:UserWarning:spikeinterface.extractors",  # TODO: remove when spikeinterface>=0.105.0
+    "error::EncodingWarning:neuroconv",  # Require explicit encoding= in all open() calls per PEP 597
 ]
+
+[tool.pytest_env]
+PYTHONWARNDEFAULTENCODING = "1"  # Emit EncodingWarning when open() lacks explicit encoding (PEP 597)
 
 [tool.black]
 line-length = 120
@@ -445,12 +497,13 @@ known-first-party = ["neuroconv"]
 [tool.codespell]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
-ignore-words-list = 'assertin,sortings,Tye'
+ignore-words-list = 'assertin,sortings,Tye,trough'
 
 [dependency-groups]
 test = [
     "pytest",
     "pytest-cov",
+    "pytest-env",  # Set environment variables in pyproject.toml for pytest
     "parameterized>=0.8.1",
     "pytest-xdist"  # Runs tests on parallel
 ]
@@ -466,7 +519,7 @@ docs = [
     "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.102.2",  # Needed for the API documentation
+    "spikeinterface>=0.104.7",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
 ]
 

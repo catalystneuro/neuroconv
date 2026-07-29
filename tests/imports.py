@@ -90,8 +90,10 @@ class TestImportStructure(TestCase):
             "ecephys",
             "icephys",
             "ophys",
+            "fiber_photometry",
             "text",
             "image",
+            "events",
             # Exposed attributes
             "interface_list",
             "interfaces_by_category",

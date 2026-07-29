@@ -103,6 +103,9 @@ def convert_df_to_time_intervals(
         if col not in ("start_time", "stop_time"):
             time_intervals.add_column(col, column_descriptions.get(col, col))
     for i, row in df.iterrows():
-        time_intervals.add_row(row.to_dict())
+        # Convert to native Python types for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        row_dict = {k: (v.item() if hasattr(v, "item") else v) for k, v in row.items()}
+        time_intervals.add_row(row_dict)
 
     return time_intervals

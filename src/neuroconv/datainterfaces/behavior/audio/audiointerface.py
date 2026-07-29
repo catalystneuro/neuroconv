@@ -1,5 +1,6 @@
 import json
 import struct
+import warnings
 from pathlib import Path
 from typing import Literal
 
@@ -30,7 +31,9 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     info = "Interface for writing audio recordings to an NWB file."
 
     @validate_call
-    def __init__(self, file_paths: list[FilePath], verbose: bool = False):
+    def __init__(
+        self, file_paths: list[FilePath], *args, verbose: bool = False
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Data interface for writing acoustic recordings to an NWB file.
 
@@ -47,6 +50,31 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         verbose : bool, default: False
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_paths
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to AudioInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+
         # This import is to assure that ndx_sound is in the global namespace when an pynwb.io object is created.
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_sound  # noqa: F401
@@ -168,10 +196,12 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         stub_frames: int = 1000,
-        write_as: Literal["stimulus", "acquisition"] = "stimulus",
+        parent_container: Literal["stimulus", "acquisition"] = "stimulus",
         iterator_options: dict | None = None,
+        write_as: Literal["stimulus", "acquisition"] | None = None,
     ):
         """
         Parameters
@@ -181,16 +211,57 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         metadata : dict, optional
         stub_test : bool, default: False
         stub_frames : int, default: 1000
-        write_as : {'stimulus', 'acquisition'}
+        parent_container : {'stimulus', 'acquisition'}
             The acoustic waveform series can be added to the NWB file either as
             "stimulus" or as "acquisition".
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
+        write_as : {'stimulus', 'acquisition'}, optional
+            Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
 
         Returns
         -------
         NWBFile
         """
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of AudioInterface.add_to_nwbfile() is deprecated and will be removed "
+                "on or after December 2026. Use 'parent_container' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = write_as
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "stub_frames",
+                "parent_container",
+                "iterator_options",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to AudioInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            stub_frames = positional_values.get("stub_frames", stub_frames)
+            parent_container = positional_values.get("parent_container", parent_container)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+
         import scipy
 
         metadata = metadata or self.get_metadata()
@@ -232,7 +303,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 nwbfile=nwbfile,
                 rate=sampling_rate,
                 metadata=acoustic_waveform_series_metadata,
-                write_as=write_as,
+                parent_container=parent_container,
                 starting_time=starting_times[file_index],
                 iterator_options=iterator_options,
             )

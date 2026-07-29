@@ -195,4 +195,7 @@ def test_volumetric_default_chunking():
     volumetric_imaging_extractor = VolumetricImagingExtractor(imaging_extractors=imaging_extractors)
     iterator = ImagingExtractorDataChunkIterator(imaging_extractor=volumetric_imaging_extractor)
 
-    assert iterator.chunk_shape == (4, width, height, 1)
+    dtype = volumetric_imaging_extractor.get_dtype()
+    frame_size_bytes = width * height * dtype.itemsize
+    expected_num_samples = int(10e6 / frame_size_bytes)
+    assert iterator.chunk_shape == (expected_num_samples, width, height, 1)

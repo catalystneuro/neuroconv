@@ -31,7 +31,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
     @validate_call
     def __init__(
         self,
-        *args: Any,
+        *args: Any,  # TODO: change to * (keyword only) on or after August 2026
         folder_path: DirectoryPath,
         gain: float,
         stream_id: str = "0",  # Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.

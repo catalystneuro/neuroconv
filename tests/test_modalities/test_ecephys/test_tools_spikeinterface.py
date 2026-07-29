@@ -1,5 +1,6 @@
 import re
 import unittest
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
@@ -23,15 +24,17 @@ from spikeinterface.extractors import NumpyRecording
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
     _add_electrode_groups_to_nwbfile,
+    _add_electrodes_to_nwbfile,
     _check_if_recording_traces_fit_into_memory,
     _stub_recording,
-    add_electrodes_to_nwbfile,
     add_recording_as_spatial_series_to_nwbfile,
     add_recording_as_time_series_to_nwbfile,
     add_recording_to_nwbfile,
+    add_sorting_analyzer_to_nwbfile,
     add_sorting_to_nwbfile,
-    write_recording_to_nwbfile,
-    write_sorting_analyzer_to_nwbfile,
+)
+from neuroconv.tools.spikeinterface.spikeinterface import (
+    _get_ecephys_metadata_placeholders,
 )
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
@@ -69,9 +72,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_as_lfp(self):
-        write_as = "lfp"
+        parent_container = "processing/LFP"
         add_recording_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            parent_container=parent_container,
         )
 
         processing_module = self.nwbfile.processing
@@ -90,9 +96,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_as_processing(self):
-        write_as = "processed"
+        parent_container = "processing/FilteredEphys"
         add_recording_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            parent_container=parent_container,
         )
 
         processing_module = self.nwbfile.processing
@@ -183,14 +192,17 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         self.test_recording_extractor.set_channel_groups(original_groups)
 
-    def test_invalid_write_as_argument_assertion(self):
-        write_as = "any_other_string_that_is_not_raw_lfp_or_processed"
+    def test_invalid_parent_container_argument(self):
+        parent_container = "not_a_valid_container"
 
-        reg_expression = f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
+        reg_expression = "should be one of 'acquisition', 'processing/LFP', or 'processing/FilteredEphys'"
 
-        with self.assertRaisesRegex(AssertionError, reg_expression):
+        with self.assertRaisesRegex(ValueError, reg_expression):
             add_recording_to_nwbfile(
-                recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+                recording=self.test_recording_extractor,
+                nwbfile=self.nwbfile,
+                iterator_type=None,
+                parent_container=parent_container,
             )
 
 
@@ -425,17 +437,17 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_iterator_opts_propagation(self):
-        iterator_opts = dict(chunk_shape=(10, 3))
+    def test_iterator_options_propagation(self):
+        iterator_options = dict(chunk_shape=(10, 3))
         add_recording_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_opts=iterator_opts
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_options=iterator_options
         )
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
         electrical_series_data_iterator = electrical_series.data
 
-        assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
+        assert electrical_series_data_iterator.chunk_shape == iterator_options["chunk_shape"]
 
     def test_non_iterative_write(self):
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
@@ -506,22 +518,8 @@ class TestWriteRecording(unittest.TestCase):
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
 
-    def test_default_values_single_segment(self):
-        """This test that the names are written appropriately for the single segment case (numbers not added)"""
-        write_recording_to_nwbfile(
-            recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        assert "ElectricalSeriesRaw" in acquisition_module
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-
-        extracted_data = electrical_series.data[:]
-        expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
-        np.testing.assert_array_almost_equal(expected_data, extracted_data)
-
     def test_write_multiple_segments(self):
-        write_recording_to_nwbfile(
+        add_recording_to_nwbfile(
             recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None
         )
 
@@ -546,7 +544,7 @@ class TestWriteRecording(unittest.TestCase):
         bool_property = np.array([False] * len(self.single_segment_recording_extractor.channel_ids))
         bool_property[::2] = True
         self.single_segment_recording_extractor.set_property("test_bool", bool_property)
-        add_electrodes_to_nwbfile(
+        _add_electrodes_to_nwbfile(
             recording=self.single_segment_recording_extractor,
             nwbfile=self.nwbfile,
         )
@@ -582,7 +580,7 @@ class TestAddElectrodes(TestCase):
         )
 
     def test_default_electrode_column_names(self):
-        add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
 
         expected_electrode_column_names = ["location", "group", "group_name", "channel_name"]
         actual_electrode_column_names = list(self.nwbfile.electrodes.colnames)
@@ -596,7 +594,7 @@ class TestAddElectrodes(TestCase):
         self.base_recording.set_property(key="offset_to_physical_unit", values=[0.0] * num_channels)
         self.base_recording.set_property(key="physical_unit", values=["uV"] * num_channels)
 
-        add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
 
         # Verify that these properties are NOT in the electrodes table
         actual_electrode_column_names = list(self.nwbfile.electrodes.colnames)
@@ -613,8 +611,8 @@ class TestAddElectrodes(TestCase):
         channel_ids_with_offset = [int(channel_id) + 2 for channel_id in channel_ids]
         recorder_with_offset_channels = self.base_recording.rename_channels(new_channel_ids=channel_ids_with_offset)
 
-        add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
-        add_electrodes_to_nwbfile(recording=recorder_with_offset_channels, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=recorder_with_offset_channels, nwbfile=self.nwbfile)
 
         expected_channel_names_in_electrodes_table = ["0", "1", "2", "3", "4", "5"]
         actual_channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
@@ -622,29 +620,29 @@ class TestAddElectrodes(TestCase):
 
     def test_string_channel_names(self):
         """Ensure channel names merge correctly after appending when channel names are strings."""
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
-        add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
 
         expected_channel_names_in_electrodes_table = ["a", "b", "c", "d", "e", "f"]
         actual_channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
         self.assertListEqual(actual_channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
 
     def test_non_overwriting_channel_names_property(self):
-        "add_electrodes_to_nwbfile function should not overwrite the recording object channel name property"
+        "_add_electrodes_to_nwbfile function should not overwrite the recording object channel name property"
         channel_names = ["name a", "name b", "name c", "name d"]
         self.recording_1.set_property(key="channel_name", values=channel_names)
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
         expected_channel_names_in_electrodes_table = channel_names
         channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
         self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
 
     def test_channel_group_names_table(self):
-        "add_electrodes_to_nwbfile function should add new rows if same channel names, but different group_names"
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        "_add_electrodes_to_nwbfile function should add new rows if same channel names, but different group_names"
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
         original_groups = self.recording_1.get_channel_groups()
         self.recording_1.set_channel_groups(["1"] * len(self.recording_1.channel_ids))
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
         # reset channel_groups
         self.recording_1.set_channel_groups(original_groups)
         assert len(self.nwbfile.electrodes) == 2 * len(self.recording_1.channel_ids)
@@ -661,8 +659,8 @@ class TestAddElectrodes(TestCase):
         self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
         self.recording_2.set_property(key="common_property", values=["value_2"] * self.num_channels)
 
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
-        add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
 
         actual_properties_in_electrodes_table = list(self.nwbfile.electrodes["common_property"].data)
         expected_properties_in_electrodes_table = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
@@ -677,26 +675,26 @@ class TestAddElectrodes(TestCase):
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=0, channel_name="0")
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=1, channel_name="1")
         # The self.base_recording channel_ids are [0, 1, 2, 3], so only '3' and '4' should be added
-        add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.base_recording, nwbfile=self.nwbfile)
         self.assertEqual(len(self.nwbfile.electrodes), len(self.base_recording.channel_ids))
 
     def test_new_property_addition(self):
         """Add a property only available in a second recording."""
         self.recording_2.set_property(key="added_property", values=["added_value"] * self.num_channels)
 
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
-        add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
 
         actual_properties_in_electrodes_table = list(self.nwbfile.electrodes["added_property"].data)
         expected_properties_in_electrodes_table = ["", "", "added_value", "added_value", "added_value", "added_value"]
         self.assertListEqual(actual_properties_in_electrodes_table, expected_properties_in_electrodes_table)
 
     def test_manual_row_adition_before_add_electrodes_function_to_nwbfile(self):
-        """Add some rows to the electrode tables before using the add_electrodes_to_nwbfile function"""
+        """Add some rows to the electrode tables before using the _add_electrodes_to_nwbfile function"""
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=123)
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=124)
 
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
         expected_ids = [123, 124, 2, 3, 4, 5]
         expected_names = ["123", "124", "a", "b", "c", "d"]
@@ -704,8 +702,8 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
 
     def test_manual_row_adition_after_add_electrodes_function_to_nwbfile(self):
-        """Add some rows to the electrode table after using the add_electrodes_to_nwbfile function"""
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        """Add some rows to the electrode table after using the _add_electrodes_to_nwbfile function"""
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
         # Since we're not using a probe, rel_x and rel_y columns won't exist
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=123, channel_name="123")
@@ -718,12 +716,12 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
 
     def test_manual_row_adition_before_add_electrodes_function_optional_columns_to_nwbfile(self):
-        """Add some rows including optional columns to the electrode tables before using the add_electrodes_to_nwbfile function."""
+        """Add some rows including optional columns to the electrode tables before using the _add_electrodes_to_nwbfile function."""
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=123, x=0.0, y=1.0, z=2.0)
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=124, x=1.0, y=2.0, z=3.0)
 
         # recording_1 does not have x, y, z positions
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
         expected_ids = [123, 124, 2, 3, 4, 5]
         expected_x = [0, 1, np.nan, np.nan, np.nan, np.nan]
@@ -736,7 +734,7 @@ class TestAddElectrodes(TestCase):
 
     def test_no_new_electrodes_with_custom_property_without_default(self):
         """
-        Test that add_electrodes_to_nwbfile doesn't fail when:
+        Test that _add_electrodes_to_nwbfile doesn't fail when:
         - Electrode table has a custom property without a sensible default
         - All channels from the recording already exist in the table
         - No null values should be computed since no new rows are added
@@ -757,7 +755,7 @@ class TestAddElectrodes(TestCase):
 
         # This should not raise an error even though custom_int_property has no clear default
         # because no new rows need to be added
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
         # Verify no additional electrodes were added
         self.assertEqual(len(self.nwbfile.electrodes), len(self.recording_1.channel_ids))
@@ -777,7 +775,7 @@ class TestAddElectrodes(TestCase):
         property_values = ["value_a", "value_b", "x", "y"]
         self.recording_1.set_property(key="property", values=property_values)
 
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
         # Remaining ids are filled positionally.
         expected_ids = [20, 21, 22, 3, 4]
@@ -800,8 +798,8 @@ class TestAddElectrodes(TestCase):
 
         recording2.set_property(key="added_property", values=["value"] * 3)
 
-        add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
-        add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
 
         expected_property = ["", "", "", "value", "value", "value"]
         property = self.nwbfile.electrodes["added_property"].data
@@ -822,7 +820,7 @@ class TestAddElectrodes(TestCase):
         property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.recording_1.set_property(key="property", values=property_values)
 
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
         # Remaining ids are filled positionally.
         expected_ids = [20, 21, 22, 3, 4]
@@ -838,7 +836,7 @@ class TestAddElectrodes(TestCase):
 
         ragged_array_values1 = [[1, 2], [3, 4], [5, 6], [7, 8]]
         self.recording_1.set_property(key="ragged_property", values=ragged_array_values1)
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.electrodes.to_dataframe()["ragged_property"].to_list()
         np.testing.assert_array_equal(written_values, ragged_array_values1)
@@ -849,7 +847,7 @@ class TestAddElectrodes(TestCase):
         second_ragged_array_values = [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"], ["j", "k", "l"]]
         self.recording_2.set_property(key="ragged_property2", values=second_ragged_array_values)
 
-        add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.electrodes.to_dataframe()["ragged_property"].to_list()
         expected_values = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12]]
@@ -874,7 +872,7 @@ class TestAddElectrodes(TestCase):
         ]
         self.recording_1.set_property(key="double_ragged_property", values=doubled_nested_array1)
 
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
         written_values = self.nwbfile.electrodes.to_dataframe()["double_ragged_property"].to_list()
         np.testing.assert_array_equal(written_values, doubled_nested_array1)
 
@@ -887,7 +885,7 @@ class TestAddElectrodes(TestCase):
             [[21, 22], [23, 24]],
         ]
         self.recording_2.set_property(key="double_ragged_property", values=doubled_nested_array2)
-        add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.electrodes.to_dataframe()["double_ragged_property"].to_list()
 
@@ -912,7 +910,7 @@ class TestAddElectrodes(TestCase):
 
         # We add another property to recording 2 which is not in recording 1
         self.recording_2.set_property(key="double_ragged_property2", values=second_doubled_nested_array)
-        add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
 
         written_values = self.nwbfile.electrodes.to_dataframe()["double_ragged_property2"].to_list()
 
@@ -946,8 +944,8 @@ class TestAddElectrodes(TestCase):
             )
         )
 
-        add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile, metadata=metadata)
-        add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile, metadata=metadata)
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile, metadata=metadata)
+        _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile, metadata=metadata)
 
         actual_common_property_values = list(self.nwbfile.electrodes["common_property"].data)
         expected_common_property_values = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
@@ -966,7 +964,7 @@ class TestAddElectrodes(TestCase):
         recording1 = generate_recording(num_channels=2, durations=[1.0])
         recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
         recording1.set_property(key="complete_int_property", values=[1, 2])
-        add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
 
         expected_property = np.asarray([1, 2])
         extracted_property = self.nwbfile.electrodes["complete_int_property"].data
@@ -977,10 +975,10 @@ class TestAddElectrodes(TestCase):
 
         recording2.set_property(key="incomplete_int_property", values=[10, 11])
         with self.assertRaises(ValueError):
-            add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
+            _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
 
         null_values_for_properties = {"complete_int_property": -1, "incomplete_int_property": -3}
-        add_electrodes_to_nwbfile(
+        _add_electrodes_to_nwbfile(
             recording=recording2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties
         )
 
@@ -997,7 +995,7 @@ class TestAddElectrodes(TestCase):
         recording1 = generate_recording(num_channels=2)
         recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
         recording1.set_property(key="complete_bool_property", values=[True, False])
-        add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
 
         expected_property = np.asarray([True, False])
         extracted_property = self.nwbfile.electrodes["complete_bool_property"].data.astype(bool)
@@ -1008,10 +1006,10 @@ class TestAddElectrodes(TestCase):
 
         recording2.set_property(key="incomplete_bool_property", values=[True, False])
         with self.assertRaises(ValueError):
-            add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
+            _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
 
         null_values_for_properties = {"complete_bool_property": False, "incomplete_bool_property": False}
-        add_electrodes_to_nwbfile(
+        _add_electrodes_to_nwbfile(
             recording=recording2, nwbfile=self.nwbfile, null_values_for_properties=null_values_for_properties
         )
 
@@ -1040,7 +1038,7 @@ class TestAddElectrodes(TestCase):
         recording = recording.set_probe(probe, group_mode="by_probe")
 
         # Add electrodes to nwbfile
-        add_electrodes_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
 
         # Verify electrode_name column exists
         assert "electrode_name" in self.nwbfile.electrodes.colnames
@@ -1074,7 +1072,7 @@ class TestAddElectrodes(TestCase):
         recording1 = recording1.rename_channels(new_channel_ids=["ch0", "ch1", "ch2"])
         recording1 = recording1.set_probe(probe, group_mode="by_probe")
 
-        add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
 
         # Should have 3 rows
         assert len(self.nwbfile.electrodes) == 3
@@ -1087,7 +1085,7 @@ class TestAddElectrodes(TestCase):
 
         # Scenario 2: Add same recording again (same group, electrode, channel)
         # This should deduplicate - no new rows added
-        add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
 
         assert len(self.nwbfile.electrodes) == 3  # Still 3 rows (deduplicated)
 
@@ -1097,7 +1095,7 @@ class TestAddElectrodes(TestCase):
         recording2 = recording2.rename_channels(new_channel_ids=["AP0", "AP1", "AP2"])
         recording2 = recording2.set_probe(probe, group_mode="by_probe")
 
-        add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
 
         # Now should have 6 rows: 3 original + 3 new (different channel names)
         assert len(self.nwbfile.electrodes) == 6
@@ -1121,7 +1119,7 @@ class TestAddElectrodes(TestCase):
         # Manually set different group name to represent a second probe
         recording3.set_property(key="group_name", values=["ProbeB", "ProbeB"])
 
-        add_electrodes_to_nwbfile(recording=recording3, nwbfile=self.nwbfile)
+        _add_electrodes_to_nwbfile(recording=recording3, nwbfile=self.nwbfile)
 
         # Now should have 8 rows: 6 previous + 2 new (different group)
         assert len(self.nwbfile.electrodes) == 8
@@ -1158,8 +1156,8 @@ class TestAddTimeSeries:
         expected_data = recording.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_time_series_name(self):
-        """Test that time_series_name is used to look up metadata."""
+    def test_metadata_key(self):
+        """Test that metadata_key is used to look up metadata."""
         # Create a recording object for testing
         num_channels = 3
         sampling_frequency = 1.0
@@ -1185,7 +1183,7 @@ class TestAddTimeSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            time_series_name="CustomTimeSeries",
+            metadata_key="CustomTimeSeries",
             iterator_type=None,
         )
 
@@ -1194,8 +1192,8 @@ class TestAddTimeSeries:
         assert time_series.unit == "custom_unit"
         assert time_series.description == "Custom description"
 
-    def test_custom_metadata_with_time_series_name(self):
-        """Test that custom metadata is applied when time_series_name is provided."""
+    def test_custom_metadata_with_metadata_key(self):
+        """Test that custom metadata is applied when metadata_key is provided."""
         # Create a recording object for testing
         num_channels = 3
         sampling_frequency = 1.0
@@ -1223,7 +1221,7 @@ class TestAddTimeSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            time_series_name="MyCustomSeries",
+            metadata_key="MyCustomSeries",
             iterator_type=None,
         )
 
@@ -1342,7 +1340,7 @@ class TestAddTimeSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            time_series_name="TimeSeriesRaw",
+            metadata_key="TimeSeriesRaw",
         )
 
         time_series = nwbfile.acquisition["TimeSeriesRaw"]
@@ -1504,7 +1502,7 @@ class TestAddSpatialSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            write_as="processing",
+            parent_container="processing",
             iterator_type=None,
         )
 
@@ -1672,6 +1670,30 @@ class TestAddUnitsTable(TestCase):
         expected_unit_names_in_units_table = unit_names
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_property_matching_by_unit_name_with_quotes(self):
+        """Ensure matching by unit_name works when names contain apostrophes.
+
+        This test was added in PR #1666, which removed pandas DataFrame/query matching
+        (`to_dataframe().query(...)`) from units-table extension logic. It protects
+        against regressions to query-string based matching (e.g., `pandas.query`),
+        which can fail or mis-parse when unit_name contains quotes.
+        """
+        quoted_unit_names = ["unit'a", "unit'b", "unit'c", "unit'd"]
+        self.sorting_1.set_property(key="unit_name", values=quoted_unit_names)
+        self.sorting_1.set_property(key="property", values=["value_a", "value_b", "value_c", "value_d"])
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        self.sorting_2.set_property(key="unit_name", values=["unit'c", "unit'd", "unit'e", "unit'f"])
+        self.sorting_2.set_property(key="property", values=["value_c2", "value_d2", "value_e", "value_f"])
+
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        expected_unit_names = ["unit'a", "unit'b", "unit'c", "unit'd", "unit'e", "unit'f"]
+        expected_property_values = ["value_a", "value_b", "value_c", "value_d", "value_e", "value_f"]
+        self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
+        self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
 
     def test_integer_unit_names_overwrite(self):
         """Ensure unit names merge correctly after appending when unit names are integers."""
@@ -1843,7 +1865,7 @@ class TestAddUnitsTable(TestCase):
             nwbfile=self.nwbfile,
             units_name=units_table_name,
             units_description=unit_table_description,
-            write_as="processing",
+            parent_container="processing",
         )
 
         ecephys_mod = get_module(
@@ -2175,7 +2197,7 @@ class TestWriteSortingAnalyzer(TestCase):
         self.assertIn("waveform_mean", nwbfile.units.colnames)
         self.assertIn("waveform_sd", nwbfile.units.colnames)
         if test_properties:
-            self.assertIn("peak_to_valley", nwbfile.units.colnames)
+            self.assertIn("peak_to_trough_duration", nwbfile.units.colnames)
             self.assertIn("isi_violations_ratio", nwbfile.units.colnames)
 
         # test that electrode table has been saved
@@ -2194,38 +2216,50 @@ class TestWriteSortingAnalyzer(TestCase):
 
     def test_analyzer_single_segment(self):
         """This tests that the analyzer is written appropriately for the single segment case"""
-        write_sorting_analyzer_to_nwbfile(
-            sorting_analyzer=self.single_segment_analyzer, nwbfile=self.nwbfile, write_electrical_series=True
+        add_recording_to_nwbfile(
+            recording=self.single_segment_analyzer.recording,
+            nwbfile=self.nwbfile,
+        )
+        add_sorting_analyzer_to_nwbfile(
+            sorting_analyzer=self.single_segment_analyzer,
+            nwbfile=self.nwbfile,
         )
         self._test_analyzer_write(self.single_segment_analyzer, self.nwbfile)
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
 
     def test_analyzer_single_segment_sparse(self):
         """This tests that the analyzer is written appropriately for the single segment case"""
-        write_sorting_analyzer_to_nwbfile(
-            sorting_analyzer=self.single_segment_analyzer_sparse, nwbfile=self.nwbfile, write_electrical_series=True
+        add_recording_to_nwbfile(
+            recording=self.single_segment_analyzer_sparse.recording,
+            nwbfile=self.nwbfile,
+        )
+        add_sorting_analyzer_to_nwbfile(
+            sorting_analyzer=self.single_segment_analyzer_sparse,
+            nwbfile=self.nwbfile,
         )
         self._test_analyzer_write(self.single_segment_analyzer_sparse, self.nwbfile)
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
 
     def test_analyzer_multiple_segments(self):
         """This tests that the analyzer is written appropriately for the multi segment case"""
-        write_sorting_analyzer_to_nwbfile(
-            sorting_analyzer=self.multi_segment_analyzer, nwbfile=self.nwbfile, write_electrical_series=False
+        add_sorting_analyzer_to_nwbfile(
+            sorting_analyzer=self.multi_segment_analyzer,
+            nwbfile=self.nwbfile,
         )
         self._test_analyzer_write(self.multi_segment_analyzer, self.nwbfile)
 
     def test_analyzer_multiple_segments_sparse(self):
         """This tests that the analyzer is written appropriately for the multi segment case"""
-        write_sorting_analyzer_to_nwbfile(
-            sorting_analyzer=self.multi_segment_analyzer_sparse, nwbfile=self.nwbfile, write_electrical_series=False
+        add_sorting_analyzer_to_nwbfile(
+            sorting_analyzer=self.multi_segment_analyzer_sparse,
+            nwbfile=self.nwbfile,
         )
         self._test_analyzer_write(self.multi_segment_analyzer_sparse, self.nwbfile)
 
     def test_write_subset_units(self):
         """This tests that the analyzer is sliced properly based on unit_ids"""
         subset_unit_ids = self.single_segment_analyzer.unit_ids[::2]
-        write_sorting_analyzer_to_nwbfile(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.single_segment_analyzer, nwbfile=self.nwbfile, unit_ids=subset_unit_ids
         )
         self._test_analyzer_write(self.analyzer_slice, self.nwbfile, test_properties=False)
@@ -2233,23 +2267,25 @@ class TestWriteSortingAnalyzer(TestCase):
         self.assertEqual(len(self.nwbfile.units), len(subset_unit_ids))
         self.assertTrue(all(str(unit_id) in self.nwbfile.units["unit_name"][:] for unit_id in subset_unit_ids))
 
-    def test_write_recordingless_to_write_recording_to_nwbfile(self):
+    def test_write_recordingless_to_add_sorting_analyzer(self):
         """This tests that the analyzer is written properly in recordingless mode"""
-        write_sorting_analyzer_to_nwbfile(
+        add_recording_to_nwbfile(
+            recording=self.analyzer_recless_recording,
+            nwbfile=self.nwbfile,
+        )
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
             recording=self.analyzer_recless_recording,
-            write_electrical_series=True,
         )
         self._test_analyzer_write(self.analyzer_recless, self.nwbfile, test_properties=False)
 
         # check that not passing the recording raises and Exception
         with self.assertRaises(Exception) as context:
-            write_sorting_analyzer_to_nwbfile(
+            add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.analyzer_recless,
                 nwbfile=self.nwbfile,
                 recording=None,
-                write_electrical_series=True,
             )
 
     def test_write_multiple_probes_without_electrical_series(self):
@@ -2257,18 +2293,16 @@ class TestWriteSortingAnalyzer(TestCase):
         # we write the first set of waveforms as belonging to group 0
         original_channel_groups = self.analyzer_recless_recording.get_channel_groups()
         self.analyzer_recless_recording.set_channel_groups([0] * len(self.analyzer_recless_recording.channel_ids))
-        write_sorting_analyzer_to_nwbfile(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
-            write_electrical_series=False,
             recording=self.analyzer_recless_recording,
         )
         # now we set new channel groups to mimic a different probe and call the function again
         self.analyzer_recless_recording.set_channel_groups([1] * len(self.analyzer_recless_recording.channel_ids))
-        write_sorting_analyzer_to_nwbfile(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
-            write_electrical_series=False,
             recording=self.analyzer_recless_recording,
         )
         # check that we have 2 groups
@@ -2279,9 +2313,9 @@ class TestWriteSortingAnalyzer(TestCase):
         # check electrode regions of units
         for row in self.nwbfile.units.id:
             if row < len(self.analyzer_recless.unit_ids):
-                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
+                np.testing.assert_array_equal(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
             else:
-                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
+                np.testing.assert_array_equal(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
 
         # reset original channel groups
         self.analyzer_recless_recording.set_channel_groups(original_channel_groups)
@@ -2298,26 +2332,32 @@ class TestWriteSortingAnalyzer(TestCase):
                 ElectricalSeriesRaw2=dict(name="ElectricalSeriesRaw2", description="lfp series"),
             )
         )
-        add_electrical_series_kwargs1b = dict(es_key="ElectricalSeriesRaw1")
-        write_sorting_analyzer_to_nwbfile(
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+            es_key="ElectricalSeriesRaw1",
+        )
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
-            write_electrical_series=True,
             metadata=metadata,
-            add_electrical_series_kwargs=add_electrical_series_kwargs1b,
         )
         self.assertEqual(len(self.nwbfile.electrodes), len(recording.channel_ids))
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
 
         # now we set new channel groups to mimic a different probe and call the function again
         self.single_segment_analyzer.recording.set_channel_groups([1] * len(recording.channel_ids))
-        add_electrical_series_kwargs2_to_add_recording_to_nwbfile = dict(es_key="ElectricalSeriesRaw2")
-        write_sorting_analyzer_to_nwbfile(
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+            es_key="ElectricalSeriesRaw2",
+        )
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
-            write_electrical_series=True,
             metadata=metadata,
-            add_electrical_series_kwargs=add_electrical_series_kwargs2_to_add_recording_to_nwbfile,
         )
         # check that we have 2 groups
         self.assertEqual(len(self.nwbfile.electrode_groups), 2)
@@ -2331,9 +2371,9 @@ class TestWriteSortingAnalyzer(TestCase):
         # check electrode regions of units
         for row in self.nwbfile.units.id:
             if row < len(self.analyzer_recless.unit_ids):
-                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
+                np.testing.assert_array_equal(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
             else:
-                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
+                np.testing.assert_array_equal(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
 
         # reset original channel groups
         self.single_segment_analyzer.recording.set_channel_groups(original_channel_groups)
@@ -2342,7 +2382,7 @@ class TestWriteSortingAnalyzer(TestCase):
         """This tests that analyzer is correctly written even if the 'group' property is not available"""
         groups = self.single_segment_analyzer.recording.get_channel_groups()
         self.single_segment_analyzer.recording.delete_property("group")
-        write_sorting_analyzer_to_nwbfile(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
@@ -2352,7 +2392,7 @@ class TestWriteSortingAnalyzer(TestCase):
         """This tests that the 'group_name' property is correctly used to instantiate electrode groups"""
         num_channels = len(self.single_segment_analyzer.recording.channel_ids)
         self.single_segment_analyzer.recording.set_property("group_name", ["my-fancy-group"] * num_channels)
-        write_sorting_analyzer_to_nwbfile(
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
@@ -2363,20 +2403,23 @@ class TestWriteSortingAnalyzer(TestCase):
     def test_units_table_name(self):
         """This tests the units naming exception"""
         with self.assertRaises(Exception) as context:
-            write_sorting_analyzer_to_nwbfile(
+            add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
-                write_as="units",
+                parent_container="units",
                 units_name="units1",
             )
 
     def test_analyzer_channel_sliced(self):
         """This tests that the analyzer is written appropriately when the recording has been channel-sliced"""
-        write_sorting_analyzer_to_nwbfile(
+        add_recording_to_nwbfile(
+            recording=self.analyzer_rec_sliced,
+            nwbfile=self.nwbfile,
+        )
+        add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=self.analyzer_channel_sliced,
             nwbfile=self.nwbfile,
             recording=self.analyzer_rec_sliced,
-            write_electrical_series=True,
         )
         self._test_analyzer_write(self.analyzer_channel_sliced, self.nwbfile, test_properties=True)
         # check unit electrodes are all in the sliced channels
@@ -2398,6 +2441,556 @@ def test_stub_recording_with_t_start():
     recording.shift_times(2.0)
 
     _stub_recording(recording=recording)
+
+
+class TestAddRecording:
+    """Tests for the ecephys pipeline entry point ``add_recording_to_nwbfile``."""
+
+    def test_basic(self):
+        """Test expected values for no metadata specification."""
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+        )
+
+        defaults = _get_ecephys_metadata_placeholders()
+        default_key = "default_metadata_key"
+        device_meta = defaults["Devices"][default_key]
+        group_meta = defaults["Ecephys"]["ElectrodeGroups"][default_key]
+
+        assert device_meta["name"] in nwbfile.devices
+        device = nwbfile.devices[device_meta["name"]]
+
+        channel_group_names = {str(group) for group in recording.get_channel_groups()}
+        assert channel_group_names.issubset(nwbfile.electrode_groups)
+        for group_name in channel_group_names:
+            group = nwbfile.electrode_groups[group_name]
+            assert group.device is device
+            assert group.location == group_meta["location"]
+
+        # The ElectricalSeries name comes from ``_add_recording_segment_to_nwbfile``'s
+        # per-``write_as`` defaults, not the placeholder factory.
+        assert "ElectricalSeriesRaw" in nwbfile.acquisition
+        assert len(nwbfile.electrodes) == recording.get_num_channels()
+
+    def test_full_metadata_specification(self):
+        """User-supplied fields land on every created object and the cross-links resolve.
+
+        Verifies the whole chain: Devices entry to Device object, ElectrodeGroups entry to
+        ElectrodeGroup linked to the right device, ElectricalSeries entry to ElectricalSeries
+        in acquisition, and each electrodes-table row linked back to the same group.
+        """
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        metadata = {
+            "Devices": {
+                "probe_a": {
+                    "name": "Neuropixels 1.0",
+                    "description": "IMEC Neuropixels 1.0 probe",
+                },
+            },
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    "probe_a": {
+                        "name": "0",
+                        "description": "Shank 0",
+                        "location": "V1",
+                        "device_metadata_key": "probe_a",
+                    },
+                },
+                "ElectricalSeries": {
+                    "probe_a": {
+                        "name": "ElectricalSeriesAP",
+                        "description": "Raw AP traces",
+                    },
+                },
+            },
+        }
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="probe_a",
+            iterator_type=None,
+        )
+
+        # Exactly one of each entity, nothing extra
+        assert len(nwbfile.devices) == 1
+        assert len(nwbfile.electrode_groups) == 1
+        assert len(nwbfile.acquisition) == 1
+
+        # Device created with user-supplied name and description
+        device = nwbfile.devices["Neuropixels 1.0"]
+        assert device.name == "Neuropixels 1.0"
+        assert device.description == "IMEC Neuropixels 1.0 probe"
+
+        # ElectrodeGroup created with user-supplied fields, linked to the right device
+        group = nwbfile.electrode_groups["0"]
+        assert group.name == "0"
+        assert group.description == "Shank 0"
+        assert group.location == "V1"
+        assert group.device is device
+
+        # ElectricalSeries lives in acquisition (parent_container="acquisition" default), user fields applied
+        series = nwbfile.acquisition["ElectricalSeriesAP"]
+        assert series.name == "ElectricalSeriesAP"
+        assert series.description == "Raw AP traces"
+
+        # Series references the electrodes table; each row links to the same group
+        assert series.electrodes.table is nwbfile.electrodes
+        electrodes_df = nwbfile.electrodes.to_dataframe()
+        assert len(electrodes_df) == recording.get_num_channels()
+        assert all(row_group is group for row_group in electrodes_df["group"])
+        assert electrodes_df["group_name"].tolist() == ["0"] * recording.get_num_channels()
+
+    def test_missing_device_metadata_key_falls_back_to_default(self):
+        """Electrode group entries without device_metadata_key get a default device."""
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        channel_groups = sorted({str(group) for group in recording.get_channel_groups()})
+        metadata = {
+            "Devices": {},
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    channel_groups[0]: {
+                        "name": channel_groups[0],
+                        "description": "a group",
+                        "location": "unknown",
+                    },
+                },
+                "ElectricalSeries": {
+                    "series": {"name": "ElectricalSeries", "description": "acq"},
+                },
+            },
+        }
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
+        )
+
+        default_device_metadata = _get_ecephys_metadata_placeholders()["Devices"]["default_metadata_key"]
+        device = nwbfile.devices[default_device_metadata["name"]]
+        assert nwbfile.electrode_groups[channel_groups[0]].device is device
+
+    def test_shared_device_two_recordings(self):
+        """Two recordings pointing at the same Devices entry share one device."""
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        metadata = {
+            "Devices": {
+                "shared_probe": {"name": "SharedProbe", "description": "one probe"},
+            },
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    "shared_probe": {
+                        "name": "0",
+                        "description": "shared group",
+                        "location": "unknown",
+                        "device_metadata_key": "shared_probe",
+                    },
+                },
+                "ElectricalSeries": {
+                    "ap_band": {"name": "ElectricalSeriesAP", "description": "AP"},
+                    "lf_band": {"name": "ElectricalSeriesLF", "description": "LF"},
+                },
+            },
+        }
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="ap_band",
+            iterator_type=None,
+        )
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="lf_band",
+            iterator_type=None,
+        )
+
+        # Device, electrode group, and electrodes-table rows are all de-duplicated across calls:
+        # the second recording's channels resolve to the existing rows rather than appending duplicates.
+        assert list(nwbfile.devices.keys()) == ["SharedProbe"]
+        device = nwbfile.devices["SharedProbe"]
+
+        assert list(nwbfile.electrode_groups.keys()) == ["0"]
+        group = nwbfile.electrode_groups["0"]
+        assert group.device is device
+
+        assert "ElectricalSeriesAP" in nwbfile.acquisition
+        assert "ElectricalSeriesLF" in nwbfile.acquisition
+        series_ap = nwbfile.acquisition["ElectricalSeriesAP"]
+        series_lf = nwbfile.acquisition["ElectricalSeriesLF"]
+        assert series_ap.electrodes.table is nwbfile.electrodes
+        assert series_lf.electrodes.table is nwbfile.electrodes
+
+        # Same recording, same channels, same group → existing rows reused, not duplicated.
+        assert len(nwbfile.electrodes) == recording.get_num_channels()
+        electrodes_df = nwbfile.electrodes.to_dataframe()
+        assert all(row_group is group for row_group in electrodes_df["group"])
+
+    def test_missing_electrode_group_fields_are_defaulted(self):
+        """An electrode group entry that omits description/location is not rejected; the write path fills
+        those required NWB fields from the default template instead of raising, so an interface can
+        provide just a name and a device link."""
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        channel_groups = sorted({str(group) for group in recording.get_channel_groups()})
+        metadata = {
+            "Devices": {"d": {"name": "Device"}},
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    channel_groups[0]: {
+                        "name": channel_groups[0],
+                        # description and location intentionally omitted -> defaulted at write time
+                        "device_metadata_key": "d",
+                    },
+                },
+                "ElectricalSeries": {
+                    "series": {"name": "ElectricalSeries", "description": "acq"},
+                },
+            },
+        }
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
+        )
+
+        group = nwbfile.electrode_groups[channel_groups[0]]
+        assert group.description == "no description"
+        assert group.location == "unknown"
+        assert group.device.name == "Device"
+
+    def test_missing_metadata_key_raises(self):
+        """An unknown metadata_key raises with the available keys listed."""
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        metadata = _get_ecephys_metadata_placeholders()
+        metadata["Ecephys"]["ElectricalSeries"] = {"known_key": {"name": "ElectricalSeries"}}
+
+        expected_error = re.escape(
+            "metadata['Ecephys']['ElectricalSeries'] does not contain key 'missing_key'. "
+            "Available keys: ['known_key']"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_recording_to_nwbfile(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="missing_key",
+                iterator_type=None,
+            )
+
+    def test_metadata_passed_without_metadata_key_raises(self):
+        """Passing metadata without a metadata_key raises.
+
+        ``metadata_key`` selects which ``ElectricalSeries`` entry to write, so it is required
+        whenever metadata is passed. The only metadata-free path is passing no metadata at all,
+        which writes the recording with default metadata.
+        """
+        recording = generate_recording()
+        nwbfile = mock_NWBFile()
+
+        metadata = {"Ecephys": {"ElectricalSeries": {"my_key": {"name": "ElectricalSeries"}}}}
+
+        expected_error = re.escape(
+            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
+            "`metadata['Ecephys']['ElectricalSeries']` entry to write, so it is required whenever "
+            "metadata is passed. To write the recording with default metadata, pass no metadata at all."
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
+    def test_metadata_not_mutated(self):
+        """add_recording_to_nwbfile does not mutate the input metadata dict."""
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        channel_group_name = str(recording.get_channel_groups()[0])
+        metadata = {
+            "Devices": {
+                "probe_a": {
+                    "name": "Neuropixels 1.0",
+                    "description": "IMEC Neuropixels 1.0 probe",
+                    "manufacturer": "IMEC",
+                },
+            },
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    "probe_a": {
+                        "name": channel_group_name,
+                        "description": "Shank 0",
+                        "location": "V1",
+                        "device_metadata_key": "probe_a",
+                    },
+                },
+                "ElectricalSeries": {
+                    "probe_a": {
+                        "name": "ElectricalSeriesAP",
+                        "description": "Raw AP traces",
+                    },
+                },
+            },
+        }
+        metadata_before = deepcopy(metadata)
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="probe_a",
+            iterator_type=None,
+        )
+
+        assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_metadata_not_mutated_when_generating_defaults(self):
+        """Automatic addition of required fields for unspecified metadata must not modify the caller's metadata.
+
+        Regression test for the case the sibling ``test_metadata_not_mutated`` does not cover:
+        there every component is specified, whereas here the recording's channel groups are left
+        unspecified so the pipeline has to generate defaults for them. Generating those defaults
+        must leave the input metadata unchanged, so a dict reused across interfaces is never
+        silently altered.
+        """
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        # A user who has not annotated the probe simply omits ElectrodeGroups (and Devices)
+        # rather than passing empty dicts. Every channel group then falls to the auto path,
+        # and a mutation would materialize a "Devices" key the user never wrote.
+        metadata = {
+            "Ecephys": {
+                "ElectricalSeries": {"session": {"name": "ElectricalSeries", "description": "raw"}},
+            },
+        }
+        metadata_before = deepcopy(metadata)
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="session",
+            iterator_type=None,
+        )
+
+        assert metadata == metadata_before, "Metadata was mutated on the default-generation path"
+
+    def test_partially_specified_electrode_groups(self):
+        """Specified and default-generated electrode groups coexist correctly in one call.
+
+        A recording can have some channel groups the user annotated and others they left
+        unspecified. The specified groups must keep their user fields and device; the unspecified
+        groups must get defaults; and every channel must map to its correct group.
+        """
+        recording = generate_recording(sampling_frequency=1.0, num_channels=4, durations=[1.0])
+        recording.set_channel_groups([0, 0, 1, 1])
+        nwbfile = mock_NWBFile()
+
+        metadata = {
+            "Devices": {
+                "v1_probe": {"name": "V1 Probe", "description": "annotated probe"},
+            },
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    # Only group "0" is described; group "1" is left to the default-generation path.
+                    "v1_probe": {
+                        "name": "0",
+                        "description": "V1 shank",
+                        "location": "V1",
+                        "device_metadata_key": "v1_probe",
+                    },
+                },
+                "ElectricalSeries": {
+                    "session": {"name": "ElectricalSeries", "description": "raw"},
+                },
+            },
+        }
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="session",
+            iterator_type=None,
+        )
+
+        defaults = _get_ecephys_metadata_placeholders()
+        default_device_name = defaults["Devices"]["default_metadata_key"]["name"]
+        default_location = defaults["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]["location"]
+
+        # The user device and the default device coexist.
+        assert set(nwbfile.devices) == {"V1 Probe", default_device_name}
+
+        # The specified group keeps its fields and its device.
+        group_user = nwbfile.electrode_groups["0"]
+        assert group_user.location == "V1"
+        assert group_user.device is nwbfile.devices["V1 Probe"]
+
+        # The unspecified group is generated with defaults and the default device.
+        group_default = nwbfile.electrode_groups["1"]
+        assert group_default.location == default_location
+        assert group_default.device is nwbfile.devices[default_device_name]
+
+        # Every channel maps to the right group.
+        electrodes_df = nwbfile.electrodes.to_dataframe()
+        assert electrodes_df["group_name"].tolist() == ["0", "0", "1", "1"]
+        expected_groups = [group_user, group_user, group_default, group_default]
+        assert list(electrodes_df["group"]) == expected_groups
+
+    def test_multiple_devices(self):
+        """Channels split across two devices, each its own ElectrodeGroup.
+
+        Mirrors the Intan-style multi-headstage scenario documented in
+        docs/how_to/annotate_ecephys_metadata.rst, where a single recording carries
+        channels from physically distinct probes. Here we represent that purely at the
+        metadata level (two Devices entries, two ElectrodeGroups, channels assigned via
+        ``set_channel_groups``); no probeinterface probe is attached to the recording.
+        """
+        recording = generate_recording(sampling_frequency=1.0, num_channels=4, durations=[1.0])
+        recording.set_channel_groups([0, 0, 1, 1])
+        nwbfile = mock_NWBFile()
+
+        metadata = {
+            "Devices": {
+                "v1_probe": {"name": "NeuropixelsV1", "description": "V1 probe"},
+                "hpc_probe": {"name": "NeuropixelsHPC", "description": "HPC probe"},
+            },
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    "v1_probe": {
+                        "name": "0",
+                        "description": "Port A probe",
+                        "location": "V1",
+                        "device_metadata_key": "v1_probe",
+                    },
+                    "hpc_probe": {
+                        "name": "1",
+                        "description": "Port B probe",
+                        "location": "CA1",
+                        "device_metadata_key": "hpc_probe",
+                    },
+                },
+                "ElectricalSeries": {
+                    "session": {"name": "ElectricalSeries", "description": "raw"},
+                },
+            },
+        }
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="session",
+            iterator_type=None,
+        )
+
+        assert set(nwbfile.devices) == {"NeuropixelsV1", "NeuropixelsHPC"}
+        assert set(nwbfile.electrode_groups) == {"0", "1"}
+        group_v1 = nwbfile.electrode_groups["0"]
+        group_hpc = nwbfile.electrode_groups["1"]
+        assert group_v1.device is nwbfile.devices["NeuropixelsV1"]
+        assert group_hpc.device is nwbfile.devices["NeuropixelsHPC"]
+
+        # ElectricalSeries lives in acquisition, references the shared electrodes table.
+        assert "ElectricalSeries" in nwbfile.acquisition
+        series = nwbfile.acquisition["ElectricalSeries"]
+        assert series.name == "ElectricalSeries"
+        assert series.description == "raw"
+        assert series.electrodes.table is nwbfile.electrodes
+
+        # Each row's group_name column maps to the right channel group, and each row's
+        # group object reference points at the matching ElectrodeGroup.
+        electrodes_df = nwbfile.electrodes.to_dataframe()
+        assert electrodes_df["group_name"].tolist() == ["0", "0", "1", "1"]
+        expected_row_groups = [group_v1, group_v1, group_hpc, group_hpc]
+        assert list(electrodes_df["group"]) == expected_row_groups
+
+    def test_multiple_groups_share_one_device(self):
+        """Multiple ElectrodeGroups entries reference the same Devices entry.
+
+        Mirrors the NeuroNexus A4x8-style scenario documented in
+        docs/how_to/annotate_ecephys_metadata.rst, where one physical multi-shank probe
+        is described as one Devices entry plus N ElectrodeGroups entries all sharing the
+        same ``device_metadata_key``. As with ``test_multiple_devices``, no probeinterface
+        probe is attached; only the metadata representation is exercised.
+        """
+        recording = generate_recording(sampling_frequency=1.0, num_channels=4, durations=[1.0])
+        recording.set_channel_groups([0, 1, 2, 3])
+        nwbfile = mock_NWBFile()
+
+        probe_key = "a4x8_probe"
+        metadata = {
+            "Devices": {
+                probe_key: {
+                    "name": "A4x8",
+                    "description": "NeuroNexus A4x8 silicon probe",
+                },
+            },
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    f"shank_{shank_index}": {
+                        "name": str(shank_index),
+                        "description": f"Shank {shank_index}",
+                        "location": "CA1",
+                        "device_metadata_key": probe_key,
+                    }
+                    for shank_index in range(4)
+                },
+                "ElectricalSeries": {
+                    "session": {"name": "ElectricalSeries", "description": "raw"},
+                },
+            },
+        }
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="session",
+            iterator_type=None,
+        )
+
+        # One device shared by four electrode groups (each group's device link must point at
+        # the same Python object, not just at devices with the same name).
+        assert list(nwbfile.devices) == ["A4x8"]
+        device = nwbfile.devices["A4x8"]
+        assert set(nwbfile.electrode_groups) == {"0", "1", "2", "3"}
+        shank_groups = [nwbfile.electrode_groups[str(i)] for i in range(4)]
+        for group in shank_groups:
+            assert group.device is device
+
+        # ElectricalSeries lives in acquisition, references the shared electrodes table.
+        assert "ElectricalSeries" in nwbfile.acquisition
+        series = nwbfile.acquisition["ElectricalSeries"]
+        assert series.name == "ElectricalSeries"
+        assert series.description == "raw"
+        assert series.electrodes.table is nwbfile.electrodes
+
+        # Each channel goes into its own shank: group_name string and group object both correct.
+        electrodes_df = nwbfile.electrodes.to_dataframe()
+        assert electrodes_df["group_name"].tolist() == ["0", "1", "2", "3"]
+        assert list(electrodes_df["group"]) == shank_groups
 
 
 if __name__ == "__main__":

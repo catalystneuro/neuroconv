@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -48,6 +49,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         nsx_override: FilePath | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
@@ -62,6 +64,34 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "nsx_override",
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to BlackrockRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            nsx_override = positional_values.get("nsx_override", nsx_override)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
 
         file_path = Path(file_path)
         if file_path.suffix == "":
@@ -115,6 +145,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         sampling_frequency: Optional[float] = None,
         nsx_to_load: Optional[int | list | str] = None,
         verbose: bool = False,
@@ -134,6 +165,35 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         verbose : bool, default: False
             Enables verbosity
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "sampling_frequency",
+                "nsx_to_load",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to BlackrockSortingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
+            nsx_to_load = positional_values.get("nsx_to_load", nsx_to_load)
+            verbose = positional_values.get("verbose", verbose)
+
         super().__init__(
             file_path=file_path,
             sampling_frequency=sampling_frequency,

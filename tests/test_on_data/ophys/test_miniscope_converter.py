@@ -143,11 +143,12 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
     def setup_class_fixture(self):
         """Set up test fixtures for legacy Tye Lab data."""
         self.folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
-        self.converter = MiniscopeConverter(folder_path=self.folder_path)
+        with pytest.warns(FutureWarning, match="Not passing 'user_configuration_file_path'"):
+            self.converter = MiniscopeConverter(folder_path=self.folder_path)
         self.test_dir = Path(tempfile.mkdtemp())
 
-        self.stub_frames = 2
-        self.conversion_options = dict(stub_test=True, stub_frames=self.stub_frames)
+        self.stub_samples = 2
+        self.conversion_options = dict(stub_test=True, stub_samples=self.stub_samples)
 
         self.device_name = "Miniscope"
         self.device_metadata = dict(
@@ -219,8 +220,8 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-        num_frames = nwbfile.acquisition[self.photon_series_name].data.shape[0]
-        assert num_frames == self.stub_frames
+        num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
+        assert num_samples == self.stub_samples
 
     def test_run_conversion_updated_metadata(self):
         """Test conversion with updated metadata."""
@@ -279,8 +280,8 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
 
-        num_frames = nwbfile.acquisition[self.photon_series_name].data.shape[0]
-        assert num_frames == self.stub_frames
+        num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
+        assert num_samples == self.stub_samples
 
     def test_converter_in_converter_pipe(self):
         """Test MiniscopeConverter in ConverterPipe."""
@@ -301,5 +302,5 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
 
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
-        num_frames = nwbfile.acquisition[self.photon_series_name].data.shape[0]
-        assert num_frames == self.stub_frames
+        num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
+        assert num_samples == self.stub_samples

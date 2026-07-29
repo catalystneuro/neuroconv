@@ -1,3 +1,4 @@
+import warnings
 from typing import Literal, Optional
 
 from pydantic import FilePath, validate_call
@@ -47,13 +48,14 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         file_path: Optional[FilePath] = None,
         file_paths: Optional[list[FilePath]] = None,
         sampling_frequency: float = None,
-        *,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         dimension_order: str = "ZCT",
         num_channels: int = 1,
         channel_name: Optional[str] = None,
         num_planes: int = 1,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str | None = None,
     ):
         """
         Initialize reading of TIFF file(s).
@@ -84,6 +86,10 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
             Whether to print verbose output.
         photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, default: "TwoPhotonSeries"
             Type of photon series for NWB conversion.
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to "tiff_imaging",
+            or "tiff_imaging_channel_{channel_name}" if channel_name is provided.
 
         Notes
         -----
@@ -129,7 +135,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
           - CZT: T complete multi-channel volumes where the channel is varied first
 
         For more information on OME-TIFF dimension order, see:
-        https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/specification.html
+        https://ome-model.readthedocs.io/en/stable/ome-tiff/specification.html
 
         Acquisition Patterns
         --------------------
@@ -181,7 +187,40 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
             All dimension orders → T: Simple planar time series (all orderings equivalent)
         """
-        import warnings
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "dimension_order",
+                "num_channels",
+                "channel_name",
+                "num_planes",
+                "verbose",
+                "photon_series_type",
+            ]
+            num_positional_args_before_args = 3  # file_path, file_paths, sampling_frequency
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to TiffImagingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            dimension_order = positional_values.get("dimension_order", dimension_order)
+            num_channels = positional_values.get("num_channels", num_channels)
+            channel_name = positional_values.get("channel_name", channel_name)
+            num_planes = positional_values.get("num_planes", num_planes)
+            verbose = positional_values.get("verbose", verbose)
+            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
 
         # Handle both file_path and file_paths
         if file_path is not None and file_paths is not None:
@@ -199,6 +238,9 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         if file_paths is None:
             raise ValueError("Either 'file_path' or 'file_paths' must be specified.")
 
+        if metadata_key is None:
+            metadata_key = f"tiff_imaging_channel_{channel_name}" if channel_name is not None else "tiff_imaging"
+
         super().__init__(
             file_paths=file_paths,
             sampling_frequency=sampling_frequency,
@@ -208,4 +250,5 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
             num_planes=num_planes,
             verbose=verbose,
             photon_series_type=photon_series_type,
+            metadata_key=metadata_key,
         )

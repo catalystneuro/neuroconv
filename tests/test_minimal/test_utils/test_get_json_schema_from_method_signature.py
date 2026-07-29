@@ -1,3 +1,5 @@
+import inspect
+import types
 from pathlib import Path
 from typing import Literal
 
@@ -581,3 +583,49 @@ def test_mock_imaging_interface_schema_with_args_pattern():
     }
 
     assert test_json_schema == expected_json_schema
+
+
+class TestPEP563Annotations:
+    """Tests for PEP 563 (from __future__ import annotations) support.
+
+    When an external package (e.g. SpikeInterface) defines a BaseDataInterface subclass
+    in a module with ``from __future__ import annotations``, all type annotations on
+    ``__init__`` become strings at runtime. ``get_source_schema()`` then passes those
+    strings to pydantic, which cannot resolve them.
+
+    PEP 563 is a module-level directive, so we dynamically create a module
+    with it enabled to keep the tests self-contained.
+    """
+
+    @pytest.fixture()
+    def pep563_interface(self):
+        """Simulate an external interface defined in a module with PEP 563."""
+        source = (
+            "from __future__ import annotations\n"
+            "from pydantic import DirectoryPath\n"
+            "from neuroconv import BaseDataInterface\n"
+            "\n"
+            "class ExternalInterface(BaseDataInterface):\n"
+            "    display_name = 'External'\n"
+            "    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):\n"
+            "        pass\n"
+            "    def add_to_nwbfile(self, nwbfile, metadata):\n"
+            "        pass\n"
+        )
+        code = compile(source, "<external_pep563_module>", "exec")
+        module = types.ModuleType("_external_pep563_module")
+        exec(code, module.__dict__)
+        return module.ExternalInterface
+
+    def test_pep563_annotations_are_strings(self, pep563_interface):
+        """Verify that PEP 563 stores annotations as strings on the external interface."""
+        signature = inspect.signature(pep563_interface.__init__)
+        annotation = signature.parameters["folder_path"].annotation
+        assert isinstance(annotation, str), "Expected string annotation under PEP 563"
+        assert annotation == "DirectoryPath"
+
+    def test_get_source_schema_from_pep563_interface(self, pep563_interface):
+        """Test that get_source_schema works for an external interface using PEP 563."""
+        source_schema = pep563_interface.get_source_schema()
+        assert source_schema["properties"]["folder_path"] == {"format": "directory-path", "type": "string"}
+        assert source_schema["properties"]["verbose"] == {"default": False, "type": "boolean"}

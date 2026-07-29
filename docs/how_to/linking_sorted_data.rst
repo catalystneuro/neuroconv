@@ -45,38 +45,6 @@ of units which is critical for accurate interpretation and reproducibility:
     sorting process transparent and auditable.
 
 
-Accessing Electrode Metadata from Units
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Once units are properly linked to electrodes and the electrodes table is well annotated,
-you can programmatically retrieve electrode-level metadata for any unit in your NWB file.
-
-.. code-block:: python
-
-    from pynwb import read_nwb
-
-    nwbfile = read_nwb("output.nwb")
-
-    # View all units as a DataFrame
-    units_df = nwbfile.units.to_dataframe()
-    print(units_df)
-
-    # Access electrode information for each unit
-    for unit_index in range(len(nwbfile.units)):
-        unit_id = nwbfile.units.id[unit_index]
-        electrode_refs = nwbfile.units.electrodes[unit_index]
-        electrode_indices = list(electrode_refs.index)
-
-        # Get electrode properties for this unit
-        unit_electrodes = nwbfile.electrodes[electrode_indices]
-        print(f"Unit {unit_id}:")
-        print(f"  - Electrode indices: {electrode_indices}")
-        print(f"  - Locations: {unit_electrodes['location']}")
-        print(f"  - Groups: {unit_electrodes['group_name']}")
-        print(f"  - X positions: {unit_electrodes['rel_x']}")
-        print(f"  - Y positions: {unit_electrodes['rel_y']}")
-
-
 Single Recording and Sorting Interface
 ----------------------------------------------------
 
@@ -234,3 +202,35 @@ Create the converter and run the conversion:
     nwbfile = converter.create_nwbfile()
     from neuroconv.tools import configure_and_write_nwbfile
     configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="path/to/output.nwb")
+
+
+Accessing Electrode Metadata from Units
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once units are properly linked to electrodes and the electrodes table is well annotated,
+you can programmatically retrieve electrode-level metadata for any unit in your NWB file.
+
+.. code-block:: python
+
+    from pynwb import read_nwb
+
+    nwbfile = read_nwb("output.nwb")
+
+    # View all units as a DataFrame
+    units_df = nwbfile.units.to_dataframe()
+    print(units_df)
+
+    # Access electrode information for each unit
+    for unit_index in range(len(nwbfile.units)):
+        unit_id = nwbfile.units.id[unit_index]
+        electrode_refs = nwbfile.units.electrodes[unit_index]
+        electrode_indices = list(electrode_refs.index)
+
+        # Get electrode properties for this unit
+        unit_electrodes = nwbfile.electrodes[electrode_indices]
+        print(f"Unit {unit_id}:")
+        print(f"  - Electrode indices: {electrode_indices}")
+        print(f"  - Locations: {unit_electrodes['location']}")
+        print(f"  - Groups: {unit_electrodes['group_name']}")
+        print(f"  - X positions: {unit_electrodes['rel_x']}")
+        print(f"  - Y positions: {unit_electrodes['rel_y']}")

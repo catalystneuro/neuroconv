@@ -1,3 +1,5 @@
+import warnings
+
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
@@ -48,6 +50,7 @@ class SortedRecordingConverter(ConverterPipe):
     def __init__(
         self,
         recording_interface: BaseRecordingExtractorInterface,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         sorting_interface: BaseSortingExtractorInterface,
         unit_ids_to_channel_ids: dict[str | int, list[str | int]],
     ):
@@ -65,6 +68,32 @@ class SortedRecordingConverter(ConverterPipe):
             maps to a list of channel IDs (values) that were used to detect that unit.
             This mapping ensures proper linkage between sorted units and recording electrodes.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "sorting_interface",
+                "unit_ids_to_channel_ids",
+            ]
+            num_positional_args_before_args = 1  # recording_interface
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to SortedRecordingConverter.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            sorting_interface = positional_values.get("sorting_interface", sorting_interface)
+            unit_ids_to_channel_ids = positional_values.get("unit_ids_to_channel_ids", unit_ids_to_channel_ids)
 
         self.recording_interface = recording_interface
         self.sorting_interface = sorting_interface

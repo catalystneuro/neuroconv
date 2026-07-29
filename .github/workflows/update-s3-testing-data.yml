@@ -17,10 +17,10 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -34,7 +34,7 @@ jobs:
         id: ephys
         run: echo "HASH_EPHY_DATASET=$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
       - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
@@ -44,7 +44,7 @@ jobs:
         id: ophys
         run: echo "HASH_OPHYS_DATASET=$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
       - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
@@ -54,7 +54,7 @@ jobs:
         id: behavior
         run: echo "HASH_BEHAVIOR_DATASET=$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)" >> $GITHUB_OUTPUT
       - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data

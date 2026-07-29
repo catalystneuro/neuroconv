@@ -91,7 +91,7 @@ Specifying frame layout on disk
 
 If your data is laid out differently on disk, you can specify the frame layout using the ``dimension_order``
 parameter. This uses the concept of dimension order from the
-`OME-TIFF specification <https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/specification.html#dimensionorder>`_.
+`OME-TIFF specification <https://ome-model.readthedocs.io/en/stable/ome-tiff/specification.html#dimensionorder>`_.
 
 The dimension order uses three letters:
 

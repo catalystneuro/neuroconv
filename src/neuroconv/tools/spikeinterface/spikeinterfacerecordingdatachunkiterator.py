@@ -92,6 +92,25 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
         return chunk_shape
 
+    @property
+    def shape(self):
+        """Return (num_samples, num_channels) for this recording segment."""
+        return (self.recording.get_num_samples(segment_index=self.segment_index), self.recording.get_num_channels())
+
+    @property
+    def ndim(self):
+        """Return the number of dimensions (always 2: samples x channels)."""
+        return 2
+
+    def __len__(self):
+        """Return the number of samples in this recording segment."""
+        return self.recording.get_num_samples(segment_index=self.segment_index)
+
+    def __getitem__(self, selection):
+        """Enable array-like slicing, lazily reading only the requested traces from the recording."""
+        resolved = self._convert_index_to_slices(selection)
+        return self._get_data(resolved)
+
     def _get_data(self, selection: tuple[slice]) -> Iterable:
         return self.recording.get_traces(
             segment_index=self.segment_index,
@@ -105,4 +124,4 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         return self.recording.get_dtype()
 
     def _get_maxshape(self):
-        return (self.recording.get_num_samples(segment_index=self.segment_index), self.recording.get_num_channels())
+        return self.shape

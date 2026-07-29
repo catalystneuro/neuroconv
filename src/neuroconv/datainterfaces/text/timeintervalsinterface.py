@@ -1,3 +1,4 @@
+import warnings
 from abc import abstractmethod
 from pathlib import Path
 
@@ -19,6 +20,7 @@ class TimeIntervalsInterface(BaseDataInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         read_kwargs: dict | None = None,
         verbose: bool = False,
     ):
@@ -38,6 +40,33 @@ class TimeIntervalsInterface(BaseDataInterface):
         verbose : bool, default: False
             Controls verbosity of the interface output.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "read_kwargs",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to TimeIntervalsInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            read_kwargs = positional_values.get("read_kwargs", read_kwargs)
+            verbose = positional_values.get("verbose", verbose)
+
         read_kwargs = read_kwargs or dict()
         super().__init__(file_path=file_path)
         self.verbose = verbose
@@ -90,7 +119,9 @@ class TimeIntervalsInterface(BaseDataInterface):
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
-        return self._read_file(**self.source_data, **self._read_kwargs)[column].values
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return self._read_file(**self.source_data, **self._read_kwargs)[column].to_numpy(dtype="float64")
 
     def get_timestamps(self, column: str) -> np.ndarray:
         """
@@ -114,7 +145,9 @@ class TimeIntervalsInterface(BaseDataInterface):
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
-        return self.dataframe[column].values
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return self.dataframe[column].to_numpy(dtype="float64")
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
         """
@@ -208,6 +241,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         tag: str = "trials",
         column_name_mapping: dict[str, str] = None,
         column_descriptions: dict[str, str] = None,
@@ -272,6 +306,34 @@ class TimeIntervalsInterface(BaseDataInterface):
         - The 'start_time' column is required; 'stop_time' is auto-generated if missing.
 
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "tag",
+                "column_name_mapping",
+                "column_descriptions",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to TimeIntervalsInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            tag = positional_values.get("tag", tag)
+            column_name_mapping = positional_values.get("column_name_mapping", column_name_mapping)
+            column_descriptions = positional_values.get("column_descriptions", column_descriptions)
         metadata = metadata or self.get_metadata()
         self.time_intervals = convert_df_to_time_intervals(
             self.dataframe,

@@ -4,6 +4,7 @@ from pathlib import Path
 from pydantic import FilePath
 from pynwb import NWBFile
 
+from ._utils import _warn_if_split_siblings_detected
 from ....basedatainterface import BaseDataInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
@@ -27,15 +28,21 @@ class IntanAnalogInterface(BaseDataInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__)
-        source_schema["properties"]["file_path"]["description"] = "Path to either a .rhd or a .rhs file"
+        source_schema["properties"]["file_path"]["description"] = (
+            "Path to either a .rhd or a .rhs file. "
+            "When ``saved_files_are_split=True``, the file's parent directory is treated as the session "
+            "folder and all sibling .rhd/.rhs files are concatenated in filename order."
+        )
         return source_schema
 
     def __init__(
         self,
         file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stream_name: str,
         verbose: bool = False,
         metadata_key: str = "TimeSeriesAnalogIntan",
+        saved_files_are_split: bool = False,
     ):
         """
         Load and prepare analog data from Intan format (.rhd or .rhs files).
@@ -43,7 +50,8 @@ class IntanAnalogInterface(BaseDataInterface):
         Parameters
         ----------
         file_path : FilePath
-            Path to either a rhd or a rhs file
+            Path to either a rhd or a rhs file. When ``saved_files_are_split=True``, this is
+            any single file in the session folder; its parent directory is scanned for siblings.
         stream_name : str
             The stream name to load. Valid options include:
             - "RHD2000 auxiliary input channel": Auxiliary input channels (e.g., accelerometer data)
@@ -55,11 +63,44 @@ class IntanAnalogInterface(BaseDataInterface):
             Verbose output
         metadata_key : str, default: "TimeSeriesAnalogIntan"
             Key for the TimeSeries metadata in the metadata dictionary.
+        saved_files_are_split : bool, default: False
+            Set to True when the recording was saved using Intan RHX's "new save file every N minutes"
+            option, producing several rotated ``.rhd``/``.rhs`` files in one session folder. All sibling
+            files in ``file_path.parent`` are concatenated in filename order (Intan's default
+            ``{prefix}_YYMMDD_HHMMSS`` naming makes lexicographic order match chronological order).
         """
-        from spikeinterface.extractors import read_intan
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stream_name",
+                "verbose",
+                "metadata_key",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to IntanAnalogInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stream_name = positional_values.get("stream_name", stream_name)
+            verbose = positional_values.get("verbose", verbose)
+            metadata_key = positional_values.get("metadata_key", metadata_key)
 
         self._file_path = Path(file_path)
         self._stream_name = stream_name
+        self._saved_files_are_split = saved_files_are_split
 
         # Stream type descriptions and time series name mapping
         self.stream_info = {
@@ -97,11 +138,23 @@ class IntanAnalogInterface(BaseDataInterface):
         self.metadata_key = metadata_key
 
         # Load the recording extractor using stream_name
-        self.recording_extractor = read_intan(
-            file_path=self._file_path,
-            stream_name=self._stream_name,
-            all_annotations=True,
-        )
+        if saved_files_are_split:
+            from spikeinterface.extractors import read_split_intan_files
+
+            self.recording_extractor = read_split_intan_files(
+                folder_path=self._file_path.parent,
+                stream_name=self._stream_name,
+                all_annotations=True,
+            )
+        else:
+            from spikeinterface.extractors import read_intan
+
+            _warn_if_split_siblings_detected(self._file_path, interface_name="IntanAnalogInterface")
+            self.recording_extractor = read_intan(
+                file_path=self._file_path,
+                stream_name=self._stream_name,
+                all_annotations=True,
+            )
 
         super().__init__(
             file_path=self._file_path,
@@ -153,10 +206,10 @@ class IntanAnalogInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
-        iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -174,27 +227,43 @@ class IntanAnalogInterface(BaseDataInterface):
             Type of iterator to use for data streaming
         iterator_options : dict, optional
             Additional options for the iterator
-        iterator_opts : dict, optional
-            Deprecated. Use 'iterator_options' instead.
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "iterator_type",
+                "iterator_options",
+                "always_write_timestamps",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to IntanAnalogInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            iterator_type = positional_values.get("iterator_type", iterator_type)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
         from ....tools.spikeinterface import (
             _stub_recording,
             add_recording_as_time_series_to_nwbfile,
         )
-
-        # Handle deprecated iterator_opts parameter
-        if iterator_opts is not None:
-            warnings.warn(
-                "The 'iterator_opts' parameter is deprecated and will be removed in May 2026 or after. "
-                "Use 'iterator_options' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            if iterator_options is not None:
-                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
-            iterator_options = iterator_opts
 
         if metadata is None:
             metadata = self.get_metadata()

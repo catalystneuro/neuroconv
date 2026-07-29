@@ -1,3 +1,6 @@
+import re
+import warnings
+
 from pydantic import DirectoryPath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -79,6 +82,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stream_name: str | None = None,
         block_index: int | None = None,
         stub_test: bool = False,
@@ -101,6 +105,39 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stream_name",
+                "block_index",
+                "stub_test",
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to OpenEphysBinaryRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stream_name = positional_values.get("stream_name", stream_name)
+            block_index = positional_values.get("block_index", block_index)
+            stub_test = positional_values.get("stub_test", stub_test)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+
         from ._openephys_utils import _read_settings_xml
 
         self._xml_root = _read_settings_xml(folder_path)
@@ -128,6 +165,38 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         neural_channels = [id for id in channel_ids if "ADC" not in id]
         if len(neural_channels) < len(channel_ids):
             self.recording_extractor = recording.select_channels(channel_ids=neural_channels)
+
+        # Set composite channel_name for multi-stream electrode deduplication
+        # When AP and LFP streams exist for the same probe, they record from the
+        # same physical electrodes. Setting composite names (e.g. "AP0,LFP0") on
+        # both streams lets the electrode table builder match them to the same rows,
+        # avoiding duplicate entries. This follows the same approach as SpikeGLX.
+        if stream_name is not None:
+            band_suffixes = {"-AP": "-LFP", "-LFP": "-AP"}
+            current_suffix = None
+            for suffix in band_suffixes:
+                if stream_name.endswith(suffix):
+                    current_suffix = suffix
+                    break
+
+            if current_suffix is not None:
+                companion_suffix = band_suffixes[current_suffix]
+                prefix = stream_name[: -len(current_suffix)]
+                companion_stream = prefix + companion_suffix
+                has_companion = companion_stream in available_streams
+
+                if has_companion:
+                    channel_ids = self.recording_extractor.get_channel_ids()
+                    channel_names = []
+                    for channel_id in channel_ids:
+                        # Extract the numeric part from channel_id (e.g. "AP1" -> "1", "LFP3" -> "3")
+                        match = re.search(r"\d+$", str(channel_id))
+                        channel_number = match.group() if match else str(channel_id)
+                        # Composite name with both bands, alphabetically sorted
+                        channel_name = f"AP{channel_number},LFP{channel_number}"
+                        channel_names.append(channel_name)
+
+                    self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
 
     def get_metadata(self) -> DeepDict:
         from ._openephys_utils import _get_session_start_time

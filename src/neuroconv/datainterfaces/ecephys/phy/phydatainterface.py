@@ -1,3 +1,5 @@
+import warnings
+
 from pydantic import DirectoryPath, validate_call
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -34,6 +36,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         exclude_cluster_groups: list[str] | None = None,
         verbose: bool = False,
     ):
@@ -48,6 +51,33 @@ class PhySortingInterface(BaseSortingExtractorInterface):
             Cluster groups to exclude (e.g. "noise" or ["noise", "mua"]).
         verbose : bool, default: False
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "exclude_cluster_groups",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to PhySortingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            exclude_cluster_groups = positional_values.get("exclude_cluster_groups", exclude_cluster_groups)
+            verbose = positional_values.get("verbose", verbose)
+
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)
 
     def get_metadata(self) -> DeepDict:

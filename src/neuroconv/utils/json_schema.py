@@ -1,6 +1,7 @@
 import collections.abc
 import inspect
 import json
+import typing
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -60,9 +61,40 @@ class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
     Custom JSON encoder for conversion options of the data interfaces and converters (i.e. kwargs).
     """
 
+    def default(self, obj):
+
+        # Serialize callable objects (e.g. callback functions in progress_bar_options)
+        if callable(obj):
+            return f"{obj.__module__}.{obj.__qualname__}"
+
+        return super().default(obj)
+
 
 # This is used in the Guide so we will keep it public.
 NWBMetaDataEncoder = _NWBMetaDataEncoder
+
+
+def _validate_device_registry_names(metadata: dict[str, dict]) -> None:
+    """Require 1 metadata key for each device or device model name."""
+    for registry_name, object_name in (
+        ("Devices", "device"),
+        ("DeviceModels", "device model"),
+    ):
+        registry = metadata.get(registry_name)
+        if not isinstance(registry, dict):
+            continue
+        keys_by_name: dict[str, str] = {}
+        for metadata_key, entry in registry.items():
+            if not isinstance(entry, dict) or not isinstance(entry.get("name"), str):
+                continue
+            name = entry["name"]
+            if name in keys_by_name:
+                first_key = keys_by_name[name]
+                raise ValueError(
+                    f"metadata['{registry_name}'] keys '{first_key}' and '{metadata_key}' "
+                    f"use name '{name}'. Use 1 key to share a {object_name}."
+                )
+            keys_by_name[name] = metadata_key
 
 
 def get_base_schema(
@@ -151,6 +183,17 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
     parameters = signature.parameters
     additional_properties = False
     arguments_to_annotations = {}
+
+    # Resolve string annotations from PEP 563 (from __future__ import annotations)
+    # TODO: Remove PEP 563 handling once minimum Python version is 3.14+
+    # and external consumers no longer use `from __future__ import annotations`
+    # When a class is passed, inspect.signature uses __init__, so we must too
+    hints_target = method.__init__ if inspect.isclass(method) else method
+    try:
+        type_hints = typing.get_type_hints(hints_target, include_extras=True)
+    except NameError:
+        type_hints = {}
+
     for argument_name in parameters:
         if argument_name in exclude:
             continue
@@ -173,7 +216,11 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
 
         # Pydantic uses ellipsis for required
         pydantic_default = ... if parameter.default is inspect._empty else parameter.default
-        arguments_to_annotations.update({argument_name: (parameter.annotation, pydantic_default)})
+        # Only use resolved type hints for string annotations (PEP 563)
+        annotation = parameter.annotation
+        if isinstance(annotation, str):
+            annotation = type_hints.get(argument_name, annotation)
+        arguments_to_annotations.update({argument_name: (annotation, pydantic_default)})
 
     # The ConfigDict is required to support custom types like NumPy arrays
     model = pydantic.create_model(
@@ -234,6 +281,11 @@ def fill_defaults(schema: dict[str, Any], defaults: dict[str, Any], overwrite: b
     properties_reference = "properties"
     if properties_reference not in schema and "patternProperties" in schema:
         properties_reference = "patternProperties"
+
+    # A node validated only by additionalProperties (e.g. an object keyed by a dynamic metadata_key,
+    # as in TDTEventsInterface) has no named properties to attach defaults to; nothing to fill.
+    if properties_reference not in schema:
+        return
 
     for key, val in schema[properties_reference].items():
         if key in defaults:
@@ -415,5 +467,6 @@ def validate_metadata(metadata: dict[str, dict], schema: dict[str, dict], verbos
     serialized_metadata = encoder.encode(metadata)
     decoded_metadata = json.loads(serialized_metadata)
     validate(instance=decoded_metadata, schema=schema)
+    _validate_device_registry_names(metadata)
     if verbose:
         print("Metadata is valid!")
