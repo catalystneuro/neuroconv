@@ -9,19 +9,26 @@ from pydantic import FilePath, validate_call
 from neuroconv.utils import DeepDict
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
+from ....tools.events import resolve_detection_plan, validate_detection_configuration
+from ....tools.signal_processing import discretize_trace
 
 
 class DoricEventsInterface(BaseEventsInterface):
-    """Convert discrete events from Doric Neuroscience Studio ``.doric`` digital IO to NWB.
+    """Convert discrete events (digital IO) from Doric Neuroscience Studio ``.doric`` files to NWB.
 
     A ``.doric`` file records digital IO lines (e.g. a camera-exposure TTL, a behavior trigger) as
-    sampled ``0``/``1`` traces. This interface detects each line's rising edges (``0 -> 1`` transitions)
-    as event onsets and writes one ``pynwb.event.EventsTable`` per line into ``nwbfile.events``. Every
-    ``DigitalIO`` line that toggles is converted; a constant line (no transition) is skipped.
-    ``session_start_time`` is read from the file when present.
+    sampled ``0``/``1`` traces under ``DigitalIO`` groups. Each line is a *signal*, and the events derived
+    from it are set by ``detection_configuration``: one entry per signal holding a list of detection
+    specs, since a signal can yield more than one event type. Each event type is written as its own
+    ``pynwb.event.EventsTable`` into ``nwbfile.events``. By default every line is read as a
+    ``high_period`` (each rising edge is an event onset, its duration the span to the next falling edge).
+    A line that never toggles still yields its event type, written as a zero-row table, since the type
+    existed in the recording and nothing fired. ``session_start_time`` is read from the file's
+    ``Created`` attribute when present.
 
-    Only the modern ``.doric`` HDF5 layout is supported; the legacy "EPConsole" layout and the
-    DoricStudio CSV export are not read for events.
+    Only the modern ``.doric`` HDF5 layout (root group ``DataAcquisition``) is read here; the legacy
+    "EPConsole" layout is not yet supported, and the DoricStudio CSV export is handled by
+    :class:`.DoricCSVEventsInterface`.
     """
 
     keywords = ("events", "Doric")
@@ -29,13 +36,14 @@ class DoricEventsInterface(BaseEventsInterface):
     info = "Data Interface for converting discrete events (digital IO) from Doric Neuroscience Studio files."
     associated_suffixes = ("doric",)
     # strptime format of the .doric HDF5 "Created" attribute, parsed for session_start_time.
-    _created_format = "%a %b %d %H:%M:%S %Y"
+    _session_start_time_format = "%a %b %d %H:%M:%S %Y"
 
     @validate_call
     def __init__(
         self,
         file_path: FilePath,
         *,
+        detection_configuration: dict | None = None,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -45,6 +53,18 @@ class DoricEventsInterface(BaseEventsInterface):
         ----------
         file_path : FilePath
             Path to the ``.doric`` HDF5 file.
+        detection_configuration : dict, optional
+            Which digital lines to read and how, keyed by the line's ``signal_source_id`` (its
+            ``DigitalIO`` dataset key, e.g. ``{"Camera1": [{"detection": "high_period"}]}``). Each value
+            is a **list** of detection specs, one per event type derived from that line, since a line can
+            yield more than one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point
+            event at each edge) or ``"high_period"`` / ``"low_period"`` (a durative event, onset at one
+            edge and duration to the next opposite edge), and it is required. ``signal_conditioning`` is
+            omitted for a ``.doric`` line, which is already a ``0``/``1`` signal. An optional
+            ``event_name`` replaces the derived identifier and pins it against later edits. If None
+            (default), every digital line in the file is read as a ``high_period``, lossless for an
+            active-high line; use ``"low_period"`` for an active-low one. When given, only the named
+            lines are read.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
             If None (default), ``"doric_events"`` is used.
@@ -53,25 +73,46 @@ class DoricEventsInterface(BaseEventsInterface):
         """
         super().__init__(
             file_path=file_path,
+            detection_configuration=detection_configuration,
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "doric_events"
-        self._event_source_paths = self._discover_event_sources(self.source_data["file_path"])
+        # available_signals: signal_source_id (the DigitalIO dataset key, e.g. "Camera1") -> its
+        # {data_path, time_path} handle. Every discovered signal is a digital line, already a 0/1 signal,
+        # so no signal conditioning arises for this format.
+        self._available_signals = self._discover_signals(self.source_data["file_path"])
+        # Validate a caller-supplied configuration eagerly (fail-fast at construction); the None default
+        # is trusted. A spec is all-or-nothing, never half-filled from a default.
+        if detection_configuration is not None:
+            validate_detection_configuration(detection_configuration, self._available_signals)
+        else:
+            # The default, used only when the caller passes none: read every discovered line as a
+            # "high_period", the lossless durative reading (onset at the rising edge, duration to the
+            # falling edge, for an active-high line).
+            detection_configuration = {
+                signal_source_id: [{"detection": "high_period"}] for signal_source_id in self._available_signals
+            }
+        self._detection_configuration = detection_configuration
+        # The resolved plan: event_type_source_id -> (signal_source_id, spec). One entry per event type,
+        # with its identifier already derived, so nothing about the reading is left for read time.
+        self._detection_plan = resolve_detection_plan(detection_configuration)
 
     @staticmethod
-    def _discover_event_sources(file_path) -> dict[str, dict]:
-        """Return ``event_type_source_id -> {data_path, time_path}`` for every digital line in the file.
+    def _discover_signals(file_path) -> dict[str, dict]:
+        """Return ``signal_source_id -> {kind, data_path, time_path}`` for every digital line in the file.
 
         Walks ``DataAcquisition`` for ``DigitalIO`` groups (a group whose leaf name is ``DigitalIO``
         holding a ``Time`` dataset) and treats each non-Time 1-D dataset as a digital line. The line's
-        dataset key is its ``event_type_source_id`` (identity-in-header, e.g. ``Camera1``, ``DigitalCh1``).
+        dataset key is its ``signal_source_id`` (identity-in-header, e.g. ``Camera1``, ``DigitalCh1``).
+        Membership of a ``DigitalIO`` group is what makes every discovered signal a digital line, and it
+        is settled structurally with no data read.
         """
         import h5py
 
-        event_source_paths: dict[str, dict] = {}
+        available_signals: dict[str, dict] = {}
         with h5py.File(file_path, "r") as f:
             if "DataAcquisition" not in f:
-                return event_source_paths
+                return available_signals
 
             def _visit(name: str, obj) -> None:
                 if not isinstance(obj, h5py.Group):
@@ -83,29 +124,29 @@ class DoricEventsInterface(BaseEventsInterface):
                         continue
                     item = obj[key]
                     if isinstance(item, h5py.Dataset) and item.ndim == 1:
-                        # The digital line's name is its event_type_source_id (identity-in-header).
-                        event_source_paths[key] = {
+                        # The digital line's name is its signal_source_id (identity-in-header).
+                        available_signals[key] = {
                             "data_path": f"DataAcquisition/{name}/{key}",
                             "time_path": f"DataAcquisition/{name}/Time",
                         }
 
             f["DataAcquisition"].visititems(_visit)
-        return event_source_paths
+        return available_signals
 
     def _get_session_start_time(self) -> datetime | None:
         """Parse the session start time from the file's ``Created`` attribute, if present."""
         import h5py
 
         with h5py.File(self.source_data["file_path"], "r") as f:
-            created_str = f.attrs.get("Created", "")
-        if not created_str:
+            session_start_time_string = f.attrs.get("Created", "")
+        if not session_start_time_string:
             return None
         try:
-            return datetime.strptime(created_str, self._created_format)
+            return datetime.strptime(session_start_time_string, self._session_start_time_format)
         except ValueError:
             warnings.warn(
-                f"Could not parse 'Created' attribute from .doric file (got {created_str!r}). "
-                f"Expected format: '{self._created_format}'. Session start time will not be set automatically."
+                f"Could not parse 'Created' attribute from .doric file (got {session_start_time_string!r}). "
+                f"Expected format: '{self._session_start_time_format}'. Session start time will not be set automatically."
             )
             return None
 
@@ -125,24 +166,29 @@ class DoricEventsInterface(BaseEventsInterface):
         if session_start_time is not None:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # Identity-in-header: each event_type_source_id (a digital line's name) is its own event type,
-        # and event_name (the human-facing label) defaults to that handle. A .doric file ships no meaning
-        # for a line, so only the name is seeded here. Only lines that carry at least one rising edge
-        # appear (a constant line is skipped), matching _get_events_data_dict.
-        for event_type_source_id in self._get_events_data_dict():
+        # Each event_type_source_id resolved from the configuration is its own event type, and event_name
+        # (the human-facing label) defaults to that identifier. A .doric file ships no meaning for a line,
+        # so only the name is seeded here. Seeded from the resolved plan rather than from the events
+        # themselves, so metadata costs no data read: whether a line happened to fire does not change
+        # which event types the configuration asked for.
+        for event_type_source_id in self._detection_plan:
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }
         return metadata
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
-        """Build the internal event representation by rising-edge detecting each digital line, cached.
+        """Build the internal event representation by edge-detecting each selected line, cached.
 
-        Each discovered digital line becomes one :class:`_EventsData` keyed by its ``event_type_source_id``
-        (the line name): its rising edges (``0 -> 1`` transitions in the sampled binary trace) are the
-        onset timestamps, taken from the shared ``Time`` vector. A line with no rising edge (constant, or
-        already high at the first sample) carries no event and is skipped, so the empty state never reaches
-        the writer.
+        Each entry of the resolved plan becomes one :class:`_EventsData` keyed by its
+        ``event_type_source_id``: its signal's trace is edge-detected per the spec's ``detection`` (via
+        :func:`discretize_trace`) into onset frames and, for a durative reading, per-event durations. The
+        onset timestamps are read from that signal's ``Time`` dataset; durations (in frames) are scaled to
+        seconds by the file's sampling period. An event type with no event (a constant line, or one that
+        never opens) keeps its entry with empty timestamps, which the writer renders as a zero-row table.
+
+        A ``.doric`` line is already a ``0``/``1`` signal, so no conditioning runs here and the reading is
+        applied to the signal's own values.
         """
         if self._events_data_dict is not None:
             return self._events_data_dict
@@ -151,18 +197,17 @@ class DoricEventsInterface(BaseEventsInterface):
 
         events_data_dict = {}
         with h5py.File(self.source_data["file_path"], "r") as f:
-            for event_type_source_id, paths in self._event_source_paths.items():
-                data = np.asarray(f[paths["data_path"]][:])
-                time = np.asarray(f[paths["time_path"]][:])
-                # A digital line is a densely sampled 0/1 trace; its events are the rising edges (a
-                # low->high transition). Treat any value above 0.5 as high, robust to float 0.0/1.0.
-                high = data > 0.5
-                rising_edges = np.flatnonzero(~high[:-1] & high[1:]) + 1
-                if rising_edges.size == 0:
-                    continue  # a constant / never-rising line has no onset; skip it entirely
-                onsets = time[rising_edges]
+            for event_type_source_id, (signal_source_id, spec) in self._detection_plan.items():
+                paths = self._available_signals[signal_source_id]
+                data = np.asarray(f[paths["data_path"]][:], dtype="float64")
+                time = np.asarray(f[paths["time_path"]][:], dtype="float64")
+                frame_period = float(np.median(np.diff(time)))  # regular Doric clock; duration frames -> seconds
+                # A digital line is a densely sampled 0/1 trace; threshold=0.5 discretizes it strictly.
+                onset_frames, duration_frames = discretize_trace(data, spec["detection"], threshold=0.5)
+                onsets = time[onset_frames]
+                durations = None if duration_frames is None else duration_frames * frame_period
                 events_data_dict[event_type_source_id] = _EventsData(
-                    event_type_source_id=event_type_source_id, timestamps=onsets
+                    event_type_source_id=event_type_source_id, timestamps=onsets, durations=durations
                 )
 
         self._events_data_dict = events_data_dict
