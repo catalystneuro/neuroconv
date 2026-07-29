@@ -55,7 +55,7 @@ class TestValidateDetectionConfiguration:
             validate_detection_configuration({"DI/O-1": [{"detection": "rising", "threshold": 0.4}]}, AVAILABLE_SIGNALS)
 
     def test_detection_value_is_not_checked_here(self):
-        """``discretize_trace`` owns the reading vocabulary and raises on an invalid one, so this does not."""
+        """``_detect_events`` owns the reading vocabulary and raises on an invalid one, so this does not."""
         validate_detection_configuration({"DI/O-1": [{"detection": "not_a_reading"}]}, AVAILABLE_SIGNALS)
 
 
@@ -66,28 +66,28 @@ class TestResolveDetectionPlan:
         """Rule 1 keeps a zero-configuration conversion's identifiers equal to the acquisition strings."""
         plan = resolve_detection_plan({"DI/O-1": [{"detection": "high_period"}]})
 
-        assert plan == {"DI/O-1": ("DI/O-1", {"detection": "high_period"})}
+        assert plan == {"DI/O-1": [("DI/O-1", {"detection": "high_period"})]}
 
     def test_several_specs_fan_out_on_the_reading(self):
         plan = resolve_detection_plan({"DI/O-1": [{"detection": "rising"}, {"detection": "falling"}]})
 
-        assert set(plan) == {"DI/O-1_rising", "DI/O-1_falling"}
-        assert plan["DI/O-1_rising"] == ("DI/O-1", {"detection": "rising"})
+        assert {name for name, _ in plan["DI/O-1"]} == {"DI/O-1_rising", "DI/O-1_falling"}
+        assert plan["DI/O-1"][0] == ("DI/O-1_rising", {"detection": "rising"})
 
     def test_event_name_replaces_the_derived_identifier(self):
         """Rule 3, which is also how a caller pins an identifier against later edits to that signal."""
-        plan = resolve_detection_plan(
-            {"DI/O-1": [{"detection": "rising", "event_name": "Lick"}, {"detection": "falling"}]}
-        )
+        detection_configuration = {"DI/O-1": [{"detection": "rising", "event_name": "Lick"}, {"detection": "falling"}]}
 
-        assert set(plan) == {"Lick", "DI/O-1_falling"}
+        event_type_source_ids = [name for name, _ in resolve_detection_plan(detection_configuration)["DI/O-1"]]
+
+        assert event_type_source_ids == ["Lick", "DI/O-1_falling"]
 
     def test_derivation_is_content_based_not_positional(self):
         """Reordering a signal's specs renames nothing, so a list is order-insensitive."""
         forward = resolve_detection_plan({"DI/O-1": [{"detection": "rising"}, {"detection": "falling"}]})
         reversed_order = resolve_detection_plan({"DI/O-1": [{"detection": "falling"}, {"detection": "rising"}]})
 
-        assert set(forward) == set(reversed_order)
+        assert {name for name, _ in forward["DI/O-1"]} == {name for name, _ in reversed_order["DI/O-1"]}
 
     def test_duplicate_identifiers_raise(self):
         """Rule 4 is cross-signal, which is why it lives here rather than in the per-signal validator."""
