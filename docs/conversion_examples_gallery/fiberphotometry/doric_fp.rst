@@ -35,7 +35,6 @@ before construction) to discover stream names for any of these variants.
 
 .. code-block:: python
 
-    >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import DoricFiberPhotometryInterface
 
     >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"
