@@ -245,6 +245,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         configuration_file_path: str = None,
         timeStamps_file_path: str = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Initialize reading the Miniscope imaging data.
@@ -284,6 +285,9 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             as the video files.
         verbose : bool, optional
             If True, enables verbose mode for detailed logging, by default False.
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to "miniscope_imaging".
         """
         # Handle deprecated positional arguments
         if args:
@@ -321,6 +325,15 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
                 "Either 'folder_path' must be provided, or both 'file_paths' and 'configuration_file_path' must be provided."
             )
 
+        from ._miniscope_readers import _raise_if_miniscope_v3_format
+
+        if folder_path is not None:
+            _raise_if_miniscope_v3_format(folder_path=str(folder_path))
+        elif configuration_file_path is not None:
+            _raise_if_miniscope_v3_format(folder_path=str(Path(configuration_file_path).parent))
+        elif file_paths is not None:
+            _raise_if_miniscope_v3_format(folder_path=str(Path(file_paths[0]).parent))
+
         if folder_path is not None and (file_paths is not None or configuration_file_path is not None):
             raise ValueError(
                 "When 'folder_path' is provided, 'file_paths' and 'configuration_file_path' cannot be specified. "
@@ -348,6 +361,9 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         else:
             self._device_folder_path = None
 
+        if metadata_key is None:
+            metadata_key = "miniscope_imaging"
+
         # Initialize with the provided parameters
         super().__init__(
             folder_path=folder_path,
@@ -355,6 +371,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             configuration_file_path=configuration_file_path,
             timestamps_path=timeStamps_file_path,
             verbose=verbose,
+            metadata_key=metadata_key,
         )
 
         self.photon_series_type = "OnePhotonSeries"
@@ -378,54 +395,80 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         return MiniscopeImagingExtractor._get_session_start_time(miniscope_folder_path=folder_path)
 
-    def get_metadata(self) -> dict:
-        """Get metadata with device information from Miniscope configuration."""
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        """Get metadata with device information from Miniscope configuration.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata keyed by ``metadata_key`` under
+            ``Devices``, ``Ophys.ImagingPlanes``, and ``Ophys.MicroscopySeries``.
+        """
         from roiextractors import MiniscopeImagingExtractor
 
-        metadata = super().get_metadata()
+        metadata = (
+            super().get_metadata()
+            if not use_new_metadata_format
+            else super().get_metadata(use_new_metadata_format=True)
+        )
 
         # Read device metadata from metaData.json using the extractor's static method
         device_metadata_path = self._device_folder_path / "metaData.json"
 
-        # Extract device metadata from the configuration file
-        device_metadata = metadata["Ophys"]["Device"][0]
         device_name = "Miniscope"  # Default
-
+        model_name = None
         if device_metadata_path.exists():
             miniscope_config = MiniscopeImagingExtractor._read_device_folder_metadata(
                 metadata_file_path=str(device_metadata_path)
             )
             device_name = miniscope_config.get("deviceName", "Miniscope")
-
-            # Only include valid Device schema fields
-            device_updates = {"name": device_name}
-
-            # Map deviceType to model_name if available
             if "deviceType" in miniscope_config:
-                device_updates["model_name"] = miniscope_config["deviceType"]
-
-            device_metadata.update(device_updates)
-        else:
-            # Fallback if metaData.json doesn't exist
-            device_metadata.update({"name": device_name})
-
-        # Update imaging plane metadata
-        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-        imaging_plane_metadata.update(
-            device=device_name,
-            imaging_rate=self.imaging_extractor.get_sampling_frequency(),
-        )
-
-        # Update photon series metadata
-        if "OnePhotonSeries" in metadata["Ophys"]:
-            one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
-            one_photon_series_metadata.update(unit="px")
+                model_name = miniscope_config["deviceType"]
 
         # Extract session_start_time from parent folder's metaData.json if available
         # The parent folder of the device folder contains the session-level metaData.json
         session_start_time = self._get_session_start_time(folder_path=self._device_folder_path.parent)
         if session_start_time is not None:
             metadata["NWBFile"]["session_start_time"] = session_start_time
+
+        if use_new_metadata_format:
+            device_entry = {"name": device_name}
+            if model_name is not None:
+                device_entry["model_name"] = model_name
+            metadata["Devices"] = {self.metadata_key: device_entry}
+            metadata["Ophys"] = {
+                "ImagingPlanes": {
+                    self.metadata_key: {
+                        "device_metadata_key": self.metadata_key,
+                        "imaging_rate": self.imaging_extractor.get_sampling_frequency(),
+                    },
+                },
+                "MicroscopySeries": {
+                    self.metadata_key: {
+                        "imaging_plane_metadata_key": self.metadata_key,
+                        "description": "Imaging data acquired with a Miniscope.",
+                    },
+                },
+            }
+            return metadata
+
+        # Old list-based path
+        device_metadata = metadata["Ophys"]["Device"][0]
+        device_updates = {"name": device_name}
+        if model_name is not None:
+            device_updates["model_name"] = model_name
+        device_metadata.update(device_updates)
+
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        imaging_plane_metadata.update(
+            device=device_name,
+            imaging_rate=self.imaging_extractor.get_sampling_frequency(),
+        )
+
+        if "OnePhotonSeries" in metadata["Ophys"]:
+            one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
+            one_photon_series_metadata.update(unit="px")
 
         return metadata
 
@@ -472,7 +515,10 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         from ndx_miniscope.utils import add_miniscope_device
 
         # Add Miniscope device - required for proper ndx_miniscope.Miniscope device type
-        device_metadata = metadata["Ophys"]["Device"][0]
+        if metadata is not None and "Devices" in metadata and self.metadata_key in metadata.get("Devices", {}):
+            device_metadata = metadata["Devices"][self.metadata_key]
+        else:
+            device_metadata = metadata["Ophys"]["Device"][0]
         add_miniscope_device(nwbfile=nwbfile, device_metadata=device_metadata)
 
         super().add_to_nwbfile(

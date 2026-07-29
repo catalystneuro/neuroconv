@@ -33,3 +33,10 @@ Convert TDT data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.tdt.t
     >>>  # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+.. seealso::
+
+    Other TDT data interfaces:
+
+    - :doc:`../fiberphotometry/tdt_fp` to convert TDT fiber photometry signals.
+    - :doc:`../events/tdt_events` to convert discrete TDT events (epocs such as port entries or nose pokes).

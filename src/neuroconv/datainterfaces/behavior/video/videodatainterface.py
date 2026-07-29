@@ -406,7 +406,7 @@ class _VideoInterface(BaseDataInterface):
             external_interface = ExternalVideoInterface(
                 file_paths=file_paths,
                 verbose=self.verbose,
-                video_name=video_name,
+                metadata_key=video_name,
             )
 
             # Copy timing information
@@ -436,7 +436,7 @@ class _VideoInterface(BaseDataInterface):
         internal_interface = InternalVideoInterface(
             file_path=file_paths[0],
             verbose=self.verbose,
-            video_name=video_name,
+            metadata_key=video_name,
         )
 
         # Copy timing information

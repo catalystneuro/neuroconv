@@ -13,7 +13,6 @@ from pynwb.ophys import (
     ImageSegmentation,
     ImagingPlane,
     OnePhotonSeries,
-    OpticalChannel,
     PlaneSegmentation,
     RoiResponseSeries,
     TwoPhotonSeries,
@@ -42,6 +41,7 @@ from ..nwb_helpers import (
     get_module,
     make_nwbfile_from_metadata,
 )
+from ..nwb_helpers._device_types import _build_inline_containers
 from ..nwb_helpers._metadata_and_file_helpers import (
     _add_device_to_nwbfile,
     _resolve_backend,
@@ -315,20 +315,24 @@ def _add_imaging_plane_to_nwbfile(
     if imaging_plane_name in nwbfile.imaging_planes:
         return nwbfile.imaging_planes[imaging_plane_name]
 
-    # Resolve device
+    # Resolve device. Entries without a ``device_metadata_key`` fall back to the placeholder device,
+    # which is exposed through the registry under its default key so every device is added by the
+    # canonical path.
     device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
-    if device_metadata_key is not None:
-        device_metadata = metadata["Devices"][device_metadata_key]
-    else:
-        device_metadata = _get_ophys_metadata_placeholders()["Devices"]["default_metadata_key"]
-    device = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
+    devices_metadata = {"Devices": dict((metadata or {}).get("Devices", {}))}
+    if device_metadata_key is None:
+        # Only synthesize the placeholder when nothing was referenced, so a user device that happens
+        # to share the placeholder's name is not turned into a duplicate-name conflict.
+        device_metadata_key = "default_metadata_key"
+        placeholder = _get_ophys_metadata_placeholders()["Devices"]["default_metadata_key"]
+        devices_metadata["Devices"].setdefault(device_metadata_key, placeholder)
+    imaging_plane_kwargs["device"] = _add_device_to_nwbfile(
+        nwbfile=nwbfile, metadata=devices_metadata, metadata_key=device_metadata_key
+    )
 
-    imaging_plane_kwargs["device"] = device
-
-    # Convert optical channel metadata dicts to OpticalChannel objects
-    imaging_plane_kwargs["optical_channel"] = [
-        OpticalChannel(**channel_metadata) for channel_metadata in imaging_plane_kwargs["optical_channel"]
-    ]
+    # ``optical_channel`` is written inline as a list of dicts and built into OpticalChannel objects
+    # by the shared primitive, which reads the target type off ImagingPlane's own constructor spec.
+    imaging_plane_kwargs = _build_inline_containers(target_class=ImagingPlane, kwargs=imaging_plane_kwargs)
 
     imaging_plane = ImagingPlane(**imaging_plane_kwargs)
     nwbfile.add_imaging_plane(imaging_plane)
@@ -1270,7 +1274,7 @@ def add_segmentation_to_nwbfile(
     background_plane_segmentation_name: str | None = None,
     include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
-    include_roi_acceptance: bool = True,
+    include_roi_acceptance: bool | None = None,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
     # TODO: move metadata_key after metadata once positional args removed (September 2026)
@@ -1292,16 +1296,22 @@ def add_segmentation_to_nwbfile(
     plane_segmentation_name : str, optional
         The name of the PlaneSegmentation object to be added, by default None.
         Used with the old list-based metadata format.
+        Deprecated: in the dict-based format, use ``metadata_key`` for pattern discovery and edit
+        ``metadata["Ophys"]["PlaneSegmentations"][metadata_key]["name"]`` directly. Will be removed
+        when the old list-based metadata format is removed.
     background_plane_segmentation_name : str, optional
         The name of the background PlaneSegmentation, if any, by default None.
         Used with the old list-based metadata format.
+        Deprecated: same guidance as ``plane_segmentation_name``.
     include_background_segmentation : bool, optional
         If True, includes background plane segmentation, by default False.
         Used with the old list-based metadata format.
     include_roi_centroids : bool, optional
         If True, includes the centroids of the regions of interest (ROIs), by default True.
     include_roi_acceptance : bool, optional
-        If True, includes the acceptance status of ROIs, by default True.
+        Deprecated and ignored. ROI acceptance is now written automatically as a
+        column on the PlaneSegmentation table whenever the segmentation extractor
+        exposes acceptance/rejection through its property system.
     mask_type : str
         Type of mask to use for segmentation; can be either "image" or "pixel", by default "image".
     iterator_options : dict, optional
@@ -1355,6 +1365,16 @@ def add_segmentation_to_nwbfile(
         mask_type = positional_values.get("mask_type", mask_type)
         iterator_options = positional_values.get("iterator_options", iterator_options)
 
+    if include_roi_acceptance is not None:
+        warnings.warn(
+            "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
+            "written automatically as a column on the PlaneSegmentation table whenever the "
+            "segmentation extractor exposes acceptance/rejection through its property system. "
+            "This parameter will be removed on or after November 2026.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
     if metadata is None:
         metadata = _get_ophys_metadata_placeholders()
 
@@ -1376,7 +1396,6 @@ def add_segmentation_to_nwbfile(
             background_plane_segmentation_name=background_plane_segmentation_name,
             include_background_segmentation=include_background_segmentation,
             include_roi_centroids=include_roi_centroids,
-            include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
             iterator_options=iterator_options,
         )
@@ -1393,7 +1412,7 @@ def write_segmentation_to_nwbfile(
     verbose: bool = False,
     include_background_segmentation: bool = False,
     include_roi_centroids: bool = True,
-    include_roi_acceptance: bool = True,
+    include_roi_acceptance: bool | None = None,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     *,
     iterator_options: dict | None = None,
@@ -1433,10 +1452,10 @@ def write_segmentation_to_nwbfile(
         Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
         faster write speeds.
-    include_roi_acceptance : bool, default: True
-        Whether to include if the detected ROI was 'accepted' or 'rejected'.
-        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
-        faster write speeds.
+    include_roi_acceptance : bool, optional
+        Deprecated and ignored. ROI acceptance is now written automatically as a
+        column on the PlaneSegmentation table whenever the segmentation extractor
+        exposes acceptance/rejection through its property system.
     mask_type : {"image", "pixel", "voxel"}, default: "image"
         There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
 
@@ -1467,6 +1486,16 @@ def write_segmentation_to_nwbfile(
         **Deprecated**: Returning NWBFile in append mode is deprecated and will return None on or after June 2026.
     """
     iterator_options = iterator_options or dict()
+
+    if include_roi_acceptance is not None:
+        warnings.warn(
+            "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
+            "written automatically as a column on the PlaneSegmentation table whenever the "
+            "segmentation extractor exposes acceptance/rejection through its property system. "
+            "This parameter will be removed on or after November 2026.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     # Parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segmentation_extractor, MultiSegmentationExtractor):
@@ -1514,7 +1543,6 @@ def write_segmentation_to_nwbfile(
                 metadata=seg_metadata,
                 include_background_segmentation=include_background_segmentation,
                 include_roi_centroids=include_roi_centroids,
-                include_roi_acceptance=include_roi_acceptance,
                 mask_type=mask_type,
                 iterator_options=iterator_options,
             )
@@ -1556,7 +1584,6 @@ def write_segmentation_to_nwbfile(
                 metadata=seg_metadata,
                 include_background_segmentation=include_background_segmentation,
                 include_roi_centroids=include_roi_centroids,
-                include_roi_acceptance=include_roi_acceptance,
                 mask_type=mask_type,
                 iterator_options=iterator_options,
             )
@@ -1598,7 +1625,6 @@ def write_segmentation_to_nwbfile(
                     metadata=seg_metadata,
                     include_background_segmentation=include_background_segmentation,
                     include_roi_centroids=include_roi_centroids,
-                    include_roi_acceptance=include_roi_acceptance,
                     mask_type=mask_type,
                     iterator_options=iterator_options,
                 )

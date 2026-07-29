@@ -20,10 +20,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     keywords = ("segmentation", "roi", "cells")
 
-    def __init__(self, verbose: bool = False, **source_data):
+    def __init__(self, verbose: bool = False, metadata_key: str | None = None, **source_data):
         super().__init__(**source_data)
         self.verbose = verbose
         self.segmentation_extractor = self._extractor_instance
+        self.metadata_key = metadata_key
 
     @property
     def roi_ids(self):
@@ -117,7 +118,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        if use_new_metadata_format:
+            return super().get_metadata()
+
         from ...tools.roiextractors.roiextractors_pending_deprecation import (
             _get_default_ophys_metadata_old_metadata_list,
         )
@@ -157,7 +161,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         stub_test: bool = False,
         include_background_segmentation: bool = False,
         include_roi_centroids: bool = True,
-        include_roi_acceptance: bool = True,
+        include_roi_acceptance: bool | None = None,
         mask_type: Literal["image", "pixel", "voxel"] = "image",
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
@@ -181,10 +185,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             Whether to include the ROI centroids on the PlaneSegmentation table.
             If there are a very large number of ROIs (such as in whole-brain recordings),
             you may wish to disable this for faster write speeds.
-        include_roi_acceptance : bool, default: True
-            Whether to include if the detected ROI was 'accepted' or 'rejected'.
-            If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
-            faster write speeds.
+        include_roi_acceptance : bool, optional
+            Deprecated and ignored. ROI acceptance is now written automatically as a
+            column on the PlaneSegmentation table whenever the segmentation extractor
+            exposes acceptance/rejection through its property system.
         mask_type : str, default: 'image'
             There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
 
@@ -262,6 +266,16 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             stub_samples = positional_values.get("stub_samples", stub_samples)
             roi_ids_to_add = positional_values.get("roi_ids_to_add", roi_ids_to_add)
 
+        if include_roi_acceptance is not None:
+            warnings.warn(
+                "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
+                "written automatically as a column on the PlaneSegmentation table whenever the "
+                "segmentation extractor exposes acceptance/rejection through its property system. "
+                "This parameter will be removed on or after November 2026.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         segmentation_extractor = self.segmentation_extractor
 
         if roi_ids_to_add is not None:
@@ -279,8 +293,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             metadata=metadata,
             include_background_segmentation=include_background_segmentation,
             include_roi_centroids=include_roi_centroids,
-            include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
+            metadata_key=self.metadata_key,
         )

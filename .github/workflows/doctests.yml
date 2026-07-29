@@ -11,6 +11,14 @@ on:
         required: true
         type: string
 
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      S3_GIN_BUCKET:
+        required: true
+
 
 jobs:
   run:
@@ -22,10 +30,10 @@ jobs:
         python-version: ${{ fromJson(inputs.python-versions) }}
         os: ${{ fromJson(inputs.os-versions) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 

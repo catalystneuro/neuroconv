@@ -25,11 +25,11 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         metadata: dict | None = None,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
-        write_as: Literal["raw", "lfp", "processed"] = "lfp",
+        parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "processing/LFP",
+        write_as: Literal["raw", "lfp", "processed"] | None = None,
         write_electrical_series: bool = True,
         iterator_type: str = "v2",
         iterator_options: dict | None = None,
-        iterator_opts: dict | None = None,
     ):
         # Handle deprecated positional arguments
         if args:
@@ -39,7 +39,6 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
                 "write_electrical_series",
                 "iterator_type",
                 "iterator_options",
-                "iterator_opts",
             ]
             num_positional_args_before_args = 2  # nwbfile, metadata
             if len(args) > len(parameter_names):
@@ -64,25 +63,24 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             write_electrical_series = positional_values.get("write_electrical_series", write_electrical_series)
             iterator_type = positional_values.get("iterator_type", iterator_type)
             iterator_options = positional_values.get("iterator_options", iterator_options)
-            iterator_opts = positional_values.get("iterator_opts", iterator_opts)
 
-        # Handle deprecated iterator_opts parameter
-        if iterator_opts is not None:
+        if write_as is not None:
             warnings.warn(
-                "The 'iterator_opts' parameter is deprecated and will be removed in May 2026 or after. "
-                "Use 'iterator_options' instead.",
+                "The 'write_as' parameter of BaseLFPExtractorInterface.add_to_nwbfile() is deprecated and will be "
+                "removed on or after December 2026. Use 'parent_container' instead "
+                "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,
             )
-            if iterator_options is not None:
-                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
-            iterator_options = iterator_opts
+            parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
+                write_as
+            ]
 
         return super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
-            write_as=write_as,
+            parent_container=parent_container,
             write_electrical_series=write_electrical_series,
             iterator_type=iterator_type,
             iterator_options=iterator_options,

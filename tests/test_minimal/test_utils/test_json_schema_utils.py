@@ -3,6 +3,7 @@ import os
 from copy import deepcopy
 
 import numpy as np
+import pytest
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from neuroconv.utils import (
@@ -11,7 +12,7 @@ from neuroconv.utils import (
     get_schema_from_hdmf_class,
     load_dict_from_file,
 )
-from neuroconv.utils.json_schema import _NWBMetaDataEncoder
+from neuroconv.utils.json_schema import _NWBMetaDataEncoder, validate_metadata
 
 
 def compare_dicts(a: dict, b: dict):
@@ -150,6 +151,38 @@ def test_fill_defaults():
     compare_dicts(schema, correct_new_schema)
 
 
+def test_fill_defaults_skips_additional_properties_node():
+    """A node validated only by additionalProperties has no named properties to fill, so it is skipped.
+
+    Regression test: such a node (produced e.g. by TDTEventsInterface, whose Events block is keyed by a
+    dynamic metadata_key) used to raise ``KeyError: 'properties'`` when reached via a default value.
+    """
+    schema = dict(
+        type="object",
+        properties=dict(
+            Events=dict(
+                type="object",
+                additionalProperties=dict(type="object"),
+            ),
+        ),
+    )
+    defaults = dict(Events=dict(tdt_events=dict(event_columns=dict())))
+
+    fill_defaults(schema, defaults)
+
+    # The additionalProperties node is left untouched (no "default" injected, no error).
+    correct_new_schema = dict(
+        type="object",
+        properties=dict(
+            Events=dict(
+                type="object",
+                additionalProperties=dict(type="object"),
+            ),
+        ),
+    )
+    compare_dicts(schema, correct_new_schema)
+
+
 def test_load_metadata_from_file():
     m0 = dict(
         NWBFile=dict(
@@ -206,3 +239,10 @@ def test_np_array_encoding():
     np_array = np.array([1, 2, 3])
     encoded = json.dumps(np_array, cls=_NWBMetaDataEncoder)
     assert encoded == "[1, 2, 3]"
+
+
+def test_validate_metadata_rejects_duplicate_device_names():
+    metadata = {"Devices": {"a": {"name": "shared"}, "b": {"name": "shared"}}}
+
+    with pytest.raises(ValueError, match="Use 1 key to share a device"):
+        validate_metadata(metadata=metadata, schema={"type": "object"})

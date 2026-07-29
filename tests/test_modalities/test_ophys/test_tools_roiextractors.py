@@ -428,23 +428,6 @@ class TestAddPlaneSegmentation(TestCase):
 
         assert "ROICentroids" not in plane_segmentation
 
-    def test_do_not_include_acceptance(self):
-        """Test that setting `include_roi_acceptance=False` prevents the boolean acceptance columns from being added."""
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            include_roi_acceptance=False,
-            plane_segmentation_name=self.plane_segmentation_name,
-        )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-        plane_segmentations = image_segmentation.plane_segmentations
-        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
-
-        assert "Accepted" not in plane_segmentation
-        assert "Rejected" not in plane_segmentation
-
     @parameterized.expand(
         [
             param(
@@ -488,8 +471,12 @@ class TestAddPlaneSegmentation(TestCase):
         ],
     )
     def test_rejected_roi_ids(self, rejected_list, expected_rejected_roi_ids):
-        """Test that the ROI ids that were rejected are correctly set in
-        the plane segmentation ROI table."""
+        """Test that the ROI ids that were rejected are correctly written via the property system.
+
+        The ``is_accepted`` and ``is_rejected`` columns come from the segmentation extractor's
+        property system (the new path after roiextractors removed ``get_accepted_list`` /
+        ``get_rejected_list``).
+        """
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
             num_samples=self.num_samples,
@@ -510,12 +497,11 @@ class TestAddPlaneSegmentation(TestCase):
 
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
-        plane_segmentation_rejected_roi_ids = plane_segmentation["Rejected"].data
-        assert_array_equal(plane_segmentation_rejected_roi_ids, expected_rejected_roi_ids)
+        expected_is_rejected = np.array(expected_rejected_roi_ids, dtype=bool)
+        expected_is_accepted = np.logical_not(expected_is_rejected)
 
-        accepted_roi_ids = list(np.logical_not(np.array(expected_rejected_roi_ids)).astype(int))
-        plane_segmentation_accepted_roi_ids = plane_segmentation["Accepted"].data
-        assert_array_equal(plane_segmentation_accepted_roi_ids, accepted_roi_ids)
+        assert_array_equal(plane_segmentation["is_rejected"].data, expected_is_rejected)
+        assert_array_equal(plane_segmentation["is_accepted"].data, expected_is_accepted)
 
     def test_pixel_masks(self):
         """Test the voxel mask option for writing a plane segmentation table."""

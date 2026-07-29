@@ -1,3 +1,4 @@
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -39,13 +40,21 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.extractor_kwargs = interface_kwargs.copy()
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
+        self.extractor_kwargs.pop("metadata_key", None)
         self.extractor_kwargs["all_annotations"] = True
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeries", **source_data):
+    def __init__(
+        self,
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        *,
+        metadata_key: str | None = None,
+        **source_data,
+    ):
         """
         Parameters
         ----------
@@ -53,6 +62,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             If True, will print out additional information.
         es_key : str, default: "ElectricalSeries"
             The key of this ElectricalSeries in the metadata dictionary.
+        metadata_key : str, optional
+            Key of this interface's ElectricalSeries in the dict-based metadata format.
+            Defaults to the value of ``es_key``.
         source_data : dict
             The key-value pairs of extractor-specific arguments.
 
@@ -69,6 +81,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         self.verbose = verbose
         self.es_key = es_key
+        self.metadata_key = metadata_key if metadata_key is not None else es_key
         self._number_of_segments = self.recording_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
@@ -117,8 +130,24 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         metadata = super().get_metadata()
+
+        if use_new_metadata_format:
+            # Dict-based format: emit only the ElectricalSeries entry keyed by ``metadata_key`` (which
+            # also marks the metadata as dict-based, so the pipeline dispatches to the new path). The
+            # default device and electrode groups are left to the pipeline, which creates a default
+            # device and synthesizes one group per channel-group from the recording's ``group`` properties.
+            metadata["Ecephys"] = dict()
+            if self.es_key is not None:
+                metadata["Ecephys"]["ElectricalSeries"] = {
+                    self.metadata_key: dict(
+                        name=self.metadata_key,
+                        description=f"Acquisition traces for the {self.metadata_key}.",
+                    )
+                }
+
+            return metadata
 
         from ...tools.spikeinterface.spikeinterface import _get_group_name
 
@@ -316,7 +345,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         metadata: dict | None = None,
         *,
         stub_test: bool = False,
-        write_as: Literal["raw", "lfp", "processed"] = "raw",
+        parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
+        write_as: Literal["raw", "lfp", "processed"] | None = None,
         write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
@@ -337,11 +367,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_as : {'raw', 'processed', 'lfp'}, default='raw'
-            Specifies how to save the trace data in the NWB file. Options are:
-            - 'raw': Save the data in the acquisition group.
-            - 'processed': Save the data as FilteredEphys in a processing module.
-            - 'lfp': Save the data as LFP in a processing module.
+        parent_container : {'acquisition', 'processing/LFP', 'processing/FilteredEphys'}, default: 'acquisition'
+            Which NWB container to write the trace data to. Options are:
+            - 'acquisition': raw acquired data, in the acquisition group.
+            - 'processing/LFP': an ``LFP`` container in the ecephys processing module.
+            - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
+        write_as : {'raw', 'processed', 'lfp'}, optional
+            Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
+            'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
 
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
@@ -378,11 +411,24 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
             explicitly, regardless of whether the sampling rate is uniform.
         """
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of BaseRecordingExtractorInterface.add_to_nwbfile() is deprecated and "
+                "will be removed on or after December 2026. Use 'parent_container' instead "
+                "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
+                write_as
+            ]
+
         from ...tools.spikeinterface import (
             _stub_recording,
             add_recording_metadata_to_nwbfile,
             add_recording_to_nwbfile,
         )
+        from ...tools.spikeinterface.spikeinterface import _is_dict_based_metadata
 
         recording = self.recording_extractor
         if stub_test:
@@ -390,16 +436,23 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         metadata = metadata or self.get_metadata()
 
+        # ``metadata_key`` selects the ElectricalSeries entry in the dict-based format and is
+        # mutually exclusive with ``es_key`` downstream. Pass it only when the metadata is actually
+        # dict-based; for the old list-based format it must stay None so the pipeline routes through
+        # ``es_key``.
+        metadata_key = self.metadata_key if _is_dict_based_metadata(metadata) else None
+
         if write_electrical_series:
             add_recording_to_nwbfile(
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
-                write_as=write_as,
+                parent_container=parent_container,
                 es_key=self.es_key,
                 iterator_type=iterator_type,
                 iterator_options=iterator_options,
                 always_write_timestamps=always_write_timestamps,
+                metadata_key=metadata_key,
             )
         else:
             add_recording_metadata_to_nwbfile(

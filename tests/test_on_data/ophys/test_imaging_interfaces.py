@@ -28,10 +28,8 @@ from neuroconv.datainterfaces.ophys.miniscope.miniscopeimagingdatainterface impo
     _MiniscopeMultiRecordingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
-    DataInterfaceTestMixin,
     ImagingExtractorInterfaceTestMixin,
     MiniscopeImagingInterfaceMixin,
-    TemporalAlignmentMixin,
 )
 
 try:
@@ -74,7 +72,7 @@ class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
 
-class TestScanImageImagingInterfaceMultiPlaneChannel1(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
         file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
@@ -84,14 +82,33 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(DataInterfaceTestMixin, Te
     save_directory = OUTPUT_PATH
 
     photon_series_name = "TwoPhotonSeriesChannel1"
+    optical_series_name = "TwoPhotonSeriesChannel1"
     imaging_plane_name = "ImagingPlaneChannel1"
     expected_two_photon_series_data_shape = (6, 256, 528, 2)
     expected_rate = None  # This is interleaved data so the timestamps are written
     expected_starting_time = None
+    expected_metadata_key = "scan_image_imaging_channel_1"
+    expected_imaging_rate = 7.28119
+    expected_scan_line_rate = 15843.868185354244
+    expected_device_description = "Microscope and acquisition data with ScanImage (version 2023.0.0)"
 
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "device_metadata_key": metadata_key,
+            "imaging_rate": self.expected_imaging_rate,
+        }
+        assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "imaging_plane_metadata_key": metadata_key,
+            "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
 
     def check_read_nwb(self, nwbfile_path: str):
         """Test reading the NWB file for multi-plane ScanImage data."""
@@ -117,7 +134,7 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(DataInterfaceTestMixin, Te
             assert len(optical_channels) == 1
 
 
-class TestScanImageImagingInterfaceMultiPlaneChannel4(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
         file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
@@ -127,14 +144,33 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(DataInterfaceTestMixin, Te
     save_directory = OUTPUT_PATH
 
     photon_series_name = "TwoPhotonSeriesChannel4"
+    optical_series_name = "TwoPhotonSeriesChannel4"
     imaging_plane_name = "ImagingPlaneChannel4"
     expected_two_photon_series_data_shape = (6, 256, 528, 2)
     expected_rate = None  # This is interleaved data so the timestamps are written
     expected_starting_time = None
+    expected_metadata_key = "scan_image_imaging_channel_4"
+    expected_imaging_rate = 7.28119
+    expected_scan_line_rate = 15843.868185354244
+    expected_device_description = "Microscope and acquisition data with ScanImage (version 2023.0.0)"
 
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "device_metadata_key": metadata_key,
+            "imaging_rate": self.expected_imaging_rate,
+        }
+        assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "imaging_plane_metadata_key": metadata_key,
+            "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
 
     def check_read_nwb(self, nwbfile_path: str):
         """Test reading the NWB file for multi-plane ScanImage data."""
@@ -160,10 +196,13 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(DataInterfaceTestMixin, Te
             assert len(optical_channels) == 1
 
 
-class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
     save_directory = OUTPUT_PATH
     expected_two_photon_series_data_shape = (6, 256, 528)
+    expected_imaging_rate = 7.28119
+    expected_scan_line_rate = 15843.868185354244
+    expected_device_description = "Microscope and acquisition data with ScanImage (version 2023.0.0)"
 
     @pytest.fixture(
         params=[
@@ -176,6 +215,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel1Plane0",
                 expected_imaging_plane_name="ImagingPlaneChannel1Plane0",
+                expected_metadata_key="scan_image_imaging_channel_1_plane_0",
             ),
             dict(
                 interface_kwargs=dict(
@@ -186,6 +226,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel1Plane1",
                 expected_imaging_plane_name="ImagingPlaneChannel1Plane1",
+                expected_metadata_key="scan_image_imaging_channel_1_plane_1",
             ),
             dict(
                 interface_kwargs=dict(
@@ -196,6 +237,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel4Plane0",
                 expected_imaging_plane_name="ImagingPlaneChannel4Plane0",
+                expected_metadata_key="scan_image_imaging_channel_4_plane_0",
             ),
             dict(
                 interface_kwargs=dict(
@@ -206,6 +248,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
                 ),
                 expected_photon_series_name="TwoPhotonSeriesChannel4Plane1",
                 expected_imaging_plane_name="ImagingPlaneChannel4Plane1",
+                expected_metadata_key="scan_image_imaging_channel_4_plane_1",
             ),
         ],
         ids=[
@@ -220,7 +263,9 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
         self.test_name = test_id
         self.interface_kwargs = request.param["interface_kwargs"]
         self.photon_series_name = request.param["expected_photon_series_name"]
+        self.optical_series_name = self.photon_series_name
         self.imaging_plane_name = request.param["expected_imaging_plane_name"]
+        self.expected_metadata_key = request.param["expected_metadata_key"]
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
@@ -228,6 +273,20 @@ class TestScanImageImagingInterfaceSinglePlaneCase(DataInterfaceTestMixin, Tempo
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 9, 22, 12, 51, 34, 124000)
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "device_metadata_key": metadata_key,
+            "imaging_rate": self.expected_imaging_rate,
+        }
+        assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "imaging_plane_metadata_key": metadata_key,
+            "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
 
     def check_read_nwb(self, nwbfile_path: str):
         """Test reading the NWB file for single-plane ScanImage data."""
@@ -295,13 +354,33 @@ class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"))
     save_directory = OUTPUT_PATH
 
+    expected_session_start_time = datetime(2017, 10, 9, 16, 57, 7, 967000)
+    expected_sampling_frequency = 3.90625
+    expected_description = '{"state.configPath": "\'C:\\\\Users\\\\Kishore Kuchibhotla\\\\Desktop\\\\FromOld2P_params\\\\ScanImage_cfgfiles\'", "state.configName": "\'Behavior_2channel\'", "state.software.version": "3.8", "state.software.minorRev": "0", "state.software.beta": "1", "state.software.betaNum": "4", "state.acq.externallyTriggered": "0", "state.acq.startTrigInputTerminal": "1", "state.acq.startTrigEdge": "\'Rising\'", "state.acq.nextTrigInputTerminal": "[]", "state.acq.nextTrigEdge": "\'Rising\'", "state.acq.nextTrigAutoAdvance": "0", "state.acq.nextTrigStopImmediate": "1", "state.acq.nextTrigAdvanceGap": "0", "state.acq.pureNextTriggerMode": "0", "state.acq.numberOfZSlices": "1", "state.acq.zStepSize": "187", "state.acq.numAvgFramesSaveGUI": "1", "state.acq.numAvgFramesSave": "1", "state.acq.numAvgFramesDisplay": "1", "state.acq.averaging": "1", "state.acq.averagingDisplay": "0", "state.acq.numberOfFrames": "1220", "state.acq.numberOfRepeats": "Inf", "state.acq.repeatPeriod": "10", "state.acq.stackCenteredOffset": "[]", "state.acq.stackParkBetweenSlices": "0", "state.acq.linesPerFrame": "256", "state.acq.pixelsPerLine": "256", "state.acq.pixelTime": "3.2e-06", "state.acq.binFactor": "16", "state.acq.frameRate": "3.90625", "state.acq.zoomFactor": "2", "state.acq.scanAngleMultiplierFast": "1", "state.acq.scanAngleMultiplierSlow": "1", "state.acq.scanRotation": "0", "state.acq.scanShiftFast": "1.25", "state.acq.scanShiftSlow": "-0.75", "state.acq.xstep": "0.5", "state.acq.ystep": "0.5", "state.acq.staircaseSlowDim": "0", "state.acq.slowDimFlybackFinalLine": "1", "state.acq.slowDimDiscardFlybackLine": "0", "state.acq.msPerLine": "1", "state.acq.fillFraction": "0.8192", "state.acq.samplesAcquiredPerLine": "4096", "state.acq.acqDelay": "8.32e-05", "state.acq.scanDelay": "9e-05", "state.acq.bidirectionalScan": "1", "state.acq.baseZoomFactor": "1", "state.acq.outputRate": "100000", "state.acq.inputRate": "5000000", "state.acq.inputBitDepth": "12", "state.acq.pockelsClosedOnFlyback": "1", "state.acq.pockelsFillFracAdjust": "4e-05", "state.acq.pmtOffsetChannel1": "0.93603515625", "state.acq.pmtOffsetChannel2": "-0.106689453125", "state.acq.pmtOffsetChannel3": "-0.789306640625", "state.acq.pmtOffsetChannel4": "-1.0419921875", "state.acq.pmtOffsetAutoSubtractChannel1": "0", "state.acq.pmtOffsetAutoSubtractChannel2": "0", "state.acq.pmtOffsetAutoSubtractChannel3": "0", "state.acq.pmtOffsetAutoSubtractChannel4": "0", "state.acq.pmtOffsetStdDevChannel1": "0.853812996333255", "state.acq.pmtOffsetStdDevChannel2": "0.87040286645618", "state.acq.pmtOffsetStdDevChannel3": "0.410833641563274", "state.acq.pmtOffsetStdDevChannel4": "0.20894370294704", "state.acq.rboxZoomSetting": "0", "state.acq.acquiringChannel1": "1", "state.acq.acquiringChannel2": "0", "state.acq.acquiringChannel3": "0", "state.acq.acquiringChannel4": "0", "state.acq.savingChannel1": "1", "state.acq.savingChannel2": "0", "state.acq.savingChannel3": "0", "state.acq.savingChannel4": "0", "state.acq.imagingChannel1": "1", "state.acq.imagingChannel2": "0", "state.acq.imagingChannel3": "0", "state.acq.imagingChannel4": "0", "state.acq.maxImage1": "0", "state.acq.maxImage2": "0", "state.acq.maxImage3": "0", "state.acq.maxImage4": "0", "state.acq.inputVoltageRange1": "10", "state.acq.inputVoltageRange2": "10", "state.acq.inputVoltageRange3": "10", "state.acq.inputVoltageRange4": "10", "state.acq.inputVoltageInvert1": "0", "state.acq.inputVoltageInvert2": "0", "state.acq.inputVoltageInvert3": "0", "state.acq.inputVoltageInvert4": "0", "state.acq.numberOfChannelsSave": "1", "state.acq.numberOfChannelsAcquire": "1", "state.acq.maxMode": "0", "state.acq.fastScanningX": "1", "state.acq.fastScanningY": "0", "state.acq.framesPerFile": "Inf", "state.acq.clockExport.frameClockPolarityHigh": "1", "state.acq.clockExport.frameClockPolarityLow": "0", "state.acq.clockExport.frameClockGateSource": "0", "state.acq.clockExport.frameClockEnable": "1", "state.acq.clockExport.frameClockPhaseShiftUS": "0", "state.acq.clockExport.frameClockGated": "0", "state.acq.clockExport.lineClockPolarityHigh": "1", "state.acq.clockExport.lineClockPolarityLow": "0", "state.acq.clockExport.lineClockGatedEnable": "0", "state.acq.clockExport.lineClockGateSource": "0", "state.acq.clockExport.lineClockAutoSource": "1", "state.acq.clockExport.lineClockEnable": "0", "state.acq.clockExport.lineClockPhaseShiftUS": "0", "state.acq.clockExport.lineClockGated": "0", "state.acq.clockExport.pixelClockPolarityHigh": "1", "state.acq.clockExport.pixelClockPolarityLow": "0", "state.acq.clockExport.pixelClockGateSource": "0", "state.acq.clockExport.pixelClockAutoSource": "1", "state.acq.clockExport.pixelClockEnable": "0", "state.acq.clockExport.pixelClockPhaseShiftUS": "0", "state.acq.clockExport.pixelClockGated": "0", "state.init.eom.powerTransitions.timeString": "\'\'", "state.init.eom.powerTransitions.powerString": "\'\'", "state.init.eom.powerTransitions.transitionCountString": "\'\'", "state.init.eom.uncagingPulseImporter.pathnameText": "\'\'", "state.init.eom.uncagingPulseImporter.powerConversionFactor": "1", "state.init.eom.uncagingPulseImporter.lineConversionFactor": "2", "state.init.eom.uncagingPulseImporter.enabled": "0", "state.init.eom.uncagingPulseImporter.currentPosition": "0", "state.init.eom.uncagingPulseImporter.syncToPhysiology": "0", "state.init.eom.powerBoxStepper.pbsArrayString": "\'[]\'", "state.init.eom.uncagingMapper.enabled": "0", "state.init.eom.uncagingMapper.perGrab": "1", "state.init.eom.uncagingMapper.perFrame": "0", "state.init.eom.uncagingMapper.numberOfPixels": "4", "state.init.eom.uncagingMapper.pixelGenerationUserFunction": "\'\'", "state.init.eom.uncagingMapper.currentPixels": "[]", "state.init.eom.uncagingMapper.currentPosition": "[]", "state.init.eom.uncagingMapper.syncToPhysiology": "0", "state.init.eom.numberOfBeams": "0", "state.init.eom.focusLaserList": "\'PockelsCell-1\'", "state.init.eom.grabLaserList": "\'PockelsCell-1\'", "state.init.eom.snapLaserList": "\'PockelsCell-1\'", "state.init.eom.maxPhotodiodeVoltage": "0", "state.init.eom.boxWidth": "[]", "state.init.eom.powerBoxWidthsInMs": "[]", "state.init.eom.min": "[]", "state.init.eom.maxPower": "[]", "state.init.eom.usePowerArray": "0", "state.init.eom.showBoxArray": "[]", "state.init.eom.boxPowerArray": "[]", "state.init.eom.boxPowerOffArray": "[]", "state.init.eom.startFrameArray": "[]", "state.init.eom.endFrameArray": "[]", "state.init.eom.powerBoxNormCoords": "[]", "state.init.eom.powerVsZEnable": "1", "state.init.eom.powerLzArray": "[]", "state.init.eom.powerLzOverride": "0", "state.cycle.cycleOn": "0", "state.cycle.cycleName": "\'\'", "state.cycle.cyclePath": "\'\'", "state.cycle.cycleLength": "2", "state.cycle.numCycleRepeats": "1", "state.motor.motorZEnable": "0", "state.motor.absXPosition": "659.6", "state.motor.absYPosition": "-10386.6", "state.motor.absZPosition": "-8068.4", "state.motor.absZZPosition": "NaN", "state.motor.relXPosition": "0", "state.motor.relYPosition": "0", "state.motor.relZPosition": "-5.99999999999909", "state.motor.relZZPosition": "NaN", "state.motor.distance": "5.99999999999909", "state.internal.averageSamples": "0", "state.internal.highPixelValue1": "16384", "state.internal.lowPixelValue1": "0", "state.internal.highPixelValue2": "16384", "state.internal.lowPixelValue2": "0", "state.internal.highPixelValue3": "500", "state.internal.lowPixelValue3": "0", "state.internal.highPixelValue4": "500", "state.internal.lowPixelValue4": "0", "state.internal.figureColormap1": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.figureColormap2": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.figureColormap3": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.figureColormap4": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.repeatCounter": "0", "state.internal.startupTimeString": "\'10/9/2017 14:38:30.957\'", "state.internal.triggerTimeString": "\'10/9/2017 16:57:07.967\'", "state.internal.softTriggerTimeString": "\'10/9/2017 16:57:07.970\'", "state.internal.triggerTimeFirstString": "\'10/9/2017 16:57:07.967\'", "state.internal.triggerFrameDelayMS": "0", "state.init.eom.powerConversion1": "10", "state.init.eom.rejected_light1": "0", "state.init.eom.photodiodeOffset1": "0", "state.init.eom.powerConversion2": "10", "state.init.eom.rejected_light2": "0", "state.init.eom.photodiodeOffset2": "0", "state.init.eom.powerConversion3": "10", "state.init.eom.rejected_light3": "0", "state.init.eom.photodiodeOffset3": "0", "state.init.voltsPerOpticalDegree": "0.333", "state.init.scanOffsetAngleX": "0", "state.init.scanOffsetAngleY": "0"}'
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
+        assert metadata["Devices"] == {
+            metadata_key: {"description": "Microscope controlled by ScanImage (legacy v3.8)"},
+        }
+        assert metadata["Ophys"]["ImagingPlanes"] == {
+            metadata_key: {
+                "device_metadata_key": metadata_key,
+                "imaging_rate": self.expected_sampling_frequency,
+            },
+        }
+        assert metadata["Ophys"]["MicroscopySeries"] == {
+            metadata_key: {
+                "imaging_plane_metadata_key": metadata_key,
+                "description": self.expected_description,
+            },
+        }
+
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 10, 9, 16, 57, 7, 967000)
-        assert (
-            metadata["Ophys"]["TwoPhotonSeries"][0]["description"]
-            == '{"state.configPath": "\'C:\\\\Users\\\\Kishore Kuchibhotla\\\\Desktop\\\\FromOld2P_params\\\\ScanImage_cfgfiles\'", "state.configName": "\'Behavior_2channel\'", "state.software.version": "3.8", "state.software.minorRev": "0", "state.software.beta": "1", "state.software.betaNum": "4", "state.acq.externallyTriggered": "0", "state.acq.startTrigInputTerminal": "1", "state.acq.startTrigEdge": "\'Rising\'", "state.acq.nextTrigInputTerminal": "[]", "state.acq.nextTrigEdge": "\'Rising\'", "state.acq.nextTrigAutoAdvance": "0", "state.acq.nextTrigStopImmediate": "1", "state.acq.nextTrigAdvanceGap": "0", "state.acq.pureNextTriggerMode": "0", "state.acq.numberOfZSlices": "1", "state.acq.zStepSize": "187", "state.acq.numAvgFramesSaveGUI": "1", "state.acq.numAvgFramesSave": "1", "state.acq.numAvgFramesDisplay": "1", "state.acq.averaging": "1", "state.acq.averagingDisplay": "0", "state.acq.numberOfFrames": "1220", "state.acq.numberOfRepeats": "Inf", "state.acq.repeatPeriod": "10", "state.acq.stackCenteredOffset": "[]", "state.acq.stackParkBetweenSlices": "0", "state.acq.linesPerFrame": "256", "state.acq.pixelsPerLine": "256", "state.acq.pixelTime": "3.2e-06", "state.acq.binFactor": "16", "state.acq.frameRate": "3.90625", "state.acq.zoomFactor": "2", "state.acq.scanAngleMultiplierFast": "1", "state.acq.scanAngleMultiplierSlow": "1", "state.acq.scanRotation": "0", "state.acq.scanShiftFast": "1.25", "state.acq.scanShiftSlow": "-0.75", "state.acq.xstep": "0.5", "state.acq.ystep": "0.5", "state.acq.staircaseSlowDim": "0", "state.acq.slowDimFlybackFinalLine": "1", "state.acq.slowDimDiscardFlybackLine": "0", "state.acq.msPerLine": "1", "state.acq.fillFraction": "0.8192", "state.acq.samplesAcquiredPerLine": "4096", "state.acq.acqDelay": "8.32e-05", "state.acq.scanDelay": "9e-05", "state.acq.bidirectionalScan": "1", "state.acq.baseZoomFactor": "1", "state.acq.outputRate": "100000", "state.acq.inputRate": "5000000", "state.acq.inputBitDepth": "12", "state.acq.pockelsClosedOnFlyback": "1", "state.acq.pockelsFillFracAdjust": "4e-05", "state.acq.pmtOffsetChannel1": "0.93603515625", "state.acq.pmtOffsetChannel2": "-0.106689453125", "state.acq.pmtOffsetChannel3": "-0.789306640625", "state.acq.pmtOffsetChannel4": "-1.0419921875", "state.acq.pmtOffsetAutoSubtractChannel1": "0", "state.acq.pmtOffsetAutoSubtractChannel2": "0", "state.acq.pmtOffsetAutoSubtractChannel3": "0", "state.acq.pmtOffsetAutoSubtractChannel4": "0", "state.acq.pmtOffsetStdDevChannel1": "0.853812996333255", "state.acq.pmtOffsetStdDevChannel2": "0.87040286645618", "state.acq.pmtOffsetStdDevChannel3": "0.410833641563274", "state.acq.pmtOffsetStdDevChannel4": "0.20894370294704", "state.acq.rboxZoomSetting": "0", "state.acq.acquiringChannel1": "1", "state.acq.acquiringChannel2": "0", "state.acq.acquiringChannel3": "0", "state.acq.acquiringChannel4": "0", "state.acq.savingChannel1": "1", "state.acq.savingChannel2": "0", "state.acq.savingChannel3": "0", "state.acq.savingChannel4": "0", "state.acq.imagingChannel1": "1", "state.acq.imagingChannel2": "0", "state.acq.imagingChannel3": "0", "state.acq.imagingChannel4": "0", "state.acq.maxImage1": "0", "state.acq.maxImage2": "0", "state.acq.maxImage3": "0", "state.acq.maxImage4": "0", "state.acq.inputVoltageRange1": "10", "state.acq.inputVoltageRange2": "10", "state.acq.inputVoltageRange3": "10", "state.acq.inputVoltageRange4": "10", "state.acq.inputVoltageInvert1": "0", "state.acq.inputVoltageInvert2": "0", "state.acq.inputVoltageInvert3": "0", "state.acq.inputVoltageInvert4": "0", "state.acq.numberOfChannelsSave": "1", "state.acq.numberOfChannelsAcquire": "1", "state.acq.maxMode": "0", "state.acq.fastScanningX": "1", "state.acq.fastScanningY": "0", "state.acq.framesPerFile": "Inf", "state.acq.clockExport.frameClockPolarityHigh": "1", "state.acq.clockExport.frameClockPolarityLow": "0", "state.acq.clockExport.frameClockGateSource": "0", "state.acq.clockExport.frameClockEnable": "1", "state.acq.clockExport.frameClockPhaseShiftUS": "0", "state.acq.clockExport.frameClockGated": "0", "state.acq.clockExport.lineClockPolarityHigh": "1", "state.acq.clockExport.lineClockPolarityLow": "0", "state.acq.clockExport.lineClockGatedEnable": "0", "state.acq.clockExport.lineClockGateSource": "0", "state.acq.clockExport.lineClockAutoSource": "1", "state.acq.clockExport.lineClockEnable": "0", "state.acq.clockExport.lineClockPhaseShiftUS": "0", "state.acq.clockExport.lineClockGated": "0", "state.acq.clockExport.pixelClockPolarityHigh": "1", "state.acq.clockExport.pixelClockPolarityLow": "0", "state.acq.clockExport.pixelClockGateSource": "0", "state.acq.clockExport.pixelClockAutoSource": "1", "state.acq.clockExport.pixelClockEnable": "0", "state.acq.clockExport.pixelClockPhaseShiftUS": "0", "state.acq.clockExport.pixelClockGated": "0", "state.init.eom.powerTransitions.timeString": "\'\'", "state.init.eom.powerTransitions.powerString": "\'\'", "state.init.eom.powerTransitions.transitionCountString": "\'\'", "state.init.eom.uncagingPulseImporter.pathnameText": "\'\'", "state.init.eom.uncagingPulseImporter.powerConversionFactor": "1", "state.init.eom.uncagingPulseImporter.lineConversionFactor": "2", "state.init.eom.uncagingPulseImporter.enabled": "0", "state.init.eom.uncagingPulseImporter.currentPosition": "0", "state.init.eom.uncagingPulseImporter.syncToPhysiology": "0", "state.init.eom.powerBoxStepper.pbsArrayString": "\'[]\'", "state.init.eom.uncagingMapper.enabled": "0", "state.init.eom.uncagingMapper.perGrab": "1", "state.init.eom.uncagingMapper.perFrame": "0", "state.init.eom.uncagingMapper.numberOfPixels": "4", "state.init.eom.uncagingMapper.pixelGenerationUserFunction": "\'\'", "state.init.eom.uncagingMapper.currentPixels": "[]", "state.init.eom.uncagingMapper.currentPosition": "[]", "state.init.eom.uncagingMapper.syncToPhysiology": "0", "state.init.eom.numberOfBeams": "0", "state.init.eom.focusLaserList": "\'PockelsCell-1\'", "state.init.eom.grabLaserList": "\'PockelsCell-1\'", "state.init.eom.snapLaserList": "\'PockelsCell-1\'", "state.init.eom.maxPhotodiodeVoltage": "0", "state.init.eom.boxWidth": "[]", "state.init.eom.powerBoxWidthsInMs": "[]", "state.init.eom.min": "[]", "state.init.eom.maxPower": "[]", "state.init.eom.usePowerArray": "0", "state.init.eom.showBoxArray": "[]", "state.init.eom.boxPowerArray": "[]", "state.init.eom.boxPowerOffArray": "[]", "state.init.eom.startFrameArray": "[]", "state.init.eom.endFrameArray": "[]", "state.init.eom.powerBoxNormCoords": "[]", "state.init.eom.powerVsZEnable": "1", "state.init.eom.powerLzArray": "[]", "state.init.eom.powerLzOverride": "0", "state.cycle.cycleOn": "0", "state.cycle.cycleName": "\'\'", "state.cycle.cyclePath": "\'\'", "state.cycle.cycleLength": "2", "state.cycle.numCycleRepeats": "1", "state.motor.motorZEnable": "0", "state.motor.absXPosition": "659.6", "state.motor.absYPosition": "-10386.6", "state.motor.absZPosition": "-8068.4", "state.motor.absZZPosition": "NaN", "state.motor.relXPosition": "0", "state.motor.relYPosition": "0", "state.motor.relZPosition": "-5.99999999999909", "state.motor.relZZPosition": "NaN", "state.motor.distance": "5.99999999999909", "state.internal.averageSamples": "0", "state.internal.highPixelValue1": "16384", "state.internal.lowPixelValue1": "0", "state.internal.highPixelValue2": "16384", "state.internal.lowPixelValue2": "0", "state.internal.highPixelValue3": "500", "state.internal.lowPixelValue3": "0", "state.internal.highPixelValue4": "500", "state.internal.lowPixelValue4": "0", "state.internal.figureColormap1": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.figureColormap2": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.figureColormap3": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.figureColormap4": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.repeatCounter": "0", "state.internal.startupTimeString": "\'10/9/2017 14:38:30.957\'", "state.internal.triggerTimeString": "\'10/9/2017 16:57:07.967\'", "state.internal.softTriggerTimeString": "\'10/9/2017 16:57:07.970\'", "state.internal.triggerTimeFirstString": "\'10/9/2017 16:57:07.967\'", "state.internal.triggerFrameDelayMS": "0", "state.init.eom.powerConversion1": "10", "state.init.eom.rejected_light1": "0", "state.init.eom.photodiodeOffset1": "0", "state.init.eom.powerConversion2": "10", "state.init.eom.rejected_light2": "0", "state.init.eom.photodiodeOffset2": "0", "state.init.eom.powerConversion3": "10", "state.init.eom.rejected_light3": "0", "state.init.eom.photodiodeOffset3": "0", "state.init.voltsPerOpticalDegree": "0.333", "state.init.scanOffsetAngleX": "0", "state.init.scanOffsetAngleY": "0"}'
-        )
+        assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
+        assert metadata["Ophys"]["TwoPhotonSeries"][0]["description"] == self.expected_description
 
 
 class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
@@ -728,8 +807,14 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         metadata_key = self.interface.metadata_key
         assert "Devices" not in metadata
         assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {"imaging_rate": 20.0},
+            },
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Micro-Manager."},
+                metadata_key: {
+                    "description": "Imaging data acquired with Micro-Manager.",
+                    "imaging_plane_metadata_key": metadata_key,
+                },
             },
         }
 
@@ -814,6 +899,31 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         two_photon_series = metadata["Ophys"]["TwoPhotonSeries"][0]
         assert two_photon_series["name"] == self.optical_series_name
 
+    def check_extracted_metadata(self, metadata: dict):
+        """Test new dict-based metadata for Thor imaging data."""
+        metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 10, 18, 17, 39, 19, tzinfo=timezone.utc)
+
+        expected_devices = {
+            metadata_key: {"description": "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041"},
+        }
+        assert metadata["Devices"] == expected_devices
+
+        ophys = metadata["Ophys"]
+
+        # ImagingPlanes
+        imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["name"] == "ImagingPlaneChanA"
+        assert imaging_plane["optical_channel"] == [{"name": "ChanA"}]
+        assert imaging_plane["grid_spacing"] == pytest.approx([0.884e-6, 0.884e-6])
+        assert imaging_plane["grid_spacing_unit"] == "meters"
+
+        # MicroscopySeries
+        series = ophys["MicroscopySeries"][metadata_key]
+        assert series["imaging_plane_metadata_key"] == metadata_key
+        assert series["field_of_view"] == pytest.approx([452.7e-6, 452.7e-6])
+
 
 class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = _MiniscopeMultiRecordingInterface
@@ -870,6 +980,13 @@ class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
         ):
             self.data_interface_cls(folder_path=folder_path)
 
+    def check_nwbfile_temporal_alignment(self):
+        # The deprecated multi-recording interface bypasses the parent add_to_nwbfile and does not
+        # propagate set_aligned_starting_time through to the written photon series. The class is
+        # being removed alongside the legacy MiniscopeConverter mode in December 2026, so this
+        # known limitation is left unaddressed.
+        pass
+
 
 class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = MiniscopeImagingInterface
@@ -885,6 +1002,40 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         cls.imaging_plane_name = "ImagingPlane"
         cls.photon_series_name = "OnePhotonSeries"
         cls.optical_series_name = "OnePhotonSeries"
+
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635000)
+        assert metadata["Ophys"]["Device"][0] == {"name": "Miniscope", "model_name": "Miniscope_V3"}
+
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane_metadata["name"] == self.imaging_plane_name
+        assert imaging_plane_metadata["device"] == self.device_name
+        assert imaging_plane_metadata["imaging_rate"] == self.interface.imaging_extractor.get_sampling_frequency()
+
+        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
+        assert one_photon_series_metadata["name"] == self.photon_series_name
+        assert one_photon_series_metadata["unit"] == "px"
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == "miniscope_imaging"
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635000)
+
+        assert metadata["Devices"] == {
+            metadata_key: {"name": "Miniscope", "model_name": "Miniscope_V3"},
+        }
+
+        expected_imaging_rate = self.interface.imaging_extractor.get_sampling_frequency()
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "device_metadata_key": metadata_key,
+            "imaging_rate": expected_imaging_rate,
+        }
+        assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "imaging_plane_metadata_key": metadata_key,
+            "description": "Imaging data acquired with a Miniscope.",
+        }
 
     def check_read_nwb(self, nwbfile_path: str):
         """Override check_read_nwb for single-recording interface expectations."""
@@ -1065,6 +1216,23 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert ops["imaging_plane"] == "ImagingPlane"
         assert ops["dimension"] == [128, 128]
 
+    def check_extracted_metadata(self, metadata: dict):
+        """Test new dict-based metadata for file with minimal acquisition info."""
+        metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+
+        expected_ophys = {
+            "MicroscopySeries": {
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                },
+            },
+        }
+        assert metadata["Ophys"] == expected_ophys
+        assert "Devices" not in metadata
+        assert "Subject" not in metadata
+
 
 @skip_on_python_313
 @skip_on_darwin_arm64
@@ -1075,23 +1243,17 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min:
         """Test that multiplane ISXD files raise NotImplementedError with proper message."""
         from neuroconv.datainterfaces import InscopixImagingInterface
 
-        interface_kwargs = dict(
-            file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
-        )
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_longer_than_3_min.isxd")
 
-        # Test that initialization raises NotImplementedError
         with pytest.raises(NotImplementedError) as exc_info:
-            InscopixImagingInterface(**interface_kwargs)
+            InscopixImagingInterface(file_path=file_path)
 
-        # Verify the error message contains expected information
         expected_message = (
-            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
-            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
-            "Proper separation logic is not yet implemented in roiextractors.\n"
-            "Loading as 2D would result in incorrect data interpretation.\n\n"
-            "Please open an issue at:\n"
-            "https://github.com/catalystneuro/roiextractors/issues\n\n"
-            "Reference: https://github.com/inscopix/pyisx/issues/36"
+            f"Multiplane ISXD file detected at {file_path}.\n"
+            "roiextractors cannot yet separate the per-plane frames; loading as 2D would "
+            "interleave focal planes into one time series.\n"
+            "Track support at https://github.com/catalystneuro/roiextractors/issues "
+            "and the upstream pyisx wrapper gap at https://github.com/inscopix/pyisx/issues/36."
         )
         assert str(exc_info.value) == expected_message
 
@@ -1099,63 +1261,80 @@ class TestInscopixImagingInterfaceMovieLongerThan3Min:
 @skip_on_python_313
 @skip_on_darwin_arm64
 class TestInscopixImagingInterfaceMultiplaneMovie:
-    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
+    """Test InscopixImagingInterface with multiplane_movie.isxd (multiplane file that should raise NotImplementedError)."""
 
     def test_multiplane_not_implemented_error(self):
         """Test that multiplane ISXD files raise NotImplementedError with proper message."""
         from neuroconv.datainterfaces import InscopixImagingInterface
 
-        interface_kwargs = dict(
-            file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "multiplane_movie.isxd")
-        )
+        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "multiplane_movie.isxd")
 
-        # Test that initialization raises NotImplementedError
         with pytest.raises(NotImplementedError) as exc_info:
-            InscopixImagingInterface(**interface_kwargs)
+            InscopixImagingInterface(file_path=file_path)
 
-        # Verify the error message contains expected information
         expected_message = (
-            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
-            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
-            "Proper separation logic is not yet implemented in roiextractors.\n"
-            "Loading as 2D would result in incorrect data interpretation.\n\n"
-            "Please open an issue at:\n"
-            "https://github.com/catalystneuro/roiextractors/issues\n\n"
-            "Reference: https://github.com/inscopix/pyisx/issues/36"
+            f"Multiplane ISXD file detected at {file_path}.\n"
+            "roiextractors cannot yet separate the per-plane frames; loading as 2D would "
+            "interleave focal planes into one time series.\n"
+            "Track support at https://github.com/catalystneuro/roiextractors/issues "
+            "and the upstream pyisx wrapper gap at https://github.com/inscopix/pyisx/issues/36."
         )
         assert str(exc_info.value) == expected_message
 
 
 @skip_on_python_313
 @skip_on_darwin_arm64
-class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames:
-    """Test InscopixImagingInterface with movie_longer_than_3_min.isxd (multiplane file that should raise NotImplementedError)."""
+class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtractorInterfaceTestMixin):
+    """Test InscopixImagingInterface with dual_color_movie_with_dropped_frames.isxd (single-plane file with rich acquisition metadata)."""
 
-    def test_multiplane_not_implemented_error(self):
-        """Test that multiplane ISXD files raise NotImplementedError with proper message."""
-        from neuroconv.datainterfaces import InscopixImagingInterface
+    data_interface_cls = InscopixImagingInterface
+    save_directory = OUTPUT_PATH
+    interface_kwargs = dict(
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd")
+    )
+    optical_series_name = "OnePhotonSeries"
 
-        interface_kwargs = dict(
-            file_path=str(
-                OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd"
-            )
-        )
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        nwbfile = metadata["NWBFile"]
+        assert nwbfile["session_start_time"] == datetime(2020, 9, 17, 15, 47, 22, 847000)
+        assert nwbfile["session_id"] == "Session 20200917-093000"
 
-        # Test that initialization raises NotImplementedError
-        with pytest.raises(NotImplementedError) as exc_info:
-            InscopixImagingInterface(**interface_kwargs)
+        device = metadata["Ophys"]["Device"][0]
+        assert device["name"] == "Dual Color"
+        assert device["description"] == "Inscopix Microscope (Serial: FA-1234567, Software: 1.5.0)"
 
-        # Verify the error message contains expected information
-        expected_message = (
-            "Multiplane ISXD file detected (found 'multiplane' in file).\n"
-            "This is a hacky check (not an official ISX API method) and may not be robust.\n"
-            "Proper separation logic is not yet implemented in roiextractors.\n"
-            "Loading as 2D would result in incorrect data interpretation.\n\n"
-            "Please open an issue at:\n"
-            "https://github.com/catalystneuro/roiextractors/issues\n\n"
-            "Reference: https://github.com/inscopix/pyisx/issues/36"
-        )
-        assert str(exc_info.value) == expected_message
+        imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane["device"] == "Dual Color"
+        assert "Exposure Time (ms): 79" in imaging_plane["description"]
+        assert "Gain: 2" in imaging_plane["description"]
+        assert "Focus: 30" in imaging_plane["description"]
+
+        ops = metadata["Ophys"]["OnePhotonSeries"][0]
+        assert ops["dimension"] == [288, 480]
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 9, 17, 15, 47, 22, 847000)
+        assert metadata["NWBFile"]["session_id"] == "Session 20200917-093000"
+
+        assert metadata["Devices"] == {
+            metadata_key: {
+                "name": "Dual Color",
+                "description": "Inscopix Microscope (Serial: FA-1234567, Software: 1.5.0)",
+            }
+        }
+        assert metadata["Ophys"] == {
+            "MicroscopySeries": {
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                    "exposure_time_ms": 79,
+                    "microscope_gain": 2,
+                    "microscope_focus": 30,
+                },
+            },
+        }
 
 
 @skip_on_python_313
@@ -1213,6 +1392,23 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
             ops["imaging_plane"] == "ImagingPlane"
         )  # Default metadata because this was not included in the source metadata
         assert ops["dimension"] == [3, 4]
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Test new dict-based metadata for uint8 file with minimal acquisition info."""
+        metadata_key = self.interface.metadata_key
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
+
+        expected_ophys = {
+            "MicroscopySeries": {
+                metadata_key: {
+                    "description": "Imaging data acquired with Inscopix nVista.",
+                },
+            },
+        }
+        assert metadata["Ophys"] == expected_ophys
+        assert "Devices" not in metadata
+        assert "Subject" not in metadata
 
 
 class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
@@ -1284,6 +1480,36 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
             == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [  -456.221198   -456.221198 -11608.54    ], rotation: [0. 0. 0. 1.], labeling_origin: [     0.        0.   -11474.34]"
         )
 
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+
+        # NWBFile
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 9, 29, 7, 53, 0, 903594, tzinfo=timezone.utc)
+        assert metadata["NWBFile"]["session_id"] == "66d53392-8f9a-4229-b661-1ea9b591521e"
+        assert metadata["NWBFile"]["experimenter"] == ["flaviod"]
+        assert (
+            metadata["NWBFile"]["session_description"]
+            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        )
+
+        # Devices
+        assert metadata["Devices"] == {
+            metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
+        }
+
+        ophys = metadata["Ophys"]
+
+        # ImagingPlanes
+        imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
+        assert imaging_plane["grid_spacing_unit"] == "meters"
+        assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
+        assert "Geometric transformations:" in imaging_plane["description"]
+
+        # MicroscopySeries
+        series = ophys["MicroscopySeries"][metadata_key]
+        assert series["description"] == "PMT voltage: 65.0V, Warmup time: -0.2s"
+
 
 class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
     """Test FemtonicsImagingInterface with p30.mesc file."""
@@ -1353,6 +1579,36 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
             imaging_plane["description"]
             == "The plane or volume being imaged by the microscope. Geometric transformations: translation: [  -456.221198   -456.221198 -11425.51    ], rotation: [0. 0. 0. 1.], labeling_origin: [     0.        0.   -11281.89]"
         )
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+
+        # NWBFile
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 9, 30, 9, 36, 12, 98727, tzinfo=timezone.utc)
+        assert metadata["NWBFile"]["session_id"] == "071c1b91-a68a-46b3-8702-b619b1bdb49b"
+        assert metadata["NWBFile"]["experimenter"] == ["flaviod"]
+        assert (
+            metadata["NWBFile"]["session_description"]
+            == "Session: MSession_0, MUnit: MUnit_0. Session performed on workstation: KI-FEMTO-0185."
+        )
+
+        # Devices
+        assert metadata["Devices"] == {
+            metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
+        }
+
+        ophys = metadata["Ophys"]
+
+        # ImagingPlanes
+        imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
+        assert imaging_plane["grid_spacing_unit"] == "meters"
+        assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
+        assert "Geometric transformations:" in imaging_plane["description"]
+
+        # MicroscopySeries
+        series = ophys["MicroscopySeries"][metadata_key]
+        assert series["description"] == "PMT voltage: 65.0V, Warmup time: -0.2s"
 
 
 # class TestFemtonicsImagingInterfaceSingleChannel(ImagingExtractorInterfaceTestMixin):

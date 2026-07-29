@@ -13,6 +13,15 @@ from pynwb.image import GrayscaleImage, RGBAImage, RGBImage
 from ...basedatainterface import BaseDataInterface
 from ...utils import DeepDict
 
+# Map PIL image mode -> numpy dtype, for modes supported by ImageInterface.
+_PIL_MODE_TO_NUMPY_DTYPE = {
+    "L": np.uint8,
+    "RGB": np.uint8,
+    "RGBA": np.uint8,
+    "LA": np.uint8,
+    "I;16": np.uint16,
+}
+
 
 class SingleImageIterator(AbstractDataChunkIterator):
     """Simple iterator to return a single image. This avoids loading the entire image into memory at initializing
@@ -38,10 +47,12 @@ class SingleImageIterator(AbstractDataChunkIterator):
                 self._image_shape = self._image_shape[:-1] + (4,)
                 self._max_shape = self._max_shape[:-1] + (4,)
 
+            self._dtype = np.dtype(_PIL_MODE_TO_NUMPY_DTYPE.get(self.image_mode, np.uint8))
+
             # Calculate file size in bytes
             self._size_bytes = self._file_path.stat().st_size
             # Calculate approximate memory size when loaded as numpy array
-            self._memory_size = np.prod(self._image_shape) * np.dtype(float).itemsize
+            self._memory_size = np.prod(self._image_shape) * self._dtype.itemsize
 
         self._images_returned = 0  # Number of images returned in __next__
 
@@ -97,7 +108,7 @@ class SingleImageIterator(AbstractDataChunkIterator):
     @property
     def dtype(self):
         """Define the data type of the array"""
-        return np.dtype(float)
+        return self._dtype
 
     @property
     def maxshape(self):

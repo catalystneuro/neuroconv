@@ -34,7 +34,7 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
         return CaimanSegmentationExtractor
 
     def __init__(
-        self, file_path: FilePath, *args, verbose: bool = False
+        self, file_path: FilePath, *args, verbose: bool = False, metadata_key: str | None = None
     ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Parameters
@@ -43,6 +43,8 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
             Path to .hdf5 file.
         verbose : bool, default False
             Whether to print progress
+        metadata_key : str, optional
+            Metadata key for this interface. When None, defaults to "caiman_segmentation".
         """
         # Handle deprecated positional arguments
         if args:
@@ -69,5 +71,20 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
             )
             verbose = positional_values.get("verbose", verbose)
 
-        super().__init__(file_path=file_path)
+        if metadata_key is None:
+            metadata_key = "caiman_segmentation"
+
+        super().__init__(file_path=file_path, metadata_key=metadata_key)
         self.verbose = verbose
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False):
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+            metadata["Ophys"] = {
+                "PlaneSegmentations": {
+                    self.metadata_key: {"description": "Segmentation data acquired with CaImAn."},
+                },
+            }
+            return metadata
+
+        return super().get_metadata()

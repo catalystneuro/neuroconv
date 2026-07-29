@@ -135,7 +135,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
           - CZT: T complete multi-channel volumes where the channel is varied first
 
         For more information on OME-TIFF dimension order, see:
-        https://docs.openmicroscopy.org/ome-model/5.6.3/ome-tiff/specification.html
+        https://ome-model.readthedocs.io/en/stable/ome-tiff/specification.html
 
         Acquisition Patterns
         --------------------

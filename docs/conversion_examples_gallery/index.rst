@@ -45,10 +45,12 @@ Sorting
     Blackrock  <sorting/blackrock>
     Cell Explorer <sorting/cellexplorer>
     KiloSort <sorting/kilosort>
+    MountainSort <sorting/mda>
     Neuralynx <sorting/neuralynx>
     NeuroScope <sorting/neuroscope>
     Phy <sorting/phy>
     Plexon <sorting/plexon>
+    XClust <sorting/xclust>
 
 Intracellular electrophysiology
 -------------------------------
@@ -56,7 +58,7 @@ Intracellular electrophysiology
 .. toctree::
     :maxdepth: 1
 
-    Axon Binary File (ABF) <recording/abf>
+    Axon Binary Format (ABF) <recording/abf>
 
 Optical physiology
 ------------------
@@ -97,7 +99,9 @@ Fiber Photometry
 .. toctree::
     :maxdepth: 1
 
+    Doric Fiber Photometry <fiberphotometry/doric_fp>
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    CSV Fiber Photometry <fiberphotometry/csv_fp>
 
 Behavior
 --------
@@ -111,8 +115,21 @@ Behavior
     LightningPose <behavior/lightningpose>
     Neuralynx NVT <behavior/neuralynx_nvt>
     SLEAP <behavior/sleap>
+    VAME <behavior/vame>
     Videos <behavior/video>
     MedPC <behavior/medpc>
+
+
+Events
+------
+
+.. toctree::
+    :maxdepth: 1
+
+    CSV Events <events/csv_events>
+    Doric Events <events/doric_events>
+    NPM Events <events/npm_events>
+    TDT Events <events/tdt_events>
 
 
 Image
