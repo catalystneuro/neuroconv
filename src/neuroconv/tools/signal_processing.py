@@ -63,32 +63,30 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = Non
 
 # NOTE: copied from the Intan digital PR (#1812) to unblock the Doric CSV events interface; de-duplicate
 # when that PR merges (both add this same function to this module).
-def discretize_trace(
+def _detect_events(
     trace: np.ndarray,
     detect: str,
-    threshold: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray | None]:
     """
-    Discretize a trace into event onset frames and, for a durative reading, per-event durations.
+    Read a two-valued trace's transitions into event onset frames and, for a durative reading, durations.
 
     This is the format-agnostic edge-detection step shared by signal-encoded events sources (e.g.
     digital TTL (transistor-transistor logic) lines from Intan, SpikeGLX NIDQ, an analog photodiode):
-    the trace is thresholded into a binary line, and the same rising/falling structure can then be read
-    as point events or as durative high/low periods, and only the caller knows which the experiment
-    intends.
+    the same rising/falling structure can be read as point events or as durative high/low periods, and
+    only the caller knows which the experiment intends.
+
+    It takes **no threshold**: on a two-valued signal a rising edge is simply the transition from the
+    lower value to the higher one, so there is nothing to choose. Turning a many-valued trace into a
+    line is a separate step, and it lands with the first interface that records one.
 
     Parameters
     ----------
     trace : numpy.ndarray
-        A one-dimensional signal. A strictly 0/1 digital line, or any trace thresholded into one.
+        A one-dimensional signal with at most two distinct values, e.g. a 0/1 digital line.
     detect : {"rising", "falling", "high_period", "low_period"}
         What to detect. ``"rising"``/``"falling"`` return the up/down transition frames as point
         events. ``"high_period"`` pairs each rising edge with the next falling edge (onset + high span);
         ``"low_period"`` pairs each falling edge with the next rising edge (onset + low span).
-    threshold : float, optional
-        The on/off threshold passed through to :func:`get_rising_frames_from_ttl` /
-        :func:`get_falling_frames_from_ttl`. The mean of the trace is used by default; pass ``0.5`` for
-        a strictly 0/1 digital line.
 
     Returns
     -------
@@ -103,8 +101,8 @@ def discretize_trace(
     if detect not in valid:
         raise ValueError(f"Invalid detect '{detect}'. Valid values are {list(valid)}.")
 
-    rising = get_rising_frames_from_ttl(trace, threshold=threshold)
-    falling = get_falling_frames_from_ttl(trace, threshold=threshold)
+    rising = get_rising_frames_from_ttl(trace)
+    falling = get_falling_frames_from_ttl(trace)
     if detect == "rising":
         return rising, None
     if detect == "falling":
