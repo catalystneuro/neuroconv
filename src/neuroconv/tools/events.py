@@ -8,7 +8,10 @@ _SPEC_KEYS = ("detection", "event_name")
 
 
 def validate_detection_configuration(detection_configuration: dict, available_signals: dict) -> None:
-    """Validate a caller-supplied ``detection_configuration``, raising ``ValueError`` on a bad entry.
+    """Validate a ``detection_configuration``, raising ``ValueError`` on a bad entry.
+
+    Called on the interface's own default configuration as well as on a caller-supplied one: a default
+    is machine-built, but its inputs are not, so it too can resolve two event types to one identifier.
 
     A shared helper for the signal-encoded events interfaces (each derives events from a sampled
     signal). ``detection_configuration`` maps each ``signal_source_id`` to a **list** of detection
@@ -34,7 +37,7 @@ def validate_detection_configuration(detection_configuration: dict, available_si
     ValueError
         If the configuration is empty, names a signal not in ``available_signals``, gives a signal
         something other than a non-empty list, or holds a spec with an unrecognized key or no
-        ``detection``.
+        ``detection``. Also if two event types resolve to the same identifier.
     """
     if not detection_configuration:
         raise ValueError(
@@ -72,10 +75,14 @@ def validate_detection_configuration(detection_configuration: dict, available_si
                     "Every spec must state how its signal's transitions become events; pass None instead "
                     "of a detection_configuration to read every signal with the default reading."
                 )
+    _resolve_event_types(detection_configuration)  # raises if two event types resolve to one identifier
 
 
-def resolve_detection_plan(detection_configuration: dict) -> dict[str, tuple[str, dict]]:
-    """Resolve a configuration into ``{event_type_source_id: (signal_source_id, spec)}``.
+def _resolve_event_types(detection_configuration: dict) -> list[tuple[str, str, dict]]:
+    """The derivation itself: ``(event_type_source_id, signal_source_id, spec)``, in configuration order.
+
+    The single place an identifier is computed or the cross-configuration uniqueness check is run, so
+    the two views over it each depend only on the ``detection_configuration`` and never on the other.
 
     An event type is (what you read) times (how you read it), so a signal yielding one event type keeps
     its own handle as the identifier and a signal yielding several fans out. Derivation is content-based
@@ -93,22 +100,11 @@ def resolve_detection_plan(detection_configuration: dict) -> dict[str, tuple[str
        from rule 1 to rule 2 and the derived form changes.
     4. Identifiers must be unique across the whole configuration.
 
-    Parameters
-    ----------
-    detection_configuration : dict
-        A validated ``{signal_source_id: [spec, ...]}`` configuration.
-
-    Returns
-    -------
-    dict
-        ``event_type_source_id -> (signal_source_id, spec)``, one entry per event type to derive.
-
-    Raises
-    ------
-    ValueError
-        If two event types resolve to the same identifier.
+    Returns a list rather than a generator so rule 4 is always checked in full, even by a caller that
+    would otherwise stop early.
     """
-    detection_plan: dict[str, tuple[str, dict]] = {}
+    event_types: list[tuple[str, str, dict]] = []
+    seen: set[str] = set()
     for signal_source_id, specs in detection_configuration.items():
         yields_one_event_type = len(specs) == 1
         for spec in specs:
@@ -119,10 +115,54 @@ def resolve_detection_plan(detection_configuration: dict) -> dict[str, tuple[str
                 event_type_source_id = signal_source_id
             else:
                 event_type_source_id = f"{signal_source_id}_{spec['detection']}"
-            if event_type_source_id in detection_plan:
+            if event_type_source_id in seen:
                 raise ValueError(
                     f"detection_configuration resolves two event types to the same identifier "
                     f"'{event_type_source_id}'. Set 'event_name' on one of them to tell them apart."
                 )
-            detection_plan[event_type_source_id] = (signal_source_id, spec)
+            seen.add(event_type_source_id)
+            event_types.append((event_type_source_id, signal_source_id, spec))
+    return event_types
+
+
+def resolve_detection_plan(detection_configuration: dict) -> dict[str, list[tuple[str, dict]]]:
+    """Resolve a configuration into ``{signal_source_id: [(event_type_source_id, spec), ...]}``.
+
+    The structure the read walks. It is **grouped by signal** because reading is per signal while
+    deriving is per event type: a line read as both a rising and a falling event type is one read and
+    two derivations, not two reads, which is the difference that matters once a signal is hours of
+    30 kHz samples. Entries come back in configuration order, which is the order the metadata and the
+    writer present event types in. The derivation rules are in :func:`_resolve_event_types`.
+
+    Build it where it is read rather than holding it on the interface: it is pure and cheap, so
+    rebuilding costs nothing, and an interface that never reads never needs one.
+
+    Parameters
+    ----------
+    detection_configuration : dict
+        A validated ``{signal_source_id: [spec, ...]}`` configuration.
+
+    Returns
+    -------
+    dict
+        ``signal_source_id -> [(event_type_source_id, spec), ...]``, one entry per signal to read and,
+        inside it, one spec per event type to derive from that signal.
+
+    Raises
+    ------
+    ValueError
+        If two event types resolve to the same identifier.
+    """
+    detection_plan: dict[str, list[tuple[str, dict]]] = {}
+    for event_type_source_id, signal_source_id, spec in _resolve_event_types(detection_configuration):
+        detection_plan.setdefault(signal_source_id, []).append((event_type_source_id, spec))
     return detection_plan
+
+
+def _get_event_type_source_ids(detection_configuration: dict) -> list[str]:
+    """The identifiers a ``detection_configuration`` resolves to, in configuration order.
+
+    Everything ``get_metadata`` sees of the configuration, deliberately. Metadata names event types; it
+    has no business with how they are read, so it gets identifiers and not specs.
+    """
+    return [event_type_source_id for event_type_source_id, _, _ in _resolve_event_types(detection_configuration)]
