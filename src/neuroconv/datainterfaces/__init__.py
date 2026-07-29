@@ -107,8 +107,14 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
+from .fiber_photometry.csv.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
+from .fiber_photometry.csv.multifilecsvfiberphotometrydatainterface import (
+    MultiFileCSVFiberPhotometryInterface,
+)
 from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
-from .fiber_photometry.guppy.guppydatainterface import GuppyInterface
+from .fiber_photometry.npm.npmfiberphotometrydatainterface import (
+    NPMFiberPhotometryInterface,
+)
 from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
@@ -122,6 +128,9 @@ from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 # Events
 from .events.csv_events.csveventsdatainterface import CSVEventsInterface
+from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
+from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
+from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
@@ -192,9 +201,11 @@ interface_list = [
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
+    CSVFiberPhotometryInterface,
+    MultiFileCSVFiberPhotometryInterface,
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
-    GuppyInterface,
+    NPMFiberPhotometryInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
@@ -217,6 +228,9 @@ interface_list = [
     ImageInterface,
     # Events
     CSVEventsInterface,
+    DoricCSVEventsInterface,
+    DoricEventsInterface,
+    NPMEventsInterface,
     TDTEventsInterface,
 ]
 
@@ -244,6 +258,9 @@ interfaces_by_category = dict(
     fiber_photometry={
         "DoricFiberPhotometry": DoricFiberPhotometryInterface,
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+        "NPMFiberPhotometry": NPMFiberPhotometryInterface,
+        "CSVFiberPhotometry": CSVFiberPhotometryInterface,
+        "MultiFileCSVFiberPhotometry": MultiFileCSVFiberPhotometryInterface,
     },
     processed_fiber_photometry={
         "Guppy": GuppyInterface,
@@ -274,6 +291,9 @@ interfaces_by_category = dict(
     ),
     events=dict(
         CSVEvents=CSVEventsInterface,
+        DoricCSVEvents=DoricCSVEventsInterface,
+        DoricEvents=DoricEventsInterface,
+        NPMEvents=NPMEventsInterface,
         TDTEvents=TDTEventsInterface,
     ),
 )

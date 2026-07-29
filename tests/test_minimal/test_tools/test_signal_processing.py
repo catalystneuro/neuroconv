@@ -1,8 +1,10 @@
 import numpy as np
+import pytest
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 
 from neuroconv.tools.signal_processing import (
+    _detect_events,
     get_falling_frames_from_ttl,
     get_rising_frames_from_ttl,
 )
@@ -164,3 +166,33 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
 
         expected_falling_frames = np.array([77_500, 205_000])
         assert_array_equal(falling_frames, expected_falling_frames)
+
+
+class TestDetectEvents:
+    # A 0/1 line with two high pulses: rising at frames [2, 7], falling at frames [5, 8].
+    TRACE = np.array([0, 0, 1, 1, 1, 0, 0, 1, 0], dtype="int16")
+
+    def test_rising_and_falling_are_point_events(self):
+        onsets, durations = _detect_events(self.TRACE, detect="rising")
+        assert_array_equal(onsets, np.array([2, 7]))
+        assert durations is None
+
+        onsets, durations = _detect_events(self.TRACE, detect="falling")
+        assert_array_equal(onsets, np.array([5, 8]))
+        assert durations is None
+
+    def test_high_period_pairs_rising_to_next_falling(self):
+        onsets, durations = _detect_events(self.TRACE, detect="high_period")
+        assert_array_equal(onsets, np.array([2, 7]))
+        assert_array_equal(durations, np.array([3.0, 1.0]))  # frames: 5-2 and 8-7
+
+    def test_low_period_pairs_falling_to_next_rising_with_nan_when_unclosed(self):
+        onsets, durations = _detect_events(self.TRACE, detect="low_period")
+        assert_array_equal(onsets, np.array([5, 8]))
+        # First low span 5->7 closes (2 frames); the last falling at 8 has no later rising -> NaN.
+        assert durations[0] == 2.0
+        assert np.isnan(durations[1])
+
+    def test_invalid_detect_raises(self):
+        with pytest.raises(ValueError, match="Invalid detect"):
+            _detect_events(self.TRACE, detect="nope")

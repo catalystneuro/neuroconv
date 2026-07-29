@@ -697,16 +697,16 @@ class TestTDTFiberPhotometryInterfaceSingleSeries(FiberPhotometryInterfaceTestMi
 
     data_interface_cls = TDTFiberPhotometryInterface
     interface_kwargs = dict(
-        folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photometry-161823_stubbed"),
-        stream_names="_405R",
+        folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"),
+        stream_names="Dv1A",
         metadata_key="Signal",
     )
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
-    # Expected first 5 samples of the "_405R" store and its sampling, verified against the tank.
+    # Expected first 5 samples of the "Dv1A" store and its sampling, verified against the tank.
     expected_response_series_data = np.array(
-        [0.32750106, 0.3274658, 0.32822716, 0.33025593, 0.3340194], dtype=np.float32
+        [0.30329955, 0.29976755, 0.29634112, 0.29302964, 0.28984228], dtype=np.float32
     )
     expected_starting_time = 0.0
     expected_rate = 1017.2526245117188
@@ -717,7 +717,7 @@ class TestTDTFiberPhotometryInterfaceSingleSeries(FiberPhotometryInterfaceTestMi
 
     def test_get_available_streams(self):
         streams = self.data_interface_cls.get_available_streams(folder_path=self.interface_kwargs["folder_path"])
-        assert "_405R" in streams and "_490R" in streams
+        assert "Dv1A" in streams and "Dv2A" in streams
 
     def test_stream_names_less_construction_routes_to_deprecated_multiseries(self):
         with pytest.warns(DeprecationWarning, match="stream_names"):
@@ -726,8 +726,8 @@ class TestTDTFiberPhotometryInterfaceSingleSeries(FiberPhotometryInterfaceTestMi
 
     def test_metadata_key_generated_from_stream_names(self):
         # With no explicit metadata_key, it is derived from stream_names (as in ScanImage).
-        interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"], stream_names="_405R")
-        assert interface.metadata_key == "fiber_photometry_405r"
+        interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"], stream_names="Dv1A")
+        assert interface.metadata_key == "fiber_photometry_dv1a"
         assert interface.metadata_key in interface.get_metadata()["FiberPhotometry"]
 
 
@@ -795,14 +795,6 @@ class TestDoricFiberPhotometryInterfaceCSV(FiberPhotometryInterfaceTestMixin):
         streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
         assert streams == ["ref", "sig"]
 
-    def test_default_metadata_warns_about_placeholders(self, setup_interface):
-        # The CSV export does not embed a session start time (unlike the .doric HDF5 export), so it
-        # must be supplied here for the scaffold to pass the base NWBFile schema.
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-        with pytest.warns(UserWarning, match="placeholder"):
-            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
-
 
 class TestDoricFiberPhotometryInterfaceCSVGroupedHeader(FiberPhotometryInterfaceTestMixin):
     """Tests the older, grouped-header CSV variant of DoricFiberPhotometryInterface.
@@ -829,12 +821,6 @@ class TestDoricFiberPhotometryInterfaceCSVGroupedHeader(FiberPhotometryInterface
     def test_get_available_streams(self):
         streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
         assert streams == ["AIn-1 - Dem (da)", "AIn-1 - Dem (ref)", "AOut-1", "AOut-2", "DI/O-1", "Raw"]
-
-    def test_default_metadata_warns_about_placeholders(self, setup_interface):
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-        with pytest.warns(UserWarning, match="placeholder"):
-            self.interface.create_nwbfile(metadata=metadata, stub_test=True)
 
 
 class TestDoricFiberPhotometryInterfaceLegacyHDF5(FiberPhotometryInterfaceTestMixin):
@@ -864,11 +850,3 @@ class TestDoricFiberPhotometryInterfaceLegacyHDF5(FiberPhotometryInterfaceTestMi
     def test_get_available_streams(self):
         streams = self.data_interface_cls.get_available_streams(file_path=self.interface_kwargs["file_path"])
         assert streams == ["Console_AIn-1 - Raw", "Console_AIn-2 - Raw", "Console_DI--O-1"]
-
-    def test_default_metadata_warns_about_placeholders(self, setup_interface):
-        # This legacy export does not embed a 'Created' attribute either, so no session start time
-        # is set automatically.
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-        with pytest.warns(UserWarning, match="placeholder"):
-            self.interface.create_nwbfile(metadata=metadata, stub_test=True)

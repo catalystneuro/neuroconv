@@ -71,10 +71,27 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
+    def test_shifted_recording_uses_starting_time(self):
+        recording = generate_recording(
+            sampling_frequency=self.sampling_frequency,
+            num_channels=self.num_channels,
+            durations=self.durations,
+        )
+        recording.shift_times(2.0)
+
+        add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile, iterator_type=None)
+
+        electrical_series = self.nwbfile.acquisition["ElectricalSeriesRaw"]
+        assert electrical_series.starting_time == 2.0
+        assert electrical_series.rate == self.sampling_frequency
+
     def test_write_as_lfp(self):
-        write_as = "lfp"
+        parent_container = "processing/LFP"
         add_recording_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            parent_container=parent_container,
         )
 
         processing_module = self.nwbfile.processing
@@ -93,9 +110,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_as_processing(self):
-        write_as = "processed"
+        parent_container = "processing/FilteredEphys"
         add_recording_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            parent_container=parent_container,
         )
 
         processing_module = self.nwbfile.processing
@@ -186,14 +206,17 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         self.test_recording_extractor.set_channel_groups(original_groups)
 
-    def test_invalid_write_as_argument_assertion(self):
-        write_as = "any_other_string_that_is_not_raw_lfp_or_processed"
+    def test_invalid_parent_container_argument(self):
+        parent_container = "not_a_valid_container"
 
-        reg_expression = f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
+        reg_expression = "should be one of 'acquisition', 'processing/LFP', or 'processing/FilteredEphys'"
 
-        with self.assertRaisesRegex(AssertionError, reg_expression):
+        with self.assertRaisesRegex(ValueError, reg_expression):
             add_recording_to_nwbfile(
-                recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+                recording=self.test_recording_extractor,
+                nwbfile=self.nwbfile,
+                iterator_type=None,
+                parent_container=parent_container,
             )
 
 
@@ -1147,6 +1170,18 @@ class TestAddTimeSeries:
         expected_data = recording.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
+    def test_shifted_recording_uses_starting_time(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.shift_times(2.0)
+
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        time_series = nwbfile.acquisition["TimeSeries"]
+        assert time_series.starting_time == 2.0
+        assert time_series.rate == 1.0
+
     def test_metadata_key(self):
         """Test that metadata_key is used to look up metadata."""
         # Create a recording object for testing
@@ -1493,7 +1528,7 @@ class TestAddSpatialSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            write_as="processing",
+            parent_container="processing",
             iterator_type=None,
         )
 
@@ -1856,7 +1891,7 @@ class TestAddUnitsTable(TestCase):
             nwbfile=self.nwbfile,
             units_name=units_table_name,
             units_description=unit_table_description,
-            write_as="processing",
+            parent_container="processing",
         )
 
         ecephys_mod = get_module(
@@ -2397,7 +2432,7 @@ class TestWriteSortingAnalyzer(TestCase):
             add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
-                write_as="units",
+                parent_container="units",
                 units_name="units1",
             )
 
@@ -2426,9 +2461,6 @@ class TestWriteSortingAnalyzer(TestCase):
 def test_stub_recording_with_t_start():
     """Test that the _stub recording functionality does not fail when it has a start time. See issue #1355"""
     recording = generate_recording(durations=[1.0])
-    # TODO Remove the following line once Spikeinterface 0.102.4 or higher is released
-    # See https://github.com/SpikeInterface/spikeinterface/pull/3940
-    recording._recording_segments[0].t_start = 0.0
     recording.shift_times(2.0)
 
     _stub_recording(recording=recording)
@@ -2527,7 +2559,7 @@ class TestAddRecording:
         assert group.location == "V1"
         assert group.device is device
 
-        # ElectricalSeries lives in acquisition (write_as="raw" default), user fields applied
+        # ElectricalSeries lives in acquisition (parent_container="acquisition" default), user fields applied
         series = nwbfile.acquisition["ElectricalSeriesAP"]
         assert series.name == "ElectricalSeriesAP"
         assert series.description == "Raw AP traces"
@@ -2634,8 +2666,10 @@ class TestAddRecording:
         electrodes_df = nwbfile.electrodes.to_dataframe()
         assert all(row_group is group for row_group in electrodes_df["group"])
 
-    def test_missing_required_electrode_group_field_raises(self):
-        """When an electrode group entry is missing schema-required fields, a clear error is raised."""
+    def test_missing_electrode_group_fields_are_defaulted(self):
+        """An electrode group entry that omits description/location is not rejected; the write path fills
+        those required NWB fields from the default template instead of raising, so an interface can
+        provide just a name and a device link."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
         nwbfile = mock_NWBFile()
 
@@ -2646,7 +2680,7 @@ class TestAddRecording:
                 "ElectrodeGroups": {
                     channel_groups[0]: {
                         "name": channel_groups[0],
-                        # description and location intentionally omitted
+                        # description and location intentionally omitted -> defaulted at write time
                         "device_metadata_key": "d",
                     },
                 },
@@ -2656,21 +2690,18 @@ class TestAddRecording:
             },
         }
 
-        expected_error = re.escape(
-            "Electrode group metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. "
-            "If missing, a placeholder can be used instead:\n"
-            "  description: 'no description'\n"
-            "  location: 'unknown'"
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
         )
-        with pytest.raises(ValueError, match=expected_error):
-            add_recording_to_nwbfile(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                metadata_key="series",
-                iterator_type=None,
-            )
+
+        group = nwbfile.electrode_groups[channel_groups[0]]
+        assert group.description == "no description"
+        assert group.location == "unknown"
+        assert group.device.name == "Device"
 
     def test_missing_metadata_key_raises(self):
         """An unknown metadata_key raises with the available keys listed."""

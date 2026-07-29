@@ -9,7 +9,9 @@ import pytest
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.datainterfaces import GuppyInterface
+from neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface import (
+    _GuppyInterface,
+)
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 
 
@@ -40,7 +42,7 @@ def _resolve_events(module, dynamic_table_region) -> list[str]:
 def _group_by_condition(entries, key_fields, event_order):
     """Group per-event discovery entries by condition, ordering each group by event.
 
-    Mirrors ``GuppyInterface._group_by_condition``: the event-bearing products emit one object per
+    Mirrors ``_GuppyInterface._group_by_condition``: the event-bearing products emit one object per
     condition with trials concatenated across events in ``event_order`` order, so the tests compare
     against the same grouping.
     """
@@ -53,14 +55,22 @@ def _group_by_condition(entries, key_fields, event_order):
     return groups
 
 
-class TestGuppyInterface:
-    """Tests for the GuppyInterface against a synthetically-generated GuPPy output folder.
+class Test_GuppyInterface:
+    """Tests for the _GuppyInterface against a synthetically-generated GuPPy output folder.
 
     The fixture folder is produced on the fly by ``generate_mock_guppy_output_folder`` (a tiny,
     schema-faithful replica of a real GuPPy output), so these tests need no GIN data. The generator
     defaults reproduce the ``Photo_249_391-200721-120136`` topology -- two recording_sites, three events, two
     features -- so the expected recording_site/event/product counts match a real two-recording_site session.
     """
+
+    @pytest.fixture(scope="class")
+    def mock_guppy_output_folder(self, tmp_path_factory):
+        """Generate the schema-faithful mock GuPPy output once per test class.
+
+        The interface only reads from this folder (the error/mutation tests copy it first), so it
+        does not need to be regenerated per test."""
+        return generate_mock_guppy_output_folder(tmp_path_factory.mktemp("guppy") / "guppy_output")
 
     @pytest.fixture(
         params=[
@@ -113,8 +123,8 @@ class TestGuppyInterface:
                     expected_psth_count=24,  # 3 events x 2 recording_sites x 2 features x {corrected, uncorrected}
                     expected_peak_auc_count=12,  # 3 events x 2 recording_sites x 2 features
                     expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
-                    # The mock writes the same coordsForPreProcessing windows for every recording_site; with no
-                    # temporal alignment the offset is 0, so the aligned intervals equal the source.
+                    # The mock writes the same coordsForPreProcessing windows for every recording_site, so the
+                    # expected intervals are identical across recording_sites and equal the source windows.
                     expected_valid_signal_intervals={
                         "dms": [[1.25, 1.75], [2.0, 2.5]],
                         "dls": [[1.25, 1.75], [2.0, 2.5]],
@@ -131,18 +141,18 @@ class TestGuppyInterface:
             ),
         ]
     )
-    def case(self, request, tmp_path):
+    def case(self, request, mock_guppy_output_folder):
         case = dict(request.param)
-        case["folder_path"] = generate_mock_guppy_output_folder(tmp_path / "guppy_output")
+        case["folder_path"] = mock_guppy_output_folder
         return case
 
     @pytest.fixture
     def interface(self, case):
-        return GuppyInterface(folder_path=str(case["folder_path"]))
+        return _GuppyInterface(folder_path=str(case["folder_path"]))
 
     @pytest.fixture
     def nwbfile(self):
-        """A plain NWBFile. GuppyInterface is standalone: it needs no acquisition/events tables to write
+        """A plain NWBFile. _GuppyInterface is standalone: it needs no acquisition/events tables to write
         (the two registry links are populated later by a converter that owns those tables)."""
         return mock_NWBFile()
 
@@ -179,7 +189,7 @@ class TestGuppyInterface:
             with h5py.File(copied_folder / f"timeCorrection_{recording_site}.hdf5", "r+") as time_correction_file:
                 del time_correction_file["timeRecStart"]
 
-        interface = GuppyInterface(folder_path=str(copied_folder))
+        interface = _GuppyInterface(folder_path=str(copied_folder))
         metadata = interface.get_metadata()
         assert metadata["NWBFile"].get("session_start_time") in (None, "")
 
@@ -204,7 +214,7 @@ class TestGuppyInterface:
     def test_metadata_enumerates_all_products(self, interface, case):
         """get_metadata is a full manifest: every product family GuPPy emits appears, each a dict keyed
         by the object's default name."""
-        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"]
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
         assert set(guppy_metadata.keys()) == {
             "ProcessingModule",
             "Traces",
@@ -224,12 +234,12 @@ class TestGuppyInterface:
 
     def test_metadata_processing_module_includes_guppy_version(self, interface):
         metadata = interface.get_metadata()
-        description = metadata["FiberPhotometry"]["Guppy"]["ProcessingModule"]["description"]
+        description = metadata["FiberPhotometry"]["Guppy"][interface.metadata_key]["ProcessingModule"]["description"]
         assert "(GuPPy version 2.0.0a7)" in description
 
     def test_metadata_traces_and_transients(self, interface, case):
         metadata = interface.get_metadata()
-        guppy_metadata = metadata["FiberPhotometry"]["Guppy"]
+        guppy_metadata = metadata["FiberPhotometry"]["Guppy"][interface.metadata_key]
 
         # Families are dicts keyed by the derived object name.
         expected_trace_names = {
@@ -250,21 +260,29 @@ class TestGuppyInterface:
         """Every product entry carries exactly the editable name + description (name defaults to the key).
         No internal handles (recording_site, trace_basename, trace_type, recording_site pair, event lists) and no derived
         unit ever appear in the metadata."""
-        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"]
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
         for family in ("Traces", "Transients", "CrossCorrelations", "PSTHs", "PeakAUCs"):
             for name, entry in guppy_metadata[family].items():
                 assert set(entry.keys()) == {"name", "description"}, (family, entry)
                 assert entry["name"] == name  # default name is the key
 
-    def test_metadata_key_scopes_block_and_edits_propagate(self, case, nwbfile):
-        """A non-default metadata_key scopes the whole block; editing an object's name and description
-        propagates to the written object -- including an event-bearing product (PSTH)."""
-        interface = GuppyInterface(folder_path=str(case["folder_path"]), metadata_key="GuppyB")
-        metadata = interface.get_metadata()
-        assert "GuppyB" in metadata["FiberPhotometry"]
-        assert "Guppy" not in metadata["FiberPhotometry"]
+    def test_metadata_key_defaults_to_output_folder_name(self, interface, case):
+        """With no explicit metadata_key, the block is scoped by the GuPPy output folder's name."""
+        assert interface.metadata_key == case["folder_path"].name
+        guppy_namespace = interface.get_metadata()["FiberPhotometry"]["Guppy"]
+        assert set(guppy_namespace.keys()) == {case["folder_path"].name}
 
-        guppy_block = metadata["FiberPhotometry"]["GuppyB"]
+    def test_metadata_key_scopes_block_and_edits_propagate(self, case, nwbfile):
+        """A non-default metadata_key scopes the whole block under FiberPhotometry/Guppy; editing an
+        object's name and description propagates to the written object -- including an event-bearing
+        product (PSTH)."""
+        interface = _GuppyInterface(folder_path=str(case["folder_path"]), metadata_key="GuppyB")
+        metadata = interface.get_metadata()
+        guppy_namespace = metadata["FiberPhotometry"]["Guppy"]
+        assert "GuppyB" in guppy_namespace
+        assert case["folder_path"].name not in guppy_namespace
+
+        guppy_block = guppy_namespace["GuppyB"]
         trace_tag = next(iter(guppy_block["Traces"]))
         guppy_block["Traces"][trace_tag]["name"] = "renamed_trace"
         guppy_block["Traces"][trace_tag]["description"] = "custom trace description"
@@ -317,8 +335,10 @@ class TestGuppyInterface:
                 # Fiber provenance is reached through the recording-site row, not stamped on the series.
                 assert series.fiber_photometry_table_region is None
                 assert _resolve_recording_sites(module, series.recording_site) == [recording_site]
-                assert series.data.shape[0] == len(series.timestamps)
-                assert float(series.timestamps[-1] - series.timestamps[0]) <= 1.01  # stub keeps ~1 s
+                # The regular GuPPy timebase is written as starting_time + rate, not an explicit vector.
+                assert series.timestamps is None
+                assert series.rate is not None
+                assert float(series.data.shape[0] - 1) / series.rate <= 1.01  # stub keeps ~1 s
 
         for recording_site, features in case["expected_transients"].items():
             for feature in features:
@@ -544,7 +564,7 @@ class TestGuppyInterface:
                 h5_path.unlink()
                 dataframe.to_hdf(h5_path, key="df", mode="w")
 
-        interface = GuppyInterface(folder_path=str(copied_folder))
+        interface = _GuppyInterface(folder_path=str(copied_folder))
         module = self._add(interface, nwbfile, stub_test=False)
         event_order = {name: index for index, name in enumerate(interface._event_names)}
         for feature, recording_site_1, recording_site_2 in _group_by_condition(
@@ -555,34 +575,10 @@ class TestGuppyInterface:
             assert cross_correlation.binned_mean is None
             assert cross_correlation.bin_event is None
 
-    # ----------------------------------------------------------------- alignment / roundtrip / errors
-
-    def test_aligned_starting_time_shifts_traces_and_transients(self, interface, case, nwbfile):
-        first_recording_site = case["expected_recording_sites"][0]
-        original_first_timestamp = float(interface.get_original_timestamps()[first_recording_site][0])
-
-        offset = 12.34
-        interface.set_aligned_starting_time(offset)
-        module = self._add(interface, nwbfile, stub_test=False)
-
-        first_trace_name = f"{case['expected_traces'][first_recording_site][0]}_{first_recording_site}"
-        assert float(module[first_trace_name].timestamps[0]) == pytest.approx(original_first_timestamp + offset)
-
-        for recording_site, features in case["expected_transients"].items():
-            for feature in features:
-                csv_path = case["folder_path"] / f"transientsOccurrences_{feature}_{recording_site}.csv"
-                expected_first_peak = float(pandas.read_csv(csv_path)["timestamps"].iloc[0]) + offset
-                table = module[f"transients_{recording_site}_{feature}"]
-                assert table["timestamp"][0] == pytest.approx(expected_first_peak)
-
-        if case["expected_valid_signal_intervals"]:
-            actual = self._valid_intervals_by_recording_site(module)
-            for recording_site, expected_intervals in case["expected_valid_signal_intervals"].items():
-                expected_shifted = np.asarray(expected_intervals, dtype=float) + offset
-                np.testing.assert_allclose(actual[recording_site], expected_shifted)
+    # ----------------------------------------------------------------- roundtrip / errors
 
     def test_round_trip_write_read(self, interface, case, nwbfile, tmp_path):
-        # GuppyInterface is standalone: it writes a self-contained set of ndx-guppy objects, so the
+        # _GuppyInterface is standalone: it writes a self-contained set of ndx-guppy objects, so the
         # mock file can be written and read directly.
         self._add(interface, nwbfile, stub_test=True)
 
@@ -612,6 +608,27 @@ class TestGuppyInterface:
                 assert module.data_interfaces[name].neurodata_type == "GuppyCrossCorrelation"
             assert nwbfile.lab_meta_data["guppy_parameters"].neurodata_type == "GuppyParameters"
 
+    def test_derived_response_series_uses_starting_time_and_rate(self, interface, case, nwbfile):
+        """The regular mock timebase (1.0 + arange(n) / 200 Hz) is written as starting_time + rate."""
+        module = self._add(interface, nwbfile, stub_test=False)
+        for recording_site, prefixes in case["expected_traces"].items():
+            for prefix in prefixes:
+                series = module[f"{prefix}_{recording_site}"]
+                assert series.timestamps is None
+                assert float(series.starting_time) == pytest.approx(1.0)
+                assert float(series.rate) == pytest.approx(200.0)
+
+    def test_always_write_timestamps_forces_explicit_timestamps(self, interface, case, nwbfile):
+        """always_write_timestamps=True writes the explicit timestamps vector even for a regular timebase."""
+        metadata = interface.get_metadata()
+        interface.add_to_nwbfile(nwbfile, metadata, stub_test=False, always_write_timestamps=True)
+        module = nwbfile.processing["fiber_photometry"]
+        first_recording_site = case["expected_recording_sites"][0]
+        first_trace_name = f"{case['expected_traces'][first_recording_site][0]}_{first_recording_site}"
+        series = module[first_trace_name]
+        assert series.rate is None
+        np.testing.assert_allclose(series.timestamps[:3], [1.0, 1.005, 1.01])
+
     # ----------------------------------------------------------------- warnings / construction errors
 
     def test_missing_parameters_file_raises(self, case, tmp_path):
@@ -619,4 +636,4 @@ class TestGuppyInterface:
         shutil.copytree(case["folder_path"], copied_folder)
         (copied_folder / "GuPPyParamtersUsed.json").unlink()
         with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):
-            GuppyInterface(folder_path=str(copied_folder))
+            _GuppyInterface(folder_path=str(copied_folder))

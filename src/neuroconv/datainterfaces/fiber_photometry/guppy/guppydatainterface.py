@@ -16,6 +16,10 @@ from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterf
 from neuroconv.tools import get_package
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.utils import DeepDict
+from neuroconv.basedatainterface import BaseDataInterface
+from neuroconv.tools import get_package
+from neuroconv.tools.nwb_helpers import get_module
+from neuroconv.utils import DeepDict, calculate_regular_series_rate
 from neuroconv.utils.json_schema import get_base_schema
 
 
@@ -35,7 +39,7 @@ _PREFIX_TO_UNIT = dict(cntrl_sig_fit="n.a.", dff="a.u.", z_score="a.u.")
 _BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
 
 
-class GuppyInterface(BaseTemporalAlignmentInterface):
+class _GuppyInterface(BaseDataInterface):
     """
     Data Interface for converting GuPPy (Guided Photometry Analysis in Python) processed outputs.
 
@@ -76,10 +80,10 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self,
         folder_path: DirectoryPath,
         *,
-        metadata_key: str = "Guppy",
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
-        """Initialize the GuppyInterface.
+        """Initialize the _GuppyInterface.
 
         Parameters
         ----------
@@ -90,18 +94,19 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             ``GuPPyParamtersUsed.json`` into this folder, so it is discovered automatically; if
             it is missing the folder is not a valid GuPPy output and construction fails.
         metadata_key : str, optional
-            Key under ``metadata["FiberPhotometry"]`` that scopes everything this interface writes,
-            so two GuPPy interfaces in one conversion do not collide. Default = "Guppy".
+            Key under ``metadata["FiberPhotometry"]["Guppy"]`` that scopes everything this interface
+            writes, so two GuPPy interfaces in one conversion do not collide. Defaults to the GuPPy
+            output folder's name, which is unique per output.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        self.metadata_key = metadata_key
         super().__init__(
             folder_path=folder_path,
             verbose=verbose,
         )
 
         folder_path = Path(folder_path)
+        self.metadata_key = metadata_key if metadata_key is not None else folder_path.name
         stores_list_path = folder_path / "storesList.csv"
         assert (
             stores_list_path.is_file()
@@ -174,7 +179,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         self._peak_aucs = peak_aucs
         self._valid_signal_intervals_by_recording_site = valid_signal_intervals_by_recording_site
         self._guppy_parameters = guppy_parameters
-        self._recording_site_to_aligned_timestamps: dict[str, np.ndarray] | None = None
 
     # ------------------------------------------------------------------ #
     # Read-only views of the parsed GuPPy identifiers, for a converter that owns the acquisition /
@@ -195,11 +199,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
     def recording_site_to_store_ids(self) -> dict[str, dict[str, str]]:
         """``{recording_site: {"signal": <store_id>, "control": <store_id>}}`` from storesList.csv."""
         return {recording_site: dict(stores) for recording_site, stores in self._recording_site_to_store_ids.items()}
-
-    @property
-    def event_store_to_event_name(self) -> dict[str, str]:
-        """``{store_id: event_name}`` for the behavioral event stores in storesList.csv (e.g. PrtN -> port_entries)."""
-        return dict(self._event_store_to_event_name)
 
     @staticmethod
     def _discover_recording_sites(stores_list_path: Path) -> list[str]:
@@ -562,7 +561,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 f"GuPPy-derived fiber photometry processing outputs (GuPPy version {guppy_version})."
             )
 
-        metadata["FiberPhotometry"][self.metadata_key] = dict(
+        metadata["FiberPhotometry"]["Guppy"][self.metadata_key] = dict(
             ProcessingModule=dict(
                 name="fiber_photometry",
                 description=processing_module_description,
@@ -598,7 +597,10 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         )
         named_collection = dict(type="object", additionalProperties=named_object)
 
-        metadata_schema["properties"]["FiberPhotometry"]["properties"][self.metadata_key] = dict(
+        guppy_namespace_schema = metadata_schema["properties"]["FiberPhotometry"]["properties"].setdefault(
+            "Guppy", get_base_schema(tag="Guppy")
+        )
+        guppy_namespace_schema["properties"][self.metadata_key] = dict(
             type="object",
             additionalProperties=False,
             # The data-dependent families are empty ({}) for sessions that lack those products, which
@@ -620,32 +622,12 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         )
         return metadata_schema
 
-    def get_original_timestamps(self) -> dict[str, np.ndarray]:
-        """Return the original (GuPPy-corrected) timestamps for each recording_site."""
+    def _read_recording_site_timestamps(self) -> dict[str, np.ndarray]:
+        """Return the GuPPy-emitted (time-corrected) timestamps for each recording_site."""
         return {
             recording_site: self._read_time_correction(recording_site)["timestamps"]
             for recording_site in self._recording_sites
         }
-
-    def get_timestamps(self) -> dict[str, np.ndarray]:
-        """Return the (possibly aligned) timestamps for each recording_site."""
-        if self._recording_site_to_aligned_timestamps is not None:
-            return self._recording_site_to_aligned_timestamps
-        return self.get_original_timestamps()
-
-    def set_aligned_timestamps(self, recording_site_to_aligned_timestamps: dict[str, np.ndarray]) -> None:
-        """Override the per-recording_site timestamps with externally-aligned arrays."""
-        self._recording_site_to_aligned_timestamps = recording_site_to_aligned_timestamps
-
-    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
-        """Shift every recording_site's timestamps by ``aligned_starting_time``."""
-        recording_site_to_timestamps = self.get_timestamps()
-        self.set_aligned_timestamps(
-            {
-                recording_site: timestamps + aligned_starting_time
-                for recording_site, timestamps in recording_site_to_timestamps.items()
-            }
-        )
 
     def add_to_nwbfile(
         self,
@@ -653,6 +635,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         metadata: dict,
         *,
         stub_test: bool = False,
+        always_write_timestamps: bool = False,
     ) -> None:
         """
         Add GuPPy-derived fiber photometry products to an NWBFile as ndx-guppy neurodata types.
@@ -660,9 +643,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         Builds the ``GuppyParameters`` lab metadata, the slim ``GuppyRecordingSitesTable`` and
         ``GuppyEventsTable`` registries, the per-product objects (traces, transients, summary,
         cross-correlation, PSTH, peak/AUC) each referencing its registry rows, and the
-        ``GuppyValidSignalIntervals`` object. Products are written on the timestamps GuPPy emits, or on
-        the externally-aligned timestamps provided via :meth:`set_aligned_timestamps` /
-        :meth:`set_aligned_starting_time`.
+        ``GuppyValidSignalIntervals`` object. Products are written on the timestamps GuPPy emits.
 
         This method takes **no linkage arguments**: it writes only what the GuPPy output defines. The
         registries are slim (names only), and their outward links -- the recording sites' acquisition
@@ -676,13 +657,17 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         nwbfile : NWBFile
             The in-memory NWBFile to add the data to.
         metadata : dict
-            Metadata dictionary; must contain ``metadata["FiberPhotometry"][self.metadata_key]``.
+            Metadata dictionary; must contain ``metadata["FiberPhotometry"]["Guppy"][self.metadata_key]``.
         stub_test : bool, optional
             If True, only a short slice of each large product is written. Default = False.
+        always_write_timestamps : bool, optional
+            If True, always write the explicit ``timestamps`` vector on each derived trace instead of the
+            ``starting_time`` + ``rate`` representation used when the timestamps are regularly sampled.
+            Default = False.
         """
         ndx_guppy = get_package(package_name="ndx_guppy", installation_instructions="pip install ndx-guppy")
 
-        guppy_metadata = metadata["FiberPhotometry"][self.metadata_key]
+        guppy_metadata = metadata["FiberPhotometry"]["Guppy"][self.metadata_key]
         processing_module_metadata = guppy_metadata["ProcessingModule"]
         processing_module = get_module(
             nwbfile=nwbfile,
@@ -690,8 +675,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             description=processing_module_metadata["description"],
         )
 
-        recording_site_to_original_timestamps = self.get_original_timestamps()
-        recording_site_to_timestamps = self.get_timestamps()
+        recording_site_to_timestamps = self._read_recording_site_timestamps()
         recording_site_to_stub_end_time: dict[str, float] = {}
         bin_basis = self._bin_basis()
 
@@ -709,8 +693,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             ndx_guppy=ndx_guppy,
             processing_module=processing_module,
             recording_sites_table=recording_sites_table,
-            recording_site_to_original_timestamps=recording_site_to_original_timestamps,
-            recording_site_to_timestamps=recording_site_to_timestamps,
         )
         # Derived continuous traces.
         self._add_guppy_derived_response_series_to_nwbfile(
@@ -721,6 +703,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             recording_sites_table=recording_sites_table,
             recording_site_to_stub_end_time=recording_site_to_stub_end_time,
             stub_test=stub_test,
+            always_write_timestamps=always_write_timestamps,
         )
 
         # Per-(recording_site, trace_type) transient peak tables.
@@ -729,8 +712,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             processing_module=processing_module,
             transients_metadata=guppy_metadata["Transients"],
             recording_sites_table=recording_sites_table,
-            recording_site_to_original_timestamps=recording_site_to_original_timestamps,
-            recording_site_to_timestamps=recording_site_to_timestamps,
             recording_site_to_stub_end_time=recording_site_to_stub_end_time,
             stub_test=stub_test,
         )
@@ -801,6 +782,21 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         """Add the session-wide typed GuppyParameters lab metadata."""
         nwbfile.add_lab_meta_data(ndx_guppy.GuppyParameters(**self._guppy_parameters_kwargs()))
 
+    @staticmethod
+    def _timing_kwargs_from_timestamps(timestamps: np.ndarray, always_write_timestamps: bool) -> dict:
+        """Choose the timing representation for a TimeSeries child from its timestamps.
+
+        Regularly-sampled timestamps are written as ``starting_time`` + ``rate``; otherwise the explicit
+        ``timestamps`` vector is written. ``always_write_timestamps`` forces the ``timestamps`` path. Mirrors
+        ``BaseFiberPhotometryInterface._timing_kwargs_from_timestamps`` (this interface does not extend the
+        fiber-photometry base, so it cannot inherit it).
+        """
+        if not always_write_timestamps:
+            rate = calculate_regular_series_rate(series=timestamps)
+            if rate is not None:
+                return dict(starting_time=float(timestamps[0]), rate=float(rate))
+        return dict(timestamps=timestamps)
+
     def _add_guppy_derived_response_series_to_nwbfile(
         self,
         *,
@@ -811,6 +807,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         recording_sites_table,
         recording_site_to_stub_end_time: dict,
         stub_test: bool,
+        always_write_timestamps: bool = False,
     ) -> None:
         """Add each derived continuous trace as a GuppyDerivedResponseSeries.
 
@@ -837,14 +834,15 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                     timestamps = timestamps[:stub_sample_count]
                     recording_site_to_stub_end_time[recording_site] = float(timestamps[-1])
 
+                timing_kwargs = self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps)
                 response_series = ndx_guppy.GuppyDerivedResponseSeries(
                     name=trace_name,
                     description=entry["description"],
                     data=data,
                     unit=_PREFIX_TO_UNIT[prefix],
-                    timestamps=timestamps,
                     trace_type=_PREFIX_TO_TRACE_TYPE[prefix],
                     recording_site=self._recording_site_reference(recording_sites_table, [recording_site]),
+                    **timing_kwargs,
                 )
                 processing_module.add(response_series)
 
@@ -855,8 +853,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         processing_module,
         transients_metadata: dict,
         recording_sites_table,
-        recording_site_to_original_timestamps: dict,
-        recording_site_to_timestamps: dict,
         recording_site_to_stub_end_time: dict,
         stub_test: bool,
     ) -> None:
@@ -878,12 +874,6 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
                 )
                 peak_timestamps = occurrences["timestamps"].to_numpy(dtype=float)
                 peak_amplitudes = occurrences["amplitude"].to_numpy(dtype=float)
-                # Peaks are in GuPPy's emitted timebase; map them onto the (possibly aligned) timestamps.
-                peak_timestamps = np.interp(
-                    peak_timestamps,
-                    recording_site_to_original_timestamps[recording_site],
-                    recording_site_to_timestamps[recording_site],
-                )
                 if stub_test:
                     stub_end_time = recording_site_to_stub_end_time.get(recording_site)
                     if stub_end_time is not None:
@@ -1050,15 +1040,12 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             processing_module.add(peak_auc)
 
     def _add_guppy_recording_sites_table_to_nwbfile(self, *, ndx_guppy, processing_module):
-        """Get-or-create the GuppyRecordingSitesTable (one row per recording site, in canonical order).
+        """Build and add the slim GuppyRecordingSitesTable: one row per recording site, name only.
 
-        A converter that owns the acquisition table may build this registry first (with its
-        ``fiber_photometry_table_region`` link populated); if so, reuse it. Standalone, build the slim
-        version (names only) -- the interface does not know the acquisition row layout.
+        The optional ``fiber_photometry_table_region`` link into the acquisition FiberPhotometryTable is
+        populated afterwards by a converter that owns that table; the interface does not know the
+        acquisition row layout, so it writes only the recording-site identities here.
         """
-        existing = processing_module.data_interfaces.get("recording_sites")
-        if existing is not None:
-            return existing
         recording_sites_table = ndx_guppy.GuppyRecordingSitesTable(
             name="recording_sites",
             description="GuPPy recording sites (one row per recording site).",
@@ -1074,16 +1061,12 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         ndx_guppy,
         processing_module,
         recording_sites_table,
-        recording_site_to_original_timestamps: dict,
-        recording_site_to_timestamps: dict,
     ):
         """Build and add the GuppyValidSignalIntervals object, if any coordsForPreProcessing files exist.
 
         One row per valid ``[start, stop]`` window, each referencing its recording site via a
-        DynamicTableRegion into the GuppyRecordingSitesTable. Each window is shifted from GuPPy's emitted
-        recording timebase onto the (possibly aligned) timestamps by the same scalar offset applied to
-        that recording site's timestamps (they are boundary values, not per-sample timestamps to
-        interpolate against).
+        DynamicTableRegion into the GuppyRecordingSitesTable. The windows are written on GuPPy's emitted
+        recording timebase.
         """
         if not self._valid_signal_intervals_by_recording_site:
             return None
@@ -1103,10 +1086,7 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
             intervals = self._valid_signal_intervals_by_recording_site.get(recording_site)
             if intervals is None:
                 continue
-            time_offset = float(recording_site_to_timestamps[recording_site][0]) - float(
-                recording_site_to_original_timestamps[recording_site][0]
-            )
-            for start, stop in intervals + time_offset:
+            for start, stop in intervals:
                 valid_signal_intervals.add_interval(
                     start_time=float(start),
                     stop_time=float(stop),
@@ -1116,15 +1096,12 @@ class GuppyInterface(BaseTemporalAlignmentInterface):
         return valid_signal_intervals
 
     def _add_guppy_events_table_to_nwbfile(self, *, ndx_guppy, processing_module):
-        """Get-or-create the GuppyEventsTable (one row per event GuPPy aligned to, in canonical order).
+        """Build and add the slim GuppyEventsTable: one row per event GuPPy aligned to, name only.
 
-        A converter that merges every event type into one EventsTable may build this registry first
-        (with its ``events`` ragged DynamicTableRegion into that table's occurrence rows populated); if
-        so, reuse it. Standalone, build the slim version (names only).
+        The optional ``events`` link -- a ragged DynamicTableRegion into the merged pynwb EventsTable's
+        occurrence rows -- is populated afterwards by a converter that merges every event type into one
+        EventsTable; the interface writes only the event identities here.
         """
-        existing = processing_module.data_interfaces.get("events")
-        if existing is not None:
-            return existing
         events_table = ndx_guppy.GuppyEventsTable(
             name="events",
             description="GuPPy behavioral events (one row per event GuPPy aligned to).",

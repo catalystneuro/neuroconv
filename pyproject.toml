@@ -117,7 +117,8 @@ medpc = [
     "ndx-events==0.2.2",
 ]
 vame = [
-    "ndx-vame==0.3.1",
+    "ndx-vame>=0.3.2",
+    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
 ]
 behavior = [
     "neuroconv[sleap]",
@@ -133,13 +134,20 @@ behavior = [
 
 ## Events
 csv_events = [
-    "ndx-events==0.2.2",
+    # CSV events now write native pynwb 4.0 EventsTable objects and need only core pandas + pynwb>=4.0;
+    # kept as a stable install alias so `neuroconv[csv_events]` and `neuroconv[events]` remain valid.
+]
+npm_events = [
+    # NPM events are a headerless CSV written as native pynwb 4.0 EventsTable objects (via CSVEventsInterface),
+    # so they need only core pandas + pynwb>=4.0; kept as a stable install alias so `neuroconv[npm_events]`
+    # and `neuroconv[events]` remain valid.
 ]
 tdt_events = [
     "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
 ]
 events = [
     "neuroconv[csv_events]",
+    "neuroconv[npm_events]",
     "neuroconv[tdt_events]",
 ]
 
@@ -369,9 +377,15 @@ tdt_fp = [
     "neuroconv[fiber_photometry]",
     "tdt",
 ]
+npm_fp = [
+    "neuroconv[fiber_photometry]",
+]
+csv_fp = [
+    "neuroconv[fiber_photometry]",
+]
 guppy = [
     "neuroconv[fiber_photometry]",
-    "ndx-guppy @ git+https://github.com/catalystneuro/ndx-guppy.git@main",
+    "ndx-guppy",
     "tables",
 ]
 guppy_tdt = [  # For the TDTFiberPhotometryGuppyConverter
@@ -394,6 +408,7 @@ ophys = [
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
     "neuroconv[femtonics]",
+    "neuroconv[guppy]",
     "neuroconv[inscopix]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
@@ -404,6 +419,8 @@ ophys = [
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
     "neuroconv[guppy_tdt]",
+    "neuroconv[npm_fp]",
+    "neuroconv[csv_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
