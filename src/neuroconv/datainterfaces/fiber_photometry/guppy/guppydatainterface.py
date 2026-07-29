@@ -12,10 +12,6 @@ from pydantic import DirectoryPath, validate_call
 from pynwb.core import VectorData
 from pynwb.file import NWBFile
 
-from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from neuroconv.tools import get_package
-from neuroconv.tools.nwb_helpers import get_module
-from neuroconv.utils import DeepDict
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools import get_package
 from neuroconv.tools.nwb_helpers import get_module
