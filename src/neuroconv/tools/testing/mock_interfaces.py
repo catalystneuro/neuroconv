@@ -30,8 +30,14 @@ from ...datainterfaces.ophys.baseimagingextractorinterface import (
 from ...datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
+from ...tools.icephys import _RESPONSE_CLASS, _add_intracellular_electrode_to_nwbfile
 from ...tools.nwb_helpers import get_module
-from ...utils import ArrayType, get_json_schema_from_method_signature
+from ...utils import (
+    ArrayType,
+    calculate_regular_series_rate,
+    get_json_schema_from_method_signature,
+    to_camel_case,
+)
 from ...utils.dict import DeepDict
 
 
@@ -1290,3 +1296,214 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
                 behavior_module.add(skeletons)
             elif skeleton.name not in behavior_module["Skeletons"].skeletons:
                 behavior_module["Skeletons"].add_skeletons(skeleton)
+
+
+class MockIcephysInterface(BaseDataInterface):
+    """
+    A mock intracellular electrophysiology interface for testing purposes.
+
+    Writes one electrode's synthetic response as a single continuous response series (the class chosen by the
+    clamp ``mode``, as a real interface does) plus one
+    intracellular-recordings row per sweep, each addressing the sweep's ``(start_index, count)`` sample range.
+    That is the contract every icephys interface emits, so this exercises the format-independent machinery in
+    :mod:`neuroconv.tools.icephys` (which reads those rows back to build the hierarchy tables and the sweep
+    intervals) without any acquisition file. Combine several instances in a ``ConverterPipe`` for the
+    multi-channel and multi-run cases: instances sharing a ``starting_time`` describe the same sweeps recorded
+    on two electrodes (a dual patch), distinct ones place two runs on a single timeline.
+    """
+
+    def __init__(
+        self,
+        *,
+        mode: Literal["voltage_clamp", "current_clamp", "izero"] = "current_clamp",
+        num_sweeps: int = 3,
+        sweep_duration: float = 1.0,
+        sampling_frequency: float = 10_000.0,
+        inter_sweep_interval: float = 0.0,
+        starting_time: float = 0.0,
+        sequence: str = "run",
+        stimulus_type: str = "mock protocol",
+        repetition: str | None = None,
+        condition: str | None = None,
+        metadata_key: str = "mock",
+        seed: int = 0,
+        verbose: bool = False,
+    ):
+        """
+        Initialize a mock intracellular electrophysiology interface.
+
+        Parameters
+        ----------
+        mode : {"current_clamp", "voltage_clamp", "izero"}, default: "current_clamp"
+            The clamp mode, which selects the response series class the same way a real interface does.
+        num_sweeps : int, default: 3
+            Number of sweeps, one intracellular-recordings row each.
+        sweep_duration : float, default: 1.0
+            Duration of every sweep, in seconds.
+        sampling_frequency : float, default: 10000.0
+            Sampling rate of the response series, in Hz.
+        inter_sweep_interval : float, default: 0.0
+            Dead time between the end of a sweep and the start of the next one, in seconds. The default of 0.0
+            leaves the samples regular, so the series is written with a uniform rate; a non-zero value makes
+            them irregular, so it is written with explicit timestamps instead (the rule a real interface uses).
+        starting_time : float, default: 0.0
+            Time of the first sample, in seconds.
+        sequence : str, default: "run"
+            Run identity written to the ``sequence`` column of every row, the label that groups the rows into
+            one sequential recording.
+        stimulus_type : str, default: "mock protocol"
+            Value of the ``stimulus_type`` column, carried up to the sequential recording when aggregated.
+        repetition : str, optional
+            Label grouping this run's sequential recording with others into a ``Repetitions`` entry. Written as a
+            column only when given, as a real interface does.
+        condition : str, optional
+            Label grouping this run's repetition with others into an ``ExperimentalConditions`` entry. Written as
+            a column only when given.
+        metadata_key : str, default: "mock"
+            Identity of this interface's electrode and response series in the metadata dict. Give combined
+            instances distinct keys so each writes its own electrode and series.
+        seed : int, default: 0
+            Seed for the random number generator.
+        verbose : bool, default: False
+            Control verbosity.
+        """
+        super().__init__(verbose=verbose)
+        self.mode = mode
+        self.num_sweeps = num_sweeps
+        self.sweep_duration = sweep_duration
+        self.sampling_frequency = sampling_frequency
+        self.inter_sweep_interval = inter_sweep_interval
+        self.starting_time = starting_time
+        self.sequence = sequence
+        self.stimulus_type = stimulus_type
+        self.repetition = repetition
+        self.condition = condition
+        self.metadata_key = metadata_key
+        self.seed = seed
+
+    def get_metadata(self) -> DeepDict:
+        """
+        Get metadata for the intracellular electrophysiology interface.
+
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary, with the device, electrode and response series entries keyed by
+            ``metadata_key`` and cross-linked the way a real icephys interface links them.
+        """
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+
+        name_suffix = to_camel_case(self.metadata_key)
+        # The device identifies the amplifier, which runs share, so every instance meets at one registry entry
+        # (a single key with a single name), the way several real interfaces recorded on one amplifier do.
+        device_metadata_key = "mock_amplifier"
+        metadata["Devices"] = {
+            device_metadata_key: {"name": "MockAmplifier", "description": "Mock patch-clamp amplifier."}
+        }
+        metadata["Icephys"]["IntracellularElectrodes"] = {
+            self.metadata_key: {
+                "name": f"IntracellularElectrode{name_suffix}",
+                "description": "Mock patch-clamp electrode.",
+                "device_metadata_key": device_metadata_key,
+            }
+        }
+        # The default name is the NWB neurodata type for the clamp mode plus the electrode suffix, the same
+        # rule a real interface follows (add_to_nwbfile instantiates the matching class via _RESPONSE_CLASS).
+        response_type_name = {
+            "voltage_clamp": "VoltageClampSeries",
+            "current_clamp": "CurrentClampSeries",
+            "izero": "IZeroClampSeries",
+        }[self.mode]
+        metadata["Icephys"]["PatchClampSeries"] = {
+            self.metadata_key: {
+                "name": f"{response_type_name}{name_suffix}",
+                "description": f"Mock intracellular response ({self.mode}).",
+                "electrode_metadata_key": self.metadata_key,
+            }
+        }
+        return metadata
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict | None = None,
+    ):
+        """
+        Add the mock response series and its per-sweep intracellular-recordings rows to an NWB file.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file the series and rows are added to.
+        metadata : dict, optional
+            Metadata dictionary. If None, uses default metadata.
+        """
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        response_metadata = metadata["Icephys"]["PatchClampSeries"][self.metadata_key]
+        electrode = _add_intracellular_electrode_to_nwbfile(
+            nwbfile, metadata, response_metadata["electrode_metadata_key"]
+        )
+
+        samples_per_sweep = round(self.sweep_duration * self.sampling_frequency)
+        rng = np.random.default_rng(self.seed)
+        total_samples = self.num_sweeps * samples_per_sweep
+        data = rng.standard_normal(total_samples).astype("float32")
+
+        # The sweeps are laid end to end in one continuous series, each starting an inter-sweep interval after
+        # the previous one ended; the ranges are the (start_index, count) pairs the recordings rows address.
+        sweep_sample_ranges = [
+            (sweep_index * samples_per_sweep, samples_per_sweep) for sweep_index in range(self.num_sweeps)
+        ]
+        timestamps = np.empty(total_samples, dtype="float64")
+        for sweep_index, (start_index, count) in enumerate(sweep_sample_ranges):
+            sweep_start_time = self.starting_time + sweep_index * (self.sweep_duration + self.inter_sweep_interval)
+            timestamps[start_index : start_index + count] = (
+                sweep_start_time + np.arange(count) / self.sampling_frequency
+            )
+
+        series_kwargs = dict(
+            name=response_metadata["name"],
+            description=response_metadata["description"],
+            data=data,
+            electrode=electrode,
+            gain=np.nan,
+        )
+        # Same timing rule as a real interface: a uniform rate while the samples stay regular, explicit
+        # timestamps once the inter-sweep gaps make them irregular.
+        rate = calculate_regular_series_rate(series=timestamps)
+        if rate is not None:
+            series_kwargs.update(starting_time=float(timestamps[0]), rate=rate)
+        else:
+            series_kwargs.update(timestamps=timestamps)
+        response_series = _RESPONSE_CLASS[self.mode](**series_kwargs)
+        nwbfile.add_acquisition(response_series)
+
+        # The run-level columns, denormalized onto every row exactly as a real interface writes them: the two
+        # always-present ones, plus the optional grouping levels only when the caller asked for them.
+        columns = {"sequence": self.sequence, "stimulus_type": self.stimulus_type}
+        if self.repetition is not None:
+            columns["repetition"] = self.repetition
+        if self.condition is not None:
+            columns["condition"] = self.condition
+        column_descriptions = {
+            "sequence": "Run identity grouping rows into a sequential recording.",
+            "stimulus_type": "Stimulus type of the run, carried up to its sequential recording when aggregated.",
+            "repetition": "Repetition label grouping sequential recordings into a repetition.",
+            "condition": "Experimental condition label grouping repetitions.",
+        }
+        table = nwbfile.get_intracellular_recordings()
+        for column_name in columns:
+            if column_name not in table.colnames:
+                table.add_column(name=column_name, description=column_descriptions[column_name])
+
+        for start_index, count in sweep_sample_ranges:
+            nwbfile.add_intracellular_recording(
+                electrode=electrode,
+                response=response_series,
+                response_start_index=start_index,
+                response_index_count=count,
+                **columns,
+            )
