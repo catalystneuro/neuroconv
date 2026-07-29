@@ -1,4 +1,5 @@
-from pynwb import NWBFile
+from pynwb import NWBFile, TimeSeries
+from pynwb.epoch import TimeIntervals
 from pynwb.icephys import (
     CurrentClampSeries,
     CurrentClampStimulusSeries,
@@ -254,3 +255,84 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
 
     for condition_value in condition_order:
         nwbfile.add_icephys_experimental_condition(repetitions=repetitions_by_condition[condition_value])
+
+
+def _get_sweep_start_and_stop_time(series: TimeSeries, start_index: int, count: int) -> tuple[float, float]:
+    """Return ``(start_time, stop_time)`` of the ``(start_index, count)`` sample range of ``series``.
+
+    The stop time is the time of the range's LAST sample rather than one sample period past it, so consecutive
+    sweeps of a gap-free recording never share an endpoint (which reads as an overlap to a consumer treating the
+    intervals as closed). The cost is that a sweep's reported duration is short by one sample period.
+
+    Both timing representations are handled because an icephys interface writes whichever fits its data: a
+    uniform ``rate`` when the sweeps are contiguous, explicit ``timestamps`` when inter-sweep gaps make them
+    irregular. The two endpoints are computed directly instead of through ``series.get_timestamps()``, which
+    would materialize the whole timestamp array to read two values from it.
+    """
+    first_index = start_index
+    last_index = start_index + count - 1
+    if series.timestamps is not None:
+        return float(series.timestamps[first_index]), float(series.timestamps[last_index])
+    return (
+        float(series.starting_time + first_index / series.rate),
+        float(series.starting_time + last_index / series.rate),
+    )
+
+
+def _add_sweep_time_intervals_to_nwbfile(nwbfile: NWBFile, name: str = "sweeps") -> None:
+    """
+    Add a ``TimeIntervals`` table holding the start and stop time of every sweep in the file.
+
+    The sweeps are already in the file, as ``(start_index, count)`` ranges into the response series on the
+    intracellular-recordings table; this writes the same information in the form the rest of the NWB ecosystem
+    reads intervals in, so a tool that knows nothing about the icephys tables (pynapple, for instance, which
+    surfaces any ``TimeIntervals`` as an ``IntervalSet``) gets the sweeps for free. The index-based ranges stay
+    the canonical representation, and this table is a projection of them written at conversion time.
+
+    One row per distinct interval: the channels of a simultaneous recording (a dual patch, say) address the same
+    sample range of their own series and so describe one sweep, not two. Rows are written in time order, since
+    the recordings table is ordered by contributing interface rather than by time. When the recordings table
+    carries the ``sequence`` column, it is copied over so each sweep still names the run it belongs to.
+
+    Called once the intracellular-recordings table is complete, for the same reason the hierarchy tables are
+    (see :func:`_build_icephys_hierarchical_tables`): each interface appends only its own rows.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The file whose ``intracellular_recordings`` rows are read; the table is added to its ``intervals``.
+    name : str, default: "sweeps"
+        Name of the added ``TimeIntervals`` table, which is the handle downstream tools address it by.
+    """
+    intracellular_recordings = nwbfile.intracellular_recordings
+    if intracellular_recordings is None or len(intracellular_recordings) == 0:
+        return
+
+    responses = intracellular_recordings["responses"]["response"]
+    has_sequence_column = "sequence" in intracellular_recordings.colnames
+    sequences = intracellular_recordings["sequence"] if has_sequence_column else None
+
+    sequence_by_interval: dict = {}
+    for row_index in range(len(intracellular_recordings)):
+        response_reference = responses[row_index]
+        interval = _get_sweep_start_and_stop_time(
+            series=response_reference.timeseries,
+            start_index=response_reference.idx_start,
+            count=response_reference.count,
+        )
+        if interval not in sequence_by_interval:
+            sequence_by_interval[interval] = sequences[row_index] if has_sequence_column else None
+
+    sweeps = TimeIntervals(
+        name=name,
+        description="Start and stop time of each sweep, derived from the intracellular recordings table.",
+    )
+    if has_sequence_column:
+        sweeps.add_column(name="sequence", description="Run the sweep belongs to (from the recordings table).")
+    for start_time, stop_time in sorted(sequence_by_interval):
+        row = dict(start_time=start_time, stop_time=stop_time)
+        if has_sequence_column:
+            row["sequence"] = sequence_by_interval[(start_time, stop_time)]
+        sweeps.add_row(**row)
+
+    nwbfile.add_time_intervals(sweeps)
