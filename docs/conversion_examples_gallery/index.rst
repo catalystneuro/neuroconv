@@ -101,6 +101,7 @@ Fiber Photometry
 
     Doric Fiber Photometry <fiberphotometry/doric_fp>
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    NPM Fiber Photometry <fiberphotometry/npm_fp>
     CSV Fiber Photometry <fiberphotometry/csv_fp>
 
 Behavior
