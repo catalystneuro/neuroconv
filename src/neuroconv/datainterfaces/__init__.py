@@ -256,10 +256,9 @@ interfaces_by_category = dict(
         if "Segmentation" in interface.__name__
     },
     fiber_photometry={
-        "TDTFiberPhotometry": TDTFiberPhotometryInterface,
-        "NPMFiberPhotometry": NPMFiberPhotometryInterface,
         "DoricFiberPhotometry": DoricFiberPhotometryInterface,
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+        "NPMFiberPhotometry": NPMFiberPhotometryInterface,
         "CSVFiberPhotometry": CSVFiberPhotometryInterface,
         "MultiFileCSVFiberPhotometry": MultiFileCSVFiberPhotometryInterface,
     },

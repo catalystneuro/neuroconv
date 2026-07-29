@@ -130,7 +130,7 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
             file_path=file_path,
             data_columns=data_columns_list,
             timestamps_column=timestamps_column,
-            demux_config={
+            demux_configuration={
                 "by": "column",
                 "column": state_column,
                 "values": matching_states,
