@@ -563,7 +563,7 @@ def _add_recording_segment_to_nwbfile(
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+            recording_t_start = recording.get_start_time(segment_index=segment_index)
 
         if rate:
             starting_time = float(recording_t_start)
@@ -1699,7 +1699,7 @@ def _add_time_series_segment_to_nwbfile(
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+            recording_t_start = recording.get_start_time(segment_index=segment_index)
 
         if rate:
             starting_time = float(recording_t_start)
