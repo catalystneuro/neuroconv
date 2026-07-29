@@ -2145,6 +2145,15 @@ class TestWriteSortingAnalyzer(TestCase):
         multi_segment_rec.annotate(is_filtered=True)
         single_segment_sort.delete_property("gt_unit_locations")
         multi_segment_sort.delete_property("gt_unit_locations")
+        # SpikeInterface 0.105 gives generated sortings a "main_channel_id" property holding channel *ids*.
+        # The recording is channel-sliced further down (to mimic bad channel removal) and reused with this
+        # same sorting, at which point those ids no longer exist and `create_sorting_analyzer` refuses the
+        # pair. This class tests NWB writing, not main channel estimation, so drop the property up front and
+        # let every analyzer here estimate from its own recording, as it already does on 0.104.
+        # TODO: drop the guard once spikeinterface>=0.105.0 is the minimum pin; 0.104 never sets the property.
+        for sorting in (single_segment_sort, multi_segment_sort):
+            if "main_channel_id" in sorting.get_property_keys():
+                sorting.delete_property("main_channel_id")
 
         cls.single_segment_analyzer = create_sorting_analyzer(single_segment_sort, single_segment_rec, sparse=False)
         cls.single_segment_analyzer_sparse = create_sorting_analyzer(
