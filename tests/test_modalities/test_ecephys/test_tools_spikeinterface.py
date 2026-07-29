@@ -1049,7 +1049,10 @@ class TestAddElectrodes(TestCase):
         contact_ids = ["e0", "e1", "e2", "e3"]
         probe.set_contact_ids(contact_ids)
 
-        recording = recording.set_probe(probe, group_mode="by_probe")
+        # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where the call
+        # is always in place, returns None and the argument is deprecated. It is required on 0.104,
+        # which otherwise returns a new recording and leaves this one unchanged.
+        recording.set_probe(probe, group_mode="by_probe", in_place=True)
 
         # Add electrodes to nwbfile
         _add_electrodes_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
@@ -1084,7 +1087,8 @@ class TestAddElectrodes(TestCase):
         # Scenario 1: Add first recording with channel names ch0, ch1, ch2
         recording1 = generate_recording(num_channels=3)
         recording1 = recording1.rename_channels(new_channel_ids=["ch0", "ch1", "ch2"])
-        recording1 = recording1.set_probe(probe, group_mode="by_probe")
+        # `in_place=True` for the same reason as in test_electrode_name_column_added_with_probe above.
+        recording1.set_probe(probe, group_mode="by_probe", in_place=True)
 
         _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
 
@@ -1107,7 +1111,7 @@ class TestAddElectrodes(TestCase):
         # This creates new rows to store channel-specific properties
         recording2 = generate_recording(num_channels=3)
         recording2 = recording2.rename_channels(new_channel_ids=["AP0", "AP1", "AP2"])
-        recording2 = recording2.set_probe(probe, group_mode="by_probe")
+        recording2.set_probe(probe, group_mode="by_probe", in_place=True)
 
         _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
 
@@ -1129,7 +1133,7 @@ class TestAddElectrodes(TestCase):
 
         recording3 = generate_recording(num_channels=2)
         recording3 = recording3.rename_channels(new_channel_ids=["probe2_ch0", "probe2_ch1"])
-        recording3 = recording3.set_probe(probe2, group_mode="by_probe")
+        recording3.set_probe(probe2, group_mode="by_probe", in_place=True)
         # Manually set different group name to represent a second probe
         recording3.set_property(key="group_name", values=["ProbeB", "ProbeB"])
 
