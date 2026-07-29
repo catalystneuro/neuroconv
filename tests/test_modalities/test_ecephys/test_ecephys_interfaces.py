@@ -36,7 +36,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         nwbfile = interface.create_nwbfile(
             stub_test=True,
             metadata=metadata,
-            write_as="processing",
+            parent_container="processing",
             units_name="processed_units",
             units_description="The processed units.",
         )

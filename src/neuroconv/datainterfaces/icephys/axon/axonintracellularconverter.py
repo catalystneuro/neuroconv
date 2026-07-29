@@ -5,6 +5,7 @@ from pynwb import NWBFile
 from .axonintracellularinterface import AxonIntracellularInterface
 from ....nwbconverter import ConverterPipe
 from ....tools.icephys import (
+    _add_sweep_time_intervals_to_nwbfile,
     _build_icephys_hierarchical_tables,
     _disambiguate_run_labels,
     _validate_grouping_levels,
@@ -20,7 +21,9 @@ class AxonIntracellularConverter(ConverterPipe):
     optional ``repetition`` / ``condition``). This converter aligns the files on one timeline, then hands off to
     :func:`~neuroconv.tools.icephys._build_icephys_hierarchical_tables`, which reads those columns back and
     builds the ``SimultaneousRecordings`` / ``SequentialRecordings`` / ``Repetitions`` / ``ExperimentalConditions``
-    tables. The aggregator is deliberately format-agnostic so other icephys interfaces can reuse it.
+    tables, and to :func:`~neuroconv.tools.icephys._add_sweep_time_intervals_to_nwbfile`, which writes the sweep
+    start and stop times as a ``TimeIntervals`` table. Both are deliberately format-agnostic so other icephys
+    interfaces can reuse them.
 
     Interfaces from several files are placed on one timeline by their header start times (``rec_datetime``), the
     earliest file being the session origin. That requires real start times (ABF version 2); combining version-1
@@ -64,6 +67,7 @@ class AxonIntracellularConverter(ConverterPipe):
 
         if interfaces:
             _build_icephys_hierarchical_tables(nwbfile)
+            _add_sweep_time_intervals_to_nwbfile(nwbfile)
 
     @staticmethod
     def _assign_run_identities(interfaces: list[AxonIntracellularInterface]) -> None:
