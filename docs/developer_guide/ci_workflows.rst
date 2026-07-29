@@ -37,8 +37,8 @@ These delegate to the following reusable workflows:
 - ``neuroconv_docker_testing.yml``: Docker container CLI tests.
 - ``rclone_docker_testing.yml``: Rclone Docker container tests.
 - ``assess-file-changes.yml``: determines which files changed to route PR tests.
-- ``build_docker_image_dev.yml``: builds and pushes a dev Docker image to GHCR.
-- ``build_docker_rclone_with_config.yml``: rebuilds the Rclone Docker image.
+- ``build_and_upload_docker_image_dev.yml``: builds and pushes a dev Docker image to GHCR.
+- ``build_and_upload_docker_image_rclone_with_config.yml``: rebuilds the Rclone Docker image.
 - ``test-external-links.yml``: Sphinx linkcheck on documentation.
 
 The following table shows which entry-point calls which reusable workflow:
@@ -88,7 +88,7 @@ The following table shows which entry-point calls which reusable workflow:
      -
      - x
      -
-   * - build_docker_image_dev
+   * - build_and_upload_docker_image_dev
      -
      -
      - x
@@ -103,7 +103,7 @@ The following table shows which entry-point calls which reusable workflow:
      -
      - x
      -
-   * - build_docker_rclone_with_config
+   * - build_and_upload_docker_image_rclone_with_config
      -
      -
      -
@@ -135,7 +135,28 @@ Test data flows through three layers:
 1. **GIN repositories**: canonical source (ephy_testing_data, ophys_testing_data, behavior_testing_data).
 2. **S3 mirror**: maintained by ``update-s3-testing-data.yml`` (manual dispatch) for faster CI downloads.
 3. **GitHub Actions cache**: the ``load-data`` composite action (in ``.github/actions/load-data/``)
-   caches data keyed by the GIN repository HEAD hash for cross-OS reuse within CI runs.
+   caches each dataset for cross-OS reuse. The cache key is a hash of the recursive S3 listing of
+   that dataset's prefix, so any file added, removed, or re-uploaded changes the key and the next
+   run downloads afresh, with no need to keep gin and S3 in lockstep.
+
+Pull requests from forks
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+GitHub does not pass repository secrets to a workflow run triggered from a fork, so every ``secrets.*``
+expression resolves to an empty string rather than failing outright. ``load-data`` detects this: with no
+credentials it skips the S3 listing entirely, emits a fixed placeholder cache key, and lets the cache
+step's ``restore-keys`` prefix match restore the most recent cached copy of each dataset. Fork runs read
+the caches of the default branch, and the daily workflow refreshes those every morning, so the data is
+normally present and current. Downloads are skipped on those runs, since they cannot be signed.
+
+Two consequences worth knowing when adding a step:
+
+- **Put credential validation before anything that consumes credentials.** A validation step that prints
+  a helpful message is useless if an earlier step already died on the same empty secret. This is not
+  hypothetical: ``live-service-testing.yml`` has exactly such a step, and until the fallback above existed
+  it was never reached, because data loading ran first and failed with an opaque AWS error.
+- **Do not assume a secret-dependent step simply fails loudly.** It fails wherever the empty value first
+  reaches a tool, which is often far from the cause and phrased in that tool's vocabulary.
 
 
 Entry-Point Workflows
@@ -240,7 +261,9 @@ Called by ``deploy-tests.yml`` and ``dailies.yml``. Inputs: ``python-versions`` 
    - ecephys (``pip install ".[ecephys_minimal]"``)
    - ophys (``pip install ".[ophys_minimal]"``)
    - fiber_photometry (``pip install ".[fiber_photometry]"``)
+   - guppy (``pip install ".[guppy]"``)
    - behavior (``pip install ".[behavior]"``)
+   - events (``pip install ".[events]"``)
 
 5. Load test data via the ``load-data`` composite action.
 6. Install full requirements (``pip install ".[full]"``), install Wine (Linux only, for Plexon2 support).
@@ -272,7 +295,9 @@ Called by ``deploy-tests.yml`` and ``dev-dailies.yml``. Inputs: ``python-version
 Uses ``max-parallel: 1`` to avoid concurrent API calls to DANDI/EMBER/Globus staging servers.
 
 Includes a credential validation step with clear error messages for external contributors who lack
-the required secrets (``DANDI_SANDBOX_API_KEY``, ``EMBER_API_KEY``, AWS credentials).
+the required secrets (``DANDI_SANDBOX_API_KEY``, ``EMBER_SANDBOX_API_KEY``, AWS credentials). These
+tests are expected to fail on a pull request from a fork; the aggregated ``check-final-status`` gate
+does not depend on them, so that failure does not block a merge.
 
 formatwise-installation-testing.yml
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -313,7 +338,7 @@ Required Secrets
      - testing (coverage upload)
    * - ``DANDI_SANDBOX_API_KEY``
      - live-service-testing, dev-testing, deployment AWS tests
-   * - ``EMBER_API_KEY``
+   * - ``EMBER_SANDBOX_API_KEY``
      - live-service-testing
    * - ``RCLONE_DRIVE_ACCESS_TOKEN`` / ``RCLONE_DRIVE_REFRESH_TOKEN`` / ``RCLONE_EXPIRY_TOKEN``
      - rclone_docker_testing, rclone_aws_tests, deployment AWS tests
