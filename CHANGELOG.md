@@ -1,6 +1,7 @@
 # v0.9.4 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Renamed `CSVFiberPhotometryInterface`'s `demux_config` parameter to `demux_configuration`, and the `DemuxConfig` type alias to `DemuxConfiguration`, so it matches how neuroconv spells its other configuration objects (`backend_configuration`, `detection_configuration`, `dataset_io_configuration`). The parameter has not appeared in a release, so there is no deprecation path. [PR #1830](https://github.com/catalystneuro/neuroconv/pull/1830)
 * Renamed the container-selection parameter `write_as` to `parent_container` (now keyword-only) across the audio, spatial-series, sorting, and recording functions, so a single keyword selects the destination NWB container everywhere. The old `write_as` keyword still works but emits a `FutureWarning` and will be removed on or after December 2026. For the recording functions the values are now `{"acquisition", "processing/LFP", "processing/FilteredEphys"}` (the deprecated `write_as` maps `"raw" -> "acquisition"`, `"lfp" -> "processing/LFP"`, `"processed" -> "processing/FilteredEphys"`). [PR #1760](https://github.com/catalystneuro/neuroconv/pull/1760)
 * Bumped minimum `pynwb` version to `>=4.0.0`. [PR #1769](https://github.com/catalystneuro/neuroconv/pull/1769)
 * Migrated `TDTFiberPhotometryInterface` to a single-series interface that selects input streams via the new `stream_names` argument. Constructing without `stream_names` is deprecated and will be removed on or after January 2027. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
@@ -54,6 +55,7 @@
 
 ## Features
 * Added `DoricCSVEventsInterface` for converting discrete events from Doric Neuroscience Studio CSV exports. [PR #1817](https://github.com/catalystneuro/neuroconv/pull/1817)
+* `CSVFiberPhotometryInterface`'s column `demux_config` renamed `value` to `values`, which now accepts a list as well as a single label value, selecting the rows whose label column matches any of them (for label values that denote the same channel), and gained a `skip_rows` count that drops leading rows before the label is consulted (for a startup frame whose label would otherwise select it into a channel). [PR #1830](https://github.com/catalystneuro/neuroconv/pull/1830)
 * `CSVFiberPhotometryInterface` and `MultiFileCSVFiberPhotometryInterface` now accept a `time_unit` argument (`seconds`, `milliseconds`, or `microseconds`) that scales the timestamps column to seconds. [PR #1820](https://github.com/catalystneuro/neuroconv/pull/1820)
 * `CSVEventsInterface` now accepts a `time_unit` argument (`seconds`, `milliseconds`, or `microseconds`) that scales the timestamp and duration columns to seconds. [PR #1809](https://github.com/catalystneuro/neuroconv/pull/1809)
 * Added `NPMEventsInterface` for converting discrete events from raw Neurophotometrics (NPM) headerless two-column stimuli CSVs. Built on `CSVEventsInterface`, the rows are split by unique event-type label and each label is written as its own `pynwb.event.EventsTable` into `nwbfile.events`. [PR #1757](https://github.com/catalystneuro/neuroconv/pull/1757)
