@@ -16,7 +16,7 @@ The interface writes a single ``FiberPhotometryResponseSeries``; its channels ar
 read from the file, in column order, column-stacked into one series. This covers a narrow one-column
 file (the GuPPy acquisition format's ``<stream>.csv`` with ``timestamps`` and ``data``) and a wide
 file with several data columns. To aggregate *several* per-channel CSV files (e.g. GuPPy's per-region
-files) into one series, use :doc:`MultiFileCSVFiberPhotometryInterface <multifile_csv_fp>`. To write
+files) into one series, use ``MultiFileCSVFiberPhotometryInterface``, described below. To write
 several *separate* series (e.g. a signal and an isosbestic control) sharing one
 ``FiberPhotometryTable``, combine one interface per series (with distinct ``metadata_key`` values) in
 a converter.
@@ -25,12 +25,17 @@ Interleaved (multiplexed) files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Some CSVs **interleave** the excitation channels frame-by-frame down the rows rather than giving each
-channel its own column, so one row is one channel at one timepoint. Pass a ``demux_config`` to read a
+channel its own column, so one row is one channel at one timepoint. Pass a ``demux_configuration`` to read a
 single channel out of such a file. There are two shapes, chosen by ``by``:
 
-- ``{"by": "column", "column": ..., "value": ...}`` when a column labels each row's channel (e.g. a
-  Neurophotometrics ``LedState``): reads the rows whose ``column`` equals ``value``. A startup frame is
-  excluded simply by not being any interface's ``value``.
+- ``{"by": "column", "column": ..., "values": ...}`` when a column labels each row's channel (e.g. a
+  Neurophotometrics ``LedState``): reads the rows carrying this channel's label. One channel can be
+  named by more than one label, and a list selects the rows carrying any of them. For example, an NPM
+  ``LedState`` packs the digital input lines into the same integer as the excitation LED, so a single
+  LED is written as several distinct codes. A startup frame with a label of its own is excluded for
+  free, by carrying no channel's label; when its label *does* belong to a channel (an NPM
+  initialization frame sets every excitation bit, so it carries every wavelength's label), pass
+  ``"skip_rows": n`` to drop the ``n`` leading rows before the labels are consulted.
 - ``{"by": "stride", "channels": k, "index": i, "skip_rows": n}`` when a header-less file cycles the
   channels in a fixed order with no label column: reads every ``k``-th row from offset ``i`` after
   dropping ``n`` leading calibration rows.
@@ -43,11 +48,11 @@ The interface stays single-series, so instantiate one interface per channel (wit
     # A LedState column labels each row's excitation channel; one interface per channel.
     signal = CSVFiberPhotometryInterface(
         file_path=interleaved_path, data_columns="Region0G", timestamps_column="Timestamp",
-        demux_config={"by": "column", "column": "LedState", "value": 2}, metadata_key="signal",
+        demux_configuration={"by": "column", "column": "LedState", "values": 2}, metadata_key="signal",
     )
     isosbestic = CSVFiberPhotometryInterface(
         file_path=interleaved_path, data_columns="Region0G", timestamps_column="Timestamp",
-        demux_config={"by": "column", "column": "LedState", "value": 1}, metadata_key="isosbestic",
+        demux_configuration={"by": "column", "column": "LedState", "values": 1}, metadata_key="isosbestic",
     )
 
 Convert CSV Fiber Photometry data to NWB
@@ -81,6 +86,48 @@ and ``data`` columns:
     >>> available_columns = CSVFiberPhotometryInterface.get_available_columns(file_path=csv_signal_channel_path)
 
     >>> interface = CSVFiberPhotometryInterface(file_path=csv_signal_channel_path, data_columns="data", timestamps_column="timestamps", metadata_key="calcium_signal", verbose=False)
+    >>> metadata = interface.get_metadata()
+    >>> # CSV recordings have no embedded start time, so it must be set explicitly.
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> nwbfile_path =  f"{path_to_save_nwbfile}"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+One file per channel
+~~~~~~~~~~~~~~~~~~~~~
+
+Some acquisition formats write one CSV file per channel/region rather than one wide CSV. GuPPy, for
+instance, stores each region in its own file whose channel identity lives in the *filename*. Use
+:py:class:`~neuroconv.datainterfaces.fiber_photometry.csv.multifilecsvfiberphotometrydatainterface.MultiFileCSVFiberPhotometryInterface`
+for these. It reads ``data_columns`` from each file, in file-then-column order, and column-stacks
+them into a single ``FiberPhotometryResponseSeries``. The channels share one time axis, taken from
+the first file's ``timestamps_column``.
+
+Because only channels on a common timebase can share one series, the first file must contain the
+``timestamps_column``. Secondary files may omit it (their timestamps would be redundant); when a
+secondary file *does* contain it, the interface asserts it matches the first file's timestamps, so
+files that do not share a timebase fail loudly instead of producing a silently mis-timed series.
+
+Here we use two per-channel CSVs (``Sample_Signal_Channel.csv`` and ``Sample_Control_Channel.csv``),
+each with ``timestamps`` and ``data`` columns on a common timebase:
+
+.. code-block:: text
+
+    # Sample_Signal_Channel.csv     # Sample_Control_Channel.csv
+    timestamps,data                 timestamps,data
+    0.0,0.1                         0.0,0.05
+    0.01,0.106                      0.01,0.053
+    0.02,0.112                      0.02,0.056
+    ...                             ...
+
+.. code-block:: python
+
+    >>> from neuroconv.datainterfaces import MultiFileCSVFiberPhotometryInterface
+
+    >>> interface = MultiFileCSVFiberPhotometryInterface(file_paths=[csv_signal_channel_path, csv_control_channel_path], data_columns="data", timestamps_column="timestamps", metadata_key="calcium_signal", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # CSV recordings have no embedded start time, so it must be set explicitly.
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
