@@ -68,7 +68,7 @@ class TestNPMHeaderAndStateColumnIsosbestic(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=HEADER_AND_STATE_COLUMN_FILE,
         excitation_wavelength_in_nm=415,
-        data_columns="Region0G",
+        regions="Region0G",
         metadata_key="isosbestic_region0",
     )
     save_directory = OUTPUT_PATH
@@ -136,7 +136,7 @@ class TestNPMHeaderAndStateColumnSignal(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=HEADER_AND_STATE_COLUMN_FILE,
         excitation_wavelength_in_nm=470,
-        data_columns="Region0G",
+        regions="Region0G",
         metadata_key="signal_region0",
     )
     save_directory = OUTPUT_PATH
@@ -199,7 +199,7 @@ class TestNPMHeaderAndStateColumnMultiRegion(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=HEADER_AND_STATE_COLUMN_FILE,
         excitation_wavelength_in_nm=415,
-        data_columns=["Region0G", "Region1G", "Region2G"],
+        regions=["Region0G", "Region1G", "Region2G"],
         metadata_key="isosbestic_all_regions",
     )
     save_directory = OUTPUT_PATH
@@ -265,7 +265,7 @@ class TestNPMMultiTimestampSystemClock(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=MULTI_TIMESTAMP_FILE,
         excitation_wavelength_in_nm=415,
-        data_columns="G0",
+        regions="G0",
         timestamps_column="SystemTimestamp",
         metadata_key="isosbestic_g0",
     )
@@ -331,7 +331,7 @@ class TestNPMMultiTimestampSystemClock(FiberPhotometryInterfaceTestMixin):
         interface = self.data_interface_cls(
             file_path=MULTI_TIMESTAMP_FILE,
             excitation_wavelength_in_nm=415,
-            data_columns="G0",
+            regions="G0",
             timestamps_column="ComputerTimestamp",
         )
         # The ComputerTimestamp values of the same 20 rows the SystemTimestamp run above reads.
@@ -366,7 +366,7 @@ class TestNPMMultiTimestampSystemClock(FiberPhotometryInterfaceTestMixin):
     def test_default_timestamp_column_missing_fails_loudly(self):
         """This file has no ``Timestamp`` column, so the default fails loudly at construction."""
         with pytest.raises(AssertionError, match="Timestamp"):
-            self.data_interface_cls(file_path=MULTI_TIMESTAMP_FILE, excitation_wavelength_in_nm=415, data_columns="G0")
+            self.data_interface_cls(file_path=MULTI_TIMESTAMP_FILE, excitation_wavelength_in_nm=415, regions="G0")
 
 
 class TestNPMMultiLedStatePerWavelength(FiberPhotometryInterfaceTestMixin):
@@ -381,7 +381,7 @@ class TestNPMMultiLedStatePerWavelength(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=MULTI_LED_STATE_PER_WAVELENGTH_FILE,
         excitation_wavelength_in_nm=415,
-        data_columns="Region0G",
+        regions="Region0G",
         metadata_key="isosbestic_region0",
     )
     save_directory = OUTPUT_PATH
@@ -467,7 +467,7 @@ class TestNPMRedAndGreenEmissionRed(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=RED_AND_GREEN_EMISSION_FILE,
         excitation_wavelength_in_nm=560,
-        data_columns=["Region0R", "Region1R"],
+        regions=["Region0R", "Region1R"],
         metadata_key="red_signal",
     )
     save_directory = OUTPUT_PATH
@@ -530,7 +530,7 @@ class TestNPMRedAndGreenEmissionGreen(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=RED_AND_GREEN_EMISSION_FILE,
         excitation_wavelength_in_nm=470,
-        data_columns=["Region2G", "Region3G"],
+        regions=["Region2G", "Region3G"],
         metadata_key="green_signal",
     )
     save_directory = OUTPUT_PATH
@@ -604,7 +604,7 @@ class TestNPMStartupStateZeroRed(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=STARTUP_STATE_ZERO_FILE,
         excitation_wavelength_in_nm=560,
-        data_columns="Region0R",
+        regions="Region0R",
         metadata_key="red_signal",
     )
     save_directory = OUTPUT_PATH
@@ -671,7 +671,7 @@ class TestNPMStartupStateZeroGreen(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=STARTUP_STATE_ZERO_FILE,
         excitation_wavelength_in_nm=415,
-        data_columns="Region1G",
+        regions="Region1G",
         metadata_key="green_isosbestic",
     )
     save_directory = OUTPUT_PATH
@@ -737,7 +737,7 @@ class TestNPMMultiplexedByFile415(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=MULTIPLEXED_BY_FILE_415,
         excitation_wavelength_in_nm=415,
-        data_columns=["Region0G", "Region1G"],
+        regions=["Region0G", "Region1G"],
         metadata_key="isosbestic",
     )
     save_directory = OUTPUT_PATH
@@ -849,7 +849,7 @@ class TestNPMMultiplexedByFile470(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=MULTIPLEXED_BY_FILE_470,
         excitation_wavelength_in_nm=470,
-        data_columns=["Region0G", "Region1G"],
+        regions=["Region0G", "Region1G"],
         metadata_key="signal",
     )
     save_directory = OUTPUT_PATH
@@ -958,7 +958,7 @@ class TestNPMSimultaneousExcitation470(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=MULTI_WAVELENGTH_PER_LED_STATE_FILE,
         excitation_wavelength_in_nm=470,
-        data_columns=["G0", "G2"],
+        regions=["G0", "G2"],
         timestamps_column="SystemTimestamp",
         metadata_key="green_signal",
     )
@@ -1045,7 +1045,7 @@ class TestNPMSimultaneousExcitation560(FiberPhotometryInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=MULTI_WAVELENGTH_PER_LED_STATE_FILE,
         excitation_wavelength_in_nm=560,
-        data_columns=["R1", "R3"],
+        regions=["R1", "R3"],
         timestamps_column="SystemTimestamp",
         metadata_key="red_signal",
     )
@@ -1146,18 +1146,54 @@ class TestNPMFiberPhotometryConstruction:
         any frame has its bit set, and the leading startup frame does not count as a measurement."""
         assert NPMFiberPhotometryInterface.get_available_excitation_wavelengths(file_path) == expected_wavelengths
 
+    @pytest.mark.parametrize(
+        "file_path, expected_regions",
+        [
+            pytest.param(
+                HEADER_AND_STATE_COLUMN_FILE, ["Region0G", "Region1G", "Region2G"], id="header_and_state_column"
+            ),
+            # Two clocks and no plain Timestamp column, so both are dropped by the *Timestamp suffix.
+            pytest.param(MULTI_TIMESTAMP_FILE, ["G0", "G1", "G2", "G3"], id="multi_timestamp"),
+            pytest.param(MULTI_WAVELENGTH_PER_LED_STATE_FILE, ["G0", "R1", "G2", "R3"], id="multi_wavelength"),
+            pytest.param(
+                RED_AND_GREEN_EMISSION_FILE,
+                ["Region0R", "Region1R", "Region2G", "Region3G"],
+                id="red_and_green_emission",
+            ),
+            # The only fixture carrying the Stimulation/Output/Input columns NPM wrote between
+            # 2021-05-20 and 2021-11-07, so it is what proves the whole non-region set is subtracted
+            # and not just the four columns every file has.
+            pytest.param(MULTIPLEXED_BY_FILE_415, ["Region0G", "Region1G"], id="multiplexed_by_file"),
+        ],
+    )
+    def test_get_available_regions(self, file_path, expected_regions):
+        """The regions are discoverable before construction, in file order and free of the columns NPM
+        writes around them.
+
+        Both region spellings in the wild are covered: the Bonsai package's ``Region0G`` and the MBF
+        package's ``G0``. Neither is matched by name -- the non-region columns are subtracted and
+        whatever is left is a region -- so a spelling we have not seen is still reported."""
+        assert NPMFiberPhotometryInterface.get_available_regions(file_path) == expected_regions
+
+    def test_non_region_column_as_region_raises(self):
+        """Naming a clock rather than a region fails loudly instead of writing it as signal."""
+        with pytest.raises(AssertionError, match="are not regions"):
+            NPMFiberPhotometryInterface(
+                file_path=HEADER_AND_STATE_COLUMN_FILE, excitation_wavelength_in_nm=415, regions="Timestamp"
+            )
+
     def test_absent_wavelength_raises(self):
         """This recording carries only 415/470 nm, so requesting 560 nm fails loudly."""
         with pytest.raises(AssertionError, match="560 nm"):
             NPMFiberPhotometryInterface(
-                file_path=HEADER_AND_STATE_COLUMN_FILE, excitation_wavelength_in_nm=560, data_columns="Region0G"
+                file_path=HEADER_AND_STATE_COLUMN_FILE, excitation_wavelength_in_nm=560, regions="Region0G"
             )
 
     def test_unknown_wavelength_rejected(self):
         """excitation_wavelength_in_nm is a closed set; an out-of-set value is rejected up front."""
         with pytest.raises(ValidationError):
             NPMFiberPhotometryInterface(
-                file_path=HEADER_AND_STATE_COLUMN_FILE, excitation_wavelength_in_nm=500, data_columns="Region0G"
+                file_path=HEADER_AND_STATE_COLUMN_FILE, excitation_wavelength_in_nm=500, regions="Region0G"
             )
 
     def test_missing_state_column_raises(self):
@@ -1168,5 +1204,5 @@ class TestNPMFiberPhotometryConstruction:
         """
         with pytest.raises(ValueError, match="Flags"):
             NPMFiberPhotometryInterface(
-                file_path=NO_HEADER_NO_STATE_COLUMN_FILE, excitation_wavelength_in_nm=415, data_columns="Region0G"
+                file_path=NO_HEADER_NO_STATE_COLUMN_FILE, excitation_wavelength_in_nm=415, regions="Region0G"
             )

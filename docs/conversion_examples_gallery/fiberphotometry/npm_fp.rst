@@ -18,7 +18,10 @@ single ``FiberPhotometryResponseSeries``, so instantiate one interface per chann
 
 Two classmethods, callable before construction, report what to pass:
 ``get_available_excitation_wavelengths`` lists the excitation wavelengths (nm) present in the file,
-and the inherited ``get_available_columns`` lists the column names to choose ``data_columns`` from.
+and ``get_available_regions`` lists the region columns to choose ``regions`` from. The columns NPM
+writes around the regions (the clock and frame index, the excitation/TTL word, the digital lines) are a
+closed set, so the regions are what is left once they are subtracted; the inherited
+``get_available_columns`` is still there when you want the raw header instead.
 For how the ``Flags``/``LedState`` word maps frames onto channels, see the
 :py:class:`interface's API documentation <neuroconv.datainterfaces.fiber_photometry.npm.npmfiberphotometrydatainterface.NPMFiberPhotometryInterface>`.
 
@@ -44,14 +47,14 @@ supplied explicitly in the metadata.
 
     >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM" / "header_and_state_column" / "three_green_regions.csv"
 
-    >>> # Discover the excitation wavelengths and the file's columns before construction.
+    >>> # Discover the excitation wavelengths and the regions before construction.
     >>> NPMFiberPhotometryInterface.get_available_excitation_wavelengths(file_path=file_path)
     [415, 470]
-    >>> NPMFiberPhotometryInterface.get_available_columns(file_path=file_path)
-    ['FrameCounter', 'Timestamp', 'Flags', 'Region0G', 'Region1G', 'Region2G']
+    >>> NPMFiberPhotometryInterface.get_available_regions(file_path=file_path)
+    ['Region0G', 'Region1G', 'Region2G']
 
     >>> # One interface reads one channel; 415 nm is the isosbestic channel here.
-    >>> interface = NPMFiberPhotometryInterface(file_path=file_path, excitation_wavelength_in_nm=415, data_columns="Region0G", metadata_key="isosbestic_region0", verbose=False)
+    >>> interface = NPMFiberPhotometryInterface(file_path=file_path, excitation_wavelength_in_nm=415, regions="Region0G", metadata_key="isosbestic_region0", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # NPM recordings have no embedded start time, so it must be set explicitly.
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))

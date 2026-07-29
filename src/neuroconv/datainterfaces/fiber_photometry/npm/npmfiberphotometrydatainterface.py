@@ -31,6 +31,43 @@ from ..csv.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
 _EXCITATION_BITS = 0b111
 _WAVELENGTH_TO_CODE = {415: 1, 470: 2, 560: 4}
 
+# Every column NPM writes that is not a region: the clock and frame index, the excitation/TTL word,
+# and the digital lines. The set is closed -- hardcoded in PhotometryWriter and corroborated
+# positionally by the user guide's "Column 5+, Region Data" -- whereas the region names are not, since
+# the prefix is user text when a GroupRegions operator is upstream and older packages spelled it
+# "Channel" rather than "Region". So a region is recognized by subtracting these rather than by
+# matching a name pattern. Stimulation, Output0/1 and Input0/1 only appear in files written between
+# 2021-05-20 and 2021-11-07.
+_NON_REGION_COLUMNS = frozenset(
+    {
+        "framecounter",
+        "timestamp",
+        "systemtimestamp",
+        "computertimestamp",
+        "triggerevents",
+        "flags",
+        "ledstate",
+        "stimulation",
+        "output0",
+        "output1",
+        "input0",
+        "input1",
+    }
+)
+# A variant we have not seen could add another clock or frame counter, so anything spelled like one is
+# excluded too rather than offered as a region.
+_NON_REGION_COLUMN_SUFFIXES = ("timestamp", "counter")
+
+
+def _is_region_column(column: str) -> bool:
+    """Whether a column name is a region rather than one of the columns NPM writes around them.
+
+    Matched on the lowercased name, since ``_detect_state_column`` already accepts case variants of
+    ``Flags``/``LedState`` and a case-sensitive test here would offer the state column as a region.
+    """
+    lowered = str(column).lower()
+    return lowered not in _NON_REGION_COLUMNS and not lowered.endswith(_NON_REGION_COLUMN_SUFFIXES)
+
 
 class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
     """Interface for a Neurophotometrics CSV file (a ``Flags``/``LedState``-labeled acquisition).
@@ -46,8 +83,8 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
     and 560 nm together) the 470 nm measurement is in the green columns and the 560 nm measurement is
     in the red ones, sharing a timestamp.
 
-    Use :meth:`get_available_excitation_wavelengths` to discover the channels; the region column
-    names come from the inherited :meth:`get_available_columns`.
+    Use :meth:`get_available_excitation_wavelengths` to discover the channels and
+    :meth:`get_available_regions` to discover the regions.
 
     Header-less Neurophotometrics output has no NPM-specific structure and
     should be read with :class:`.CSVFiberPhotometryInterface` directly.
@@ -63,7 +100,7 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         file_path: FilePath,
         *,
         excitation_wavelength_in_nm: Literal[415, 470, 560],
-        data_columns: str | list[str],
+        regions: str | list[str],
         timestamps_column: Literal["Timestamp", "SystemTimestamp", "ComputerTimestamp"] = "Timestamp",
         time_unit: Literal["seconds", "milliseconds", "microseconds"] = "seconds",
         metadata_key: str | None = None,
@@ -78,9 +115,9 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
             The raw NPM CSV file.
         excitation_wavelength_in_nm : {415, 470, 560}
             The excitation LED identifying the one channel this interface reads.
-        data_columns : str or list of str
+        regions : str or list of str
             The region column name(s) whose samples are column-stacked into this interface's single
-            ``FiberPhotometryResponseSeries`` (see :meth:`get_available_columns`).
+            ``FiberPhotometryResponseSeries`` (see :meth:`get_available_regions`).
         timestamps_column : {"Timestamp", "SystemTimestamp", "ComputerTimestamp"}, default: "Timestamp"
             The timestamps column to use for the series' time axis. Single-timestamp NPM files name it
             ``Timestamp`` (the default). A file with both ``SystemTimestamp`` and ``ComputerTimestamp``
@@ -90,7 +127,7 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
             The unit of the selected timestamp column, default = "seconds".
         metadata_key : str, optional
             Key under ``metadata["FiberPhotometry"]`` for this interface's response-series metadata.
-            When None (default), a key distinct per ``(excitation_wavelength_in_nm, data_columns)`` is
+            When None (default), a key distinct per ``(excitation_wavelength_in_nm, regions)`` is
             generated, so several interfaces reading the same file do not collide.
         read_kwargs : dict, optional
             Additional keyword arguments forwarded to ``pandas.read_csv`` to handle format quirks
@@ -98,7 +135,15 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         verbose : bool, default: False
             Whether to print status messages.
         """
-        data_columns_list = [data_columns] if isinstance(data_columns, str) else list(data_columns)
+        regions = [regions] if isinstance(regions, str) else list(regions)
+        # Reading one of the columns NPM writes around the regions would silently record a clock or a
+        # digital line as signal. A name that is neither one of those nor present in the file falls
+        # through to the parent's "Column(s) ... not found" assertion, the accurate error for that case.
+        non_region_columns = [region for region in regions if not _is_region_column(region)]
+        assert not non_region_columns, (
+            f"Column(s) {non_region_columns} are not regions; NPM writes them around the region data. "
+            f"Available regions in '{file_path}': {self.get_available_regions(file_path, read_kwargs)}."
+        )
         state_column = self._detect_state_column(file_path, read_kwargs)
 
         code = _WAVELENGTH_TO_CODE[excitation_wavelength_in_nm]
@@ -124,11 +169,11 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         )
 
         if metadata_key is None:
-            metadata_key = self._default_metadata_key(file_path, excitation_wavelength_in_nm, data_columns_list)
+            metadata_key = self._default_metadata_key(file_path, excitation_wavelength_in_nm, regions)
 
         super().__init__(
             file_path=file_path,
-            data_columns=data_columns_list,
+            data_columns=regions,
             timestamps_column=timestamps_column,
             demux_configuration={
                 "by": "column",
@@ -159,6 +204,27 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
             for wavelength, code in _WAVELENGTH_TO_CODE.items()
             if any(value & code == code for value in state_values)
         )
+
+    @classmethod
+    def get_available_regions(cls, file_path: FilePath, read_kwargs: dict | None = None) -> list[str]:
+        """Return the region column names present in the file, in file order.
+
+        The columns NPM writes around the regions -- the clock and frame index, the excitation/TTL word,
+        the digital lines -- are a closed set, so the regions are what is left once they are subtracted.
+        The result is directly usable as ``regions``, unlike the inherited
+        :meth:`get_available_columns`, which lists the whole header.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            The NPM CSV file to read the header from.
+        read_kwargs : dict, optional
+            Additional keyword arguments forwarded to ``pandas.read_csv`` (e.g. ``sep``, ``encoding``) so
+            the header is parsed with the same dialect the interface will read the file with. Pass the
+            same value you would give the interface's ``read_kwargs``. Default is None.
+        """
+        columns = cls.get_available_columns(file_path, read_kwargs=read_kwargs)
+        return [column for column in columns if _is_region_column(column)]
 
     @staticmethod
     def _read_state_values(file_path: FilePath, state_column: str, read_kwargs: dict | None) -> tuple[int, list[int]]:
@@ -198,7 +264,7 @@ class NPMFiberPhotometryInterface(CSVFiberPhotometryInterface):
         )
 
     @staticmethod
-    def _default_metadata_key(file_path: FilePath, excitation_wavelength_in_nm: int, data_columns: list[str]) -> str:
+    def _default_metadata_key(file_path: FilePath, excitation_wavelength_in_nm: int, regions: list[str]) -> str:
         stem = Path(file_path).stem.replace(" ", "_").strip("_").lower()
-        regions = "_".join(str(column).replace(" ", "_").lower() for column in data_columns)
-        return f"fiber_photometry_{stem}_{excitation_wavelength_in_nm}nm_{regions}"
+        region_suffix = "_".join(str(region).replace(" ", "_").lower() for region in regions)
+        return f"fiber_photometry_{stem}_{excitation_wavelength_in_nm}nm_{region_suffix}"
