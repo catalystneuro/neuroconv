@@ -13,7 +13,27 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Install and configure AWS CLI
+    # A fork whose datasets were never cached at all would find nothing to restore and would reach
+    # the tests with no data, failing on missing files rather than on anything in the diff. That
+    # case is deliberately not handled: the daily workflow runs this same job against main every
+    # morning and re-saves all three caches, so an entry stays well inside the seven-day eviction
+    # window, and fork pull requests read the caches of the default branch.
+    - name: Check whether AWS credentials are available
+      id: credentials
+      shell: bash
+      run: |
+        # GitHub withholds repository secrets from a pull request opened from a fork, so these
+        # inputs arrive empty. Every step below that talks to S3 keys off this flag, so a fork
+        # falls back to the cache instead of aborting the job on a request it cannot sign.
+        if [[ -n "${{ inputs.aws-access-key-id }}" ]]; then
+          echo "available=true" >> $GITHUB_OUTPUT
+        else
+          echo "available=false" >> $GITHUB_OUTPUT
+          echo "::notice::AWS credentials are unavailable, which is expected for a pull request from a fork. Restoring the most recent cached copy of the test data instead."
+        fi
+
+    - if: ${{ steps.credentials.outputs.available == 'true' }}
+      name: Install and configure AWS CLI
       shell: bash
       run: |
         pip install awscli
@@ -28,7 +48,13 @@ runs:
         # Any file added, removed, or re-uploaded changes the listing and
         # therefore the cache key, so CI picks up data updates automatically
         # without contacting gin.
-        LIST_HASH=$(aws s3 ls --recursive "${{ inputs.s3-gin-bucket }}/ephy_testing_data/" | sha256sum | cut -d' ' -f1)
+        # With no credentials there is nothing to list, so emit a fixed placeholder and let the
+        # cache step's restore-keys prefix match pick whatever copy of the data is already cached.
+        if [[ "${{ steps.credentials.outputs.available }}" == "true" ]]; then
+          LIST_HASH=$(aws s3 ls --recursive "${{ inputs.s3-gin-bucket }}/ephy_testing_data/" | sha256sum | cut -d' ' -f1)
+        else
+          LIST_HASH="unavailable-credentials"
+        fi
         echo "DATASET_VERSION=$LIST_HASH" >> $GITHUB_OUTPUT
 
     - name: Cache ephys dataset
@@ -37,13 +63,22 @@ runs:
       with:
         path: ./ephy_testing_data
         key: ephys-datasets-${{ steps.ephys.outputs.DATASET_VERSION }}
+        # Fall back only when the exact key could not be computed. With credentials the behavior is
+        # unchanged: a key miss there means the data really did change on S3, and restoring a stale
+        # copy would leave files behind that the download step cannot overwrite because S3 no longer
+        # has them.
+        restore-keys: ${{ steps.credentials.outputs.available == 'true' && '' || 'ephys-datasets-' }}
         enableCrossOsArchive: true
 
     - name: Compute ophys cache key from S3 listing
       id: ophys
       shell: bash
       run: |
-        LIST_HASH=$(aws s3 ls --recursive "${{ inputs.s3-gin-bucket }}/ophys_testing_data/" | sha256sum | cut -d' ' -f1)
+        if [[ "${{ steps.credentials.outputs.available }}" == "true" ]]; then
+          LIST_HASH=$(aws s3 ls --recursive "${{ inputs.s3-gin-bucket }}/ophys_testing_data/" | sha256sum | cut -d' ' -f1)
+        else
+          LIST_HASH="unavailable-credentials"
+        fi
         echo "DATASET_VERSION=$LIST_HASH" >> $GITHUB_OUTPUT
 
     - name: Cache ophys dataset
@@ -52,13 +87,18 @@ runs:
       with:
         path: ./ophys_testing_data
         key: ophys-datasets-${{ steps.ophys.outputs.DATASET_VERSION }}
+        restore-keys: ${{ steps.credentials.outputs.available == 'true' && '' || 'ophys-datasets-' }}
         enableCrossOsArchive: true
 
     - name: Compute behavior cache key from S3 listing
       id: behavior
       shell: bash
       run: |
-        LIST_HASH=$(aws s3 ls --recursive "${{ inputs.s3-gin-bucket }}/behavior_testing_data/" | sha256sum | cut -d' ' -f1)
+        if [[ "${{ steps.credentials.outputs.available }}" == "true" ]]; then
+          LIST_HASH=$(aws s3 ls --recursive "${{ inputs.s3-gin-bucket }}/behavior_testing_data/" | sha256sum | cut -d' ' -f1)
+        else
+          LIST_HASH="unavailable-credentials"
+        fi
         echo "DATASET_VERSION=$LIST_HASH" >> $GITHUB_OUTPUT
 
     - name: Cache behavior dataset
@@ -67,22 +107,34 @@ runs:
       with:
         path: ./behavior_testing_data
         key: behavior-datasets-${{ steps.behavior.outputs.DATASET_VERSION }}
+        restore-keys: ${{ steps.credentials.outputs.available == 'true' && '' || 'behavior-datasets-' }}
         enableCrossOsArchive: true
 
-    - if: ${{ steps.cache-ephys-datasets.outputs.cache-hit != 'true' }}
+    # `cache-hit` reports only an exact key match, so it stays false after a restore-keys prefix
+    # match. Without the credential check these would still fire on a fork and fail on an unsigned
+    # request, which is the failure this action is meant to avoid.
+    # Each download clears its directory first. `aws s3 cp` overwrites and adds but never deletes,
+    # so downloading on top of a restored copy would keep files that no longer exist on S3, and the
+    # cache saved at the end of the job would carry them forward. Nothing is restored before a
+    # download today, which makes the removal a no-op, but it keeps the step correct on its own
+    # terms rather than through the restore-keys expression further up.
+    - if: ${{ steps.cache-ephys-datasets.outputs.cache-hit != 'true' && steps.credentials.outputs.available == 'true' }}
       name: Download ephys dataset from S3
       shell: bash
       run: |
+        rm -rf ./ephy_testing_data
         aws s3 cp --recursive "${{ inputs.s3-gin-bucket }}/ephy_testing_data" ./ephy_testing_data
 
-    - if: ${{ steps.cache-ophys-datasets.outputs.cache-hit != 'true' }}
+    - if: ${{ steps.cache-ophys-datasets.outputs.cache-hit != 'true' && steps.credentials.outputs.available == 'true' }}
       name: Download ophys dataset from S3
       shell: bash
       run: |
+        rm -rf ./ophys_testing_data
         aws s3 cp --recursive "${{ inputs.s3-gin-bucket }}/ophys_testing_data" ./ophys_testing_data
 
-    - if: ${{ steps.cache-behavior-datasets.outputs.cache-hit != 'true' }}
+    - if: ${{ steps.cache-behavior-datasets.outputs.cache-hit != 'true' && steps.credentials.outputs.available == 'true' }}
       name: Download behavior dataset from S3
       shell: bash
       run: |
+        rm -rf ./behavior_testing_data
         aws s3 cp --recursive "${{ inputs.s3-gin-bucket }}/behavior_testing_data" ./behavior_testing_data
