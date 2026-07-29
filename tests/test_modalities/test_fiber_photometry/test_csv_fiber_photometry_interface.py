@@ -136,7 +136,7 @@ class TestCSVFiberPhotometryDemux:
     """
 
     def test_column_demux_reads_one_labeled_channel(self, tmp_path):
-        """A column demux reads only the rows whose label column equals ``values``."""
+        """A column demux reads only the rows carrying this channel's label."""
         path = tmp_path / "interleaved.csv"
         # LedState 1 (signal) and 2 (control) alternate down the rows on a shared timebase.
         frame = pd.DataFrame(
@@ -149,10 +149,48 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns="data",
             timestamps_column="timestamps",
-            demux_config={"by": "column", "column": "LedState", "values": 1},
+            demux_configuration={"by": "column", "column": "LedState", "values": 1},
         )
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
+
+    def test_column_demux_reads_several_labels_as_one_channel(self, tmp_path):
+        """A list of labels reads the rows carrying any of them as one channel.
+
+        One channel can be named by more than one label: an NPM ``LedState`` packs the digital input
+        lines into the same integer as the excitation LED, so a single LED is written as several
+        distinct codes -- here 1 and 9 for the signal.
+        """
+        path = tmp_path / "interleaved_multi_label.csv"
+        # The signal rows alternate between the two codes for their LED; the control rows are always 2.
+        led_state = np.tile([1, 2, 9, 2], NUM_SAMPLES // 2)
+        data = np.empty(2 * NUM_SAMPLES)
+        data[0::2] = SIGNAL_DATA
+        data[1::2] = CONTROL_DATA
+        pd.DataFrame({"timestamps": np.repeat(TIMESTAMPS, 2), "LedState": led_state, "data": data}).to_csv(
+            path, index=False
+        )
+
+        both_codes = CSVFiberPhotometryInterface(
+            file_path=path,
+            data_columns="data",
+            timestamps_column="timestamps",
+            demux_configuration={"by": "column", "column": "LedState", "values": [1, 9]},
+        )
+        np.testing.assert_array_equal(both_codes.get_original_timestamps(), TIMESTAMPS)
+        np.testing.assert_array_equal(both_codes._read_response_data(), SIGNAL_DATA)
+
+    def test_column_demux_empty_values_raises(self, tmp_path):
+        """An empty label list selects no rows at all, so it is rejected up front."""
+        path = tmp_path / "interleaved.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS, "LedState": 1, "data": SIGNAL_DATA}).to_csv(path, index=False)
+        with pytest.raises(ValidationError, match="at least 1 item"):
+            CSVFiberPhotometryInterface(
+                file_path=path,
+                data_columns="data",
+                timestamps_column="timestamps",
+                demux_configuration={"by": "column", "column": "LedState", "values": []},
+            )
 
     def test_column_demux_skips_leading_rows(self, tmp_path):
         """``skip_rows`` drops a leading frame whose label would otherwise select it into the channel.
@@ -163,7 +201,7 @@ class TestCSVFiberPhotometryDemux:
         """
         path = tmp_path / "interleaved_with_startup.csv"
         timestamps = np.concatenate([[-1.0], np.repeat(TIMESTAMPS, 2)])
-        led_state = np.concatenate([[3], np.tile([1, 2], NUM_SAMPLES)])  # 3 matches both 1 and 2
+        led_state = np.concatenate([[1], np.tile([1, 2], NUM_SAMPLES)])
         data = np.empty(1 + 2 * NUM_SAMPLES)
         data[0] = -1.0  # the startup frame's value, which must not reach either channel
         data[1::2] = SIGNAL_DATA
@@ -174,7 +212,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns="data",
             timestamps_column="timestamps",
-            demux_config={"by": "column", "column": "LedState", "values": [1, 3], "skip_rows": 1},
+            demux_configuration={"by": "column", "column": "LedState", "values": 1, "skip_rows": 1},
         )
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
         np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
@@ -190,13 +228,13 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns=1,
             timestamps_column=0,
-            demux_config={"by": "stride", "channels": 2, "index": 0},
+            demux_configuration={"by": "stride", "channels": 2, "index": 0},
         )
         control = CSVFiberPhotometryInterface(
             file_path=path,
             data_columns=1,
             timestamps_column=0,
-            demux_config={"by": "stride", "channels": 2, "index": 1},
+            demux_configuration={"by": "stride", "channels": 2, "index": 1},
         )
         np.testing.assert_array_equal(signal.get_original_timestamps(), TIMESTAMPS)
         np.testing.assert_array_equal(signal._read_response_data(), SIGNAL_DATA)
@@ -215,7 +253,7 @@ class TestCSVFiberPhotometryDemux:
             file_path=path,
             data_columns=1,
             timestamps_column=0,
-            demux_config={"by": "stride", "channels": 2, "index": 0, "skip_rows": 1},
+            demux_configuration={"by": "stride", "channels": 2, "index": 0, "skip_rows": 1},
         )
         np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
 
@@ -228,7 +266,7 @@ class TestCSVFiberPhotometryDemux:
                 file_path=path,
                 data_columns="data",
                 timestamps_column="timestamps",
-                demux_config={"by": "column", "column": "LedState", "values": 1},
+                demux_configuration={"by": "column", "column": "LedState", "values": 1},
             )
 
     def test_stride_demux_index_beyond_channels_raises(self, tmp_path):
@@ -240,7 +278,7 @@ class TestCSVFiberPhotometryDemux:
                 file_path=path,
                 data_columns=1,
                 timestamps_column=0,
-                demux_config={"by": "stride", "channels": 2, "index": 2},
+                demux_configuration={"by": "stride", "channels": 2, "index": 2},
             )
 
 

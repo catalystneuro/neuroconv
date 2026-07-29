@@ -1,8 +1,9 @@
-"""Demux configs for :class:`.CSVFiberPhotometryInterface`.
+"""Demux configurations for :class:`.CSVFiberPhotometryInterface`.
 
-An interleaved CSV multiplexes the excitation channels frame-by-frame down the rows; a demux config
-selects the one channel a single interface reads, either by a label column or by row parity. These
-are validation-only value objects: a caller passes a plain ``dict`` and the interface coerces it.
+An interleaved CSV multiplexes the excitation channels frame-by-frame down the rows; a demux
+configuration selects the one channel a single interface reads, either by a label column or by row
+parity. These are validation-only value objects: a caller passes a plain ``dict`` and the interface
+coerces it.
 """
 
 from typing import Annotated, Literal
@@ -15,10 +16,9 @@ class ColumnDemux(BaseModel):
 
     For a file whose excitation channels are multiplexed frame-by-frame down the rows with a column
     naming each row's channel (e.g. a Neurophotometrics ``LedState``), this selects one channel.
-    ``values`` is a single label value or a list of them, in which case the rows whose ``column``
-    equals *any* of the listed values are read -- used when several distinct label values denote the
-    same channel (e.g. NPM ``LedState`` codes that share an excitation LED but differ in their
-    digital-line bits).
+    One channel can be named by more than one label, and a list selects the rows carrying any of them.
+    For example, an NPM ``LedState`` packs the digital input lines into the same integer as the
+    excitation LED, so a single LED is written as several distinct codes.
 
     A startup frame carrying a label of its own is excluded for free, by not matching any interface's
     ``values``. ``skip_rows`` is for the case where that is not enough: it drops leading rows before
@@ -28,7 +28,8 @@ class ColumnDemux(BaseModel):
 
     by: Literal["column"] = "column"
     column: str | int
-    values: str | int | list[str | int]
+    # An empty list would match no rows at all, silently yielding an empty channel.
+    values: str | int | Annotated[list[str | int], Field(min_length=1)]
     skip_rows: int = Field(default=0, ge=0)
 
 
@@ -52,5 +53,6 @@ class StrideDemux(BaseModel):
         return self
 
 
-# One interface reads one channel; the demux config says which, by a label column or by row parity.
-DemuxConfig = Annotated[ColumnDemux | StrideDemux, Field(discriminator="by")]
+# One interface reads one channel; the demux configuration says which, by a label column or by row
+# parity.
+DemuxConfiguration = Annotated[ColumnDemux | StrideDemux, Field(discriminator="by")]
