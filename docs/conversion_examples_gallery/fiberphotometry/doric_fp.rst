@@ -84,7 +84,7 @@ several series sharing one ``FiberPhotometryTable``.
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = Path("doric_fiber_photometry.nwb")
+    >>> nwbfile_path = path_to_save_nwbfile
     >>> # stub_test writes only the first stub_samples samples, which is useful for quick tests
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, stub_test=True)
 
