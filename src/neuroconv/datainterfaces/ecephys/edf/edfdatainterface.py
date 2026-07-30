@@ -69,10 +69,17 @@ def _parse_birthdate(birthdate) -> datetime | None:
     two-digit form belongs to the header's separate ``startdate`` field — and Python's POSIX rule for
     ``%y`` maps 00-68 to the 2000s, so ``"02.05.51"`` would have become 2051, a date in the future.
     """
-    # An absent field is not a problem and stays silent. Only a value that is *present* and unreadable
-    # is worth telling the user about: this whole change exists because metadata was being discarded
-    # without a trace, and dropping a birthdate the exporter did write would repeat that in miniature.
-    if birthdate is None or (isinstance(birthdate, str) and not birthdate.strip()):
+    # An absent field, or one that states "unknown", is not a problem and stays silent. Only a value
+    # that is *present* and unreadable is worth telling the user about: this whole change exists because
+    # metadata was being discarded without a trace, and dropping a birthdate the exporter did write
+    # would repeat that in miniature.
+    #
+    # In practice both readers normalize EDF+'s "X" marker to "" before it reaches here, so the
+    # unknown-marker check is defensive; it keeps this helper agreeing with _parse_sex about what counts
+    # as a declaration rather than a failure, should a third caller ever pass the raw subfield through.
+    if birthdate is None:
+        return None
+    if not isinstance(birthdate, date) and str(birthdate).strip().upper() in _VALUES_MEANING_UNKNOWN:
         return None
 
     parsed = None
@@ -113,11 +120,15 @@ _SEX_BY_HEADER_VALUE = {
     "OTHER": "O",
 }
 
-# Ways of saying "unknown". These are declarations, not failures: the file stated its subject's sex
-# perfectly clearly, as unknown. "X" is EDF+'s own marker and "U" is NWB's — the very value this falls
-# back to — so warning that either "could not be interpreted" would report a malformed file where there
-# is none. They map to None so the caller's "U" default applies, but silently.
-_SEX_MEANING_UNKNOWN = ("", "X", "U", "UNKNOWN", "N/A", "NA", "?", "-")
+# Ways of saying "unknown". These are declarations, not failures: the file stated the field perfectly
+# clearly, as unknown, so warning that it "could not be interpreted" would report a malformed file where
+# there is none. EDF+ uses "X" for any unknown subfield, birthdate included, which is why this is shared
+# between both parsers rather than specific to sex.
+_VALUES_MEANING_UNKNOWN = ("", "X", "UNKNOWN", "N/A", "NA", "?", "-")
+
+# NWB's own code for unknown sex is "U" — the very value the interface falls back to — so it belongs in
+# the silent set too, but only for sex, where it means something.
+_SEX_VALUES_MEANING_UNKNOWN = _VALUES_MEANING_UNKNOWN + ("U",)
 
 
 def _parse_sex(sex) -> str | None:
@@ -133,7 +144,7 @@ def _parse_sex(sex) -> str | None:
     # Note: not ``str(sex or "")`` — that would fold a numeric 0 into the silent path, hiding the one
     # input shape the allowlist cannot interpret.
     text = str(sex).strip().upper()
-    if text in _SEX_MEANING_UNKNOWN:
+    if text in _SEX_VALUES_MEANING_UNKNOWN:
         return None
     mapped = _SEX_BY_HEADER_VALUE.get(text)
     if mapped is None:

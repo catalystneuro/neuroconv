@@ -157,6 +157,24 @@ class TestUnreadableValuesWarn:
         assert _parse_birthdate(value) is None
         assert len(recwarn) == 0
 
+    @pytest.mark.parametrize("value", ["X", "x", "UNKNOWN", "N/A", "na", "?", "-"])
+    def test_declared_unknown_birthdate_is_silent(self, value, recwarn):
+        """
+        Both parsers must agree about what counts as a declaration rather than a failure.
+
+        EDF+ uses ``X`` for any unknown subfield, birthdate included. Both readers normalize it to ``""``
+        before it reaches here, so this is defensive — but without it the two helpers would disagree
+        about the same marker, and a third caller passing the raw subfield through would get a spurious
+        warning about a perfectly conforming file.
+        """
+        assert _parse_birthdate(value) is None
+        assert len(recwarn) == 0
+
+    def test_nwb_unknown_sex_code_is_not_a_birthdate(self, recwarn):
+        """``"U"`` means unknown *sex*; as a birthdate it is genuinely unreadable, so it still warns."""
+        with pytest.warns(UserWarning, match="date of birth could not be interpreted"):
+            assert _parse_birthdate("U") is None
+
     @pytest.mark.parametrize("value", ["mujer", "Mrs", "Frau", 0])
     def test_present_but_unreadable_sex_warns(self, value):
         with pytest.warns(UserWarning, match="subject sex could not be interpreted"):
