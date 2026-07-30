@@ -142,6 +142,11 @@ def _add_electrode_groups_to_nwbfile(
     default_group_template = placeholders["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]
     default_device_metadata = placeholders["Devices"]["default_metadata_key"]
 
+    # Entries without a ``device_metadata_key`` fall back to the placeholder device, exposed through the
+    # registry under its default key so every device is added by the canonical path. It is only added
+    # when actually referenced, so a user device sharing the placeholder's name stays legal.
+    devices_metadata = {"Devices": dict(metadata.get("Devices", {}))}
+
     electrode_groups_metadata = metadata.get("Ecephys", {}).get("ElectrodeGroups", {})
     channel_group_names = set(_get_group_name(recording=recording).tolist())
 
@@ -157,28 +162,26 @@ def _add_electrode_groups_to_nwbfile(
         for group_name in sorted(missing_channel_group_names)
     ]
 
-    required_fields = ("name", "description", "location")
     for group_metadata in (*user_entries, *auto_entries):
         group_kwargs = group_metadata.copy()
 
-        missing_fields = [field for field in required_fields if field not in group_kwargs]
-        if missing_fields:
-            placeholder_hint = "\n".join(f"  {field}: {default_group_template[field]!r}" for field in missing_fields)
-            raise ValueError(
-                "Electrode group metadata is missing required fields.\n"
-                "For a complete NWB file, the following fields should be provided. "
-                f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-            )
+        # ``description`` and ``location`` are required by the NWB ``ElectrodeGroup`` object but are often
+        # unknown to an interface, which may provide only a name and a device link. Fill any missing one
+        # from the default template at write time, rather than forcing the interface's get_metadata to emit
+        # a placeholder; this is the same template already applied to the auto-synthesized entries above.
+        for field in ("description", "location"):
+            group_kwargs.setdefault(field, default_group_template[field])
 
         if group_kwargs["name"] in nwbfile.electrode_groups:
             continue
 
         device_metadata_key = group_kwargs.pop("device_metadata_key", None)
-        if device_metadata_key is not None:
-            device_metadata = metadata["Devices"][device_metadata_key]
-        else:
-            device_metadata = default_device_metadata
-        group_kwargs["device"] = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
+        if device_metadata_key is None:
+            device_metadata_key = "default_metadata_key"
+            devices_metadata["Devices"].setdefault(device_metadata_key, default_device_metadata)
+        group_kwargs["device"] = _add_device_to_nwbfile(
+            nwbfile=nwbfile, metadata=devices_metadata, metadata_key=device_metadata_key
+        )
 
         nwbfile.create_electrode_group(**group_kwargs)
 
@@ -559,7 +562,7 @@ def _add_recording_segment_to_nwbfile(
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+            recording_t_start = recording.get_start_time(segment_index=segment_index)
 
         if rate:
             starting_time = float(recording_t_start)
@@ -1659,7 +1662,7 @@ def _add_time_series_segment_to_nwbfile(
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+            recording_t_start = recording.get_start_time(segment_index=segment_index)
 
         if rate:
             starting_time = float(recording_t_start)

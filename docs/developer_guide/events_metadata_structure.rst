@@ -210,7 +210,8 @@ An entry holds:
 Each column entry holds:
 
 - ``column_name`` , the column header in the output table (default: the source's field label if it
-  carries one, else the ``field_source_id``).
+  carries one, else the ``field_source_id``). It also decides whether event types pooled into one table
+  share a column or get one each (see :ref:`Role of column_name when merging <events_shared_column>`).
 - ``description`` (optional) , a free-text description of the column, written as its ``VectorData``
   description in the output table.
 - ``column_categories`` , the column's value vocabulary (see below); present only for a categorical
@@ -295,6 +296,108 @@ one, otherwise a numeric index), all under the one event type:
 Because the fields come from the *same* event, they share its timestamps and the columns sit on the
 same rows of one table. Each field is named and described independently (its own ``column_name`` /
 ``description`` / ``column_categories``).
+
+.. _events_shared_column:
+
+Role of ``column_name`` when merging into one table
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Value columns are declared per event type, so pooling several types into one table forces a decision:
+do two declarations name one output column or two? ``column_name`` is the whole of that decision.
+``_append_events_to_table`` collects the pooled types' specs into a ``column_specs`` dict keyed by
+``column_name`` (``column_specs.setdefault(column_name, column_spec)``), so equal names collapse to one
+entry and distinct names stay separate.
+
+Distinct names, the usual case, give each type its own column, filled on its own rows and empty on the
+others:
+
+.. code-block:: python
+
+    "left": {
+        "event_name": "left",
+        "table_metadata_key": "trials",
+        "columns": {
+            "outcome": {                          # keyed by field_source_id
+                "column_name": "outcome_left",
+            },
+        },
+    },
+    "right": {
+        "event_name": "right",
+        "table_metadata_key": "trials",
+        "columns": {
+            "outcome": {
+                "column_name": "outcome_right",
+            },
+        },
+    },
+
+.. code-block:: text
+
+    Trials
+    ┌───────────┬────────────┬──────────────┬───────────────┐
+    │ timestamp │ event_type │ outcome_left │ outcome_right │
+    ├───────────┼────────────┼──────────────┼───────────────┤
+    │       0.1 │ left       │ go           │               │
+    │       0.2 │ right      │              │ go            │
+    │       0.3 │ left       │ no_go        │               │
+    │       0.4 │ right      │              │ no_go         │
+    └───────────┴────────────┴──────────────┴───────────────┘
+
+Setting the same name on both collapses them into one column, filled from every contributor's rows:
+
+.. code-block:: python
+
+    "left": {
+        "event_name": "left",
+        "table_metadata_key": "trials",
+        "columns": {
+            "outcome": {
+                "column_name": "outcome",
+            },
+        },
+    },
+    "right": {
+        "event_name": "right",
+        "table_metadata_key": "trials",
+        "columns": {
+            "outcome": {
+                "column_name": "outcome",
+            },
+        },
+    },
+
+.. code-block:: text
+
+    Trials
+    ┌───────────┬────────────┬─────────┐
+    │ timestamp │ event_type │ outcome │
+    ├───────────┼────────────┼─────────┤
+    │       0.1 │ left       │ go      │
+    │       0.2 │ right      │ go      │
+    │       0.3 │ left       │ no_go   │
+    │       0.4 │ right      │ no_go   │
+    └───────────┴────────────┴─────────┘
+
+The values themselves are never reconciled. A plain numeric or string column takes each contributor's
+raw values as they come, and a categorical one renders every type's cells through that type's own
+raw-value to display-label map, so two types may map the same raw code to different labels and still
+fill one column.
+
+What is shared is the column's *identity*: its name, its ``description``, and its ``MeaningsTable``.
+Those are the only things that can disagree, and they exist only where the contributors declared them,
+so a column carrying neither ``column_categories`` nor a ``description`` is never checked at all and two
+such declarations merge **silently**, whatever their values. Where they are declared, a disagreement
+raises before anything is written (``BaseEventsInterface._validate_shared_columns``):
+
+- **Comparison is by display label, never by raw code.** The key is the label a value renders as, with
+  a raw code that has no declared label standing in as its own label. Codes are private to each source,
+  so two contributors mapping the same code to different labels is a legitimate heterogeneous merge,
+  not a conflict.
+- **Only an overlap can conflict.** A label that two contributors both give a ``meaning`` must get the
+  same meaning, and two non-empty ``description`` values must match. Where declarations do not overlap
+  each contributor simply adds its own values, and a ``description`` set by only one contributor
+  becomes the column's description.
 
 
 When Objects Are Created

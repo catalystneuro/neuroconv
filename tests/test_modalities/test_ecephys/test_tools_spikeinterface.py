@@ -71,6 +71,20 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
+    def test_shifted_recording_uses_starting_time(self):
+        recording = generate_recording(
+            sampling_frequency=self.sampling_frequency,
+            num_channels=self.num_channels,
+            durations=self.durations,
+        )
+        recording.shift_times(2.0)
+
+        add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile, iterator_type=None)
+
+        electrical_series = self.nwbfile.acquisition["ElectricalSeriesRaw"]
+        assert electrical_series.starting_time == 2.0
+        assert electrical_series.rate == self.sampling_frequency
+
     def test_write_as_lfp(self):
         parent_container = "processing/LFP"
         add_recording_to_nwbfile(
@@ -1155,6 +1169,18 @@ class TestAddTimeSeries:
         extracted_data = time_series.data[:]
         expected_data = recording.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+    def test_shifted_recording_uses_starting_time(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.shift_times(2.0)
+
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        time_series = nwbfile.acquisition["TimeSeries"]
+        assert time_series.starting_time == 2.0
+        assert time_series.rate == 1.0
 
     def test_metadata_key(self):
         """Test that metadata_key is used to look up metadata."""
@@ -2435,9 +2461,6 @@ class TestWriteSortingAnalyzer(TestCase):
 def test_stub_recording_with_t_start():
     """Test that the _stub recording functionality does not fail when it has a start time. See issue #1355"""
     recording = generate_recording(durations=[1.0])
-    # TODO Remove the following line once Spikeinterface 0.102.4 or higher is released
-    # See https://github.com/SpikeInterface/spikeinterface/pull/3940
-    recording._recording_segments[0].t_start = 0.0
     recording.shift_times(2.0)
 
     _stub_recording(recording=recording)
@@ -2643,8 +2666,10 @@ class TestAddRecording:
         electrodes_df = nwbfile.electrodes.to_dataframe()
         assert all(row_group is group for row_group in electrodes_df["group"])
 
-    def test_missing_required_electrode_group_field_raises(self):
-        """When an electrode group entry is missing schema-required fields, a clear error is raised."""
+    def test_missing_electrode_group_fields_are_defaulted(self):
+        """An electrode group entry that omits description/location is not rejected; the write path fills
+        those required NWB fields from the default template instead of raising, so an interface can
+        provide just a name and a device link."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
         nwbfile = mock_NWBFile()
 
@@ -2655,7 +2680,7 @@ class TestAddRecording:
                 "ElectrodeGroups": {
                     channel_groups[0]: {
                         "name": channel_groups[0],
-                        # description and location intentionally omitted
+                        # description and location intentionally omitted -> defaulted at write time
                         "device_metadata_key": "d",
                     },
                 },
@@ -2665,21 +2690,18 @@ class TestAddRecording:
             },
         }
 
-        expected_error = re.escape(
-            "Electrode group metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. "
-            "If missing, a placeholder can be used instead:\n"
-            "  description: 'no description'\n"
-            "  location: 'unknown'"
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
         )
-        with pytest.raises(ValueError, match=expected_error):
-            add_recording_to_nwbfile(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                metadata_key="series",
-                iterator_type=None,
-            )
+
+        group = nwbfile.electrode_groups[channel_groups[0]]
+        assert group.description == "no description"
+        assert group.location == "unknown"
+        assert group.device.name == "Device"
 
     def test_missing_metadata_key_raises(self):
         """An unknown metadata_key raises with the available keys listed."""
