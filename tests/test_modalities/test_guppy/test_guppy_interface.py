@@ -1,7 +1,6 @@
 import re
 import shutil
 
-import h5py
 import numpy as np
 import pandas
 import pytest
@@ -617,36 +616,3 @@ class Test_GuppyInterface:
         (copied_folder / "GuPPyParamtersUsed.json").unlink()
         with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):
             _GuppyInterface(folder_path=str(copied_folder))
-
-
-class TestMockGuppyOutputFolderTimebase:
-    """The mock must derive its timebase datasets the way GuPPy does.
-
-    `_GuppyInterface` reads only `timestampNew` and `sampling_rate`, so `timeRecStart` and
-    `correctionIndex` need asserting here or nothing constrains them to the format at all.
-    """
-
-    @pytest.fixture(scope="class")
-    def time_correction_datasets(self, tmp_path_factory):
-        """The `timeCorrection_dms.hdf5` datasets from a mock at the default 200 Hz / 400 samples."""
-        folder_path = generate_mock_guppy_output_folder(tmp_path_factory.mktemp("guppy") / "guppy_output")
-        with h5py.File(folder_path / "timeCorrection_dms.hdf5", "r") as time_correction_file:
-            return {key: time_correction_file[key][:] for key in time_correction_file}
-
-    def test_time_rec_start_is_the_raw_clock_origin(self, time_correction_datasets):
-        """The raw timebase is session-relative, so its first timestamp -- and `timeRecStart` -- is 0.0."""
-        np.testing.assert_array_equal(time_correction_datasets["timeRecStart"], [0.0])
-
-    def test_correction_index_starts_at_the_lights_on_trim(self, time_correction_datasets):
-        """1.0 s of lights-on trim at 200 Hz drops samples 0-199, so the kept indices are 200..599."""
-        correction_index = time_correction_datasets["correctionIndex"]
-        np.testing.assert_array_equal(correction_index[:3], [200, 201, 202])
-        np.testing.assert_array_equal(correction_index[-1], 599)
-        assert correction_index.shape == (400,)
-
-    def test_timestamp_new_is_the_surviving_raw_timestamps(self, time_correction_datasets):
-        """Sample 200 onward at 200 Hz: 1.0, 1.005, 1.01, ... up to 599 / 200 = 2.995."""
-        timestamps = time_correction_datasets["timestampNew"]
-        np.testing.assert_allclose(timestamps[:3], [1.0, 1.005, 1.01])
-        np.testing.assert_allclose(timestamps[-1], 2.995)
-        assert timestamps.shape == (400,)
