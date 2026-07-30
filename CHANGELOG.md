@@ -120,6 +120,7 @@
 * Added documentation for the new discrete-events metadata structure: a how-to guide for annotating events metadata (`docs/how_to/annotate_events_metadata.rst`) and a developer guide describing the dict-based schema for the global `EventTables` and per-interface `event_columns` (`docs/developer_guide/events_metadata_structure.rst`), including the role of `column_name` when several event types are pooled into one `EventsTable`. [PR #1759](https://github.com/catalystneuro/neuroconv/pull/1759) [PR #1831](https://github.com/catalystneuro/neuroconv/pull/1831)
 * Dropped Plexon2 testing on macOS. The `wine-crossover` Homebrew cask (the only tap that worked reliably on Apple Silicon) was removed upstream on 2026-04-16, and maintaining a pinned workaround against a shrinking Gcenx tap is not worth the CI churn. The `install-wine` composite action is now a no-op on macOS, and `TestPlexon2RecordingInterface` is marked to skip on all macOS runners. Linux keeps full Plexon2 coverage via `apt`-installed wine. [PR #1720](https://github.com/catalystneuro/neuroconv/pull/1720)
 * Bumped GitHub Actions to Node.js 24 compatible versions across all workflows: `actions/checkout` to `v6`, `actions/setup-python` to `v6`, and `actions/cache` to `v5`. [PR #1720](https://github.com/catalystneuro/neuroconv/pull/1720)
+* Added `metadata_key` developer documentation. [PR #1822](https://github.com/catalystneuro/neuroconv/pull/1822)
 
 # v0.9.3 (February 19, 2026)
 

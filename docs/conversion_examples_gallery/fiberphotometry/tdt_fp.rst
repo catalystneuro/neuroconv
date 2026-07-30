@@ -8,7 +8,7 @@ Install NeuroConv with the additional dependencies necessary for reading TDT Fib
     pip install "neuroconv[tdt_fp]"
 
 Specify the minimal metadata required for the conversion.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
