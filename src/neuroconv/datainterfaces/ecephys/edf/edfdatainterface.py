@@ -1,10 +1,31 @@
 import warnings
+from datetime import datetime
 
 from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
 from ....utils import DeepDict
+
+
+def _parse_birthdate(birthdate) -> datetime | None:
+    """
+    Coerce an EDF birthdate into a datetime, or None when it cannot be read.
+
+    NWB's ``Subject.date_of_birth`` must be a datetime, but the readers hand back the EDF+ patient
+    field's date as a string (``"02 may 1951"`` via pyedflib), so an unparseable or absent value is
+    dropped rather than passed on to pynwb.
+    """
+    if not birthdate:
+        return None
+    if isinstance(birthdate, datetime):
+        return birthdate
+    for date_format in ("%d-%b-%Y", "%d %b %Y", "%d.%m.%y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(str(birthdate).strip().title(), date_format)
+        except ValueError:
+            continue
+    return None
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
@@ -155,7 +176,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     def extract_subject_metadata(self) -> dict:
         subject_metadata = dict(
             subject_id=self.edf_header["patientcode"],
-            date_of_birth=self.edf_header["birthdate"],
+            date_of_birth=_parse_birthdate(self.edf_header["birthdate"]),
         )
 
         # Filter empty values
@@ -169,6 +190,17 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         metadata["NWBFile"].update(nwbfile_metadata)
 
         subject_metadata = self.extract_subject_metadata()
-        metadata.get("Subject", dict()).update(subject_metadata)
+        if subject_metadata:
+            # NOTE: assigning rather than updating in place. ``metadata`` is a DeepDict (a defaultdict),
+            # and ``dict.get`` does not go through ``__missing__``, so the previous
+            # ``metadata.get("Subject", dict()).update(...)`` mutated a throwaway dict and every EDF
+            # file silently lost its subject metadata.
+            # Once "Subject" is present the metadata schema requires subject_id, species and sex, so
+            # fill them whenever the header carried anything at all; otherwise reading a patient code
+            # out of the file would turn valid metadata into invalid metadata.
+            subject_metadata.setdefault("subject_id", "Unknown")
+            subject_metadata.setdefault("species", "Unknown species")
+            subject_metadata.setdefault("sex", "U")
+            metadata["Subject"] = {**metadata.get("Subject", dict()), **subject_metadata}
 
         return metadata
