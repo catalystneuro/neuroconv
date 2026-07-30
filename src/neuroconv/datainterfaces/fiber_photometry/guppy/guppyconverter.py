@@ -10,7 +10,11 @@ from .guppydatainterface import (
     _RECORDING_SITES_TABLE_NAME,
     _GuppyInterface,
 )
+from ..csv.multifilecsvfiberphotometrydatainterface import (
+    MultiFileCSVFiberPhotometryInterface,
+)
 from ..tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
+from ...events.csv_events.csveventsdatainterface import CSVEventsInterface
 from ...events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 from ....nwbconverter import ConverterPipe
 from ....tools import get_package
@@ -28,11 +32,12 @@ _MERGED_EVENTS_TABLE_KEY = "guppy_behavioral_events"
 _MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 
 # The acquisition formats this converter can read, mapped to the interfaces it builds for each. GuPPy
-# also processes Doric, CSV and Neurophotometrics sessions; adding one means adding its entry here, a
-# branch in each of the two _build_* methods below, and widening the ``acquisition_format`` Literal.
+# also processes Doric and Neurophotometrics sessions; adding one means adding its entry here, a branch
+# in each of the two _build_* methods below, and widening the ``acquisition_format`` Literal.
 # Nothing else in this converter is aware of the acquisition format.
 _ACQUISITION_FORMAT_TO_INTERFACES = {
     "tdt": (TDTFiberPhotometryInterface, TDTEventsInterface),
+    "csv": (MultiFileCSVFiberPhotometryInterface, CSVEventsInterface),
 }
 
 
@@ -101,7 +106,7 @@ class GuppyConverter(ConverterPipe):
         events_folder_path: DirectoryPath,
         guppy_folder_path: DirectoryPath,
         *,
-        acquisition_format: Literal["tdt"],
+        acquisition_format: Literal["tdt", "csv"],
         verbose: bool = False,
     ):
         """Initialize the GuPPy converter.
@@ -110,7 +115,8 @@ class GuppyConverter(ConverterPipe):
         ----------
         fiber_photometry_folder_path : DirectoryPath
             Path to the folder holding the raw acquisition traces -- for TDT, the tank folder
-            containing the Tbk, Tdx, tev, tin and tsq files.
+            containing the Tbk, Tdx, tev, tin and tsq files; for CSV, the folder holding one
+            ``<store>.csv`` per channel.
         events_folder_path : DirectoryPath
             Path to the folder holding the raw discrete events. GuPPy writes a session's traces and
             events into one folder, so for TDT this is the same tank folder as
@@ -120,9 +126,9 @@ class GuppyConverter(ConverterPipe):
             Path to the GuPPy ``<session>_output_<N>`` folder containing ``storesList.csv``,
             the per-recording-site derived ``.hdf5`` files, and the ``GuPPyParamtersUsed.json``
             provenance file (discovered automatically by the GuPPy interface).
-        acquisition_format : {"tdt"}
+        acquisition_format : {"tdt", "csv"}
             The format the session was recorded in, selecting which interfaces read the two raw
-            folders. GuPPy also processes Doric, CSV and Neurophotometrics sessions; those are not
+            folders. GuPPy also processes Doric and Neurophotometrics sessions; those are not
             supported yet and widen this argument when they are.
         verbose : bool, optional
             Whether to print status messages, default = False.
@@ -182,9 +188,17 @@ class GuppyConverter(ConverterPipe):
             )
             self._acquisition_interface_names.append(interface_name)
 
-        data_interfaces["Events"] = self._build_events_interface(
-            acquisition_format=acquisition_format, folder_path=events_folder_path, verbose=verbose
+        # How many events interfaces a session needs is itself format-dependent: one TDT interface reads
+        # every epoc in a tank, while GuPPy's CSV format stores each event in its own file and needs one
+        # interface per store. The rest of the converter therefore works over a list of them.
+        events_interfaces = self._build_events_interfaces(
+            acquisition_format=acquisition_format,
+            folder_path=events_folder_path,
+            event_store_ids=list(self._event_store_to_event_name),
+            verbose=verbose,
         )
+        data_interfaces.update(events_interfaces)
+        self._events_interface_names: list[str] = list(events_interfaces)
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
     # ------------------------------------------------------------------ acquisition-format seam
@@ -201,10 +215,10 @@ class GuppyConverter(ConverterPipe):
         ``_derive_recording_site_to_table_rows`` zips against the declared region -- so every branch
         must preserve ``store_ids`` order.
 
-        For TDT, GuPPy's store ids are the tank's stream names verbatim and pass straight through.
-        Other formats need translation: GuPPy's ``.doric`` store ids are abbreviated HDF5 paths, and its
-        CSV store ids are filename stems, which is why this dispatch exists at all rather than every
-        format sharing one call.
+        For TDT, GuPPy's store ids are the tank's stream names verbatim and pass straight through; for
+        CSV they are filename stems, so each names one file. GuPPy's ``.doric`` store ids are abbreviated
+        HDF5 paths and will need real translation, which is why this dispatch exists at all rather than
+        every format sharing one call.
         """
         if acquisition_format == "tdt":
             return TDTFiberPhotometryInterface(
@@ -213,21 +227,49 @@ class GuppyConverter(ConverterPipe):
                 metadata_key=metadata_key,
                 verbose=verbose,
             )
+        if acquisition_format == "csv":
+            # GuPPy writes one CSV per store, named for the store, with a fixed timestamps/data header.
+            # The interface stacks them in file order and asserts they share a time axis.
+            return MultiFileCSVFiberPhotometryInterface(
+                file_paths=[folder_path / f"{store_id}.csv" for store_id in store_ids],
+                data_columns="data",
+                timestamps_column="timestamps",
+                metadata_key=metadata_key,
+                verbose=verbose,
+            )
         raise NotImplementedError(
             f"No acquisition interface is wired up for acquisition_format={acquisition_format!r}."
         )
 
     @staticmethod
-    def _build_events_interface(*, acquisition_format: str, folder_path: DirectoryPath, verbose: bool):
-        """Build the interface reading the raw discrete events.
+    def _build_events_interfaces(
+        *, acquisition_format: str, folder_path: DirectoryPath, event_store_ids: list[str], verbose: bool
+    ) -> dict:
+        """Build the interfaces reading the raw discrete events, keyed by converter interface name.
 
-        The returned interface must cover **every** behavioral event store GuPPy listed;
-        ``get_metadata`` then drops the ones it did not, so its ``event_type_source_id`` values have to
-        be the store ids ``storesList.csv`` records. One TDT interface reads every epoc in the tank and
-        keys them by epoc name, which satisfies both.
+        Between them the returned interfaces must cover **every** behavioral event store GuPPy listed,
+        and each type's ``event_type_source_id`` has to be the store id ``storesList.csv`` records --
+        that id is the join key ``get_metadata`` uses to select and rename them. How many interfaces it
+        takes is format-dependent, hence a dict rather than a single interface: one TDT interface reads
+        every epoc in the tank and keys them by epoc name, while GuPPy's CSV format writes each store to
+        its own file and ``CSVEventsInterface`` reads one file apiece.
         """
         if acquisition_format == "tdt":
-            return TDTEventsInterface(folder_path=folder_path, verbose=verbose)
+            return {"Events": TDTEventsInterface(folder_path=folder_path, verbose=verbose)}
+        if acquisition_format == "csv":
+            # A GuPPy event CSV is a single 'timestamps' column, so there is no event-type column to
+            # split on; with event_type_column=None the lone type is keyed by the file stem, which is
+            # the store id.
+            return {
+                f"Events_{store_id}": CSVEventsInterface(
+                    file_path=folder_path / f"{store_id}.csv",
+                    timestamps_column="timestamps",
+                    event_type_column=None,
+                    metadata_key=store_id,
+                    verbose=verbose,
+                )
+                for store_id in event_store_ids
+            }
         raise NotImplementedError(f"No events interface is wired up for acquisition_format={acquisition_format!r}.")
 
     def get_metadata(self):
@@ -249,38 +291,59 @@ class GuppyConverter(ConverterPipe):
         for series_spec in self._series_specs:
             fiber_photometry_metadata[series_spec["metadata_key"]]["name"] = series_spec["series_name"]
 
-        # Select: the events interface seeds one event type per store it found, and its write is driven
-        # by this dict rather than by the source, so dropping the stores GuPPy did not list is what
-        # keeps them out of the NWB file.
-        events_metadata_key = self.data_interface_objects["Events"].metadata_key
-        seeded_event_types = metadata["Events"][events_metadata_key]["event_types"]
-        missing_stores = [store for store in self._event_store_to_event_name if store not in seeded_event_types]
+        # Select: each events interface seeds one event type per store it found, and its write is driven
+        # by that dict rather than by the source, so dropping the stores GuPPy did not list is what keeps
+        # them out of the NWB file. A format may split its stores over several interfaces, so the stores
+        # GuPPy listed are only guaranteed to be covered by the interfaces taken together.
+        covered_stores: set[str] = set()
+        for events_metadata_key, seeded_event_types in self._iter_event_type_blocks(metadata):
+            kept = {
+                store: seeded_event_types[store]
+                for store in seeded_event_types
+                if store in self._event_store_to_event_name
+            }
+            metadata["Events"][events_metadata_key]["event_types"] = kept
+            covered_stores.update(kept)
+        missing_stores = [store for store in self._event_store_to_event_name if store not in covered_stores]
         assert not missing_stores, (
             f"GuPPy's storesList.csv lists behavioral event store(s) {missing_stores} that the raw events "
-            f"source does not provide with any occurrences (available: {sorted(seeded_event_types)}). The "
+            f"source does not provide with any occurrences (available: {sorted(covered_stores)}). The "
             f"GuPPy output and the raw events source do not describe the same session."
         )
-        event_types = {store: seeded_event_types[store] for store in self._event_store_to_event_name}
-        metadata["Events"][events_metadata_key]["event_types"] = event_types
 
         # Rename: each surviving store takes the human-readable name GuPPy recorded for it in
         # storesList.csv (e.g. the "PrtR" store becomes the "port_entries" event type).
-        for store, event_name in self._event_store_to_event_name.items():
-            event_types[store]["event_name"] = event_name
-            event_types[store][
-                "event_description"
-            ] = f"Onset times of the '{event_name}' behavioral events (from acquisition store '{store}')."
+        for _, event_types in self._iter_event_type_blocks(metadata):
+            for store, entry in event_types.items():
+                event_name = self._event_store_to_event_name[store]
+                entry["event_name"] = event_name
+                entry["event_description"] = (
+                    f"Onset times of the '{event_name}' behavioral events (from acquisition store '{store}')."
+                )
 
         # Route: send every surviving type into one merged EventsTable (shared table_metadata_key + a
         # declared EventTables entry naming it), so a single DynamicTableRegion from the GuppyEventsTable
-        # can reference each type's occurrence rows.
-        for entry in event_types.values():
-            entry["table_metadata_key"] = _MERGED_EVENTS_TABLE_KEY
+        # can reference each type's occurrence rows. The EventTables entry is required, not decorative:
+        # it is what makes the first interface write a merged table carrying the event_type discriminator
+        # column, without which a second interface contributing to the same table fails.
+        for _, event_types in self._iter_event_type_blocks(metadata):
+            for entry in event_types.values():
+                entry["table_metadata_key"] = _MERGED_EVENTS_TABLE_KEY
         metadata["Events"].setdefault("EventTables", {})[_MERGED_EVENTS_TABLE_KEY] = dict(
             table_name=_MERGED_EVENTS_TABLE_NAME,
             description="All behavioral events GuPPy aligned to, merged into one table with an event_type discriminator.",
         )
         return metadata
+
+    def _iter_event_type_blocks(self, metadata: dict):
+        """Yield ``(metadata_key, event_types)`` for each events interface, in registration order.
+
+        Shared by the select/rename/route blocks above so each stays a separate, single-purpose pass
+        over however many events interfaces the acquisition format needed.
+        """
+        for interface_name in self._events_interface_names:
+            events_metadata_key = self.data_interface_objects[interface_name].metadata_key
+            yield events_metadata_key, metadata["Events"][events_metadata_key]["event_types"]
 
     def get_metadata_schema(self) -> dict:
         """Allow the ``FiberPhotometry`` block to carry the ``Guppy`` sub-schema alongside the base schemas."""
@@ -300,7 +363,7 @@ class GuppyConverter(ConverterPipe):
         ``FiberPhotometryTable`` and forced the merged ``EventsTable``), so it authors them itself. Each
         step below therefore depends on the one above it, and the sequence is spelled out by name rather
         than looped over ``data_interface_objects``: the acquisition interfaces build the shared
-        ``FiberPhotometryTable``, ``Events`` writes the merged ``EventsTable``, the registries link
+        ``FiberPhotometryTable``, the events interfaces write the merged ``EventsTable``, the registries link
         into both, and the GuPPy interface reuses them for the products that reference their rows.
 
         Note this is deliberately *not* ``data_interface_objects`` order: ``Guppy`` is registered first,
@@ -314,9 +377,10 @@ class GuppyConverter(ConverterPipe):
             self.data_interface_objects[interface_name].add_to_nwbfile(
                 nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, {})
             )
-        self.data_interface_objects["Events"].add_to_nwbfile(
-            nwbfile=nwbfile, metadata=metadata, **conversion_options.get("Events", {})
-        )
+        for interface_name in self._events_interface_names:
+            self.data_interface_objects[interface_name].add_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, {})
+            )
         self._build_guppy_registries(nwbfile=nwbfile, metadata=metadata)
         self.data_interface_objects["Guppy"].add_to_nwbfile(
             nwbfile=nwbfile, metadata=metadata, **conversion_options.get("Guppy", {})

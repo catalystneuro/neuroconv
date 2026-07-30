@@ -393,6 +393,11 @@ tdt_guppy = [  # For GuppyConverter(acquisition_format="tdt")
     "neuroconv[tdt_fp]",
     "neuroconv[tdt_events]",
 ]
+csv_guppy = [  # For GuppyConverter(acquisition_format="csv")
+    "neuroconv[guppy]",
+    "neuroconv[csv_fp]",
+    "neuroconv[csv_events]",
+]
 thor = [
     "neuroconv[ophys_minimal]",
     "tifffile>=2023.3.21",
@@ -419,6 +424,7 @@ ophys = [
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
     "neuroconv[tdt_guppy]",
+    "neuroconv[csv_guppy]",
     "neuroconv[npm_fp]",
     "neuroconv[csv_fp]",
     "neuroconv[thor]",
