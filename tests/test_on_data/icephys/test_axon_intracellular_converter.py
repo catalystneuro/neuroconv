@@ -10,14 +10,16 @@ converter reads those rows back and aggregates them: rows sharing a timing range
 timeline from each file's header start time (``rec_datetime``).
 
 Each class below is one user-facing scenario and checks only the ``add_to_nwbfile`` result (the in-memory NWBFile
-from ``create_nwbfile``). Most scenarios are a single test; the repetition / condition grouping is one class with a
-method per branch, since those share the same fixture and differ only in the labels the user passes.
+from ``create_nwbfile``). Every scenario here needs real ABF files for something the format alone provides: the
+protocol-derived stimulus type, channels that genuinely share sweeps, header start times to align on, or filenames
+that collide. The parts of the aggregator that need no file (the ``repetition`` / ``condition`` grouping branches
+and metadata-driven electrode sharing) are tested generically through ``MockIcephysInterface`` in
+``tests/test_minimal/test_tools/test_icephys.py``, so every icephys interface benefits from that coverage.
 
 Fixtures live in the gin ``ephy_testing_data`` repo under ``axon/intracellular_data`` (the same purpose-built set
 the interface tests use). The ``read_raw_protocol`` files are several runs recorded back-to-back on one rig
-(ascending header start times, all ABF v2, recorded on ``IN0``), which is what the multi-file alignment and the
-repetition / condition tests need; ``dual_patch_pairs/current_clamp.abf`` is a genuine dual patch (``IN0`` current
-clamp, ``IN1`` voltage clamp).
+(ascending header start times, all ABF v2, recorded on ``IN0``), which is what the multi-file alignment needs;
+``dual_patch_pairs/current_clamp.abf`` is a genuine dual patch (``IN0`` current clamp, ``IN1`` voltage clamp).
 """
 
 from neuroconv.converters import AxonIntracellularConverter
@@ -50,6 +52,13 @@ class TestAxonConverterSingleCell:
         assert len(nwbfile.icephys_sequential_recordings) == 1
         stimulus_type = nwbfile.icephys_sequential_recordings["stimulus_type"][0]
         assert stimulus_type and stimulus_type != "not described"
+        # The sweeps are also written as intervals: one row per sweep, in time order, inside the series span.
+        sweeps = nwbfile.intervals["sweeps"]
+        assert len(sweeps) == n_sweeps
+        response_series = next(iter(nwbfile.acquisition.values()))
+        series_start = response_series.starting_time or float(response_series.timestamps[0])
+        assert sweeps.start_time[0] == series_start
+        assert list(sweeps.start_time[:]) == sorted(sweeps.start_time[:])
 
 
 class TestAxonConverterDualPatch:
@@ -77,6 +86,8 @@ class TestAxonConverterDualPatch:
         assert all(len(simultaneous["recordings"][i]) == 2 for i in range(n_sweeps))
         # The two electrodes share one run, so a single sequential recording spans all sweeps.
         assert len(nwbfile.icephys_sequential_recordings) == 1
+        # The two rows of a sweep describe one interval, so the sweeps table has a row per sweep, not per row.
+        assert len(nwbfile.intervals["sweeps"]) == n_sweeps
         assert len(nwbfile.icephys_electrodes) == 2
         # Both electrodes are on the same file, so they share one amplifier device (device dedup is by name).
         assert len(nwbfile.devices) == 1
@@ -163,165 +174,3 @@ class TestAxonConverterDisambiguatesCollidingFilenames:
         # SimultaneousRecordings as if they were a dual patch).
         assert len(nwbfile.acquisition) == 2
         assert len(nwbfile.icephys_sequential_recordings) == 2
-
-
-# NOTE: the two test classes below exercise format-agnostic converter/interface machinery (the icephys-hierarchy
-# aggregation and metadata-driven electrode sharing), not anything ABF-specific. They would be better tested once,
-# generically, through a shared icephys mock interface so any icephys interface benefits. Until that mock exists they
-# remain here, since they cover important features of the converter and interfaces.
-class TestAxonConverterRepetitionsAndConditions:
-    """Aggregation of the ``repetition`` / ``condition`` grouping labels into the ``Repetitions`` and
-    ``ExperimentalConditions`` tables. Every method drives the same four back-to-back runs (one cell, one channel),
-    varying only the labels to exercise one branch of the aggregator each: the conditions table is omitted when no
-    condition is given, a missing ``repetition`` defaults to identity repetitions, repetitions are keyed by
-    ``(condition, label)`` so a label reused across conditions stays distinct, and a label shared within one
-    condition groups its runs into a single repetition."""
-
-    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
-    run_files = [
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
-    ]
-
-    def test_repetitions_without_conditions(self):
-        """Use case: a protocol repeated several times, the user tagging runs by ``repetition`` but giving no
-        ``condition``. Runs sharing a repetition label are grouped into one ``Repetitions`` entry, so two ``r1`` runs
-        and two ``r2`` runs yield two repetitions of two sequentials each. With no condition given, the converter
-        stops there and does not build an ``ExperimentalConditions`` table."""
-        interfaces = [
-            AxonIntracellularInterface(
-                file_path=path, response_channel_name="IN0", mode="current_clamp", repetition=repetition
-            )
-            for path, repetition in zip(self.run_files, ["r1", "r1", "r2", "r2"])
-        ]
-        nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
-
-        assert len(nwbfile.icephys_sequential_recordings) == 4
-        # Two repetitions, each grouping two of the four sequential recordings.
-        repetitions = nwbfile.icephys_repetitions
-        assert len(repetitions) == 2
-        assert all(len(repetitions["sequential_recordings"][i]) == 2 for i in range(2))
-        # No condition column -> the experimental-conditions table is not built.
-        assert nwbfile.icephys_experimental_conditions is None
-
-    def test_conditions_without_repetition(self):
-        """Use case: the user groups runs by experimental ``condition`` (for example drug versus control) but never
-        labels repetitions. Because the conditions table sits above the repetitions rung, the converter fills that
-        rung with identity repetitions, one per run, then groups those by condition. Four runs under conditions
-        A, A, B, B thus give four single-run repetitions collected into two conditions."""
-        interfaces = [
-            AxonIntracellularInterface(
-                file_path=path, response_channel_name="IN0", mode="current_clamp", condition=condition
-            )
-            for path, condition in zip(self.run_files, ["A", "A", "B", "B"])
-        ]
-        nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
-
-        # Identity repetitions: one per run, each holding a single sequential recording.
-        repetitions = nwbfile.icephys_repetitions
-        assert len(repetitions) == len(self.run_files)
-        assert all(len(repetitions["sequential_recordings"][i]) == 1 for i in range(len(self.run_files)))
-        # Conditions group those identity repetitions: two conditions of two repetitions each.
-        conditions = nwbfile.icephys_experimental_conditions
-        assert len(conditions) == 2
-        assert all(len(conditions["repetitions"][i]) == 2 for i in range(2))
-
-    def test_repetition_label_reused_across_conditions(self):
-        """Use case: the user reuses the same repetition names (``r1``, ``r2``) under each condition, the natural way
-        to label "first repeat of A, first repeat of B". The converter keys repetitions by ``(condition, label)``, so
-        ``r1`` under condition A and ``r1`` under condition B stay two separate repetitions rather than collapsing into
-        one. Four runs therefore produce four distinct repetitions across the two conditions."""
-        # "r1" and "r2" each appear under both condition "A" and condition "B".
-        interfaces = [
-            AxonIntracellularInterface(
-                file_path=path,
-                response_channel_name="IN0",
-                mode="current_clamp",
-                repetition=repetition,
-                condition=condition,
-            )
-            for path, repetition, condition in zip(self.run_files, ["r1", "r2", "r1", "r2"], ["A", "A", "B", "B"])
-        ]
-        nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
-
-        # Keyed by (condition, label) -> four distinct repetitions (A,r1), (A,r2), (B,r1), (B,r2); keyed by label
-        # alone it would wrongly collapse to two. Each condition holds two of them.
-        assert len(nwbfile.icephys_repetitions) == 4
-        conditions = nwbfile.icephys_experimental_conditions
-        assert len(conditions) == 2
-        assert all(len(conditions["repetitions"][i]) == 2 for i in range(2))
-
-    def test_repetition_groups_runs_within_condition(self):
-        """Use case: within a single condition the user records the same protocol twice and gives both runs the same
-        repetition label, meaning "these two runs are one repeat". The converter groups the two runs sharing a
-        ``(condition, label)`` into one ``Repetitions`` entry holding both sequential recordings. The two conditions
-        then each hold their one repetition."""
-        # Runs 0,1 are condition "A" repetition "r1"; runs 2,3 are condition "B" repetition "r2".
-        interfaces = [
-            AxonIntracellularInterface(
-                file_path=path,
-                response_channel_name="IN0",
-                mode="current_clamp",
-                repetition=repetition,
-                condition=condition,
-            )
-            for path, repetition, condition in zip(self.run_files, ["r1", "r1", "r2", "r2"], ["A", "A", "B", "B"])
-        ]
-        nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
-
-        # Two repetitions, each grouping the two sequential recordings that share its (condition, label).
-        repetitions = nwbfile.icephys_repetitions
-        assert len(repetitions) == 2
-        assert all(len(repetitions["sequential_recordings"][i]) == 2 for i in range(2))
-        # Two conditions, each holding one repetition.
-        conditions = nwbfile.icephys_experimental_conditions
-        assert len(conditions) == 2
-        assert all(len(conditions["repetitions"][i]) == 1 for i in range(2))
-
-
-class TestAxonConverterElectrodeSharingThroughMetadata:
-    """Use case: several runs of one cell were saved as separate files, so each defaults to its own electrode, but the
-    user knows they are the same physical pipette and wants them recorded against a single electrode. Editing the
-    metadata to point every response series at one electrode entry collapses them onto that shared electrode and its
-    device. Merging the electrodes does not merge the runs: each file remains its own sequential recording, so
-    electrode identity and run structure stay independent."""
-
-    # The four back-to-back protocol runs (one cell, ascending ABF v2 start times).
-    run_files = [
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "ramp.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "pulse_train.abf",
-        ICEPHYS_DATA_PATH / "read_raw_protocol" / "biphasic_train.abf",
-    ]
-
-    def test_merge_electrodes_via_edited_links(self):
-        interfaces = [
-            AxonIntracellularInterface(file_path=path, response_channel_name="IN0", mode="current_clamp")
-            for path in self.run_files
-        ]
-        converter = AxonIntracellularConverter(data_interfaces=interfaces)
-        metadata = converter.get_metadata()
-
-        # Default: one electrode entry per file.
-        assert len(metadata["Icephys"]["IntracellularElectrodes"]) == len(self.run_files)
-
-        # Collapse to a single shared electrode and point every series at it.
-        shared_key = "SharedCell"
-        first_electrode = next(iter(metadata["Icephys"]["IntracellularElectrodes"].values()))
-        metadata["Icephys"]["IntracellularElectrodes"] = {
-            shared_key: {**first_electrode, "name": "IntracellularElectrodeSharedCell"}
-        }
-        for series_entry in metadata["Icephys"]["PatchClampSeries"].values():
-            series_entry["electrode_metadata_key"] = shared_key
-
-        nwbfile = converter.create_nwbfile(metadata=metadata)
-
-        # The link edit took effect: the four per-file electrodes collapsed onto the one shared electrode. (That
-        # sharing itself is a metadata-linking behavior owned by the interface's TestAxonIntracellularMetadata; here
-        # it is only the premise for the converter-specific invariant below.)
-        assert len(nwbfile.icephys_electrodes) == 1
-        # The invariant this test owns: merging electrodes does not merge runs. Run grouping follows the `sequence`
-        # column, not electrode identity, so each file is still its own sequential recording.
-        assert len(nwbfile.icephys_sequential_recordings) == len(self.run_files)

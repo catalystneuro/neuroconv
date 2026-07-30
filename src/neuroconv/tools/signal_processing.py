@@ -61,6 +61,63 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = Non
     return falling_frames
 
 
+# NOTE: copied from the Intan digital PR (#1812) to unblock the Doric CSV events interface; de-duplicate
+# when that PR merges (both add this same function to this module).
+def _detect_events(
+    trace: np.ndarray,
+    detect: str,
+) -> tuple[np.ndarray, np.ndarray | None]:
+    """
+    Read a two-valued trace's transitions into event onset frames and, for a durative reading, durations.
+
+    This is the format-agnostic edge-detection step shared by signal-encoded events sources (e.g.
+    digital TTL (transistor-transistor logic) lines from Intan, SpikeGLX NIDQ, an analog photodiode):
+    the same rising/falling structure can be read as point events or as durative high/low periods, and
+    only the caller knows which the experiment intends.
+
+    It takes **no threshold**: on a two-valued signal a rising edge is simply the transition from the
+    lower value to the higher one, so there is nothing to choose. Turning a many-valued trace into a
+    line is a separate step, and it lands with the first interface that records one.
+
+    Parameters
+    ----------
+    trace : numpy.ndarray
+        A one-dimensional signal with at most two distinct values, e.g. a 0/1 digital line.
+    detect : {"rising", "falling", "high_period", "low_period"}
+        What to detect. ``"rising"``/``"falling"`` return the up/down transition frames as point
+        events. ``"high_period"`` pairs each rising edge with the next falling edge (onset + high span);
+        ``"low_period"`` pairs each falling edge with the next rising edge (onset + low span).
+
+    Returns
+    -------
+    onset_frames : numpy.ndarray
+        The frame indices of the event onsets.
+    durations : numpy.ndarray or None
+        ``None`` for a point reading (``"rising"``/``"falling"``). For a durative reading, per-event
+        durations **in frames** (the caller converts to seconds with the sampling period). An onset with
+        no closing edge in the trace gets a ``NaN`` duration (a truncated interval).
+    """
+    valid = ("rising", "falling", "high_period", "low_period")
+    if detect not in valid:
+        raise ValueError(f"Invalid detect '{detect}'. Valid values are {list(valid)}.")
+
+    rising = get_rising_frames_from_ttl(trace)
+    falling = get_falling_frames_from_ttl(trace)
+    if detect == "rising":
+        return rising, None
+    if detect == "falling":
+        return falling, None
+
+    onsets, closes = (rising, falling) if detect == "high_period" else (falling, rising)
+    # For each onset, the first close strictly after it; onsets and closes strictly alternate on a
+    # binary line, so this pairs each onset to its own closing edge.
+    close_index = np.searchsorted(closes, onsets, side="right")
+    durations = np.full(onsets.shape, np.nan, dtype="float64")
+    matched = close_index < len(closes)
+    durations[matched] = closes[close_index[matched]] - onsets[matched]  # in frames
+    return onsets, durations
+
+
 def _run_length_encode_labels(
     labels: np.ndarray,
     timestamps: np.ndarray,
