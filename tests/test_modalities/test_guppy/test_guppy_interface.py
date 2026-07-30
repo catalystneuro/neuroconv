@@ -174,13 +174,8 @@ class Test_GuppyInterface:
         assert len(interface._peak_aucs) == case["expected_peak_auc_count"]
 
     def test_metadata_omits_session_start_time(self, interface):
-        """GuPPy outputs carry no recording start, so the interface must not invent one.
-
-        ``timeRecStart`` is the raw store's clock origin, which reads as ``0.0`` for a
-        session-relative timebase; deriving a session start from it yields 1970-01-01.
-        """
-        metadata = interface.get_metadata()
-        assert metadata["NWBFile"].get("session_start_time") in (None, "")
+        """GuPPy outputs carry no recording start, so the interface must not supply one."""
+        assert "session_start_time" not in interface.get_metadata()["NWBFile"]
 
     def test_discovery_cross_correlations(self, interface, case):
         actual = sorted(
