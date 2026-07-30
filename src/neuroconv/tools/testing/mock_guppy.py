@@ -84,8 +84,7 @@ def generate_mock_guppy_output_folder(
     sampling_rate, num_samples : float, int, optional
         Shape of the derived traces and their timestamps, counted *after* the lights-on trim.
         ``num_samples / sampling_rate`` must exceed ~1 s so the first timestamp is > 0.5 s and the
-        1-s stub window is non-empty. There is deliberately no session-start parameter: the
-        ``timeRecStart`` dataset is derived from the raw timebase, not supplied (see Notes).
+        1-s stub window is non-empty.
     num_psth_timepoints, num_trials : int, optional
         Shape of the PSTH / cross-correlation matrices.
     peak_start_points, peak_end_points : tuple of float, optional
@@ -112,9 +111,7 @@ def generate_mock_guppy_output_folder(
     first timestamp, ``correctionIndex`` is the samples surviving the lights-on trim, and
     ``timestampNew`` is the raw timestamps at those indices. The mock's raw timebase is
     session-relative (it starts at ``0.0``), so ``timeRecStart`` is ``0.0`` -- matching what GuPPy
-    writes whenever the acquisition's own timestamps are session-relative rather than absolute. None
-    of this is parameterized, precisely so the fixture cannot express a ``timeRecStart`` that GuPPy
-    would not itself produce.
+    writes whenever the acquisition's own timestamps are session-relative rather than absolute.
     """
     folder_path = Path(folder_path)
     folder_path.mkdir(parents=True, exist_ok=True)
@@ -305,9 +302,9 @@ def _write_time_correction(folder_path, recording_site, raw_timestamps, correcti
     """``timeCorrection_<recording_site>.hdf5`` with four keyed datasets: ``timeRecStart``, ``timestampNew``,
     ``sampling_rate``, ``correctionIndex``.
 
-    ``timeRecStart`` is the raw store's first timestamp -- the clock origin the rest of the session is
-    measured against, not a wall-clock session start -- and ``timestampNew`` is the raw timestamps that
-    survived the lights-on trim, indexed by ``correctionIndex``.
+    ``timeRecStart`` is the raw store's first timestamp, the clock origin the rest of the session is
+    measured against; ``timestampNew`` is the raw timestamps that survived the lights-on trim, indexed
+    by ``correctionIndex``.
     """
     time_rec_start = np.asarray([raw_timestamps[0]], dtype=np.float64)
     timestamps = raw_timestamps[correction_index]

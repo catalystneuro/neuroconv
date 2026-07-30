@@ -60,15 +60,6 @@ class _GuppyInterface(BaseDataInterface):
     :attr:`recording_site_to_store_ids` read-only views.
 
     All products are placed in a ``ProcessingModule`` (default name ``fiber_photometry``).
-
-    Notes
-    -----
-    GuPPy outputs carry no embedded recording-start timestamp, so :meth:`get_metadata` does NOT
-    populate ``NWBFile/session_start_time``. The ``timeRecStart`` value in
-    ``timeCorrection_<recording_site>.hdf5`` is the raw store's clock origin, which is an absolute
-    time only when the acquisition format's own timestamps happen to be absolute -- it is ``0.0`` for
-    a session-relative timebase. The acquisition interface, or the user via editable metadata, must
-    supply the session start time.
     """
 
     keywords = ("fiber photometry", "GuPPy", "processed")
@@ -390,8 +381,6 @@ class _GuppyInterface(BaseDataInterface):
         time_correction_path = self._folder_path / f"timeCorrection_{recording_site}.hdf5"
         assert time_correction_path.is_file(), f"Missing {time_correction_path} for recording_site '{recording_site}'."
         with h5py.File(time_correction_path, "r") as f:
-            # The file also carries `timeRecStart` (the raw store's clock origin) and `correctionIndex`
-            # (the samples the lights-on trim kept); neither describes anything this interface writes.
             return dict(
                 timestamps=f["timestampNew"][:],
                 sampling_rate=float(f["sampling_rate"][0]),

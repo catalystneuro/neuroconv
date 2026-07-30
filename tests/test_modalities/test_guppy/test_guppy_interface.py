@@ -177,7 +177,7 @@ class Test_GuppyInterface:
         """GuPPy outputs carry no recording start, so the interface must not invent one.
 
         ``timeRecStart`` is the raw store's clock origin, which reads as ``0.0`` for a
-        session-relative timebase. Deriving a session start from it wrote 1970-01-01.
+        session-relative timebase; deriving a session start from it yields 1970-01-01.
         """
         metadata = interface.get_metadata()
         assert metadata["NWBFile"].get("session_start_time") in (None, "")
@@ -632,9 +632,7 @@ class TestMockGuppyOutputFolderTimebase:
     """The mock must derive its timebase datasets the way GuPPy does.
 
     `_GuppyInterface` reads only `timestampNew` and `sampling_rate`, so `timeRecStart` and
-    `correctionIndex` have no other test covering them. Leaving them unasserted is what let the mock
-    fabricate an epoch-valued `timeRecStart` that GuPPy would never write for this timebase, hiding
-    the session-start bug this class now guards.
+    `correctionIndex` need asserting here or nothing constrains them to the format at all.
     """
 
     @pytest.fixture(scope="class")
