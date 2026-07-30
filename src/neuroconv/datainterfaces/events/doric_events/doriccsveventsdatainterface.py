@@ -81,9 +81,10 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         )
         self.metadata_key = metadata_key or "doric_events"
         self._time_column, digital_columns = self._discover_columns(self.source_data["file_path"])
-        # available_signals: signal_source_id (the column name, e.g. "DI/O-1") -> its (group, name)
-        # descriptor. The header group "Digital I/O" makes every discovered signal kind "line", settled
-        # structurally with no data read, which is what lets the validator reject a cut on it.
+        # available_signals: signal_source_id (the column name, e.g. "DI/O-1") -> its {kind, column}
+        # descriptor. The header group "Digital I/O" makes every discovered signal a digital line, settled
+        # structurally with no data read, so no signal conditioning arises for this format; kind "line" is
+        # what lets the validator reject a cut on one.
         # Whether a line fired is a property of this recording, not of intent, so a line that never
         # toggles is still a (possibly empty) event type.
         self._available_signals = {str(column[1]): {"kind": "line", "column": column} for column in digital_columns}
@@ -183,10 +184,10 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         detection_plan = resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
-        for signal_source_id, event_types in detection_plan.items():
+        for signal_source_id, detection_specs in detection_plan.items():
             column = self._available_signals[signal_source_id]["column"]
             data = dataframe[column].to_numpy(dtype="float64")
-            for event_type_source_id, spec in event_types:
+            for event_type_source_id, spec in detection_specs:
                 # A DoricStudio digital column is already a 0/1 signal, so no conditioning applies and
                 # the reading is taken from the signal's own values, with no cut anywhere.
                 conditioned = _condition_signal(data, spec.get("signal_conditioning"))
