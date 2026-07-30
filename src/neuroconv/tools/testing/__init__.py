@@ -11,6 +11,7 @@ from .mock_interfaces import (
     MockEventsInterface,
     MockSignalEncodedEventsInterface,
     MockFiberPhotometryInterface,
+    MockIcephysInterface,
     MockSpikeGLXNIDQInterface,
     MockRecordingInterface,
     MockImagingInterface,

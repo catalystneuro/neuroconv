@@ -8,16 +8,16 @@ Install NeuroConv with the additional dependencies necessary for reading `Tucker
     pip install "neuroconv[tdt_events]"
 
 Convert discrete TDT events (epocs such as port entries or nose pokes) to NWB using :py:class:`~neuroconv.datainterfaces.events.tdt_events.tdteventsdatainterface.TDTEventsInterface`.
-Each selected epoc is written as an ``ndx_events.Events`` object (onset timestamps) into ``nwbfile.acquisition``.
+Each selected epoc is written as a ``pynwb.event.EventsTable`` into ``nwbfile.events``.
 
 .. code-block:: python
 
     >>> from neuroconv.datainterfaces import TDTEventsInterface
 
-    >>> folder_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_63_207-181030-103332"
+    >>> folder_path = ECEPHY_DATA_PATH / "tdt" / "epocs_with_offsets_1"
 
     >>> # exclude_events drops specific TDT epocs; omit it to store every epoc in the tank
-    >>> interface = TDTEventsInterface(folder_path=folder_path, exclude_events=["PrtN", "LNRW"], verbose=False)
+    >>> interface = TDTEventsInterface(folder_path=folder_path, exclude_events=["Tick"], verbose=False)
 
     >>> # Extract what metadata we can from the source files (session_start_time is read from the tank)
     >>> metadata = interface.get_metadata()

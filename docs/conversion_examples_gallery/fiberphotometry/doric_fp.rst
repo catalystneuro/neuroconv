@@ -35,7 +35,6 @@ before construction) to discover stream names for any of these variants.
 
 .. code-block:: python
 
-    >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import DoricFiberPhotometryInterface
 
     >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"
@@ -65,7 +64,6 @@ several series sharing one ``FiberPhotometryTable``.
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from pathlib import Path
     >>> from zoneinfo import ZoneInfo
 
     >>> from neuroconv.datainterfaces import DoricFiberPhotometryInterface
@@ -84,7 +82,7 @@ several series sharing one ``FiberPhotometryTable``.
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = Path("doric_fiber_photometry.nwb")
+    >>> nwbfile_path = path_to_save_nwbfile
     >>> # stub_test writes only the first stub_samples samples, which is useful for quick tests
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, stub_test=True)
 
