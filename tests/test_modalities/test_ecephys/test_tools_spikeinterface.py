@@ -1005,6 +1005,26 @@ class TestAddElectrodes(TestCase):
         assert np.array_equal(extracted_complete_property, expected_complete_property)
         assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
 
+    def test_missing_ragged_values(self):
+        """Channels added without a ragged property get an empty row for it.
+
+        Reading a sample value to work out a null does not work for a ragged column, whose rows
+        have no shape in common, so the empty row is used directly.
+        """
+        recording1 = generate_recording(num_channels=2, durations=[1.0])
+        recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
+        recording1.set_property(key="ragged_property", values=np.ones(shape=(2, 3)))
+        _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
+
+        recording2 = generate_recording(num_channels=2, durations=[1.0])
+        recording2 = recording2.rename_channels(new_channel_ids=["c", "d"])
+        _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
+
+        ragged_property = self.nwbfile.electrodes["ragged_property"]
+        assert list(ragged_property[0]) == [1.0, 1.0, 1.0]
+        assert list(ragged_property[2]) == []
+        assert list(ragged_property[3]) == []
+
     def test_missing_bool_values(self):
         recording1 = generate_recording(num_channels=2)
         recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
@@ -2095,6 +2115,93 @@ class TestAddUnitsTable(TestCase):
         assert units_table["electrodes"][1]["channel_name"].item() == "B"
         assert units_table["electrodes"][2]["channel_name"].item() == "C"
         assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
+
+    def test_add_units_without_electrodes_to_a_table_that_has_them(self):
+        """Units with no electrode indices can be appended to a table that already has the column.
+
+        This happens with multiple probes when the electrodes of the second one cannot be matched
+        (e.g. its group names are not in the electrodes table); those units get an empty region.
+        """
+        recording = generate_recording(num_channels=4, durations=[1.0])
+        recording = recording.rename_channels(new_channel_ids=["A", "B", "C", "D"])
+        add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
+
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_1,
+            nwbfile=self.nwbfile,
+            unit_electrode_indices=[[0], [1], [2], [3]],
+        )
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        units_table = self.nwbfile.units
+        unit_names = list(units_table["unit_name"].data)
+        self.assertListEqual(unit_names, ["a", "b", "c", "d", "e", "f"])
+
+        # Reads the stored electrode indices without building a DataFrame; indexing directly also
+        # raises on an empty region in memory until https://github.com/hdmf-dev/hdmf/pull/1549 is released.
+        electrodes_of_units = units_table["electrodes"]
+        assert list(electrodes_of_units.get(0, index=True)) == [0]
+        assert list(electrodes_of_units.get(4, index=True)) == []
+        assert list(electrodes_of_units.get(5, index=True)) == []
+
+    def test_add_units_without_waveforms_to_a_table_that_has_them(self):
+        """Units with no waveforms can be appended to a table that already has the columns.
+
+        `waveform_mean` is not ragged, so its rows all share one shape and the null for a unit
+        without waveforms has to be an array of that same shape rather than a scalar.
+        """
+        num_samples, num_channels = 10, 4
+        waveform_means = np.ones(shape=(self.num_units, num_samples, num_channels))
+
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_1,
+            nwbfile=self.nwbfile,
+            waveform_data_dict=dict(means=waveform_means, sds=waveform_means, sampling_rate=30_000.0),
+        )
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        units_table = self.nwbfile.units
+        for column in ["waveform_mean", "waveform_sd"]:
+            assert units_table[column][0].shape == (num_samples, num_channels)
+            assert units_table[column][4].shape == (num_samples, num_channels)
+            assert np.isnan(units_table[column][4]).all()
+
+    def test_add_units_with_waveforms_to_a_table_without_them(self):
+        """Waveforms added on a later call are extended over the units already in the table.
+
+        This is the mirror of the case above: the column does not exist yet, so it is created for
+        the whole table and the units written earlier are the ones needing a null.
+        """
+        num_samples, num_channels = 10, 4
+        waveform_means = np.ones(shape=(self.num_units, num_samples, num_channels))
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_2,
+            nwbfile=self.nwbfile,
+            waveform_data_dict=dict(means=waveform_means, sds=waveform_means, sampling_rate=30_000.0),
+        )
+
+        units_table = self.nwbfile.units
+        assert units_table["waveform_mean"][:].shape == (6, num_samples, num_channels)
+        assert np.isnan(units_table["waveform_mean"][0]).all()
+        assert (units_table["waveform_mean"][4] == 1.0).all()
+
+    def test_add_units_without_a_ragged_property_to_a_table_that_has_it(self):
+        """A ragged property missing from a later call gets an empty row, not a null value.
+
+        There is no shape to match for a ragged column, and an empty row is what the column
+        extending path already writes for units that lack the property.
+        """
+        self.sorting_1.set_property(key="ragged_property", values=np.ones(shape=(self.num_units, 2)))
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        units_table = self.nwbfile.units
+        assert list(units_table["ragged_property"][0]) == [1.0, 1.0]
+        assert list(units_table["ragged_property"][4]) == []
+        assert list(units_table["ragged_property"][5]) == []
 
 
 class TestWaveformParametersAdditionToUnitsTable:
