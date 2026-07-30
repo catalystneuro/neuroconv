@@ -85,6 +85,7 @@ from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
 
 # Ophys
 from .ophys.brukertiff.brukertiffdatainterface import (
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
 )
@@ -197,6 +198,7 @@ interface_list = [
     InscopixImagingInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
