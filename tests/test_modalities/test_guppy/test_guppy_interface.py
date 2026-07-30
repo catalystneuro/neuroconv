@@ -159,7 +159,7 @@ class Test_GuppyInterface:
     def _add(self, interface, nwbfile, *, stub_test):
         metadata = interface.get_metadata()
         interface.add_to_nwbfile(nwbfile, metadata, stub_test=stub_test)
-        return nwbfile.processing["fiber_photometry"]
+        return nwbfile.processing["guppy"]
 
     # ----------------------------------------------------------------- discovery / metadata
 
@@ -290,7 +290,7 @@ class Test_GuppyInterface:
         guppy_block["PSTHs"][psth_tag]["description"] = "custom psth description"
 
         interface.add_to_nwbfile(nwbfile, metadata, stub_test=True)
-        module = nwbfile.processing["fiber_photometry"]
+        module = nwbfile.processing["guppy"]
         assert "renamed_trace" in module.data_interfaces  # rename took effect
         assert module["renamed_trace"].description == "custom trace description"
         assert module[psth_tag].description == "custom psth description"  # description reaches group products
@@ -324,7 +324,7 @@ class Test_GuppyInterface:
 
     def test_add_to_nwbfile_lands_in_processing_module(self, interface, case, nwbfile):
         module = self._add(interface, nwbfile, stub_test=True)
-        assert "fiber_photometry" in nwbfile.processing
+        assert "guppy" in nwbfile.processing
         assert not nwbfile.acquisition, "GuPPy interface must not write to /acquisition/."
 
         for recording_site, prefixes in case["expected_traces"].items():
@@ -587,7 +587,7 @@ class Test_GuppyInterface:
             io.write(nwbfile)
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
-            module = nwbfile.processing["fiber_photometry"]
+            module = nwbfile.processing["guppy"]
             recording_sites_table = module["recording_sites"]
             assert recording_sites_table.neurodata_type == "GuppyRecordingSitesTable"
             # Valid-signal intervals round-trip as their own GuppyValidSignalIntervals object.
@@ -622,7 +622,7 @@ class Test_GuppyInterface:
         """always_write_timestamps=True writes the explicit timestamps vector even for a regular timebase."""
         metadata = interface.get_metadata()
         interface.add_to_nwbfile(nwbfile, metadata, stub_test=False, always_write_timestamps=True)
-        module = nwbfile.processing["fiber_photometry"]
+        module = nwbfile.processing["guppy"]
         first_recording_site = case["expected_recording_sites"][0]
         first_trace_name = f"{case['expected_traces'][first_recording_site][0]}_{first_recording_site}"
         series = module[first_trace_name]

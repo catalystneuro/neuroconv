@@ -69,7 +69,13 @@ class _GuppyInterface(BaseDataInterface):
     :attr:`recording_sites`, :attr:`event_names`, :attr:`recording_site_to_store_ids`, and
     :attr:`event_store_to_event_name` read-only views.
 
-    All products are placed in a ``ProcessingModule`` (default name ``fiber_photometry``).
+    All products are placed in a ``ProcessingModule`` named ``guppy`` -- not ``fiber_photometry``, which
+    would duplicate the name of the ``FiberPhotometry`` lab metadata the raw acquisition side writes.
+    NWB itself permits that duplicate (the two land at ``/general/fiber_photometry`` and
+    ``/processing/fiber_photometry``), but NeuroConv's backend configuration resolves a dataset's
+    location by searching the builder tree for each path component *by name*, so two same-named
+    containers anywhere in the file are indistinguishable to it and the acquisition table's datasets
+    resolve into the wrong one.
     """
 
     keywords = ("fiber photometry", "GuPPy", "processed")
@@ -578,7 +584,7 @@ class _GuppyInterface(BaseDataInterface):
 
         metadata["FiberPhotometry"]["Guppy"][self.metadata_key] = dict(
             ProcessingModule=dict(
-                name="fiber_photometry",
+                name="guppy",
                 description=processing_module_description,
             ),
             Traces=traces_metadata,

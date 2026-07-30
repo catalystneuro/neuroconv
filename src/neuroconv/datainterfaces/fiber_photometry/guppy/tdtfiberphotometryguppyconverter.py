@@ -33,7 +33,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
     ``nwbfile.acquisition`` via the ``ndx-fiber-photometry`` extension), :class:`TDTEventsInterface`
     (raw discrete events/epocs added to ``nwbfile.events`` as ``pynwb.event.EventsTable`` objects), and
     the private GuPPy interface (derived traces, transient tables, and cross-correlations added to a
-    ``fiber_photometry`` ProcessingModule). GuPPy outputs have no standalone public interface -- this
+    ``guppy`` ProcessingModule). GuPPy outputs have no standalone public interface -- this
     converter is their entry point.
 
     The acquisition side follows the single-series ``TDTFiberPhotometryInterface`` design: one interface
@@ -140,8 +140,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         """Merge sub-interface metadata into a single coherent fiber photometry conversion.
 
         Takes the TDT tank as the authoritative session start time, gives each acquisition series a
-        distinct default name, renames the GuPPy ProcessingModule to avoid a name collision with the
-        TDT ``fiber_photometry`` lab metadata, and keeps only the behavioral event stores GuPPy listed.
+        distinct default name, and keeps only the behavioral event stores GuPPy listed.
 
         The ``FiberPhotometry`` chain itself (devices, indicators, table rows, per-series regions) is
         the user's to supply, exactly as for a bare ``TDTFiberPhotometryInterface``.
@@ -159,28 +158,33 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         for series_spec in self._series_specs:
             fiber_photometry_metadata[series_spec["metadata_key"]]["name"] = series_spec["series_name"]
 
-        # The TDT side adds a FiberPhotometry lab_meta_data object named "fiber_photometry"; rename the
-        # GuPPy ProcessingModule to avoid colliding with that name during NWB write.
-        guppy_metadata_key = self.data_interface_objects["Guppy"].metadata_key
-        metadata["FiberPhotometry"]["Guppy"][guppy_metadata_key]["ProcessingModule"]["name"] = "guppy"
-
-        # Keep only the behavioral event stores GuPPy listed in storesList.csv and rename each to the
-        # human-readable name GuPPy recorded there (e.g. the "PrtR" store becomes the "port_entries"
-        # event type). Route every surviving type into a single merged EventsTable (shared
-        # table_metadata_key + a declared EventTables entry that names it), so one DynamicTableRegion
-        # from the GuppyEventsTable can reference each type's occurrence rows.
+        # Select: the TDT interface seeds one event type per epoc in the tank, and its write is driven by
+        # this dict rather than by the tank, so dropping the epocs GuPPy did not list is what keeps them
+        # out of the NWB file.
         events_metadata_key = self.data_interface_objects["TDTEvents"].metadata_key
-        event_types = metadata["Events"][events_metadata_key]["event_types"]
-        renamed_event_types = {}
-        for epoc_name, event_name in self._event_store_to_event_name.items():
-            entry = event_types[epoc_name]
-            entry["event_name"] = event_name
-            entry["event_description"] = (
-                f"Onset times of the '{event_name}' behavioral events (from TDT store '{epoc_name}')."
-            )
+        seeded_event_types = metadata["Events"][events_metadata_key]["event_types"]
+        missing_stores = [store for store in self._event_store_to_event_name if store not in seeded_event_types]
+        assert not missing_stores, (
+            f"GuPPy's storesList.csv lists behavioral event store(s) {missing_stores} that the TDT tank does "
+            f"not provide as a non-empty epoc (available: {sorted(seeded_event_types)}). The GuPPy output and "
+            f"the TDT tank do not describe the same session."
+        )
+        event_types = {store: seeded_event_types[store] for store in self._event_store_to_event_name}
+        metadata["Events"][events_metadata_key]["event_types"] = event_types
+
+        # Rename: each surviving store takes the human-readable name GuPPy recorded for it in
+        # storesList.csv (e.g. the "PrtR" store becomes the "port_entries" event type).
+        for store, event_name in self._event_store_to_event_name.items():
+            event_types[store]["event_name"] = event_name
+            event_types[store][
+                "event_description"
+            ] = f"Onset times of the '{event_name}' behavioral events (from TDT store '{store}')."
+
+        # Route: send every surviving type into one merged EventsTable (shared table_metadata_key + a
+        # declared EventTables entry naming it), so a single DynamicTableRegion from the GuppyEventsTable
+        # can reference each type's occurrence rows.
+        for entry in event_types.values():
             entry["table_metadata_key"] = _MERGED_EVENTS_TABLE_KEY
-            renamed_event_types[epoc_name] = entry
-        metadata["Events"][events_metadata_key]["event_types"] = renamed_event_types
         metadata["Events"].setdefault("EventTables", {})[_MERGED_EVENTS_TABLE_KEY] = dict(
             table_name=_MERGED_EVENTS_TABLE_NAME,
             description="All behavioral events GuPPy aligned to, merged into one table with an event_type discriminator.",
