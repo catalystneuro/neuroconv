@@ -15,8 +15,10 @@ from ....tools import get_package
 from ....tools.fiber_photometry import get_fiber_photometry_table
 from ....tools.nwb_helpers import get_module
 
-# GuPPy stores are labeled by role in storesList.csv; each becomes one single-series acquisition
-# interface (and one FiberPhotometryTable row). The order here fixes the per-recording-site row order.
+# GuPPy stores are labeled by role in storesList.csv. A role is an excitation wavelength (signal is the
+# indicator's excitation, control the isosbestic), which is the axis acquisition series are grouped on:
+# one series per role, column-stacking that role's store from every recording site. See
+# https://github.com/catalystneuro/ndx-fiber-photometry/issues/55.
 _STORE_ROLES = ("signal", "control")
 # The single merged EventsTable every behavioral event type is written into (one DynamicTableRegion
 # from the GuppyEventsTable then references its occurrence rows).
@@ -34,17 +36,21 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
     ``guppy`` ProcessingModule). GuPPy outputs have no standalone public interface -- this
     converter is their entry point.
 
-    The acquisition side follows the single-series ``TDTFiberPhotometryInterface`` design: one interface
-    (and one ``FiberPhotometryTable`` row) per GuPPy store. The stores are discovered from the GuPPy
-    ``storesList.csv`` -- each recording site contributes its ``signal`` and (optional) ``control`` store -- so
-    the converter builds exactly the acquisition channels GuPPy processed.
+    The stores are discovered from the GuPPy ``storesList.csv`` -- each recording site contributes its
+    ``signal`` and (optional) ``control`` store -- so the converter builds exactly the acquisition
+    channels GuPPy processed. Those stores are grouped by role rather than written one per series: each
+    role is an excitation wavelength, and one ``TDTFiberPhotometryInterface`` per role column-stacks that
+    role's store from every recording site into a single ``FiberPhotometryResponseSeries``. A two-site
+    isosbestic session therefore yields two acquisition series, not four.
 
     As with every fiber photometry interface, the ``FiberPhotometry`` metadata chain (devices,
     indicators, the ``FiberPhotometryTable`` and its rows, and each series'
     ``fiber_photometry_table_region``) is **supplied by the user**; the converter does not invent it.
     Each acquisition series reads its own block at ``metadata["FiberPhotometry"][metadata_key]``, where
-    ``metadata_key`` is ``"<recording_site>_<role>"`` (e.g. ``"dms_signal"``). The converter reads the
-    regions declared there to work out which table rows belong to which GuPPy recording site.
+    ``metadata_key`` is the role (``"signal"`` or ``"control"``). The ``FiberPhotometryTable`` still
+    carries one row per store -- the grouping changes, not the rows -- and each series' region lists its
+    stacked stores' rows in column order, which is how the converter recovers the row belonging to each
+    GuPPy recording site.
 
     That cross-interface knowledge makes the converter the author of the two GuPPy registries
     (``GuppyRecordingSitesTable``, ``GuppyEventsTable``): it is the only side that can link each recording
@@ -98,36 +104,39 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         # get_metadata, since add_to_nwbfile only writes the epocs left in event_types).
         self._event_store_to_event_name = guppy_interface.event_store_to_event_name
 
-        # One single-series TDT acquisition interface per GuPPy signal/control store. The GuPPy side
-        # already discovered these stores from storesList.csv.
+        # One TDT acquisition interface per role (excitation wavelength), column-stacking that role's
+        # store from every recording site that has one. The GuPPy side already discovered these stores
+        # from storesList.csv. `recording_sites` runs parallel to `stream_names`, so the site owning
+        # column i -- and therefore the region row at index i -- is recoverable by position.
         data_interfaces: dict = {}
         self._series_specs: list[dict] = []
         self._tdt_interface_names: list[str] = []
-        for recording_site in guppy_interface.recording_sites:
-            store_ids = guppy_interface.recording_site_to_store_ids[recording_site]
-            for role in _STORE_ROLES:
-                if role not in store_ids:
-                    continue
-                store_id = store_ids[role]
-                metadata_key = f"{recording_site}_{role}"
-                interface_name = f"TDTFiberPhotometry_{recording_site}_{role}"
-                data_interfaces[interface_name] = TDTFiberPhotometryInterface(
-                    folder_path=tdt_folder_path,
-                    stream_names=store_id,
-                    metadata_key=metadata_key,
-                    verbose=verbose,
+        for role in _STORE_ROLES:
+            recording_sites = [
+                recording_site
+                for recording_site in guppy_interface.recording_sites
+                if role in guppy_interface.recording_site_to_store_ids[recording_site]
+            ]
+            if not recording_sites:
+                continue  # a session without isosbestic controls contributes no control series
+            stream_names = [
+                guppy_interface.recording_site_to_store_ids[recording_site][role] for recording_site in recording_sites
+            ]
+            interface_name = f"TDTFiberPhotometry_{role}"
+            data_interfaces[interface_name] = TDTFiberPhotometryInterface(
+                folder_path=tdt_folder_path,
+                stream_names=stream_names,
+                metadata_key=role,
+                verbose=verbose,
+            )
+            self._series_specs.append(
+                dict(
+                    metadata_key=role,
+                    recording_sites=recording_sites,
+                    series_name=f"FiberPhotometryResponseSeries{role.capitalize()}",
                 )
-                self._series_specs.append(
-                    dict(
-                        interface_name=interface_name,
-                        metadata_key=metadata_key,
-                        recording_site=recording_site,
-                        role=role,
-                        store_id=store_id,
-                        series_name=f"{recording_site}_{role}",
-                    )
-                )
-                self._tdt_interface_names.append(interface_name)
+            )
+            self._tdt_interface_names.append(interface_name)
 
         events_interface = TDTEventsInterface(folder_path=tdt_folder_path, verbose=verbose)
         data_interfaces["TDTEvents"] = events_interface
@@ -150,8 +159,8 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         tdt_metadata = first_tdt_interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = tdt_metadata["NWBFile"]["session_start_time"]
 
-        # Every single-series scaffold defaults to the same "FiberPhotometryResponseSeries" name; give
-        # each one the store it came from so the four series do not collide in nwbfile.acquisition.
+        # Every single-series scaffold defaults to the same "FiberPhotometryResponseSeries" name; suffix
+        # each one with its role so the two series do not collide in nwbfile.acquisition.
         fiber_photometry_metadata = metadata["FiberPhotometry"]
         for series_spec in self._series_specs:
             fiber_photometry_metadata[series_spec["metadata_key"]]["name"] = series_spec["series_name"]
@@ -278,14 +287,18 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         processing_module.add(events_table)
 
     def _derive_recording_site_to_table_rows(self, metadata: dict) -> dict[str, list[int]]:
-        """Map each GuPPy recording site to the acquisition ``FiberPhotometryTable`` row indices of its series.
+        """Map each GuPPy recording site to the acquisition ``FiberPhotometryTable`` row indices of its stores.
 
-        Each recording site owns the rows of its signal and (optional) isosbestic-control acquisition
-        series, which the user declared as that series' ``fiber_photometry_table_region`` -- a list of
-        row keys into ``FiberPhotometryTable['rows']``. Those keys are resolved to integers by their
+        Each series stacks one store per recording site, and the user declares the matching
+        ``fiber_photometry_table_region`` -- a list of row keys into ``FiberPhotometryTable['rows']``,
+        one per stacked column. That column order is the series' own contract (column *i* of the data is
+        recorded on region row *i*), and the converter chose it, so zipping the region against the
+        series' ``recording_sites`` recovers each site's row. Row keys are resolved to integers by their
         position in the rows dict, the same order the rows are written in, so the link never depends on
-        fragile hand-written integers. Fails loudly if a series declares no region or names a row key
-        the table does not define.
+        fragile hand-written integers.
+
+        Fails loudly if a series declares no region, declares a region of the wrong length, or names a
+        row key the table does not define.
         """
         fiber_photometry_metadata = metadata["FiberPhotometry"]
         rows = fiber_photometry_metadata["FiberPhotometryTable"]["rows"]
@@ -294,20 +307,25 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         recording_site_to_rows: dict[str, list[int]] = {}
         for series_spec in self._series_specs:
             metadata_key = series_spec["metadata_key"]
+            recording_sites = series_spec["recording_sites"]
             series_metadata = fiber_photometry_metadata[metadata_key]
             assert "fiber_photometry_table_region" in series_metadata, (
-                f"Acquisition series '{metadata_key}' declares no 'fiber_photometry_table_region', so its GuPPy "
-                f"recording site '{series_spec['recording_site']}' cannot be linked to the acquisition fibers. "
+                f"Acquisition series '{metadata_key}' declares no 'fiber_photometry_table_region', so the GuPPy "
+                f"recording sites {recording_sites} cannot be linked to the acquisition fibers. "
                 f"Set metadata['FiberPhotometry']['{metadata_key}']['fiber_photometry_table_region']."
             )
             row_keys = series_metadata["fiber_photometry_table_region"]
+            assert len(row_keys) == len(recording_sites), (
+                f"Acquisition series '{metadata_key}' stacks {len(recording_sites)} store(s) (one per recording "
+                f"site {recording_sites}) but declares {len(row_keys)} FiberPhotometryTable row(s) {list(row_keys)}. "
+                f"The region must name one row per stacked column, in the same order."
+            )
             missing = [row_key for row_key in row_keys if row_key not in row_key_to_index]
             assert not missing, (
                 f"Acquisition series '{metadata_key}' references FiberPhotometryTable row(s) {missing} not "
                 f"present in metadata['FiberPhotometry']['FiberPhotometryTable']['rows'] "
                 f"(available: {list(row_key_to_index)})."
             )
-            recording_site_to_rows.setdefault(series_spec["recording_site"], []).extend(
-                row_key_to_index[row_key] for row_key in row_keys
-            )
+            for recording_site, row_key in zip(recording_sites, row_keys):
+                recording_site_to_rows.setdefault(recording_site, []).append(row_key_to_index[row_key])
         return {recording_site: sorted(rows) for recording_site, rows in recording_site_to_rows.items()}

@@ -20,14 +20,13 @@ SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_
 
 EXPECTED_RECORDING_SITES = ("dms", "dls")
 EXPECTED_TDT_SESSION_START_TIME = datetime(2020, 7, 21, 17, 2, 24, 999999, tzinfo=timezone.utc)
-# One single-series TDT acquisition interface (and one FiberPhotometryTable row) per GuPPy store.
-EXPECTED_TDT_INTERFACE_NAMES = {
-    "TDTFiberPhotometry_dms_signal",
-    "TDTFiberPhotometry_dms_control",
-    "TDTFiberPhotometry_dls_signal",
-    "TDTFiberPhotometry_dls_control",
+# One TDT acquisition interface per role (excitation wavelength), each column-stacking that role's store
+# from both recording sites -- two series over the four FiberPhotometryTable rows, not four.
+EXPECTED_TDT_INTERFACE_NAMES = {"TDTFiberPhotometry_signal", "TDTFiberPhotometry_control"}
+EXPECTED_RESPONSE_SERIES_NAMES = {
+    "FiberPhotometryResponseSeriesSignal",
+    "FiberPhotometryResponseSeriesControl",
 }
-EXPECTED_RESPONSE_SERIES_NAMES = {"dms_signal", "dms_control", "dls_signal", "dls_control"}
 # Onset counts from the Photo_249 epocs GuPPy listed (PrtR -> port_entries, etc.).
 EXPECTED_EVENT_TO_COUNT = {"port_entries": 49, "unrewarded_nose_pokes": 1457, "rewarded_nose_pokes": 50}
 MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
@@ -135,14 +134,18 @@ FIBER_PHOTOMETRY_METADATA = {
         },
     },
 }
-# Each acquisition series points at its own row; the converter reads these regions to work out which
-# rows belong to which GuPPy recording site.
+# Each acquisition series names one table row per stacked column, in column order (dms then dls, the
+# storesList order the converter stacks in); the converter zips these against the series' recording
+# sites to work out which row belongs to which GuPPy recording site.
 SERIES_METADATA = {
-    metadata_key: {
-        "fiber_photometry_table_region": [metadata_key],
-        "fiber_photometry_table_region_description": f"The {metadata_key} acquisition fiber.",
-    }
-    for metadata_key in ("dms_signal", "dms_control", "dls_signal", "dls_control")
+    "signal": {
+        "fiber_photometry_table_region": ["dms_signal", "dls_signal"],
+        "fiber_photometry_table_region_description": "The 465 nm excitation fibers, DMS then DLS.",
+    },
+    "control": {
+        "fiber_photometry_table_region": ["dms_control", "dls_control"],
+        "fiber_photometry_table_region_description": "The 405 nm isosbestic control fibers, DMS then DLS.",
+    },
 }
 
 
@@ -294,8 +297,18 @@ class TestTDTFiberPhotometryGuppyConverter:
 
     def test_missing_table_region_raises(self, converter, metadata):
         """A series that declares no table region fails loudly rather than linking nothing."""
-        del metadata["FiberPhotometry"]["dms_signal"]["fiber_photometry_table_region"]
+        del metadata["FiberPhotometry"]["signal"]["fiber_photometry_table_region"]
         with pytest.raises(AssertionError, match="declares no 'fiber_photometry_table_region'"):
+            converter._derive_recording_site_to_table_rows(metadata)
+
+    def test_table_region_length_mismatch_raises(self, converter, metadata):
+        """A region naming fewer rows than the series stacks columns fails loudly.
+
+        The zip of recording sites against region rows is only meaningful when the two line up, so a
+        short region must not silently drop the trailing recording site.
+        """
+        metadata["FiberPhotometry"]["signal"]["fiber_photometry_table_region"] = ["dms_signal"]
+        with pytest.raises(AssertionError, match="stacks 2 store"):
             converter._derive_recording_site_to_table_rows(metadata)
 
     def test_guppy_timestamps_in_nwb_are_native(self, converter, metadata, tmp_path):
