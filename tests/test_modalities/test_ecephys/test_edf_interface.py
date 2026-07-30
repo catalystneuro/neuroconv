@@ -77,22 +77,6 @@ class TestParseBirthdate:
     def test_accepted_forms(self, value, expected):
         assert _parse_birthdate(value) == expected
 
-    @pytest.mark.parametrize(
-        "value",
-        [
-            "not-a-date",
-            "02.05.51",  # ambiguous two-digit year: %y would have made this 2051
-            "31-FEB-1951",  # impossible calendar date
-            "02-XXX-1951",  # unrecognized month
-            "02-MAY-2051",  # a birthdate cannot be in the future
-            "02-MAY-0001",  # nor implausibly far in the past
-        ],
-    )
-    def test_rejected_forms(self, value):
-        """These are present but unreadable, so each also warns — see TestUnreadableValuesWarn."""
-        with pytest.warns(UserWarning):
-            assert _parse_birthdate(value) is None
-
     @pytest.mark.parametrize("value", [None, "", "   "])
     def test_absent_forms(self, value):
         assert _parse_birthdate(value) is None
@@ -153,7 +137,17 @@ class TestUnreadableValuesWarn:
     subject-less NWB file with no indication why — the same silent discarding this change exists to fix.
     """
 
-    @pytest.mark.parametrize("value", ["02.05.51", "nonsense", "02-XXX-1951", "02-MAY-2051", "31-FEB-1951"])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "not-a-date",
+            "02.05.51",  # ambiguous two-digit year: %y would have made this 2051
+            "31-FEB-1951",  # impossible calendar date
+            "02-XXX-1951",  # unrecognized month
+            "02-MAY-2051",  # a birthdate cannot be in the future
+            "02-MAY-0001",  # nor implausibly far in the past
+        ],
+    )
     def test_present_but_unreadable_birthdate_warns(self, value):
         with pytest.warns(UserWarning, match="date of birth could not be interpreted"):
             assert _parse_birthdate(value) is None
@@ -163,14 +157,19 @@ class TestUnreadableValuesWarn:
         assert _parse_birthdate(value) is None
         assert len(recwarn) == 0
 
-    @pytest.mark.parametrize("value", ["mujer", "Mrs", "Frau", "Unknown", 0])
+    @pytest.mark.parametrize("value", ["mujer", "Mrs", "Frau", 0])
     def test_present_but_unreadable_sex_warns(self, value):
         with pytest.warns(UserWarning, match="subject sex could not be interpreted"):
             assert _parse_sex(value) is None
 
-    @pytest.mark.parametrize("value", [None, "", "  ", "X", "x"])
-    def test_unstated_sex_is_silent(self, value, recwarn):
-        """An empty field and EDF+'s bare X both genuinely mean unknown."""
+    @pytest.mark.parametrize("value", [None, "", "  ", "X", "x", "U", "u", "Unknown", "UNKNOWN", "N/A", "na", "?", "-"])
+    def test_declared_unknown_is_silent(self, value, recwarn):
+        """
+        These are declarations, not failures — the file stated the sex clearly, as unknown.
+
+        "X" is EDF+'s own marker and "U" is NWB's, which is the value the interface falls back to, so
+        warning that either "could not be interpreted" would report a malformed file where there is none.
+        """
         assert _parse_sex(value) is None
         assert len(recwarn) == 0
 

@@ -22,6 +22,10 @@ def _warn_unreadable(field: str, value) -> None:
     situations, and only the second is the user's to act on — otherwise an exporter writing an
     unexpected format produces a silently subject-less NWB file with no indication why.
     """
+    # stacklevel=3 lands on extract_subject_metadata, the innermost public caller. No fixed value can
+    # point at the user's own line, because both extract_subject_metadata and get_metadata are public
+    # entry points and sit at different depths; the offending value is in the message, which is the
+    # actionable part.
     warnings.warn(
         f"The EDF header's {field} could not be interpreted and was left out of the NWB Subject: "
         f"{value!r}. Set metadata['Subject'] explicitly if this field matters for your conversion.",
@@ -81,14 +85,14 @@ def _parse_birthdate(birthdate) -> datetime | None:
     else:
         text = str(birthdate).strip()
         named_month = re.match(r"^(\d{1,2})[-\s]([A-Za-z]{3,})[-\s](\d{4})$", text)
-        iso = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", text)
-        if named_month and named_month.group(2)[:3].upper() in _MONTH_ABBREVIATIONS:
+        abbreviation = named_month.group(2)[:3].upper() if named_month else None
+        if abbreviation in _MONTH_ABBREVIATIONS:
             parsed = _assemble_birthdate(
                 year=int(named_month.group(3)),
-                month=_MONTH_ABBREVIATIONS.index(named_month.group(2)[:3].upper()) + 1,
+                month=_MONTH_ABBREVIATIONS.index(abbreviation) + 1,
                 day=int(named_month.group(1)),
             )
-        elif iso:
+        elif iso := re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", text):
             parsed = _assemble_birthdate(year=int(iso.group(1)), month=int(iso.group(2)), day=int(iso.group(3)))
 
     if parsed is None:
@@ -109,6 +113,12 @@ _SEX_BY_HEADER_VALUE = {
     "OTHER": "O",
 }
 
+# Ways of saying "unknown". These are declarations, not failures: the file stated its subject's sex
+# perfectly clearly, as unknown. "X" is EDF+'s own marker and "U" is NWB's — the very value this falls
+# back to — so warning that either "could not be interpreted" would report a malformed file where there
+# is none. They map to None so the caller's "U" default applies, but silently.
+_SEX_MEANING_UNKNOWN = ("", "X", "U", "UNKNOWN", "N/A", "NA", "?", "-")
+
 
 def _parse_sex(sex) -> str | None:
     """
@@ -123,7 +133,7 @@ def _parse_sex(sex) -> str | None:
     # Note: not ``str(sex or "")`` — that would fold a numeric 0 into the silent path, hiding the one
     # input shape the allowlist cannot interpret.
     text = str(sex).strip().upper()
-    if text in ("", "X"):
+    if text in _SEX_MEANING_UNKNOWN:
         return None
     mapped = _SEX_BY_HEADER_VALUE.get(text)
     if mapped is None:
