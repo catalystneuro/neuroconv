@@ -1,5 +1,6 @@
+import re
 import warnings
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import FilePath
 
@@ -7,24 +8,72 @@ from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
 from ....utils import DeepDict
 
+# Month abbreviations are matched against this table rather than through ``strptime("%b")``, which
+# resolves them via LC_TIME and would silently fail to parse an English month name under another
+# locale — dropping the birthdate on machines that are configured differently.
+_MONTH_ABBREVIATIONS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+
+
+def _assemble_birthdate(year: int, month: int, day: int) -> datetime | None:
+    """Build a birthdate, rejecting impossible calendar dates and dates in the future."""
+    try:
+        birthdate = datetime(year=year, month=month, day=day)
+    except ValueError:
+        return None
+    # A birthdate cannot be in the future; such a value means the field was misread, not that the
+    # subject is unborn, and passing it on would put a nonsense date in the NWB file.
+    return None if birthdate > datetime.now() else birthdate
+
 
 def _parse_birthdate(birthdate) -> datetime | None:
     """
     Coerce an EDF birthdate into a datetime, or None when it cannot be read.
 
-    NWB's ``Subject.date_of_birth`` must be a datetime, but the readers hand back the EDF+ patient
-    field's date as a string (``"02 may 1951"`` via pyedflib), so an unparseable or absent value is
-    dropped rather than passed on to pynwb.
+    NWB's ``Subject.date_of_birth`` must be a datetime, but the readers hand the EDF+ patient field's
+    birthdate back as a string (``"02 may 1951"`` via pyedflib, ``"02-MAY-1951"`` straight from the
+    header), so an absent or unreadable value is dropped rather than passed on to pynwb.
+
+    Only the ``DD-MMM-YYYY`` form the EDF+ spec defines for this field is accepted, plus ISO
+    ``YYYY-MM-DD``. Notably ``DD.MM.YY`` is *not*: no reader emits it for a birthdate (the two-digit
+    form belongs to the header's separate ``startdate`` field), and Python's POSIX rule for ``%y`` maps
+    00-68 to the 2000s, so ``"02.05.51"`` would have become 2051 — a birthdate in the future.
     """
     if not birthdate:
         return None
     if isinstance(birthdate, datetime):
-        return birthdate
-    for date_format in ("%d-%b-%Y", "%d %b %Y", "%d.%m.%y", "%Y-%m-%d"):
-        try:
-            return datetime.strptime(str(birthdate).strip().title(), date_format)
-        except ValueError:
-            continue
+        return _assemble_birthdate(birthdate.year, birthdate.month, birthdate.day)
+    # A plain date is not a datetime, and pynwb requires the latter.
+    if isinstance(birthdate, date):
+        return _assemble_birthdate(birthdate.year, birthdate.month, birthdate.day)
+
+    text = str(birthdate).strip()
+    named_month = re.match(r"^(\d{1,2})[-\s]([A-Za-z]{3,})[-\s](\d{4})$", text)
+    if named_month:
+        abbreviation = named_month.group(2)[:3].upper()
+        if abbreviation in _MONTH_ABBREVIATIONS:
+            return _assemble_birthdate(
+                year=int(named_month.group(3)),
+                month=_MONTH_ABBREVIATIONS.index(abbreviation) + 1,
+                day=int(named_month.group(1)),
+            )
+    iso = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", text)
+    if iso:
+        return _assemble_birthdate(year=int(iso.group(1)), month=int(iso.group(2)), day=int(iso.group(3)))
+    return None
+
+
+def _parse_sex(sex) -> str | None:
+    """
+    Map an EDF+ sex subfield onto the single letter NWB expects, or None when it is unknown.
+
+    pyedflib normalizes the field to ``"Female"``/``"Male"`` whichever form was written, while the
+    header itself holds ``F``/``M``, and EDF+ uses a bare ``X`` for an unknown subfield.
+    """
+    text = str(sex or "").strip().upper()
+    if text.startswith("F"):
+        return "F"
+    if text.startswith("M"):
+        return "M"
     return None
 
 
@@ -174,9 +223,13 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         return nwbfile_metadata
 
     def extract_subject_metadata(self) -> dict:
+        # "sex" is the current pyedflib key; "gender" is the older one, still populated, so fall back to
+        # it rather than defaulting sex when the header in fact states it.
+        sex = self.edf_header.get("sex") or self.edf_header.get("gender")
         subject_metadata = dict(
             subject_id=self.edf_header["patientcode"],
             date_of_birth=_parse_birthdate(self.edf_header["birthdate"]),
+            sex=_parse_sex(sex),
         )
 
         # Filter empty values
@@ -197,10 +250,16 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             # file silently lost its subject metadata.
             # Once "Subject" is present the metadata schema requires subject_id, species and sex, so
             # fill them whenever the header carried anything at all; otherwise reading a patient code
-            # out of the file would turn valid metadata into invalid metadata.
+            # out of the file would turn valid metadata into invalid metadata. These are fallbacks only:
+            # extract_subject_metadata supplies sex when the header states it.
             subject_metadata.setdefault("subject_id", "Unknown")
+            # "Unknown species" is shaped like a binomial name on purpose: nwbinspector's
+            # check_subject_species_form requires "Genus species" or an NCBI taxonomy URL, so a plainer
+            # "unknown" would be flagged on every converted file.
             subject_metadata.setdefault("species", "Unknown species")
             subject_metadata.setdefault("sex", "U")
+            # NOTE: the ``.get`` here is a read, not the bug fixed above — it deliberately avoids
+            # materialising "Subject" on this defaultdict, and its result is used rather than mutated.
             metadata["Subject"] = {**metadata.get("Subject", dict()), **subject_metadata}
 
         return metadata

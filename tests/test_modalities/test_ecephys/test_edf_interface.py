@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 
 from neuroconv.datainterfaces import EDFRecordingInterface
+from neuroconv.datainterfaces.ecephys.edf.edfdatainterface import _parse_birthdate, _parse_sex
 
 pyedflib = pytest.importorskip("pyedflib")
 
@@ -55,7 +56,102 @@ def write_edf(path, *, patient_code="", birthdate=None, technician="", sex=""):
     return str(path)
 
 
+class TestParseBirthdate:
+    """Direct tests, because a file fixture only ever exercises whichever form pyedflib emits."""
+
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("02 may 1951", datetime(1951, 5, 2)),  # what pyedflib returns
+            ("02-MAY-1951", datetime(1951, 5, 2)),  # the EDF+ patient field's own form
+            ("2 May 1951", datetime(1951, 5, 2)),
+            ("02-may-1951", datetime(1951, 5, 2)),
+            ("1951-05-02", datetime(1951, 5, 2)),  # ISO, e.g. from str() of a date
+            (date(1951, 5, 2), datetime(1951, 5, 2)),
+            (datetime(1951, 5, 2), datetime(1951, 5, 2)),
+        ],
+    )
+    def test_accepted_forms(self, value, expected):
+        assert _parse_birthdate(value) == expected
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            None,
+            "",
+            "   ",
+            "not-a-date",
+            "02.05.51",  # ambiguous two-digit year: %y would have made this 2051
+            "31-FEB-1951",  # impossible calendar date
+            "02-XXX-1951",  # unrecognized month
+            "02-MAY-2051",  # a birthdate cannot be in the future
+        ],
+    )
+    def test_rejected_forms(self, value):
+        assert _parse_birthdate(value) is None
+
+    def test_month_names_do_not_depend_on_the_locale(self):
+        """
+        ``strptime("%b")`` resolves month names through LC_TIME and would drop the birthdate under a
+        non-English locale. The explicit month table sidesteps that entirely.
+        """
+        import calendar
+
+        # Whatever the ambient locale calls May, the EDF spelling must still parse.
+        assert _parse_birthdate("02 may 1951") == datetime(1951, 5, 2)
+        assert calendar.month_abbr[5]  # locale-dependent; only here to show it is not consulted
+
+
+class TestParseSex:
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("Female", "F"),
+            ("Male", "M"),
+            ("F", "F"),
+            ("M", "M"),
+            ("female", "F"),
+            ("X", None),  # EDF+ writes a bare X for an unknown subfield
+            ("", None),
+            (None, None),
+        ],
+    )
+    def test_mapping(self, value, expected):
+        assert _parse_sex(value) == expected
+
+
 class TestEDFSubjectMetadata:
+    @pytest.mark.parametrize("written, expected", [("Female", "F"), ("Male", "M")])
+    def test_sex_is_read_from_the_header(self, tmp_path, written, expected):
+        """
+        The header states the subject's sex, so defaulting it to "U" writes a positively wrong value.
+
+        Absent metadata is visibly absent; ``sex = "U"`` on a subject the file says is female looks
+        like a finding.
+        """
+        path = write_edf(tmp_path / "subject.edf", patient_code="MCH-42", sex=written)
+        interface = EDFRecordingInterface(file_path=path)
+
+        assert interface.extract_subject_metadata()["sex"] == expected
+        assert interface.get_metadata()["Subject"]["sex"] == expected
+
+    def test_sex_falls_back_to_the_legacy_gender_key(self, tmp_path):
+        """Older pyedflib exposed this as "gender"; it must not be ignored."""
+        path = write_edf(tmp_path / "subject.edf", patient_code="MCH-42")
+        interface = EDFRecordingInterface(file_path=path)
+        interface.edf_header.pop("sex", None)
+        interface.edf_header["gender"] = "Female"
+
+        assert interface.get_metadata()["Subject"]["sex"] == "F"
+
+    def test_unknown_sex_still_defaults(self, tmp_path):
+        """"U" remains the fallback when the header genuinely does not say."""
+        path = write_edf(tmp_path / "subject.edf", patient_code="MCH-42")
+        interface = EDFRecordingInterface(file_path=path)
+
+        assert interface.extract_subject_metadata().get("sex") is None
+        assert interface.get_metadata()["Subject"]["sex"] == "U"
+
     def test_subject_metadata_reaches_get_metadata(self, tmp_path):
         """
         Regression test: the subject information read from the header must survive into the metadata.
@@ -101,7 +197,7 @@ class TestEDFSubjectMetadata:
         """End to end: pynwb must accept what get_metadata now produces, birthdate included."""
         from pynwb import NWBHDF5IO
 
-        path = write_edf(tmp_path / "subject.edf", patient_code="MCH-42", birthdate=date(1951, 5, 2))
+        path = write_edf(tmp_path / "subject.edf", patient_code="MCH-42", birthdate=date(1951, 5, 2), sex="Female")
         interface = EDFRecordingInterface(file_path=path)
 
         nwbfile_path = tmp_path / "subject.nwb"
@@ -111,7 +207,8 @@ class TestEDFSubjectMetadata:
             assert subject.subject_id == "MCH-42"
             assert subject.date_of_birth.year == 1951
             assert subject.species == "Unknown species"
-            assert subject.sex == "U"
+            # Read from the header, not the "U" fallback.
+            assert subject.sex == "F"
 
     def test_birthdate_is_parsed_to_a_datetime(self, tmp_path):
         """``Subject.date_of_birth`` must be a datetime; the readers hand the field back as a string."""
@@ -122,7 +219,7 @@ class TestEDFSubjectMetadata:
         assert isinstance(date_of_birth, datetime)
         assert (date_of_birth.year, date_of_birth.month, date_of_birth.day) == (1951, 5, 2)
 
-    def test_unparseable_birthdate_is_dropped(self, tmp_path):
+    def test_unparsable_birthdate_is_dropped(self, tmp_path):
         """A date pynwb would reject must not be forwarded to it."""
         path = write_edf(tmp_path / "subject.edf", patient_code="MCH-42")
         interface = EDFRecordingInterface(file_path=path)
