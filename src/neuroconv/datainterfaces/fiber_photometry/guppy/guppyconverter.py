@@ -13,8 +13,11 @@ from .guppydatainterface import (
 from ..csv.multifilecsvfiberphotometrydatainterface import (
     MultiFileCSVFiberPhotometryInterface,
 )
+from ..doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
 from ..tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from ...events.csv_events.csveventsdatainterface import CSVEventsInterface
+from ...events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
+from ...events.doric_events.doriceventsdatainterface import DoricEventsInterface
 from ...events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 from ....nwbconverter import ConverterPipe
 from ....tools import get_package
@@ -32,13 +35,27 @@ _MERGED_EVENTS_TABLE_KEY = "guppy_behavioral_events"
 _MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 
 # The acquisition formats this converter can read, mapped to the interfaces it builds for each. GuPPy
-# also processes Doric and Neurophotometrics sessions; adding one means adding its entry here, a branch
+# also processes Neurophotometrics sessions; adding one means adding its entry here, a branch
 # in each of the two _build_* methods below, and widening the ``acquisition_format`` Literal.
 # Nothing else in this converter is aware of the acquisition format.
 _ACQUISITION_FORMAT_TO_INTERFACES = {
     "tdt": (TDTFiberPhotometryInterface, TDTEventsInterface),
     "csv": (MultiFileCSVFiberPhotometryInterface, CSVEventsInterface),
+    "doric": (DoricFiberPhotometryInterface, DoricEventsInterface),
 }
+
+
+def _is_event_csv(file_path) -> bool:
+    """Return whether a ``.csv`` holds GuPPy event onsets rather than acquisition traces.
+
+    A GuPPy event CSV is a lone ``timestamps`` column. Doric exports are wide and lead with a device
+    header row, so the two are told apart by the header alone -- the same distinction GuPPy draws when
+    it decides which files in a session folder its Doric reader should look at.
+    """
+    import pandas
+
+    columns = list(pandas.read_csv(file_path, nrows=0).columns)
+    return len(columns) == 1 and str(columns[0]).strip().lower() == "timestamps"
 
 
 class GuppyConverter(ConverterPipe):
@@ -106,7 +123,7 @@ class GuppyConverter(ConverterPipe):
         events_folder_path: DirectoryPath,
         guppy_folder_path: DirectoryPath,
         *,
-        acquisition_format: Literal["tdt", "csv"],
+        acquisition_format: Literal["tdt", "csv", "doric"],
         verbose: bool = False,
     ):
         """Initialize the GuPPy converter.
@@ -116,7 +133,8 @@ class GuppyConverter(ConverterPipe):
         fiber_photometry_folder_path : DirectoryPath
             Path to the folder holding the raw acquisition traces -- for TDT, the tank folder
             containing the Tbk, Tdx, tev, tin and tsq files; for CSV, the folder holding one
-            ``<store>.csv`` per channel.
+            ``<store>.csv`` per channel; for Doric, the folder holding the single ``.doric`` or
+            DoricStudio ``.csv`` export.
         events_folder_path : DirectoryPath
             Path to the folder holding the raw discrete events. GuPPy writes a session's traces and
             events into one folder, so for TDT this is the same tank folder as
@@ -126,10 +144,11 @@ class GuppyConverter(ConverterPipe):
             Path to the GuPPy ``<session>_output_<N>`` folder containing ``storesList.csv``,
             the per-recording-site derived ``.hdf5`` files, and the ``GuPPyParamtersUsed.json``
             provenance file (discovered automatically by the GuPPy interface).
-        acquisition_format : {"tdt", "csv"}
+        acquisition_format : {"tdt", "csv", "doric"}
             The format the session was recorded in, selecting which interfaces read the two raw
-            folders. GuPPy also processes Doric and Neurophotometrics sessions; those are not
-            supported yet and widen this argument when they are.
+            folders. ``"doric"`` covers all three Doric layouts -- modern and legacy ``.doric`` HDF5 and
+            DoricStudio ``.csv`` exports -- resolved from the one acquisition file in the folder. GuPPy
+            also processes Neurophotometrics sessions; those are not supported yet.
         verbose : bool, optional
             Whether to print status messages, default = False.
 
@@ -190,20 +209,76 @@ class GuppyConverter(ConverterPipe):
 
         # How many events interfaces a session needs is itself format-dependent: one TDT interface reads
         # every epoc in a tank, while GuPPy's CSV format stores each event in its own file and needs one
-        # interface per store. The rest of the converter therefore works over a list of them.
-        events_interfaces = self._build_events_interfaces(
-            acquisition_format=acquisition_format,
-            folder_path=events_folder_path,
-            event_store_ids=list(self._event_store_to_event_name),
-            verbose=verbose,
-        )
+        # interface per store. The rest of the converter therefore works over a list of them. A session
+        # whose storesList holds only signal/control stores gets none at all -- an events interface asked
+        # to read nothing is an error in some formats, not an empty result.
+        events_interfaces = {}
+        if self._event_store_to_event_name:
+            events_interfaces = self._build_events_interfaces(
+                acquisition_format=acquisition_format,
+                folder_path=events_folder_path,
+                event_store_ids=list(self._event_store_to_event_name),
+                verbose=verbose,
+            )
         data_interfaces.update(events_interfaces)
         self._events_interface_names: list[str] = list(events_interfaces)
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
     # ------------------------------------------------------------------ acquisition-format seam
-    # The only two methods that know the acquisition format. Supporting another GuPPy-readable format
-    # means adding a branch to each; everything else in this class is format-independent.
+    # The only methods that know the acquisition format: the two _build_* dispatchers and the Doric
+    # helpers they lean on. Supporting another GuPPy-readable format means adding a branch to each
+    # dispatcher; everything else in this class is format-independent.
+
+    @staticmethod
+    def _resolve_doric_file(folder_path: DirectoryPath):
+        """Return the one Doric acquisition file in ``folder_path``.
+
+        GuPPy requires a Doric session folder to hold exactly one acquisition file and hard-errors
+        otherwise, so this mirrors that rule rather than guessing. Single-column ``timestamps`` CSVs are
+        event files, not acquisition, and are excluded the way GuPPy excludes them.
+        """
+        candidates = sorted(folder_path.glob("*.doric")) + [
+            path for path in sorted(folder_path.glob("*.csv")) if not _is_event_csv(path)
+        ]
+        assert len(candidates) == 1, (
+            f"Expected exactly one Doric acquisition file in '{folder_path}', found {len(candidates)}: "
+            f"{[path.name for path in candidates]}. A GuPPy Doric session folder holds one .doric or one "
+            f"DoricStudio .csv export."
+        )
+        return candidates[0]
+
+    @staticmethod
+    def _doric_store_id_to_stream_name(file_path) -> dict[str, str]:
+        """Map each GuPPy Doric store id to the stream name the Doric interface knows it by.
+
+        GuPPy names a Doric store by the tail of its path -- the last two components for the modern
+        ``DataAcquisition`` layout (skipping a ``Values`` leaf), the group name alone for the legacy
+        ``Traces`` layout -- while the interface names it by the whole path with ``/`` replaced by ``_``.
+        That flattening is not invertible on its own, because group names contain underscores too
+        (``CAM1_EXC1``), so the mapping is derived from each stream's real internal path instead. Doric
+        CSV columns need no translation and map to themselves.
+        """
+        store_id_to_stream_name: dict[str, list[str]] = {}
+        for stream_name, stream_info in DoricFiberPhotometryInterface._discover_streams(file_path).items():
+            if stream_info["format"] == "csv":
+                store_id = stream_info["data_column"]
+            else:
+                parts = stream_info["data_path"].split("/")
+                if parts[0] == "Traces":
+                    store_id = parts[-1]
+                elif parts[-1] == "Values":
+                    store_id = f"{parts[-3]}/{parts[-2]}"
+                else:
+                    store_id = f"{parts[-2]}/{parts[-1]}"
+            store_id_to_stream_name.setdefault(store_id, []).append(stream_name)
+
+        ambiguous = {store: names for store, names in store_id_to_stream_name.items() if len(names) > 1}
+        assert not ambiguous, (
+            f"Doric file '{file_path}' contains streams that GuPPy would name identically: "
+            f"{ambiguous}. GuPPy keeps only the tail of a stream's path, so these cannot be told apart "
+            f"from a storesList.csv entry."
+        )
+        return {store: names[0] for store, names in store_id_to_stream_name.items()}
 
     @staticmethod
     def _build_acquisition_interface(
@@ -216,9 +291,9 @@ class GuppyConverter(ConverterPipe):
         must preserve ``store_ids`` order.
 
         For TDT, GuPPy's store ids are the tank's stream names verbatim and pass straight through; for
-        CSV they are filename stems, so each names one file. GuPPy's ``.doric`` store ids are abbreviated
-        HDF5 paths and will need real translation, which is why this dispatch exists at all rather than
-        every format sharing one call.
+        CSV they are filename stems, so each names one file. Doric store ids are abbreviated paths that
+        need real translation, which is why this dispatch exists at all rather than every format sharing
+        one call.
         """
         if acquisition_format == "tdt":
             return TDTFiberPhotometryInterface(
@@ -234,6 +309,22 @@ class GuppyConverter(ConverterPipe):
                 file_paths=[folder_path / f"{store_id}.csv" for store_id in store_ids],
                 data_columns="data",
                 timestamps_column="timestamps",
+                metadata_key=metadata_key,
+                verbose=verbose,
+            )
+        if acquisition_format == "doric":
+            file_path = GuppyConverter._resolve_doric_file(folder_path)
+            store_id_to_stream_name = GuppyConverter._doric_store_id_to_stream_name(file_path)
+            missing = [store_id for store_id in store_ids if store_id not in store_id_to_stream_name]
+            # The Doric interface does not validate stream_names at construction, so an untranslated id
+            # would surface much later as a bare KeyError; name the offending store here instead.
+            assert not missing, (
+                f"GuPPy's storesList.csv names acquisition store(s) {missing} that '{file_path}' does not "
+                f"provide (available: {sorted(store_id_to_stream_name)})."
+            )
+            return DoricFiberPhotometryInterface(
+                file_path=file_path,
+                stream_names=[store_id_to_stream_name[store_id] for store_id in store_ids],
                 metadata_key=metadata_key,
                 verbose=verbose,
             )
@@ -269,6 +360,38 @@ class GuppyConverter(ConverterPipe):
                     verbose=verbose,
                 )
                 for store_id in event_store_ids
+            }
+        if acquisition_format == "doric":
+            file_path = GuppyConverter._resolve_doric_file(folder_path)
+            is_csv_export = file_path.suffix.lower() == ".csv"
+            # Doric event stores are digital lines of the one acquisition file, so a single interface
+            # covers them all. Its signal ids match GuPPy's store ids except in the modern HDF5 layout,
+            # where GuPPy prefixes the containing group: 'DigitalIO/CAM1' against the interface's 'CAM1'.
+            # Only that layout is stripped -- doing it blindly would turn the CSV store 'DI/O-1' into
+            # 'O-1'.
+            store_id_to_signal_id = {
+                store_id: (
+                    store_id[len("DigitalIO/") :]
+                    if not is_csv_export and store_id.startswith("DigitalIO/")
+                    else store_id
+                )
+                for store_id in event_store_ids
+            }
+            # Naming the GuPPy store id as the spec's event_name makes it the seeded
+            # event_type_source_id, so the select/rename/route blocks join on it exactly as they do for
+            # the other formats. (The display name is overwritten with GuPPy's label there.)
+            detection_configuration = {
+                signal_id: [{"detection": "high_period", "event_name": store_id}]
+                for store_id, signal_id in store_id_to_signal_id.items()
+            }
+            events_interface_class = DoricCSVEventsInterface if is_csv_export else DoricEventsInterface
+            return {
+                "Events": events_interface_class(
+                    file_path=file_path,
+                    detection_configuration=detection_configuration,
+                    metadata_key="guppy_doric_events",
+                    verbose=verbose,
+                )
             }
         raise NotImplementedError(f"No events interface is wired up for acquisition_format={acquisition_format!r}.")
 
@@ -423,7 +546,12 @@ class GuppyConverter(ConverterPipe):
             )
         processing_module.add(recording_sites_table)
 
-        # Events: each row links to its event type's occurrence rows in the merged EventsTable.
+        # Events: each row links to its event type's occurrence rows in the merged EventsTable. A session
+        # whose storesList holds no event store writes no such table, and there is nothing for the
+        # converter to link -- the GuPPy interface then builds the link-free registry itself, exactly as
+        # it does when run standalone.
+        if not self._events_interface_names:
+            return
         merged_events_table = nwbfile.events[_MERGED_EVENTS_TABLE_NAME]
         event_type_column = list(merged_events_table["event_type"][:])
         events_table = ndx_guppy.GuppyEventsTable(
