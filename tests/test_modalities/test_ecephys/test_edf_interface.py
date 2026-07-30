@@ -11,7 +11,10 @@ import numpy as np
 import pytest
 
 from neuroconv.datainterfaces import EDFRecordingInterface
-from neuroconv.datainterfaces.ecephys.edf.edfdatainterface import _parse_birthdate, _parse_sex
+from neuroconv.datainterfaces.ecephys.edf.edfdatainterface import (
+    _parse_birthdate,
+    _parse_sex,
+)
 
 pyedflib = pytest.importorskip("pyedflib")
 
@@ -145,7 +148,7 @@ class TestEDFSubjectMetadata:
         assert interface.get_metadata()["Subject"]["sex"] == "F"
 
     def test_unknown_sex_still_defaults(self, tmp_path):
-        """"U" remains the fallback when the header genuinely does not say."""
+        """ "U" remains the fallback when the header genuinely does not say."""
         path = write_edf(tmp_path / "subject.edf", patient_code="MCH-42")
         interface = EDFRecordingInterface(file_path=path)
 
