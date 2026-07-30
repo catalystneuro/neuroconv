@@ -63,11 +63,11 @@ runs:
       with:
         path: ./ephy_testing_data
         key: ephys-datasets-${{ steps.ephys.outputs.DATASET_VERSION }}
-        # Fall back only when the exact key could not be computed. With credentials the behavior is
-        # unchanged: a key miss there means the data really did change on S3, and restoring a stale
-        # copy would leave files behind that the download step cannot overwrite because S3 no longer
-        # has them.
-        restore-keys: ${{ steps.credentials.outputs.available == 'true' && '' || 'ephys-datasets-' }}
+        # A prefix match restores the most recent copy of this dataset when the exact key is missing,
+        # which is what lets a run with no credentials proceed. It is safe on credentialed runs too:
+        # a key miss there means the data changed on S3, and the download step clears the directory
+        # before fetching, so a restored copy cannot leave behind files S3 no longer has.
+        restore-keys: ephys-datasets-
         enableCrossOsArchive: true
 
     - name: Compute ophys cache key from S3 listing
@@ -87,7 +87,7 @@ runs:
       with:
         path: ./ophys_testing_data
         key: ophys-datasets-${{ steps.ophys.outputs.DATASET_VERSION }}
-        restore-keys: ${{ steps.credentials.outputs.available == 'true' && '' || 'ophys-datasets-' }}
+        restore-keys: ophys-datasets-
         enableCrossOsArchive: true
 
     - name: Compute behavior cache key from S3 listing
@@ -107,17 +107,16 @@ runs:
       with:
         path: ./behavior_testing_data
         key: behavior-datasets-${{ steps.behavior.outputs.DATASET_VERSION }}
-        restore-keys: ${{ steps.credentials.outputs.available == 'true' && '' || 'behavior-datasets-' }}
+        restore-keys: behavior-datasets-
         enableCrossOsArchive: true
 
     # `cache-hit` reports only an exact key match, so it stays false after a restore-keys prefix
     # match. Without the credential check these would still fire on a fork and fail on an unsigned
     # request, which is the failure this action is meant to avoid.
-    # Each download clears its directory first. `aws s3 cp` overwrites and adds but never deletes,
-    # so downloading on top of a restored copy would keep files that no longer exist on S3, and the
-    # cache saved at the end of the job would carry them forward. Nothing is restored before a
-    # download today, which makes the removal a no-op, but it keeps the step correct on its own
-    # terms rather than through the restore-keys expression further up.
+    # Each download clears its directory first, and that removal is what keeps a prefix-restored copy
+    # from going stale: `aws s3 cp` overwrites and adds but never deletes, so downloading on top of a
+    # restored copy would keep files that no longer exist on S3, and the cache saved at the end of the
+    # job would carry them forward under a key that no longer describes its contents.
     - if: ${{ steps.cache-ephys-datasets.outputs.cache-hit != 'true' && steps.credentials.outputs.available == 'true' }}
       name: Download ephys dataset from S3
       shell: bash
