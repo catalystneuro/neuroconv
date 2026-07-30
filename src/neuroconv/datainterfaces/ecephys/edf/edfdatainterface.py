@@ -14,9 +14,32 @@ from ....utils import DeepDict
 _MONTH_ABBREVIATIONS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
 
 
+def _warn_unreadable(field: str, value) -> None:
+    """
+    Warn that a subject field was present in the header but could not be interpreted.
+
+    "The file did not state this" and "the file stated something I could not read" are different
+    situations, and only the second is the user's to act on — otherwise an exporter writing an
+    unexpected format produces a silently subject-less NWB file with no indication why.
+    """
+    warnings.warn(
+        f"The EDF header's {field} could not be interpreted and was left out of the NWB Subject: "
+        f"{value!r}. Set metadata['Subject'] explicitly if this field matters for your conversion.",
+        UserWarning,
+        stacklevel=3,
+    )
+
+
+# Floor on a plausible birth year. This is a judgement call rather than a derived constraint: it only
+# has to be low enough never to reject a real subject and high enough to catch a misread field, and
+# 1850 clears both — EDF itself dates from 1992, so no subject of an EDF recording was born before it,
+# while "02-MAY-0001" is plainly garbage.
+_EARLIEST_PLAUSIBLE_BIRTH_YEAR = 1850
+
+
 def _assemble_birthdate(year: int, month: int, day: int, tzinfo=None) -> datetime | None:
     """Build a birthdate, rejecting impossible calendar dates and implausible years."""
-    if year < 1900:
+    if year < _EARLIEST_PLAUSIBLE_BIRTH_YEAR:
         return None
     try:
         birthdate = datetime(year=year, month=month, day=day, tzinfo=tzinfo)
@@ -42,29 +65,35 @@ def _parse_birthdate(birthdate) -> datetime | None:
     two-digit form belongs to the header's separate ``startdate`` field — and Python's POSIX rule for
     ``%y`` maps 00-68 to the 2000s, so ``"02.05.51"`` would have become 2051, a date in the future.
     """
-    if not birthdate:
+    # An absent field is not a problem and stays silent. Only a value that is *present* and unreadable
+    # is worth telling the user about: this whole change exists because metadata was being discarded
+    # without a trace, and dropping a birthdate the exporter did write would repeat that in miniature.
+    if birthdate is None or (isinstance(birthdate, str) and not birthdate.strip()):
         return None
-    # datetime is a subclass of date, so this one branch covers both; the time of day is dropped
-    # because a birthdate has none, while any tzinfo is preserved rather than silently discarded.
+
+    parsed = None
     if isinstance(birthdate, date):
-        return _assemble_birthdate(
+        # datetime is a subclass of date, so this covers both. The time of day is dropped because a
+        # birthdate has none; any tzinfo is preserved rather than silently discarded.
+        parsed = _assemble_birthdate(
             birthdate.year, birthdate.month, birthdate.day, tzinfo=getattr(birthdate, "tzinfo", None)
         )
-
-    text = str(birthdate).strip()
-    named_month = re.match(r"^(\d{1,2})[-\s]([A-Za-z]{3,})[-\s](\d{4})$", text)
-    if named_month:
-        abbreviation = named_month.group(2)[:3].upper()
-        if abbreviation in _MONTH_ABBREVIATIONS:
-            return _assemble_birthdate(
+    else:
+        text = str(birthdate).strip()
+        named_month = re.match(r"^(\d{1,2})[-\s]([A-Za-z]{3,})[-\s](\d{4})$", text)
+        iso = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", text)
+        if named_month and named_month.group(2)[:3].upper() in _MONTH_ABBREVIATIONS:
+            parsed = _assemble_birthdate(
                 year=int(named_month.group(3)),
-                month=_MONTH_ABBREVIATIONS.index(abbreviation) + 1,
+                month=_MONTH_ABBREVIATIONS.index(named_month.group(2)[:3].upper()) + 1,
                 day=int(named_month.group(1)),
             )
-    iso = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", text)
-    if iso:
-        return _assemble_birthdate(year=int(iso.group(1)), month=int(iso.group(2)), day=int(iso.group(3)))
-    return None
+        elif iso:
+            parsed = _assemble_birthdate(year=int(iso.group(1)), month=int(iso.group(2)), day=int(iso.group(3)))
+
+    if parsed is None:
+        _warn_unreadable(field="date of birth", value=birthdate)
+    return parsed
 
 
 # EDF+ mandates F/M for the sex subfield and pyedflib normalizes it to Female/Male, so an exact
@@ -85,10 +114,21 @@ def _parse_sex(sex) -> str | None:
     """
     Map an EDF+ sex subfield onto the letter NWB expects, or None when it is not stated.
 
-    Anything outside the allowlist — including EDF+'s bare ``X`` for an unknown subfield — is treated as
-    absent, so the caller's ``"U"`` default applies rather than a guess.
+    Anything outside the allowlist is treated as not stated, so the caller's ``"U"`` default applies
+    rather than a guess. An empty field and EDF+'s bare ``X`` mean "unknown" and pass silently; any
+    other unrecognized value warns, since the file did state something.
     """
-    return _SEX_BY_HEADER_VALUE.get(str(sex or "").strip().upper())
+    if sex is None:
+        return None
+    # Note: not ``str(sex or "")`` — that would fold a numeric 0 into the silent path, hiding the one
+    # input shape the allowlist cannot interpret.
+    text = str(sex).strip().upper()
+    if text in ("", "X"):
+        return None
+    mapped = _SEX_BY_HEADER_VALUE.get(text)
+    if mapped is None:
+        _warn_unreadable(field="subject sex", value=sex)
+    return mapped
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):

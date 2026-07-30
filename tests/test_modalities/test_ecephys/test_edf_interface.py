@@ -80,9 +80,6 @@ class TestParseBirthdate:
     @pytest.mark.parametrize(
         "value",
         [
-            None,
-            "",
-            "   ",
             "not-a-date",
             "02.05.51",  # ambiguous two-digit year: %y would have made this 2051
             "31-FEB-1951",  # impossible calendar date
@@ -92,6 +89,12 @@ class TestParseBirthdate:
         ],
     )
     def test_rejected_forms(self, value):
+        """These are present but unreadable, so each also warns — see TestUnreadableValuesWarn."""
+        with pytest.warns(UserWarning):
+            assert _parse_birthdate(value) is None
+
+    @pytest.mark.parametrize("value", [None, "", "   "])
+    def test_absent_forms(self, value):
         assert _parse_birthdate(value) is None
 
     @pytest.mark.parametrize(
@@ -126,12 +129,10 @@ class TestParseBirthdate:
     def test_month_case_is_ignored(self, spelling):
         assert _parse_birthdate(f"02-{spelling}-1951") == datetime(1951, 5, 2)
 
-    @pytest.mark.parametrize("full_name", ["January", "february", "SEPTEMBER"])
-    def test_full_month_names_are_accepted(self, full_name):
+    @pytest.mark.parametrize("full_name, month", [("January", 1), ("february", 2), ("SEPTEMBER", 9)])
+    def test_full_month_names_are_accepted(self, full_name, month):
         """Only the first three letters are consulted, so full names work too."""
-        expected_month = ["JAN", "FEB", "SEP"].index(full_name[:3].upper())
-        expected = datetime(1951, [1, 2, 9][expected_month], 2)
-        assert _parse_birthdate(f"02 {full_name} 1951") == expected
+        assert _parse_birthdate(f"02 {full_name} 1951") == datetime(1951, month, 2)
 
     def test_timezone_is_preserved(self):
         """A tz-aware input must not be silently made naive, which pynwb would then re-localize."""
@@ -142,6 +143,41 @@ class TestParseBirthdate:
         assert parsed == datetime(1951, 5, 2, tzinfo=timezone.utc)
         # The time of day is dropped — a birthdate has none — but the zone survives.
         assert parsed.tzinfo == timezone.utc
+
+
+class TestUnreadableValuesWarn:
+    """
+    "Not stated" and "stated but unreadable" are different, and only the second is the user's to act on.
+
+    Without this, an exporter writing a birthdate in an unexpected format produces a silently
+    subject-less NWB file with no indication why — the same silent discarding this change exists to fix.
+    """
+
+    @pytest.mark.parametrize("value", ["02.05.51", "nonsense", "02-XXX-1951", "02-MAY-2051", "31-FEB-1951"])
+    def test_present_but_unreadable_birthdate_warns(self, value):
+        with pytest.warns(UserWarning, match="date of birth could not be interpreted"):
+            assert _parse_birthdate(value) is None
+
+    @pytest.mark.parametrize("value", [None, "", "   "])
+    def test_absent_birthdate_is_silent(self, value, recwarn):
+        assert _parse_birthdate(value) is None
+        assert len(recwarn) == 0
+
+    @pytest.mark.parametrize("value", ["mujer", "Mrs", "Frau", "Unknown", 0])
+    def test_present_but_unreadable_sex_warns(self, value):
+        with pytest.warns(UserWarning, match="subject sex could not be interpreted"):
+            assert _parse_sex(value) is None
+
+    @pytest.mark.parametrize("value", [None, "", "  ", "X", "x"])
+    def test_unstated_sex_is_silent(self, value, recwarn):
+        """An empty field and EDF+'s bare X both genuinely mean unknown."""
+        assert _parse_sex(value) is None
+        assert len(recwarn) == 0
+
+    @pytest.mark.parametrize("value", ["Female", "M", "Other"])
+    def test_readable_values_are_silent(self, value, recwarn):
+        assert _parse_sex(value) is not None
+        assert len(recwarn) == 0
 
 
 class TestParseSex:
@@ -159,7 +195,6 @@ class TestParseSex:
             ("X", None),  # EDF+ writes a bare X for an unknown subfield
             ("", None),
             (None, None),
-            ("Unknown", None),
         ],
     )
     def test_mapping(self, value, expected):
@@ -173,7 +208,8 @@ class TestParseSex:
         Guessing is the failure this extraction exists to avoid, so anything outside the allowlist is
         treated as not stated and the "U" fallback applies.
         """
-        assert _parse_sex(value) is None
+        with pytest.warns(UserWarning):
+            assert _parse_sex(value) is None
 
 
 class TestEDFSubjectMetadata:
@@ -281,7 +317,8 @@ class TestEDFSubjectMetadata:
         interface = EDFRecordingInterface(file_path=path)
         interface.edf_header["birthdate"] = "not-a-date"
 
-        subject_metadata = interface.get_metadata()["Subject"]
+        with pytest.warns(UserWarning, match="date of birth could not be interpreted"):
+            subject_metadata = interface.get_metadata()["Subject"]
         assert subject_metadata["subject_id"] == "MCH-42"
         assert "date_of_birth" not in subject_metadata
 
