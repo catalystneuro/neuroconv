@@ -13,7 +13,6 @@ output.
 """
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 import h5py
@@ -34,6 +33,8 @@ _DEFAULT_EVENT_STORE_TO_NAME = {
     "PrtR": "port_entries",
 }
 _SESSION_ID = "mock_guppy_session"
+# Seconds of raw recording GuPPy's lights-on trim discards before analysis (its default).
+_TIME_FOR_LIGHTS_TURN_ON = 1.0
 
 
 def generate_mock_guppy_output_folder(
@@ -44,7 +45,6 @@ def generate_mock_guppy_output_folder(
     features: tuple[str, ...] = ("z_score", "dff"),
     trace_prefixes: tuple[str, ...] = ("cntrl_sig_fit", "dff", "z_score"),
     cross_correlation_pairs: tuple[tuple[str, str], ...] = (("dls", "dms"),),
-    session_start_time: datetime = datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
     sampling_rate: float = 200.0,
     num_samples: int = 400,
     num_psth_timepoints: int = 50,
@@ -81,12 +81,11 @@ def generate_mock_guppy_output_folder(
         Derived continuous trace prefixes to emit.
     cross_correlation_pairs : tuple of (str, str), optional
         ``(reference_recording_site, target_recording_site)`` pairs to emit cross-correlations for.
-    session_start_time : datetime, optional
-        Written into ``timeCorrection_<recording_site>.hdf5`` as ``timeRecStart``; drives
-        ``get_metadata()["NWBFile"]["session_start_time"]``.
     sampling_rate, num_samples : float, int, optional
-        Shape of the derived traces and their timestamps. ``num_samples / sampling_rate`` must
-        exceed ~1 s so the first timestamp is > 0.5 s and the 1-s stub window is non-empty.
+        Shape of the derived traces and their timestamps, counted *after* the lights-on trim.
+        ``num_samples / sampling_rate`` must exceed ~1 s so the first timestamp is > 0.5 s and the
+        1-s stub window is non-empty. There is deliberately no session-start parameter: the
+        ``timeRecStart`` dataset is derived from the raw timebase, not supplied (see Notes).
     num_psth_timepoints, num_trials : int, optional
         Shape of the PSTH / cross-correlation matrices.
     peak_start_points, peak_end_points : tuple of float, optional
@@ -105,6 +104,17 @@ def generate_mock_guppy_output_folder(
     -------
     Path
         The populated ``folder_path``.
+
+    Notes
+    -----
+    The three timebase datasets in ``timeCorrection_<recording_site>.hdf5`` are all derived from one
+    raw timestamp array, the way a real GuPPy output derives them: ``timeRecStart`` is the raw store's
+    first timestamp, ``correctionIndex`` is the samples surviving the lights-on trim, and
+    ``timestampNew`` is the raw timestamps at those indices. The mock's raw timebase is
+    session-relative (it starts at ``0.0``), so ``timeRecStart`` is ``0.0`` -- matching what GuPPy
+    writes whenever the acquisition's own timestamps are session-relative rather than absolute. None
+    of this is parameterized, precisely so the fixture cannot express a ``timeRecStart`` that GuPPy
+    would not itself produce.
     """
     folder_path = Path(folder_path)
     folder_path.mkdir(parents=True, exist_ok=True)
@@ -116,8 +126,12 @@ def generate_mock_guppy_output_folder(
     recording_sites = list(recording_site_to_stores)
     event_names = list(event_store_to_name.values())
 
-    # Trace timebase: start ~1 s in (the lights-on delay) so the first timestamp is > 0.5 s.
-    timestamps = 1.0 + np.arange(num_samples, dtype=np.float64) / sampling_rate
+    # Raw store timebase, session-relative and starting at 0.0. The lights-on trim drops its leading
+    # second; ``num_samples`` counts what survives, so every downstream array keeps that length.
+    num_trimmed_samples = int(np.ceil(_TIME_FOR_LIGHTS_TURN_ON * sampling_rate))
+    raw_timestamps = np.arange(num_trimmed_samples + num_samples, dtype=np.float64) / sampling_rate
+    correction_index = np.flatnonzero(raw_timestamps >= _TIME_FOR_LIGHTS_TURN_ON)
+    timestamps = raw_timestamps[correction_index]
     # Trial onset times labeling the PSTH/peak-AUC trial columns (distinct floats).
     trial_onsets = [10.0 * (index + 1) for index in range(num_trials)]
     bin_edges = _trial_bin_edges(num_trials=num_trials, bin_size_in_trials=bin_size_in_trials)
@@ -141,9 +155,9 @@ def generate_mock_guppy_output_folder(
         _write_time_correction(
             folder_path,
             recording_site=recording_site,
-            timestamps=timestamps,
+            raw_timestamps=raw_timestamps,
+            correction_index=correction_index,
             sampling_rate=sampling_rate,
-            session_start_time=session_start_time,
         )
         if valid_signal_intervals:
             _write_valid_signal_intervals(folder_path, recording_site=recording_site, intervals=valid_signal_intervals)
@@ -287,12 +301,17 @@ def _write_trace(folder_path, prefix, recording_site, num_samples) -> None:
         trace_file.create_dataset("data", data=data, maxshape=(None,), chunks=True)
 
 
-def _write_time_correction(folder_path, recording_site, timestamps, sampling_rate, session_start_time) -> None:
+def _write_time_correction(folder_path, recording_site, raw_timestamps, correction_index, sampling_rate) -> None:
     """``timeCorrection_<recording_site>.hdf5`` with four keyed datasets: ``timeRecStart``, ``timestampNew``,
     ``sampling_rate``, ``correctionIndex``.
+
+    ``timeRecStart`` is the raw store's first timestamp -- the clock origin the rest of the session is
+    measured against, not a wall-clock session start -- and ``timestampNew`` is the raw timestamps that
+    survived the lights-on trim, indexed by ``correctionIndex``.
     """
-    time_rec_start = np.asarray([session_start_time.timestamp()], dtype=np.float64)
-    correction_index = np.arange(timestamps.shape[0], dtype=np.int64)
+    time_rec_start = np.asarray([raw_timestamps[0]], dtype=np.float64)
+    timestamps = raw_timestamps[correction_index]
+    correction_index = correction_index.astype(np.int64)
     with h5py.File(folder_path / f"timeCorrection_{recording_site}.hdf5", "w") as time_correction_file:
         time_correction_file.create_dataset("timeRecStart", data=time_rec_start)
         time_correction_file.create_dataset("timestampNew", data=timestamps, maxshape=(None,), chunks=True)

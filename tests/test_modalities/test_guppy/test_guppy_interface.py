@@ -1,6 +1,5 @@
 import re
 import shutil
-from datetime import datetime, timezone
 
 import h5py
 import numpy as np
@@ -122,7 +121,6 @@ class Test_GuppyInterface:
                     ],
                     expected_psth_count=24,  # 3 events x 2 recording_sites x 2 features x {corrected, uncorrected}
                     expected_peak_auc_count=12,  # 3 events x 2 recording_sites x 2 features
-                    expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
                     # The mock writes the same coordsForPreProcessing windows for every recording_site, so the
                     # expected intervals are identical across recording_sites and equal the source windows.
                     expected_valid_signal_intervals={
@@ -175,21 +173,12 @@ class Test_GuppyInterface:
         assert len(interface._psths) == case["expected_psth_count"]
         assert len(interface._peak_aucs) == case["expected_peak_auc_count"]
 
-    def test_metadata_session_start_time(self, interface, case):
-        metadata = interface.get_metadata()
-        if case["expected_session_start_time"] is None:
-            assert metadata["NWBFile"].get("session_start_time") in (None, "")
-        else:
-            assert metadata["NWBFile"]["session_start_time"] == case["expected_session_start_time"]
+    def test_metadata_omits_session_start_time(self, interface):
+        """GuPPy outputs carry no recording start, so the interface must not invent one.
 
-    def test_metadata_session_start_time_unset_when_time_rec_start_absent(self, case, tmp_path):
-        copied_folder = tmp_path / "guppy_output_copy"
-        shutil.copytree(case["folder_path"], copied_folder)
-        for recording_site in case["expected_recording_sites"]:
-            with h5py.File(copied_folder / f"timeCorrection_{recording_site}.hdf5", "r+") as time_correction_file:
-                del time_correction_file["timeRecStart"]
-
-        interface = _GuppyInterface(folder_path=str(copied_folder))
+        ``timeRecStart`` is the raw store's clock origin, which reads as ``0.0`` for a
+        session-relative timebase. Deriving a session start from it wrote 1970-01-01.
+        """
         metadata = interface.get_metadata()
         assert metadata["NWBFile"].get("session_start_time") in (None, "")
 
@@ -637,3 +626,38 @@ class Test_GuppyInterface:
         (copied_folder / "GuPPyParamtersUsed.json").unlink()
         with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):
             _GuppyInterface(folder_path=str(copied_folder))
+
+
+class TestMockGuppyOutputFolderTimebase:
+    """The mock must derive its timebase datasets the way GuPPy does.
+
+    `_GuppyInterface` reads only `timestampNew` and `sampling_rate`, so `timeRecStart` and
+    `correctionIndex` have no other test covering them. Leaving them unasserted is what let the mock
+    fabricate an epoch-valued `timeRecStart` that GuPPy would never write for this timebase, hiding
+    the session-start bug this class now guards.
+    """
+
+    @pytest.fixture(scope="class")
+    def time_correction_datasets(self, tmp_path_factory):
+        """The `timeCorrection_dms.hdf5` datasets from a mock at the default 200 Hz / 400 samples."""
+        folder_path = generate_mock_guppy_output_folder(tmp_path_factory.mktemp("guppy") / "guppy_output")
+        with h5py.File(folder_path / "timeCorrection_dms.hdf5", "r") as time_correction_file:
+            return {key: time_correction_file[key][:] for key in time_correction_file}
+
+    def test_time_rec_start_is_the_raw_clock_origin(self, time_correction_datasets):
+        """The raw timebase is session-relative, so its first timestamp -- and `timeRecStart` -- is 0.0."""
+        np.testing.assert_array_equal(time_correction_datasets["timeRecStart"], [0.0])
+
+    def test_correction_index_starts_at_the_lights_on_trim(self, time_correction_datasets):
+        """1.0 s of lights-on trim at 200 Hz drops samples 0-199, so the kept indices are 200..599."""
+        correction_index = time_correction_datasets["correctionIndex"]
+        np.testing.assert_array_equal(correction_index[:3], [200, 201, 202])
+        np.testing.assert_array_equal(correction_index[-1], 599)
+        assert correction_index.shape == (400,)
+
+    def test_timestamp_new_is_the_surviving_raw_timestamps(self, time_correction_datasets):
+        """Sample 200 onward at 200 Hz: 1.0, 1.005, 1.01, ... up to 599 / 200 = 2.995."""
+        timestamps = time_correction_datasets["timestampNew"]
+        np.testing.assert_allclose(timestamps[:3], [1.0, 1.005, 1.01])
+        np.testing.assert_allclose(timestamps[-1], 2.995)
+        assert timestamps.shape == (400,)
