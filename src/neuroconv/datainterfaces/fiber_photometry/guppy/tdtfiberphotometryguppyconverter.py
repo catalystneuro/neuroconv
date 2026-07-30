@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
@@ -197,22 +195,11 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         metadata_schema["properties"]["FiberPhotometry"]["additionalProperties"] = True
         return metadata_schema
 
-    def get_conversion_options_schema(self) -> dict:
-        """Expose a top-level ``stub_test`` option alongside the per-interface schemas."""
-        schema = super().get_conversion_options_schema()
-        schema["properties"]["stub_test"] = {
-            "type": "boolean",
-            "default": False,
-            "description": "If True, only a short stub of each trace is written.",
-        }
-        return schema
-
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
         conversion_options: dict | None = None,
-        stub_test: bool = False,
     ) -> None:
         """Add raw TDT and GuPPy-derived data to the provided NWBFile.
 
@@ -225,20 +212,18 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         """
         if metadata is None:
             metadata = self.get_metadata()
-        merged_conversion_options = self._build_conversion_options(
-            metadata=metadata, conversion_options=conversion_options, stub_test=stub_test
-        )
+        conversion_options = conversion_options or {}
 
         for interface_name in self._tdt_interface_names:
             self.data_interface_objects[interface_name].add_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, **merged_conversion_options[interface_name]
+                nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, {})
             )
         self.data_interface_objects["TDTEvents"].add_to_nwbfile(
-            nwbfile=nwbfile, metadata=metadata, **merged_conversion_options["TDTEvents"]
+            nwbfile=nwbfile, metadata=metadata, **conversion_options.get("TDTEvents", {})
         )
         self._build_guppy_registries(nwbfile=nwbfile, metadata=metadata)
         self.data_interface_objects["Guppy"].add_to_nwbfile(
-            nwbfile=nwbfile, metadata=metadata, **merged_conversion_options["Guppy"]
+            nwbfile=nwbfile, metadata=metadata, **conversion_options.get("Guppy", {})
         )
 
     def _build_guppy_registries(self, *, nwbfile: NWBFile, metadata: dict) -> None:
@@ -252,7 +237,6 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         """
         ndx_guppy = get_package(package_name="ndx_guppy", installation_instructions="pip install ndx-guppy")
         guppy_interface = self.data_interface_objects["Guppy"]
-        # The same ProcessingModule block the GuPPy interface reads, so it finds these registries there.
         module_metadata = metadata["FiberPhotometry"]["Guppy"][guppy_interface.metadata_key]["ProcessingModule"]
         processing_module = get_module(
             nwbfile=nwbfile, name=module_metadata["name"], description=module_metadata["description"]
@@ -292,50 +276,6 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             occurrence_rows = [index for index, event_type in enumerate(event_type_column) if event_type == event_name]
             events_table.add_row(event_name=event_name, events=occurrence_rows)
         processing_module.add(events_table)
-
-    def run_conversion(
-        self,
-        nwbfile_path: str | None = None,
-        nwbfile: NWBFile | None = None,
-        metadata: dict | None = None,
-        overwrite: bool = False,
-        backend: Literal["hdf5", "zarr"] | None = None,
-        backend_configuration=None,
-        conversion_options: dict | None = None,
-        append_on_disk_nwbfile: bool = False,
-        stub_test: bool = False,
-    ) -> None:
-        """Run the NWB conversion for both TDT acquisition and GuPPy processing outputs."""
-        if metadata is None:
-            metadata = self.get_metadata()
-        merged_conversion_options = self._build_conversion_options(
-            metadata=metadata, conversion_options=conversion_options, stub_test=stub_test
-        )
-        super().run_conversion(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            backend=backend,
-            backend_configuration=backend_configuration,
-            conversion_options=merged_conversion_options,
-            append_on_disk_nwbfile=append_on_disk_nwbfile,
-        )
-
-    def _build_conversion_options(self, *, metadata: dict, conversion_options: dict | None, stub_test: bool) -> dict:
-        """Fan ``stub_test`` out to every sub-interface (no linkage data is injected into GuPPy)."""
-        conversion_options = dict(conversion_options) if conversion_options else {}
-        merged_conversion_options: dict = {}
-        for interface_name in self._tdt_interface_names:
-            tdt_options = {"stub_test": stub_test}
-            tdt_options.update(conversion_options.pop(interface_name, {}))
-            merged_conversion_options[interface_name] = tdt_options
-        merged_conversion_options["TDTEvents"] = conversion_options.pop("TDTEvents", {})
-        guppy_options: dict = {"stub_test": stub_test}
-        guppy_options.update(conversion_options.pop("Guppy", {}))
-        merged_conversion_options["Guppy"] = guppy_options
-        merged_conversion_options.update(conversion_options)
-        return merged_conversion_options
 
     def _derive_recording_site_to_table_rows(self, metadata: dict) -> dict[str, list[int]]:
         """Map each GuPPy recording site to the acquisition ``FiberPhotometryTable`` row indices of its series.

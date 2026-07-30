@@ -193,7 +193,7 @@ class TestTDTFiberPhotometryGuppyConverter:
 
     def test_run_conversion_writes_acquisition_and_processing(self, converter, metadata, tmp_path):
         nwbfile_path = tmp_path / "tdt_guppy_converter.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True, stub_test=True)
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
@@ -262,7 +262,7 @@ class TestTDTFiberPhotometryGuppyConverter:
 
     def test_run_conversion_merges_events_and_links_registry(self, converter, metadata, tmp_path):
         nwbfile_path = tmp_path / "tdt_guppy_events.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True, stub_test=True)
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
@@ -306,7 +306,7 @@ class TestTDTFiberPhotometryGuppyConverter:
         shoved to the TDT stream start (0.0).
         """
         nwbfile_path = tmp_path / "tdt_guppy_alignment.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True, stub_test=True)
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
