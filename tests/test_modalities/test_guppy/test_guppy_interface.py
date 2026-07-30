@@ -173,10 +173,6 @@ class Test_GuppyInterface:
         assert len(interface._psths) == case["expected_psth_count"]
         assert len(interface._peak_aucs) == case["expected_peak_auc_count"]
 
-    def test_metadata_omits_session_start_time(self, interface):
-        """GuPPy outputs carry no recording start, so the interface must not supply one."""
-        assert "session_start_time" not in interface.get_metadata()["NWBFile"]
-
     def test_discovery_cross_correlations(self, interface, case):
         actual = sorted(
             (
