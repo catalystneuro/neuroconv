@@ -6,8 +6,12 @@ from pydantic import FilePath, validate_call
 from neuroconv.utils import DeepDict
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
-from ....tools.events import resolve_detection_plan, validate_detection_configuration
-from ....tools.signal_processing import discretize_trace
+from ....tools.events import (
+    _get_event_type_source_ids,
+    resolve_detection_plan,
+    validate_detection_configuration,
+)
+from ....tools.signal_processing import _detect_events
 
 
 class DoricCSVEventsInterface(BaseEventsInterface):
@@ -80,21 +84,18 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         # Whether a line fired is a property of this recording, not of intent, so a line that never
         # toggles is still a (possibly empty) event type.
         self._available_signals = {str(column[1]): {"column": column} for column in digital_columns}
-        # Validate a caller-supplied configuration eagerly (fail-fast at construction); the None default
-        # is trusted. A spec is all-or-nothing, never half-filled from a default.
-        if detection_configuration is not None:
-            validate_detection_configuration(detection_configuration, self._available_signals)
-        else:
+        if detection_configuration is None:
             # The default, used only when the caller passes none: read every discovered line as a
             # "high_period", the lossless durative reading (onset at the rising edge, duration to the
             # falling edge, for an active-high line).
             detection_configuration = {
                 signal_source_id: [{"detection": "high_period"}] for signal_source_id in self._available_signals
             }
+        # One construction-time check, on the default as well as on a caller-supplied configuration: the
+        # default is machine-built but its inputs are not, so it too can resolve two event types to the
+        # same identifier. Validation covers structure and identifier resolution alike.
+        validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
-        # The resolved plan: event_type_source_id -> (signal_source_id, spec). One entry per event type,
-        # with its identifier already derived, so nothing about the reading is left for read time.
-        self._detection_plan = resolve_detection_plan(detection_configuration)
 
     @staticmethod
     def _read_doric_csv(file_path):
@@ -148,10 +149,10 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         # Identity-in-header: each digital column name is its own event type. The column name is kept as
         # the event_type_source_id, but the human-facing event_name drops the "/" (an NWB object name
         # cannot contain a slash), so "DI/O-1" seeds a table named "DIO-1". Only lines that carry at
-        # least one event appear. Seeded from the resolved plan rather than from the events themselves,
+        # least one event appear. Derived from the configuration rather than from the events themselves,
         # so metadata costs no data read: whether a line happened to fire does not change which event
         # types the configuration asked for.
-        for event_type_source_id in self._detection_plan:
+        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id.replace("/", "")
             }
@@ -162,7 +163,7 @@ class DoricCSVEventsInterface(BaseEventsInterface):
 
         Each selected digital line becomes one :class:`_EventsData` keyed by its ``event_type_source_id``
         (the column name): its trace is edge-detected per the line's ``detect`` (via
-        :func:`discretize_trace`) into onset frames and, for a durative reading, per-event durations. The
+        :func:`_detect_events`) into onset frames and, for a durative reading, per-event durations. The
         onset timestamps are read from the shared ``Time(s)`` column; durations (in frames) are scaled to
         seconds by the file's sampling period. A line with no event (constant, or never opening) is
         skipped, so the empty state never reaches the writer.
@@ -174,17 +175,24 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         time = dataframe[self._time_column].to_numpy(dtype="float64")
         frame_period = float(np.median(np.diff(time)))  # regular DoricStudio clock; duration frames -> seconds
 
+        # Built here rather than held on the interface: the configuration is the source of truth, and the
+        # plan is pure and cheap to rebuild. Grouped by signal, so a column is extracted once however
+        # many event types it yields.
+        detection_plan = resolve_detection_plan(self._detection_configuration)
+
         events_data_dict = {}
-        for event_type_source_id, (signal_source_id, spec) in self._detection_plan.items():
+        for signal_source_id, detection_specs in detection_plan.items():
             column = self._available_signals[signal_source_id]["column"]
             data = dataframe[column].to_numpy(dtype="float64")
-            # A digital line is a densely sampled 0/1 trace; threshold=0.5 discretizes it strictly.
-            onset_frames, duration_frames = discretize_trace(data, spec["detection"], threshold=0.5)
-            onsets = time[onset_frames]
-            durations = None if duration_frames is None else duration_frames * frame_period
-            events_data_dict[event_type_source_id] = _EventsData(
-                event_type_source_id=event_type_source_id, timestamps=onsets, durations=durations
-            )
+            for event_type_source_id, spec in detection_specs:
+                onset_frames, duration_frames = _detect_events(data, spec["detection"])
+                onsets = time[onset_frames]
+                durations = None if duration_frames is None else duration_frames * frame_period
+                events_data_dict[event_type_source_id] = _EventsData(
+                    event_type_source_id=event_type_source_id,
+                    timestamps=onsets,
+                    durations=durations,
+                )
 
         self._events_data_dict = events_data_dict
         return self._events_data_dict

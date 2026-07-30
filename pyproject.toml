@@ -296,7 +296,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.8.0",
+    "roiextractors>=0.9.0",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
@@ -377,6 +377,9 @@ tdt_fp = [
     "neuroconv[fiber_photometry]",
     "tdt",
 ]
+npm_fp = [
+    "neuroconv[fiber_photometry]",
+]
 csv_fp = [
     "neuroconv[fiber_photometry]",
 ]
@@ -410,6 +413,7 @@ ophys = [
     "neuroconv[sima]",
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
+    "neuroconv[npm_fp]",
     "neuroconv[csv_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
