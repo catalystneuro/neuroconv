@@ -14,15 +14,18 @@ from ....utils import DeepDict
 _MONTH_ABBREVIATIONS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
 
 
-def _assemble_birthdate(year: int, month: int, day: int) -> datetime | None:
-    """Build a birthdate, rejecting impossible calendar dates and dates in the future."""
+def _assemble_birthdate(year: int, month: int, day: int, tzinfo=None) -> datetime | None:
+    """Build a birthdate, rejecting impossible calendar dates and implausible years."""
+    if year < 1900:
+        return None
     try:
-        birthdate = datetime(year=year, month=month, day=day)
+        birthdate = datetime(year=year, month=month, day=day, tzinfo=tzinfo)
     except ValueError:
         return None
     # A birthdate cannot be in the future; such a value means the field was misread, not that the
     # subject is unborn, and passing it on would put a nonsense date in the NWB file.
-    return None if birthdate > datetime.now() else birthdate
+    now = datetime.now(tz=birthdate.tzinfo)
+    return None if birthdate > now else birthdate
 
 
 def _parse_birthdate(birthdate) -> datetime | None:
@@ -30,21 +33,23 @@ def _parse_birthdate(birthdate) -> datetime | None:
     Coerce an EDF birthdate into a datetime, or None when it cannot be read.
 
     NWB's ``Subject.date_of_birth`` must be a datetime, but the readers hand the EDF+ patient field's
-    birthdate back as a string (``"02 may 1951"`` via pyedflib, ``"02-MAY-1951"`` straight from the
-    header), so an absent or unreadable value is dropped rather than passed on to pynwb.
+    birthdate back as a string — pyedflib normalizes it to ``"02 may 1951"`` — so an absent or
+    unreadable value is dropped rather than passed on to pynwb.
 
-    Only the ``DD-MMM-YYYY`` form the EDF+ spec defines for this field is accepted, plus ISO
-    ``YYYY-MM-DD``. Notably ``DD.MM.YY`` is *not*: no reader emits it for a birthdate (the two-digit
-    form belongs to the header's separate ``startdate`` field), and Python's POSIX rule for ``%y`` maps
-    00-68 to the 2000s, so ``"02.05.51"`` would have become 2051 — a birthdate in the future.
+    Accepted forms are the ``DD-MMM-YYYY`` the EDF+ spec defines for this field (in any case, and
+    space- or hyphen-separated, which covers what pyedflib emits as well as a direct header read) and
+    ISO ``YYYY-MM-DD``. Notably ``DD.MM.YY`` is *not*: no reader emits it for a birthdate — the
+    two-digit form belongs to the header's separate ``startdate`` field — and Python's POSIX rule for
+    ``%y`` maps 00-68 to the 2000s, so ``"02.05.51"`` would have become 2051, a date in the future.
     """
     if not birthdate:
         return None
-    if isinstance(birthdate, datetime):
-        return _assemble_birthdate(birthdate.year, birthdate.month, birthdate.day)
-    # A plain date is not a datetime, and pynwb requires the latter.
+    # datetime is a subclass of date, so this one branch covers both; the time of day is dropped
+    # because a birthdate has none, while any tzinfo is preserved rather than silently discarded.
     if isinstance(birthdate, date):
-        return _assemble_birthdate(birthdate.year, birthdate.month, birthdate.day)
+        return _assemble_birthdate(
+            birthdate.year, birthdate.month, birthdate.day, tzinfo=getattr(birthdate, "tzinfo", None)
+        )
 
     text = str(birthdate).strip()
     named_month = re.match(r"^(\d{1,2})[-\s]([A-Za-z]{3,})[-\s](\d{4})$", text)
@@ -62,19 +67,28 @@ def _parse_birthdate(birthdate) -> datetime | None:
     return None
 
 
+# EDF+ mandates F/M for the sex subfield and pyedflib normalizes it to Female/Male, so an exact
+# allowlist covers everything any reader emits. Prefix matching would be looser than the input space
+# and can invert the value outright — "mujer" starts with an M — which is the very failure this
+# extraction exists to avoid.
+_SEX_BY_HEADER_VALUE = {
+    "F": "F",
+    "FEMALE": "F",
+    "M": "M",
+    "MALE": "M",
+    "O": "O",
+    "OTHER": "O",
+}
+
+
 def _parse_sex(sex) -> str | None:
     """
-    Map an EDF+ sex subfield onto the single letter NWB expects, or None when it is unknown.
+    Map an EDF+ sex subfield onto the letter NWB expects, or None when it is not stated.
 
-    pyedflib normalizes the field to ``"Female"``/``"Male"`` whichever form was written, while the
-    header itself holds ``F``/``M``, and EDF+ uses a bare ``X`` for an unknown subfield.
+    Anything outside the allowlist — including EDF+'s bare ``X`` for an unknown subfield — is treated as
+    absent, so the caller's ``"U"`` default applies rather than a guess.
     """
-    text = str(sex or "").strip().upper()
-    if text.startswith("F"):
-        return "F"
-    if text.startswith("M"):
-        return "M"
-    return None
+    return _SEX_BY_HEADER_VALUE.get(str(sex or "").strip().upper())
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):

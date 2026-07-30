@@ -88,21 +88,60 @@ class TestParseBirthdate:
             "31-FEB-1951",  # impossible calendar date
             "02-XXX-1951",  # unrecognized month
             "02-MAY-2051",  # a birthdate cannot be in the future
+            "02-MAY-0001",  # nor implausibly far in the past
         ],
     )
     def test_rejected_forms(self, value):
         assert _parse_birthdate(value) is None
 
-    def test_month_names_do_not_depend_on_the_locale(self):
+    @pytest.mark.parametrize(
+        "abbreviation, month",
+        [
+            ("JAN", 1),
+            ("FEB", 2),
+            ("MAR", 3),
+            ("APR", 4),
+            ("MAY", 5),
+            ("JUN", 6),
+            ("JUL", 7),
+            ("AUG", 8),
+            ("SEP", 9),
+            ("OCT", 10),
+            ("NOV", 11),
+            ("DEC", 12),
+        ],
+    )
+    def test_every_month_abbreviation(self, abbreviation, month):
         """
-        ``strptime("%b")`` resolves month names through LC_TIME and would drop the birthdate under a
-        non-English locale. The explicit month table sidesteps that entirely.
-        """
-        import calendar
+        All twelve must resolve through the module's own table.
 
-        # Whatever the ambient locale calls May, the EDF spelling must still parse.
-        assert _parse_birthdate("02 may 1951") == datetime(1951, 5, 2)
-        assert calendar.month_abbr[5]  # locale-dependent; only here to show it is not consulted
+        This is the behaviour that matters; the reason it is a table rather than ``strptime("%b")`` —
+        which resolves month names through LC_TIME — is recorded at the table's definition. A test
+        cannot demonstrate locale independence without actually switching LC_TIME, which needs a locale
+        the CI image is not guaranteed to have installed.
+        """
+        assert _parse_birthdate(f"02-{abbreviation}-1951") == datetime(1951, month, 2)
+
+    @pytest.mark.parametrize("spelling", ["MAY", "May", "may", "mAy"])
+    def test_month_case_is_ignored(self, spelling):
+        assert _parse_birthdate(f"02-{spelling}-1951") == datetime(1951, 5, 2)
+
+    @pytest.mark.parametrize("full_name", ["January", "february", "SEPTEMBER"])
+    def test_full_month_names_are_accepted(self, full_name):
+        """Only the first three letters are consulted, so full names work too."""
+        expected_month = ["JAN", "FEB", "SEP"].index(full_name[:3].upper())
+        expected = datetime(1951, [1, 2, 9][expected_month], 2)
+        assert _parse_birthdate(f"02 {full_name} 1951") == expected
+
+    def test_timezone_is_preserved(self):
+        """A tz-aware input must not be silently made naive, which pynwb would then re-localize."""
+        from datetime import timezone
+
+        aware = datetime(1951, 5, 2, 3, 30, tzinfo=timezone.utc)
+        parsed = _parse_birthdate(aware)
+        assert parsed == datetime(1951, 5, 2, tzinfo=timezone.utc)
+        # The time of day is dropped — a birthdate has none — but the zone survives.
+        assert parsed.tzinfo == timezone.utc
 
 
 class TestParseSex:
@@ -114,13 +153,27 @@ class TestParseSex:
             ("F", "F"),
             ("M", "M"),
             ("female", "F"),
+            (" FEMALE ", "F"),
+            ("Other", "O"),  # NWB accepts "O"
+            ("O", "O"),
             ("X", None),  # EDF+ writes a bare X for an unknown subfield
             ("", None),
             (None, None),
+            ("Unknown", None),
         ],
     )
     def test_mapping(self, value, expected):
         assert _parse_sex(value) == expected
+
+    @pytest.mark.parametrize("value", ["mujer", "Mrs", "Frau", "Mann", "femme"])
+    def test_non_conforming_values_are_not_guessed(self, value):
+        """
+        Prefix matching would invert some of these: "mujer" is Spanish for woman and starts with M.
+
+        Guessing is the failure this extraction exists to avoid, so anything outside the allowlist is
+        treated as not stated and the "U" fallback applies.
+        """
+        assert _parse_sex(value) is None
 
 
 class TestEDFSubjectMetadata:
@@ -231,6 +284,26 @@ class TestEDFSubjectMetadata:
         subject_metadata = interface.get_metadata()["Subject"]
         assert subject_metadata["subject_id"] == "MCH-42"
         assert "date_of_birth" not in subject_metadata
+
+    def test_sex_alone_still_produces_a_subject(self, tmp_path):
+        """
+        Pins a deliberate behaviour change: a de-identified file keeping only the sex subfield
+        (``X F X X`` in the patient field, entirely normal for anonymised clinical EDF) now gains a
+        Subject, where before reading sex it would have had none.
+
+        The sex is genuine information, and the schema requires ``subject_id`` and ``species`` once a
+        Subject exists, so those are placeholders rather than claims. Dropping a stated sex to avoid a
+        placeholder identifier would discard real data — and anyone publishing to DANDI has to supply a
+        real ``subject_id`` regardless.
+        """
+        path = write_edf(tmp_path / "anonymous.edf", sex="Female")
+        interface = EDFRecordingInterface(file_path=path)
+
+        assert interface.extract_subject_metadata() == dict(sex="F")
+        subject_metadata = interface.get_metadata()["Subject"]
+        assert subject_metadata["sex"] == "F"
+        assert subject_metadata["subject_id"] == "Unknown"
+        assert subject_metadata["species"] == "Unknown species"
 
     def test_no_subject_information_leaves_subject_empty(self, tmp_path):
         """A file with no patient information must not gain a placeholder Subject."""
