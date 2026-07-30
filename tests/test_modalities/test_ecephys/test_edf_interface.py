@@ -105,9 +105,7 @@ class TestEDFSubjectMetadata:
         interface = EDFRecordingInterface(file_path=path)
 
         nwbfile_path = tmp_path / "subject.nwb"
-        interface.run_conversion(
-            nwbfile_path=str(nwbfile_path), metadata=interface.get_metadata(), overwrite=True
-        )
+        interface.run_conversion(nwbfile_path=str(nwbfile_path), metadata=interface.get_metadata(), overwrite=True)
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             subject = io.read().subject
             assert subject.subject_id == "MCH-42"
