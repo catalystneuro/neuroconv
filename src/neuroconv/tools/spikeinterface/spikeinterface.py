@@ -5,6 +5,7 @@ from typing import Any, Literal
 import numpy as np
 import psutil
 import pynwb
+from hdmf.common.table import VectorIndex
 from hdmf.data_utils import AbstractDataChunkIterator
 from pydantic import FilePath
 from spikeinterface import BaseRecording, BaseSorting, SortingAnalyzer
@@ -142,6 +143,11 @@ def _add_electrode_groups_to_nwbfile(
     default_group_template = placeholders["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]
     default_device_metadata = placeholders["Devices"]["default_metadata_key"]
 
+    # Entries without a ``device_metadata_key`` fall back to the placeholder device, exposed through the
+    # registry under its default key so every device is added by the canonical path. It is only added
+    # when actually referenced, so a user device sharing the placeholder's name stays legal.
+    devices_metadata = {"Devices": dict(metadata.get("Devices", {}))}
+
     electrode_groups_metadata = metadata.get("Ecephys", {}).get("ElectrodeGroups", {})
     channel_group_names = set(_get_group_name(recording=recording).tolist())
 
@@ -157,28 +163,26 @@ def _add_electrode_groups_to_nwbfile(
         for group_name in sorted(missing_channel_group_names)
     ]
 
-    required_fields = ("name", "description", "location")
     for group_metadata in (*user_entries, *auto_entries):
         group_kwargs = group_metadata.copy()
 
-        missing_fields = [field for field in required_fields if field not in group_kwargs]
-        if missing_fields:
-            placeholder_hint = "\n".join(f"  {field}: {default_group_template[field]!r}" for field in missing_fields)
-            raise ValueError(
-                "Electrode group metadata is missing required fields.\n"
-                "For a complete NWB file, the following fields should be provided. "
-                f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-            )
+        # ``description`` and ``location`` are required by the NWB ``ElectrodeGroup`` object but are often
+        # unknown to an interface, which may provide only a name and a device link. Fill any missing one
+        # from the default template at write time, rather than forcing the interface's get_metadata to emit
+        # a placeholder; this is the same template already applied to the auto-synthesized entries above.
+        for field in ("description", "location"):
+            group_kwargs.setdefault(field, default_group_template[field])
 
         if group_kwargs["name"] in nwbfile.electrode_groups:
             continue
 
         device_metadata_key = group_kwargs.pop("device_metadata_key", None)
-        if device_metadata_key is not None:
-            device_metadata = metadata["Devices"][device_metadata_key]
-        else:
-            device_metadata = default_device_metadata
-        group_kwargs["device"] = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
+        if device_metadata_key is None:
+            device_metadata_key = "default_metadata_key"
+            devices_metadata["Devices"].setdefault(device_metadata_key, default_device_metadata)
+        group_kwargs["device"] = _add_device_to_nwbfile(
+            nwbfile=nwbfile, metadata=devices_metadata, metadata_key=device_metadata_key
+        )
 
         nwbfile.create_electrode_group(**group_kwargs)
 
@@ -559,7 +563,7 @@ def _add_recording_segment_to_nwbfile(
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+            recording_t_start = recording.get_start_time(segment_index=segment_index)
 
         if rate:
             starting_time = float(recording_t_start)
@@ -1037,7 +1041,7 @@ def _get_null_value_for_property(property: str, sample_data: Any, null_values_fo
 
     """
 
-    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", float: np.nan, complex: np.nan}
+    type_to_default_value = {list: [], str: "", float: np.nan, complex: np.nan}
 
     # Check for numpy scalar types
     sample_data = sample_data.item() if isinstance(sample_data, np.generic) else sample_data
@@ -1045,6 +1049,10 @@ def _get_null_value_for_property(property: str, sample_data: Any, null_values_fo
     default_value = null_values_for_properties.get(property, None)
 
     if default_value is None:
+        # Rows of a multi-dimensional column such as `waveform_mean` need a null of their own
+        # shape; a scalar cannot sit next to rows of shape (num_samples, num_channels).
+        if isinstance(sample_data, np.ndarray) and np.issubdtype(sample_data.dtype, np.floating):
+            return np.full(shape=sample_data.shape, fill_value=np.nan, dtype=sample_data.dtype)
         sample_data_type = type(sample_data)
         default_value = type_to_default_value.get(sample_data_type, None)
         if default_value is None:
@@ -1064,6 +1072,38 @@ def _get_null_value_for_property(property: str, sample_data: Any, null_values_fo
             raise ValueError(error_msg)
 
     return default_value
+
+
+def _get_null_value_for_column(column, property: str, null_values_for_properties: dict[str, Any]) -> Any:
+    """
+    Retrieve the null value for a row appended to an already existing column of a `DynamicTable`.
+
+    Parameters
+    ----------
+    column : VectorData or VectorIndex
+        The existing column that the null value has to fit into.
+    property : str
+        The name of the column, used to look up a user provided null value and to report errors.
+    null_values_for_properties : dict of str to Any
+        A dictionary mapping properties to their respective default values.
+
+    Returns
+    -------
+    Any
+        The null value to pass for this column when adding a row.
+    """
+
+    # A ragged column takes an empty row whatever its element type is. This includes a
+    # `DynamicTableRegion` such as `electrodes`, where reading a sample value to inspect its type
+    # would also dereference the rows it points at in the target table.
+    if isinstance(column, VectorIndex):
+        return null_values_for_properties.get(property, [])
+
+    return _get_null_value_for_property(
+        property=property,
+        sample_data=column[:][0],
+        null_values_for_properties=null_values_for_properties,
+    )
 
 
 def _add_electrodes_to_nwbfile(
@@ -1247,10 +1287,9 @@ def _add_electrodes_to_nwbfile(
     # See https://github.com/catalystneuro/neuroconv/issues/1629
     if len(channel_ids_to_add) > 0:
         for property in properties_requiring_null_values:
-            sample_data = nwbfile.electrodes[property][:][0]
-            null_value = _get_null_value_for_property(
+            null_value = _get_null_value_for_column(
+                column=nwbfile.electrodes[property],
                 property=property,
-                sample_data=sample_data,
                 null_values_for_properties=null_values_for_properties,
             )
             nul_values_for_rows[property] = null_value
@@ -1315,7 +1354,8 @@ def _add_electrodes_to_nwbfile(
         if not adding_ragged_array:
             sample_data = data[0]
             dtype = data.dtype
-            extended_data = np.empty(shape=electrode_table_size, dtype=dtype)
+            # Rows of a multi-dimensional property keep their own shape in the extended column.
+            extended_data = np.empty(shape=(electrode_table_size, *data.shape[1:]), dtype=dtype)
             extended_data[indices_for_new_data] = data
 
             null_value = _get_null_value_for_property(
@@ -1659,7 +1699,7 @@ def _add_time_series_segment_to_nwbfile(
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording._recording_segments[segment_index].t_start or 0
+            recording_t_start = recording.get_start_time(segment_index=segment_index)
 
         if rate:
             starting_time = float(recording_t_start)
@@ -2510,7 +2550,9 @@ def _add_units_table_to_nwbfile(
         unit_names_used_previously = []
         if "unit_name" in units_table_previous_columns:
             unit_names_used_previously = units_table["unit_name"].data
-        has_electrodes_column = "electrodes" in units_table.colnames
+        # Electrodes are only used to discriminate between units with the same name when the
+        # current call actually provides them; otherwise there is nothing to compare against.
+        has_electrodes_column = "electrodes" in units_table.colnames and unit_electrode_indices is not None
 
         rows_in_data = [index for index in range(num_units)]
         if not has_electrodes_column:
@@ -2522,8 +2564,11 @@ def _add_units_table_to_nwbfile(
                     rows_to_add.append(index)
                 else:
                     unit_name = unit_name_array[index]
-                    previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]].electrodes
-                    if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
+                    # `index=True` returns the electrode indices of the row as they are stored,
+                    # without dereferencing them into a DataFrame of the electrodes table.
+                    matching_rows = np.where(units_table["unit_name"][:] == unit_name)[0]
+                    previous_electrodes = units_table["electrodes"].get(matching_rows[0], index=True)
+                    if list(previous_electrodes) != list(unit_electrode_indices[index]):
                         rows_to_add.append(index)
 
     # Add rows for pre-existing columns. Each row needs values for all existing columns;
@@ -2533,11 +2578,13 @@ def _add_units_table_to_nwbfile(
     # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
     # See https://github.com/catalystneuro/neuroconv/issues/1629
     if len(rows_to_add) > 0:
-        for property in properties_requiring_null_values - {"electrodes"}:  # TODO, fix electrodes
-            sample_data = units_table[property][:][0]
-            null_value = _get_null_value_for_property(
+        for property in properties_requiring_null_values:
+            # `electrodes` is one of these: units added without electrode indices to a table that
+            # already has the column get an empty region, because passing no value at all makes
+            # pynwb write `None` into the DynamicTableRegion and fail when hdmf checks its bounds.
+            null_value = _get_null_value_for_column(
+                column=units_table[property],
                 property=property,
-                sample_data=sample_data,
                 null_values_for_properties=null_values_for_properties,
             )
             null_values_for_row[property] = null_value
@@ -2597,7 +2644,8 @@ def _add_units_table_to_nwbfile(
         if not adding_ragged_array:
             sample_data = data[0]
             dtype = data.dtype
-            extended_data = np.empty(shape=unit_table_size, dtype=dtype)
+            # Rows of a multi-dimensional property keep their own shape in the extended column.
+            extended_data = np.empty(shape=(unit_table_size, *data.shape[1:]), dtype=dtype)
             extended_data[indices_for_new_data] = data
 
             null_value = _get_null_value_for_property(

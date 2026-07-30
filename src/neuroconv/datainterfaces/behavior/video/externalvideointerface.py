@@ -369,7 +369,6 @@ class ExternalVideoInterface(BaseDataInterface):
         # device_metadata_key; fall back to a (deprecated) nested "device" dict for back-compat.
         device_metadata_key = image_series_kwargs.pop("device_metadata_key", None)
         legacy_device_kwargs = image_series_kwargs.pop("device", None)
-        device_metadata = None
         if device_metadata_key is not None:
             # Strict resolution against the top-level Devices registry: a missing/typo'd key raises.
             # (metadata is a DeepDict that auto-creates missing keys, so membership is checked explicitly.)
@@ -379,7 +378,9 @@ class ExternalVideoInterface(BaseDataInterface):
                     f"device_metadata_key '{device_metadata_key}' was not found in metadata['Devices'] "
                     f"(available keys: {list(devices_metadata)})."
                 )
-            device_metadata = devices_metadata[device_metadata_key]
+            image_series_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, metadata={"Devices": devices_metadata}, metadata_key=device_metadata_key
+            )
         elif legacy_device_kwargs is not None:
             warnings.warn(
                 "Passing the camera device nested under the video metadata entry is deprecated and will be "
@@ -388,10 +389,11 @@ class ExternalVideoInterface(BaseDataInterface):
                 FutureWarning,
                 stacklevel=2,
             )
-            device_metadata = legacy_device_kwargs
-
-        if device_metadata is not None:
-            image_series_kwargs["device"] = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
+            # The deprecated nested form has no registry key, so it keeps the transitional call until
+            # the December 2026 removal.
+            image_series_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, device_metadata=legacy_device_kwargs
+            )
 
         if always_write_timestamps:
             timestamps = self.get_timestamps()

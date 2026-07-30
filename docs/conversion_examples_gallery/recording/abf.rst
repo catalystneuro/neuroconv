@@ -74,7 +74,9 @@ A channel or command whose stored name is blank falls back to ``ch{index}`` / ``
 always addressable by a non-empty name.
 
 The interface writes one continuous ``PatchClampSeries`` per electrode and records each sweep through the NWB
-``IntracellularRecordings`` table.
+``IntracellularRecordings`` table. It stops there: the upper icephys hierarchy tables and the per-sweep time
+intervals are written only once the full set of channels and files is known. If this interface is your whole
+conversion, wrap it in the converter below with that one interface, which finalizes those tables for you.
 
 Combining channels and files with the converter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,6 +91,11 @@ one-interface case; pass one per electrode for a **dual-patch** recording (the c
 into one simultaneous recording), or one per file for a **multi-file** experiment (each run becomes its own
 sequential recording, the runs placed on a single timeline from each file's header start time, which requires
 ABF version 2).
+
+The converter also writes a ``sweeps`` table of NWB ``TimeIntervals``, one row per sweep holding its start and
+stop time (channels recorded together contribute one row, not one each). The sweeps are already described by the
+index ranges on the intracellular recordings table, but written as intervals they are read by any tool that
+knows NWB intervals and nothing about icephys, pynapple for instance, which surfaces them as an ``IntervalSet``.
 
 You build the two upper grouping levels by labeling each interface through its ``repetition`` and ``condition``
 arguments. Runs sharing a ``repetition`` label are grouped into one ``Repetitions`` entry (repeated trials of the

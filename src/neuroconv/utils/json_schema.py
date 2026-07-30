@@ -74,6 +74,29 @@ class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
 NWBMetaDataEncoder = _NWBMetaDataEncoder
 
 
+def _validate_device_registry_names(metadata: dict[str, dict]) -> None:
+    """Require 1 metadata key for each device or device model name."""
+    for registry_name, object_name in (
+        ("Devices", "device"),
+        ("DeviceModels", "device model"),
+    ):
+        registry = metadata.get(registry_name)
+        if not isinstance(registry, dict):
+            continue
+        keys_by_name: dict[str, str] = {}
+        for metadata_key, entry in registry.items():
+            if not isinstance(entry, dict) or not isinstance(entry.get("name"), str):
+                continue
+            name = entry["name"]
+            if name in keys_by_name:
+                first_key = keys_by_name[name]
+                raise ValueError(
+                    f"metadata['{registry_name}'] keys '{first_key}' and '{metadata_key}' "
+                    f"use name '{name}'. Use 1 key to share a {object_name}."
+                )
+            keys_by_name[name] = metadata_key
+
+
 def get_base_schema(
     tag: str | None = None,
     root: bool = False,
@@ -444,5 +467,6 @@ def validate_metadata(metadata: dict[str, dict], schema: dict[str, dict], verbos
     serialized_metadata = encoder.encode(metadata)
     decoded_metadata = json.loads(serialized_metadata)
     validate(instance=decoded_metadata, schema=schema)
+    _validate_device_registry_names(metadata)
     if verbose:
         print("Metadata is valid!")
