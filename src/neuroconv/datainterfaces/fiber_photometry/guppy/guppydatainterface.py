@@ -35,7 +35,7 @@ _PREFIX_TO_UNIT = dict(cntrl_sig_fit="n.a.", dff="a.u.", z_score="a.u.")
 _BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
 # The two registry tables every GuPPy product references. Named and described here rather than at each
 # use site because a converter may author them instead of this interface (see
-# ``TDTFiberPhotometryGuppyConverter``), and the two sides must not drift.
+# ``GuppyConverter``), and the two sides must not drift.
 _RECORDING_SITES_TABLE_NAME = "recording_sites"
 _RECORDING_SITES_TABLE_DESCRIPTION = "GuPPy recording sites (one row per recording site)."
 _EVENTS_TABLE_NAME = "events"
@@ -63,7 +63,7 @@ class _GuppyInterface(BaseDataInterface):
     tables can compute: the recording sites' ``fiber_photometry_table_region`` into the acquisition
     ``FiberPhotometryTable``, and the events' ``events`` DynamicTableRegion into the merged ``EventsTable``.
     Such a converter therefore authors the registries itself, in full, before this interface runs (see
-    ``TDTFiberPhotometryGuppyConverter``), and the interface reuses the tables it finds. Run standalone, the
+    ``GuppyConverter``), and the interface reuses the tables it finds. Run standalone, the
     interface builds the minimal link-free version instead and the file is valid without those two links.
     The converter reaches the parsed identifiers it needs to build the registries through the
     :attr:`recording_sites`, :attr:`event_names`, :attr:`recording_site_to_store_ids`, and
@@ -671,7 +671,7 @@ class _GuppyInterface(BaseDataInterface):
         and the events' ``events`` reference into the merged ``EventsTable`` -- can only be computed by
         a converter that owns the acquisition and events tables, so such a converter authors both
         registries before this method runs and the registries found in the processing module are reused
-        as they stand (see ``TDTFiberPhotometryGuppyConverter``). Run standalone, this method builds the
+        as they stand (see ``GuppyConverter``). Run standalone, this method builds the
         minimal link-free registries instead and the file is valid without those two links.
 
         Parameters

@@ -15,9 +15,7 @@ from ..datainterfaces.ecephys.spikeglx.sorted_spikeglx_converter import SortedSp
 from ..datainterfaces.ecephys.intan.intanconverter import IntanConverter
 from ..datainterfaces.ecephys.openephys.openephysbinaryconverter import OpenEphysBinaryConverter
 from ..datainterfaces.ecephys.spikeglx.spikeglxconverter import SpikeGLXConverterPipe
-from ..datainterfaces.fiber_photometry.guppy.tdtfiberphotometryguppyconverter import (
-    TDTFiberPhotometryGuppyConverter,
-)
+from ..datainterfaces.fiber_photometry.guppy.guppyconverter import GuppyConverter
 from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
     BrukerTiffMultiPlaneConverter,
     BrukerTiffSinglePlaneConverter,
@@ -35,5 +33,5 @@ converter_list = [
     MiniscopeConverter,
     SortedRecordingConverter,
     SortedSpikeGLXConverter,
-    TDTFiberPhotometryGuppyConverter,
+    GuppyConverter,
 ]

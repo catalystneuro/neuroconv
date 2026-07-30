@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
@@ -25,22 +27,35 @@ _STORE_ROLES = ("signal", "control")
 _MERGED_EVENTS_TABLE_KEY = "guppy_behavioral_events"
 _MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 
+# The acquisition formats this converter can read, mapped to the interfaces it builds for each. GuPPy
+# also processes Doric, CSV and Neurophotometrics sessions; adding one means adding its entry here, a
+# branch in each of the two _build_* methods below, and widening the ``acquisition_format`` Literal.
+# Nothing else in this converter is aware of the acquisition format.
+_ACQUISITION_FORMAT_TO_INTERFACES = {
+    "tdt": (TDTFiberPhotometryInterface, TDTEventsInterface),
+}
 
-class TDTFiberPhotometryGuppyConverter(ConverterPipe):
-    """Bundle raw TDT fiber photometry acquisition, raw events, and GuPPy-derived processing outputs.
 
-    Combines the three parts of a GuPPy session: the raw TDT acquisition (added to
-    ``nwbfile.acquisition`` via the ``ndx-fiber-photometry`` extension), :class:`TDTEventsInterface`
-    (raw discrete events/epocs added to ``nwbfile.events`` as ``pynwb.event.EventsTable`` objects), and
-    the private GuPPy interface (derived traces, transient tables, and cross-correlations added to a
-    ``guppy`` ProcessingModule). GuPPy outputs have no standalone public interface -- this
-    converter is their entry point.
+class GuppyConverter(ConverterPipe):
+    """Bundle a GuPPy session's raw acquisition, raw events, and GuPPy-derived processing outputs.
+
+    Combines the three parts of a GuPPy session: the raw acquisition (added to ``nwbfile.acquisition``
+    via the ``ndx-fiber-photometry`` extension), the raw discrete events (added to ``nwbfile.events`` as
+    ``pynwb.event.EventsTable`` objects), and the private GuPPy interface (derived traces, transient
+    tables, and cross-correlations added to a ``guppy`` ProcessingModule). GuPPy outputs have no
+    standalone public interface -- this converter is their entry point.
+
+    Everything the converter does with a GuPPy session is independent of how the session was recorded:
+    ``storesList.csv`` names the acquisition stores as opaque ids, and the converter groups them, links
+    them, and writes them without knowing what produced them. The acquisition format is confined to
+    ``acquisition_format`` and the two ``_build_*`` methods that dispatch on it, which is where support
+    for the remaining GuPPy-readable formats is added.
 
     The stores are discovered from the GuPPy ``storesList.csv`` -- each recording site contributes its
     ``signal`` and (optional) ``control`` store -- so the converter builds exactly the acquisition
     channels GuPPy processed. Those stores are grouped by role rather than written one per series: each
-    role is an excitation wavelength, and one ``TDTFiberPhotometryInterface`` per role column-stacks that
-    role's store from every recording site into a single ``FiberPhotometryResponseSeries``. A two-site
+    role is an excitation wavelength, and one acquisition interface per role column-stacks that role's
+    store from every recording site into a single ``FiberPhotometryResponseSeries``. A two-site
     isosbestic session therefore yields two acquisition series, not four.
 
     As with every fiber photometry interface, the ``FiberPhotometry`` metadata chain (devices,
@@ -57,60 +72,88 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
     site to its acquisition fiber rows and each event to its occurrence rows in the merged
     ``EventsTable``, so it builds both registries complete and the GuPPy interface reuses them.
 
-    GuPPy and TDT share a single origin (recording start = ``session_start_time``): GuPPy emits
-    timestamps in seconds since recording start, the same clock the raw TDT streams use. No
+    GuPPy and the acquisition share a single origin (recording start = ``session_start_time``): GuPPy
+    emits timestamps in seconds since recording start, the same clock the raw streams use. No
     cross-system re-alignment is therefore needed -- both interfaces write on the shared clock,
-    rooted at ``nwbfile.session_start_time`` (taken from the TDT tank).
+    rooted at ``nwbfile.session_start_time``.
     """
 
-    display_name = "TDT Fiber Photometry + GuPPy"
-    keywords = TDTFiberPhotometryInterface.keywords + TDTEventsInterface.keywords + _GuppyInterface.keywords
-    associated_suffixes = TDTFiberPhotometryInterface.associated_suffixes + _GuppyInterface.associated_suffixes
-    info = "Converter that bundles raw TDT fiber photometry acquisition with GuPPy-derived processing outputs."
+    display_name = "GuPPy Fiber Photometry"
+    keywords = _GuppyInterface.keywords + ("events",)
+    # Derived from the supported formats rather than hard-coded, so this stays accurate as formats land.
+    associated_suffixes = tuple(
+        dict.fromkeys(
+            _GuppyInterface.associated_suffixes
+            + tuple(
+                suffix
+                for interfaces in _ACQUISITION_FORMAT_TO_INTERFACES.values()
+                for interface in interfaces
+                for suffix in interface.associated_suffixes
+            )
+        )
+    )
+    info = "Converter that bundles a GuPPy session's raw acquisition with its GuPPy-derived processing outputs."
 
     @validate_call
     def __init__(
         self,
-        tdt_folder_path: DirectoryPath,
+        fiber_photometry_folder_path: DirectoryPath,
+        events_folder_path: DirectoryPath,
         guppy_folder_path: DirectoryPath,
         *,
+        acquisition_format: Literal["tdt"],
         verbose: bool = False,
     ):
-        """Initialize the TDT + GuPPy converter.
+        """Initialize the GuPPy converter.
 
         Parameters
         ----------
-        tdt_folder_path : DirectoryPath
-            Path to the TDT tank folder containing the raw acquisition files (Tbk, Tdx, tev,
-            tin, tsq).
+        fiber_photometry_folder_path : DirectoryPath
+            Path to the folder holding the raw acquisition traces -- for TDT, the tank folder
+            containing the Tbk, Tdx, tev, tin and tsq files.
+        events_folder_path : DirectoryPath
+            Path to the folder holding the raw discrete events. GuPPy writes a session's traces and
+            events into one folder, so for TDT this is the same tank folder as
+            ``fiber_photometry_folder_path``; the two are named separately because other acquisition
+            formats read them through different interfaces.
         guppy_folder_path : DirectoryPath
             Path to the GuPPy ``<session>_output_<N>`` folder containing ``storesList.csv``,
             the per-recording-site derived ``.hdf5`` files, and the ``GuPPyParamtersUsed.json``
             provenance file (discovered automatically by the GuPPy interface).
+        acquisition_format : {"tdt"}
+            The format the session was recorded in, selecting which interfaces read the two raw
+            folders. GuPPy also processes Doric, CSV and Neurophotometrics sessions; those are not
+            supported yet and widen this argument when they are.
         verbose : bool, optional
             Whether to print status messages, default = False.
 
         Notes
         -----
-        The raw TDT events stored are exactly the behavioral event stores GuPPy listed in
+        The raw events stored are exactly the behavioral event stores GuPPy listed in
         ``storesList.csv`` -- i.e. only the epocs GuPPy actually processed -- each given the
         human-readable name from that file (e.g. the ``PrtR`` store becomes the ``port_entries``
-        ``EventsTable``). Stores present in the tank but absent from ``storesList.csv`` (and the
+        ``EventsTable``). Stores present in the source but absent from ``storesList.csv`` (and the
         fiber signal/control stores) are excluded by ``get_metadata``.
         """
+        self.acquisition_format = acquisition_format
         guppy_interface = _GuppyInterface(folder_path=guppy_folder_path, verbose=verbose)
         # Store only the behavioral event stores GuPPy listed in storesList.csv, named with the
         # human-readable semantic names from that file (the selection and renaming happen in
         # get_metadata, since add_to_nwbfile only writes the epocs left in event_types).
         self._event_store_to_event_name = guppy_interface.event_store_to_event_name
 
-        # One TDT acquisition interface per role (excitation wavelength), column-stacking that role's
-        # store from every recording site that has one. The GuPPy side already discovered these stores
-        # from storesList.csv. `recording_sites` runs parallel to `stream_names`, so the site owning
+        # The GuPPy interface is registered FIRST because get_metadata merges the sub-interfaces in
+        # registration order, last one wins: GuPPy reports a session_start_time of its own (derived from
+        # timeCorrection), so registering it ahead of the acquisition lets the acquisition's own value
+        # take precedence when it has one, and lets GuPPy's stand as the fallback when it does not.
+        data_interfaces: dict = {"Guppy": guppy_interface}
+
+        # One acquisition interface per role (excitation wavelength), column-stacking that role's store
+        # from every recording site that has one. The GuPPy side already discovered these stores from
+        # storesList.csv. `recording_sites` runs parallel to the stacked stores, so the site owning
         # column i -- and therefore the region row at index i -- is recoverable by position.
-        data_interfaces: dict = {}
         self._series_specs: list[dict] = []
-        self._tdt_interface_names: list[str] = []
+        self._acquisition_interface_names: list[str] = []
         for role in _STORE_ROLES:
             recording_sites = [
                 recording_site
@@ -119,13 +162,14 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             ]
             if not recording_sites:
                 continue  # a session without isosbestic controls contributes no control series
-            stream_names = [
+            store_ids = [
                 guppy_interface.recording_site_to_store_ids[recording_site][role] for recording_site in recording_sites
             ]
-            interface_name = f"TDTFiberPhotometry_{role}"
-            data_interfaces[interface_name] = TDTFiberPhotometryInterface(
-                folder_path=tdt_folder_path,
-                stream_names=stream_names,
+            interface_name = f"FiberPhotometry_{role}"
+            data_interfaces[interface_name] = self._build_acquisition_interface(
+                acquisition_format=acquisition_format,
+                folder_path=fiber_photometry_folder_path,
+                store_ids=store_ids,
                 metadata_key=role,
                 verbose=verbose,
             )
@@ -136,28 +180,68 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
                     series_name=f"FiberPhotometryResponseSeries{role.capitalize()}",
                 )
             )
-            self._tdt_interface_names.append(interface_name)
+            self._acquisition_interface_names.append(interface_name)
 
-        events_interface = TDTEventsInterface(folder_path=tdt_folder_path, verbose=verbose)
-        data_interfaces["TDTEvents"] = events_interface
-        data_interfaces["Guppy"] = guppy_interface
+        data_interfaces["Events"] = self._build_events_interface(
+            acquisition_format=acquisition_format, folder_path=events_folder_path, verbose=verbose
+        )
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
+
+    # ------------------------------------------------------------------ acquisition-format seam
+    # The only two methods that know the acquisition format. Supporting another GuPPy-readable format
+    # means adding a branch to each; everything else in this class is format-independent.
+
+    @staticmethod
+    def _build_acquisition_interface(
+        *, acquisition_format: str, folder_path: DirectoryPath, store_ids: list[str], metadata_key: str, verbose: bool
+    ):
+        """Build the acquisition interface writing one series from the ordered ``store_ids``.
+
+        The interface column-stacks the stores in the given order, which is the order
+        ``_derive_recording_site_to_table_rows`` zips against the declared region -- so every branch
+        must preserve ``store_ids`` order.
+
+        For TDT, GuPPy's store ids are the tank's stream names verbatim and pass straight through.
+        Other formats need translation: GuPPy's ``.doric`` store ids are abbreviated HDF5 paths, and its
+        CSV store ids are filename stems, which is why this dispatch exists at all rather than every
+        format sharing one call.
+        """
+        if acquisition_format == "tdt":
+            return TDTFiberPhotometryInterface(
+                folder_path=folder_path,
+                stream_names=store_ids,
+                metadata_key=metadata_key,
+                verbose=verbose,
+            )
+        raise NotImplementedError(
+            f"No acquisition interface is wired up for acquisition_format={acquisition_format!r}."
+        )
+
+    @staticmethod
+    def _build_events_interface(*, acquisition_format: str, folder_path: DirectoryPath, verbose: bool):
+        """Build the interface reading the raw discrete events.
+
+        The returned interface must cover **every** behavioral event store GuPPy listed;
+        ``get_metadata`` then drops the ones it did not, so its ``event_type_source_id`` values have to
+        be the store ids ``storesList.csv`` records. One TDT interface reads every epoc in the tank and
+        keys them by epoc name, which satisfies both.
+        """
+        if acquisition_format == "tdt":
+            return TDTEventsInterface(folder_path=folder_path, verbose=verbose)
+        raise NotImplementedError(f"No events interface is wired up for acquisition_format={acquisition_format!r}.")
 
     def get_metadata(self):
         """Merge sub-interface metadata into a single coherent fiber photometry conversion.
 
-        Takes the TDT tank as the authoritative session start time, gives each acquisition series a
-        distinct default name, and keeps only the behavioral event stores GuPPy listed.
+        Gives each acquisition series a distinct default name and keeps only the behavioral event
+        stores GuPPy listed. The ``session_start_time`` needs no handling here: the base merge takes it
+        from whichever sub-interface reports one last, and the interfaces are registered so that is the
+        acquisition when it embeds a recording start, and GuPPy otherwise.
 
         The ``FiberPhotometry`` chain itself (devices, indicators, table rows, per-series regions) is
-        the user's to supply, exactly as for a bare ``TDTFiberPhotometryInterface``.
+        the user's to supply, exactly as for a bare acquisition interface.
         """
         metadata = super().get_metadata()
-
-        # The TDT tank is the authoritative session start time (shared clock origin for GuPPy).
-        first_tdt_interface = self.data_interface_objects[self._tdt_interface_names[0]]
-        tdt_metadata = first_tdt_interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = tdt_metadata["NWBFile"]["session_start_time"]
 
         # Every single-series scaffold defaults to the same "FiberPhotometryResponseSeries" name; suffix
         # each one with its role so the two series do not collide in nwbfile.acquisition.
@@ -165,16 +249,16 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         for series_spec in self._series_specs:
             fiber_photometry_metadata[series_spec["metadata_key"]]["name"] = series_spec["series_name"]
 
-        # Select: the TDT interface seeds one event type per epoc in the tank, and its write is driven by
-        # this dict rather than by the tank, so dropping the epocs GuPPy did not list is what keeps them
-        # out of the NWB file.
-        events_metadata_key = self.data_interface_objects["TDTEvents"].metadata_key
+        # Select: the events interface seeds one event type per store it found, and its write is driven
+        # by this dict rather than by the source, so dropping the stores GuPPy did not list is what
+        # keeps them out of the NWB file.
+        events_metadata_key = self.data_interface_objects["Events"].metadata_key
         seeded_event_types = metadata["Events"][events_metadata_key]["event_types"]
         missing_stores = [store for store in self._event_store_to_event_name if store not in seeded_event_types]
         assert not missing_stores, (
-            f"GuPPy's storesList.csv lists behavioral event store(s) {missing_stores} that the TDT tank does "
-            f"not provide as a non-empty epoc (available: {sorted(seeded_event_types)}). The GuPPy output and "
-            f"the TDT tank do not describe the same session."
+            f"GuPPy's storesList.csv lists behavioral event store(s) {missing_stores} that the raw events "
+            f"source does not provide with any occurrences (available: {sorted(seeded_event_types)}). The "
+            f"GuPPy output and the raw events source do not describe the same session."
         )
         event_types = {store: seeded_event_types[store] for store in self._event_store_to_event_name}
         metadata["Events"][events_metadata_key]["event_types"] = event_types
@@ -185,7 +269,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             event_types[store]["event_name"] = event_name
             event_types[store][
                 "event_description"
-            ] = f"Onset times of the '{event_name}' behavioral events (from TDT store '{store}')."
+            ] = f"Onset times of the '{event_name}' behavioral events (from acquisition store '{store}')."
 
         # Route: send every surviving type into one merged EventsTable (shared table_metadata_key + a
         # declared EventTables entry naming it), so a single DynamicTableRegion from the GuppyEventsTable
@@ -210,25 +294,28 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
         metadata: dict | None = None,
         conversion_options: dict | None = None,
     ) -> None:
-        """Add raw TDT and GuPPy-derived data to the provided NWBFile.
+        """Add the raw acquisition and GuPPy-derived data to the provided NWBFile.
 
         The GuPPy registries carry links that only this converter can compute (it owns the acquisition
         ``FiberPhotometryTable`` and forced the merged ``EventsTable``), so it authors them itself. Each
         step below therefore depends on the one above it, and the sequence is spelled out by name rather
-        than looped over ``data_interface_objects``: the TDT acquisition interfaces build the shared
-        ``FiberPhotometryTable``, ``TDTEvents`` writes the merged ``EventsTable``, the registries link
+        than looped over ``data_interface_objects``: the acquisition interfaces build the shared
+        ``FiberPhotometryTable``, ``Events`` writes the merged ``EventsTable``, the registries link
         into both, and the GuPPy interface reuses them for the products that reference their rows.
+
+        Note this is deliberately *not* ``data_interface_objects`` order: ``Guppy`` is registered first,
+        for metadata precedence, but written last.
         """
         if metadata is None:
             metadata = self.get_metadata()
         conversion_options = conversion_options or {}
 
-        for interface_name in self._tdt_interface_names:
+        for interface_name in self._acquisition_interface_names:
             self.data_interface_objects[interface_name].add_to_nwbfile(
                 nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, {})
             )
-        self.data_interface_objects["TDTEvents"].add_to_nwbfile(
-            nwbfile=nwbfile, metadata=metadata, **conversion_options.get("TDTEvents", {})
+        self.data_interface_objects["Events"].add_to_nwbfile(
+            nwbfile=nwbfile, metadata=metadata, **conversion_options.get("Events", {})
         )
         self._build_guppy_registries(nwbfile=nwbfile, metadata=metadata)
         self.data_interface_objects["Guppy"].add_to_nwbfile(
@@ -257,8 +344,7 @@ class TDTFiberPhotometryGuppyConverter(ConverterPipe):
             "No FiberPhotometryTable was written, so the GuPPy recording sites cannot be linked to the "
             "acquisition fibers. Supply the full FiberPhotometry metadata chain (Devices, "
             "FiberPhotometryIndicators, FiberPhotometryTable rows, and a "
-            "'fiber_photometry_table_region' for each acquisition series) -- see the TDT + GuPPy "
-            "conversion gallery example."
+            "'fiber_photometry_table_region' for each acquisition series)."
         )
         recording_site_to_rows = self._derive_recording_site_to_table_rows(metadata)
         recording_sites_table = ndx_guppy.GuppyRecordingSitesTable(

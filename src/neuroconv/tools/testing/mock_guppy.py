@@ -23,7 +23,7 @@ import pandas
 # Default topology mirrors the ``Photo_249_391-200721-120136_stubbed`` TDT tank: two recording_sites, three
 # behavioral events, two transient features, one cross-correlation pair. The store ids
 # (Dv1A/Dv2A/Dv3B/Dv4B) and event epocs (LNRW/LNnR/PrtR) are the ones that tank actually exposes, so
-# ``TDTFiberPhotometryGuppyConverter`` can be driven against it with these defaults unchanged.
+# ``GuppyConverter`` can be driven against it with these defaults unchanged.
 _DEFAULT_RECORDING_SITE_TO_STORES = {
     "dms": {"signal": "Dv2A", "control": "Dv1A"},
     "dls": {"signal": "Dv4B", "control": "Dv3B"},

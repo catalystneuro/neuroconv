@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from pynwb import NWBHDF5IO
 
-from neuroconv.converters import TDTFiberPhotometryGuppyConverter
+from neuroconv.converters import GuppyConverter
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 from neuroconv.utils import dict_deep_update
 
@@ -20,9 +20,9 @@ SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_
 
 EXPECTED_RECORDING_SITES = ("dms", "dls")
 EXPECTED_TDT_SESSION_START_TIME = datetime(2020, 7, 21, 17, 2, 24, 999999, tzinfo=timezone.utc)
-# One TDT acquisition interface per role (excitation wavelength), each column-stacking that role's store
+# One acquisition interface per role (excitation wavelength), each column-stacking that role's store
 # from both recording sites -- two series over the four FiberPhotometryTable rows, not four.
-EXPECTED_TDT_INTERFACE_NAMES = {"TDTFiberPhotometry_signal", "TDTFiberPhotometry_control"}
+EXPECTED_ACQUISITION_INTERFACE_NAMES = {"FiberPhotometry_signal", "FiberPhotometry_control"}
 EXPECTED_RESPONSE_SERIES_NAMES = {
     "FiberPhotometryResponseSeriesSignal",
     "FiberPhotometryResponseSeriesControl",
@@ -149,16 +149,18 @@ SERIES_METADATA = {
 }
 
 
-class TestTDTFiberPhotometryGuppyConverter:
+class TestGuppyConverter:
     @pytest.fixture
     def guppy_output_folder(self, tmp_path):
         return generate_mock_guppy_output_folder(tmp_path / "guppy_output")
 
     @pytest.fixture
     def converter(self, guppy_output_folder):
-        return TDTFiberPhotometryGuppyConverter(
-            tdt_folder_path=SESSION_FOLDER,
+        return GuppyConverter(
+            fiber_photometry_folder_path=SESSION_FOLDER,
+            events_folder_path=SESSION_FOLDER,
             guppy_folder_path=guppy_output_folder,
+            acquisition_format="tdt",
         )
 
     @pytest.fixture
@@ -171,7 +173,7 @@ class TestTDTFiberPhotometryGuppyConverter:
         return metadata
 
     def test_construction_creates_all_interfaces(self, converter):
-        assert set(converter.data_interface_objects) == EXPECTED_TDT_INTERFACE_NAMES | {"TDTEvents", "Guppy"}
+        assert set(converter.data_interface_objects) == EXPECTED_ACQUISITION_INTERFACE_NAMES | {"Events", "Guppy"}
 
     def test_session_start_time_taken_from_tdt(self, converter):
         metadata = converter.get_metadata()
@@ -253,7 +255,7 @@ class TestTDTFiberPhotometryGuppyConverter:
 
     def test_events_derived_from_guppy_stores_list(self, converter):
         """Only the storesList.csv behavioral event stores propagate, with human-readable names."""
-        events_interface = converter.data_interface_objects["TDTEvents"]
+        events_interface = converter.data_interface_objects["Events"]
         event_types = converter.get_metadata()["Events"][events_interface.metadata_key]["event_types"]
         # storesList.csv lists LNRW, LNnR, PrtR as the (non-fiber) event stores; only those propagate.
         epoc_name_to_event_name = {epoc_name: entry["event_name"] for epoc_name, entry in event_types.items()}

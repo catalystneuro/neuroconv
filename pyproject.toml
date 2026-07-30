@@ -388,7 +388,7 @@ guppy = [
     "ndx-guppy",
     "tables",
 ]
-tdt_guppy = [  # For the TDTFiberPhotometryGuppyConverter
+tdt_guppy = [  # For GuppyConverter(acquisition_format="tdt")
     "neuroconv[guppy]",
     "neuroconv[tdt_fp]",
     "neuroconv[tdt_events]",
