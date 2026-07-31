@@ -37,7 +37,7 @@ DataInterface conventions
 
    .. code-block:: python
 
-      def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str = "ElectricalSeries"):
+      def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None):
 
 #. In :code:`add_to_nwbfile` methods of leaf interfaces (not converters), only :code:`nwbfile` and :code:`metadata`
    should be accepted as positional arguments. All other parameters (conversion options) must be keyword-only.

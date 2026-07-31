@@ -268,10 +268,72 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = IntanRecordingInterface
     interface_kwargs = dict(file_path=ECEPHY_DATA_PATH / "intan" / "intan_rhs_test_1.rhs")
 
+    expected_metadata_key = "ElectricalSeries"
+    expected_devices = {
+        "intan_device": dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan")
+    }
+    expected_electrode_groups = {"0": dict(name="0", device_metadata_key="intan_device")}
+    expected_electrical_series = {
+        "ElectricalSeries": dict(name="ElectricalSeries", description="Acquisition traces for the ElectricalSeries.")
+    }
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert self.interface.metadata_key == self.expected_metadata_key
+        assert metadata["Devices"] == self.expected_devices
+        assert metadata["Ecephys"]["ElectrodeGroups"] == self.expected_electrode_groups
+        assert metadata["Ecephys"]["ElectricalSeries"] == self.expected_electrical_series
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        # Old list-based format: the Intan device lives in the Ecephys.Device list and every
+        # electrode group points at it by name.
+        devices = metadata["Ecephys"]["Device"]
+        assert dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan") in devices
+        for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
+            assert electrode_group["device"] == "Intan"
+
+    def test_metadata_key_does_not_rename_series(self):
+        # A custom metadata_key re-keys the ElectricalSeries entry but must not rename the written series;
+        # the name stays the fixed interface-owned "ElectricalSeries".
+        interface = IntanRecordingInterface(**self.interface_kwargs, metadata_key="custom_key")
+        electrical_series = interface.get_metadata(use_new_metadata_format=True)["Ecephys"]["ElectricalSeries"]
+        assert list(electrical_series) == ["custom_key"]
+        assert electrical_series["custom_key"]["name"] == "ElectricalSeries"
+
 
 class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = IntanRecordingInterface
     save_directory = OUTPUT_PATH
+
+    expected_metadata_key = "ElectricalSeries"
+    expected_devices = {"intan_device": dict(name="Intan", description="RHD Recording System", manufacturer="Intan")}
+    expected_electrical_series = {
+        "ElectricalSeries": dict(name="ElectricalSeries", description="Acquisition traces for the ElectricalSeries.")
+    }
+    # The three fixtures carry different channel-group sets, so the expected groups are pinned per fixture.
+    expected_group_names = {
+        "rhd": ("0", "1", "2"),
+        "one-file-per-channel": ("0", "1"),
+        "one-file-per-signal": ("0", "1"),
+    }
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert self.interface.metadata_key == self.expected_metadata_key
+        assert metadata["Devices"] == self.expected_devices
+        assert metadata["Ecephys"]["ElectricalSeries"] == self.expected_electrical_series
+
+        expected_electrode_groups = {
+            group_name: dict(name=group_name, device_metadata_key="intan_device")
+            for group_name in self.expected_group_names[self.test_name]
+        }
+        assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        # Old list-based format: the Intan device lives in the Ecephys.Device list and every
+        # electrode group points at it by name.
+        devices = metadata["Ecephys"]["Device"]
+        assert dict(name="Intan", description="RHD Recording System", manufacturer="Intan") in devices
+        for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
+            assert electrode_group["device"] == "Intan"
 
     @pytest.fixture(
         params=[
