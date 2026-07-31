@@ -131,7 +131,12 @@ def add_channel_metadata_to_recorder_from_session_file(
             x_coords = channel_coordinates["x"]
             y_coords = channel_coordinates["y"]
             locations = np.array((x_coords, y_coords)).T.astype("float32")
-            recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
+            # Set the `location` property directly rather than through `set_channel_locations`. CellExplorer
+            # describes coordinates, not a probe, and on SpikeInterface 0.105 that method attaches a dummy probe
+            # as a side effect, which rewrites the `group` property the block below sets to the electrode group
+            # labels. On 0.104 the method only set this same property (it refused to run when a probe was
+            # attached, "destroys the probe description"), so this keeps the behavior it always had.
+            recording_extractor.set_property(key="location", ids=channel_ids, values=locations)
 
         if "electrodeGroups" in extracellular_data:
             electrode_groups_data = extracellular_data["electrodeGroups"]
