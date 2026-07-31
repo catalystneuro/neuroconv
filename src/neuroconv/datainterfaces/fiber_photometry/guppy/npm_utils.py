@@ -1,9 +1,9 @@
 """Reading the raw side of a GuPPy session recorded on a Neurophotometrics system.
 
-Covers both NPM layouts, the state-column and the header-less one. The most involved of the four
-formats, because NPM store names are entirely synthetic: GuPPy invents them while demultiplexing an
-interleaved recording, and none of their parts appear on disk. Recovering what a name refers to means
-reproducing GuPPy's own demultiplexing arithmetic -- see :func:`npm_store_to_demux`.
+Covers both NPM layouts, the state-column and the header-less one. NPM store names are entirely
+synthetic: GuPPy invents them while demultiplexing an interleaved recording, and none of their parts
+appear on disk. Recovering what a name refers to means reproducing GuPPy's own demultiplexing
+arithmetic -- see :func:`npm_store_to_demux`.
 """
 
 import re
@@ -52,8 +52,7 @@ def _npm_event_file(folder_path: DirectoryPath):
     """Return the one two-column event CSV a GuPPy NPM session holds.
 
     GuPPy writes NPM events to their own file, told apart from the acquisition CSVs by having exactly
-    two columns (onset time and label). Shared by the two functions that need it, so both agree on
-    which file the session's events came from.
+    two columns (onset time and label).
     """
     event_files = [
         path for path in sorted(folder_path.glob("*.csv")) if not is_event_csv(path) and _npm_column_count(path) == 2
@@ -72,7 +71,6 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
     many channels were interleaved are all choices made when GuPPy ran, and none leave a mark on the
     raw file. GuPPy records the first two in a ``.npm_params.json`` beside ``storesList.csv``, keyed
     by the same file index the store names use, and the channel count in ``GuPPyParamtersUsed.json``.
-    Both are required rather than guessed: an inferred clock silently produces wrong timestamps.
     """
     import json
 

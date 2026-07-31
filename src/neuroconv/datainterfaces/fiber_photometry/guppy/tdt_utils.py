@@ -1,7 +1,7 @@
 """Reading the raw side of a GuPPy session recorded on a TDT tank.
 
-The simplest of the four formats: GuPPy's store ids are the tank's stream and epoc names verbatim, so
-neither builder has to translate anything.
+GuPPy's store ids are the tank's stream and epoc names verbatim, so neither builder has to translate
+anything.
 """
 
 from pydantic import DirectoryPath

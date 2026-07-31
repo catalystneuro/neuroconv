@@ -33,9 +33,8 @@ _PREFIX_TO_TRACE_TYPE = dict(cntrl_sig_fit="control_fit", dff="dff", z_score="z_
 _PREFIX_TO_UNIT = dict(cntrl_sig_fit="n.a.", dff="a.u.", z_score="a.u.")
 # Per-window peak/area metric row prefixes in the peak_AUC_*.h5 DataFrame index.
 _BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
-# The two registry tables every GuPPy product references. Named and described here rather than at each
-# use site because a converter may author them instead of this interface (see
-# ``GuppyConverter``), and the two sides must not drift.
+# The two registry tables every GuPPy product references. Shared with ``GuppyConverter``, which may
+# author them instead of this interface.
 _RECORDING_SITES_TABLE_NAME = "recording_sites"
 _RECORDING_SITES_TABLE_DESCRIPTION = "GuPPy recording sites (one row per recording site)."
 _EVENTS_TABLE_NAME = "events"
@@ -69,13 +68,7 @@ class _GuppyInterface(BaseDataInterface):
     :attr:`recording_sites`, :attr:`event_names`, :attr:`recording_site_to_store_ids`, and
     :attr:`event_store_to_event_name` read-only views.
 
-    All products are placed in a ``ProcessingModule`` named ``guppy`` -- not ``fiber_photometry``, which
-    would duplicate the name of the ``FiberPhotometry`` lab metadata the raw acquisition side writes.
-    NWB itself permits that duplicate (the two land at ``/general/fiber_photometry`` and
-    ``/processing/fiber_photometry``), but NeuroConv's backend configuration resolves a dataset's
-    location by searching the builder tree for each path component *by name*, so two same-named
-    containers anywhere in the file are indistinguishable to it and the acquisition table's datasets
-    resolve into the wrong one.
+    All products are placed in a ``ProcessingModule`` named ``guppy``.
     """
 
     keywords = ("fiber photometry", "GuPPy", "processed")
@@ -193,8 +186,7 @@ class _GuppyInterface(BaseDataInterface):
 
     # ------------------------------------------------------------------ #
     # Read-only views of the parsed GuPPy identifiers, for a converter that owns the acquisition /
-    # events tables and needs to compute the registries' outward links (which the interface leaves
-    # unpopulated). No GuPPy-file parsing leaves the interface -- only the parsed identities.
+    # events tables and needs to compute the registries' outward links.
     # ------------------------------------------------------------------ #
     @property
     def recording_sites(self) -> list[str]:
@@ -477,8 +469,7 @@ class _GuppyInterface(BaseDataInterface):
         return start_points[valid], end_points[valid]
 
     # ------------------------------------------------------------------ #
-    # Object-name / metadata-key builders (single source of truth shared by get_metadata and
-    # add_to_nwbfile, so the producer and consumer can never drift into a KeyError).
+    # Object-name / metadata-key builders, shared by get_metadata and add_to_nwbfile.
     # ------------------------------------------------------------------ #
     @staticmethod
     def _trace_name(recording_site: str, prefix: str) -> str:
@@ -518,9 +509,8 @@ class _GuppyInterface(BaseDataInterface):
         # "tag"); the value carries the editable presentation fields -- ``name`` (defaults to the tag,
         # a stable handle add_to_nwbfile recomputes) and a generic ``description``. Descriptions omit
         # processing parameters, which live once in the GuppyParameters lab metadata. Internal join
-        # keys (recording_site, trace_basename, trace_type, recording-site pair, baseline flag, event lists) and units
-        # are NOT stored here -- editing them would break the join or contradict the data, so
-        # add_to_nwbfile derives them from self._* instead.
+        # keys (recording_site, trace_basename, trace_type, recording-site pair, baseline flag, event
+        # lists) and units are not stored here; add_to_nwbfile derives them from self._* instead.
         prefix_to_description_template = dict(
             cntrl_sig_fit="GuPPy fitted control trace for recording_site '{recording_site}'.",
             dff="GuPPy ΔF/F trace for recording_site '{recording_site}'.",
@@ -1304,9 +1294,7 @@ class _GuppyInterface(BaseDataInterface):
 
         Bin value columns match ``bin_(<start>-<stop>)`` (integer ``bin_(0-3)`` for "# of trials" binning
         or decimal ``bin_(0.0-2.0)`` for "Time (min)" binning) and their errors ``bin_err_(<start>-<stop>)``.
-        The original column labels are reused verbatim for lookup -- and the error column is derived by
-        swapping the ``bin_(`` prefix for ``bin_err_(`` -- so both label formats resolve without
-        reconstructing the name from the parsed edges. Bin edges are assumed non-negative.
+        Bin edges are assumed non-negative.
         """
         bin_columns = sorted(
             (float(match.group(1)), float(match.group(2)), match.string)
@@ -1336,8 +1324,7 @@ class _GuppyInterface(BaseDataInterface):
         ``trial_rows`` is a sorted list of ``(onset_time: float, row_label)``; ``bin_rows`` a sorted list
         of ``(start: float, stop: float, row_label)``; ``mean_row`` the single ``..._mean`` label. Bin rows
         are session-id-prefixed labels like ``..._bin_(0-3)`` (integer "# of trials" binning) or
-        ``..._bin_(0.0-2.0)`` (decimal "Time (min)" binning); both are routed to ``bin_rows`` rather than
-        crashing the trial-onset parse. Bin edges are assumed non-negative.
+        ``..._bin_(0.0-2.0)`` (decimal "Time (min)" binning). Bin edges are assumed non-negative.
         """
         mean_row = None
         trial_rows: list[tuple[float, str]] = []

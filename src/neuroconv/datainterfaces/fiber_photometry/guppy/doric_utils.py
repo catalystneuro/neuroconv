@@ -1,9 +1,8 @@
 """Reading the raw side of a GuPPy session recorded on a Doric system.
 
 Covers all three Doric layouts -- modern and legacy ``.doric`` HDF5 and DoricStudio ``.csv`` exports
--- resolved from the one acquisition file the session folder holds. This is the first format whose
-GuPPy store ids are not the interface's stream names, which is why it needs real translation rather
-than a pass-through.
+-- resolved from the one acquisition file the session folder holds. GuPPy store ids here are not the
+interface's stream names, so they need translation.
 """
 
 from pydantic import DirectoryPath
@@ -22,8 +21,8 @@ def resolve_doric_file(folder_path: DirectoryPath):
     """Return the one Doric acquisition file in ``folder_path``.
 
     GuPPy requires a Doric session folder to hold exactly one acquisition file and hard-errors
-    otherwise, so this mirrors that rule rather than guessing. Single-column ``timestamps`` CSVs are
-    event files, not acquisition, and are excluded the way GuPPy excludes them.
+    otherwise. Single-column ``timestamps`` CSVs are event files, not acquisition, and are excluded
+    the way GuPPy excludes them.
     """
     candidates = sorted(folder_path.glob("*.doric")) + [
         path for path in sorted(folder_path.glob("*.csv")) if not is_event_csv(path)

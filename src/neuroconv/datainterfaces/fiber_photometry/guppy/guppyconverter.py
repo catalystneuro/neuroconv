@@ -38,7 +38,6 @@ _MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 # a ``<format>_utils`` module reading it; supporting another means writing that module, widening this,
 # and adding a branch to each of the two _build_*_interfaces methods below.
 AcquisitionFormat = Literal["tdt", "csv", "doric", "npm"]
-# Derived from the modality modules rather than hard-coded, so this stays accurate as formats land.
 _ACQUISITION_SUFFIXES = tuple(
     dict.fromkeys(
         suffix for module in (tdt_utils, csv_utils, doric_utils, npm_utils) for suffix in module.ASSOCIATED_SUFFIXES
@@ -84,9 +83,8 @@ class GuppyConverter(ConverterPipe):
     ``EventsTable``, so it builds both registries complete and the GuPPy interface reuses them.
 
     GuPPy and the acquisition share a single origin (recording start = ``session_start_time``): GuPPy
-    emits timestamps in seconds since recording start, the same clock the raw streams use. No
-    cross-system re-alignment is therefore needed -- both interfaces write on the shared clock,
-    rooted at ``nwbfile.session_start_time``.
+    emits timestamps in seconds since recording start, the same clock the raw streams use, so both
+    interfaces write on that shared clock.
     """
 
     display_name = "GuPPy Fiber Photometry"
@@ -286,15 +284,11 @@ class GuppyConverter(ConverterPipe):
         Each modality builds a single interface; how many a session then needs, and what to register
         each under, is decided here. Only GuPPy's CSV format fans out -- its stores do not share a
         source, so it takes one interface per store, while one TDT interface reads every epoc in a
-        tank. A session whose ``storesList.csv`` holds only signal/control stores gets none at all,
-        rather than one asked to read nothing, which is an error in some formats rather than an
-        empty result.
+        tank. A session whose ``storesList.csv`` holds only signal/control stores gets none at all.
 
         Between them the interfaces must cover **every** store in ``event_store_ids``. What they
         *call* the types they seed is a separate question, answered by
-        :meth:`_build_event_source_id_map`. Unlike the acquisition series, there is nothing to
-        describe up front: how many interfaces it takes is the format's answer, not something
-        ``storesList.csv`` settles.
+        :meth:`_build_event_source_id_map`.
 
         Returns
         -------
@@ -363,9 +357,7 @@ class GuppyConverter(ConverterPipe):
         """Merge sub-interface metadata into a single coherent fiber photometry conversion.
 
         Gives each acquisition series a distinct default name and keeps only the behavioral event
-        stores GuPPy listed. The ``session_start_time`` needs no handling here: the base merge takes it
-        from whichever sub-interface reports one last, and the interfaces are registered so that is the
-        acquisition when it embeds a recording start, and GuPPy otherwise.
+        stores GuPPy listed.
 
         The ``FiberPhotometry`` chain itself (devices, indicators, table rows, per-series regions) is
         the user's to supply, exactly as for a bare acquisition interface.
@@ -411,9 +403,8 @@ class GuppyConverter(ConverterPipe):
 
         # Route: send every surviving type into one merged EventsTable (shared table_metadata_key + a
         # declared EventTables entry naming it), so a single DynamicTableRegion from the GuppyEventsTable
-        # can reference each type's occurrence rows. The EventTables entry is required, not decorative:
-        # it is what makes the first interface write a merged table carrying the event_type discriminator
-        # column, without which a second interface contributing to the same table fails.
+        # can reference each type's occurrence rows. The EventTables entry is what makes the first
+        # interface write a merged table carrying the event_type discriminator column.
         for _, event_types in self._iter_event_type_blocks(metadata):
             for entry in event_types.values():
                 entry["table_metadata_key"] = _MERGED_EVENTS_TABLE_KEY
@@ -462,9 +453,6 @@ class GuppyConverter(ConverterPipe):
         than looped over ``data_interface_objects``: the acquisition interfaces build the shared
         ``FiberPhotometryTable``, the events interfaces write the merged ``EventsTable``, the registries link
         into both, and the GuPPy interface reuses them for the products that reference their rows.
-
-        Note this is deliberately *not* ``data_interface_objects`` order: ``Guppy`` is registered first,
-        for metadata precedence, but written last.
         """
         if metadata is None:
             metadata = self.get_metadata()
@@ -546,8 +534,7 @@ class GuppyConverter(ConverterPipe):
         one per stacked column. That column order is the series' own contract (column *i* of the data is
         recorded on region row *i*), and the converter chose it, so zipping the region against the
         series' ``recording_sites`` recovers each site's row. Row keys are resolved to integers by their
-        position in the rows dict, the same order the rows are written in, so the link never depends on
-        fragile hand-written integers.
+        position in the rows dict, the same order the rows are written in.
 
         Fails loudly if a series declares no region, declares a region of the wrong length, or names a
         row key the table does not define.

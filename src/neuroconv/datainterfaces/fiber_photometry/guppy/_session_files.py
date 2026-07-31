@@ -1,8 +1,7 @@
 """Recognizing GuPPy's file conventions inside a session folder.
 
 Shared by the acquisition formats whose sessions hold a mix of files: Doric and NPM both have to tell
-an acquisition file from an event file by inspection, because GuPPy identifies neither by name. Kept
-out of the modality modules themselves so neither has to import the other.
+an acquisition file from an event file by inspection, because GuPPy identifies neither by name.
 """
 
 
