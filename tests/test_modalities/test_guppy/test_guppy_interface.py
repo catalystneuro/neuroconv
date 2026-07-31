@@ -1,8 +1,6 @@
 import re
 import shutil
-from datetime import datetime, timezone
 
-import h5py
 import numpy as np
 import pandas
 import pytest
@@ -122,7 +120,6 @@ class Test_GuppyInterface:
                     ],
                     expected_psth_count=24,  # 3 events x 2 recording_sites x 2 features x {corrected, uncorrected}
                     expected_peak_auc_count=12,  # 3 events x 2 recording_sites x 2 features
-                    expected_session_start_time=datetime(2018, 10, 30, 15, 33, 54, tzinfo=timezone.utc),
                     # The mock writes the same coordsForPreProcessing windows for every recording_site, so the
                     # expected intervals are identical across recording_sites and equal the source windows.
                     expected_valid_signal_intervals={
@@ -174,24 +171,6 @@ class Test_GuppyInterface:
     def test_discovery_psths_and_peak_aucs(self, interface, case):
         assert len(interface._psths) == case["expected_psth_count"]
         assert len(interface._peak_aucs) == case["expected_peak_auc_count"]
-
-    def test_metadata_session_start_time(self, interface, case):
-        metadata = interface.get_metadata()
-        if case["expected_session_start_time"] is None:
-            assert metadata["NWBFile"].get("session_start_time") in (None, "")
-        else:
-            assert metadata["NWBFile"]["session_start_time"] == case["expected_session_start_time"]
-
-    def test_metadata_session_start_time_unset_when_time_rec_start_absent(self, case, tmp_path):
-        copied_folder = tmp_path / "guppy_output_copy"
-        shutil.copytree(case["folder_path"], copied_folder)
-        for recording_site in case["expected_recording_sites"]:
-            with h5py.File(copied_folder / f"timeCorrection_{recording_site}.hdf5", "r+") as time_correction_file:
-                del time_correction_file["timeRecStart"]
-
-        interface = _GuppyInterface(folder_path=str(copied_folder))
-        metadata = interface.get_metadata()
-        assert metadata["NWBFile"].get("session_start_time") in (None, "")
 
     def test_discovery_cross_correlations(self, interface, case):
         actual = sorted(

@@ -651,7 +651,10 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             probe = self.recording_extractor.get_probe()
             contact_ids = [f"e{i}" for i in range(num_channels)]
             probe.set_contact_ids(contact_ids)
-            self.recording_extractor = self.recording_extractor.set_probe(probe, group_mode="by_probe")
+            # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where the call
+            # is always in place, returns None and the argument is deprecated. It is required on 0.104,
+            # which otherwise returns a new recording and leaves this one unchanged.
+            self.recording_extractor.set_probe(probe, group_mode="by_probe", in_place=True)
 
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """

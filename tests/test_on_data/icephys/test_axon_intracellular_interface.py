@@ -172,8 +172,17 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
         assert names == ["10Vm"]
 
     def check_extracted_metadata(self, metadata: dict):
-        # session_start_time is a version-1 placeholder (no real date: 1900-01-01 plus a time-of-day).
-        assert metadata["NWBFile"]["session_start_time"] == datetime(1900, 1, 1, 14, 15, 0, 711999)
+        # neo below 0.15 reports a version-1 placeholder for this file (no real date: 1900-01-01 plus a
+        # time-of-day); 0.15 and above parse the real acquisition date out of the header.
+        # TODO: drop the branch once neo>=0.15 is the minimum pin and keep only the real date.
+        import neo
+        from packaging.version import Version
+
+        if Version(neo.__version__).release >= (0, 15):
+            expected_session_start_time = datetime(2005, 6, 11, 14, 15, 0, 711999)
+        else:
+            expected_session_start_time = datetime(1900, 1, 1, 14, 15, 0, 711999)
+        assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
 
         # ABF v1 has no telegraph block, so the amplifier model is unknown and the device key is the fallback.
         device_metadata_key = "amplifier"
