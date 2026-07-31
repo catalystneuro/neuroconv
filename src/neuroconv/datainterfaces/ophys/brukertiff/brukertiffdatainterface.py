@@ -30,13 +30,6 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
     associated_suffixes = (".ome", ".tif", ".xml", ".env")
     info = "Interface for Bruker Prairie View OME-TIFF imaging data."
 
-    # The microscope belongs to the folder, not to a channel or a depth plane, so it is registered
-    # under this one shared key rather than under the per-interface ``metadata_key``. Several
-    # interfaces over the same folder (as ``BrukerTiffConverter`` builds for multi-channel or disjoint
-    # volumetric data) then merge into a single ``Devices`` entry; suffixing it per interface would
-    # register one device name under several keys, which the registry rejects.
-    _device_metadata_key = "bruker_device"
-
     @classmethod
     def get_extractor_class(cls):
         from roiextractors import BrukerTiffImagingExtractor
@@ -173,12 +166,18 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         if "date" in bruker_xml_metadata:
             metadata["NWBFile"]["session_start_time"] = dateparse(bruker_xml_metadata["date"])
 
+        # The microscope belongs to the folder, not to a channel or a depth plane, so it is registered
+        # under this one shared key rather than under the per-interface ``metadata_key``. Several
+        # interfaces over the same folder (as ``BrukerTiffConverter`` builds for multi-channel or
+        # disjoint volumetric data) then merge into a single ``Devices`` entry; suffixing it per
+        # interface would register one device name under several keys, which the registry rejects.
+        device_metadata_key = "bruker_device"
         device_name = "BrukerFluorescenceMicroscope"
         device_description = f"Version {bruker_xml_metadata['version']}" if "version" in bruker_xml_metadata else None
         device_entry = {"name": device_name}
         if device_description is not None:
             device_entry["description"] = device_description
-        metadata["Devices"] = {self._device_metadata_key: device_entry}
+        metadata["Devices"] = {device_metadata_key: device_entry}
 
         name_suffix = self.channel_name if self.channel_name is not None else ""
         if self.plane_index is not None:
@@ -196,7 +195,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         imaging_plane_entry = {
             "name": imaging_plane_name,
             "description": "The imaging plane origin_coords units are in the microscope reference frame.",
-            "device_metadata_key": self._device_metadata_key,
+            "device_metadata_key": device_metadata_key,
             "imaging_rate": sampling_frequency,
             "excitation_lambda": np.nan,
             "indicator": "unknown",

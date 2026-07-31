@@ -15,21 +15,22 @@ from ....utils import DeepDict, dict_deep_update, get_json_schema_from_method_si
 
 
 class BrukerTiffConverter(ConverterPipe):
-    """Convenience converter that auto-detects channels in a Bruker TIFF folder.
+    """Convert a Bruker Prairie View session.
 
-    Builds one :class:`~neuroconv.datainterfaces.BrukerTiffImagingInterface` per channel
-    found in the folder's Bruker ``.xml``, so multi-channel acquisitions (e.g. dual-color)
-    produce one ``ImagingPlane`` and one ``TwoPhotonSeries`` per channel without manual
-    enumeration. Single-channel folders pass through with no channel selection.
+    Point this at the session folder (the OME-TIFF files and the ``.xml`` that describes them) and
+    every channel in it is written: one ``ImagingPlane`` and one ``TwoPhotonSeries`` per channel,
+    all referring to a single ``Device`` named ``BrukerFluorescenceMicroscope``. Planar and
+    volumetric, single-channel and multi-channel sessions are all handled; a single-channel session
+    needs no extra arguments.
 
-    Volumetric data is written according to ``plane_separation_type``: ``"contiguous"``
-    (default) writes a single 4D ``TwoPhotonSeries`` per channel, while ``"disjoint"`` writes
-    one 2D ``TwoPhotonSeries`` and one ``ImagingPlane`` per depth plane (per channel), each
-    carrying that plane's own focal depth. Disjoint is enumerated by selecting planes on the
-    unified interface, replacing the deprecated ``BrukerTiffMultiPlaneConverter``.
+    ``plane_separation_type`` chooses how a volumetric session is written. ``"contiguous"``
+    (default) writes the volume as one 4D ``TwoPhotonSeries`` per channel; ``"disjoint"`` writes
+    each depth plane as its own 2D ``TwoPhotonSeries`` and ``ImagingPlane``, carrying that plane's
+    own focal depth. It has no effect on planar sessions. This replaces the deprecated
+    ``BrukerTiffMultiPlaneConverter``.
 
-    Per-interface options (``stub_test``, ``stub_samples``, etc.) are passed through the
-    standard ``conversion_options`` dict keyed by interface name, e.g.::
+    Conversion options (``stub_test``, ``stub_samples``, etc.) are given per interface, keyed by
+    interface name::
 
         converter.run_conversion(
             nwbfile_path=...,

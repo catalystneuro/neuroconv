@@ -33,8 +33,8 @@ describes them. Point :py:class:`~neuroconv.converters.BrukerTiffConverter` at t
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 That call covers any Prairie View session, planar or volumetric, single-channel or multi-channel.
-The converter reads the channels from the ``.xml`` and writes one ``ImagingPlane`` and one
-``TwoPhotonSeries`` per channel, all referring to the one microscope ``Device``.
+Every channel in the session is written as its own ``ImagingPlane`` and ``TwoPhotonSeries``, all
+referring to a single ``Device`` named ``BrukerFluorescenceMicroscope``.
 
 **Writing a volumetric session**
 
@@ -65,12 +65,13 @@ The setting has no effect on planar sessions.
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-**Converting a single channel or a single plane**
+**Choosing what gets written**
 
-To write part of a session rather than all of it, use
-:py:class:`~neuroconv.datainterfaces.BrukerTiffImagingInterface` directly. ``channel_name`` selects
-one channel (``BrukerTiffImagingInterface.get_available_channels(folder_path=...)`` lists what is
-available) and ``plane_index`` pins the interface to a single depth plane of a volumetric session.
+The converter writes the whole session. To write only part of it, or to combine it with interfaces
+from other modalities, build :py:class:`~neuroconv.datainterfaces.BrukerTiffImagingInterface`
+yourself. ``channel_name`` selects one channel
+(``BrukerTiffImagingInterface.get_available_channels(folder_path=...)`` lists what is available) and
+``plane_index`` pins the interface to a single depth plane of a volumetric session.
 
 .. code-block:: python
 
@@ -89,12 +90,10 @@ available) and ``plane_index`` pins the interface to a single depth plane of a v
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-**Combining with other data**
-
-To write a Bruker session alongside interfaces from other modalities, build the per-channel
-interfaces yourself and combine them with a :py:class:`~neuroconv.ConverterPipe`. Each interface
-gets its own auto-suffixed ``metadata_key``, so the imaging planes and series stay namespaced while
-the microscope stays shared.
+Several of them go together in a :py:class:`~neuroconv.ConverterPipe`, which is how you write an
+arbitrary set of channels or planes, or add interfaces from other modalities. Each one gets its own
+auto-suffixed ``metadata_key``, so the imaging planes and series stay namespaced while the
+microscope stays shared.
 
 .. code-block:: python
 
