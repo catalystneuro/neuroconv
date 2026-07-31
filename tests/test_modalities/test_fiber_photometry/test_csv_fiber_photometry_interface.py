@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 from neuroconv.datainterfaces import (
     CSVFiberPhotometryInterface,
@@ -110,6 +111,176 @@ class TestCSVFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             "data",
         ]
 
+    def test_time_unit_scales_timestamps_to_seconds(self, tmp_path):
+        """A non-second time_unit scales the timestamps column to seconds; the default leaves it as-is."""
+        # Timestamps in milliseconds: 1000 * (k / 128), exactly representable, so ms/1e3 == TIMESTAMPS.
+        path = tmp_path / "milliseconds.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS * 1e3, "data": SIGNAL_DATA}).to_csv(path, index=False)
+
+        milliseconds = CSVFiberPhotometryInterface(
+            file_path=path, data_columns="data", timestamps_column="timestamps", time_unit="milliseconds"
+        )
+        np.testing.assert_array_equal(milliseconds.get_original_timestamps(), TIMESTAMPS)
+
+        # The default (seconds) applies no scaling, so the raw millisecond values come back unchanged.
+        default = CSVFiberPhotometryInterface(file_path=path, data_columns="data", timestamps_column="timestamps")
+        np.testing.assert_array_equal(default.get_original_timestamps(), TIMESTAMPS * 1e3)
+
+
+class TestCSVFiberPhotometryDemux:
+    """Demultiplexing one channel out of an interleaved single-file recording.
+
+    Focused unit tests for the demux read path (column and stride modes). The full metadata -> NWB
+    roundtrip is exercised by ``TestCSVFiberPhotometryInterface`` above, which the demux path reuses
+    unchanged: demux only changes which rows ``_read_dataframe`` returns.
+    """
+
+    def test_column_demux_reads_one_labeled_channel(self, tmp_path):
+        """A column demux reads only the rows carrying this channel's label."""
+        path = tmp_path / "interleaved.csv"
+        # LedState 1 (signal) and 2 (control) alternate down the rows on a shared timebase.
+        frame = pd.DataFrame(
+            {"timestamps": np.repeat(TIMESTAMPS, 2), "LedState": np.tile([1, 2], NUM_SAMPLES), "data": 0.0}
+        )
+        frame.loc[frame["LedState"] == 1, "data"] = SIGNAL_DATA
+        frame.loc[frame["LedState"] == 2, "data"] = CONTROL_DATA
+        frame.to_csv(path, index=False)
+        interface = CSVFiberPhotometryInterface(
+            file_path=path,
+            data_columns="data",
+            timestamps_column="timestamps",
+            demux_configuration={"by": "column", "column": "LedState", "values": 1},
+        )
+        np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
+        np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
+
+    def test_column_demux_reads_several_labels_as_one_channel(self, tmp_path):
+        """A list of labels reads the rows carrying any of them as one channel.
+
+        One channel can be named by more than one label: an NPM ``LedState`` packs the digital input
+        lines into the same integer as the excitation LED, so a single LED is written as several
+        distinct codes -- here 1 and 9 for the signal.
+        """
+        path = tmp_path / "interleaved_multi_label.csv"
+        # The signal rows alternate between the two codes for their LED; the control rows are always 2.
+        led_state = np.tile([1, 2, 9, 2], NUM_SAMPLES // 2)
+        data = np.empty(2 * NUM_SAMPLES)
+        data[0::2] = SIGNAL_DATA
+        data[1::2] = CONTROL_DATA
+        pd.DataFrame({"timestamps": np.repeat(TIMESTAMPS, 2), "LedState": led_state, "data": data}).to_csv(
+            path, index=False
+        )
+
+        both_codes = CSVFiberPhotometryInterface(
+            file_path=path,
+            data_columns="data",
+            timestamps_column="timestamps",
+            demux_configuration={"by": "column", "column": "LedState", "values": [1, 9]},
+        )
+        np.testing.assert_array_equal(both_codes.get_original_timestamps(), TIMESTAMPS)
+        np.testing.assert_array_equal(both_codes._read_response_data(), SIGNAL_DATA)
+
+    def test_column_demux_empty_values_raises(self, tmp_path):
+        """An empty label list selects no rows at all, so it is rejected up front."""
+        path = tmp_path / "interleaved.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS, "LedState": 1, "data": SIGNAL_DATA}).to_csv(path, index=False)
+        with pytest.raises(ValidationError, match="at least 1 item"):
+            CSVFiberPhotometryInterface(
+                file_path=path,
+                data_columns="data",
+                timestamps_column="timestamps",
+                demux_configuration={"by": "column", "column": "LedState", "values": []},
+            )
+
+    def test_column_demux_skips_leading_rows(self, tmp_path):
+        """``skip_rows`` drops a leading frame whose label would otherwise select it into the channel.
+
+        A startup frame labeled with every channel's value at once (an NPM initialization frame sets
+        every excitation bit, so it matches whichever wavelength is asked for) belongs to no channel,
+        and its label alone cannot exclude it.
+        """
+        path = tmp_path / "interleaved_with_startup.csv"
+        timestamps = np.concatenate([[-1.0], np.repeat(TIMESTAMPS, 2)])
+        led_state = np.concatenate([[1], np.tile([1, 2], NUM_SAMPLES)])
+        data = np.empty(1 + 2 * NUM_SAMPLES)
+        data[0] = -1.0  # the startup frame's value, which must not reach either channel
+        data[1::2] = SIGNAL_DATA
+        data[2::2] = CONTROL_DATA
+        pd.DataFrame({"timestamps": timestamps, "LedState": led_state, "data": data}).to_csv(path, index=False)
+
+        interface = CSVFiberPhotometryInterface(
+            file_path=path,
+            data_columns="data",
+            timestamps_column="timestamps",
+            demux_configuration={"by": "column", "column": "LedState", "values": 1, "skip_rows": 1},
+        )
+        np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
+        np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
+
+    def test_stride_demux_reads_one_cyclic_channel(self, tmp_path):
+        """A stride demux reads every ``channels``-th row from ``index`` (header-less, no label column)."""
+        path = tmp_path / "strided.csv"
+        interleaved_data = np.empty(2 * NUM_SAMPLES)
+        interleaved_data[0::2] = SIGNAL_DATA
+        interleaved_data[1::2] = CONTROL_DATA
+        pd.DataFrame({"a": np.repeat(TIMESTAMPS, 2), "b": interleaved_data}).to_csv(path, index=False, header=False)
+        signal = CSVFiberPhotometryInterface(
+            file_path=path,
+            data_columns=1,
+            timestamps_column=0,
+            demux_configuration={"by": "stride", "channels": 2, "index": 0},
+        )
+        control = CSVFiberPhotometryInterface(
+            file_path=path,
+            data_columns=1,
+            timestamps_column=0,
+            demux_configuration={"by": "stride", "channels": 2, "index": 1},
+        )
+        np.testing.assert_array_equal(signal.get_original_timestamps(), TIMESTAMPS)
+        np.testing.assert_array_equal(signal._read_response_data(), SIGNAL_DATA)
+        np.testing.assert_array_equal(control._read_response_data(), CONTROL_DATA)
+
+    def test_stride_demux_skips_leading_rows(self, tmp_path):
+        """``skip_rows`` drops leading calibration rows so the cyclic alignment lands on the right channel."""
+        path = tmp_path / "strided_skip.csv"
+        interleaved_data = np.empty(1 + 2 * NUM_SAMPLES)
+        interleaved_data[0] = -1.0  # a leading calibration frame ahead of the two-channel cycle
+        interleaved_data[1::2] = SIGNAL_DATA
+        interleaved_data[2::2] = CONTROL_DATA
+        timestamps = np.concatenate([[0.0], np.repeat(TIMESTAMPS, 2)])
+        pd.DataFrame({"a": timestamps, "b": interleaved_data}).to_csv(path, index=False, header=False)
+        interface = CSVFiberPhotometryInterface(
+            file_path=path,
+            data_columns=1,
+            timestamps_column=0,
+            demux_configuration={"by": "stride", "channels": 2, "index": 0, "skip_rows": 1},
+        )
+        np.testing.assert_array_equal(interface._read_response_data(), SIGNAL_DATA)
+
+    def test_column_demux_missing_label_column_raises(self, tmp_path):
+        """A column demux naming an absent label column fails loudly at construction."""
+        path = tmp_path / "signal.csv"
+        pd.DataFrame({"timestamps": TIMESTAMPS, "data": SIGNAL_DATA}).to_csv(path, index=False)
+        with pytest.raises(AssertionError, match="not found"):
+            CSVFiberPhotometryInterface(
+                file_path=path,
+                data_columns="data",
+                timestamps_column="timestamps",
+                demux_configuration={"by": "column", "column": "LedState", "values": 1},
+            )
+
+    def test_stride_demux_index_beyond_channels_raises(self, tmp_path):
+        """A stride demux with ``index >= channels`` addresses no channel and is rejected up front."""
+        path = tmp_path / "strided.csv"
+        pd.DataFrame({"a": TIMESTAMPS, "b": SIGNAL_DATA}).to_csv(path, index=False, header=False)
+        with pytest.raises(ValidationError, match="must be <"):
+            CSVFiberPhotometryInterface(
+                file_path=path,
+                data_columns=1,
+                timestamps_column=0,
+                demux_configuration={"by": "stride", "channels": 2, "index": 2},
+            )
+
 
 class TestMultiFileCSVFiberPhotometryInterface:
     """Aggregating several per-channel CSV files into one FiberPhotometryResponseSeries.
@@ -149,6 +320,21 @@ class TestMultiFileCSVFiberPhotometryInterface:
         """With no explicit metadata_key, it is derived from all file names, in order."""
         assert interface.metadata_key == "fiber_photometry_sample_signal_channel_sample_control_channel"
         assert interface.metadata_key in interface.get_metadata()["FiberPhotometry"]
+
+    def test_time_unit_scales_timestamps_to_seconds(self, tmp_path):
+        """time_unit scales the (first file's) timestamps to seconds; alignment is checked post-scaling."""
+        signal_path = tmp_path / "signal.csv"
+        control_path = tmp_path / "control.csv"
+        # Both files carry millisecond timestamps; 1000 * (k / 128) is exact, so ms/1e3 == TIMESTAMPS.
+        pd.DataFrame({"timestamps": TIMESTAMPS * 1e3, "data": SIGNAL_DATA}).to_csv(signal_path, index=False)
+        pd.DataFrame({"timestamps": TIMESTAMPS * 1e3, "data": CONTROL_DATA}).to_csv(control_path, index=False)
+        interface = MultiFileCSVFiberPhotometryInterface(
+            file_paths=[signal_path, control_path],
+            data_columns="data",
+            timestamps_column="timestamps",
+            time_unit="milliseconds",
+        )
+        np.testing.assert_array_equal(interface.get_original_timestamps(), TIMESTAMPS)
 
     def test_secondary_file_may_omit_timestamps_column(self, tmp_path):
         """A secondary file whose (redundant) timestamps column is absent is still aggregated."""

@@ -1,3 +1,4 @@
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -303,12 +304,18 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             The resulting groups determine how electrode groups and electrodes are organized
             in the NWB file, with each group corresponding to one ElectrodeGroup.
         """
-        # Set the probe to the recording extractor
-        self.recording_extractor._set_probes(
-            probe,
-            in_place=True,
-            group_mode=group_mode,
-        )
+        from probeinterface import ProbeGroup
+
+        # Set the probe to the recording extractor. SpikeInterface 0.105 removed the private
+        # `_set_probes`, which took either a Probe or a ProbeGroup; the public entry points are split
+        # by type, so dispatch here.
+        # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where these calls
+        # are always in place and the argument is deprecated. It is required on 0.104, which otherwise
+        # returns a new recording and leaves this one unchanged.
+        if isinstance(probe, ProbeGroup):
+            self.recording_extractor.set_probegroup(probe, group_mode=group_mode, in_place=True)
+        else:
+            self.recording_extractor.set_probe(probe, group_mode=group_mode, in_place=True)
 
         # Spike interface sets the "group" property
         # But neuroconv allows "group_name" property to override spike interface "group" value
@@ -344,7 +351,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         metadata: dict | None = None,
         *,
         stub_test: bool = False,
-        write_as: Literal["raw", "lfp", "processed"] = "raw",
+        parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
+        write_as: Literal["raw", "lfp", "processed"] | None = None,
         data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
         write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
@@ -366,11 +374,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_as : {'raw', 'processed', 'lfp'}, default='raw'
-            Specifies how to save the trace data in the NWB file. Options are:
-            - 'raw': Save the data in the acquisition group.
-            - 'processed': Save the data as FilteredEphys in a processing module.
-            - 'lfp': Save the data as LFP in a processing module.
+        parent_container : {'acquisition', 'processing/LFP', 'processing/FilteredEphys'}, default: 'acquisition'
+            Which NWB container to write the trace data to. Options are:
+            - 'acquisition': raw acquired data, in the acquisition group.
+            - 'processing/LFP': an ``LFP`` container in the ecephys processing module.
+            - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
+        write_as : {'raw', 'processed', 'lfp'}, optional
+            Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
+            'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
         data_representation : {'digital_counts', 'physical_units'}, default='digital_counts'
             How the trace values are materialized in the stored data array.
             - 'digital_counts': store the raw integer samples and carry the per-channel gain in
@@ -416,6 +427,18 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
             explicitly, regardless of whether the sampling rate is uniform.
         """
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of BaseRecordingExtractorInterface.add_to_nwbfile() is deprecated and "
+                "will be removed on or after December 2026. Use 'parent_container' instead "
+                "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
+                write_as
+            ]
+
         from ...tools.spikeinterface import (
             _stub_recording,
             add_recording_metadata_to_nwbfile,
@@ -453,7 +476,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
-                write_as=write_as,
+                parent_container=parent_container,
                 data_representation=data_representation,
                 es_key=self.es_key,
                 iterator_type=iterator_type,

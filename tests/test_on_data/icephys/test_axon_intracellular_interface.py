@@ -65,9 +65,10 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
         # session_start_time is read from the ABF header (a real date for version 2).
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 12, 3, 14, 13, 3, 760000)
 
-        # Default identity: the device key is the plain file stem and the electrode key is the plain stem plus
-        # response channel. NWB object names are the CamelCase form of the electrode key.
-        device_metadata_key = "user_list"
+        # Default identity: the electrode key is the plain file stem plus response channel, and the device key is
+        # the amplifier the header reports (runs on one amplifier meet at one entry, so it is not the stem). NWB
+        # object names are the CamelCase form of the electrode key.
+        device_metadata_key = "axopatch_200b"
         electrode_metadata_key = "user_list_IN0"
         electrode_name_suffix = "UserListIN0"
 
@@ -171,17 +172,28 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
         assert names == ["10Vm"]
 
     def check_extracted_metadata(self, metadata: dict):
-        # session_start_time is a version-1 placeholder (no real date: 1900-01-01 plus a time-of-day).
-        assert metadata["NWBFile"]["session_start_time"] == datetime(1900, 1, 1, 14, 15, 0, 711999)
+        # neo below 0.15 reports a version-1 placeholder for this file (no real date: 1900-01-01 plus a
+        # time-of-day); 0.15 and above parse the real acquisition date out of the header.
+        # TODO: drop the branch once neo>=0.15 is the minimum pin and keep only the real date.
+        import neo
+        from packaging.version import Version
 
-        device_metadata_key = "abf1_gapfree_bogus_episode_count"
+        if Version(neo.__version__).release >= (0, 15):
+            expected_session_start_time = datetime(2005, 6, 11, 14, 15, 0, 711999)
+        else:
+            expected_session_start_time = datetime(1900, 1, 1, 14, 15, 0, 711999)
+        assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
+
+        # ABF v1 has no telegraph block, so the amplifier model is unknown and the device key is the fallback.
+        device_metadata_key = "amplifier"
         electrode_metadata_key = "abf1_gapfree_bogus_episode_count_10Vm"
         electrode_name_suffix = "Abf1GapfreeBogusEpisodeCount10vm"
 
-        # ABF v1 has no telegraph block, so the amplifier model is unknown: get_metadata does not invent a name
-        # (only a generic description); the actual device name is filled at write time from the placeholder.
+        # The model being unknown, the description stays generic and the name is the generic one (NWB requires a
+        # name, so it is not a made-up model).
         expected_device_metadata = {
             device_metadata_key: {
+                "name": "AxonAmplifier",
                 "description": "Axon Instruments amplifier.",
             }
         }
@@ -204,8 +216,8 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
             assert response.rate == 1000.0  # single segment -> uniform rate in Hz, not timestamps
             assert response.timestamps is None
             assert len(nwbfile.stimulus) == 0
-            # No telegraph model -> the device name comes from the write-time placeholder.
-            assert "Amplifier" in nwbfile.devices
+            # No telegraph model -> the device carries the generic name.
+            assert "AxonAmplifier" in nwbfile.devices
             intracellular_recordings = nwbfile.intracellular_recordings
             assert len(intracellular_recordings) == 1
             # Gap-free acquisition (operation mode 3) -> the `stimulus_type` column is the "gap-free" label.
@@ -234,7 +246,7 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2018, 7, 2, 9, 29, 4, 849999)
 
-        device_metadata_key = "step"
+        device_metadata_key = "multiclamp_700"
         electrode_metadata_key = "step_IN0"
         electrode_name_suffix = "StepIN0"
         assert metadata["Devices"] == {
@@ -310,7 +322,7 @@ class TestAxonIZero(DataInterfaceTestMixin):
         # session_start_time is read from the ABF header (this file is anonymized, so the date is a cleared default).
         assert metadata["NWBFile"]["session_start_time"] == datetime(2000, 1, 1, 0, 0)
 
-        device_metadata_key = "abf2_zero_current_clamp"
+        device_metadata_key = "multiclamp_700"
         electrode_metadata_key = "abf2_zero_current_clamp_IN0"
         electrode_name_suffix = "Abf2ZeroCurrentClampIN0"
         assert metadata["Devices"] == {

@@ -1,18 +1,156 @@
 import shutil
 import tempfile
+import warnings
 from pathlib import Path
 from warnings import warn
 
+import pytest
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 
 from neuroconv import NWBConverter
-from neuroconv.converters import BrukerTiffMultiPlaneConverter
+from neuroconv.converters import BrukerTiffConverter, BrukerTiffMultiPlaneConverter
 from neuroconv.datainterfaces.ophys.brukertiff.brukertiffconverter import (
     BrukerTiffSinglePlaneConverter,
 )
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
+
+
+class TestBrukerTiffConverterSinglePlane:
+    """BrukerTiffConverter on single-channel single-plane data: one acquisition."""
+
+    folder_path = (
+        OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
+    )
+    stub_samples = 2
+
+    def test_run_conversion(self, tmp_path):
+        converter = BrukerTiffConverter(folder_path=str(self.folder_path))
+        conversion_options = {
+            name: dict(stub_test=True, stub_samples=self.stub_samples) for name in converter.data_interface_objects
+        }
+
+        nwbfile_path = str(tmp_path / "single_plane.nwb")
+        metadata = converter.get_metadata()
+        metadata["NWBFile"]["session_description"] = "test"
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, conversion_options=conversion_options
+        )
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            assert len(nwbfile.acquisition) == 1
+            assert len(nwbfile.imaging_planes) == 1
+            assert len(nwbfile.devices) == 1
+            assert nwbfile.acquisition["TwoPhotonSeries"].data.shape[0] == self.stub_samples
+
+
+class TestBrukerTiffConverterVolumetric:
+    """BrukerTiffConverter on single-channel volumetric data: one 4D acquisition."""
+
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+    stub_samples = 2
+
+    def test_run_conversion(self, tmp_path):
+        converter = BrukerTiffConverter(folder_path=str(self.folder_path))
+        conversion_options = {
+            name: dict(stub_test=True, stub_samples=self.stub_samples) for name in converter.data_interface_objects
+        }
+
+        nwbfile_path = str(tmp_path / "volumetric.nwb")
+        metadata = converter.get_metadata()
+        metadata["NWBFile"]["session_description"] = "test"
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, conversion_options=conversion_options
+        )
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            assert len(nwbfile.acquisition) == 1
+            photon_series = nwbfile.acquisition["TwoPhotonSeries"]
+            # Volumetric: shape is (samples, height, width, planes)
+            assert len(photon_series.data.shape) == 4
+            assert photon_series.data.shape[0] == self.stub_samples
+
+
+class TestBrukerTiffConverterMultiChannel:
+    """BrukerTiffConverter on multi-channel single-plane data: one acquisition per channel."""
+
+    folder_path = (
+        OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
+    )
+    stub_samples = 2
+
+    def test_run_conversion(self, tmp_path):
+        converter = BrukerTiffConverter(folder_path=str(self.folder_path))
+        conversion_options = {
+            name: dict(stub_test=True, stub_samples=self.stub_samples) for name in converter.data_interface_objects
+        }
+
+        nwbfile_path = str(tmp_path / "multi_channel.nwb")
+        metadata = converter.get_metadata()
+        metadata["NWBFile"]["session_description"] = "test"
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, conversion_options=conversion_options
+        )
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            assert len(nwbfile.acquisition) == 2
+            assert len(nwbfile.imaging_planes) == 2
+            # One microscope for the folder, shared by both channels rather than one device per channel.
+            assert len(nwbfile.devices) == 1
+
+
+class TestBrukerTiffConverterDisjoint:
+    """BrukerTiffConverter disjoint mode writes one 2D TwoPhotonSeries + ImagingPlane per depth plane.
+
+    Also asserts equivalence with the deprecated ``BrukerTiffMultiPlaneConverter`` it replaces: the
+    per-plane data and each plane's focal-depth ``origin_coords`` must match.
+    """
+
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+    stub_samples = 2
+
+    def test_disjoint_matches_deprecated_converter(self, tmp_path):
+        converter = BrukerTiffConverter(folder_path=str(self.folder_path), plane_separation_type="disjoint")
+        interface_names = list(converter.data_interface_objects)
+        assert interface_names == ["BrukerImaging_plane0", "BrukerImaging_plane1"]
+
+        new_path = str(tmp_path / "disjoint_new.nwb")
+        converter.run_conversion(
+            nwbfile_path=new_path,
+            conversion_options={name: dict(stub_test=True, stub_samples=self.stub_samples) for name in interface_names},
+        )
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            old_converter = BrukerTiffMultiPlaneConverter(
+                folder_path=str(self.folder_path), plane_separation_type="disjoint"
+            )
+        old_path = str(tmp_path / "disjoint_old.nwb")
+        old_converter.run_conversion(nwbfile_path=old_path, stub_test=True, stub_samples=self.stub_samples)
+
+        with NWBHDF5IO(new_path) as io_new, NWBHDF5IO(old_path) as io_old:
+            nwbfile_new = io_new.read()
+            nwbfile_old = io_old.read()
+
+            assert list(nwbfile_new.acquisition) == ["TwoPhotonSeriesPlane0", "TwoPhotonSeriesPlane1"]
+            assert len(nwbfile_new.imaging_planes) == 2
+            # One microscope for the folder, shared by both depth planes rather than one device per plane.
+            assert len(nwbfile_new.devices) == 1
+
+            # Old converter names planes by the Bruker stream index; match by acquisition order.
+            new_series = [nwbfile_new.acquisition[f"TwoPhotonSeriesPlane{index}"] for index in range(2)]
+            old_series = [nwbfile_old.acquisition[f"TwoPhotonSeriesCh2{index:06d}"] for index in (1, 2)]
+
+            for new_two_photon_series, old_two_photon_series in zip(new_series, old_series):
+                assert_array_equal(new_two_photon_series.data[:], old_two_photon_series.data[:])
+                assert_array_equal(
+                    new_two_photon_series.imaging_plane.origin_coords[:],
+                    old_two_photon_series.imaging_plane.origin_coords[:],
+                )
 
 
 class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
@@ -22,7 +160,9 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
         )
         cls.converter_kwargs = dict(folder_path=cls.folder_path, plane_separation_type="disjoint")
-        cls.converter = BrukerTiffMultiPlaneConverter(**cls.converter_kwargs)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            cls.converter = BrukerTiffMultiPlaneConverter(**cls.converter_kwargs)
         cls.test_dir = Path(tempfile.mkdtemp())
 
         cls.photon_series_names = ["TwoPhotonSeriesCh2000001", "TwoPhotonSeriesCh2000002"]
@@ -39,15 +179,20 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
 
     def test_volumetric_imaging_raises_with_single_plane_converter(self):
         exc_msg = "For volumetric imaging data use BrukerTiffMultiPlaneConverter."
-        with self.assertRaisesWith(ValueError, exc_msg=exc_msg):
-            BrukerTiffSinglePlaneConverter(folder_path=self.folder_path)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            with self.assertRaisesWith(ValueError, exc_msg=exc_msg):
+                BrukerTiffSinglePlaneConverter(folder_path=self.folder_path)
 
     def test_incorrect_plane_separation_type_raises(self):
-        import pytest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError, match="Input should be 'disjoint' or 'contiguous'"):
             BrukerTiffMultiPlaneConverter(folder_path=self.folder_path, plane_separation_type="test")
+
+    def test_deprecation_warning(self):
+        with pytest.warns(FutureWarning, match="deprecated"):
+            BrukerTiffMultiPlaneConverter(folder_path=self.folder_path, plane_separation_type="disjoint")
 
     def test_run_conversion_add_conversion_options(self):
         nwbfile_path = str(self.test_dir / "test_brukertiff_converter_conversion_options.nwb")
@@ -100,7 +245,9 @@ class TestBrukerTiffMultiPlaneConverterContiguousPlaneCase(TestCase):
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
         )
         cls.converter_kwargs = dict(folder_path=cls.folder_path, plane_separation_type="contiguous")
-        cls.converter = BrukerTiffMultiPlaneConverter(**cls.converter_kwargs)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            cls.converter = BrukerTiffMultiPlaneConverter(**cls.converter_kwargs)
         cls.test_dir = Path(tempfile.mkdtemp())
 
         cls.photon_series_name = "TwoPhotonSeries"
@@ -161,13 +308,19 @@ class TestBrukerTiffSinglePlaneConverterCase(TestCase):
         cls.folder_path = str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
         )
-        cls.converter = BrukerTiffSinglePlaneConverter(folder_path=cls.folder_path)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            cls.converter = BrukerTiffSinglePlaneConverter(folder_path=cls.folder_path)
         cls.test_dir = Path(tempfile.mkdtemp())
 
         cls.photon_series_names = ["TwoPhotonSeriesCh1", "TwoPhotonSeriesCh2"]
         cls.imaging_plane_names = ["ImagingPlaneCh1", "ImagingPlaneCh2"]
         cls.stub_samples = 2
         cls.conversion_options = dict(stub_test=True, stub_samples=cls.stub_samples)
+
+    def test_deprecation_warning(self):
+        with pytest.warns(FutureWarning, match="deprecated"):
+            BrukerTiffSinglePlaneConverter(folder_path=self.folder_path)
 
     @classmethod
     def tearDownClass(cls) -> None:
