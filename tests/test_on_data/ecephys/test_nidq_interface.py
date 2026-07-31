@@ -17,70 +17,119 @@ if not ECEPHY_DATA_PATH.exists():
 
 
 def test_nidq_digital_data(tmp_path):
-    """Test digital channels with default metadata configuration."""
+    """The default digital path derives every line of the XD0 word into its own EventsTable.
+
+    SpikeGLX packs its digital lines into one integer word per saved channel, so the board's handle is
+    the word ``XD0`` and a line is reached by naming the bit. ``DigitalChannelTest_g0`` declares eight
+    lines (``niXDChans1=0:7``) of which only bit 0 ever goes high, so the file must yield one populated
+    table and seven zero-row ones: the lines existed in the recording, nothing fired on them.
+    """
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
     interface = SpikeGLXNIDQInterface(folder_path=folder_path)
 
-    # Verify metadata structure with Events section
     metadata = interface.get_metadata()
-    events_metadata = metadata.get("Events", {})
     default_metadata_key = "SpikeGLXNIDQ"
-    # Expected Events metadata structure for all 8 digital channels
-    expected_events_metadata = {
-        default_metadata_key: {
-            "nidq#XD0": {
-                "name": "EventsNIDQDigitalChannelXD0",
-                "description": "On and Off Events from channel XD0",
-            },
-            "nidq#XD1": {
-                "name": "EventsNIDQDigitalChannelXD1",
-                "description": "On and Off Events from channel XD1",
-            },
-            "nidq#XD2": {
-                "name": "EventsNIDQDigitalChannelXD2",
-                "description": "On and Off Events from channel XD2",
-            },
-            "nidq#XD3": {
-                "name": "EventsNIDQDigitalChannelXD3",
-                "description": "On and Off Events from channel XD3",
-            },
-            "nidq#XD4": {
-                "name": "EventsNIDQDigitalChannelXD4",
-                "description": "On and Off Events from channel XD4",
-            },
-            "nidq#XD5": {
-                "name": "EventsNIDQDigitalChannelXD5",
-                "description": "On and Off Events from channel XD5",
-            },
-            "nidq#XD6": {
-                "name": "EventsNIDQDigitalChannelXD6",
-                "description": "On and Off Events from channel XD6",
-            },
-            "nidq#XD7": {
-                "name": "EventsNIDQDigitalChannelXD7",
-                "description": "On and Off Events from channel XD7",
-            },
-        }
+    event_types = metadata["Events"][default_metadata_key]["event_types"]
+
+    # One event type per declared line, identified by word plus bit plus reading.
+    expected_event_types = {
+        "XD0_bit0_high_period": {"event_name": "XD0_bit0_high_period"},
+        "XD0_bit1_high_period": {"event_name": "XD0_bit1_high_period"},
+        "XD0_bit2_high_period": {"event_name": "XD0_bit2_high_period"},
+        "XD0_bit3_high_period": {"event_name": "XD0_bit3_high_period"},
+        "XD0_bit4_high_period": {"event_name": "XD0_bit4_high_period"},
+        "XD0_bit5_high_period": {"event_name": "XD0_bit5_high_period"},
+        "XD0_bit6_high_period": {"event_name": "XD0_bit6_high_period"},
+        "XD0_bit7_high_period": {"event_name": "XD0_bit7_high_period"},
     }
+    assert event_types == expected_event_types
 
-    # Validate that events_metadata matches expected structure
-    assert events_metadata == expected_events_metadata
-
-    # Write with default configuration
     nwbfile_path = tmp_path / "nidq_test_digital_default.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
 
     nwbfile = read_nwb(nwbfile_path)
-    assert len(nwbfile.acquisition) == 1
-    events = nwbfile.acquisition["EventsNIDQDigitalChannelXD0"]
-    assert events.timestamps.size == 326
-    # Check that data alternates between the two label indices
-    assert len(np.unique(events.data)) == 2
+    # Events land in the dedicated /events group, not in acquisition.
+    assert len(nwbfile.acquisition) == 0
+    expected_table_names = {
+        "XD0Bit0HighPeriod",
+        "XD0Bit1HighPeriod",
+        "XD0Bit2HighPeriod",
+        "XD0Bit3HighPeriod",
+        "XD0Bit4HighPeriod",
+        "XD0Bit5HighPeriod",
+        "XD0Bit6HighPeriod",
+        "XD0Bit7HighPeriod",
+    }
+    assert set(nwbfile.events.keys()) == expected_table_names
 
-    # The exact label-to-index mapping depends on extractor, but should have equal counts
-    unique_data = np.unique(events.data)
-    assert np.sum(events.data == unique_data[0]) == 163
-    assert np.sum(events.data == unique_data[1]) == 163
+    fired = nwbfile.events["XD0Bit0HighPeriod"]
+    assert fired.colnames == ("timestamp", "duration")
+    assert len(fired) == 163  # 326 edges read as 163 high periods
+
+    # Timestamps are on the recording's own clock, which starts at the stream's t_start rather than at
+    # zero, so the events sit on the same axis as an analog series written from the same board.
+    np.testing.assert_allclose(fired["timestamp"][:3], [11.9944, 12.9944, 13.9944], atol=1e-4)
+    np.testing.assert_allclose(fired["duration"][:3], [0.5, 0.5, 0.5], atol=1e-4)
+
+    # The other seven lines are declared by the header but never toggle in this recording.
+    assert len(nwbfile.events["XD0Bit1HighPeriod"]) == 0
+    assert len(nwbfile.events["XD0Bit2HighPeriod"]) == 0
+    assert len(nwbfile.events["XD0Bit3HighPeriod"]) == 0
+    assert len(nwbfile.events["XD0Bit4HighPeriod"]) == 0
+    assert len(nwbfile.events["XD0Bit5HighPeriod"]) == 0
+    assert len(nwbfile.events["XD0Bit6HighPeriod"]) == 0
+    assert len(nwbfile.events["XD0Bit7HighPeriod"]) == 0
+
+
+def test_nidq_digital_channel_groups_is_deprecated(tmp_path):
+    """The released `digital_channel_groups` still writes LabeledEvents, behind a FutureWarning."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
+    digital_channel_groups = {
+        "camera": {"channels": {"nidq#XD0": {"labels_map": {0: "off", 1: "on"}}}},
+    }
+
+    with pytest.warns(FutureWarning, match="digital_channel_groups is deprecated"):
+        interface = SpikeGLXNIDQInterface(folder_path=folder_path, digital_channel_groups=digital_channel_groups)
+
+    nwbfile_path = tmp_path / "nidq_test_digital_legacy.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+
+    nwbfile = read_nwb(nwbfile_path)
+    assert "Camera" in nwbfile.acquisition
+    assert nwbfile.acquisition["Camera"].timestamps.size == 326
+
+
+def test_nidq_detection_configuration_and_digital_channel_groups_conflict():
+    """The two spellings write different NWB objects, so asking for both is an error, not a merge."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
+
+    with pytest.raises(ValueError, match="not both"):
+        SpikeGLXNIDQInterface(
+            folder_path=folder_path,
+            digital_channel_groups={"camera": {"channels": {"nidq#XD0": {"labels_map": {0: "off", 1: "on"}}}}},
+            detection_configuration={"XD0": [{"signal_conditioning": {"bits": [0]}, "detection": "rising"}]},
+        )
+
+
+def test_nidq_detection_configuration_selects_one_line():
+    """A caller-supplied configuration reads only the lines it names, with the reading it names."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
+    interface = SpikeGLXNIDQInterface(
+        folder_path=folder_path,
+        detection_configuration={
+            "XD0": [{"signal_conditioning": {"bits": [0]}, "detection": "rising", "event_name": "camera_frame"}]
+        },
+    )
+
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+    assert set(nwbfile.events.keys()) == {"CameraFrame"}
+    camera = nwbfile.events["CameraFrame"]
+    assert camera.colnames == ("timestamp",)  # a point reading carries no duration
+    assert len(camera) == 163
 
 
 def test_nidq_digital_metadata_customization(tmp_path):

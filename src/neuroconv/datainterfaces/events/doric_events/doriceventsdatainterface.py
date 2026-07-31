@@ -14,7 +14,7 @@ from ....tools.events import (
     resolve_detection_plan,
     validate_detection_configuration,
 )
-from ....tools.signal_processing import _detect_events
+from ....tools.signal_processing import _detect_events, _frames_to_seconds
 
 
 class DoricEventsInterface(BaseEventsInterface):
@@ -255,11 +255,9 @@ class DoricEventsInterface(BaseEventsInterface):
                 paths = self._available_signals[signal_source_id]
                 data = np.asarray(f[paths["data_path"]][:], dtype="float64")
                 time = np.asarray(f[paths["time_path"]][:], dtype="float64")
-                frame_period = float(np.median(np.diff(time)))  # regular Doric clock; frames -> seconds
                 for event_type_source_id, spec in detection_specs:
-                    onset_frames, duration_frames = _detect_events(data, spec["detection"])
-                    onsets = time[onset_frames]
-                    durations = None if duration_frames is None else duration_frames * frame_period
+                    onset_frames, offset_frames = _detect_events(data, spec["detection"])
+                    onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)
                     events_data_dict[event_type_source_id] = _EventsData(
                         event_type_source_id=event_type_source_id,
                         timestamps=onsets,

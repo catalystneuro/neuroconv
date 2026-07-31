@@ -9,6 +9,7 @@ tests on real data.
 import pytest
 
 from neuroconv.tools.events import (
+    _get_event_type_source_ids,
     resolve_detection_plan,
     validate_detection_configuration,
 )
@@ -25,10 +26,18 @@ class TestValidateDetectionConfiguration:
             AVAILABLE_SIGNALS,
         )
 
-    def test_empty_configuration_raises(self):
-        """``{}`` is distinct from ``None``: it selects nothing, which is always a mistake."""
-        with pytest.raises(ValueError, match="detection_configuration is empty"):
-            validate_detection_configuration({}, AVAILABLE_SIGNALS)
+    def test_empty_configuration_derives_nothing(self):
+        """``{}`` is distinct from ``None``: it selects nothing, deliberately, and is not an error.
+
+        The suppression idiom, and on an interface that writes more than events (SpikeGLX NIDQ writes
+        analog ``TimeSeries`` too) the only way to keep the rest and skip the events. It matches the
+        sibling ``analog_channel_groups`` / ``digital_channel_groups`` arguments, where ``{}`` already
+        means "write none of these".
+        """
+        validate_detection_configuration({}, AVAILABLE_SIGNALS)
+
+        assert resolve_detection_plan({}) == {}
+        assert _get_event_type_source_ids({}) == []
 
     def test_unknown_signal_raises(self):
         with pytest.raises(ValueError, match="not one of the file's signals"):

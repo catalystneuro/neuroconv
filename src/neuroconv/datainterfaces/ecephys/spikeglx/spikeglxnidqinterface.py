@@ -6,6 +6,7 @@ import numpy as np
 from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
 
+from .spikeglxnidqeventsinterface import _SpikeGLXNIDQEventsInterface
 from ....basedatainterface import BaseDataInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
 from ....utils import (
@@ -43,6 +44,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         metadata_key: str = "SpikeGLXNIDQ",
         analog_channel_groups: dict[str, dict] | None = None,
         digital_channel_groups: dict[str, dict] | None = None,
+        detection_configuration: dict | None = None,
     ):
         """
         Read analog and digital channel data from the NIDQ board for the SpikeGLX recording.
@@ -85,14 +87,16 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                     },
                 }
         digital_channel_groups : dict[str, dict], optional
+            **Deprecated.** Superseded by ``detection_configuration``, which reaches the same lines
+            through the shared signal-encoded grammar and writes native ``pynwb.event.EventsTable``
+            objects into ``nwbfile.events`` instead of ``ndx-events`` ``LabeledEvents`` objects into
+            ``acquisition``. Passing it keeps the old behaviour and raises a ``FutureWarning``.
+
             Dictionary mapping group names to digital channel configurations.
             Each group specifies which channels to include and their label mappings.
-            If None (default), all digital channels are written with auto-generated defaults.
             If empty dict {}, no digital channels are written.
 
-            Currently, only single-channel groups are supported (each group maps to one
-            LabeledEvents object). Multi-channel groups will be supported in future versions
-            when ndx-events EventsTable is integrated into NWB core.
+            Only single-channel groups are supported (each group maps to one LabeledEvents object).
 
 
             Structure:
@@ -117,6 +121,16 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                         },
                     },
                 }
+        detection_configuration : dict, optional
+            Which NIDQ signals to derive events from and how, keyed by the board's own handle
+            (``"XD0"`` for a digital word, ``"XA1"`` for an analog channel). SpikeGLX saves its digital
+            lines packed into one integer word per channel, so a line is reached by naming the word and
+            the bit: ``{"XD0": [{"signal_conditioning": {"bits": [0]}, "detection": "high_period"}]}``.
+            An analog channel is cut into events with ``{"thresholds": [c, ...]}`` plus an
+            ``event_name``. If None (default), every line of every digital word is read as a
+            ``high_period`` and the analog channels are skipped.
+
+            Mutually exclusive with the deprecated ``digital_channel_groups``.
 
         """
         # Handle deprecated positional arguments
@@ -167,7 +181,46 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self.analog_channel_ids = [ch for ch in channel_ids if "XA" in ch or "MA" in ch]
         self.has_analog_channels = len(self.analog_channel_ids) > 0
         self.has_digital_channels = len(self.analog_channel_ids) < len(channel_ids)
-        if self.has_digital_channels:
+
+        # SpikeGLX groups NIDQ channels into four categories, {MN, MA, XA, XD}, and this interface covers
+        # three of them: XA/MA become TimeSeries and XD becomes events. MN is multiplexed *neural* data
+        # and is not written at all. The reason is lack of data rather than a decision that it does not
+        # belong here: MN needs a Whisper multiplexer and no recording containing one was available, so
+        # the right output shape was never settled. Say so rather than dropping the channel in silence,
+        # since a missing channel is otherwise only discovered by noticing its absence from the file.
+        unconverted_channel_ids = [ch for ch in channel_ids if not any(kind in ch for kind in ("XA", "MA", "XD"))]
+        if unconverted_channel_ids:
+            warnings.warn(
+                f"The following NIDQ channels are not converted and will be absent from the NWB file: "
+                f"{list(unconverted_channel_ids)}. This interface writes the analog channels (XA, MA) as "
+                "TimeSeries and the digital word (XD) as events. The remaining category, multiplexed "
+                "neural channels (MN), is unsupported only because no recording containing one was "
+                "available when this was written, so there was nothing to build or test against. If you "
+                "have such a file, please open an issue at "
+                "https://github.com/catalystneuro/neuroconv/issues and support can be added.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        if digital_channel_groups is not None and detection_configuration is not None:
+            raise ValueError(
+                "Pass either detection_configuration or the deprecated digital_channel_groups, not both. "
+                "They are two spellings of the same thing and write different NWB objects."
+            )
+        # The deprecated path is opt-in from here on: it is selected only by passing
+        # digital_channel_groups, so the default conversion takes the events interface below.
+        self._uses_legacy_digital_path = digital_channel_groups is not None
+        if self._uses_legacy_digital_path:
+            warnings.warn(
+                "digital_channel_groups is deprecated and will be removed on or after August 2027. "
+                "Use detection_configuration instead, which reaches the same lines through the shared "
+                "signal-encoded grammar and writes pynwb EventsTable objects into nwbfile.events rather "
+                "than ndx-events LabeledEvents objects into acquisition.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        if self.has_digital_channels and self._uses_legacy_digital_path:
             import ndx_events  # noqa: F401
             from spikeinterface.extractors.extractor_classes import (
                 SpikeGLXEventExtractor,
@@ -183,10 +236,9 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         )
         self._validate_analog_channel_groups()
 
-        self._digital_channel_groups = (
-            digital_channel_groups if digital_channel_groups is not None else self._get_default_digital_channel_groups()
-        )
-        self._validate_digital_channel_groups()
+        self._digital_channel_groups = digital_channel_groups if self._uses_legacy_digital_path else {}
+        if self._uses_legacy_digital_path:
+            self._validate_digital_channel_groups()
 
         super().__init__(
             verbose=verbose,
@@ -196,6 +248,19 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         signal_info_key = (0, "nidq")  # Key format is (segment_index, stream_id)
         self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
         self.meta = self._signals_info_dict["meta"]
+
+        # The events half of the board. Private and constructed here rather than by the user: NIDQ analog
+        # and digital signals share one board and one clock, so the board keeps one public interface and
+        # this object is the part of it that owns the EventsTable writer. It shares the recording
+        # extractor, so both halves read one file handle and one clock.
+        self._events_interface = None
+        if self.has_digital_channels and not self._uses_legacy_digital_path:
+            self._events_interface = _SpikeGLXNIDQEventsInterface(
+                folder_path=self.folder_path,
+                detection_configuration=detection_configuration,
+                metadata_key=self.metadata_key,
+                verbose=verbose,
+            )
 
     def _validate_analog_channel_groups(self) -> None:
         """Validate analog_channel_groups structure and channel IDs."""
@@ -436,7 +501,12 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             metadata["TimeSeries"][self.metadata_key] = self._get_default_analog_metadata()
 
         # Events metadata for digital channels
-        if self.has_digital_channels:
+        if self._events_interface is not None:
+            events_metadata = self._events_interface.get_metadata()["Events"][self.metadata_key]
+            # A suppressed events half (detection_configuration={}) seeds nothing rather than an empty block.
+            if events_metadata:
+                metadata["Events"][self.metadata_key] = events_metadata
+        elif self.has_digital_channels:
             metadata["Events"][self.metadata_key] = self._get_default_events_metadata()
 
         return metadata
@@ -536,7 +606,9 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 metadata=metadata,
             )
 
-        if self.has_digital_channels:
+        if self._events_interface is not None:
+            self._events_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        elif self.has_digital_channels:
             self._add_digital_channels(nwbfile=nwbfile, metadata=metadata)
 
     def _add_analog_channels(

@@ -1,6 +1,5 @@
 """Interface for discrete events (digital IO) from Doric Neuroscience Studio CSV exports."""
 
-import numpy as np
 from pydantic import FilePath, validate_call
 
 from neuroconv.utils import DeepDict
@@ -11,7 +10,7 @@ from ....tools.events import (
     resolve_detection_plan,
     validate_detection_configuration,
 )
-from ....tools.signal_processing import _detect_events
+from ....tools.signal_processing import _detect_events, _frames_to_seconds
 
 
 class DoricCSVEventsInterface(BaseEventsInterface):
@@ -173,7 +172,6 @@ class DoricCSVEventsInterface(BaseEventsInterface):
 
         dataframe = self._read_doric_csv(self.source_data["file_path"])
         time = dataframe[self._time_column].to_numpy(dtype="float64")
-        frame_period = float(np.median(np.diff(time)))  # regular DoricStudio clock; duration frames -> seconds
 
         # Built here rather than held on the interface: the configuration is the source of truth, and the
         # plan is pure and cheap to rebuild. Grouped by signal, so a column is extracted once however
@@ -185,9 +183,8 @@ class DoricCSVEventsInterface(BaseEventsInterface):
             column = self._available_signals[signal_source_id]["column"]
             data = dataframe[column].to_numpy(dtype="float64")
             for event_type_source_id, spec in detection_specs:
-                onset_frames, duration_frames = _detect_events(data, spec["detection"])
-                onsets = time[onset_frames]
-                durations = None if duration_frames is None else duration_frames * frame_period
+                onset_frames, offset_frames = _detect_events(data, spec["detection"])
+                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
                     timestamps=onsets,
