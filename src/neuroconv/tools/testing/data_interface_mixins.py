@@ -425,13 +425,7 @@ class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAl
     # TODO: remove test_metadata and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
     def test_metadata(self, setup_interface):
-        from ..roiextractors.roiextractors import _is_dict_based_metadata
-
         metadata = self.interface.get_metadata()
-        # Dict-only interfaces no longer expose the old list-based format,
-        # so there is nothing for check_extracted_metadata_old_list_format to assert.
-        if _is_dict_based_metadata(metadata):
-            pytest.skip("Interface returns the new dict-based metadata format only")
         self.check_extracted_metadata_old_list_format(metadata)
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
@@ -439,19 +433,14 @@ class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAl
         pass
 
     def test_get_metadata(self, setup_interface):
-        """Test get_metadata with the new dict-based format.
-
-        Dual-mode interfaces (those that still expose the old list-based format) opt
-        into the new format via ``use_new_metadata_format=True``. Dict-only interfaces
-        return the new format unconditionally from ``get_metadata()``.
-        """
+        """Test get_metadata with the new dict-based format."""
         import inspect
 
         sig = inspect.signature(self.interface.get_metadata)
-        if "use_new_metadata_format" in sig.parameters:
-            metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        else:
-            metadata = self.interface.get_metadata()
+        if "use_new_metadata_format" not in sig.parameters:
+            pytest.skip("Interface does not support use_new_metadata_format yet")
+
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
         self.check_extracted_metadata(metadata)
 
     def check_read(self, nwbfile_path: str):
