@@ -1,12 +1,11 @@
+from typing import Literal
+
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
-from .guppy_utils import (
-    ACQUISITION_SUFFIXES,
-    AcquisitionFormat,
-    build_acquisition_interface,
-    build_events_interfaces,
-)
+from . import csv_utils, doric_utils, npm_utils, tdt_utils
+from .csv_utils import build_csv_acquisition_interface, build_csv_events_interface
+from .doric_utils import build_doric_acquisition_interface, build_doric_events_interface
 from .guppydatainterface import (
     _EVENTS_TABLE_DESCRIPTION,
     _EVENTS_TABLE_NAME,
@@ -14,6 +13,8 @@ from .guppydatainterface import (
     _RECORDING_SITES_TABLE_NAME,
     _GuppyInterface,
 )
+from .npm_utils import build_npm_acquisition_interface, build_npm_events_interface
+from .tdt_utils import build_tdt_acquisition_interface, build_tdt_events_interface
 from ....nwbconverter import ConverterPipe
 from ....tools import get_package
 from ....tools.fiber_photometry import get_fiber_photometry_table
@@ -29,6 +30,17 @@ _STORE_ROLES = ("signal", "control")
 _MERGED_EVENTS_TABLE_KEY = "guppy_behavioral_events"
 _MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 
+# The formats a GuPPy session can have been recorded in -- every format GuPPy itself supports. Each has
+# a ``<format>_utils`` module reading it; supporting another means writing that module, widening this,
+# and adding a branch to each of the two _build_*_interfaces methods below.
+AcquisitionFormat = Literal["tdt", "csv", "doric", "npm"]
+# Derived from the modality modules rather than hard-coded, so this stays accurate as formats land.
+_ACQUISITION_SUFFIXES = tuple(
+    dict.fromkeys(
+        suffix for module in (tdt_utils, csv_utils, doric_utils, npm_utils) for suffix in module.ASSOCIATED_SUFFIXES
+    )
+)
+
 
 class GuppyConverter(ConverterPipe):
     """Bundle a GuPPy session's raw acquisition, raw events, and GuPPy-derived processing outputs.
@@ -42,8 +54,9 @@ class GuppyConverter(ConverterPipe):
     Everything the converter does with a GuPPy session is independent of how the session was recorded:
     ``storesList.csv`` names the acquisition stores as opaque ids, and the converter groups them, links
     them, and writes them without knowing what produced them. The acquisition format is confined to
-    ``acquisition_format`` and the :mod:`~.guppy_utils` module it is passed to, which is where support
-    for further GuPPy-readable formats is added.
+    ``acquisition_format`` and the two ``_build_*_interfaces`` methods that dispatch on it; the reading
+    itself lives in a ``<format>_utils`` module per format, which is where support for further
+    GuPPy-readable formats is added.
 
     The stores are discovered from the GuPPy ``storesList.csv`` -- each recording site contributes its
     ``signal`` and (optional) ``control`` store -- so the converter builds exactly the acquisition
@@ -74,7 +87,7 @@ class GuppyConverter(ConverterPipe):
 
     display_name = "GuPPy Fiber Photometry"
     keywords = _GuppyInterface.keywords + ("events",)
-    associated_suffixes = tuple(dict.fromkeys(_GuppyInterface.associated_suffixes + ACQUISITION_SUFFIXES))
+    associated_suffixes = tuple(dict.fromkeys(_GuppyInterface.associated_suffixes + _ACQUISITION_SUFFIXES))
     info = "Converter that bundles a GuPPy session's raw acquisition with its GuPPy-derived processing outputs."
 
     @validate_call
@@ -135,12 +148,49 @@ class GuppyConverter(ConverterPipe):
         # take precedence when it has one, and lets GuPPy's stand as the fallback when it does not.
         data_interfaces: dict = {"Guppy": guppy_interface}
 
-        # One acquisition interface per role (excitation wavelength), column-stacking that role's store
-        # from every recording site that has one. The GuPPy side already discovered these stores from
-        # storesList.csv. `recording_sites` runs parallel to the stacked stores, so the site owning
-        # column i -- and therefore the region row at index i -- is recoverable by position.
-        self._series_specs: list[dict] = []
-        self._acquisition_interface_names: list[str] = []
+        self._series_specs = self._build_series_specs(guppy_interface=guppy_interface)
+        acquisition_interfaces = self._build_acquisition_interfaces(
+            series_specs=self._series_specs,
+            acquisition_format=acquisition_format,
+            folder_path=fiber_photometry_folder_path,
+            guppy_folder_path=guppy_folder_path,
+            verbose=verbose,
+        )
+        data_interfaces.update(acquisition_interfaces)
+        self._acquisition_interface_names: list[str] = list(acquisition_interfaces)
+
+        events_interfaces, self._event_source_id_to_store_id = self._build_events_interfaces(
+            event_store_ids=list(self._event_store_to_event_name),
+            acquisition_format=acquisition_format,
+            folder_path=events_folder_path,
+            guppy_folder_path=guppy_folder_path,
+            verbose=verbose,
+        )
+        data_interfaces.update(events_interfaces)
+        self._events_interface_names: list[str] = list(events_interfaces)
+
+        super().__init__(data_interfaces=data_interfaces, verbose=verbose)
+
+    def _build_series_specs(self, *, guppy_interface: _GuppyInterface) -> list[dict]:
+        """Describe the acquisition series a GuPPy session calls for, one per role.
+
+        A role is an excitation wavelength, and each gets one series column-stacking that role's store
+        from every recording site that has one. The GuPPy side already discovered those stores from
+        ``storesList.csv``, and which series a session needs follows from that topology alone --
+        nothing here depends on how the session was recorded.
+
+        Each spec's ``recording_sites`` and ``store_ids`` run parallel, in the column order the series
+        will be written in, so the site owning column *i* -- and therefore the region row at index *i*
+        -- is recoverable by position. That is what :meth:`_derive_recording_site_to_table_rows`
+        later relies on.
+
+        Returns
+        -------
+        list of dict
+            One entry per series: its metadata key (the role), its recording sites and their stores in
+            column order, and the distinct name to give it in ``nwbfile.acquisition``.
+        """
+        series_specs: list[dict] = []
         for role in _STORE_ROLES:
             recording_sites = [
                 recording_site
@@ -149,48 +199,136 @@ class GuppyConverter(ConverterPipe):
             ]
             if not recording_sites:
                 continue  # a session without isosbestic controls contributes no control series
-            store_ids = [
-                guppy_interface.recording_site_to_store_ids[recording_site][role] for recording_site in recording_sites
-            ]
-            interface_name = f"FiberPhotometry_{role}"
-            data_interfaces[interface_name] = build_acquisition_interface(
-                acquisition_format=acquisition_format,
-                folder_path=fiber_photometry_folder_path,
-                guppy_folder_path=guppy_folder_path,
-                store_ids=store_ids,
-                metadata_key=role,
-                verbose=verbose,
-            )
-            self._series_specs.append(
+            series_specs.append(
                 dict(
                     metadata_key=role,
                     recording_sites=recording_sites,
+                    store_ids=[
+                        guppy_interface.recording_site_to_store_ids[recording_site][role]
+                        for recording_site in recording_sites
+                    ],
                     series_name=f"FiberPhotometryResponseSeries{role.capitalize()}",
                 )
             )
-            self._acquisition_interface_names.append(interface_name)
+        return series_specs
 
-        # How many events interfaces a session needs is itself format-dependent: one TDT interface reads
-        # every epoc in a tank, while GuPPy's CSV format stores each event in its own file and needs one
-        # interface per store. The rest of the converter therefore works over a list of them. A session
-        # whose storesList holds only signal/control stores gets none at all -- an events interface asked
-        # to read nothing is an error in some formats, not an empty result.
-        events_interfaces, source_id_to_store_id = {}, {}
-        if self._event_store_to_event_name:
-            events_interfaces, source_id_to_store_id = build_events_interfaces(
-                acquisition_format=acquisition_format,
-                folder_path=events_folder_path,
+    def _build_acquisition_interfaces(
+        self,
+        *,
+        series_specs: list[dict],
+        acquisition_format: AcquisitionFormat,
+        folder_path: DirectoryPath,
+        guppy_folder_path: DirectoryPath,
+        verbose: bool,
+    ) -> dict:
+        """Build the interface reading each series the session calls for.
+
+        Every branch must preserve the spec's ``store_ids`` order: that is the series' column order,
+        which the user's declared ``fiber_photometry_table_region`` is zipped against.
+
+        Returns
+        -------
+        dict
+            ``interface_name -> BaseFiberPhotometryInterface``, one entry per spec.
+
+        Raises
+        ------
+        NotImplementedError
+            If ``acquisition_format`` names a format no branch builds an interface for.
+        """
+        interfaces: dict = {}
+        for series_spec in series_specs:
+            metadata_key, store_ids = series_spec["metadata_key"], series_spec["store_ids"]
+            if acquisition_format == "tdt":
+                interface = build_tdt_acquisition_interface(
+                    folder_path=folder_path, store_ids=store_ids, metadata_key=metadata_key, verbose=verbose
+                )
+            elif acquisition_format == "csv":
+                interface = build_csv_acquisition_interface(
+                    folder_path=folder_path, store_ids=store_ids, metadata_key=metadata_key, verbose=verbose
+                )
+            elif acquisition_format == "doric":
+                interface = build_doric_acquisition_interface(
+                    folder_path=folder_path, store_ids=store_ids, metadata_key=metadata_key, verbose=verbose
+                )
+            elif acquisition_format == "npm":
+                interface = build_npm_acquisition_interface(
+                    folder_path=folder_path,
+                    guppy_folder_path=guppy_folder_path,
+                    store_ids=store_ids,
+                    metadata_key=metadata_key,
+                    verbose=verbose,
+                )
+            else:
+                raise NotImplementedError(
+                    f"No acquisition interface is wired up for acquisition_format={acquisition_format!r}."
+                )
+            interfaces[f"FiberPhotometry_{metadata_key}"] = interface
+        return interfaces
+
+    def _build_events_interfaces(
+        self,
+        *,
+        event_store_ids: list[str],
+        acquisition_format: AcquisitionFormat,
+        folder_path: DirectoryPath,
+        guppy_folder_path: DirectoryPath,
+        verbose: bool,
+    ) -> tuple[dict, dict]:
+        """Build the interfaces reading the behavioral event stores GuPPy listed.
+
+        Each modality builds a single interface; how many a session then needs, and what to register
+        each under, is decided here. Only GuPPy's CSV format fans out -- its stores do not share a
+        source, so it takes one interface per store, while one TDT interface reads every epoc in a
+        tank. A session whose ``storesList.csv`` holds only signal/control stores gets none at all,
+        rather than one asked to read nothing, which is an error in some formats rather than an
+        empty result.
+
+        Between them the interfaces must cover **every** store in ``event_store_ids``, and each type's
+        ``event_type_source_id`` has to be the store id ``storesList.csv`` records -- that id is the
+        join key :meth:`get_metadata` selects and renames on. Unlike the acquisition series, there is
+        nothing to describe up front: how many interfaces it takes is the format's answer, not
+        something ``storesList.csv`` settles.
+
+        Returns
+        -------
+        interfaces : dict
+            ``interface_name -> BaseEventsInterface``, empty for a session with no event stores.
+        source_id_to_store_id : dict
+            Most formats key their seeded event types by the same id ``storesList.csv`` uses, but not
+            all can. This maps the ones that differ back onto the store id ``get_metadata`` joins on;
+            empty means they already agree.
+
+        Raises
+        ------
+        NotImplementedError
+            If ``acquisition_format`` names a format no branch builds interfaces for.
+        """
+        if not event_store_ids:
+            return {}, {}
+        if acquisition_format == "tdt":
+            return {"Events": build_tdt_events_interface(folder_path=folder_path, verbose=verbose)}, {}
+        if acquisition_format == "csv":
+            return {
+                f"Events_{store_id}": build_csv_events_interface(
+                    folder_path=folder_path, store_id=store_id, verbose=verbose
+                )
+                for store_id in event_store_ids
+            }, {}
+        if acquisition_format == "doric":
+            interface = build_doric_events_interface(
+                folder_path=folder_path, event_store_ids=event_store_ids, verbose=verbose
+            )
+            return {"Events": interface}, {}
+        if acquisition_format == "npm":
+            interface, source_id_to_store_id = build_npm_events_interface(
+                folder_path=folder_path,
                 guppy_folder_path=guppy_folder_path,
-                event_store_ids=list(self._event_store_to_event_name),
+                event_store_ids=event_store_ids,
                 verbose=verbose,
             )
-        data_interfaces.update(events_interfaces)
-        self._events_interface_names: list[str] = list(events_interfaces)
-        # Most formats key their seeded event types by the same id storesList.csv uses, but not all can:
-        # see build_events_interfaces. This maps the ones that differ back onto the storesList id that
-        # get_metadata joins on. Empty means "they already agree".
-        self._event_source_id_to_store_id: dict[str, str] = source_id_to_store_id
-        super().__init__(data_interfaces=data_interfaces, verbose=verbose)
+            return {"Events": interface}, source_id_to_store_id
+        raise NotImplementedError(f"No events interface is wired up for acquisition_format={acquisition_format!r}.")
 
     def get_metadata(self):
         """Merge sub-interface metadata into a single coherent fiber photometry conversion.
@@ -261,7 +399,7 @@ class GuppyConverter(ConverterPipe):
 
         Most events interfaces key their types by the same id GuPPy recorded, so this is the identity.
         The exception is an interface that cannot be told what to call a type -- see the ``event0`` case
-        in :func:`~.guppy_utils.build_events_interfaces` -- for which the seam supplies the translation.
+        in :meth:`_build_events_interfaces` -- for which that method supplies the translation.
         """
         return self._event_source_id_to_store_id.get(event_type_source_id, event_type_source_id)
 

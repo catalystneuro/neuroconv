@@ -18,7 +18,7 @@ import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv.converters import GuppyConverter
-from neuroconv.datainterfaces.fiber_photometry.guppy.guppy_utils import (
+from neuroconv.datainterfaces.fiber_photometry.guppy.doric_utils import (
     doric_store_id_to_stream_name,
     resolve_doric_file,
 )

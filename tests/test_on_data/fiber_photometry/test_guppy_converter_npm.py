@@ -24,7 +24,7 @@ from neuroconv.datainterfaces.events.csv_events.csveventsdatainterface import (
 from neuroconv.datainterfaces.fiber_photometry.csv.csvfiberphotometrydatainterface import (
     CSVFiberPhotometryInterface,
 )
-from neuroconv.datainterfaces.fiber_photometry.guppy.guppy_utils import (
+from neuroconv.datainterfaces.fiber_photometry.guppy.npm_utils import (
     npm_source_files,
     npm_store_to_demux,
 )
