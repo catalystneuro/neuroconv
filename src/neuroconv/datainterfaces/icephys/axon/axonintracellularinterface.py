@@ -562,9 +562,9 @@ class AxonIntracellularInterface(BaseDataInterface):
         return "not described"
 
     # ------------------------------------------------------ neo name/index disambiguation
-    # Corralled here because these exist only to work around neo's channel/command naming: it strips spaces from
-    # the stored names (which can leave a name empty) and otherwise addresses channels positionally. They turn
-    # neo's names into stable, non-empty, name-addressable handles, and resolve a name back to its index.
+    # Corralled here because these exist only to work around neo's channel/command naming: the stored names vary
+    # in spacing across neo versions, can be empty, and are otherwise addressed positionally. They turn neo's
+    # names into stable, non-empty, name-addressable handles, and resolve a name back to its index.
     # Candidates for removal once neo exposes reliable names upstream (see the neo robustness handoff).
 
     @staticmethod
@@ -572,12 +572,14 @@ class AxonIntracellularInterface(BaseDataInterface):
         """
         Recorded analog-to-digital converter channel names (the `response_channel_name` / `stimulus_channel_name` options).
 
-        neo builds each name by stripping spaces from the stored name, which can yield an empty string (see neo
-        handoff Gap 4); fall back to ``ch{index}`` so every channel stays addressable by name.
+        Interior spaces are removed so a channel keeps one spelling across neo versions: neo below 0.15 reports
+        ``IN0`` and neo 0.15 or above reports ``IN 0`` for the same channel, and these names are what the electrode
+        metadata keys and the NWB series names are built from, so letting them drift would rename written objects.
+        A stored name can be empty either way; fall back to ``ch{index}`` so every channel stays addressable by name.
         """
         names = []
         for index, channel in enumerate(reader.header["signal_channels"]):
-            name = str(channel["name"]).strip()
+            name = str(channel["name"]).replace(" ", "")
             names.append(name or f"ch{index}")
         return names
 
@@ -594,6 +596,8 @@ class AxonIntracellularInterface(BaseDataInterface):
 
     def _channel_name_to_index(self, name: str) -> int:
         """Resolve a recorded ADC channel name to its signal_channels index."""
+        # Normalized like the stored names, so either spelling a user may have read off neo resolves.
+        name = name.replace(" ", "")
         if name in self._channel_names:
             return self._channel_names.index(name)
         raise ValueError(

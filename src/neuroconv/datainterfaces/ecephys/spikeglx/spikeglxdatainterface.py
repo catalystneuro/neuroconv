@@ -392,9 +392,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         """
         import json
 
-        # Get probe info from recording extractor annotation
-        probes_info = self.recording_extractor.get_annotation("probes_info")
-        probe_info = probes_info[0]  # Get first probe info
+        # Get probe info from the probe's own annotations. SpikeInterface 0.105 moved this out of the
+        # recording's "probes_info" annotation and into the probe, but 0.104 already writes it to both,
+        # so reading it from the probe works on either version.
+        probe_info = self.recording_extractor.get_probes()[0].annotations
 
         metadata_dict = dict()
 
