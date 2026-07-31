@@ -21,13 +21,21 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
     :meth:`get_available_channels` to list them. When the data contains multiple channels,
     ``channel_name`` is required.
 
-    The interface emits metadata in the new dict-based format keyed by ``metadata_key``,
-    populating ``Devices``, ``Ophys.ImagingPlanes``, and ``Ophys.MicroscopySeries``.
+    The interface emits metadata in the new dict-based format, populating
+    ``Ophys.ImagingPlanes`` and ``Ophys.MicroscopySeries`` under ``metadata_key`` and the microscope
+    under the folder-level ``Devices`` key ``"bruker_device"``.
     """
 
     display_name = "Bruker TIFF Imaging"
     associated_suffixes = (".ome", ".tif", ".xml", ".env")
     info = "Interface for Bruker Prairie View OME-TIFF imaging data."
+
+    # The microscope belongs to the folder, not to a channel or a depth plane, so it is registered
+    # under this one shared key rather than under the per-interface ``metadata_key``. Several
+    # interfaces over the same folder (as ``BrukerTiffConverter`` builds for multi-channel or disjoint
+    # volumetric data) then merge into a single ``Devices`` entry; suffixing it per interface would
+    # register one device name under several keys, which the registry rejects.
+    _device_metadata_key = "bruker_device"
 
     @classmethod
     def get_extractor_class(cls):
@@ -170,7 +178,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         device_entry = {"name": device_name}
         if device_description is not None:
             device_entry["description"] = device_description
-        metadata["Devices"] = {self.metadata_key: device_entry}
+        metadata["Devices"] = {self._device_metadata_key: device_entry}
 
         name_suffix = self.channel_name if self.channel_name is not None else ""
         if self.plane_index is not None:
@@ -188,7 +196,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         imaging_plane_entry = {
             "name": imaging_plane_name,
             "description": "The imaging plane origin_coords units are in the microscope reference frame.",
-            "device_metadata_key": self.metadata_key,
+            "device_metadata_key": self._device_metadata_key,
             "imaging_rate": sampling_frequency,
             "excitation_lambda": np.nan,
             "indicator": "unknown",

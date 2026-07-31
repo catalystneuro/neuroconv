@@ -2615,8 +2615,10 @@ class TestAddImaging:
         assert len(nwbfile.imaging_planes) == 1
         assert len(nwbfile.acquisition) == 2
 
-    def test_missing_required_imaging_plane_fields_raises(self):
-        """When an imaging plane entry is missing schema-required fields, a clear error is raised."""
+    def test_missing_required_imaging_plane_fields_are_defaulted(self):
+        """An imaging plane entry that omits schema-required optics fields is not rejected; the write path
+        fills them from the placeholder template instead of raising, so an interface can provide just a
+        name and a device link."""
         nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
@@ -2629,6 +2631,8 @@ class TestAddImaging:
                 "ImagingPlanes": {
                     plane_key: {
                         "name": "ImagingPlane",
+                        # excitation_lambda, indicator, location and optical_channel intentionally
+                        # omitted -> defaulted at write time
                         "device_metadata_key": device_key,
                     },
                 },
@@ -2642,19 +2646,20 @@ class TestAddImaging:
             },
         }
 
-        expected_error = re.escape(
-            "Imaging plane metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
-            "  excitation_lambda: nan\n"
-            "  indicator: 'unknown'\n"
-            "  location: 'unknown'\n"
-            "  optical_channel: [{'name': 'OpticalChannel', 'emission_lambda': nan, 'description': 'An optical channel of the microscope.'}]"
-        )
-        with pytest.raises(ValueError, match=expected_error):
-            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
 
-    def test_missing_required_series_fields_raises(self):
-        """When a series entry is missing schema-required fields, a clear error is raised."""
+        imaging_plane = nwbfile.imaging_planes["ImagingPlane"]
+        assert np.isnan(imaging_plane.excitation_lambda)
+        assert imaging_plane.indicator == "unknown"
+        assert imaging_plane.location == "unknown"
+        assert imaging_plane.device.name == "Microscope"
+        optical_channel = imaging_plane.optical_channel[0]
+        assert optical_channel.name == "OpticalChannel"
+        assert np.isnan(optical_channel.emission_lambda)
+
+    def test_missing_required_series_fields_are_defaulted(self):
+        """A series entry that omits `unit` is not rejected; the write path fills it from the placeholder
+        template instead of raising."""
         nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
@@ -2664,18 +2669,15 @@ class TestAddImaging:
                 "MicroscopySeries": {
                     metadata_key: {
                         "name": "TwoPhotonSeries",
+                        # unit intentionally omitted -> defaulted at write time
                     },
                 },
             },
         }
 
-        expected_error = re.escape(
-            "Microscopy series metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
-            "  unit: 'n.a.'"
-        )
-        with pytest.raises(ValueError, match=expected_error):
-            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+
+        assert nwbfile.acquisition["TwoPhotonSeries"].unit == "n.a."
 
     def test_one_photon_series(self):
         """OnePhotonSeries is created correctly with extra NWB fields."""
@@ -3470,8 +3472,9 @@ class TestAddSegmentation:
         assert series_a.rois.table.name == "PlaneSegmentationA"
         assert series_b.rois.table.name == "PlaneSegmentationB"
 
-    def test_missing_required_plane_segmentation_fields_raises(self):
-        """When PlaneSegmentation metadata is missing required fields, a clear error is raised."""
+    def test_missing_required_plane_segmentation_fields_are_defaulted(self):
+        """A PlaneSegmentation entry that omits `description` is not rejected; the write path fills it
+        from the placeholder template instead of raising."""
         nwbfile = mock_NWBFile()
         segmentation_extractor = generate_dummy_segmentation_extractor()
 
@@ -3480,26 +3483,25 @@ class TestAddSegmentation:
                 "PlaneSegmentations": {
                     "my_seg": {
                         "name": "PlaneSegmentation",
+                        # description intentionally omitted -> defaulted at write time
                     },
                 },
             },
         }
 
-        expected_error = re.escape(
-            "Plane segmentation metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
-            "  description: 'Segmented ROIs'"
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
         )
-        with pytest.raises(ValueError, match=expected_error):
-            add_segmentation_to_nwbfile(
-                segmentation_extractor=segmentation_extractor,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                metadata_key="my_seg",
-            )
 
-    def test_missing_required_roi_response_fields_raises(self):
-        """When ROI response series metadata is missing required fields, a clear error is raised."""
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentation"]
+        assert plane_segmentation.description == "Segmented ROIs"
+
+    def test_missing_required_roi_response_fields_are_defaulted(self):
+        """An ROI response entry that omits `unit` is not rejected; the write path fills it from the
+        placeholder template instead of raising, and the caller's metadata dict is left untouched."""
         nwbfile = mock_NWBFile()
         segmentation_extractor = generate_dummy_segmentation_extractor()
 
@@ -3513,24 +3515,24 @@ class TestAddSegmentation:
                 },
                 "RoiResponses": {
                     "my_seg": {
+                        # unit intentionally omitted -> defaulted at write time
                         "raw": {"name": "RoiResponseSeries"},
                     },
                 },
             },
         }
 
-        expected_error = re.escape(
-            "ROI response series 'raw' metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
-            "  unit: 'n.a.'"
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
         )
-        with pytest.raises(ValueError, match=expected_error):
-            add_segmentation_to_nwbfile(
-                segmentation_extractor=segmentation_extractor,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                metadata_key="my_seg",
-            )
+
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert fluorescence.roi_response_series["RoiResponseSeries"].unit == "n.a."
+        # The write path defaults onto a copy, so the entry the caller passed in is unchanged.
+        assert "unit" not in metadata["Ophys"]["RoiResponses"]["my_seg"]["raw"]
 
     def test_warns_when_metadata_specifies_missing_traces(self):
         """Warning is emitted when RoiResponses metadata references traces the extractor doesn't have."""

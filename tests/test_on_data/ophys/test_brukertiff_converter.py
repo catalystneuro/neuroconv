@@ -131,6 +131,8 @@ class TestBrukerTiffConverterMultiChannel(TestCase):
             nwbfile = io.read()
         self.assertEqual(len(nwbfile.acquisition), 2)
         self.assertEqual(len(nwbfile.imaging_planes), 2)
+        # One microscope for the folder, shared by both channels rather than one device per channel.
+        self.assertEqual(len(nwbfile.devices), 1)
 
 
 class TestBrukerTiffConverterDisjoint(TestCase):
@@ -180,6 +182,8 @@ class TestBrukerTiffConverterDisjoint(TestCase):
 
             self.assertEqual(list(nwbfile_new.acquisition.keys()), ["TwoPhotonSeriesPlane0", "TwoPhotonSeriesPlane1"])
             self.assertEqual(len(nwbfile_new.imaging_planes), 2)
+            # One microscope for the folder, shared by both depth planes rather than one device per plane.
+            self.assertEqual(len(nwbfile_new.devices), 1)
 
             # Old converter names planes by the Bruker stream index; match by acquisition order.
             new_series = [nwbfile_new.acquisition[f"TwoPhotonSeriesPlane{index}"] for index in range(2)]

@@ -432,21 +432,25 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
     save_directory = OUTPUT_PATH
 
     expected_metadata_key = "bruker_tiff_imaging"
+    # The microscope is folder-level, so it is registered under its own key rather than the
+    # per-interface ``metadata_key`` that indexes the imaging plane and series.
+    expected_device_metadata_key = "bruker_device"
     expected_imaging_rate = 29.873732099062256
     expected_scan_line_rate = 15840.580398865815
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
+        device_metadata_key = self.expected_device_metadata_key
         assert metadata_key == self.expected_metadata_key
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 2, 20, 15, 58, 25)
 
         expected_devices = {
-            metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
+            device_metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
         }
         expected_imaging_plane = {
             "name": "ImagingPlane",
             "description": "The imaging plane origin_coords units are in the microscope reference frame.",
-            "device_metadata_key": metadata_key,
+            "device_metadata_key": device_metadata_key,
             "imaging_rate": self.expected_imaging_rate,
             "excitation_lambda": np.nan,
             "indicator": "unknown",
@@ -502,21 +506,23 @@ class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixi
     save_directory = OUTPUT_PATH
 
     expected_metadata_key = "bruker_tiff_imaging"
+    expected_device_metadata_key = "bruker_device"
     expected_volume_rate = 10.314757507168189
     expected_scan_line_rate = 15842.086085895791
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
+        device_metadata_key = self.expected_device_metadata_key
         assert metadata_key == self.expected_metadata_key
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 11, 3, 11, 20, 34)
 
         expected_devices = {
-            metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
+            device_metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
         }
         expected_imaging_plane = {
             "name": "ImagingPlane",
             "description": "The imaging plane origin_coords units are in the microscope reference frame.",
-            "device_metadata_key": metadata_key,
+            "device_metadata_key": device_metadata_key,
             "imaging_rate": self.expected_volume_rate,
             "excitation_lambda": np.nan,
             "indicator": "unknown",

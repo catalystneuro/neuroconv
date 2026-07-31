@@ -298,17 +298,15 @@ def _add_imaging_plane_to_nwbfile(
     # Copy to avoid mutation
     imaging_plane_kwargs = imaging_plane_metadata.copy()
 
-    # Validate required fields
+    # These are required by the NWB ``ImagingPlane`` object but an interface often knows only some of
+    # them (a name and a device link, say). Fill any missing one from the central placeholder template
+    # at write time rather than forcing every ``get_metadata`` to emit a placeholder it cannot justify.
+    # The templates are explicit unknown-markers (``np.nan``, ``"unknown"``), so defaulting them states
+    # that the source did not say, not a fabricated value. Mirrors ``_add_electrode_groups_to_nwbfile``.
     required_fields = ["name", "excitation_lambda", "indicator", "location", "optical_channel"]
-    missing_fields = [field for field in required_fields if field not in imaging_plane_kwargs]
-    if missing_fields:
-        default_imaging_plane = _get_ophys_metadata_placeholders()["Ophys"]["ImagingPlanes"]["default_metadata_key"]
-        placeholder_hint = "\n".join(f"  {field}: {default_imaging_plane[field]!r}" for field in missing_fields)
-        raise ValueError(
-            f"Imaging plane metadata is missing required fields.\n"
-            f"For a complete NWB file, the following fields should be provided. "
-            f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-        )
+    default_imaging_plane = _get_ophys_metadata_placeholders()["Ophys"]["ImagingPlanes"]["default_metadata_key"]
+    for field in required_fields:
+        imaging_plane_kwargs.setdefault(field, default_imaging_plane[field])
 
     # Check if already exists
     imaging_plane_name = imaging_plane_kwargs["name"]
@@ -391,17 +389,12 @@ def _add_photon_series_to_nwbfile(
     # Copy to avoid mutation
     photon_series_kwargs = photon_series_metadata.copy()
 
-    # Validate required fields
+    # Required by the NWB photon-series object; default any the interface did not supply from the
+    # central placeholder template rather than raising. See ``_add_imaging_plane_to_nwbfile``.
     required_fields = ["name", "unit"]
-    missing_fields = [field for field in required_fields if field not in photon_series_kwargs]
-    if missing_fields:
-        default_series = _get_ophys_metadata_placeholders()["Ophys"]["MicroscopySeries"]["default_metadata_key"]
-        placeholder_hint = "\n".join(f"  {field}: {default_series[field]!r}" for field in missing_fields)
-        raise ValueError(
-            f"Microscopy series metadata is missing required fields.\n"
-            f"For a complete NWB file, the following fields should be provided. "
-            f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-        )
+    default_series = _get_ophys_metadata_placeholders()["Ophys"]["MicroscopySeries"]["default_metadata_key"]
+    for field in required_fields:
+        photon_series_kwargs.setdefault(field, default_series[field])
 
     # Resolve imaging plane
     imaging_plane_metadata_key = photon_series_kwargs.pop("imaging_plane_metadata_key", None)
@@ -503,17 +496,14 @@ def _add_plane_segmentation_to_nwbfile(
     """
     plane_seg_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key].copy()
 
-    # Validate required fields
+    # Required by the NWB ``PlaneSegmentation`` object; default any the interface did not supply from the
+    # central placeholder template. ``name`` is deliberately not defaulted here: entries are reused by
+    # name below, so two unnamed segmentations would silently collapse into one.
+    # See ``_add_imaging_plane_to_nwbfile``.
     required_fields = ["description"]
-    missing_fields = [field for field in required_fields if field not in plane_seg_metadata]
-    if missing_fields:
-        default_plane_seg = _get_ophys_metadata_placeholders()["Ophys"]["PlaneSegmentations"]["default_metadata_key"]
-        placeholder_hint = "\n".join(f"  {field}: {default_plane_seg[field]!r}" for field in missing_fields)
-        raise ValueError(
-            f"Plane segmentation metadata is missing required fields.\n"
-            f"For a complete NWB file, the following fields should be provided. "
-            f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-        )
+    default_plane_seg = _get_ophys_metadata_placeholders()["Ophys"]["PlaneSegmentations"]["default_metadata_key"]
+    for field in required_fields:
+        plane_seg_metadata.setdefault(field, default_plane_seg[field])
 
     # Resolve imaging plane
     imaging_plane_metadata_key = plane_seg_metadata.pop("imaging_plane_metadata_key", None)
@@ -715,22 +705,21 @@ def _add_roi_response_traces_to_nwbfile(
         if trace_name not in roi_responses_metadata:
             continue
 
-        trace_metadata = roi_responses_metadata[trace_name]
+        # Copy before defaulting; this entry is a live reference into the caller's metadata dict.
+        trace_metadata = roi_responses_metadata[trace_name].copy()
 
-        # Validate required fields
+        # Required by the NWB ``RoiResponseSeries`` object; default any the interface did not supply from
+        # the central placeholder template, falling back to an arbitrary trace template for a trace type
+        # the template does not name. ``name`` is deliberately not defaulted: series are reused by name
+        # below, so two unnamed traces would silently collapse into one.
+        # See ``_add_imaging_plane_to_nwbfile``.
         required_fields = ["unit"]
-        missing_fields = [field for field in required_fields if field not in trace_metadata]
-        if missing_fields:
-            default_roi_responses = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
-            default_trace = default_roi_responses.get(
-                trace_name, next(v for v in default_roi_responses.values() if isinstance(v, dict))
-            )
-            placeholder_hint = "\n".join(f"  {field}: {default_trace[field]!r}" for field in missing_fields)
-            raise ValueError(
-                f"ROI response series '{trace_name}' metadata is missing required fields.\n"
-                f"For a complete NWB file, the following fields should be provided. "
-                f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-            )
+        default_roi_responses = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
+        default_trace = default_roi_responses.get(
+            trace_name, next(v for v in default_roi_responses.values() if isinstance(v, dict))
+        )
+        for field in required_fields:
+            trace_metadata.setdefault(field, default_trace[field])
 
         # Skip if series already exists
         series_name = trace_metadata["name"]
