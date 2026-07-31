@@ -399,6 +399,8 @@ guppy = [
     "neuroconv[csv_events]",
     "neuroconv[doric_fp]",
     "neuroconv[doric_events]",
+    "neuroconv[npm_fp]",
+    "neuroconv[npm_events]",
 ]
 thor = [
     "neuroconv[ophys_minimal]",

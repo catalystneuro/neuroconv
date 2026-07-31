@@ -257,6 +257,9 @@ def _write_parameters(
     parameters = dict(
         guppy_version=guppy_version,
         isosbestic_control=True,
+        # Real runs record the acquisition channel count here. Nothing reads it for TDT/CSV/Doric, but
+        # it is the only record of how many channels a header-less NPM recording interleaved.
+        noChannels=2,
         filter_window=100.0,
         removeArtifacts=remove_artifacts,
         artifactsRemovalMethod="concatenate",
