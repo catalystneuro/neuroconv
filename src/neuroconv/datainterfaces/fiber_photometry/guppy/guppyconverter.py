@@ -136,19 +136,14 @@ class GuppyConverter(ConverterPipe):
         fiber signal/control stores) are excluded by ``get_metadata``.
         """
         self.acquisition_format = acquisition_format
+
+        # Guppy
         guppy_interface = _GuppyInterface(folder_path=guppy_folder_path, verbose=verbose)
-        # Store only the behavioral event stores GuPPy listed in storesList.csv, named with the
-        # human-readable semantic names from that file (the selection and renaming happen in
-        # get_metadata, since add_to_nwbfile only writes the epocs left in event_types).
         self._event_store_to_event_name = guppy_interface.event_store_to_event_name
-
-        # The GuPPy interface is registered FIRST because get_metadata merges the sub-interfaces in
-        # registration order, last one wins: GuPPy reports a session_start_time of its own (derived from
-        # timeCorrection), so registering it ahead of the acquisition lets the acquisition's own value
-        # take precedence when it has one, and lets GuPPy's stand as the fallback when it does not.
         data_interfaces: dict = {"Guppy": guppy_interface}
-
         self._series_specs = self._build_series_specs(guppy_interface=guppy_interface)
+
+        # Fiber Photometry Acquisition
         acquisition_interfaces = self._build_acquisition_interfaces(
             series_specs=self._series_specs,
             acquisition_format=acquisition_format,
@@ -159,6 +154,7 @@ class GuppyConverter(ConverterPipe):
         data_interfaces.update(acquisition_interfaces)
         self._acquisition_interface_names: list[str] = list(acquisition_interfaces)
 
+        # Events
         events_interfaces, self._event_source_id_to_store_id = self._build_events_interfaces(
             event_store_ids=list(self._event_store_to_event_name),
             acquisition_format=acquisition_format,
