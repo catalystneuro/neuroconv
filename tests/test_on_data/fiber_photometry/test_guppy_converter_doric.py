@@ -18,6 +18,10 @@ import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv.converters import GuppyConverter
+from neuroconv.datainterfaces.fiber_photometry.guppy.guppy_utils import (
+    doric_store_id_to_stream_name,
+    resolve_doric_file,
+)
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 from neuroconv.utils import dict_deep_update
 
@@ -90,9 +94,9 @@ class DoricConverterTestMixin:
         )
         return metadata
 
-    def test_store_ids_translate_to_stream_names(self, converter, acquisition_folder):
+    def test_store_ids_translate_to_stream_names(self, acquisition_folder):
         """Every store GuPPy listed resolves to a stream the Doric interface knows."""
-        mapping = converter._doric_store_id_to_stream_name(acquisition_folder / self.ACQUISITION_FILE_NAME)
+        mapping = doric_store_id_to_stream_name(acquisition_folder / self.ACQUISITION_FILE_NAME)
         for stores in self.RECORDING_SITE_TO_STORES.values():
             for store_id in stores.values():
                 assert store_id in mapping
@@ -256,7 +260,7 @@ class TestDoricStoreIdTranslation:
             group.create_dataset("Values", data=np.arange(4, dtype=float))
             group.create_dataset("Time", data=np.arange(4, dtype=float))
 
-        mapping = GuppyConverter._doric_store_id_to_stream_name(file_path)
+        mapping = doric_store_id_to_stream_name(file_path)
         assert "Series0001/AIN01xAOUT01-LockIn" in mapping
 
     def test_colliding_store_ids_raise(self, tmp_path):
@@ -271,7 +275,7 @@ class TestDoricStoreIdTranslation:
                 group.create_dataset("Time", data=np.arange(4, dtype=float))
 
         with pytest.raises(AssertionError, match="GuPPy would name identically"):
-            GuppyConverter._doric_store_id_to_stream_name(file_path)
+            doric_store_id_to_stream_name(file_path)
 
     def test_unknown_store_raises_naming_it(self, tmp_path):
         """A storesList store absent from the file fails loudly rather than as a later KeyError."""
@@ -301,4 +305,4 @@ class TestDoricStoreIdTranslation:
             shutil.copy(DORIC_FOLDER / name, acquisition_folder / name)
 
         with pytest.raises(AssertionError, match="Expected exactly one Doric acquisition file"):
-            GuppyConverter._resolve_doric_file(Path(acquisition_folder))
+            resolve_doric_file(Path(acquisition_folder))

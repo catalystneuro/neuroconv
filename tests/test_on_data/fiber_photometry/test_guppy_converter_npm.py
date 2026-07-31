@@ -24,6 +24,10 @@ from neuroconv.datainterfaces.events.csv_events.csveventsdatainterface import (
 from neuroconv.datainterfaces.fiber_photometry.csv.csvfiberphotometrydatainterface import (
     CSVFiberPhotometryInterface,
 )
+from neuroconv.datainterfaces.fiber_photometry.guppy.guppy_utils import (
+    npm_source_files,
+    npm_store_to_demux,
+)
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 from neuroconv.utils import dict_deep_update
 
@@ -303,9 +307,9 @@ class TestNPMStoreDecoding:
         shutil.copy(NPM_EVENTS_FOLDER / "event_type_as_number" / "ttls.csv", session_folder / "a_events.csv")
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "b_signals.csv")
 
-        source_files = GuppyConverter._npm_source_files(session_folder)
+        source_files = npm_source_files(session_folder)
         assert [path.name for path in source_files] == ["a_events.csv", "b_signals.csv"]
-        demux = GuppyConverter._npm_store_to_demux(session_folder, "file1_chev1", number_of_channels=2)
+        demux = npm_store_to_demux(session_folder, "file1_chev1", number_of_channels=2)
         assert demux["file_path"].name == "b_signals.csv"
 
     def test_derived_files_are_excluded(self, session_folder):
@@ -313,7 +317,7 @@ class TestNPMStoreDecoding:
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "file0_chev1.csv")
 
-        source_files = GuppyConverter._npm_source_files(session_folder)
+        source_files = npm_source_files(session_folder)
         assert [path.name for path in source_files] == ["signals.csv"]
 
     def test_strobed_state_has_no_single_wavelength(self, session_folder, tmp_path):
@@ -353,7 +357,7 @@ class TestNPMStoreDecoding:
         """A two-state file has no third channel, so `chpr` cannot be resolved."""
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
         with pytest.raises(AssertionError, match="interleaves only 2 channel"):
-            GuppyConverter._npm_store_to_demux(session_folder, "file0_chpr1", number_of_channels=2)
+            npm_store_to_demux(session_folder, "file0_chpr1", number_of_channels=2)
 
     def test_headerless_without_channel_count_raises(self, session_folder):
         """The legacy layout's interleave has no on-disk signature, so it cannot be guessed."""
@@ -362,4 +366,4 @@ class TestNPMStoreDecoding:
             session_folder / "signals.csv",
         )
         with pytest.raises(AssertionError, match="recorded no 'noChannels'"):
-            GuppyConverter._npm_store_to_demux(session_folder, "file0_chev1", number_of_channels=None)
+            npm_store_to_demux(session_folder, "file0_chev1", number_of_channels=None)
