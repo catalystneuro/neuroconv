@@ -82,10 +82,15 @@ def test_nidq_digital_data(tmp_path):
 
 
 def test_nidq_digital_channel_groups_is_deprecated(tmp_path):
-    """The released `digital_channel_groups` still writes LabeledEvents, behind a FutureWarning."""
+    """The released argument still works, translated onto the new grammar, behind a FutureWarning.
+
+    A group named one line and labelled its two states, and produced one `LabeledEvents` holding every
+    edge. It now produces one `EventsTable` holding every edge, with the state carried by an `event_type`
+    column instead of by an index into a `labels` list. Same object count, same row count, same labels.
+    """
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
     digital_channel_groups = {
-        "camera": {"channels": {"nidq#XD0": {"labels_map": {0: "off", 1: "on"}}}},
+        "camera": {"channels": {"nidq#XD0": {"labels_map": {0: "exposure_end", 1: "frame_start"}}}},
     }
 
     with pytest.warns(FutureWarning, match="digital_channel_groups is deprecated"):
@@ -95,8 +100,18 @@ def test_nidq_digital_channel_groups_is_deprecated(tmp_path):
     interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
 
     nwbfile = read_nwb(nwbfile_path)
-    assert "Camera" in nwbfile.acquisition
-    assert nwbfile.acquisition["Camera"].timestamps.size == 326
+    assert len(nwbfile.acquisition) == 0  # no more ndx-events LabeledEvents
+    assert set(nwbfile.events.keys()) == {"Camera"}  # one object per group, as before
+
+    camera = nwbfile.events["Camera"]
+    assert camera.colnames == ("timestamp", "event_type")
+    assert len(camera) == 326  # 163 rising plus 163 falling, as the LabeledEvents held
+
+    # labels_map[1] labels the rising edge and labels_map[0] the falling one.
+    event_types = np.asarray(camera["event_type"][:])
+    assert set(event_types) == {"frame_start", "exposure_end"}
+    assert np.sum(event_types == "frame_start") == 163
+    assert np.sum(event_types == "exposure_end") == 163
 
 
 def test_nidq_detection_configuration_and_digital_channel_groups_conflict():
@@ -133,68 +148,49 @@ def test_nidq_detection_configuration_selects_one_line():
 
 
 def test_nidq_digital_metadata_customization(tmp_path):
-    """Test digital channels with custom semantic labels via init-time config."""
+    """The deprecated metadata shape is still what get_metadata hands back, and still honoured.
+
+    Existing code edits `metadata["Events"][metadata_key][group_key]` with `name`, `description` and
+    `meanings`. Those edits arrive at `add_to_nwbfile`, which is where they are translated onto the
+    shape the events writer reads, so they keep working unchanged.
+    """
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
-
-    # Configure digital channel at init time with semantic labels
     labels_map = {0: "exposure_end", 1: "frame_start"}
-    digital_channel_groups = {
-        "camera": {
-            "channels": {
-                "nidq#XD0": {"labels_map": labels_map},
-            },
-        },
-    }
+    digital_channel_groups = {"camera": {"channels": {"nidq#XD0": {"labels_map": labels_map}}}}
     metadata_key = "custom_key"
-    interface = SpikeGLXNIDQInterface(
-        folder_path=folder_path,
-        metadata_key=metadata_key,
-        digital_channel_groups=digital_channel_groups,
-    )
 
-    # Customize NWB properties via metadata
+    with pytest.warns(FutureWarning, match="digital_channel_groups is deprecated"):
+        interface = SpikeGLXNIDQInterface(
+            folder_path=folder_path,
+            metadata_key=metadata_key,
+            digital_channel_groups=digital_channel_groups,
+        )
+
     metadata = interface.get_metadata()
-    events_name = "EventsCustomCamera"
-    base_description = "Custom camera with semantic labels"
-    meanings = {
-        "exposure_end": "Camera exposure period ended, frame readout complete",
+
+    # The old shape, keyed by group, is what a user has always been given here.
+    assert metadata["Events"][metadata_key]["camera"]["name"] == "Camera"
+    assert metadata["Events"][metadata_key]["camera"]["description"] == "On and Off Events from channel XD0"
+
+    metadata["Events"][metadata_key]["camera"]["name"] = "CameraFrameTrigger"
+    metadata["Events"][metadata_key]["camera"]["description"] = "Camera frame timing events"
+    metadata["Events"][metadata_key]["camera"]["meanings"] = {
         "frame_start": "New camera frame acquisition started",
-    }
-    metadata["Events"][metadata_key] = {
-        "camera": {
-            "name": events_name,
-            "description": base_description,
-            "meanings": meanings,
-        },
+        "exposure_end": "Camera exposure period ended, frame readout complete",
     }
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
 
-    assert events_name in nwbfile.acquisition
-    events = nwbfile.acquisition[events_name]
-    assert list(events.labels) == list(labels_map.values())
+    assert len(nwbfile.acquisition) == 0
+    assert set(nwbfile.events.keys()) == {"CameraFrameTrigger"}
 
-    # Check that description includes the base description and all meanings
-    # Future: when ndx-events MeaningsTable is integrated into NWB core,
-    # these meanings will be written to the MeaningsTable for richer semantic annotations.
-    # For now, they are appended to the description field.
-    expected_description = (
-        f"{base_description}\n\n"
-        "Label meanings:\n"
-        "  - exposure_end: Camera exposure period ended, frame readout complete\n"
-        "  - frame_start: New camera frame acquisition started"
-    )
-    assert events.description == expected_description
+    camera = nwbfile.events["CameraFrameTrigger"]
+    assert camera.description == "Camera frame timing events"
+    assert len(camera) == 326
 
-    # Check that both semantic labels are used
-    unique_data = np.unique(events.data)
-    assert len(unique_data) == 2
-    assert np.sum(events.data == unique_data[0]) == 163
-    assert np.sum(events.data == unique_data[1]) == 163
-
-    # Check that only the configured channel was created
-    # This tests that digital channels can be omitted via init-time configuration
-    assert len(nwbfile.acquisition) == 1
+    event_types = np.asarray(camera["event_type"][:])
+    assert np.sum(event_types == "frame_start") == 163
+    assert np.sum(event_types == "exposure_end") == 163
 
 
 def test_nidq_partial_labels_map():

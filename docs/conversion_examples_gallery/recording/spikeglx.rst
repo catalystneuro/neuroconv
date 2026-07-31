@@ -192,12 +192,14 @@ threshold is compared against.
 
 .. note::
 
-    The older ``digital_channel_groups`` argument, which wrote ``ndx-events`` ``LabeledEvents``
-    objects into ``acquisition``, is deprecated and will be removed on or after August 2027. It reached
-    lines through the reader's demultiplexed channel names (``nidq#XD0`` through ``nidq#XD7``) rather
-    than through the board's word-and-bit addressing, and it wrote event times on a clock that ignored
-    the stream's start time, so its events did not line up with the analog channels recorded beside
-    them. Use ``detection_configuration`` instead.
+    The older ``digital_channel_groups`` argument is deprecated and will be removed on or after
+    August 2027. It still works, translated onto the grammar above: a group becomes a rising and a
+    falling reading of its line routed into one table, so it still yields one object holding every
+    edge, and its ``labels_map`` still names the two edges. What changes is that the object is an
+    ``EventsTable`` in ``nwbfile.events`` rather than an ``ndx-events`` ``LabeledEvents`` in
+    ``acquisition``, the state is carried by an ``event_type`` column rather than by an index into a
+    ``labels`` list, and the timestamps sit on the recording's own clock. Use
+    ``detection_configuration`` instead.
 
 Customizing analog channel metadata
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
