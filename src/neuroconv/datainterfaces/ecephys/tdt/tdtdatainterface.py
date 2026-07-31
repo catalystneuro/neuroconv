@@ -38,6 +38,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
         stream_name: str | None = None,
+        metadata_key: str | None = None,
     ):
         """
         Initialize reading of a TDT recording.
@@ -55,6 +56,9 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         es_key : str, optional
         stream_name : str or None, optional
             Name of the stream to select. If None, stream_id is used.
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"tdt_recording"``.
 
 
         Notes
@@ -114,8 +118,12 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
             stream_name=stream_name,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
             gain=gain,
         )
+
+        if metadata_key is None:
+            self.metadata_key = "tdt_recording"
 
         # Fix channel name format
         channel_names = self.recording_extractor.get_property("channel_name")
