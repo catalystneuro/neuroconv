@@ -13,7 +13,11 @@ from .guppydatainterface import (
     _RECORDING_SITES_TABLE_NAME,
     _GuppyInterface,
 )
-from .npm_utils import build_npm_acquisition_interface, build_npm_events_interface
+from .npm_utils import (
+    build_npm_acquisition_interface,
+    build_npm_events_interface,
+    npm_event_source_id_to_store_id,
+)
 from .tdt_utils import build_tdt_acquisition_interface, build_tdt_events_interface
 from ....nwbconverter import ConverterPipe
 from ....tools import get_package
@@ -155,8 +159,9 @@ class GuppyConverter(ConverterPipe):
         self._acquisition_interface_names: list[str] = list(acquisition_interfaces)
 
         # Events
-        events_interfaces, self._event_source_id_to_store_id = self._build_events_interfaces(
-            event_store_ids=list(self._event_store_to_event_name),
+        event_store_ids = list(self._event_store_to_event_name)
+        events_interfaces = self._build_events_interfaces(
+            event_store_ids=event_store_ids,
             acquisition_format=acquisition_format,
             folder_path=events_folder_path,
             guppy_folder_path=guppy_folder_path,
@@ -164,6 +169,11 @@ class GuppyConverter(ConverterPipe):
         )
         data_interfaces.update(events_interfaces)
         self._events_interface_names: list[str] = list(events_interfaces)
+        self._event_source_id_to_store_id: dict[str, str] = self._build_event_source_id_map(
+            event_store_ids=event_store_ids,
+            acquisition_format=acquisition_format,
+            folder_path=events_folder_path,
+        )
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
@@ -270,7 +280,7 @@ class GuppyConverter(ConverterPipe):
         folder_path: DirectoryPath,
         guppy_folder_path: DirectoryPath,
         verbose: bool,
-    ) -> tuple[dict, dict]:
+    ) -> dict:
         """Build the interfaces reading the behavioral event stores GuPPy listed.
 
         Each modality builds a single interface; how many a session then needs, and what to register
@@ -280,20 +290,16 @@ class GuppyConverter(ConverterPipe):
         rather than one asked to read nothing, which is an error in some formats rather than an
         empty result.
 
-        Between them the interfaces must cover **every** store in ``event_store_ids``, and each type's
-        ``event_type_source_id`` has to be the store id ``storesList.csv`` records -- that id is the
-        join key :meth:`get_metadata` selects and renames on. Unlike the acquisition series, there is
-        nothing to describe up front: how many interfaces it takes is the format's answer, not
-        something ``storesList.csv`` settles.
+        Between them the interfaces must cover **every** store in ``event_store_ids``. What they
+        *call* the types they seed is a separate question, answered by
+        :meth:`_build_event_source_id_map`. Unlike the acquisition series, there is nothing to
+        describe up front: how many interfaces it takes is the format's answer, not something
+        ``storesList.csv`` settles.
 
         Returns
         -------
-        interfaces : dict
+        dict
             ``interface_name -> BaseEventsInterface``, empty for a session with no event stores.
-        source_id_to_store_id : dict
-            Most formats key their seeded event types by the same id ``storesList.csv`` uses, but not
-            all can. This maps the ones that differ back onto the store id ``get_metadata`` joins on;
-            empty means they already agree.
 
         Raises
         ------
@@ -301,30 +307,57 @@ class GuppyConverter(ConverterPipe):
             If ``acquisition_format`` names a format no branch builds interfaces for.
         """
         if not event_store_ids:
-            return {}, {}
+            return {}
         if acquisition_format == "tdt":
-            return {"Events": build_tdt_events_interface(folder_path=folder_path, verbose=verbose)}, {}
+            return {"Events": build_tdt_events_interface(folder_path=folder_path, verbose=verbose)}
         if acquisition_format == "csv":
             return {
                 f"Events_{store_id}": build_csv_events_interface(
                     folder_path=folder_path, store_id=store_id, verbose=verbose
                 )
                 for store_id in event_store_ids
-            }, {}
+            }
         if acquisition_format == "doric":
             interface = build_doric_events_interface(
                 folder_path=folder_path, event_store_ids=event_store_ids, verbose=verbose
             )
-            return {"Events": interface}, {}
+            return {"Events": interface}
         if acquisition_format == "npm":
-            interface, source_id_to_store_id = build_npm_events_interface(
+            interface = build_npm_events_interface(
                 folder_path=folder_path,
                 guppy_folder_path=guppy_folder_path,
                 event_store_ids=event_store_ids,
                 verbose=verbose,
             )
-            return {"Events": interface}, source_id_to_store_id
+            return {"Events": interface}
         raise NotImplementedError(f"No events interface is wired up for acquisition_format={acquisition_format!r}.")
+
+    def _build_event_source_id_map(
+        self,
+        *,
+        event_store_ids: list[str],
+        acquisition_format: AcquisitionFormat,
+        folder_path: DirectoryPath,
+    ) -> dict[str, str]:
+        """Map each seeded ``event_type_source_id`` back to the ``storesList.csv`` id it belongs to.
+
+        :meth:`get_metadata` joins the event types an interface seeded against the stores GuPPy
+        listed, which only works when both name a store the same way. Most formats do: a TDT epoc
+        name, a GuPPy CSV file stem and a Doric detection spec are already the ``storesList.csv`` id,
+        so they need no entry here and the join runs on identity.
+
+        NPM is the exception -- see :func:`~.npm_utils.npm_event_source_id_to_store_id` for what it
+        calls a store instead and why.
+
+        Returns
+        -------
+        dict
+            ``event_type_source_id -> storesList.csv id``, holding only the stores whose two names
+            differ. Empty means every seeded id is already the store id.
+        """
+        if acquisition_format == "npm":
+            return npm_event_source_id_to_store_id(folder_path=folder_path, event_store_ids=event_store_ids)
+        return {}
 
     def get_metadata(self):
         """Merge sub-interface metadata into a single coherent fiber photometry conversion.
@@ -395,7 +428,7 @@ class GuppyConverter(ConverterPipe):
 
         Most events interfaces key their types by the same id GuPPy recorded, so this is the identity.
         The exception is an interface that cannot be told what to call a type -- see the ``event0`` case
-        in :meth:`_build_events_interfaces` -- for which that method supplies the translation.
+        in :meth:`_build_event_source_id_map` -- for which that method supplies the translation.
         """
         return self._event_source_id_to_store_id.get(event_type_source_id, event_type_source_id)
 

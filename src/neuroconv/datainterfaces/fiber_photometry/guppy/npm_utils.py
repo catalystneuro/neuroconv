@@ -48,6 +48,23 @@ def _parses_as_float(value) -> bool:
     return True
 
 
+def _npm_event_file(folder_path: DirectoryPath):
+    """Return the one two-column event CSV a GuPPy NPM session holds.
+
+    GuPPy writes NPM events to their own file, told apart from the acquisition CSVs by having exactly
+    two columns (onset time and label). Shared by the two functions that need it, so both agree on
+    which file the session's events came from.
+    """
+    event_files = [
+        path for path in sorted(folder_path.glob("*.csv")) if not is_event_csv(path) and _npm_column_count(path) == 2
+    ]
+    assert len(event_files) == 1, (
+        f"Expected exactly one NPM event file in '{folder_path}', found {len(event_files)}: "
+        f"{[path.name for path in event_files]}."
+    )
+    return event_files[0]
+
+
 def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
     """Read the NPM settings the GuPPy run used but ``storesList.csv`` does not record.
 
@@ -276,12 +293,12 @@ def build_npm_events_interface(
     event_store_ids: list[str],
     verbose: bool,
 ):
-    """Build the interface reading the raw discrete events, and how to name what it seeds.
+    """Build the interface reading the raw discrete events.
 
-    GuPPy writes NPM events to their own two-column file, and names each store by prefixing
-    ``event`` to the label it split on -- or calls the whole file ``event0`` when it split nothing.
-    Neither naming is what the interface reading that file seeds its event types with, so this is
-    the one format that also has to say how to get back to the ``storesList.csv`` ids.
+    GuPPy writes NPM events to their own two-column file, and splits it by the label in the second
+    column -- or reads the whole file as one type when it split nothing. Which of the two interfaces
+    reads it follows from that. What the interface then *calls* those types is a separate question,
+    answered by :func:`npm_event_source_id_to_store_id`.
 
     Parameters
     ----------
@@ -298,12 +315,9 @@ def build_npm_events_interface(
 
     Returns
     -------
-    interface : NPMEventsInterface or CSVEventsInterface
+    NPMEventsInterface or CSVEventsInterface
         Reading the session's one event file; the latter for the unsplit ``event0`` store, which is
         the whole file as a single type.
-    source_id_to_store_id : dict
-        ``event_type_source_id -> storesList.csv id``, mapping the file stem back to ``event0`` for
-        the unsplit store, or each bare label back to its ``event<label>`` id for the split ones.
 
     Raises
     ------
@@ -312,21 +326,13 @@ def build_npm_events_interface(
         store with stores split out of that same file.
     """
     run_parameters = npm_run_parameters(guppy_folder_path)
-    event_files = [
-        path for path in sorted(folder_path.glob("*.csv")) if not is_event_csv(path) and _npm_column_count(path) == 2
-    ]
-    assert len(event_files) == 1, (
-        f"Expected exactly one NPM event file in '{folder_path}', found {len(event_files)}: "
-        f"{[path.name for path in event_files]}."
-    )
-    event_file_path = event_files[0]
+    event_file_path = _npm_event_file(folder_path)
     file_index = sorted(folder_path.glob("*.csv")).index(event_file_path)
     time_unit = run_parameters["time_units"][file_index]
 
     if event_store_ids == ["event0"]:
         # The unsplit store: every row of the file as one event type. NPMEventsInterface always
-        # splits by label, so this reads the same file through the generic CSV interface, which
-        # keys its lone type by the file stem -- hence the translation back to 'event0'.
+        # splits by label, so this reads the same file through the generic CSV interface.
         return CSVEventsInterface(
             file_path=event_file_path,
             timestamps_column=0,
@@ -334,7 +340,7 @@ def build_npm_events_interface(
             time_unit=time_unit,
             metadata_key="guppy_npm_events",
             verbose=verbose,
-        ), {event_file_path.stem: "event0"}
+        )
 
     unsplit = [store_id for store_id in event_store_ids if store_id == "event0"]
     assert not unsplit, (
@@ -347,4 +353,33 @@ def build_npm_events_interface(
         time_unit=time_unit,
         metadata_key="guppy_npm_events",
         verbose=verbose,
-    ), {store_id[len("event") :]: store_id for store_id in event_store_ids}
+    )
+
+
+def npm_event_source_id_to_store_id(*, folder_path: DirectoryPath, event_store_ids: list[str]) -> dict[str, str]:
+    """Map each event type the interface seeds back to the ``storesList.csv`` id it belongs to.
+
+    GuPPy and the events interfaces disagree on what an NPM event store is called, and this is the
+    translation between the two. GuPPy names a store by prefixing ``event`` to the label it split on,
+    so label ``1`` becomes the store ``event1``, and calls the whole file ``event0`` when it split
+    nothing. The interface reading that file has no such convention: it seeds the bare label, or --
+    for the unsplit file, read through ``CSVEventsInterface`` -- the file's stem. Every other
+    acquisition format already agrees with GuPPy and needs no translation.
+
+    Parameters
+    ----------
+    folder_path : DirectoryPath
+        Path to the GuPPy session folder. Read only for the unsplit store, whose seeded id is the
+        event file's stem and so cannot be derived from ``event_store_ids`` alone.
+    event_store_ids : list of str
+        The ``storesList.csv`` ids of the behavioral event stores GuPPy processed. Assumed to be one
+        consistent shape, which :func:`build_npm_events_interface` is what actually enforces.
+
+    Returns
+    -------
+    dict
+        ``event_type_source_id -> storesList.csv id``, one entry per store.
+    """
+    if event_store_ids == ["event0"]:
+        return {_npm_event_file(folder_path).stem: "event0"}
+    return {store_id[len("event") :]: store_id for store_id in event_store_ids}
