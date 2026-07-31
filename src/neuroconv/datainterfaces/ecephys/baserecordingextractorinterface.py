@@ -138,14 +138,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             # also marks the metadata as dict-based, so the pipeline dispatches to the new path). The
             # default device and electrode groups are left to the pipeline, which creates a default
             # device and synthesizes one group per channel-group from the recording's ``group`` properties.
-            metadata["Ecephys"] = dict()
-            if self.es_key is not None:
-                metadata["Ecephys"]["ElectricalSeries"] = {
-                    self.metadata_key: dict(
-                        name=self.metadata_key,
-                        description=f"Acquisition traces for the {self.metadata_key}.",
-                    )
-                }
+            # The name is the NWB-conventional default, independent of ``es_key`` (legacy, to be removed) and
+            # of ``metadata_key`` (the dict key). No description: a generic one carries no information, so it
+            # is left to the interfaces, which can say something the source actually supports, and otherwise
+            # to the write pipeline.
+            metadata["Ecephys"] = {"ElectricalSeries": {self.metadata_key: dict(name="ElectricalSeries")}}
 
             return metadata
 
