@@ -53,7 +53,7 @@ interface that need to be linked together. The :py:class:`~neuroconv.converters.
 handles this by requiring an explicit mapping between unit IDs and their associated channel IDs.
 
 Using Intan Recording Data
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This example demonstrates linking data from an Intan recording system with
 Kilosort sorting results:
@@ -133,7 +133,7 @@ probe and band information (e.g., "imec0.ap" = probe 0 + ap band,
 with them.
 
 Multiple Probes with Independent Sorting
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Example with multiple Neuropixels probes, each sorted independently:
 

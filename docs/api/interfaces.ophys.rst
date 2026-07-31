@@ -76,15 +76,3 @@ Sima Segmentation
 Suite2p Segmentation
 --------------------
 .. automodule:: neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface
-
-
-Fiber Photometry
-================
-
-Doric Fiber Photometry
-----------------------
-.. automodule:: neuroconv.datainterfaces.ophys.doric.doricfiberphotometrydatainterface
-
-TDT Fiber Photometry
---------------------
-.. automodule:: neuroconv.datainterfaces.ophys.tdt_fp.tdtfiberphotometrydatainterface

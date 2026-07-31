@@ -71,10 +71,27 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
+    def test_shifted_recording_uses_starting_time(self):
+        recording = generate_recording(
+            sampling_frequency=self.sampling_frequency,
+            num_channels=self.num_channels,
+            durations=self.durations,
+        )
+        recording.shift_times(2.0)
+
+        add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile, iterator_type=None)
+
+        electrical_series = self.nwbfile.acquisition["ElectricalSeriesRaw"]
+        assert electrical_series.starting_time == 2.0
+        assert electrical_series.rate == self.sampling_frequency
+
     def test_write_as_lfp(self):
-        write_as = "lfp"
+        parent_container = "processing/LFP"
         add_recording_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            parent_container=parent_container,
         )
 
         processing_module = self.nwbfile.processing
@@ -93,9 +110,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_as_processing(self):
-        write_as = "processed"
+        parent_container = "processing/FilteredEphys"
         add_recording_to_nwbfile(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            parent_container=parent_container,
         )
 
         processing_module = self.nwbfile.processing
@@ -186,14 +206,17 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         self.test_recording_extractor.set_channel_groups(original_groups)
 
-    def test_invalid_write_as_argument_assertion(self):
-        write_as = "any_other_string_that_is_not_raw_lfp_or_processed"
+    def test_invalid_parent_container_argument(self):
+        parent_container = "not_a_valid_container"
 
-        reg_expression = f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
+        reg_expression = "should be one of 'acquisition', 'processing/LFP', or 'processing/FilteredEphys'"
 
-        with self.assertRaisesRegex(AssertionError, reg_expression):
+        with self.assertRaisesRegex(ValueError, reg_expression):
             add_recording_to_nwbfile(
-                recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+                recording=self.test_recording_extractor,
+                nwbfile=self.nwbfile,
+                iterator_type=None,
+                parent_container=parent_container,
             )
 
 
@@ -982,6 +1005,26 @@ class TestAddElectrodes(TestCase):
         assert np.array_equal(extracted_complete_property, expected_complete_property)
         assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
 
+    def test_missing_ragged_values(self):
+        """Channels added without a ragged property get an empty row for it.
+
+        Reading a sample value to work out a null does not work for a ragged column, whose rows
+        have no shape in common, so the empty row is used directly.
+        """
+        recording1 = generate_recording(num_channels=2, durations=[1.0])
+        recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
+        recording1.set_property(key="ragged_property", values=np.ones(shape=(2, 3)))
+        _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
+
+        recording2 = generate_recording(num_channels=2, durations=[1.0])
+        recording2 = recording2.rename_channels(new_channel_ids=["c", "d"])
+        _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
+
+        ragged_property = self.nwbfile.electrodes["ragged_property"]
+        assert list(ragged_property[0]) == [1.0, 1.0, 1.0]
+        assert list(ragged_property[2]) == []
+        assert list(ragged_property[3]) == []
+
     def test_missing_bool_values(self):
         recording1 = generate_recording(num_channels=2)
         recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
@@ -1146,6 +1189,18 @@ class TestAddTimeSeries:
         extracted_data = time_series.data[:]
         expected_data = recording.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+    def test_shifted_recording_uses_starting_time(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.shift_times(2.0)
+
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        time_series = nwbfile.acquisition["TimeSeries"]
+        assert time_series.starting_time == 2.0
+        assert time_series.rate == 1.0
 
     def test_metadata_key(self):
         """Test that metadata_key is used to look up metadata."""
@@ -1493,7 +1548,7 @@ class TestAddSpatialSeries:
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
-            write_as="processing",
+            parent_container="processing",
             iterator_type=None,
         )
 
@@ -1856,7 +1911,7 @@ class TestAddUnitsTable(TestCase):
             nwbfile=self.nwbfile,
             units_name=units_table_name,
             units_description=unit_table_description,
-            write_as="processing",
+            parent_container="processing",
         )
 
         ecephys_mod = get_module(
@@ -2060,6 +2115,93 @@ class TestAddUnitsTable(TestCase):
         assert units_table["electrodes"][1]["channel_name"].item() == "B"
         assert units_table["electrodes"][2]["channel_name"].item() == "C"
         assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
+
+    def test_add_units_without_electrodes_to_a_table_that_has_them(self):
+        """Units with no electrode indices can be appended to a table that already has the column.
+
+        This happens with multiple probes when the electrodes of the second one cannot be matched
+        (e.g. its group names are not in the electrodes table); those units get an empty region.
+        """
+        recording = generate_recording(num_channels=4, durations=[1.0])
+        recording = recording.rename_channels(new_channel_ids=["A", "B", "C", "D"])
+        add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
+
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_1,
+            nwbfile=self.nwbfile,
+            unit_electrode_indices=[[0], [1], [2], [3]],
+        )
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        units_table = self.nwbfile.units
+        unit_names = list(units_table["unit_name"].data)
+        self.assertListEqual(unit_names, ["a", "b", "c", "d", "e", "f"])
+
+        # Reads the stored electrode indices without building a DataFrame; indexing directly also
+        # raises on an empty region in memory until https://github.com/hdmf-dev/hdmf/pull/1549 is released.
+        electrodes_of_units = units_table["electrodes"]
+        assert list(electrodes_of_units.get(0, index=True)) == [0]
+        assert list(electrodes_of_units.get(4, index=True)) == []
+        assert list(electrodes_of_units.get(5, index=True)) == []
+
+    def test_add_units_without_waveforms_to_a_table_that_has_them(self):
+        """Units with no waveforms can be appended to a table that already has the columns.
+
+        `waveform_mean` is not ragged, so its rows all share one shape and the null for a unit
+        without waveforms has to be an array of that same shape rather than a scalar.
+        """
+        num_samples, num_channels = 10, 4
+        waveform_means = np.ones(shape=(self.num_units, num_samples, num_channels))
+
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_1,
+            nwbfile=self.nwbfile,
+            waveform_data_dict=dict(means=waveform_means, sds=waveform_means, sampling_rate=30_000.0),
+        )
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        units_table = self.nwbfile.units
+        for column in ["waveform_mean", "waveform_sd"]:
+            assert units_table[column][0].shape == (num_samples, num_channels)
+            assert units_table[column][4].shape == (num_samples, num_channels)
+            assert np.isnan(units_table[column][4]).all()
+
+    def test_add_units_with_waveforms_to_a_table_without_them(self):
+        """Waveforms added on a later call are extended over the units already in the table.
+
+        This is the mirror of the case above: the column does not exist yet, so it is created for
+        the whole table and the units written earlier are the ones needing a null.
+        """
+        num_samples, num_channels = 10, 4
+        waveform_means = np.ones(shape=(self.num_units, num_samples, num_channels))
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_2,
+            nwbfile=self.nwbfile,
+            waveform_data_dict=dict(means=waveform_means, sds=waveform_means, sampling_rate=30_000.0),
+        )
+
+        units_table = self.nwbfile.units
+        assert units_table["waveform_mean"][:].shape == (6, num_samples, num_channels)
+        assert np.isnan(units_table["waveform_mean"][0]).all()
+        assert (units_table["waveform_mean"][4] == 1.0).all()
+
+    def test_add_units_without_a_ragged_property_to_a_table_that_has_it(self):
+        """A ragged property missing from a later call gets an empty row, not a null value.
+
+        There is no shape to match for a ragged column, and an empty row is what the column
+        extending path already writes for units that lack the property.
+        """
+        self.sorting_1.set_property(key="ragged_property", values=np.ones(shape=(self.num_units, 2)))
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        units_table = self.nwbfile.units
+        assert list(units_table["ragged_property"][0]) == [1.0, 1.0]
+        assert list(units_table["ragged_property"][4]) == []
+        assert list(units_table["ragged_property"][5]) == []
 
 
 class TestWaveformParametersAdditionToUnitsTable:
@@ -2397,7 +2539,7 @@ class TestWriteSortingAnalyzer(TestCase):
             add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
-                write_as="units",
+                parent_container="units",
                 units_name="units1",
             )
 
@@ -2426,9 +2568,6 @@ class TestWriteSortingAnalyzer(TestCase):
 def test_stub_recording_with_t_start():
     """Test that the _stub recording functionality does not fail when it has a start time. See issue #1355"""
     recording = generate_recording(durations=[1.0])
-    # TODO Remove the following line once Spikeinterface 0.102.4 or higher is released
-    # See https://github.com/SpikeInterface/spikeinterface/pull/3940
-    recording._recording_segments[0].t_start = 0.0
     recording.shift_times(2.0)
 
     _stub_recording(recording=recording)
@@ -2527,7 +2666,7 @@ class TestAddRecording:
         assert group.location == "V1"
         assert group.device is device
 
-        # ElectricalSeries lives in acquisition (write_as="raw" default), user fields applied
+        # ElectricalSeries lives in acquisition (parent_container="acquisition" default), user fields applied
         series = nwbfile.acquisition["ElectricalSeriesAP"]
         assert series.name == "ElectricalSeriesAP"
         assert series.description == "Raw AP traces"
@@ -2634,8 +2773,10 @@ class TestAddRecording:
         electrodes_df = nwbfile.electrodes.to_dataframe()
         assert all(row_group is group for row_group in electrodes_df["group"])
 
-    def test_missing_required_electrode_group_field_raises(self):
-        """When an electrode group entry is missing schema-required fields, a clear error is raised."""
+    def test_missing_electrode_group_fields_are_defaulted(self):
+        """An electrode group entry that omits description/location is not rejected; the write path fills
+        those required NWB fields from the default template instead of raising, so an interface can
+        provide just a name and a device link."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
         nwbfile = mock_NWBFile()
 
@@ -2646,7 +2787,7 @@ class TestAddRecording:
                 "ElectrodeGroups": {
                     channel_groups[0]: {
                         "name": channel_groups[0],
-                        # description and location intentionally omitted
+                        # description and location intentionally omitted -> defaulted at write time
                         "device_metadata_key": "d",
                     },
                 },
@@ -2656,21 +2797,18 @@ class TestAddRecording:
             },
         }
 
-        expected_error = re.escape(
-            "Electrode group metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. "
-            "If missing, a placeholder can be used instead:\n"
-            "  description: 'no description'\n"
-            "  location: 'unknown'"
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
         )
-        with pytest.raises(ValueError, match=expected_error):
-            add_recording_to_nwbfile(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                metadata_key="series",
-                iterator_type=None,
-            )
+
+        group = nwbfile.electrode_groups[channel_groups[0]]
+        assert group.description == "no description"
+        assert group.location == "unknown"
+        assert group.device.name == "Device"
 
     def test_missing_metadata_key_raises(self):
         """An unknown metadata_key raises with the available keys listed."""
