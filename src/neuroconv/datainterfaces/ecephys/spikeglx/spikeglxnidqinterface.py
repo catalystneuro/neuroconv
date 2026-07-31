@@ -25,6 +25,15 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     associated_suffixes = (".nidq", ".meta", ".bin")
     info = "Interface for NIDQ board recording data."
 
+    # Defaults for the digital half, as class attributes rather than only as __init__ assignments.
+    # MockSpikeGLXNIDQInterface substitutes a synthetic recording by skipping this __init__ and setting
+    # the handful of attributes it needs, so anything __init__ alone establishes is absent there. These
+    # describe a board with no digital half, which is what such a subclass has.
+    _uses_legacy_digital_path = False
+    _digital_channel_groups: dict = {}
+    _legacy_events_routing: dict = {}
+    _events_interface = None
+
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
