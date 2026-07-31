@@ -28,14 +28,6 @@ class BrukerTiffConverter(ConverterPipe):
     each depth plane as its own 2D ``TwoPhotonSeries`` and ``ImagingPlane``, carrying that plane's
     own focal depth. It has no effect on planar sessions. This replaces the deprecated
     ``BrukerTiffMultiPlaneConverter``.
-
-    Conversion options (``stub_test``, ``stub_samples``, etc.) are given per interface, keyed by
-    interface name::
-
-        converter.run_conversion(
-            nwbfile_path=...,
-            conversion_options={"BrukerImaging_Ch1": {"stub_test": True, "stub_samples": 100}},
-        )
     """
 
     display_name = "Bruker TIFF Imaging"

@@ -36,6 +36,12 @@ That call covers any Prairie View session, planar or volumetric, single-channel 
 Every channel in the session is written as its own ``ImagingPlane`` and ``TwoPhotonSeries``, all
 referring to a single ``Device`` named ``BrukerFluorescenceMicroscope``.
 
+.. seealso::
+
+    :ref:`annotate_ophys_metadata` for how to edit the metadata before writing, such as naming the
+    indicator, the imaging location, or the excitation wavelength that the Bruker ``.xml`` does not
+    record.
+
 **Writing a volumetric session**
 
 A volumetric session can be written two ways, chosen with ``plane_separation_type``. The default,
