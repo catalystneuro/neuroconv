@@ -2,7 +2,6 @@ import warnings
 from pathlib import Path
 from typing import Literal
 
-import numpy as np
 from dateutil.parser import parse as dateparse
 from pydantic import DirectoryPath, validate_call
 
@@ -192,21 +191,14 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
             frame_shape=frame_shape, is_volumetric=is_volumetric
         )
 
+        # Only what the Bruker ``.xml`` actually reports. The NWB-required fields it says nothing about
+        # (``excitation_lambda``, ``indicator``, ``location``, ``optical_channel``, the series ``unit``)
+        # are filled from the central placeholder template at write time, so they are not invented here.
         imaging_plane_entry = {
             "name": imaging_plane_name,
             "description": "The imaging plane origin_coords units are in the microscope reference frame.",
             "device_metadata_key": device_metadata_key,
             "imaging_rate": sampling_frequency,
-            "excitation_lambda": np.nan,
-            "indicator": "unknown",
-            "location": "unknown",
-            "optical_channel": [
-                {
-                    "name": "OpticalChannel",
-                    "description": "An optical channel of the microscope.",
-                    "emission_lambda": np.nan,
-                }
-            ],
             "grid_spacing": grid_spacing,
             "grid_spacing_unit": "meters",
             "origin_coords": origin_coords,
@@ -215,7 +207,6 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
 
         microscopy_series_entry = {
             "name": photon_series_name,
-            "unit": "n.a.",
             "imaging_plane_metadata_key": self.metadata_key,
             "description": (
                 "The volumetric imaging data acquired from the Bruker Two-Photon Microscope."

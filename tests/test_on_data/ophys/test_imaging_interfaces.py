@@ -446,21 +446,14 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
         expected_devices = {
             device_metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
         }
+        # Only what the Bruker .xml reports. excitation_lambda, indicator, location, optical_channel
+        # and the series unit are absent on purpose; the write path fills them from the placeholder
+        # template, so emitting them here would be inventing values the source never gave.
         expected_imaging_plane = {
             "name": "ImagingPlane",
             "description": "The imaging plane origin_coords units are in the microscope reference frame.",
             "device_metadata_key": device_metadata_key,
             "imaging_rate": self.expected_imaging_rate,
-            "excitation_lambda": np.nan,
-            "indicator": "unknown",
-            "location": "unknown",
-            "optical_channel": [
-                {
-                    "name": "OpticalChannel",
-                    "description": "An optical channel of the microscope.",
-                    "emission_lambda": np.nan,
-                }
-            ],
             "grid_spacing": (1.1078125e-06, 1.1078125e-06),
             "grid_spacing_unit": "meters",
             "origin_coords": (0.0, 0.0),
@@ -468,7 +461,6 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
         }
         expected_microscopy_series = {
             "name": "TwoPhotonSeries",
-            "unit": "n.a.",
             "imaging_plane_metadata_key": metadata_key,
             "description": "Imaging data acquired from the Bruker Two-Photon Microscope.",
             "field_of_view": (7.09e-05, 7.09e-05),
@@ -491,6 +483,15 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
             assert two_photon_series.rate == self.expected_imaging_rate
             assert two_photon_series.scan_line_rate == self.expected_scan_line_rate
             assert two_photon_series.data.shape == (10, 64, 64)
+
+            # The interface emits none of these; the write path fills them from the placeholder
+            # template, so the file is still schema-complete despite the sparse get_metadata.
+            imaging_plane = nwbfile.imaging_planes["ImagingPlane"]
+            assert np.isnan(imaging_plane.excitation_lambda)
+            assert imaging_plane.indicator == "unknown"
+            assert imaging_plane.location == "unknown"
+            assert imaging_plane.optical_channel[0].name == "OpticalChannel"
+            assert two_photon_series.unit == "n.a."
 
 
 class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixin):
@@ -517,21 +518,12 @@ class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixi
         expected_devices = {
             device_metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
         }
+        # Source-known fields only; see the single-plane case for why the optics fields are absent.
         expected_imaging_plane = {
             "name": "ImagingPlane",
             "description": "The imaging plane origin_coords units are in the microscope reference frame.",
             "device_metadata_key": device_metadata_key,
             "imaging_rate": self.expected_volume_rate,
-            "excitation_lambda": np.nan,
-            "indicator": "unknown",
-            "location": "unknown",
-            "optical_channel": [
-                {
-                    "name": "OpticalChannel",
-                    "description": "An optical channel of the microscope.",
-                    "emission_lambda": np.nan,
-                }
-            ],
             "grid_spacing": (1.1078125e-06, 1.1078125e-06, 0.00026),
             "grid_spacing_unit": "meters",
             "origin_coords": (56.215, 14.927, -130.0),
@@ -539,7 +531,6 @@ class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixi
         }
         expected_microscopy_series = {
             "name": "TwoPhotonSeries",
-            "unit": "n.a.",
             "imaging_plane_metadata_key": metadata_key,
             "description": "The volumetric imaging data acquired from the Bruker Two-Photon Microscope.",
             "field_of_view": (7.09e-05, 7.09e-05, 0.00026),
