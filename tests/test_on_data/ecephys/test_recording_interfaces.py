@@ -98,6 +98,15 @@ class TestBiocamRecordingInterface(RecordingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "biocam" / "biocam_hw3.0_fw1.6.brw"))
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        # This interface claims no device and no electrode groups, so the ElectricalSeries entry keyed
+        # by metadata_key is all it emits.
+        expected_metadata_key = "biocam_recording"
+        expected_electrical_series = {"biocam_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
 
 class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = BlackrockRecordingInterface
@@ -128,6 +137,13 @@ class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Spike2RecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "spike2" / "m365_1sec.smrx"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "spike2_recording"
+        expected_electrical_series = {"spike2_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
 
 class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
@@ -401,6 +417,13 @@ class TestMCSRawRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MCSRawRecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "rawmcs" / "raw_mcs_with_header_1.raw"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "mcs_raw_recording"
+        expected_electrical_series = {"mcs_raw_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
 
 class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
@@ -797,6 +820,13 @@ class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGadgetsRecordingInterface
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "spikegadgets_recording"
+        expected_electrical_series = {"spikegadgets_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
     @pytest.fixture(
         params=[
             dict(file_path=str(ECEPHY_DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec")),
@@ -939,6 +969,13 @@ class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
     test_gain_value = 0.195  # arbitrary value to test gain
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "tdt_recording"
+        expected_electrical_series = {"tdt_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
     @pytest.fixture(
         params=[
             dict(folder_path=str(ECEPHY_DATA_PATH / "tdt" / "aep_05"), gain=test_gain_value),
@@ -1024,3 +1061,71 @@ class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
         num_channels=64,
     )
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "white_matter_recording"
+        expected_electrical_series = {"white_matter_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
+
+@pytest.mark.parametrize(
+    "interface_class, interface_kwargs, default_metadata_key",
+    [
+        (
+            BiocamRecordingInterface,
+            dict(file_path=str(ECEPHY_DATA_PATH / "biocam" / "biocam_hw3.0_fw1.6.brw")),
+            "biocam_recording",
+        ),
+        (
+            MCSRawRecordingInterface,
+            dict(file_path=str(ECEPHY_DATA_PATH / "rawmcs" / "raw_mcs_with_header_1.raw")),
+            "mcs_raw_recording",
+        ),
+        (
+            SpikeGadgetsRecordingInterface,
+            dict(file_path=str(ECEPHY_DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec")),
+            "spikegadgets_recording",
+        ),
+        (
+            TdtRecordingInterface,
+            dict(folder_path=str(ECEPHY_DATA_PATH / "tdt" / "aep_05"), gain=0.195),
+            "tdt_recording",
+        ),
+        (
+            WhiteMatterRecordingInterface,
+            dict(
+                file_path=str(
+                    ECEPHY_DATA_PATH
+                    / "whitematter"
+                    / "HSW_2024_12_12__10_28_23__70min_17sec__hsamp_64ch_25000sps_stub.bin"
+                ),
+                sampling_frequency=25_000.0,
+                num_channels=64,
+            ),
+            "white_matter_recording",
+        ),
+        pytest.param(
+            Spike2RecordingInterface,
+            dict(file_path=str(ECEPHY_DATA_PATH / "spike2" / "m365_1sec.smrx")),
+            "spike2_recording",
+            marks=pytest.mark.skipif(
+                platform == "darwin" or this_python_version > version.parse("3.9"),
+                reason="Interface unsupported for OSX. Interface only runs on Python 3.9",
+            ),
+        ),
+    ],
+    ids=["biocam", "mcsraw", "spikegadgets", "tdt", "whitematter", "spike2"],
+)
+def test_metadata_key_is_accepted_and_forwarded(interface_class, interface_kwargs, default_metadata_key):
+    # These interfaces define their own __init__ and used to forward es_key only, so passing metadata_key
+    # raised TypeError. They add nothing to the base dict shape, so the argument and its snake_case default
+    # are the whole migration for them.
+    interface = interface_class(**interface_kwargs)
+    assert interface.metadata_key == default_metadata_key
+
+    interface = interface_class(**interface_kwargs, metadata_key="custom_key")
+    electrical_series = interface.get_metadata(use_new_metadata_format=True)["Ecephys"]["ElectricalSeries"]
+    assert list(electrical_series) == ["custom_key"]
+    assert electrical_series["custom_key"]["name"] == "ElectricalSeries"
