@@ -1220,16 +1220,35 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
 
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635000)
 
+        # The whole device configuration reaches the registry entry, typed so it is built as an
+        # ndx-miniscope Miniscope rather than a plain Device, and keyed by the device rather than by
+        # the interface.
+        device_metadata_key = "miniscope"
         assert metadata["Devices"] == {
-            metadata_key: {"name": "Miniscope", "model_name": "Miniscope_V3"},
+            device_metadata_key: {
+                "type": "Miniscope",
+                "name": "Miniscope",
+                "compression": "FFV1",
+                "deviceType": "Miniscope_V3",
+                "frameRate": "15FPS",
+                "gain": "High",
+                "framesPerFile": 1000,
+                "led0": 47,
+                "device_model_metadata_key": "miniscope_v3",
+            },
         }
+        # The hardware design is a model, shared by every Miniscope of that design.
+        assert metadata["DeviceModels"] == {"miniscope_v3": {"name": "Miniscope_V3"}}
 
         expected_imaging_rate = self.interface.imaging_extractor.get_sampling_frequency()
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
-            "device_metadata_key": metadata_key,
+            "name": "ImagingPlane",
+            "device_metadata_key": device_metadata_key,
             "imaging_rate": expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": "OnePhotonSeries",
+            "unit": "px",
             "imaging_plane_metadata_key": metadata_key,
             "description": "Imaging data acquired with a Miniscope.",
         }
@@ -1341,6 +1360,95 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         # Verify it matches the expected value from metaData.json
         expected_start_time = datetime(2021, 10, 7, 15, 3, 28, 635000)
         assert session_start_time == expected_start_time
+
+
+class TestMiniscopeImagingInterfaceV4BNO(MiniscopeImagingInterfaceMixin):
+    """A V4 recording whose configuration exercises every branch of the config-to-device mapping.
+
+    The DAQ wrote ``gain`` as a number where the schema declares text, an ``ROI`` where the schema
+    declares a bounding box, and an ``ewl`` (the electrowetting lens position) the schema has no field
+    for at all. The recording in ``TestMiniscopeImagingInterface`` carries none of the three.
+    """
+
+    data_interface_cls = MiniscopeImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "Miniscope"
+            / "Ca_EEG3-4_FC"
+            / "2022_09_19"
+            / "09_18_41"
+            / "miniscope"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_metadata(cls, request):
+        cls = request.cls
+        cls.device_name = "miniscope"
+        cls.imaging_plane_name = "ImagingPlane"
+        cls.photon_series_name = "OnePhotonSeries"
+        cls.optical_series_name = "OnePhotonSeries"
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["Devices"] == {
+            "miniscope": {
+                "type": "Miniscope",
+                "name": "miniscope",
+                "compression": "FFV1",
+                "deviceType": "Miniscope_V4_BNO",
+                "frameRate": "30FPS",
+                # Written as 3.5 by the DAQ, declared as text by the schema.
+                "gain": "3.5",
+                "framesPerFile": 1000,
+                "led0": 1,
+                # Written as {"height": 608, "width": 608, "leftEdge": 0, "topEdge": 0}.
+                "ROI": [608, 608],
+                "description": (
+                    "Settings recorded by the Miniscope DAQ software that the ndx-miniscope schema "
+                    "has no field for: ROI.leftEdge: 0, ROI.topEdge: 0, ewl: 70."
+                ),
+                "device_model_metadata_key": "miniscope_v4_bno",
+            },
+        }
+        assert metadata["DeviceModels"] == {"miniscope_v4_bno": {"name": "Miniscope_V4_BNO"}}
+
+    def check_read_nwb(self, nwbfile_path: str):
+        from ndx_miniscope import Miniscope
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            device = nwbfile.devices[self.device_name]
+            assert isinstance(device, Miniscope)
+
+            one_photon_series = nwbfile.acquisition[self.photon_series_name]
+            assert one_photon_series.data.shape == (15, 608, 608)
+            assert one_photon_series.timestamps.shape == (15,)
+
+    def test_configuration_reaches_the_device_through_the_registry(self):
+        """The typed entry is what the registry builds the Miniscope from, values and all."""
+        from ndx_miniscope import Miniscope
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata(use_new_metadata_format=True))
+
+        device = nwbfile.devices["miniscope"]
+        assert isinstance(device, Miniscope)
+        assert device.gain == "3.5"
+        assert device.deviceType == "Miniscope_V4_BNO"
+        assert list(device.ROI) == [608, 608]
+        assert "ewl: 70" in device.description
+
+        # The hardware design is written as the DeviceModel pynwb 4 asks for, not as the deprecated
+        # 'model_name'. Its manufacturer is required by NWB and not recorded by the DAQ.
+        assert device.model is nwbfile.device_models["Miniscope_V4_BNO"]
+        assert device.model.manufacturer == "unknown"
 
 
 skip_on_darwin_arm64 = pytest.mark.skipif(

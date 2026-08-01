@@ -61,6 +61,70 @@ def _read_miniscope_config(folder_path: str) -> dict:
     return miniscope_config
 
 
+def _config_to_miniscope_device_metadata(miniscope_config: dict) -> dict:
+    """Map a V4 device configuration onto a ``metadata["Devices"]`` entry of type ``Miniscope``.
+
+    ``miniscope_config`` is a config as returned by :func:`_read_miniscope_config` (a device folder's
+    ``metaData.json``) or an entry of ``devices[miniscopes]`` in the User Config, plus a ``name``.
+
+    Only the fields the ndx-miniscope schema declares can be set on the device. A setting the DAQ
+    recorded that the schema has no field for (``ewl``, the electrowetting lens position, is the one
+    every V4 file carries) is named in the description rather than dropped without trace.
+    """
+    # Fields of the ndx-miniscope ``Miniscope`` type, grouped by the dtype its schema declares. The DAQ
+    # writes several of them with a different type than the schema asks for (``gain: 3.5``, ``gain: 16``,
+    # ``frameRate: 50`` are all real values), so each is coerced here instead of being passed through.
+    text_fields = ("compression", "deviceType", "frameRate", "gain")
+    integer_fields = ("excitation", "framesPerFile", "led0", "msCamExposure")
+    # Identifiers rather than acquisition settings; they say nothing about the device itself.
+    # ``deviceName`` is the device's own name, which the caller passes as ``name``.
+    ignored_fields = ("deviceDirectory", "deviceID", "deviceName")
+
+    device_metadata = {"type": "Miniscope", "name": miniscope_config["name"]}
+
+    for field in text_fields:
+        if field in miniscope_config:
+            device_metadata[field] = str(miniscope_config[field])
+    for field in integer_fields:
+        if field in miniscope_config:
+            device_metadata[field] = int(miniscope_config[field])
+
+    mapped_fields = {"name", "ROI", *text_fields, *integer_fields, *ignored_fields}
+    unmapped_settings = {key: value for key, value in miniscope_config.items() if key not in mapped_fields}
+
+    region_of_interest = miniscope_config.get("ROI")
+    if region_of_interest is not None:
+        # The schema types ROI as the (height, width) of the saved frame, so where that frame sits on
+        # the sensor ('leftEdge', 'topEdge') has no field of its own either.
+        device_metadata["ROI"] = [region_of_interest["height"], region_of_interest["width"]]
+        offsets = {f"ROI.{key}": value for key, value in region_of_interest.items() if key not in ("height", "width")}
+        unmapped_settings.update(offsets)
+
+    if unmapped_settings:
+        settings = ", ".join(f"{key}: {value}" for key, value in sorted(unmapped_settings.items()))
+        device_metadata["description"] = (
+            "Settings recorded by the Miniscope DAQ software that the ndx-miniscope schema "
+            f"has no field for: {settings}."
+        )
+
+    return device_metadata
+
+
+def _config_to_miniscope_device_model_metadata(miniscope_config: dict) -> dict | None:
+    """Map a V4 device configuration onto a ``metadata["DeviceModels"]`` entry, or ``None``.
+
+    ``deviceType`` is the hardware design the DAQ was configured for (``Miniscope_V4_BNO``), which is a
+    model rather than a property of the individual scope, so it is written as the ``DeviceModel`` that
+    pynwb 4 asks for. The manufacturer NWB requires of a model is not something the DAQ records, and is
+    filled where the model is built.
+    """
+    device_type = miniscope_config.get("deviceType")
+    if device_type is None:
+        return None
+
+    return {"name": str(device_type)}
+
+
 def _get_recording_start_times(folder_path: str) -> list[datetime]:
     """Return the start times of each recording subfolder under ``folder_path``.
 

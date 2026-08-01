@@ -317,7 +317,9 @@ def _add_imaging_plane_to_nwbfile(
     # which is exposed through the registry under its default key so every device is added by the
     # canonical path.
     device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
-    devices_metadata = {"Devices": dict((metadata or {}).get("Devices", {}))}
+    # The whole metadata goes to the helper, since a device entry may name its model by
+    # ``device_model_metadata_key``; only the ``Devices`` registry is rebuilt, for the placeholder below.
+    devices_metadata = {**(metadata or {}), "Devices": dict((metadata or {}).get("Devices", {}))}
     if device_metadata_key is None:
         # Only synthesize the placeholder when nothing was referenced, so a user device that happens
         # to share the placeholder's name is not turned into a duplicate-name conflict.
