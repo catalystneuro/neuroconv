@@ -102,19 +102,23 @@ class OpenEphysBinaryConverter(ConverterPipe):
 
         # Each neural stream needs both a distinct entry and a distinct ElectricalSeries name: the interface
         # keys its entry by ``metadata_key`` but names every series "ElectricalSeries", which collides once a
-        # session holds several streams. ``get_metadata`` below assigns the names.
+        # session holds several streams. ``get_metadata`` below assigns the names from this mapping.
         self._series_name_by_metadata_key = {
             _to_metadata_key(stream_name): "ElectricalSeries" + _to_suffix(stream_name)
             for stream_name in neural_streams
         }
 
         for stream_name in neural_streams:
-            es_key = "ElectricalSeries" + _to_suffix(stream_name)
+            metadata_key = _to_metadata_key(stream_name)
             data_interfaces[stream_name] = OpenEphysBinaryRecordingInterface(
                 folder_path=folder_path,
                 stream_name=stream_name,
-                es_key=es_key,
-                metadata_key=_to_metadata_key(stream_name),
+                metadata_key=metadata_key,
+                # The old list-based format keys its entry by ``es_key``, so there a per-stream key is the
+                # only way to give each stream its own entry and name; it carries the same name assigned
+                # above. Nothing in the dict-based path reads it, and it goes from this converter with
+                # ``es_key`` itself.
+                es_key=self._series_name_by_metadata_key[metadata_key],
             )
 
         for stream_name in analog_streams:
