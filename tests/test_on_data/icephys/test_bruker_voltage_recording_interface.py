@@ -193,6 +193,23 @@ def test_mode_and_scaling_across_the_fixture_set(folder_name, expected_mode, exp
     assert response.conversion == pytest.approx(expected_conversion)
 
 
+@pytest.mark.parametrize(
+    "folder_name, expected_microsecond",
+    [
+        # PrairieView writes .NET's round-trip format, whose fraction is as long as it needs to be. Before
+        # Python 3.11 `fromisoformat` accepts exactly three or exactly six digits, so both the long and the
+        # short case have to be normalized to six; truncating alone leaves the five-digit file unparsable.
+        ("cc_03_cell2-020", 305780),  # .30578, five digits, padded
+        ("vc_03_cell1_LED16-012", 283644),  # .283644, six digits, untouched
+        ("cc_01_cell1-001", 108257),  # .1082577, seven digits, truncated
+    ],
+)
+def test_fractional_seconds_are_normalized_to_six_digits(folder_name, expected_microsecond):
+    interface = BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path(folder_name)])
+
+    assert interface.get_metadata()["NWBFile"]["session_start_time"].microsecond == expected_microsecond
+
+
 def test_explicit_mode_overrides_the_derived_one():
     """``izero`` reads ``mV`` exactly like ordinary current clamp, so it is the one mode the file cannot state
     and the argument is the only way to reach ``IZeroClampSeries``."""
@@ -235,6 +252,23 @@ class TestCycleAssembly:
         # One run, so every row carries the same sequence and they aggregate into a single sequential recording.
         assert set(recordings["sequence"][:]) == {"cell1-001"}
 
+    def test_cycles_are_sorted_by_acquisition_time(self, tmp_path):
+        """The samples are concatenated in one order and timestamped from each cycle's ``DateTime``, so a
+        caller whose list is not chronological would otherwise get a timestamps array that jumps backwards.
+        ``Path.glob`` returns filesystem order, so an unsorted list is the ordinary case."""
+        cycles = [
+            write_derived_cycle(tmp_path, "cc_01_cell1-001", 1, start_datetime="2017-02-02T15:39:33.0000000-06:00"),
+            write_derived_cycle(tmp_path, "cc_01_cell1-001", 2, start_datetime="2017-02-02T15:40:20.0000000-06:00"),
+            write_derived_cycle(tmp_path, "cc_01_cell1-001", 3, start_datetime="2017-02-02T15:41:08.0000000-06:00"),
+        ]
+        interface = BrukerVoltageRecordingInterface(file_paths=[cycles[2], cycles[0], cycles[1]])
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        timestamps = nwbfile.acquisition["CurrentClampSeriesCell1001Primary"].timestamps[:]
+        assert list(timestamps[[0, 100, 200]]) == pytest.approx([0.0, 47.0, 95.0])
+        assert all(later > earlier for earlier, later in zip(timestamps, timestamps[1:]))
+
     def test_cycles_that_disagree_are_rejected(self, tmp_path):
         """A change of scaling partway through cannot be represented by one series with one ``conversion``,
         so it fails at construction rather than being silently applied to only part of the data."""
@@ -244,6 +278,54 @@ class TestCycleAssembly:
         ]
         with pytest.raises(ValueError, match="disagrees with .* on the divisor"):
             BrukerVoltageRecordingInterface(file_paths=cycles)
+
+
+class TestColumnIdentityComesFromTheXml:
+    """The CSV header's names are unreliable and the XML's ``Enabled`` flags are not. A whole recording day of
+    the Zhai et al. 2025 deposit (all 27 acquisitions of ``20151124a``) carries a header reading
+    ``Time(ms), Secondary, LED`` on files whose enabled signals are ``Primary`` and ``Secondary``. The
+    physiology settles which is right: one column holds a current step and the other the spikes it evoked."""
+
+    @staticmethod
+    def write_cycle_with_a_shifted_header(tmp_path):
+        """A two-signal cycle whose header names are shifted, as the 2015 files are.
+
+        Derived from ``cc_01``: its ``Secondary`` entry is enabled so the XML records ``Primary, Secondary``,
+        while the header is written as ``Time(ms), Secondary, LED``, naming a signal that is not even enabled.
+        """
+        cycle = write_derived_cycle(tmp_path, "cc_01_cell1-001", 1, extra_signal_name="Secondary")
+        lines = cycle.read_text().splitlines()
+        cycle.write_text("\n".join(["Time(ms), Secondary, LED"] + lines[1:]) + "\n")
+        return cycle
+
+    def test_signal_names_ignore_the_header(self, tmp_path):
+        cycle = self.write_cycle_with_a_shifted_header(tmp_path)
+
+        assert BrukerVoltageRecordingInterface.get_signal_names(file_path=cycle) == ["Primary", "Secondary"]
+
+    def test_the_response_is_the_signal_the_xml_names(self, tmp_path):
+        """``Primary`` is absent from the header entirely, so a header-driven reader either rejects the file
+        or hands back the wrong column scaled by the wrong divisor."""
+        cycle = self.write_cycle_with_a_shifted_header(tmp_path)
+        interface = BrukerVoltageRecordingInterface(file_paths=[cycle], response_signal_name="Primary")
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        response = nwbfile.acquisition["CurrentClampSeriesCell1001Primary"]
+        assert isinstance(response, CurrentClampSeries)
+        # Primary's mV / 0.01 divisor, not Secondary's pA / 0.0005 one.
+        assert response.conversion == pytest.approx(0.1)
+        assert response.data[0] == pytest.approx(-0.81695556640625)
+
+    def test_a_column_count_that_contradicts_the_xml_is_refused(self, tmp_path):
+        """Names may disagree, but the count may not: if the two sources describe a different number of
+        signals then neither describes the file and no positional mapping is safe."""
+        cycle = write_derived_cycle(tmp_path, "cc_01_cell1-001", 1)
+        lines = cycle.read_text().splitlines()
+        cycle.write_text("\n".join([lines[0] + ", Extra"] + [f"{row},0" for row in lines[1:]]) + "\n")
+
+        with pytest.raises(ValueError, match="marks 1 signal"):
+            BrukerVoltageRecordingInterface(file_paths=[cycle])
 
 
 class TestSignalResolution:
@@ -275,7 +357,7 @@ class TestSignalResolution:
         assert isinstance(nwbfile.acquisition["VoltageClampSeriesCell1001Secondary"], VoltageClampSeries)
 
     def test_a_signal_that_was_not_recorded_says_so(self):
-        with pytest.raises(ValueError, match="Enabled=false"):
+        with pytest.raises(ValueError, match="declared in .* but not enabled"):
             BrukerVoltageRecordingInterface(
                 file_paths=[cycle_csv_path("cc_01_cell1-001")], response_signal_name="Secondary"
             )
@@ -346,6 +428,32 @@ class TestBrukerVoltageRecordingConverter:
 
         assert list(nwbfile.intracellular_recordings["stimulus_type"][:]) == ["somatic excitability"]
         assert list(nwbfile.icephys_sequential_recordings["stimulus_type"][:]) == ["somatic excitability"]
+
+    def test_two_amplifiers_under_one_run_are_refused(self, tmp_path):
+        """Interfaces over one run share an electrode by design, which is what puts an amplifier's ``Primary``
+        and ``Secondary`` on a single pipette. Two different ``PatchclampDevice`` values under one run mean two
+        headstages, and merging them would attribute one cell's data to the other's amplifier, since the
+        metadata merge keeps whichever device link came last."""
+        # One cycle recording two signals, each on its own headstage: the dual-patch shape.
+        cycle = write_derived_cycle(tmp_path, "cc_01_cell1-001", 1, extra_signal_name="Secondary")
+        xml_path = cycle.with_suffix(".xml")
+        xml_path.write_text(
+            re.sub(
+                r"(<Name>Secondary</Name>.*?<PatchclampDevice>)[^<]+",
+                r"\1Multiclamp700B Ch2",
+                xml_path.read_text(),
+                count=1,
+                flags=re.DOTALL,
+            )
+        )
+        first = BrukerVoltageRecordingInterface(file_paths=[cycle], response_signal_name="Primary")
+        second = BrukerVoltageRecordingInterface(
+            file_paths=[cycle], response_signal_name="Secondary", mode="voltage_clamp"
+        )
+        converter = BrukerVoltageRecordingConverter(data_interfaces=dict(A=first, B=second))
+
+        with pytest.raises(ValueError, match="more than one amplifier"):
+            converter.get_metadata()
 
     def test_runs_sharing_a_stem_are_disambiguated(self, tmp_path):
         """The acquisition stem is the experimenter's own naming and collides across session folders, so the

@@ -86,6 +86,29 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
         labels = _disambiguate_run_labels(list(dict.fromkeys(run_paths_by_interface.values())))
         for interface, run_path in run_paths_by_interface.items():
             interface._run_identity = labels[run_path]
+        BrukerVoltageRecordingConverter._check_one_amplifier_per_run(interfaces)
+
+    @staticmethod
+    def _check_one_amplifier_per_run(interfaces: list[BrukerVoltageRecordingInterface]) -> None:
+        """Refuse two interfaces that claim one electrode but report different amplifiers.
+
+        Interfaces over one run share an electrode by design, which is what puts an amplifier's ``Primary``
+        and ``Secondary`` outputs on a single pipette. Two different ``PatchclampDevice`` values under one run
+        mean two headstages, so they are two electrodes rather than one, and letting them merge would attribute
+        one cell's data to the other's amplifier (the metadata merge keeps whichever device link came last).
+        """
+        devices_by_run: dict[str, dict[str, str]] = {}
+        for interface in interfaces:
+            device_name = interface._response_signal.patchclamp_device
+            recorded = devices_by_run.setdefault(interface._run_identity, {})
+            recorded[device_name] = interface._response_signal_name
+            if len(recorded) > 1:
+                described = ", ".join(f"{name!r} on {device!r}" for device, name in sorted(recorded.items()))
+                raise ValueError(
+                    f"Run '{interface._run_identity}' has signals on more than one amplifier ({described}), so "
+                    "they are separate electrodes rather than two outputs of one. Give them distinct "
+                    "`metadata_key` values and point each series at its own electrode entry."
+                )
 
     @staticmethod
     def _compute_alignment(interfaces: list[BrukerVoltageRecordingInterface]):

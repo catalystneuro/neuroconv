@@ -8,18 +8,12 @@ from pathlib import Path
 
 import numpy as np
 
-# PrairieView stamps each cycle with .NET's round-trip datetime format, whose fractional part runs to seven
-# digits; datetime.fromisoformat accepts at most six before Python 3.11, so the tail is trimmed off.
-_EXCESS_FRACTIONAL_SECONDS = re.compile(r"(\.\d{6})\d+")
+# The fractional-seconds part of a `DateTime`, however many digits PrairieView wrote.
+_NORMALIZE_FRACTIONAL_SECONDS = re.compile(r"\.(\d+)")
 
 # The acquisition stem PrairieView writes into `DataFile`, for example
 # "cell1-001_Cycle00001_VoltageRecording_001". Stripping the per-cycle tail leaves the stem its cycles share.
 _CYCLE_SUFFIX = re.compile(r"_Cycle\d+_VoltageRecording_\d+$")
-
-# How far the sampling interval implied by the CSV's own time column may sit from the XML's `Rate` before the
-# two are called inconsistent. Generous, since the check exists to catch a header describing different data,
-# not to measure clock jitter (the time column is generated from the same nominal rate).
-_RATE_AGREEMENT_TOLERANCE = 1e-3
 
 
 @dataclass(frozen=True)
@@ -43,26 +37,44 @@ class _CycleHeader:
     stem: str
     rate: float
     start_datetime: datetime
-    signal_column_names: list[str]
+    recorded_signals: list[_VRecSignal]
+    header_names: list[str]
     signals: dict[str, _VRecSignal]
 
     def column_index(self, signal_name: str) -> int:
-        """Position of a recorded signal's column in the CSV, past the leading time column."""
-        return self.signal_column_names.index(signal_name) + 1
+        """Position of a recorded signal's column in the CSV, past the leading time column.
+
+        Resolved by position in the enabled ``SignalList``, never by matching the CSV header's names. The
+        header names are wrong on real published data: a whole recording day of the Zhai et al. 2025 deposit
+        carries ``Time(ms), Secondary, LED`` on files whose enabled signals are ``Primary`` and ``Secondary``,
+        and the physiology (a current step in one column evoking spikes in the other) shows the XML is right.
+        """
+        names = [signal.name for signal in self.recorded_signals]
+        return names.index(signal_name) + 1
 
 
 def _parse_prairie_view_datetime(text: str) -> datetime:
     """Parse a ``DateTime`` element, which carries the rig's UTC offset and needs no timezone guessing."""
-    return datetime.fromisoformat(_EXCESS_FRACTIONAL_SECONDS.sub(r"\1", text.strip()))
+    return datetime.fromisoformat(_NORMALIZE_FRACTIONAL_SECONDS.sub(_pad_fractional_seconds, text.strip()))
+
+
+def _pad_fractional_seconds(match: "re.Match") -> str:
+    """Render the fractional part as exactly six digits.
+
+    PrairieView writes .NET's round-trip format, whose fraction is as long as it needs to be: seven digits
+    usually, but five in some 2016 files. Before Python 3.11 ``datetime.fromisoformat`` accepts exactly three
+    or exactly six, so both the long and the short case have to be normalized, not just truncated.
+    """
+    return "." + match.group(1)[:6].ljust(6, "0")
 
 
 def _read_cycle_header(file_path: Path) -> _CycleHeader:
     """
     Read one cycle's metadata from its XML and the CSV's header line, without loading any samples.
 
-    The XML is the CSV's sibling; PrairieView names both from the same ``DataFile`` stem. The CSV header is the
-    authority on which signals were actually recorded (``Enabled`` selects them at acquisition time, but the
-    header states the outcome), and its first column is the time base.
+    The XML is the CSV's sibling; PrairieView names both from the same ``DataFile`` stem. The XML's ``Enabled`` flags are the
+    authority on which signals were recorded and in what order; the CSV header's names are not (see
+    ``_CycleHeader.column_index``). The CSV's first column is the time base.
     """
     file_path = Path(file_path)
     xml_file_path = file_path.with_suffix(".xml")
@@ -79,25 +91,44 @@ def _read_cycle_header(file_path: Path) -> _CycleHeader:
             "the per-cycle VoltageRecording XML, not PrairieView's master 'PVScan' XML."
         )
 
-    signals = {}
+    declared_signals = []
     for element in root.findall(".//VRecSignal"):
         unit = element.find("Unit")
+        if unit is None:
+            raise ValueError(f"A VRecSignal in '{xml_file_path}' has no Unit block, so it cannot be scaled.")
         name = element.findtext("Name")
-        signals[name] = _VRecSignal(
-            name=name,
-            enabled=element.findtext("Enabled", "").strip().lower() == "true",
-            unit_name=(unit.findtext("UnitName") or "").strip(),
-            multiplier=float(unit.findtext("Multiplier")),
-            divisor=float(unit.findtext("Divisor")),
-            patchclamp_device=(unit.findtext("PatchclampDevice") or "").strip(),
+        declared_signals.append(
+            _VRecSignal(
+                name=name,
+                enabled=element.findtext("Enabled", "").strip().lower() == "true",
+                unit_name=(unit.findtext("UnitName") or "").strip(),
+                multiplier=_required_float(unit, "Multiplier", xml_file_path),
+                divisor=_required_float(unit, "Divisor", xml_file_path),
+                patchclamp_device=(unit.findtext("PatchclampDevice") or "").strip(),
+            )
         )
 
-    rate = float(root.findtext(".//Rate"))
-    start_datetime = _parse_prairie_view_datetime(root.findtext("DateTime"))
-    stem = _CYCLE_SUFFIX.sub("", root.findtext("DataFile").strip())
+    # The enabled signals, in SignalList order, are the CSV's columns in order. Names can repeat (they are
+    # operator-editable free text), so the list is the authority and the dict is only a lookup convenience.
+    recorded_signals = [signal for signal in declared_signals if signal.enabled]
+    _check_names_are_unique(recorded_signals, xml_file_path)
+    signals = {signal.name: signal for signal in declared_signals}
 
-    signal_column_names, sampling_interval_ms = _read_csv_header(file_path)
-    _check_time_column_agrees_with_rate(file_path=file_path, rate=rate, sampling_interval_ms=sampling_interval_ms)
+    nominal_rate = _required_float(root, ".//Rate", xml_file_path)
+    start_datetime = _parse_prairie_view_datetime(_required_text(root, "DateTime", xml_file_path))
+    stem = _CYCLE_SUFFIX.sub("", _required_text(root, "DataFile", xml_file_path))
+
+    header_names, sampling_interval_ms = _read_csv_header(file_path)
+    # The CSV's own time column wins over the XML's `Rate`, which is nominal and can genuinely differ: one
+    # public recording declares 29.9999850000075 Hz while its time column steps at exactly 29 Hz throughout.
+    # Treating that as a mismatch rejected a perfectly good file, so the data is taken as the authority.
+    rate = 1000.0 / sampling_interval_ms if sampling_interval_ms else nominal_rate
+    _check_column_count(
+        file_path=file_path,
+        xml_file_path=xml_file_path,
+        recorded_signals=recorded_signals,
+        header_names=header_names,
+    )
 
     return _CycleHeader(
         file_path=file_path,
@@ -105,17 +136,66 @@ def _read_cycle_header(file_path: Path) -> _CycleHeader:
         stem=stem,
         rate=rate,
         start_datetime=start_datetime,
-        signal_column_names=signal_column_names,
+        recorded_signals=recorded_signals,
+        header_names=header_names,
         signals=signals,
     )
 
 
+def _required_text(element, path: str, xml_file_path: Path) -> str:
+    """Read a required element's text, naming the missing element rather than raising on ``None``."""
+    text = element.findtext(path)
+    if text is None:
+        raise ValueError(f"'{xml_file_path}' has no <{path.lstrip('./')}> element, which is required.")
+    return text.strip()
+
+
+def _required_float(element, path: str, xml_file_path: Path) -> float:
+    """Read a required element's text as a float, naming the element when it is missing or unparsable."""
+    text = _required_text(element, path, xml_file_path)
+    try:
+        return float(text)
+    except ValueError as exception:
+        raise ValueError(f"'{xml_file_path}' has a non-numeric <{path.lstrip('./')}> of {text!r}.") from exception
+
+
+def _check_names_are_unique(recorded_signals: list[_VRecSignal], xml_file_path: Path) -> None:
+    """Reject a duplicated signal name, which would make a name ambiguous as a column selector."""
+    names = [signal.name for signal in recorded_signals]
+    duplicates = {name for name in names if names.count(name) > 1}
+    if duplicates:
+        raise ValueError(
+            f"'{xml_file_path}' records more than one signal named {', '.join(sorted(duplicates))}, so a name "
+            "cannot identify a column. Signal names are operator-editable, so this is a rig configuration issue."
+        )
+
+
+def _check_column_count(
+    file_path: Path, xml_file_path: Path, recorded_signals: list[_VRecSignal], header_names: list[str]
+) -> None:
+    """
+    Require as many data columns as enabled signals, which is what makes the positional mapping safe.
+
+    The header's *names* are not checked, deliberately: they are wrong in real published data (see
+    ``_CycleHeader.column_index``). The count is a different matter, since a mismatch means neither the XML
+    nor the header describes the file and no mapping can be trusted.
+    """
+    if len(header_names) != len(recorded_signals):
+        enabled = ", ".join(signal.name for signal in recorded_signals) or "none"
+        raise ValueError(
+            f"'{file_path}' has {len(header_names)} data column(s) ({', '.join(header_names) or 'none'}) but "
+            f"'{xml_file_path.name}' marks {len(recorded_signals)} signal(s) as enabled ({enabled}). The pair "
+            "does not describe one acquisition, so which column is which cannot be determined."
+        )
+
+
 def _read_csv_header(file_path: Path) -> tuple[list[str], float | None]:
     """
-    Return the recorded signal column names and the interval between the first two samples, in milliseconds.
+    Return the header's column names and the interval between the first two samples, in milliseconds.
 
-    Only three lines are read. The column names carry a leading space in the file (``"Time(ms), Primary"``),
-    which is stripped here so callers match them against the XML's ``Name`` values directly.
+    Only three lines are read. The names carry a leading space in the file (``"Time(ms), Primary"``) and are
+    stripped, but they are returned for reporting only: column identity comes from the XML's enabled signals,
+    since these names are wrong on real data (see ``_CycleHeader.column_index``).
     """
     with open(file_path, "r") as file:
         header_line = file.readline()
@@ -131,18 +211,6 @@ def _read_csv_header(file_path: Path) -> tuple[list[str], float | None]:
     times = [float(row.split(",", 1)[0]) for row in first_rows if row.strip()]
     sampling_interval_ms = times[1] - times[0] if len(times) == 2 else None
     return column_names[1:], sampling_interval_ms
-
-
-def _check_time_column_agrees_with_rate(file_path: Path, rate: float, sampling_interval_ms: float | None) -> None:
-    """Fail loudly when the XML's ``Rate`` and the CSV's own time column describe different acquisitions."""
-    if sampling_interval_ms is None:
-        return
-    implied_rate = 1000.0 / sampling_interval_ms
-    if abs(implied_rate - rate) / rate > _RATE_AGREEMENT_TOLERANCE:
-        raise ValueError(
-            f"'{file_path}' and its XML disagree on the sampling rate: the XML states {rate} Hz while the CSV's "
-            f"time column steps by {sampling_interval_ms} ms ({implied_rate} Hz). The pair may be mismatched."
-        )
 
 
 def _read_signal_column(header: _CycleHeader, signal_name: str) -> np.ndarray:

@@ -48,7 +48,9 @@ Everything else is read from the XML that sits beside each CSV:
   ``DateTime``, which carries the rig's UTC offset so no timezone has to be supplied.
 
 If a cycle recorded more than one signal, name the one that is this electrode's response with
-``response_signal_name``. To see what a cycle recorded:
+``response_signal_name``. Which signals were recorded, and which column each occupies, comes from the XML's
+``Enabled`` flags rather than from the CSV header, whose names are shifted on some real recordings. To see
+what a cycle recorded:
 
 .. code-block:: python
 

@@ -123,7 +123,14 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
         if not self._file_paths:
             raise ValueError("file_paths is empty; give at least one cycle CSV.")
 
-        self._cycle_headers = [_read_cycle_header(file_path) for file_path in self._file_paths]
+        # Sorted by acquisition time, not by the order given. The samples are concatenated in this order and
+        # timestamped from each cycle's DateTime, so the two would otherwise diverge whenever the caller's
+        # list is not chronological, silently producing a non-monotonic timestamps array. `Path.glob` returns
+        # filesystem order, so that is the ordinary case rather than a pathological one.
+        self._cycle_headers = sorted(
+            (_read_cycle_header(file_path) for file_path in self._file_paths),
+            key=lambda header: header.start_datetime,
+        )
         self._response_signal_name = self._resolve_response_signal_name(self._cycle_headers[0], response_signal_name)
         self._check_cycles_agree()
 
@@ -163,12 +170,17 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
         """
         Decide which recorded signal is the response, and refuse anything that is not a patch signal.
 
-        The CSV header is the authority on what was recorded: ``Enabled`` selects the signals at acquisition
-        time, but the header states the outcome. A signal whose ``PatchclampDevice`` is empty was never routed
-        through an amplifier (the sync, photodiode and wavelength channels all read that way) and is not
-        intracellular data, so it is rejected here rather than written in the wrong container.
+        What was recorded comes from the XML's ``Enabled`` flags, not from the CSV header's names. The header
+        names cannot be trusted: on a whole recording day of the Zhai et al. 2025 deposit they read
+        ``Time(ms), Secondary, LED`` on files whose enabled signals are ``Primary`` and ``Secondary``, and a
+        reader that believes them writes the membrane potential as a current. The column count is checked
+        against the enabled count when the header is parsed, so the positional mapping is safe by then.
+
+        A signal whose ``PatchclampDevice`` is empty was never routed through an amplifier (the sync,
+        photodiode and wavelength channels all read that way) and is not intracellular data, so it is rejected
+        here rather than written in the wrong container.
         """
-        recorded_names = header.signal_column_names
+        recorded_names = [signal.name for signal in header.recorded_signals]
         if response_signal_name is None:
             if len(recorded_names) != 1:
                 raise ValueError(
@@ -178,23 +190,17 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
             response_signal_name = recorded_names[0]
         elif response_signal_name not in recorded_names:
             known = header.signals.get(response_signal_name)
-            if known is not None and not known.enabled:
+            if known is not None:
                 raise ValueError(
-                    f"Signal '{response_signal_name}' is listed in '{header.xml_file_path.name}' with "
-                    "Enabled=false, so it was not recorded and has no column in the CSV. Recorded signals: "
-                    f"{', '.join(recorded_names)}."
+                    f"Signal '{response_signal_name}' is declared in '{header.xml_file_path.name}' but not "
+                    f"enabled, so it was not recorded. Recorded signals: {', '.join(recorded_names)}."
                 )
             raise ValueError(
-                f"Signal '{response_signal_name}' is not among the recorded signals of "
-                f"'{header.file_path}': {', '.join(recorded_names)}."
+                f"Signal '{response_signal_name}' does not appear in '{header.xml_file_path.name}' at all. "
+                f"Recorded signals: {', '.join(recorded_names)}."
             )
 
-        signal = header.signals.get(response_signal_name)
-        if signal is None:
-            raise ValueError(
-                f"The CSV column '{response_signal_name}' of '{header.file_path}' has no matching VRecSignal in "
-                f"'{header.xml_file_path.name}'. The CSV and XML describe different acquisitions."
-            )
+        signal = header.signals[response_signal_name]
         if not signal.patchclamp_device:
             raise ValueError(
                 f"Signal '{response_signal_name}' carries no PatchclampDevice, so it is not an intracellular "
@@ -229,12 +235,22 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
         """
         first = self._cycle_headers[0]
         reference = first.signals[self._response_signal_name]
+        reference_column = first.column_index(self._response_signal_name)
         for header in self._cycle_headers[1:]:
-            if self._response_signal_name not in header.signal_column_names:
+            recorded_names = [signal.name for signal in header.recorded_signals]
+            if self._response_signal_name not in recorded_names:
                 raise ValueError(
                     f"'{header.file_path}' did not record '{self._response_signal_name}' "
-                    f"(it recorded {', '.join(header.signal_column_names)}), so it is not a cycle of the same run "
+                    f"(it recorded {', '.join(recorded_names)}), so it is not a cycle of the same run "
                     f"as '{first.file_path}'."
+                )
+            # The signal must also occupy the same column, since the enabled set can be reordered between
+            # cycles and a shifted column would put two different physical signals in one series.
+            if header.column_index(self._response_signal_name) != reference_column:
+                raise ValueError(
+                    f"'{header.file_path.name}' records '{self._response_signal_name}' in column "
+                    f"{header.column_index(self._response_signal_name)} while '{first.file_path.name}' has it "
+                    f"in column {reference_column}. These cycles do not share one signal layout."
                 )
             signal = header.signals[self._response_signal_name]
             differences = {
@@ -408,9 +424,10 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
         Returns
         -------
         list of str
-            The recorded signal names, in the order their columns appear.
+            The recorded signal names, in the order their columns appear. Taken from the XML's enabled
+            signals rather than the CSV header, whose names are unreliable.
         """
-        return _read_cycle_header(Path(file_path)).signal_column_names
+        return [signal.name for signal in _read_cycle_header(Path(file_path)).recorded_signals]
 
     # ------------------------------------------------------------------ writing helpers
 
