@@ -80,6 +80,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
         channels_to_skip: list | None = None,
     ):
         """
@@ -95,6 +96,9 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             Allows verbose.
         es_key : str, default: "ElectricalSeries"
             Key for the ElectricalSeries metadata
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"edf_recording"``.
         channels_to_skip : list, default: None
             Channels to skip when adding the data to the nwbfile. These parameter can be used to skip non-neural
             channels that are present in the EDF file.
@@ -134,7 +138,17 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.9"])),
         )
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, channels_to_skip=channels_to_skip)
+        super().__init__(
+            file_path=file_path,
+            verbose=verbose,
+            es_key=es_key,
+            metadata_key=metadata_key,
+            channels_to_skip=channels_to_skip,
+        )
+
+        if metadata_key is None:
+            self.metadata_key = "edf_recording"
+
         self.edf_header = self.recording_extractor.neo_reader.edf_header
 
         # We remove the channels that are not neural
@@ -163,8 +177,8 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         return subject_metadata
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)
 

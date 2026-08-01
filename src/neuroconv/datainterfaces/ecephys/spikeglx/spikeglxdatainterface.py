@@ -75,7 +75,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         es_key : str, optional
             The key to access the metadata of the ElectricalSeries.
         metadata_key : str, optional
-            Key that indexes this interface's entries in the dict-based metadata. Defaults to the value of ``es_key``.
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"spikeglx_{probe}_{band}"`` (e.g. ``"spikeglx_imec0_ap"``).
         """
         # Handle deprecated positional arguments
         if args:
@@ -131,10 +132,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
         self.meta = self._signals_info_dict["meta"]
 
+        stream_kind = self._signals_info_dict["stream_kind"]  # ap or lf
+        probe_id = self._signals_info_dict["device"]  # imec0, imec1, etc.
+
         if es_key is None:
-            stream_kind = self._signals_info_dict["stream_kind"]  # ap or lf
             stream_kind_caps = stream_kind.upper()
-            device = self._signals_info_dict["device"].capitalize()  # imec0, imec1, etc.
+            device = probe_id.capitalize()  # Imec0, Imec1, etc.
 
             electrical_series_name = f"ElectricalSeries{stream_kind_caps}"
 
@@ -152,11 +155,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             # A user-supplied ``es_key`` (legacy) is still honored as the name override until it is removed.
             self._series_name = es_key
 
-        # ``metadata_key`` is the dict key; default it from the interface's own series name rather than from
-        # ``es_key`` (keep the two decoupled since ``es_key`` will be removed). The base seeded it from the
-        # (None) ``es_key`` before the name was known, so set it here unless the user passed one explicitly.
+        # ``metadata_key`` is the dict key, a snake_case handle rather than the CamelCase series name. SpikeGLX
+        # yields several streams per session (one per probe and band), so it is derived from the stream handle
+        # the format itself provides. The base seeded it from the (None) ``es_key``, so set it here unless the
+        # user passed one explicitly.
         if metadata_key is None:
-            self.metadata_key = self._series_name
+            self.metadata_key = f"spikeglx_{probe_id}_{stream_kind}"  # e.g. spikeglx_imec0_ap
 
         # Set electrode properties from probe information
         probe = self.recording_extractor.get_probe()
@@ -226,9 +230,9 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         if use_new_metadata_format:
             metadata = super().get_metadata(use_new_metadata_format=True)
-            # The base names the ElectricalSeries after ``metadata_key`` (the dict key). Override it with
-            # the interface-owned, stream/probe-disambiguated name so a custom ``metadata_key`` re-keys the
-            # entry without renaming the written series.
+            # State the series name here, where the metadata is produced: it is the interface's own,
+            # stream/probe-disambiguated name, and it is independent of ``metadata_key`` (the dict key), so
+            # re-keying an entry never renames the written series.
             metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = self._series_name
 
             session_start_time = self._get_session_start_time()
