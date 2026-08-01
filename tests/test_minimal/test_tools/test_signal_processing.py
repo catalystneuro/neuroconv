@@ -190,21 +190,41 @@ class TestConditionSignal:
         trace = np.array([0.1, 0.1, 2.0, 2.0, 4.0, 0.1])
         assert_array_equal(_condition_signal(trace, {"thresholds": [1.0, 3.0]}), np.array([0, 0, 1, 1, 2, 0]))
 
+    # A line at 48 and 64 carrying one sample at 55, between the levels. The slice keeps both levels, so
+    # the midpoint derives the same cut from either while the mean does not, and the sample at 55 is
+    # where the two methods disagree. Shared by the next two tests because the point is the comparison:
+    # on a fixture where both methods happen to agree, either test passes under either method and
+    # neither says anything about which should be the default.
+    TWO_LEVEL_TRACE = np.array([48.0, 48.0, 48.0, 55.0, 64.0, 64.0])
+    STUB_START = 2
+
     def test_binarize_midpoint_is_invariant_under_windowing(self):
-        """The midpoint is unmoved by any sample between the two levels, so a stub cuts where the full run does."""
-        full = np.array([48.0, 48.2, 64.0, 63.8, 48.1, 55.0, 64.0])
-        stub = full[:4]
+        """The midpoint is unmoved by any sample between the two levels, so a stub cuts where the full run does.
+
+        Both slices span 48 to 64, so both cut at 56 and the sample at 55 lands low either way. This is
+        what makes a ``stub_test`` a check on the real conversion rather than on a different one.
+        """
+        full = self.TWO_LEVEL_TRACE
+        stub = full[self.STUB_START :]
         assert_array_equal(
-            _condition_signal(full, {"binarize": "midpoint"})[:4], _condition_signal(stub, {"binarize": "midpoint"})
+            _condition_signal(full, {"binarize": "midpoint"})[self.STUB_START :],
+            _condition_signal(stub, {"binarize": "midpoint"}),
         )
 
     def test_binarize_mean_moves_with_the_window(self):
-        """Why the mean is not the default: the same samples cut differently depending on what you sliced."""
-        full = np.array([48.0, 48.0, 48.0, 48.0, 64.0, 64.0])
-        stub = full[3:]
-        assert _condition_signal(full, {"binarize": "mean"})[3] == 0
-        assert _condition_signal(stub, {"binarize": "mean"})[0] == 0
-        assert full.mean() != stub.mean()
+        """Why the mean is not the default: one sample lands on opposite sides of the two cuts.
+
+        The full trace means 54.5 and the slice means 57.75, so the sample at 55 reads high in a full
+        conversion and low in a stub of it. Same physical sample, same file, two different events.
+        """
+        full = self.TWO_LEVEL_TRACE
+        stub = full[self.STUB_START :]
+
+        from_full = _condition_signal(full, {"binarize": "mean"})[self.STUB_START :]
+        from_stub = _condition_signal(stub, {"binarize": "mean"})
+
+        assert from_full[1] == 1  # the 55.0 sample, high against the full trace's mean
+        assert from_stub[1] == 0  # and low against the slice's
 
     def test_conditioning_preserves_length(self):
         """The contract detection depends on: frame indices must still address the caller's timestamps."""
