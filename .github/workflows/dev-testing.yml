@@ -93,4 +93,4 @@ jobs:
 
 
       - name: Run full pytest
-        run: pytest -rsx -n auto --dist loadscope
+        run: pytest -rsx -n logical --dist loadscope
