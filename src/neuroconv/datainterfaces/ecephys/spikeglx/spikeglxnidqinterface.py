@@ -40,7 +40,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         folder_path: DirectoryPath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        metadata_key: str = "SpikeGLXNIDQ",
+        metadata_key: str = "spikeglx_nidq",
         analog_channel_groups: dict[str, dict] | None = None,
         digital_channel_groups: dict[str, dict] | None = None,
     ):
@@ -57,10 +57,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Path to the folder containing the .nidq.bin file.
         verbose : bool, default: False
             Whether to output verbose text.
-        metadata_key : str, default: "SpikeGLXNIDQ"
+        metadata_key : str, default: "spikeglx_nidq"
             Key used to organize metadata in the metadata dictionary. This is especially useful
             when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used
-            to organize TimeSeries and Events metadata.
+            to organize TimeSeries and Events metadata. It addresses the entries; the written objects'
+            names are their ``name`` fields.
         analog_channel_groups : dict[str, dict], optional
             Dictionary mapping group names to analog channel configurations.
             Each group specifies which channels to include and will be written as a separate

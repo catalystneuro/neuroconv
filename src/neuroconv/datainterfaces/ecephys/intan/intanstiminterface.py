@@ -42,7 +42,7 @@ class IntanStimInterface(BaseDataInterface):
         file_path: FilePath,
         *,
         verbose: bool = False,
-        metadata_key: str = "TimeSeriesIntanStim",
+        metadata_key: str = "intan_stim",
         saved_files_are_split: bool = False,
     ):
         """
@@ -57,8 +57,9 @@ class IntanStimInterface(BaseDataInterface):
             its parent directory is scanned for siblings.
         verbose : bool, default: False
             Verbose output.
-        metadata_key : str, default: "TimeSeriesIntanStim"
-            Key for the TimeSeries metadata in the metadata dictionary.
+        metadata_key : str, default: "intan_stim"
+            Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry;
+            the written object's name is the entry's ``name`` field.
         saved_files_are_split : bool, default: False
             Set to True when the recording was saved using Intan RHX's "new save file every N minutes"
             option, producing several rotated ``.rhs`` files in one session folder. All sibling
