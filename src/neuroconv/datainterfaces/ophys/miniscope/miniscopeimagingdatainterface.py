@@ -132,9 +132,9 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
 
         return metadata
 
-    def get_metadata_schema(self) -> dict:
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
-        Get the metadata schema for the Miniscope imaging data.
+        Get the old list-based metadata schema for the Miniscope imaging data.
 
         Returns
         -------
@@ -142,7 +142,7 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
             The schema dictionary containing metadata definitions and requirements
             for the Miniscope imaging interface.
         """
-        metadata_schema = super().get_metadata_schema()
+        metadata_schema = super()._get_metadata_schema_for_old_list_format()
         metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
         return metadata_schema
 
