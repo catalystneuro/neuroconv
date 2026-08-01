@@ -127,7 +127,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     @staticmethod
-    def get_ecephys_metadata(xml_file_path: str) -> dict:
+    def get_ecephys_metadata(xml_file_path: str, *, use_new_metadata_format: bool = False) -> dict:
         """
         Auto-populates ecephys metadata from the xml_file_path.
 
@@ -135,25 +135,41 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         xml_file_path : str
             Path to the XML file containing device and electrode configuration.
+        use_new_metadata_format : bool, default: False
+            If True, the electrode groups are returned as ``ElectrodeGroups`` keyed by group name rather
+            than as a list, and without the placeholder device link and empty location of the old format.
 
         Returns
         -------
         dict
-            Dictionary containing metadata for ElectrodeGroup and Electrodes.
-            Includes group names, descriptions, and electrode properties.
+            Dictionary containing metadata for the electrode groups and the electrode table columns.
         """
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
-        ecephys_metadata = dict(
+        group_names = [f"Group{n + 1}" for n, _ in enumerate(channel_groups)]
+
+        # Electrode-table column descriptions keep their list shape in both formats; folding electrode
+        # metadata into the dict format is a separate, still-unsettled follow-up.
+        electrodes_metadata = [
+            dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
+            dict(name="group_name", description="The name of the ElectrodeGroup this electrode is a part of."),
+        ]
+
+        if use_new_metadata_format:
+            # The XML gives the shank structure and nothing else: no device is claimed, so the groups link
+            # to none and the write pipeline supplies its default. The old format's ``location=""`` and its
+            # templated group description are inventions and are not carried over.
+            return dict(
+                ElectrodeGroups={group_name: dict(name=group_name) for group_name in group_names},
+                Electrodes=electrodes_metadata,
+            )
+
+        return dict(
             ElectrodeGroup=[
-                dict(name=f"Group{n + 1}", description=f"Group{n + 1} electrodes.", location="", device="DeviceEcephys")
-                for n, _ in enumerate(channel_groups)
+                dict(name=group_name, description=f"{group_name} electrodes.", location="", device="DeviceEcephys")
+                for group_name in group_names
             ],
-            Electrodes=[
-                dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
-                dict(name="group_name", description="The name of the ElectrodeGroup this electrode is a part of."),
-            ],
+            Electrodes=electrodes_metadata,
         )
-        return ecephys_metadata
 
     def __init__(
         self,
@@ -163,6 +179,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         xml_file_path: FilePath | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
     ):
         """
         Load and prepare raw acquisition data and corresponding metadata from the Neuroscope format (.dat files).
@@ -180,6 +197,9 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
         es_key: str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"neuroscope_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -217,7 +237,11 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+
+        if metadata_key is None:
+            self.metadata_key = "neuroscope_recording"
+
         self.source_data["xml_file_path"] = xml_file_path
 
         add_recording_extractor_properties(recording_extractor=self.recording_extractor, gain=gain)
@@ -226,12 +250,16 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
-        metadata = super().get_metadata()
-        metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
+        metadata["Ecephys"].update(
+            NeuroScopeRecordingInterface.get_ecephys_metadata(
+                xml_file_path=xml_file_path, use_new_metadata_format=use_new_metadata_format
+            )
+        )
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:
             metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -287,6 +315,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         xml_file_path: FilePath | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -306,6 +335,9 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         verbose : bool, default: False
             If True, enables verbose mode for detailed logging.
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"neuroscope_lfp"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -343,7 +375,11 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        super().__init__(file_path=file_path)
+        super().__init__(file_path=file_path, metadata_key=metadata_key)
+
+        if metadata_key is None:
+            self.metadata_key = "neuroscope_lfp"
+
         self.source_data["xml_file_path"] = xml_file_path
 
         add_recording_extractor_properties(recording_extractor=self.recording_extractor, gain=gain)
@@ -352,12 +388,22 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
-        metadata = super().get_metadata()
-        metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
+        metadata["Ecephys"].update(
+            NeuroScopeRecordingInterface.get_ecephys_metadata(
+                xml_file_path=xml_file_path, use_new_metadata_format=use_new_metadata_format
+            )
+        )
+
+        if use_new_metadata_format:
+            # The base names the series "ElectricalSeries"; this interface writes the low-pass filtered
+            # stream, so it states its own name, matching its ``es_key`` on the old path.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeriesLFP"
+
         return metadata
 
 
