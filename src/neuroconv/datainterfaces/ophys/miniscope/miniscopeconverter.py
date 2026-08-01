@@ -8,6 +8,7 @@ from pynwb import NWBFile
 from ._miniscope_readers import (
     _get_device_folder_timestamps,
     _get_starting_frames,
+    _raise_if_legacy_user_config_device_list,
     _read_miniscope_config,
 )
 from .miniscopeimagingdatainterface import (
@@ -229,6 +230,7 @@ class MiniscopeConverter(ConverterPipe):
             config_path = Path(self._user_configuration_file_path)
             with config_path.open(encoding="utf-8") as f:
                 self._user_config = json.load(f)
+            _raise_if_legacy_user_config_device_list(user_config=self._user_config)
 
             data_directory_path_in_config = self._user_config.get("dataDirectory", "")
             data_directory_name_in_json = data_directory_path_in_config.split("/")[-1]

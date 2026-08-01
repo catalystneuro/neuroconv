@@ -36,6 +36,25 @@ def test_declared_device_without_a_folder_warns(tmp_path, device_kind, declared_
         MiniscopeConverter(folder_path=folder_path, user_configuration_file_path=config_file_path)
 
 
+@pytest.mark.parametrize("device_kind", ["miniscopes", "cameras"])
+def test_legacy_user_config_device_list_raises(tmp_path, device_kind):
+    """The DAQ schema allows devices as a list; we have no such file, so we say so instead of failing."""
+    import json
+
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
+    user_config = json.loads((folder_path / "UserConfigFile.json").read_text())
+    # Rewrite the devices of one kind into the legacy shape: a list, with the key moved inline
+    devices = user_config["devices"].get(device_kind, {"a_device": {"deviceType": "Miniscope_V4_BNO"}})
+    user_config["devices"][device_kind] = [
+        {"deviceName": device_name, **device_config} for device_name, device_config in devices.items()
+    ]
+    config_file_path = tmp_path / "UserConfigFile.json"
+    config_file_path.write_text(json.dumps(user_config))
+
+    with pytest.raises(NotImplementedError, match=f"devices\\[{device_kind}\\] as a list of devices"):
+        MiniscopeConverter(folder_path=folder_path, user_configuration_file_path=config_file_path)
+
+
 class TestMiniscopeConverter:
     """Test MiniscopeConverter with dual miniscope setup and time alignment."""
 
