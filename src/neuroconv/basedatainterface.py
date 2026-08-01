@@ -107,14 +107,22 @@ class BaseDataInterface(ABC):
 
         return metadata
 
+    def _get_metadata_schema_for_dict_format(self) -> dict:
+        """
+        Return the schema used to validate dict-based metadata.
+
+        Most interfaces already describe the dict format in ``get_metadata_schema`` (the video, pose,
+        events and fiber photometry families each declare their own), so the default is that schema. The
+        modality bases that still describe the old list-based format override this to fall back to the
+        base schema, since validating dict-based metadata against a list-based schema fails on its
+        ``required`` entries. Those overrides go when those schemas are migrated.
+        """
+        return self.get_metadata_schema()
+
     def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
-        # The modality schemas returned by ``get_metadata_schema`` still describe the old list-based
-        # format, which rejects dict-based metadata outright ("'Device' is a required property"). Until
-        # each modality declares its dict shape, dict-based metadata is validated against the base schema
-        # instead, so it can at least reach ``run_conversion``. List-based metadata is unaffected.
         if _metadata_uses_dict_format(metadata):
-            metdata_schema = BaseDataInterface.get_metadata_schema(self)
+            metdata_schema = self._get_metadata_schema_for_dict_format()
         else:
             metdata_schema = self.get_metadata_schema()
 

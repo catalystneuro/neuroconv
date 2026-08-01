@@ -152,13 +152,18 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
+    def _get_metadata_schema_for_dict_format(self) -> dict:
+        """Merge the schemas the interfaces use for dict-based metadata (see ``BaseDataInterface``)."""
+        metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
+        for data_interface in self.data_interface_objects.values():
+            interface_schema = unroot_schema(data_interface._get_metadata_schema_for_dict_format())
+            metadata_schema = dict_deep_update(metadata_schema, interface_schema)
+        return metadata_schema
+
     def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
-        # See ``BaseDataInterface.validate_metadata``: the merged interface schemas describe the old
-        # list-based format, so dict-based metadata is validated against the base schema until the
-        # modalities declare their dict shape.
         if _metadata_uses_dict_format(metadata):
-            metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
+            metadata_schema = self._get_metadata_schema_for_dict_format()
         else:
             metadata_schema = self.get_metadata_schema()
 

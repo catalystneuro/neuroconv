@@ -130,6 +130,13 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
         return metadata_schema
 
+    def _get_metadata_schema_for_dict_format(self) -> dict:
+        # This class's schema describes the old list-based format only, so dict-based metadata cannot be
+        # validated against it. Fall back to the base schema until the dict shape is declared here.
+        from ...basedatainterface import BaseDataInterface
+
+        return BaseDataInterface.get_metadata_schema(self)
+
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         metadata = super().get_metadata()
 

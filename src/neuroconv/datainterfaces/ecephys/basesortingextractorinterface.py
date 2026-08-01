@@ -24,6 +24,13 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         self.verbose = verbose
         self._number_of_segments = self.sorting_extractor.get_num_segments()
 
+    def _get_metadata_schema_for_dict_format(self) -> dict:
+        # This class's schema describes the old list-based format only, so dict-based metadata cannot be
+        # validated against it. Fall back to the base schema until the dict shape is declared here.
+        from ...basedatainterface import BaseDataInterface
+
+        return BaseDataInterface.get_metadata_schema(self)
+
     def get_metadata_schema(self) -> dict:
         """
         Compile metadata schema for the RecordingExtractor.
