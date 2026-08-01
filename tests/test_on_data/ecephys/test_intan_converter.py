@@ -85,6 +85,23 @@ class TestIntanConverter:
         assert list(nwbfile.devices.keys()) == ["Intan"]
 
 
+class TestMetadataKeyRouting:
+    """The routing table's key reaches the recording interface as ``metadata_key``, not only as ``es_key``."""
+
+    def test_amplifier_interface_gets_both_keys(self):
+        file_path = ECEPHY_DATA_PATH / "intan" / "intan_rhd_test_1.rhd"
+        converter = IntanConverter(file_path=file_path)
+
+        recording_interface = converter.data_interface_objects["Recording"]
+        # ``es_key`` keys the old list-based metadata and keeps the name it had before the dict format;
+        # ``metadata_key`` keys the dict-based one.
+        assert recording_interface.es_key == "intan_amplifier"
+        assert recording_interface.metadata_key == "intan_amplifier"
+
+        metadata = recording_interface.get_metadata(use_new_metadata_format=True)
+        assert list(metadata["Ecephys"]["ElectricalSeries"]) == ["intan_amplifier"]
+
+
 class TestStreamDiscoveryAndRouting:
     """`get_streams` enumerates header streams; `__init__` routes the present ones to sub-interfaces."""
 
