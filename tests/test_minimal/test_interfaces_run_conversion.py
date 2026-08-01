@@ -4,7 +4,7 @@ from datetime import datetime
 
 import pytest
 from numpy.testing import assert_array_equal
-from pynwb import read_nwb
+from pynwb import NWBHDF5IO, read_nwb
 
 from neuroconv import NWBConverter
 from neuroconv.tools.nwb_helpers import get_existing_backend_configuration
@@ -31,10 +31,10 @@ def test_base_data_interface_append_on_disk(tmp_path):
     interface1.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata1)
 
     # Verify first interface data was written
-    nwbfile = read_nwb(nwbfile_path)
-    assert "TimeSeriesFirst" in nwbfile.acquisition
-    assert nwbfile.acquisition["TimeSeriesFirst"].data.shape[1] == 3
-    nwbfile.read_io.close()
+    with NWBHDF5IO(nwbfile_path, "r") as io:
+        nwbfile = io.read()
+        assert "TimeSeriesFirst" in nwbfile.acquisition
+        assert nwbfile.acquisition["TimeSeriesFirst"].data.shape[1] == 3
 
     # Append to existing file with second interface (another TimeSeries)
     interface2 = MockTimeSeriesInterface(num_channels=2, duration=0.1, metadata_key="TimeSeriesSecond")
@@ -43,14 +43,14 @@ def test_base_data_interface_append_on_disk(tmp_path):
     interface2.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata2, append_on_disk_nwbfile=True)
 
     # Verify both interfaces' data exists
-    nwbfile = read_nwb(nwbfile_path)
-    # First TimeSeries
-    assert "TimeSeriesFirst" in nwbfile.acquisition
-    assert nwbfile.acquisition["TimeSeriesFirst"].data.shape[1] == 3
-    # Second TimeSeries
-    assert "TimeSeriesSecond" in nwbfile.acquisition
-    assert nwbfile.acquisition["TimeSeriesSecond"].data.shape[1] == 2
-    nwbfile.read_io.close()
+    with NWBHDF5IO(nwbfile_path, "r") as io:
+        nwbfile = io.read()
+        # First TimeSeries
+        assert "TimeSeriesFirst" in nwbfile.acquisition
+        assert nwbfile.acquisition["TimeSeriesFirst"].data.shape[1] == 3
+        # Second TimeSeries
+        assert "TimeSeriesSecond" in nwbfile.acquisition
+        assert nwbfile.acquisition["TimeSeriesSecond"].data.shape[1] == 2
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])

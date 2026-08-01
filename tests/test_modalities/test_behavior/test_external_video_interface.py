@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from dateutil.tz import gettz
-from pynwb import read_nwb
+from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import NWBConverter
@@ -111,11 +111,11 @@ def test_external_mode_with_timestamps(
         conversion_options=conversion_options,
         metadata=metadata,
     )
-    nwbfile = read_nwb(nwbfile_path)
-    module = nwbfile.acquisition
-    assert list(module["Video test1"].external_file[:]) == video_files[0:2]
-    assert list(module["Video test3"].external_file[:]) == [video_files[2]]
-    nwbfile.read_io.close()
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        module = nwbfile.acquisition
+        assert list(module["Video test1"].external_file[:]) == video_files[0:2]
+        assert list(module["Video test3"].external_file[:]) == [video_files[2]]
 
 
 def test_external_mode_with_starting_time(nwb_converter, nwbfile_path, metadata, video_files):
@@ -130,12 +130,12 @@ def test_external_mode_with_starting_time(nwb_converter, nwbfile_path, metadata,
         conversion_options=conversion_options,
         metadata=metadata,
     )
-    nwbfile = read_nwb(nwbfile_path)
-    module = nwbfile.acquisition
-    assert list(module["Video test1"].external_file[:]) == video_files[0:2]
-    assert list(module["Video test3"].external_file[:]) == [video_files[2]]
-    assert module["Video test1"].starting_time == 123.0
-    nwbfile.read_io.close()
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        module = nwbfile.acquisition
+        assert list(module["Video test1"].external_file[:]) == video_files[0:2]
+        assert list(module["Video test3"].external_file[:]) == [video_files[2]]
+        assert module["Video test1"].starting_time == 123.0
 
 
 def test_irregular_timestamps(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
@@ -154,9 +154,9 @@ def test_irregular_timestamps(nwb_converter, nwbfile_path, metadata, aligned_seg
     )
 
     expected_timestamps = np.array([1.0, 2.0, 4.0, 55.0, 56.0, 57.0])
-    nwbfile = read_nwb(nwbfile_path)
-    np.testing.assert_array_equal(expected_timestamps, nwbfile.acquisition["Video test1"].timestamps[:])
-    nwbfile.read_io.close()
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        np.testing.assert_array_equal(expected_timestamps, nwbfile.acquisition["Video test1"].timestamps[:])
 
 
 def test_starting_frames_type_error(nwb_converter, nwbfile_path, metadata):
@@ -209,12 +209,12 @@ def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata, aligned_
     )
 
     # Verify that timestamps were written
-    nwbfile = read_nwb(nwbfile_path)
-    # Check that timestamps exist in the ImageSeries
-    assert nwbfile.acquisition["Video test1"].timestamps is not None
-    # Verify timestamps are not None and have the expected length
-    assert len(nwbfile.acquisition["Video test1"].timestamps[:]) > 0
-    nwbfile.read_io.close()
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        # Check that timestamps exist in the ImageSeries
+        assert nwbfile.acquisition["Video test1"].timestamps is not None
+        # Verify timestamps are not None and have the expected length
+        assert len(nwbfile.acquisition["Video test1"].timestamps[:]) > 0
 
 
 def test_custom_module(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
@@ -243,12 +243,12 @@ def test_custom_module(nwb_converter, nwbfile_path, metadata, aligned_segment_st
         conversion_options=conversion_options,
         metadata=metadata,
     )
-    nwbfile = read_nwb(nwbfile_path)
-    assert "behavior" in nwbfile.processing
-    assert module_description == nwbfile.processing["behavior"].description
-    assert "Video test1" in nwbfile.processing["behavior"].data_interfaces
-    assert "Video test3" in nwbfile.processing["behavior"].data_interfaces
-    nwbfile.read_io.close()
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert "behavior" in nwbfile.processing
+        assert module_description == nwbfile.processing["behavior"].description
+        assert "Video test1" in nwbfile.processing["behavior"].data_interfaces
+        assert "Video test3" in nwbfile.processing["behavior"].data_interfaces
 
 
 def test_set_aligned_segment_starting_times_alone(nwb_converter):
@@ -321,12 +321,12 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
         metadata=metadata_copy,
     )
 
-    nwbfile = read_nwb(nwbfile_path)
-    assert nwbfile.acquisition["Video test1"].description == "Custom description"
-    assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
-    assert nwbfile.devices["CustomDevice"].description == "Custom device description"
-    assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["CustomDevice"]
-    nwbfile.read_io.close()
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert nwbfile.acquisition["Video test1"].description == "Custom description"
+        assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
+        assert nwbfile.devices["CustomDevice"].description == "Custom device description"
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["CustomDevice"]
 
 
 def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
@@ -347,15 +347,15 @@ def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segme
     )
 
     # Verify device creation and linking
-    nwbfile = read_nwb(nwbfile_path)
-    # Check devices exist
-    assert "Video test1 Camera Device" in nwbfile.devices
-    assert "Video test3 Camera Device" in nwbfile.devices
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        # Check devices exist
+        assert "Video test1 Camera Device" in nwbfile.devices
+        assert "Video test3 Camera Device" in nwbfile.devices
 
-    # Check videos are linked to correct devices
-    assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Video test1 Camera Device"]
-    assert nwbfile.acquisition["Video test3"].device == nwbfile.devices["Video test3 Camera Device"]
-    nwbfile.read_io.close()
+        # Check videos are linked to correct devices
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Video test1 Camera Device"]
+        assert nwbfile.acquisition["Video test3"].device == nwbfile.devices["Video test3 Camera Device"]
 
 
 def test_device_model_propagation(nwb_converter, nwbfile_path, metadata):
@@ -377,11 +377,11 @@ def test_device_model_propagation(nwb_converter, nwbfile_path, metadata):
         metadata=metadata_copy,
     )
 
-    nwbfile = read_nwb(nwbfile_path)
-    assert nwbfile.acquisition["Video test1"].device.model == nwbfile.device_models["CameraModel"]
-    # 'manufacturer' is required by NWB and absent from the metadata, so it is filled at write time
-    assert nwbfile.device_models["CameraModel"].manufacturer == "unknown"
-    nwbfile.read_io.close()
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert nwbfile.acquisition["Video test1"].device.model == nwbfile.device_models["CameraModel"]
+        # 'manufacturer' is required by NWB and absent from the metadata, so it is filled at write time
+        assert nwbfile.device_models["CameraModel"].manufacturer == "unknown"
 
 
 def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
@@ -403,11 +403,11 @@ def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starti
         metadata=metadata,
     )
 
-    nwbfile = read_nwb(nwbfile_path)
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
 
-    assert "Video test1 Camera Device" not in nwbfile.devices
-    assert nwbfile.acquisition["Video test1"].device is None
-    nwbfile.read_io.close()
+        assert "Video test1 Camera Device" not in nwbfile.devices
+        assert nwbfile.acquisition["Video test1"].device is None
 
 
 def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):

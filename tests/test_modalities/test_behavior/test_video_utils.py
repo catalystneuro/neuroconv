@@ -5,7 +5,7 @@ from datetime import datetime
 
 import numpy as np
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO, read_nwb
+from pynwb import NWBHDF5IO
 from pynwb.image import ImageSeries
 
 from neuroconv.datainterfaces.behavior.video.video_utils import (
@@ -154,9 +154,9 @@ class TestVideoInterface(unittest.TestCase):
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
             io.write(self.nwbfile)
-        nwbfile = read_nwb(self.nwbfile_path)
-        assert nwbfile.acquisition["imageseries"].data.shape[0] == 10
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            assert nwbfile.acquisition["imageseries"].data.shape[0] == 10
 
     def test_frame_shape_big(self):
         frame_shape = (800, 600, 3)
@@ -167,10 +167,10 @@ class TestVideoInterface(unittest.TestCase):
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
             io.write(self.nwbfile)
-        nwbfile = read_nwb(self.nwbfile_path)
-        expected_chunk_shape = (num_frames_chunk,) + frame_shape[:-1] + (1,)
-        assert nwbfile.acquisition["imageseries"].data.chunks == expected_chunk_shape
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            expected_chunk_shape = (num_frames_chunk,) + frame_shape[:-1] + (1,)
+            assert nwbfile.acquisition["imageseries"].data.chunks == expected_chunk_shape
 
     def test_frame_shape_small(self):
         frame_shape = (400, 300, 3)
@@ -181,11 +181,11 @@ class TestVideoInterface(unittest.TestCase):
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
             io.write(self.nwbfile)
-        nwbfile = read_nwb(self.nwbfile_path)
-        expected_chunk_shape = (num_frames_chunk,) + frame_shape[:-1] + (1,)
-        image_series = nwbfile.acquisition["imageseries"]
-        assert image_series.data.chunks == expected_chunk_shape
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            expected_chunk_shape = (num_frames_chunk,) + frame_shape[:-1] + (1,)
+            image_series = nwbfile.acquisition["imageseries"]
+            assert image_series.data.chunks == expected_chunk_shape
 
     def test_custom_chunk_shape(self):
         custom_frame_shape = (1, 100, 100, 3)
@@ -195,6 +195,8 @@ class TestVideoInterface(unittest.TestCase):
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
             io.write(self.nwbfile)
-        nwbfile = read_nwb(self.nwbfile_path)
-        assert all([nwbfile.acquisition["imageseries"].data.chunks[i] == j for i, j in enumerate(custom_frame_shape)])
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            assert all(
+                [nwbfile.acquisition["imageseries"].data.chunks[i] == j for i, j in enumerate(custom_frame_shape)]
+            )

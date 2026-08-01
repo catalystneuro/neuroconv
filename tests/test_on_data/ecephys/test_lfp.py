@@ -6,7 +6,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 from parameterized import param, parameterized
-from pynwb import read_nwb
+from pynwb import NWBHDF5IO
 from spikeinterface.core import BaseRecording
 
 from neuroconv import NWBConverter
@@ -86,29 +86,31 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
-        nwbfile = read_nwb(nwbfile_path)
-        if expected_write_module == "raw":  # This is for SpikeGLX only
-            nwb_lfp_electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
-        else:
-            nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
-        nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
-        nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
-        if not isinstance(recording, BaseRecording):
-            raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            if expected_write_module == "raw":  # This is for SpikeGLX only
+                nwb_lfp_electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
+            else:
+                nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
+            nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
+            nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
+            if not isinstance(recording, BaseRecording):
+                raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
 
-        npt.assert_array_equal(recording.get_traces(return_in_uV=False), nwb_lfp_unscaled)
-        # This can only be tested if both gain and offset are present
-        if recording.has_scaleable_traces():
-            channel_conversion = nwb_lfp_electrical_series.channel_conversion
-            nwb_lfp_conversion_vector = (
-                channel_conversion[:] if channel_conversion is not None else np.ones(shape=nwb_lfp_unscaled.shape[1])
-            )
+            npt.assert_array_equal(recording.get_traces(return_in_uV=False), nwb_lfp_unscaled)
+            # This can only be tested if both gain and offset are present
+            if recording.has_scaleable_traces():
+                channel_conversion = nwb_lfp_electrical_series.channel_conversion
+                nwb_lfp_conversion_vector = (
+                    channel_conversion[:]
+                    if channel_conversion is not None
+                    else np.ones(shape=nwb_lfp_unscaled.shape[1])
+                )
 
-            nwb_lfp_offset = nwb_lfp_electrical_series.offset
-            recording_data_volts = recording.get_traces(return_in_uV=True) * 1e-6
-            nwb_data_volts = nwb_lfp_unscaled * nwb_lfp_conversion_vector * nwb_lfp_conversion + nwb_lfp_offset
-            npt.assert_array_almost_equal(recording_data_volts, nwb_data_volts)
-        nwbfile.read_io.close()
+                nwb_lfp_offset = nwb_lfp_electrical_series.offset
+                recording_data_volts = recording.get_traces(return_in_uV=True) * 1e-6
+                nwb_data_volts = nwb_lfp_unscaled * nwb_lfp_conversion_vector * nwb_lfp_conversion + nwb_lfp_offset
+                npt.assert_array_almost_equal(recording_data_volts, nwb_data_volts)
 
 
 if __name__ == "__main__":

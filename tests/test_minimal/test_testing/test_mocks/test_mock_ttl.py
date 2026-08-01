@@ -2,7 +2,7 @@ from pathlib import Path
 
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
-from pynwb import read_nwb
+from pynwb import NWBHDF5IO
 
 from neuroconv.tools.testing import generate_mock_ttl_signal
 
@@ -17,14 +17,15 @@ class TestMockTTLSignals(TestCase):
             "You can download the previously frozen version from the GitHub repository!"
         )
 
-        cls.nwbfile = read_nwb(cls.nwbfile_path)
+        cls.io = NWBHDF5IO(path=cls.nwbfile_path, mode="r")
+        cls.nwbfile = cls.io.read()
 
         # Standard choice of sampling frequency for testing
         cls.sampling_frequency_hz = 1000.0
 
     @classmethod
     def tearDownClass(cls):
-        cls.nwbfile.read_io.close()
+        cls.io.close()
 
     def test_overlapping_ttl_assertion(self):
         with self.assertRaisesWith(

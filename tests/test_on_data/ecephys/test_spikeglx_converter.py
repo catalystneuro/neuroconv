@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO, read_nwb
+from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe, NWBConverter
@@ -19,24 +19,24 @@ SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 
 def assert_single_probe_nwb_structure(nwbfile_path: Path, expected_session_start_time: datetime):
     """Helper function to verify NWB file structure for single probe SpikeGLX data."""
-    nwbfile = read_nwb(nwbfile_path)
+    with NWBHDF5IO(path=nwbfile_path) as io:
+        nwbfile = io.read()
 
-    assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
+        assert nwbfile.session_start_time.replace(tzinfo=None) == expected_session_start_time
 
-    assert "ElectricalSeriesAP" in nwbfile.acquisition
-    assert "ElectricalSeriesLF" in nwbfile.acquisition
-    assert "TimeSeriesNIDQ" in nwbfile.acquisition
+        assert "ElectricalSeriesAP" in nwbfile.acquisition
+        assert "ElectricalSeriesLF" in nwbfile.acquisition
+        assert "TimeSeriesNIDQ" in nwbfile.acquisition
 
-    # Sync channels are included by default (one per probe)
-    assert len(nwbfile.acquisition) == 4
+        # Sync channels are included by default (one per probe)
+        assert len(nwbfile.acquisition) == 4
 
-    assert "NeuropixelsImec0" in nwbfile.devices
-    assert "NIDQBoard" in nwbfile.devices
-    assert len(nwbfile.devices) == 2
+        assert "NeuropixelsImec0" in nwbfile.devices
+        assert "NIDQBoard" in nwbfile.devices
+        assert len(nwbfile.devices) == 2
 
-    assert "NeuropixelsImec0" in nwbfile.electrode_groups
-    assert len(nwbfile.electrode_groups) == 1
-    nwbfile.read_io.close()
+        assert "NeuropixelsImec0" in nwbfile.electrode_groups
+        assert len(nwbfile.electrode_groups) == 1
 
 
 class TestSingleProbeSpikeGLXConverter:
@@ -152,8 +152,8 @@ class TestMultiProbeSpikeGLXConverter:
         converter.run_conversion(nwbfile_path=nwbfile_path)
 
         # Verify NWB file structure
-        nwbfile = read_nwb(nwbfile_path)
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
 
         # Check session start time
         expected_session_start_time = datetime(2022, 5, 19, 17, 37, 47)
@@ -375,65 +375,65 @@ class TestSortedSpikeGLXConverter:
         sorted_converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         # Verify electrode mappings are correct
-        nwbfile = read_nwb(nwbfile_path)
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
 
-        # Verify units table exists
-        assert nwbfile.units is not None
-        assert len(nwbfile.units) == 6  # 3 units per stream, 2 streams
+            # Verify units table exists
+            assert nwbfile.units is not None
+            assert len(nwbfile.units) == 6  # 3 units per stream, 2 streams
 
-        # Verify electrode mappings match expectations
-        units_df = nwbfile.units.to_dataframe()
+            # Verify electrode mappings match expectations
+            units_df = nwbfile.units.to_dataframe()
 
-        # Define expected channel patterns and group names for each unit
-        # Note: Since both AP and LF streams are present, channel names show both (e.g., "AP0,LF0")
-        unit_channel_patterns = {
-            "unit_a": ["AP0,LF0", "AP1,LF1"],
-            "unit_b": ["AP2,LF2"],
-            "unit_c": ["AP3,LF3", "AP4,LF4", "AP5,LF5"],  # imec0.ap units
-            "unit_x": ["AP0,LF0", "AP1,LF1"],
-            "unit_y": ["AP2,LF2"],
-            "unit_z": ["AP3,LF3", "AP4,LF4", "AP5,LF5"],  # imec1.ap units
-        }
+            # Define expected channel patterns and group names for each unit
+            # Note: Since both AP and LF streams are present, channel names show both (e.g., "AP0,LF0")
+            unit_channel_patterns = {
+                "unit_a": ["AP0,LF0", "AP1,LF1"],
+                "unit_b": ["AP2,LF2"],
+                "unit_c": ["AP3,LF3", "AP4,LF4", "AP5,LF5"],  # imec0.ap units
+                "unit_x": ["AP0,LF0", "AP1,LF1"],
+                "unit_y": ["AP2,LF2"],
+                "unit_z": ["AP3,LF3", "AP4,LF4", "AP5,LF5"],  # imec1.ap units
+            }
 
-        unit_group_patterns = {
-            "unit_a": ["NeuropixelsImec0", "NeuropixelsImec0"],
-            "unit_b": ["NeuropixelsImec0"],
-            "unit_c": ["NeuropixelsImec0", "NeuropixelsImec0", "NeuropixelsImec0"],  # imec0 units
-            "unit_x": ["NeuropixelsImec1", "NeuropixelsImec1"],
-            "unit_y": ["NeuropixelsImec1"],
-            "unit_z": ["NeuropixelsImec1", "NeuropixelsImec1", "NeuropixelsImec1"],  # imec1 units
-        }
+            unit_group_patterns = {
+                "unit_a": ["NeuropixelsImec0", "NeuropixelsImec0"],
+                "unit_b": ["NeuropixelsImec0"],
+                "unit_c": ["NeuropixelsImec0", "NeuropixelsImec0", "NeuropixelsImec0"],  # imec0 units
+                "unit_x": ["NeuropixelsImec1", "NeuropixelsImec1"],
+                "unit_y": ["NeuropixelsImec1"],
+                "unit_z": ["NeuropixelsImec1", "NeuropixelsImec1", "NeuropixelsImec1"],  # imec1 units
+            }
 
-        for _, unit_row in units_df.iterrows():
-            unit_name = unit_row["unit_name"]  # NeuroConv stores unit_ids as unit_names
-            unit_electrode_table_region = unit_row.electrodes
+            for _, unit_row in units_df.iterrows():
+                unit_name = unit_row["unit_name"]  # NeuroConv stores unit_ids as unit_names
+                unit_electrode_table_region = unit_row.electrodes
 
-            # Get the electrode indices from the region
-            electrode_indices = list(unit_electrode_table_region.index)
+                # Get the electrode indices from the region
+                electrode_indices = list(unit_electrode_table_region.index)
 
-            # Get the actual channel names for these electrode indices
-            unit_electrodes = nwbfile.electrodes[electrode_indices]
-            actual_channel_names = list(unit_electrodes["channel_name"])
+                # Get the actual channel names for these electrode indices
+                unit_electrodes = nwbfile.electrodes[electrode_indices]
+                actual_channel_names = list(unit_electrodes["channel_name"])
 
-            # Verify that the electrode table indices correspond to the correct channels
-            assert len(actual_channel_names) > 0, f"Unit {unit_name} has no channel mappings"
+                # Verify that the electrode table indices correspond to the correct channels
+                assert len(actual_channel_names) > 0, f"Unit {unit_name} has no channel mappings"
 
-            # This test has no conflicts (unique unit IDs across streams), so expect original unit names
-            expected_channel_names = unit_channel_patterns[unit_name]
+                # This test has no conflicts (unique unit IDs across streams), so expect original unit names
+                expected_channel_names = unit_channel_patterns[unit_name]
 
-            # Verify the channel names match the expected pattern
-            assert (
-                actual_channel_names == expected_channel_names
-            ), f"Unit {unit_name} has channel names {actual_channel_names}, expected {expected_channel_names}"
+                # Verify the channel names match the expected pattern
+                assert (
+                    actual_channel_names == expected_channel_names
+                ), f"Unit {unit_name} has channel names {actual_channel_names}, expected {expected_channel_names}"
 
-            # Verify the group names (device mapping) match what we expect
-            actual_group_names = list(unit_electrodes["group_name"])
-            expected_group_names = unit_group_patterns[unit_name]
+                # Verify the group names (device mapping) match what we expect
+                actual_group_names = list(unit_electrodes["group_name"])
+                expected_group_names = unit_group_patterns[unit_name]
 
-            assert (
-                actual_group_names == expected_group_names
-            ), f"Unit {unit_name} has group names {actual_group_names}, expected {expected_group_names}"
-        nwbfile.read_io.close()
+                assert (
+                    actual_group_names == expected_group_names
+                ), f"Unit {unit_name} has group names {actual_group_names}, expected {expected_group_names}"
 
     def test_single_probe_with_full_streams(self, tmp_path):
         """Single probe with ap, lf and nidq streams"""
@@ -476,60 +476,62 @@ class TestSortedSpikeGLXConverter:
         sorted_converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         # Verify electrode mappings are correct
-        nwbfile = read_nwb(nwbfile_path)
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
 
-        assert nwbfile.units is not None
-        assert len(nwbfile.units) == num_units
+            assert nwbfile.units is not None
+            assert len(nwbfile.units) == num_units
 
-        # Verify that device column is present and properly set
-        units_df = nwbfile.units.to_dataframe()
-        assert "device" in units_df.columns, "Device column should be present in units table"
-        expected_device_name = "NeuropixelsImec0"
-        for device_value in units_df["device"]:
-            assert device_value == expected_device_name, f"Expected device {expected_device_name}, got {device_value}"
+            # Verify that device column is present and properly set
+            units_df = nwbfile.units.to_dataframe()
+            assert "device" in units_df.columns, "Device column should be present in units table"
+            expected_device_name = "NeuropixelsImec0"
+            for device_value in units_df["device"]:
+                assert (
+                    device_value == expected_device_name
+                ), f"Expected device {expected_device_name}, got {device_value}"
 
-        # Define expected channel names and group names for each unit (single probe)
-        # Note: Since both AP and LF streams are present, channel names show both (e.g., "AP0,LF0")
-        expected_unit_channel_names = {
-            "unit_a": ["AP0,LF0", "AP1,LF1", "AP2,LF2"],  # First 3 channels
-            "unit_b": ["AP10,LF10", "AP11,LF11"],  # Channels 10-11
-            "unit_c": ["AP20,LF20"],  # Channel 20
-            "unit_d": ["AP30,LF30", "AP31,LF31"],  # Channels 30-31
-        }
+            # Define expected channel names and group names for each unit (single probe)
+            # Note: Since both AP and LF streams are present, channel names show both (e.g., "AP0,LF0")
+            expected_unit_channel_names = {
+                "unit_a": ["AP0,LF0", "AP1,LF1", "AP2,LF2"],  # First 3 channels
+                "unit_b": ["AP10,LF10", "AP11,LF11"],  # Channels 10-11
+                "unit_c": ["AP20,LF20"],  # Channel 20
+                "unit_d": ["AP30,LF30", "AP31,LF31"],  # Channels 30-31
+            }
 
-        expected_unit_group_names = {
-            "unit_a": ["NeuropixelsImec0", "NeuropixelsImec0", "NeuropixelsImec0"],
-            "unit_b": ["NeuropixelsImec0", "NeuropixelsImec0"],
-            "unit_c": ["NeuropixelsImec0"],
-            "unit_d": ["NeuropixelsImec0", "NeuropixelsImec0"],
-        }
+            expected_unit_group_names = {
+                "unit_a": ["NeuropixelsImec0", "NeuropixelsImec0", "NeuropixelsImec0"],
+                "unit_b": ["NeuropixelsImec0", "NeuropixelsImec0"],
+                "unit_c": ["NeuropixelsImec0"],
+                "unit_d": ["NeuropixelsImec0", "NeuropixelsImec0"],
+            }
 
-        # Test that the units have the correct channel mappings
-        unit_table = nwbfile.units
-        for unit_row in unit_table.to_dataframe().itertuples(index=False):
-            # NeuroConv writes unit_ids as unit_names
-            unit_id = unit_row.unit_name
+            # Test that the units have the correct channel mappings
+            unit_table = nwbfile.units
+            for unit_row in unit_table.to_dataframe().itertuples(index=False):
+                # NeuroConv writes unit_ids as unit_names
+                unit_id = unit_row.unit_name
 
-            unit_electrode_table_region = unit_row.electrodes
-            electrode_indices = list(unit_electrode_table_region.index)
+                unit_electrode_table_region = unit_row.electrodes
+                electrode_indices = list(unit_electrode_table_region.index)
 
-            # Verify the channel names match what we specified
-            unit_electrodes = nwbfile.electrodes[electrode_indices]
-            actual_channel_names = list(unit_electrodes["channel_name"])
-            expected_channel_names = expected_unit_channel_names[unit_id]
+                # Verify the channel names match what we specified
+                unit_electrodes = nwbfile.electrodes[electrode_indices]
+                actual_channel_names = list(unit_electrodes["channel_name"])
+                expected_channel_names = expected_unit_channel_names[unit_id]
 
-            assert (
-                actual_channel_names == expected_channel_names
-            ), f"Unit {unit_id} has channel names {actual_channel_names}, expected {expected_channel_names}"
+                assert (
+                    actual_channel_names == expected_channel_names
+                ), f"Unit {unit_id} has channel names {actual_channel_names}, expected {expected_channel_names}"
 
-            # Verify the group names (device mapping) match what we expect
-            actual_group_names = list(unit_electrodes["group_name"])
-            expected_group_names = expected_unit_group_names[unit_id]
+                # Verify the group names (device mapping) match what we expect
+                actual_group_names = list(unit_electrodes["group_name"])
+                expected_group_names = expected_unit_group_names[unit_id]
 
-            assert (
-                actual_group_names == expected_group_names
-            ), f"Unit {unit_id} has group names {actual_group_names}, expected {expected_group_names}"
-        nwbfile.read_io.close()
+                assert (
+                    actual_group_names == expected_group_names
+                ), f"Unit {unit_id} has group names {actual_group_names}, expected {expected_group_names}"
 
     def test_non_ap_interface_error(self):
         """Test that non-AP interfaces cannot have sorting data."""

@@ -7,7 +7,7 @@ from warnings import warn
 import pytest
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
-from pynwb import read_nwb
+from pynwb import NWBHDF5IO
 
 from neuroconv import NWBConverter
 from neuroconv.converters import BrukerTiffConverter, BrukerTiffMultiPlaneConverter
@@ -38,12 +38,12 @@ class TestBrukerTiffConverterSinglePlane:
             nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, conversion_options=conversion_options
         )
 
-        nwbfile = read_nwb(nwbfile_path)
-        assert len(nwbfile.acquisition) == 1
-        assert len(nwbfile.imaging_planes) == 1
-        assert len(nwbfile.devices) == 1
-        assert nwbfile.acquisition["TwoPhotonSeries"].data.shape[0] == self.stub_samples
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            assert len(nwbfile.acquisition) == 1
+            assert len(nwbfile.imaging_planes) == 1
+            assert len(nwbfile.devices) == 1
+            assert nwbfile.acquisition["TwoPhotonSeries"].data.shape[0] == self.stub_samples
 
 
 class TestBrukerTiffConverterVolumetric:
@@ -65,13 +65,13 @@ class TestBrukerTiffConverterVolumetric:
             nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, conversion_options=conversion_options
         )
 
-        nwbfile = read_nwb(nwbfile_path)
-        assert len(nwbfile.acquisition) == 1
-        photon_series = nwbfile.acquisition["TwoPhotonSeries"]
-        # Volumetric: shape is (samples, height, width, planes)
-        assert len(photon_series.data.shape) == 4
-        assert photon_series.data.shape[0] == self.stub_samples
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            assert len(nwbfile.acquisition) == 1
+            photon_series = nwbfile.acquisition["TwoPhotonSeries"]
+            # Volumetric: shape is (samples, height, width, planes)
+            assert len(photon_series.data.shape) == 4
+            assert photon_series.data.shape[0] == self.stub_samples
 
 
 class TestBrukerTiffConverterMultiChannel:
@@ -95,12 +95,12 @@ class TestBrukerTiffConverterMultiChannel:
             nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, conversion_options=conversion_options
         )
 
-        nwbfile = read_nwb(nwbfile_path)
-        assert len(nwbfile.acquisition) == 2
-        assert len(nwbfile.imaging_planes) == 2
-        # One microscope for the folder, shared by both channels rather than one device per channel.
-        assert len(nwbfile.devices) == 1
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            assert len(nwbfile.acquisition) == 2
+            assert len(nwbfile.imaging_planes) == 2
+            # One microscope for the folder, shared by both channels rather than one device per channel.
+            assert len(nwbfile.devices) == 1
 
 
 class TestBrukerTiffConverterDisjoint:
@@ -132,26 +132,25 @@ class TestBrukerTiffConverterDisjoint:
         old_path = str(tmp_path / "disjoint_old.nwb")
         old_converter.run_conversion(nwbfile_path=old_path, stub_test=True, stub_samples=self.stub_samples)
 
-        nwbfile_new = read_nwb(new_path)
-        nwbfile_old = read_nwb(old_path)
+        with NWBHDF5IO(new_path) as io_new, NWBHDF5IO(old_path) as io_old:
+            nwbfile_new = io_new.read()
+            nwbfile_old = io_old.read()
 
-        assert list(nwbfile_new.acquisition) == ["TwoPhotonSeriesPlane0", "TwoPhotonSeriesPlane1"]
-        assert len(nwbfile_new.imaging_planes) == 2
-        # One microscope for the folder, shared by both depth planes rather than one device per plane.
-        assert len(nwbfile_new.devices) == 1
+            assert list(nwbfile_new.acquisition) == ["TwoPhotonSeriesPlane0", "TwoPhotonSeriesPlane1"]
+            assert len(nwbfile_new.imaging_planes) == 2
+            # One microscope for the folder, shared by both depth planes rather than one device per plane.
+            assert len(nwbfile_new.devices) == 1
 
-        # Old converter names planes by the Bruker stream index; match by acquisition order.
-        new_series = [nwbfile_new.acquisition[f"TwoPhotonSeriesPlane{index}"] for index in range(2)]
-        old_series = [nwbfile_old.acquisition[f"TwoPhotonSeriesCh2{index:06d}"] for index in (1, 2)]
+            # Old converter names planes by the Bruker stream index; match by acquisition order.
+            new_series = [nwbfile_new.acquisition[f"TwoPhotonSeriesPlane{index}"] for index in range(2)]
+            old_series = [nwbfile_old.acquisition[f"TwoPhotonSeriesCh2{index:06d}"] for index in (1, 2)]
 
-        for new_two_photon_series, old_two_photon_series in zip(new_series, old_series):
-            assert_array_equal(new_two_photon_series.data[:], old_two_photon_series.data[:])
-            assert_array_equal(
-                new_two_photon_series.imaging_plane.origin_coords[:],
-                old_two_photon_series.imaging_plane.origin_coords[:],
-            )
-        nwbfile_new.read_io.close()
-        nwbfile_old.read_io.close()
+            for new_two_photon_series, old_two_photon_series in zip(new_series, old_series):
+                assert_array_equal(new_two_photon_series.data[:], old_two_photon_series.data[:])
+                assert_array_equal(
+                    new_two_photon_series.imaging_plane.origin_coords[:],
+                    old_two_photon_series.imaging_plane.origin_coords[:],
+                )
 
 
 class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
@@ -202,13 +201,13 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
             **self.conversion_options,
         )
 
-        nwbfile = read_nwb(nwbfile_path)
-        first_imaging_plane = nwbfile.imaging_planes[self.imaging_plane_names[0]]
-        first_origin_coords = first_imaging_plane.origin_coords[:]
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            first_imaging_plane = nwbfile.imaging_planes[self.imaging_plane_names[0]]
+            first_origin_coords = first_imaging_plane.origin_coords[:]
 
-        second_imaging_plane = nwbfile.imaging_planes[self.imaging_plane_names[1]]
-        second_origin_coords = second_imaging_plane.origin_coords[:]
-        nwbfile.read_io.close()
+            second_imaging_plane = nwbfile.imaging_planes[self.imaging_plane_names[1]]
+            second_origin_coords = second_imaging_plane.origin_coords[:]
 
         self.assertEqual(len(nwbfile.acquisition), len(self.photon_series_names))
         assert_array_equal(first_origin_coords, [56.215, 14.927, -130.0])
@@ -232,8 +231,8 @@ class TestBrukerTiffMultiPlaneConverterDisjointPlaneCase(TestCase):
         conversion_options = dict(TestBrukerTiffConverter=self.conversion_options)
         converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
-        nwbfile = read_nwb(nwbfile_path)
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
 
         num_samples = nwbfile.acquisition[self.photon_series_names[0]].data.shape[0]
         self.assertEqual(num_samples, self.stub_samples)
@@ -270,8 +269,8 @@ class TestBrukerTiffMultiPlaneConverterContiguousPlaneCase(TestCase):
             **self.conversion_options,
         )
 
-        nwbfile = read_nwb(nwbfile_path)
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
 
         self.assertEqual(len(nwbfile.acquisition), 1)
         self.assertIn(self.photon_series_name, nwbfile.acquisition)
@@ -296,8 +295,8 @@ class TestBrukerTiffMultiPlaneConverterContiguousPlaneCase(TestCase):
         conversion_options = dict(TestBrukerTiffConverter=self.conversion_options)
         converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
-        nwbfile = read_nwb(nwbfile_path)
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
 
         num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
         self.assertEqual(num_samples, self.stub_samples)
@@ -337,8 +336,8 @@ class TestBrukerTiffSinglePlaneConverterCase(TestCase):
             **self.conversion_options,
         )
 
-        nwbfile = read_nwb(nwbfile_path)
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
 
         self.assertEqual(len(nwbfile.acquisition), 2)
         self.assertEqual(len(nwbfile.imaging_planes), 2)
@@ -360,8 +359,8 @@ class TestBrukerTiffSinglePlaneConverterCase(TestCase):
         conversion_options = dict(TestBrukerTiffConverter=self.conversion_options)
         converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
-        nwbfile = read_nwb(nwbfile_path)
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
 
         num_samples = nwbfile.acquisition[self.photon_series_names[0]].data.shape[0]
         self.assertEqual(num_samples, self.stub_samples)

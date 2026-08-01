@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 from hdmf.common import DynamicTable, VectorData
 from hdmf.data_utils import DataChunkIterator
-from pynwb import read_nwb
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -63,17 +62,17 @@ def test_simple_time_series_override(
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    written_nwbfile = read_nwb(nwbfile_path)
-    written_data = written_nwbfile.acquisition["TestTimeSeries"].data
+    with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="r") as io:
+        written_nwbfile = io.read()
+        written_data = written_nwbfile.acquisition["TestTimeSeries"].data
 
-    assert written_data.chunks == smaller_chunk_shape
+        assert written_data.chunks == smaller_chunk_shape
 
-    if backend == "hdf5":
-        assert written_data.compression == "gzip"
-        assert written_data.compression_opts == higher_gzip_level
-    elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=5)
-    written_nwbfile.read_io.close()
+        if backend == "hdf5":
+            assert written_data.compression == "gzip"
+            assert written_data.compression_opts == higher_gzip_level
+        elif backend == "zarr":
+            assert written_data.compressor == numcodecs.GZip(level=5)
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -105,14 +104,14 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    written_nwbfile = read_nwb(nwbfile_path)
-    written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
+    with NWB_IO(path=nwbfile_path, mode="r") as io:
+        written_nwbfile = io.read()
+        written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
 
-    assert written_data.chunks == smaller_chunk_shape
+        assert written_data.chunks == smaller_chunk_shape
 
-    if backend == "hdf5":
-        assert written_data.compression == "gzip"
-        assert written_data.compression_opts == higher_gzip_level
-    elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=5)
-    written_nwbfile.read_io.close()
+        if backend == "hdf5":
+            assert written_data.compression == "gzip"
+            assert written_data.compression_opts == higher_gzip_level
+        elif backend == "zarr":
+            assert written_data.compressor == numcodecs.GZip(level=5)

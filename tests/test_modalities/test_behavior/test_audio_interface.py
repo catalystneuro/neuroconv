@@ -10,7 +10,7 @@ import pytest
 from dateutil.tz import gettz
 from numpy.testing import assert_array_equal
 from pydantic import FilePath
-from pynwb import read_nwb
+from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 from scipy.io.wavfile import read, write
 
@@ -104,14 +104,14 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             metadata=self.metadata,
             conversion_options=conversion_opts,
         )
-        nwbfile = read_nwb(nwbfile_path)
-        container = nwbfile.acquisition
-        metadata = self.nwb_converter.get_metadata()
-        for audio_ind, audio_metadata in enumerate(metadata["Behavior"]["Audio"]):
-            audio_interface_name = audio_metadata["name"]
-            assert audio_interface_name in container
-            assert audio_interface_name not in nwbfile.stimulus
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            container = nwbfile.acquisition
+            metadata = self.nwb_converter.get_metadata()
+            for audio_ind, audio_metadata in enumerate(metadata["Behavior"]["Audio"]):
+                audio_interface_name = audio_metadata["name"]
+                assert audio_interface_name in container
+                assert audio_interface_name not in nwbfile.stimulus
 
     def test_incomplete_metadata(self):
         metadata = deepcopy(self.metadata)
@@ -127,11 +127,11 @@ class TestAudioInterface(AudioInterfaceTestMixin):
         metadata["Behavior"]["Audio"][0].update(description="New description for Acoustic waveform series.")
         nwbfile_path = str(self.test_dir / "audio_with_updated_metadata.nwb")
         self.nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
-        nwbfile = read_nwb(nwbfile_path)
-        container = nwbfile.stimulus
-        audio_name = metadata["Behavior"]["Audio"][0]["name"]
-        assert container[audio_name].description == "New description for Acoustic waveform series."
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            container = nwbfile.stimulus
+            audio_name = metadata["Behavior"]["Audio"][0]["name"]
+            assert container[audio_name].description == "New description for Acoustic waveform series."
 
     def test_not_all_metadata_are_unique(self):
         metadata = deepcopy(self.metadata)
@@ -197,17 +197,17 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             overwrite=True,
         )
 
-        nwbfile = read_nwb(nwbfile_path)
-        container = nwbfile.stimulus
-        metadata = self.nwb_converter.get_metadata()
-        assert len(container) == 3
-        for audio_ind, audio_metadata in enumerate(metadata["Behavior"]["Audio"]):
-            audio_interface_name = audio_metadata["name"]
-            assert audio_interface_name in container
-            assert self.aligned_segment_starting_times[audio_ind] == container[audio_interface_name].starting_time
-            assert self.sampling_rate == container[audio_interface_name].rate
-            assert_array_equal(audio_test_data[audio_ind], container[audio_interface_name].data)
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            container = nwbfile.stimulus
+            metadata = self.nwb_converter.get_metadata()
+            assert len(container) == 3
+            for audio_ind, audio_metadata in enumerate(metadata["Behavior"]["Audio"]):
+                audio_interface_name = audio_metadata["name"]
+                assert audio_interface_name in container
+                assert self.aligned_segment_starting_times[audio_ind] == container[audio_interface_name].starting_time
+                assert self.sampling_rate == container[audio_interface_name].rate
+                assert_array_equal(audio_test_data[audio_ind], container[audio_interface_name].data)
 
     def test_get_wav_bit_depth(self):
         """Test that _get_wav_bit_depth correctly identifies the bit depth of WAV files."""
@@ -246,16 +246,16 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
             # Verify the file was created and can be read
-            nwbfile = read_nwb(nwbfile_path)
+            with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+                nwbfile = io.read()
 
-            # Check that the acoustic waveform series exists
-            audio_name = metadata["Behavior"]["Audio"][0]["name"]
-            assert audio_name in nwbfile.stimulus
+                # Check that the acoustic waveform series exists
+                audio_name = metadata["Behavior"]["Audio"][0]["name"]
+                assert audio_name in nwbfile.stimulus
 
-            # Try to read the data
-            acoustic_series = nwbfile.stimulus[audio_name].data[:]
-            assert len(acoustic_series) > 0
-            nwbfile.read_io.close()
+                # Try to read the data
+                acoustic_series = nwbfile.stimulus[audio_name].data[:]
+                assert len(acoustic_series) > 0
 
     def test_multiple_dots_in_filename(self):
         """Test that AudioInterface works with WAV files that have multiple dots in filename."""

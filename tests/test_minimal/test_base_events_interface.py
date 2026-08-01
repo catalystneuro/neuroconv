@@ -4,7 +4,7 @@ import re
 
 import pytest
 from jsonschema.validators import Draft7Validator
-from pynwb import NWBHDF5IO, read_nwb
+from pynwb import NWBHDF5IO
 from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -62,11 +62,10 @@ class TestMockEventsInterface:
         path = tmp_path / "empty_events.nwb"
         with NWBHDF5IO(path, "w") as io:
             io.write(nwbfile)
-        nwbfile = read_nwb(path)
-        read_events = nwbfile.get_events_table("Events")
-        assert len(read_events) == 0
-        assert read_events.colnames == ("timestamp",)
-        nwbfile.read_io.close()
+        with NWBHDF5IO(path, "r") as io:
+            read_events = io.read().get_events_table("Events")
+            assert len(read_events) == 0
+            assert read_events.colnames == ("timestamp",)
 
     def test_events_single_value(self):
         # A point event type carrying one categorical value.

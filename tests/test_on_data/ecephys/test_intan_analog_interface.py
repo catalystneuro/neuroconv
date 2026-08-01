@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import pytest
-from pynwb import read_nwb
+from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import IntanAnalogInterface
 
@@ -140,21 +140,21 @@ class TestIntanAnalogInterface:
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
         # Verify the output
-        nwbfile = read_nwb(nwbfile_path)
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
 
-        # Check that the TimeSeries was added to acquisition
-        assert interface._time_series_name in nwbfile.acquisition
-        time_series = nwbfile.acquisition[interface._time_series_name]
+            # Check that the TimeSeries was added to acquisition
+            assert interface._time_series_name in nwbfile.acquisition
+            time_series = nwbfile.acquisition[interface._time_series_name]
 
-        # Check properties of the TimeSeries
-        assert time_series.name == interface._time_series_name
-        assert "USB board ADC input channels" in time_series.description
+            # Check properties of the TimeSeries
+            assert time_series.name == interface._time_series_name
+            assert "USB board ADC input channels" in time_series.description
 
-        # Check data dimensions - should have 8 ADC channels
-        assert len(time_series.data.shape) == 2  # [time, channels]
-        assert time_series.data.shape[1] == 8  # 8 ADC channels
-        assert time_series.data.shape[0] > 0  # Should have time points
-        nwbfile.read_io.close()
+            # Check data dimensions - should have 8 ADC channels
+            assert len(time_series.data.shape) == 2  # [time, channels]
+            assert time_series.data.shape[1] == 8  # 8 ADC channels
+            assert time_series.data.shape[0] > 0  # Should have time points
 
     def test_stub_conversion_dc_channels(self, tmp_path):
         """Test stub conversion using DC amplifier channels from RHS data."""
@@ -170,15 +170,15 @@ class TestIntanAnalogInterface:
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, stub_test=True)
 
         # Verify the output
-        nwbfile = read_nwb(nwbfile_path)
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
 
-        # Check that the TimeSeries was added
-        assert interface._time_series_name in nwbfile.acquisition
-        time_series = nwbfile.acquisition[interface._time_series_name]
+            # Check that the TimeSeries was added
+            assert interface._time_series_name in nwbfile.acquisition
+            time_series = nwbfile.acquisition[interface._time_series_name]
 
-        # Check that data is present but smaller (stub)
-        assert len(time_series.data.shape) == 2
-        assert time_series.data.shape[0] > 0  # Should have some time points
-        assert time_series.data.shape[1] == len(interface.get_channel_names())
-        assert "DC amplifier channels" in time_series.description
-        nwbfile.read_io.close()
+            # Check that data is present but smaller (stub)
+            assert len(time_series.data.shape) == 2
+            assert time_series.data.shape[0] > 0  # Should have some time points
+            assert time_series.data.shape[1] == len(interface.get_channel_names())
+            assert "DC amplifier channels" in time_series.description

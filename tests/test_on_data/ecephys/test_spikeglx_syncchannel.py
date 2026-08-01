@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import pytest
-from pynwb import read_nwb
+from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import SpikeGLXSyncChannelInterface
 
@@ -99,25 +99,25 @@ class TestSpikeGLXSyncChannelInterface:
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         # Read and verify NWB file structure
-        nwbfile = read_nwb(nwbfile_path)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
 
-        # Check that device was added
-        assert "NeuropixelsImec0" in nwbfile.devices
-        device = nwbfile.devices["NeuropixelsImec0"]
-        assert device.manufacturer == "Imec"
+            # Check that device was added
+            assert "NeuropixelsImec0" in nwbfile.devices
+            device = nwbfile.devices["NeuropixelsImec0"]
+            assert device.manufacturer == "Imec"
 
-        # Check that TimeSeries was added to acquisition
-        assert "TimeSeriesImec0Sync" in nwbfile.acquisition
-        timeseries = nwbfile.acquisition["TimeSeriesImec0Sync"]
+            # Check that TimeSeries was added to acquisition
+            assert "TimeSeriesImec0Sync" in nwbfile.acquisition
+            timeseries = nwbfile.acquisition["TimeSeriesImec0Sync"]
 
-        # Verify TimeSeries properties
-        assert timeseries.name == "TimeSeriesImec0Sync"
-        assert "Synchronization channel" in timeseries.description
+            # Verify TimeSeries properties
+            assert timeseries.name == "TimeSeriesImec0Sync"
+            assert "Synchronization channel" in timeseries.description
 
-        # Verify shape as tuple and exact sampling rate
-        assert timeseries.data.shape == (1155, 1)  # Expected shape for full recording
-        assert timeseries.rate == expected_rate
-        nwbfile.read_io.close()
+            # Verify shape as tuple and exact sampling rate
+            assert timeseries.data.shape == (1155, 1)  # Expected shape for full recording
+            assert timeseries.rate == expected_rate
 
     def test_stub_test(self):
         """Test that stub_test parameter creates data with exactly 100 samples."""

@@ -16,7 +16,7 @@ from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
 from numpy.typing import ArrayLike
 from parameterized import param, parameterized
-from pynwb import NWBHDF5IO, NWBFile, read_nwb
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.ophys import OnePhotonSeries
 from pynwb.testing.mock.file import mock_NWBFile
 from roiextractors.testing import (
@@ -1611,27 +1611,27 @@ class TestAddPhotonSeries(TestCase):
         with NWBHDF5IO(nwbfile_path, "w") as io:
             io.write(self.nwbfile)
 
-        read_nwbfile = read_nwb(nwbfile_path)
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            read_nwbfile = io.read()
 
-        # Check data
-        acquisition_modules = read_nwbfile.acquisition
-        assert self.two_photon_series_name in acquisition_modules
-        two_photon_series = acquisition_modules[self.two_photon_series_name].data
+            # Check data
+            acquisition_modules = read_nwbfile.acquisition
+            assert self.two_photon_series_name in acquisition_modules
+            two_photon_series = acquisition_modules[self.two_photon_series_name].data
 
-        # NWB stores images as num_columns x num_rows
-        expected_two_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
-        assert two_photon_series.shape == expected_two_photon_series_shape
+            # NWB stores images as num_columns x num_rows
+            expected_two_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
+            assert two_photon_series.shape == expected_two_photon_series_shape
 
-        # Check device
-        devices = read_nwbfile.devices
-        assert self.device_name in devices
-        assert len(devices) == 1
+            # Check device
+            devices = read_nwbfile.devices
+            assert self.device_name in devices
+            assert len(devices) == 1
 
-        # Check imaging planes
-        imaging_planes_in_file = read_nwbfile.imaging_planes
-        assert self.imaging_plane_name in imaging_planes_in_file
-        assert len(imaging_planes_in_file) == 1
-        read_nwbfile.read_io.close()
+            # Check imaging planes
+            imaging_planes_in_file = read_nwbfile.imaging_planes
+            assert self.imaging_plane_name in imaging_planes_in_file
+            assert len(imaging_planes_in_file) == 1
 
     def test_add_invalid_photon_series_type(self):
         """Test error is raised when adding photon series with invalid 'photon_series_type'."""
@@ -1683,17 +1683,17 @@ class TestAddPhotonSeries(TestCase):
         with NWBHDF5IO(nwbfile_path, "w") as io:
             io.write(self.nwbfile)
 
-        read_nwbfile = read_nwb(nwbfile_path)
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            read_nwbfile = io.read()
 
-        # Check data
-        acquisition_modules = read_nwbfile.acquisition
-        assert self.one_photon_series_name in acquisition_modules
-        one_photon_series = acquisition_modules[self.one_photon_series_name].data
+            # Check data
+            acquisition_modules = read_nwbfile.acquisition
+            assert self.one_photon_series_name in acquisition_modules
+            one_photon_series = acquisition_modules[self.one_photon_series_name].data
 
-        # NWB stores images as num_columns x num_rows
-        expected_one_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
-        assert one_photon_series.shape == expected_one_photon_series_shape
-        read_nwbfile.read_io.close()
+            # NWB stores images as num_columns x num_rows
+            expected_one_photon_series_shape = (self.num_samples, self.num_columns, self.num_rows)
+            assert one_photon_series.shape == expected_one_photon_series_shape
 
     def test_add_photon_series_to_nwbfile_old_list_format_invalid_module_name_raises(self):
         """Test that adding photon series with invalid module name raises error."""

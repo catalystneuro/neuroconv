@@ -1,5 +1,5 @@
 import pytest
-from pynwb import read_nwb
+from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import OpenEphysBinaryAnalogInterface
 
@@ -24,20 +24,20 @@ def test_openephys_analog_interface(tmp_path):
     interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
 
     # Verify the output
-    nwbfile = read_nwb(nwbfile_path)
+    with NWBHDF5IO(nwbfile_path, "r") as io:
+        nwbfile = io.read()
 
-    # Check that the TimeSeries was added to acquisition
-    assert "TimeSeriesOpenEphysAnalog" in nwbfile.acquisition
-    time_series = nwbfile.acquisition["TimeSeriesOpenEphysAnalog"]
+        # Check that the TimeSeries was added to acquisition
+        assert "TimeSeriesOpenEphysAnalog" in nwbfile.acquisition
+        time_series = nwbfile.acquisition["TimeSeriesOpenEphysAnalog"]
 
-    # Check properties of the TimeSeries
-    assert time_series.name == "TimeSeriesOpenEphysAnalog"
-    assert "ADC data acquired with OpenEphys system." in time_series.description
+        # Check properties of the TimeSeries
+        assert time_series.name == "TimeSeriesOpenEphysAnalog"
+        assert "ADC data acquired with OpenEphys system." in time_series.description
 
-    # Check data dimensions
-    assert len(time_series.data.shape) == 2  # [time, channels]
-    assert time_series.data.shape[1] == len(interface.analog_channel_ids)
-    nwbfile.read_io.close()
+        # Check data dimensions
+        assert len(time_series.data.shape) == 2  # [time, channels]
+        assert time_series.data.shape[1] == len(interface.analog_channel_ids)
 
 
 def test_openephys_analog_interface_nidq(tmp_path):
@@ -56,17 +56,17 @@ def test_openephys_analog_interface_nidq(tmp_path):
     interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
 
     # Verify the output
-    nwbfile = read_nwb(nwbfile_path)
+    with NWBHDF5IO(nwbfile_path, "r") as io:
+        nwbfile = io.read()
 
-    # Check that the TimeSeries was added to acquisition
-    assert "TimeSeriesOpenEphysAnalog" in nwbfile.acquisition
-    time_series = nwbfile.acquisition["TimeSeriesOpenEphysAnalog"]
+        # Check that the TimeSeries was added to acquisition
+        assert "TimeSeriesOpenEphysAnalog" in nwbfile.acquisition
+        time_series = nwbfile.acquisition["TimeSeriesOpenEphysAnalog"]
 
-    # Check properties of the TimeSeries
-    assert time_series.name == "TimeSeriesOpenEphysAnalog"
-    assert "ADC data acquired with OpenEphys system." in time_series.description
+        # Check properties of the TimeSeries
+        assert time_series.name == "TimeSeriesOpenEphysAnalog"
+        assert "ADC data acquired with OpenEphys system." in time_series.description
 
-    # Check data dimensions
-    assert len(time_series.data.shape) == 2  # [time, channels]
-    assert time_series.data.shape[1] == len(interface.analog_channel_ids)
-    nwbfile.read_io.close()
+        # Check data dimensions
+        assert len(time_series.data.shape) == 2  # [time, channels]
+        assert time_series.data.shape[1] == len(interface.analog_channel_ids)

@@ -59,8 +59,7 @@ class DataInterfaceTestMixin:
     conversion_options: dict | None = None
     maxDiff = None
 
-    # The backends whose written file `check_read_nwb` is able to read back. Mixins that read through a
-    # third-party HDF5-only reader narrow this, and their zarr file is then only written, never checked.
+    # Narrowed by mixins whose `check_read_nwb` cannot read every backend
     check_read_nwb_backends: tuple[str, ...] = ("hdf5", "zarr")
 
     @pytest.fixture

@@ -1,7 +1,7 @@
 import pytest
 from jsonschema.validators import Draft7Validator
 from pydantic import ValidationError
-from pynwb import NWBHDF5IO, read_nwb
+from pynwb import NWBHDF5IO
 from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -453,8 +453,8 @@ class TestCSVEventsInterface:
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
             io.write(nwbfile)
 
-        read_nwbfile = read_nwb(nwbfile_path)
-        read_events = read_nwbfile.get_events_table("Ttl")
-        assert isinstance(read_events, EventsTable)
-        assert list(read_events["timestamp"][:]) == SINGLE_TYPE_TIMESTAMPS
-        read_nwbfile.read_io.close()
+        with NWBHDF5IO(nwbfile_path, mode="r") as io:
+            read_nwbfile = io.read()
+            read_events = read_nwbfile.get_events_table("Ttl")
+            assert isinstance(read_events, EventsTable)
+            assert list(read_events["timestamp"][:]) == SINGLE_TYPE_TIMESTAMPS
