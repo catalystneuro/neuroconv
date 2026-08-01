@@ -16,6 +16,7 @@ from neuroconv.datainterfaces import (
     AxonRecordingInterface,
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
+    CellExplorerLFPInterface,
     CellExplorerRecordingInterface,
     EDFRecordingInterface,
     IntanRecordingInterface,
@@ -53,6 +54,13 @@ class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AlphaOmegaRecordingInterface
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "alphaomega" / "mpx_map_version4"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "alpha_omega_recording"
+        expected_electrical_series = {"alpha_omega_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 11, 19, 15, 23, 15)
@@ -112,6 +120,13 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = BlackrockRecordingInterface
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "blackrock_recording"
+        expected_electrical_series = {"blackrock_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
     @pytest.fixture(
         params=[
             dict(file_path=str(ECEPHY_DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns5")),
@@ -149,6 +164,13 @@ class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = CellExplorerRecordingInterface
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "cell_explorer_recording"
+        expected_electrical_series = {"cell_explorer_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
     @pytest.fixture(
         params=[
@@ -225,6 +247,13 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "edf_recording"
+        expected_electrical_series = {"edf_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
     def check_run_conversion_with_backend(self, nwbfile_path: str, backend="hdf5"):
         metadata = self.interface.get_metadata()
@@ -1017,6 +1046,13 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "plexon_recording"
+        expected_electrical_series = {"plexon_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
 
@@ -1028,6 +1064,14 @@ class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
     is_lfp_interface = True
+
+    def check_extracted_metadata(self, metadata: dict):
+        # An LFP interface names its own series; the base would emit the plain 'ElectricalSeries'.
+        expected_metadata_key = "plexon_lfp"
+        expected_electrical_series = {"plexon_lfp": dict(name="ElectricalSeriesLF")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
 
 def is_macos():
@@ -1046,6 +1090,13 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
         file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPL2.pl2"),
     )
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "plexon2_recording"
+        expected_electrical_series = {"plexon2_recording": dict(name="ElectricalSeries")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 20, 15, 59, 39)
@@ -1106,6 +1157,30 @@ class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
             ),
             "white_matter_recording",
         ),
+        (
+            AlphaOmegaRecordingInterface,
+            dict(folder_path=str(ECEPHY_DATA_PATH / "alphaomega" / "mpx_map_version4")),
+            "alpha_omega_recording",
+        ),
+        (
+            BlackrockRecordingInterface,
+            dict(file_path=str(ECEPHY_DATA_PATH / "blackrock" / "FileSpec2.3001.ns5")),
+            "blackrock_recording",
+        ),
+        (
+            CellExplorerRecordingInterface,
+            dict(
+                folder_path=str(
+                    ECEPHY_DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed"
+                )
+            ),
+            "cell_explorer_recording",
+        ),
+        (
+            PlexonRecordingInterface,
+            dict(file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx")),
+            "plexon_recording",
+        ),
         pytest.param(
             Spike2RecordingInterface,
             dict(file_path=str(ECEPHY_DATA_PATH / "spike2" / "m365_1sec.smrx")),
@@ -1116,7 +1191,18 @@ class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
             ),
         ),
     ],
-    ids=["biocam", "mcsraw", "spikegadgets", "tdt", "whitematter", "spike2"],
+    ids=[
+        "biocam",
+        "mcsraw",
+        "spikegadgets",
+        "tdt",
+        "whitematter",
+        "alphaomega",
+        "blackrock",
+        "cellexplorer",
+        "plexon",
+        "spike2",
+    ],
 )
 def test_metadata_key_is_accepted_and_forwarded(interface_class, interface_kwargs, default_metadata_key):
     # These interfaces define their own __init__ and used to forward es_key only, so passing metadata_key
@@ -1129,3 +1215,39 @@ def test_metadata_key_is_accepted_and_forwarded(interface_class, interface_kwarg
     electrical_series = interface.get_metadata(use_new_metadata_format=True)["Ecephys"]["ElectricalSeries"]
     assert list(electrical_series) == ["custom_key"]
     assert electrical_series["custom_key"]["name"] == "ElectricalSeries"
+
+
+@pytest.mark.parametrize(
+    "interface_class, interface_kwargs, default_metadata_key, expected_series_name",
+    [
+        (
+            PlexonLFPInterface,
+            dict(file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx")),
+            "plexon_lfp",
+            "ElectricalSeriesLF",
+        ),
+        (
+            CellExplorerLFPInterface,
+            dict(
+                folder_path=str(
+                    ECEPHY_DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed"
+                )
+            ),
+            "cell_explorer_lfp",
+            "ElectricalSeriesLFP",
+        ),
+    ],
+    ids=["plexon_lfp", "cell_explorer_lfp"],
+)
+def test_lfp_interfaces_name_their_own_series(
+    interface_class, interface_kwargs, default_metadata_key, expected_series_name
+):
+    # The base emits the plain "ElectricalSeries" name, which is wrong for data written to processing/LFP,
+    # so each LFP interface states its own name. CellExplorerLFPInterface has no test class of its own.
+    interface = interface_class(**interface_kwargs)
+    assert interface.metadata_key == default_metadata_key
+
+    interface = interface_class(**interface_kwargs, metadata_key="custom_key")
+    electrical_series = interface.get_metadata(use_new_metadata_format=True)["Ecephys"]["ElectricalSeries"]
+    assert list(electrical_series) == ["custom_key"]
+    assert electrical_series["custom_key"]["name"] == expected_series_name
