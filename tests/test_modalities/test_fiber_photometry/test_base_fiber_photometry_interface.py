@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, read_nwb
 
 from neuroconv.tools.testing.data_interface_mixins import (
     FiberPhotometryInterfaceTestMixin,
@@ -204,64 +204,64 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         nwbfile = interface.create_nwbfile(metadata=full_metadata)
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
             io.write(nwbfile)
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_nwbfile = io.read()
+        read_nwbfile = read_nwb(nwbfile_path)
 
-            assert read_nwbfile.session_start_time == datetime(2020, 1, 1, tzinfo=timezone.utc)
+        assert read_nwbfile.session_start_time == datetime(2020, 1, 1, tzinfo=timezone.utc)
 
-            # Device models.
-            optical_fiber_model = read_nwbfile.device_models["optical_fiber_model"]
-            assert optical_fiber_model.manufacturer == "Doric Lenses"
-            assert optical_fiber_model.numerical_aperture == 0.48
-            excitation_source_model = read_nwbfile.device_models["excitation_source_model"]
-            assert excitation_source_model.source_type == "LED"
-            assert excitation_source_model.excitation_mode == "one-photon"
-            assert read_nwbfile.device_models["photodetector_model"].detector_type == "photodiode"
+        # Device models.
+        optical_fiber_model = read_nwbfile.device_models["optical_fiber_model"]
+        assert optical_fiber_model.manufacturer == "Doric Lenses"
+        assert optical_fiber_model.numerical_aperture == 0.48
+        excitation_source_model = read_nwbfile.device_models["excitation_source_model"]
+        assert excitation_source_model.source_type == "LED"
+        assert excitation_source_model.excitation_mode == "one-photon"
+        assert read_nwbfile.device_models["photodetector_model"].detector_type == "photodiode"
 
-            # Devices, their model links, and the optical fiber's insertion.
-            assert set(read_nwbfile.devices) == {
-                "optical_fiber",
-                "excitation_source_calcium_signal",
-                "excitation_source_isosbestic_control",
-                "photodetector",
-            }
-            optical_fiber = read_nwbfile.devices["optical_fiber"]
-            assert optical_fiber.model.name == "optical_fiber_model"
-            assert optical_fiber.fiber_insertion.depth_in_mm == 4.0
-            assert optical_fiber.fiber_insertion.insertion_position_ap_in_mm == 3.0
-            assert read_nwbfile.devices["excitation_source_calcium_signal"].model.name == "excitation_source_model"
-            assert read_nwbfile.devices["photodetector"].model.name == "photodetector_model"
+        # Devices, their model links, and the optical fiber's insertion.
+        assert set(read_nwbfile.devices) == {
+            "optical_fiber",
+            "excitation_source_calcium_signal",
+            "excitation_source_isosbestic_control",
+            "photodetector",
+        }
+        optical_fiber = read_nwbfile.devices["optical_fiber"]
+        assert optical_fiber.model.name == "optical_fiber_model"
+        assert optical_fiber.fiber_insertion.depth_in_mm == 4.0
+        assert optical_fiber.fiber_insertion.insertion_position_ap_in_mm == 3.0
+        assert read_nwbfile.devices["excitation_source_calcium_signal"].model.name == "excitation_source_model"
+        assert read_nwbfile.devices["photodetector"].model.name == "photodetector_model"
 
-            fiber_photometry = read_nwbfile.lab_meta_data["fiber_photometry"]
+        fiber_photometry = read_nwbfile.lab_meta_data["fiber_photometry"]
 
-            # Indicator.
-            indicators = fiber_photometry.fiber_photometry_indicators.indicators
-            assert indicators["indicator"].label == "GCaMP6s"
+        # Indicator.
+        indicators = fiber_photometry.fiber_photometry_indicators.indicators
+        assert indicators["indicator"].label == "GCaMP6s"
 
-            # Table: both rows in full, including the per-row device and indicator references.
-            table = fiber_photometry.fiber_photometry_table
-            assert len(table) == 2
-            assert list(table["location"][:]) == ["VTA", "VTA"]
-            assert_array_equal(table["excitation_wavelength_in_nm"][:], np.array([470.0, 405.0]))
-            assert_array_equal(table["emission_wavelength_in_nm"][:], np.array([525.0, 525.0]))
-            assert table["optical_fiber"][0].name == "optical_fiber"
-            assert table["excitation_source"][0].name == "excitation_source_calcium_signal"
-            assert table["excitation_source"][1].name == "excitation_source_isosbestic_control"
-            assert table["photodetector"][0].name == "photodetector"
-            assert table["indicator"][0].label == "GCaMP6s"
+        # Table: both rows in full, including the per-row device and indicator references.
+        table = fiber_photometry.fiber_photometry_table
+        assert len(table) == 2
+        assert list(table["location"][:]) == ["VTA", "VTA"]
+        assert_array_equal(table["excitation_wavelength_in_nm"][:], np.array([470.0, 405.0]))
+        assert_array_equal(table["emission_wavelength_in_nm"][:], np.array([525.0, 525.0]))
+        assert table["optical_fiber"][0].name == "optical_fiber"
+        assert table["excitation_source"][0].name == "excitation_source_calcium_signal"
+        assert table["excitation_source"][1].name == "excitation_source_isosbestic_control"
+        assert table["photodetector"][0].name == "photodetector"
+        assert table["indicator"][0].label == "GCaMP6s"
 
-            # Response series, referencing both the calcium-signal (row 0) and isosbestic-control (row 1) rows.
-            response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
-            assert response_series.name == "FiberPhotometryResponseSeries"
-            assert (
-                response_series.description
-                == "Multi-fiber photometry recording of GCaMP6s calcium signal and isosbestic control."
-            )
-            assert response_series.unit == "a.u."
-            assert response_series.data[:].shape == (100, 2)
-            assert response_series.rate == pytest.approx(100.0)
-            assert response_series.starting_time == 0.0
-            assert list(response_series.fiber_photometry_table_region.data[:]) == [0, 1]
+        # Response series, referencing both the calcium-signal (row 0) and isosbestic-control (row 1) rows.
+        response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
+        assert response_series.name == "FiberPhotometryResponseSeries"
+        assert (
+            response_series.description
+            == "Multi-fiber photometry recording of GCaMP6s calcium signal and isosbestic control."
+        )
+        assert response_series.unit == "a.u."
+        assert response_series.data[:].shape == (100, 2)
+        assert response_series.rate == pytest.approx(100.0)
+        assert response_series.starting_time == 0.0
+        assert list(response_series.fiber_photometry_table_region.data[:]) == [0, 1]
+        read_nwbfile.read_io.close()
 
     def test_optical_fiber_without_model_round_trips(self, tmp_path, full_metadata):
         # The optical fiber's device model is optional: ndx-ophys-devices makes ``model`` an optional link,
@@ -277,24 +277,24 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         nwbfile = interface.create_nwbfile(metadata=full_metadata)
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
             io.write(nwbfile)
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_nwbfile = io.read()
+        read_nwbfile = read_nwb(nwbfile_path)
 
-            # The fiber is written with no model, but everything else about it survives.
-            optical_fiber = read_nwbfile.devices["optical_fiber"]
-            assert optical_fiber.model is None
-            assert optical_fiber.fiber_insertion.depth_in_mm == 4.0
-            assert optical_fiber.fiber_insertion.insertion_position_ap_in_mm == 3.0
+        # The fiber is written with no model, but everything else about it survives.
+        optical_fiber = read_nwbfile.devices["optical_fiber"]
+        assert optical_fiber.model is None
+        assert optical_fiber.fiber_insertion.depth_in_mm == 4.0
+        assert optical_fiber.fiber_insertion.insertion_position_ap_in_mm == 3.0
 
-            # Only the fiber's model was dropped; the other two devices keep theirs.
-            assert "optical_fiber_model" not in read_nwbfile.device_models
-            assert read_nwbfile.devices["excitation_source_calcium_signal"].model.name == "excitation_source_model"
-            assert read_nwbfile.devices["photodetector"].model.name == "photodetector_model"
+        # Only the fiber's model was dropped; the other two devices keep theirs.
+        assert "optical_fiber_model" not in read_nwbfile.device_models
+        assert read_nwbfile.devices["excitation_source_calcium_signal"].model.name == "excitation_source_model"
+        assert read_nwbfile.devices["photodetector"].model.name == "photodetector_model"
 
-            # The row still references the fiber, and the response series still round-trips.
-            table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
-            assert table["optical_fiber"][0].name == "optical_fiber"
-            assert read_nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100, 2)
+        # The row still references the fiber, and the response series still round-trips.
+        table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+        assert table["optical_fiber"][0].name == "optical_fiber"
+        assert read_nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100, 2)
+        read_nwbfile.read_io.close()
 
     def test_minimally_annotated_metadata_round_trips(self, tmp_path):
         # The minimally annotated path: the default metadata describes only the response series, so the file
@@ -306,19 +306,19 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         nwbfile = interface.create_nwbfile(metadata=metadata)
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
             io.write(nwbfile)
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_nwbfile = io.read()
+        read_nwbfile = read_nwb(nwbfile_path)
 
-            response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
-            assert response_series.name == "FiberPhotometryResponseSeries"
-            # Nothing fabricated: no description was supplied, so it is written empty.
-            assert response_series.description == ""
-            assert response_series.unit == "a.u."
-            assert response_series.data[:].shape == (100, 2)
-            assert response_series.rate == pytest.approx(100.0)
-            assert response_series.starting_time == 0.0
+        response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
+        assert response_series.name == "FiberPhotometryResponseSeries"
+        # Nothing fabricated: no description was supplied, so it is written empty.
+        assert response_series.description == ""
+        assert response_series.unit == "a.u."
+        assert response_series.data[:].shape == (100, 2)
+        assert response_series.rate == pytest.approx(100.0)
+        assert response_series.starting_time == 0.0
 
-            assert response_series.fiber_photometry_table_region is None
-            assert len(read_nwbfile.devices) == 0
-            assert len(read_nwbfile.device_models) == 0
-            assert "fiber_photometry" not in read_nwbfile.lab_meta_data
+        assert response_series.fiber_photometry_table_region is None
+        assert len(read_nwbfile.devices) == 0
+        assert len(read_nwbfile.device_models) == 0
+        assert "fiber_photometry" not in read_nwbfile.lab_meta_data
+        read_nwbfile.read_io.close()

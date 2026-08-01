@@ -5,7 +5,7 @@ import pytest
 from hdmf_zarr import NWBZarrIO, ZarrDataIO
 from hdmf_zarr.nwb import NWBZarrIO
 from numcodecs import Blosc, GZip
-from pynwb import NWBHDF5IO, H5DataIO, NWBFile
+from pynwb import NWBHDF5IO, H5DataIO, NWBFile, read_nwb
 from pynwb.ophys import PlaneSegmentation
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
@@ -130,28 +130,27 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
         nwbfile_path=str(nwbfile_path),
         export_nwbfile_path=str(export_path),
     )
-    IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
-    with IO(str(export_path), mode="r") as io:
-        nwbfile = io.read()
+    nwbfile = read_nwb(str(export_path))
 
-        if backend == "hdf5":
-            assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts == 4
-            assert nwbfile.intervals["trials"].start_time.data.compression_opts == 4
-            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
-            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
-            assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 4
-            assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
-        elif backend == "zarr":
-            assert nwbfile.acquisition["RawTimeSeries"].data.compressor == default_compressor
-            assert nwbfile.acquisition["RawTimeSeries"].data.filters is None
-            assert nwbfile.intervals["trials"].start_time.data.compressor == default_compressor
-            assert nwbfile.intervals["trials"].start_time.data.filters is None
-            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == default_compressor
-            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
-            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
-            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters is None
-            assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == default_compressor
-            assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters is None
+    if backend == "hdf5":
+        assert nwbfile.acquisition["RawTimeSeries"].data.compression_opts == 4
+        assert nwbfile.intervals["trials"].start_time.data.compression_opts == 4
+        assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
+        assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
+        assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 4
+        assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
+    elif backend == "zarr":
+        assert nwbfile.acquisition["RawTimeSeries"].data.compressor == default_compressor
+        assert nwbfile.acquisition["RawTimeSeries"].data.filters is None
+        assert nwbfile.intervals["trials"].start_time.data.compressor == default_compressor
+        assert nwbfile.intervals["trials"].start_time.data.filters is None
+        assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == default_compressor
+        assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters is None
+        assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
+        assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters is None
+        assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == default_compressor
+        assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters is None
+    nwbfile.read_io.close()
 
 
 def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
@@ -168,46 +167,44 @@ def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
     assert export_nwbfile_path.exists()
 
     # Read original HDF5
-    with NWBHDF5IO(hdf5_nwbfile_path, mode="r") as io_hdf5:
-        nwbfile_hdf5 = io_hdf5.read()
-        # Read repacked Zarr
-        with NWBZarrIO(str(export_nwbfile_path), mode="r") as io_zarr:
-            nwbfile_zarr = io_zarr.read()
+    nwbfile_hdf5 = read_nwb(hdf5_nwbfile_path)
+    # Read repacked Zarr
+    nwbfile_zarr = read_nwb(str(export_nwbfile_path))
 
-            # Compare key data
-            np.testing.assert_array_equal(
-                nwbfile_hdf5.acquisition["RawTimeSeries"].data[:], nwbfile_zarr.acquisition["RawTimeSeries"].data[:]
-            )
-            np.testing.assert_array_equal(
-                nwbfile_hdf5.intervals["trials"]["start_time"][:], nwbfile_zarr.intervals["trials"]["start_time"][:]
-            )
-            np.testing.assert_array_equal(
-                nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data[:],
-                nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data[:],
-            )
-            np.testing.assert_array_equal(
-                nwbfile_hdf5.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
-                nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
-            )
-            # Compare specifically compressed data
-            np.testing.assert_array_equal(
-                nwbfile_hdf5.acquisition["CompressedRawTimeSeries"].data[:],
-                nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data[:],
-            )
-            np.testing.assert_array_equal(
-                nwbfile_hdf5.intervals["trials"]["compressed_start_time"][:],
-                nwbfile_zarr.intervals["trials"]["compressed_start_time"][:],
-            )
+    # Compare key data
+    np.testing.assert_array_equal(
+        nwbfile_hdf5.acquisition["RawTimeSeries"].data[:], nwbfile_zarr.acquisition["RawTimeSeries"].data[:]
+    )
+    np.testing.assert_array_equal(
+        nwbfile_hdf5.intervals["trials"]["start_time"][:], nwbfile_zarr.intervals["trials"]["start_time"][:]
+    )
+    np.testing.assert_array_equal(
+        nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data[:],
+        nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data[:],
+    )
+    np.testing.assert_array_equal(
+        nwbfile_hdf5.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
+        nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
+    )
+    # Compare specifically compressed data
+    np.testing.assert_array_equal(
+        nwbfile_hdf5.acquisition["CompressedRawTimeSeries"].data[:],
+        nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data[:],
+    )
+    np.testing.assert_array_equal(
+        nwbfile_hdf5.intervals["trials"]["compressed_start_time"][:],
+        nwbfile_zarr.intervals["trials"]["compressed_start_time"][:],
+    )
 
-            # Check that compression is applied properly in zarr format
-            assert nwbfile_zarr.acquisition["RawTimeSeries"].data.compressor == default_compressor
-            assert nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
-            assert nwbfile_zarr.intervals["trials"].start_time.data.compressor == default_compressor
-            assert nwbfile_zarr.intervals["trials"].compressed_start_time.data.compressor == default_compressor
-            assert nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == default_compressor
-            assert (
-                nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == default_compressor
-            )
+    # Check that compression is applied properly in zarr format
+    assert nwbfile_zarr.acquisition["RawTimeSeries"].data.compressor == default_compressor
+    assert nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data.compressor == default_compressor
+    assert nwbfile_zarr.intervals["trials"].start_time.data.compressor == default_compressor
+    assert nwbfile_zarr.intervals["trials"].compressed_start_time.data.compressor == default_compressor
+    assert nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data.compressor == default_compressor
+    assert nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressor == default_compressor
+    nwbfile_zarr.read_io.close()
+    nwbfile_hdf5.read_io.close()
 
 
 def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
@@ -223,41 +220,41 @@ def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
     assert export_nwbfile_path.exists()
 
     # Read original Zarr
-    with NWBZarrIO(zarr_nwbfile_path, mode="r") as io_zarr:
-        nwbfile_zarr = io_zarr.read()
-        # Read repacked HDF5
-        with NWBHDF5IO(str(export_nwbfile_path), mode="r") as io_hdf5:
-            nwbfile_hdf5 = io_hdf5.read()
+    nwbfile_zarr = read_nwb(zarr_nwbfile_path)
+    # Read repacked HDF5
+    nwbfile_hdf5 = read_nwb(str(export_nwbfile_path))
 
-            # Compare key data
-            np.testing.assert_array_equal(
-                nwbfile_zarr.acquisition["RawTimeSeries"].data[:], nwbfile_hdf5.acquisition["RawTimeSeries"].data[:]
-            )
-            np.testing.assert_array_equal(
-                nwbfile_zarr.intervals["trials"]["start_time"][:], nwbfile_hdf5.intervals["trials"]["start_time"][:]
-            )
-            np.testing.assert_array_equal(
-                nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data[:],
-                nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data[:],
-            )
-            np.testing.assert_array_equal(
-                nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
-                nwbfile_hdf5.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
-            )
-            # Compare specifically compressed data
-            np.testing.assert_array_equal(
-                nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data[:],
-                nwbfile_hdf5.acquisition["CompressedRawTimeSeries"].data[:],
-            )
-            np.testing.assert_array_equal(
-                nwbfile_zarr.intervals["trials"]["compressed_start_time"][:],
-                nwbfile_hdf5.intervals["trials"]["compressed_start_time"][:],
-            )
+    # Compare key data
+    np.testing.assert_array_equal(
+        nwbfile_zarr.acquisition["RawTimeSeries"].data[:], nwbfile_hdf5.acquisition["RawTimeSeries"].data[:]
+    )
+    np.testing.assert_array_equal(
+        nwbfile_zarr.intervals["trials"]["start_time"][:], nwbfile_hdf5.intervals["trials"]["start_time"][:]
+    )
+    np.testing.assert_array_equal(
+        nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data[:],
+        nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data[:],
+    )
+    np.testing.assert_array_equal(
+        nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
+        nwbfile_hdf5.processing["ophys"]["PlaneSegmentation"].pixel_mask.data[:],
+    )
+    # Compare specifically compressed data
+    np.testing.assert_array_equal(
+        nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data[:],
+        nwbfile_hdf5.acquisition["CompressedRawTimeSeries"].data[:],
+    )
+    np.testing.assert_array_equal(
+        nwbfile_zarr.intervals["trials"]["compressed_start_time"][:],
+        nwbfile_hdf5.intervals["trials"]["compressed_start_time"][:],
+    )
 
-            # Check that compression is applied properly in hdf5 format
-            assert nwbfile_hdf5.acquisition["RawTimeSeries"].data.compression_opts == 4
-            assert nwbfile_hdf5.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
-            assert nwbfile_hdf5.intervals["trials"].start_time.data.compression_opts == 4
-            assert nwbfile_hdf5.intervals["trials"].compressed_start_time.data.compression_opts == 4
-            assert nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
-            assert nwbfile_hdf5.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
+    # Check that compression is applied properly in hdf5 format
+    assert nwbfile_hdf5.acquisition["RawTimeSeries"].data.compression_opts == 4
+    assert nwbfile_hdf5.acquisition["CompressedRawTimeSeries"].data.compression_opts == 4
+    assert nwbfile_hdf5.intervals["trials"].start_time.data.compression_opts == 4
+    assert nwbfile_hdf5.intervals["trials"].compressed_start_time.data.compression_opts == 4
+    assert nwbfile_hdf5.processing["ecephys"]["ProcessedTimeSeries"].data.compression_opts == 4
+    assert nwbfile_hdf5.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
+    nwbfile_hdf5.read_io.close()
+    nwbfile_zarr.read_io.close()

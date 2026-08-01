@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from dateutil.tz import gettz
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import NWBConverter
@@ -106,12 +106,12 @@ def test_save_video_to_custom_module(nwb_converter, nwbfile_path, metadata):
         conversion_options=conversion_opts,
         metadata=metadata,
     )
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        assert "behavior" in nwbfile.processing
-        assert module_description == nwbfile.processing["behavior"].description
-        assert "Video test1" in nwbfile.processing["behavior"].data_interfaces
-        assert "Video test2" in nwbfile.processing["behavior"].data_interfaces
+    nwbfile = read_nwb(nwbfile_path)
+    assert "behavior" in nwbfile.processing
+    assert module_description == nwbfile.processing["behavior"].description
+    assert "Video test1" in nwbfile.processing["behavior"].data_interfaces
+    assert "Video test2" in nwbfile.processing["behavior"].data_interfaces
+    nwbfile.read_io.close()
 
 
 def test_video_chunking(nwb_converter, nwbfile_path, metadata):
@@ -137,18 +137,18 @@ def test_video_chunking(nwb_converter, nwbfile_path, metadata):
     # chunk covers all the frames
     expected_chunking = (num_frames, num_rows, num_columns, 1)
 
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        mod = nwbfile.acquisition
+    nwbfile = read_nwb(nwbfile_path)
+    mod = nwbfile.acquisition
 
-        # Verify that chunking is applied
-        video_written_with_iterator = mod["Video test1"]
-        assert video_written_with_iterator.data.shape == expected_video_shape  # Chunked data
-        assert video_written_with_iterator.data.chunks == expected_chunking  # Chunked data
+    # Verify that chunking is applied
+    video_written_with_iterator = mod["Video test1"]
+    assert video_written_with_iterator.data.shape == expected_video_shape  # Chunked data
+    assert video_written_with_iterator.data.chunks == expected_chunking  # Chunked data
 
-        video_written_without_iterator = mod["Video test2"]
-        assert video_written_without_iterator.data.shape == expected_video_shape
-        assert video_written_without_iterator.data.chunks == expected_chunking
+    video_written_without_iterator = mod["Video test2"]
+    assert video_written_without_iterator.data.shape == expected_video_shape
+    assert video_written_without_iterator.data.chunks == expected_chunking
+    nwbfile.read_io.close()
 
 
 def test_video_stub(nwb_converter, nwbfile_path, metadata):
@@ -160,11 +160,11 @@ def test_video_stub(nwb_converter, nwbfile_path, metadata):
         conversion_options=conversion_options,
         metadata=metadata,
     )
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        mod = nwbfile.acquisition
-        # Verify that stub test limits the frames
-        assert mod["Video test1"].data.shape[0] == 10
+    nwbfile = read_nwb(nwbfile_path)
+    mod = nwbfile.acquisition
+    # Verify that stub test limits the frames
+    assert mod["Video test1"].data.shape[0] == 10
+    nwbfile.read_io.close()
 
 
 def test_aligned_timestamps(nwb_converter, nwbfile_path, metadata):
@@ -180,9 +180,9 @@ def test_aligned_timestamps(nwb_converter, nwbfile_path, metadata):
         conversion_options=conversion_options,
         metadata=metadata,
     )
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        np.testing.assert_array_equal(aligned_timestamps, nwbfile.acquisition["Video test1"].timestamps[:])
+    nwbfile = read_nwb(nwbfile_path)
+    np.testing.assert_array_equal(aligned_timestamps, nwbfile.acquisition["Video test1"].timestamps[:])
+    nwbfile.read_io.close()
 
 
 def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata):
@@ -202,12 +202,12 @@ def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata):
     )
 
     # Verify that timestamps were written
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        # Check that timestamps exist in the ImageSeries
-        assert nwbfile.acquisition["Video test1"].timestamps is not None
-        # Verify timestamps are not None and have the expected length
-        assert len(nwbfile.acquisition["Video test1"].timestamps[:]) > 0
+    nwbfile = read_nwb(nwbfile_path)
+    # Check that timestamps exist in the ImageSeries
+    assert nwbfile.acquisition["Video test1"].timestamps is not None
+    # Verify timestamps are not None and have the expected length
+    assert len(nwbfile.acquisition["Video test1"].timestamps[:]) > 0
+    nwbfile.read_io.close()
 
 
 def test_aligned_starting_time(nwb_converter, nwbfile_path, metadata, aligned_starting_time):
@@ -222,10 +222,10 @@ def test_aligned_starting_time(nwb_converter, nwbfile_path, metadata, aligned_st
         conversion_options=conversion_options,
         metadata=metadata,
     )
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        # Verify that starting time is applied
-        assert nwbfile.acquisition["Video test1"].starting_time == aligned_starting_time
+    nwbfile = read_nwb(nwbfile_path)
+    # Verify that starting time is applied
+    assert nwbfile.acquisition["Video test1"].starting_time == aligned_starting_time
+    nwbfile.read_io.close()
 
 
 def test_timestamp_shifting(nwb_converter):
@@ -300,12 +300,12 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
         metadata=metadata_copy,
     )
 
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        assert nwbfile.acquisition["Video test1"].description == "Custom description"
-        assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
-        assert nwbfile.devices["CustomDevice"].description == "Custom device description"
-        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["CustomDevice"]
+    nwbfile = read_nwb(nwbfile_path)
+    assert nwbfile.acquisition["Video test1"].description == "Custom description"
+    assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
+    assert nwbfile.devices["CustomDevice"].description == "Custom device description"
+    assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["CustomDevice"]
+    nwbfile.read_io.close()
 
 
 def test_device_propagation(nwb_converter, nwbfile_path, metadata):
@@ -323,15 +323,15 @@ def test_device_propagation(nwb_converter, nwbfile_path, metadata):
     )
 
     # Verify device creation and linking
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        # Check devices exist
-        assert "Video test1 Camera Device" in nwbfile.devices
-        assert "Video test2 Camera Device" in nwbfile.devices
+    nwbfile = read_nwb(nwbfile_path)
+    # Check devices exist
+    assert "Video test1 Camera Device" in nwbfile.devices
+    assert "Video test2 Camera Device" in nwbfile.devices
 
-        # Check videos are linked to correct devices
-        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Video test1 Camera Device"]
-        assert nwbfile.acquisition["Video test2"].device == nwbfile.devices["Video test2 Camera Device"]
+    # Check videos are linked to correct devices
+    assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Video test1 Camera Device"]
+    assert nwbfile.acquisition["Video test2"].device == nwbfile.devices["Video test2 Camera Device"]
+    nwbfile.read_io.close()
 
 
 def test_no_device(nwb_converter, nwbfile_path, metadata):
@@ -345,11 +345,11 @@ def test_no_device(nwb_converter, nwbfile_path, metadata):
         metadata=metadata,
     )
 
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
+    nwbfile = read_nwb(nwbfile_path)
 
-        assert "Video test1 Camera Device" not in nwbfile.devices
-        assert nwbfile.acquisition["Video test1"].device is None
+    assert "Video test1 Camera Device" not in nwbfile.devices
+    assert nwbfile.acquisition["Video test1"].device is None
+    nwbfile.read_io.close()
 
 
 def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metadata):

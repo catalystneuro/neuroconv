@@ -5,7 +5,7 @@ from shutil import rmtree
 from tempfile import mkdtemp
 
 import numpy as np
-from pynwb import NWBFile
+from pynwb import NWBFile, read_nwb
 
 from neuroconv import (
     BaseDataInterface,
@@ -188,16 +188,16 @@ def test_converter_pipe_append_on_disk(tmp_path):
     converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, append_on_disk_nwbfile=True)
 
     # Verify all interfaces' data was appended
-    with NWBHDF5IO(nwbfile_path, "r") as io:
-        nwbfile = io.read()
-        # Original mock file data still exists
-        assert nwbfile.session_description is not None
-        # First TimeSeries interface data
-        assert "MockTimeSeriesAnalog" in nwbfile.acquisition
-        assert nwbfile.acquisition["MockTimeSeriesAnalog"].data.shape[1] == 2
-        # Second TimeSeries interface data
-        assert "MockTimeSeriesAuxiliary" in nwbfile.acquisition
-        assert nwbfile.acquisition["MockTimeSeriesAuxiliary"].data.shape[1] == 3
-        # Verify we have exactly 2 TimeSeries
-        timeseries_names = list(nwbfile.acquisition.keys())
-        assert len(timeseries_names) == 2
+    nwbfile = read_nwb(nwbfile_path)
+    # Original mock file data still exists
+    assert nwbfile.session_description is not None
+    # First TimeSeries interface data
+    assert "MockTimeSeriesAnalog" in nwbfile.acquisition
+    assert nwbfile.acquisition["MockTimeSeriesAnalog"].data.shape[1] == 2
+    # Second TimeSeries interface data
+    assert "MockTimeSeriesAuxiliary" in nwbfile.acquisition
+    assert nwbfile.acquisition["MockTimeSeriesAuxiliary"].data.shape[1] == 3
+    # Verify we have exactly 2 TimeSeries
+    timeseries_names = list(nwbfile.acquisition.keys())
+    assert len(timeseries_names) == 2
+    nwbfile.read_io.close()

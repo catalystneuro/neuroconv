@@ -4,7 +4,7 @@ import shutil
 import numpy as np
 import pandas
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface import (
@@ -564,28 +564,26 @@ class Test_GuppyInterface:
         nwbfile_path = tmp_path / "test_guppy.nwb"
         with NWBHDF5IO(str(nwbfile_path), "w") as io:
             io.write(nwbfile)
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            nwbfile = io.read()
-            module = nwbfile.processing["fiber_photometry"]
-            recording_sites_table = module["recording_sites"]
-            assert recording_sites_table.neurodata_type == "GuppyRecordingSitesTable"
-            # Valid-signal intervals round-trip as their own GuppyValidSignalIntervals object.
-            if case["expected_valid_signal_intervals"]:
-                actual = self._valid_intervals_by_recording_site(module)
-                for recording_site, expected_intervals in case["expected_valid_signal_intervals"].items():
-                    np.testing.assert_allclose(actual[recording_site], expected_intervals)
-            for recording_site, prefixes in case["expected_traces"].items():
-                for prefix in prefixes:
-                    series = module.data_interfaces[f"{prefix}_{recording_site}"]
-                    assert series.neurodata_type == "GuppyDerivedResponseSeries"
-                    assert series.trace_type == _PREFIX_TO_TRACE_TYPE[prefix]
-                    assert series.fiber_photometry_table_region is None
-            for entry in case["expected_cross_correlations"]:
-                name = (
-                    f"cross_correlation_{entry['trace_type']}_{entry['recording_site_1']}_{entry['recording_site_2']}"
-                )
-                assert module.data_interfaces[name].neurodata_type == "GuppyCrossCorrelation"
-            assert nwbfile.lab_meta_data["guppy_parameters"].neurodata_type == "GuppyParameters"
+        nwbfile = read_nwb(str(nwbfile_path))
+        module = nwbfile.processing["fiber_photometry"]
+        recording_sites_table = module["recording_sites"]
+        assert recording_sites_table.neurodata_type == "GuppyRecordingSitesTable"
+        # Valid-signal intervals round-trip as their own GuppyValidSignalIntervals object.
+        if case["expected_valid_signal_intervals"]:
+            actual = self._valid_intervals_by_recording_site(module)
+            for recording_site, expected_intervals in case["expected_valid_signal_intervals"].items():
+                np.testing.assert_allclose(actual[recording_site], expected_intervals)
+        for recording_site, prefixes in case["expected_traces"].items():
+            for prefix in prefixes:
+                series = module.data_interfaces[f"{prefix}_{recording_site}"]
+                assert series.neurodata_type == "GuppyDerivedResponseSeries"
+                assert series.trace_type == _PREFIX_TO_TRACE_TYPE[prefix]
+                assert series.fiber_photometry_table_region is None
+        for entry in case["expected_cross_correlations"]:
+            name = f"cross_correlation_{entry['trace_type']}_{entry['recording_site_1']}_{entry['recording_site_2']}"
+            assert module.data_interfaces[name].neurodata_type == "GuppyCrossCorrelation"
+        assert nwbfile.lab_meta_data["guppy_parameters"].neurodata_type == "GuppyParameters"
+        nwbfile.read_io.close()
 
     def test_derived_response_series_uses_starting_time_and_rate(self, interface, case, nwbfile):
         """The regular mock timebase (1.0 + arange(n) / 200 Hz) is written as starting_time + rate."""

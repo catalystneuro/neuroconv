@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from numpy.testing import assert_array_almost_equal
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.tools.testing import MockSpikeGLXNIDQInterface
 
@@ -66,8 +66,8 @@ def test_mock_run_conversion(tmp_path):
     nwbfile_path = tmp_path / "test_mock_run_conversion.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
+    nwbfile = read_nwb(nwbfile_path)
 
-        assert "NIDQBoard" in nwbfile.devices
-        assert len(nwbfile.devices) == 1
+    assert "NIDQBoard" in nwbfile.devices
+    assert len(nwbfile.devices) == 1
+    nwbfile.read_io.close()

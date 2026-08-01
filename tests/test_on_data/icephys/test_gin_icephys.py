@@ -3,7 +3,7 @@ from datetime import datetime
 
 import numpy.testing as npt
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import AbfInterface
@@ -102,15 +102,15 @@ class TestIcephysNwbConversions(unittest.TestCase):
 
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            # Test number of traces = n_electrodes * n_segments
-            npt.assert_equal(len(nwbfile.acquisition), n_electrodes * n_segments)
+        nwbfile = read_nwb(nwbfile_path)
+        # Test number of traces = n_electrodes * n_segments
+        npt.assert_equal(len(nwbfile.acquisition), n_electrodes * n_segments)
 
-            self.check_set_aligned_starting_time()
-            self.check_set_aligned_segment_starting_times()
+        self.check_set_aligned_starting_time()
+        self.check_set_aligned_segment_starting_times()
 
-            assert nwbfile.icephys_electrodes["electrode-0"].cell_id == "ID001"
+        assert nwbfile.icephys_electrodes["electrode-0"].cell_id == "ID001"
+        nwbfile.read_io.close()
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ on real data.
 """
 
 import pytest
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBHDF5IO, NWBFile, read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe
@@ -127,13 +127,13 @@ class TestSweepTimeIntervals:
         with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
             io.write(nwbfile)
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            read_nwbfile = io.read()
-            sweeps = read_nwbfile.intervals["sweeps"]
-            expected_starts = [0.0, 1.0, 2.0]
-            assert list(sweeps.start_time[:]) == pytest.approx(expected_starts)
-            assert list(sweeps.stop_time[:]) == pytest.approx([start + LAST_SAMPLE_OFFSET for start in expected_starts])
-            assert list(sweeps.sequence[:]) == ["run", "run", "run"]
+        read_nwbfile = read_nwb(nwbfile_path)
+        sweeps = read_nwbfile.intervals["sweeps"]
+        expected_starts = [0.0, 1.0, 2.0]
+        assert list(sweeps.start_time[:]) == pytest.approx(expected_starts)
+        assert list(sweeps.stop_time[:]) == pytest.approx([start + LAST_SAMPLE_OFFSET for start in expected_starts])
+        assert list(sweeps.sequence[:]) == ["run", "run", "run"]
+        read_nwbfile.read_io.close()
 
     def test_no_table_without_recordings(self):
         """A file with no intracellular recordings gets no table rather than an empty one."""

@@ -9,6 +9,7 @@ import pytest
 from hdmf.common import DynamicTable, VectorData
 from hdmf.data_utils import DataChunkIterator
 from numpy.testing import assert_array_equal
+from pynwb import read_nwb
 from pynwb.ophys import PlaneSegmentation
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
@@ -72,18 +73,18 @@ def test_simple_time_series(
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_data = written_nwbfile.acquisition["TestTimeSeries"].data
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestTimeSeries"].data
 
-        assert written_data.chunks == dataset_configuration.chunk_shape
+    assert written_data.chunks == dataset_configuration.chunk_shape
 
-        if backend == "hdf5":
-            assert written_data.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=1)
+    if backend == "hdf5":
+        assert written_data.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data.compressor == numcodecs.GZip(level=1)
 
-        assert_array_equal(integer_array, written_data[:])
+    assert_array_equal(integer_array, written_data[:])
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -105,18 +106,18 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with NWB_IO(path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
 
-        assert written_data.chunks == dataset_configuration.chunk_shape
+    assert written_data.chunks == dataset_configuration.chunk_shape
 
-        if backend == "hdf5":
-            assert written_data.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=1)
+    if backend == "hdf5":
+        assert written_data.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data.compressor == numcodecs.GZip(level=1)
 
-        assert_array_equal(integer_array, written_data[:])
+    assert_array_equal(integer_array, written_data[:])
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize(
@@ -170,35 +171,35 @@ def test_time_series_timestamps_linkage(
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
+    written_nwbfile = read_nwb(nwbfile_path)
 
-        written_data_1 = written_nwbfile.acquisition["TestTimeSeries1"].data
-        assert written_data_1.chunks == dataset_configuration_1.chunk_shape
-        if backend == "hdf5":
-            assert written_data_1.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data_1.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(integer_array, written_data_1[:])
+    written_data_1 = written_nwbfile.acquisition["TestTimeSeries1"].data
+    assert written_data_1.chunks == dataset_configuration_1.chunk_shape
+    if backend == "hdf5":
+        assert written_data_1.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data_1.compressor == numcodecs.GZip(level=1)
+    assert_array_equal(integer_array, written_data_1[:])
 
-        written_data_2 = written_nwbfile.acquisition["TestTimeSeries2"].data
-        assert written_data_2.chunks == dataset_configuration_2.chunk_shape
-        if backend == "hdf5":
-            assert written_data_2.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data_2.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(integer_array, written_data_2[:])
+    written_data_2 = written_nwbfile.acquisition["TestTimeSeries2"].data
+    assert written_data_2.chunks == dataset_configuration_2.chunk_shape
+    if backend == "hdf5":
+        assert written_data_2.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data_2.compressor == numcodecs.GZip(level=1)
+    assert_array_equal(integer_array, written_data_2[:])
 
-        written_timestamps_1 = written_nwbfile.acquisition["TestTimeSeries1"].timestamps
-        assert written_timestamps_1.chunks == timestamps_configuration_1.chunk_shape
-        if backend == "hdf5":
-            assert written_timestamps_1.compression == "gzip"
-        elif backend == "zarr":
-            assert written_timestamps_1.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(timestamps_array, written_timestamps_1[:])
+    written_timestamps_1 = written_nwbfile.acquisition["TestTimeSeries1"].timestamps
+    assert written_timestamps_1.chunks == timestamps_configuration_1.chunk_shape
+    if backend == "hdf5":
+        assert written_timestamps_1.compression == "gzip"
+    elif backend == "zarr":
+        assert written_timestamps_1.compressor == numcodecs.GZip(level=1)
+    assert_array_equal(timestamps_array, written_timestamps_1[:])
 
-        written_timestamps_2 = written_nwbfile.acquisition["TestTimeSeries2"].timestamps
-        assert written_timestamps_2 == written_timestamps_1
+    written_timestamps_2 = written_nwbfile.acquisition["TestTimeSeries2"].timestamps
+    assert written_timestamps_2 == written_timestamps_1
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -238,14 +239,14 @@ def test_plane_segmentation_pixel_mask(
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with NWB_IO(path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_pixel_mask = written_nwbfile.processing["ophys"].data_interfaces["TestPlaneSegmentation"].pixel_mask
-        written_dataset = written_pixel_mask.data.dataset
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_pixel_mask = written_nwbfile.processing["ophys"].data_interfaces["TestPlaneSegmentation"].pixel_mask
+    written_dataset = written_pixel_mask.data.dataset
 
-        assert written_dataset.chunks == dataset_configuration.chunk_shape
-        if backend == "hdf5":
-            assert written_dataset.compression == "gzip"
-        elif backend == "zarr":
-            assert written_dataset.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(written_dataset[:], expected_pixel_mask)
+    assert written_dataset.chunks == dataset_configuration.chunk_shape
+    if backend == "hdf5":
+        assert written_dataset.compression == "gzip"
+    elif backend == "zarr":
+        assert written_dataset.compressor == numcodecs.GZip(level=1)
+    assert_array_equal(written_dataset[:], expected_pixel_mask)
+    written_nwbfile.read_io.close()

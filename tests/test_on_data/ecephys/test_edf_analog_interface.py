@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import EDFAnalogInterface
 
@@ -92,20 +92,20 @@ class TestEDFAnalogInterface:
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         # Verify the output
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            # Check that the TimeSeries was added to acquisition
-            assert time_series_name in nwbfile.acquisition
-            time_series = nwbfile.acquisition[time_series_name]
+        # Check that the TimeSeries was added to acquisition
+        assert time_series_name in nwbfile.acquisition
+        time_series = nwbfile.acquisition[time_series_name]
 
-            # Check properties of the TimeSeries
-            assert time_series.name == time_series_name
-            # Note: The current implementation shows "no description" in the NWB file
-            # This is expected behavior as the description metadata is not being passed through
-            assert "Auxiliary signals from the EDF format" in time_series.description
+        # Check properties of the TimeSeries
+        assert time_series.name == time_series_name
+        # Note: The current implementation shows "no description" in the NWB file
+        # This is expected behavior as the description metadata is not being passed through
+        assert "Auxiliary signals from the EDF format" in time_series.description
 
-            # Check data dimensions
-            assert len(time_series.data.shape) == 2  # [time, channels]
-            assert time_series.data.shape[1] == len(interface.channel_ids)
-            assert time_series.data.shape[0] > 0  # Should have time points
+        # Check data dimensions
+        assert len(time_series.data.shape) == 2  # [time, channels]
+        assert time_series.data.shape[1] == len(interface.channel_ids)
+        assert time_series.data.shape[0] > 0  # Should have time points
+        nwbfile.read_io.close()

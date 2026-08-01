@@ -5,7 +5,7 @@ from pathlib import Path
 from warnings import warn
 
 from hdmf.testing import TestCase
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.image import ImageSeries
 
 from neuroconv import ConverterPipe, NWBConverter
@@ -138,46 +138,46 @@ class TestLightningPoseConverter(TestCase):
     def assertNWBFileStructure(self, nwbfile_path: str, stub_test: bool = False):
         from ndx_pose import PoseEstimation
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            self.assertEqual(nwbfile.session_start_time, datetime(2023, 11, 9, 10, 14, 37).astimezone())
+        self.assertEqual(nwbfile.session_start_time, datetime(2023, 11, 9, 10, 14, 37).astimezone())
 
-            # Check original video added to acquisition
-            self.assertIn(self.original_video_name, nwbfile.acquisition)
-            image_series = nwbfile.acquisition[self.original_video_name]
-            self.assertIsInstance(image_series, ImageSeries)
-            self.assertEqual(image_series.external_file[:], self.original_video_file_path)
-            self.assertEqual(image_series.description, "The original video used for pose estimation.")
+        # Check original video added to acquisition
+        self.assertIn(self.original_video_name, nwbfile.acquisition)
+        image_series = nwbfile.acquisition[self.original_video_name]
+        self.assertIsInstance(image_series, ImageSeries)
+        self.assertEqual(image_series.external_file[:], self.original_video_file_path)
+        self.assertEqual(image_series.description, "The original video used for pose estimation.")
 
-            # Check labeled video added to behavior processing module
-            behavior = get_module(nwbfile=nwbfile, name="behavior")
-            self.assertIn(self.labeled_video_name, behavior.data_interfaces)
-            image_series_labeled_video = behavior.data_interfaces[self.labeled_video_name]
-            self.assertIsInstance(image_series_labeled_video, ImageSeries)
-            self.assertEqual(
-                image_series_labeled_video.external_file[:],
-                self.labeled_video_file_path,
-            )
-            self.assertEqual(
-                image_series_labeled_video.description,
-                "The video recorded by camera with the pose estimation labels.",
-            )
+        # Check labeled video added to behavior processing module
+        behavior = get_module(nwbfile=nwbfile, name="behavior")
+        self.assertIn(self.labeled_video_name, behavior.data_interfaces)
+        image_series_labeled_video = behavior.data_interfaces[self.labeled_video_name]
+        self.assertIsInstance(image_series_labeled_video, ImageSeries)
+        self.assertEqual(
+            image_series_labeled_video.external_file[:],
+            self.labeled_video_file_path,
+        )
+        self.assertEqual(
+            image_series_labeled_video.description,
+            "The video recorded by camera with the pose estimation labels.",
+        )
 
-            # Check pose estimation added to behavior processing module
-            self.assertIn(self.pose_estimation_name, behavior.data_interfaces)
-            self.assertIsInstance(behavior[self.pose_estimation_name], PoseEstimation)
-            pose_estimation_container = nwbfile.processing["behavior"]["PoseEstimation"]
+        # Check pose estimation added to behavior processing module
+        self.assertIn(self.pose_estimation_name, behavior.data_interfaces)
+        self.assertIsInstance(behavior[self.pose_estimation_name], PoseEstimation)
+        pose_estimation_container = nwbfile.processing["behavior"]["PoseEstimation"]
 
-            # The current link between the pose estimation container "original_videos" and "labeled_videos" and the
-            # ImageSeries is the name of the ImageSeries. TODO: update this when ndx-pose 0.2.0 is released.
-            self.assertEqual(pose_estimation_container.original_videos[:], [image_series.name])
-            self.assertEqual(pose_estimation_container.labeled_videos[:], [image_series_labeled_video.name])
+        # The current link between the pose estimation container "original_videos" and "labeled_videos" and the
+        # ImageSeries is the name of the ImageSeries. TODO: update this when ndx-pose 0.2.0 is released.
+        self.assertEqual(pose_estimation_container.original_videos[:], [image_series.name])
+        self.assertEqual(pose_estimation_container.labeled_videos[:], [image_series_labeled_video.name])
 
-            num_frames = 994 if not stub_test else 10
-            for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
-                self.assertEqual(pose_estimation_series.data.shape[0], num_frames)
-                self.assertEqual(pose_estimation_series.confidence.shape[0], num_frames)
+        num_frames = 994 if not stub_test else 10
+        for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
+            self.assertEqual(pose_estimation_series.data.shape[0], num_frames)
+            self.assertEqual(pose_estimation_series.confidence.shape[0], num_frames)
+        nwbfile.read_io.close()
 
     def test_converter_in_converter(self):
         class TestConverter(NWBConverter):

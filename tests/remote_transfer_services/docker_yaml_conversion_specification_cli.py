@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest import TestCase
 
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.tools import deploy_process
 
@@ -67,35 +67,35 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
 
         nwbfile_path = self.test_folder / "example_converter_spec_1.nwb"
         assert nwbfile_path.exists(), f"`run_conversion_from_yaml` failed to create the file at '{nwbfile_path}'! "
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
-            assert nwbfile.lab == "My Lab"
-            assert nwbfile.institution == "My Institution"
-            assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
-            assert nwbfile.subject.subject_id == "1"
-            assert "ElectricalSeriesAP" in nwbfile.acquisition
+        nwbfile = read_nwb(nwbfile_path)
+        assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
+        assert nwbfile.lab == "My Lab"
+        assert nwbfile.institution == "My Institution"
+        assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
+        assert nwbfile.subject.subject_id == "1"
+        assert "ElectricalSeriesAP" in nwbfile.acquisition
+        nwbfile.read_io.close()
 
         nwbfile_path = self.test_folder / "example_converter_spec_2.nwb"
         assert nwbfile_path.exists(), f"`run_conversion_from_yaml` failed to create the file at '{nwbfile_path}'! "
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
-            assert nwbfile.lab == "My Lab"
-            assert nwbfile.institution == "My Institution"
-            assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-10T21:19:09+00:00")
-            assert nwbfile.subject.subject_id == "002"
+        nwbfile = read_nwb(nwbfile_path)
+        assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
+        assert nwbfile.lab == "My Lab"
+        assert nwbfile.institution == "My Institution"
+        assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-10T21:19:09+00:00")
+        assert nwbfile.subject.subject_id == "002"
+        nwbfile.read_io.close()
 
         nwbfile_path = self.test_folder / "example_converter_spec_3.nwb"
         assert nwbfile_path.exists(), f"`run_conversion_from_yaml` failed to create the file at '{nwbfile_path}'! "
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert nwbfile.session_description == ""
-            assert nwbfile.lab == "My Lab"
-            assert nwbfile.institution == "My Institution"
-            assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-11T21:19:09+00:00")
-            assert nwbfile.subject.subject_id == "Subject Name"
-            assert "spike_times" in nwbfile.units
+        nwbfile = read_nwb(nwbfile_path)
+        assert nwbfile.session_description == ""
+        assert nwbfile.lab == "My Lab"
+        assert nwbfile.institution == "My Institution"
+        assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-11T21:19:09+00:00")
+        assert nwbfile.subject.subject_id == "Subject Name"
+        assert "spike_times" in nwbfile.units
+        nwbfile.read_io.close()
 
     def test_run_conversion_from_yaml_variable(self):
 
@@ -138,32 +138,32 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
 
         nwbfile_path = self.test_folder / "example_converter_spec_1.nwb"
         assert nwbfile_path.exists(), f"`run_conversion_from_yaml` failed to create the file at '{nwbfile_path}'! "
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
-            assert nwbfile.lab == "My Lab"
-            assert nwbfile.institution == "My Institution"
-            assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
-            assert nwbfile.subject.subject_id == "1"
-            assert "ElectricalSeriesAP" in nwbfile.acquisition
+        nwbfile = read_nwb(nwbfile_path)
+        assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
+        assert nwbfile.lab == "My Lab"
+        assert nwbfile.institution == "My Institution"
+        assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
+        assert nwbfile.subject.subject_id == "1"
+        assert "ElectricalSeriesAP" in nwbfile.acquisition
+        nwbfile.read_io.close()
 
         nwbfile_path = self.test_folder / "example_converter_spec_2.nwb"
         assert nwbfile_path.exists(), f"`run_conversion_from_yaml` failed to create the file at '{nwbfile_path}'! "
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
-            assert nwbfile.lab == "My Lab"
-            assert nwbfile.institution == "My Institution"
-            assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-10T21:19:09+00:00")
-            assert nwbfile.subject.subject_id == "002"
+        nwbfile = read_nwb(nwbfile_path)
+        assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
+        assert nwbfile.lab == "My Lab"
+        assert nwbfile.institution == "My Institution"
+        assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-10T21:19:09+00:00")
+        assert nwbfile.subject.subject_id == "002"
+        nwbfile.read_io.close()
 
         nwbfile_path = self.test_folder / "example_converter_spec_3.nwb"
         assert nwbfile_path.exists(), f"`run_conversion_from_yaml` failed to create the file at '{nwbfile_path}'! "
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert nwbfile.session_description == ""
-            assert nwbfile.lab == "My Lab"
-            assert nwbfile.institution == "My Institution"
-            assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-11T21:19:09+00:00")
-            assert nwbfile.subject.subject_id == "Subject Name"
-            assert "spike_times" in nwbfile.units
+        nwbfile = read_nwb(nwbfile_path)
+        assert nwbfile.session_description == ""
+        assert nwbfile.lab == "My Lab"
+        assert nwbfile.institution == "My Institution"
+        assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-11T21:19:09+00:00")
+        assert nwbfile.subject.subject_id == "Subject Name"
+        assert "spike_times" in nwbfile.units
+        nwbfile.read_io.close()

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import numpy as np
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import (
     BlackrockRecordingInterface,
@@ -145,12 +145,12 @@ class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
                 assert expected_value == extracted_value
 
         # Test that the electrode table has the expected values
-        with NWBHDF5IO(self.nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            electrode_table = nwbfile.electrodes.to_dataframe()
-            electrode_table_row = electrode_table.query(f"channel_name=='{channel_id}'").iloc[0]
-            for key, value in expected_channel_properties_electrodes.items():
-                assert electrode_table_row[key] == value
+        nwbfile = read_nwb(self.nwbfile_path)
+        electrode_table = nwbfile.electrodes.to_dataframe()
+        electrode_table_row = electrode_table.query(f"channel_name=='{channel_id}'").iloc[0]
+        for key, value in expected_channel_properties_electrodes.items():
+            assert electrode_table_row[key] == value
+        nwbfile.read_io.close()
 
 
 class TestNeuralynxSortingInterfaceCheetahV551(SortingExtractorInterfaceTestMixin):

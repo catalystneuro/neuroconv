@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pandas as pd
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import (
     CsvTimeIntervalsInterface,
@@ -75,10 +75,10 @@ def test_csv_round_trip(tmp_path):
     metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
     interface.run_conversion(nwbfile_path=tmp_path / "test.nwb", metadata=metadata)
 
-    with NWBHDF5IO(tmp_path / "test.nwb", "r") as io:
-        nwb_read = io.read()
-        assert nwb_read.trials.colnames == ("start_time", "stop_time", "condition")
-        assert_array_equal(nwb_read.trials["condition"][:], [1, 2, 3, 1, 3, 2, 2, 3, 1, 2, 3])
+    nwb_read = read_nwb(tmp_path / "test.nwb")
+    assert nwb_read.trials.colnames == ("start_time", "stop_time", "condition")
+    assert_array_equal(nwb_read.trials["condition"][:], [1, 2, 3, 1, 3, 2, 2, 3, 1, 2, 3])
+    nwb_read.read_io.close()
 
 
 def test_csv_round_trip_rename(tmp_path):
@@ -88,9 +88,9 @@ def test_csv_round_trip_rename(tmp_path):
     metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
     interface.run_conversion(nwbfile_path=tmp_path / "test.nwb", metadata=metadata)
 
-    with NWBHDF5IO(tmp_path / "test.nwb", "r") as io:
-        nwb_read = io.read()
-        assert nwb_read.intervals["custom_name"].description == "custom description"
+    nwb_read = read_nwb(tmp_path / "test.nwb")
+    assert nwb_read.intervals["custom_name"].description == "custom description"
+    nwb_read.read_io.close()
 
 
 def test_get_metadata_schema():

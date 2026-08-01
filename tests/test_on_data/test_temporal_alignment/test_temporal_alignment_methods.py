@@ -7,7 +7,7 @@ import numpy as np
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 from pandas import DataFrame
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.datainterfaces import CsvTimeIntervalsInterface
@@ -69,26 +69,26 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
         self.behavior_interface = MockBehaviorEventInterface(event_times=self.unaligned_behavior_event_timestamps)
 
     def assertNWBFileTimesAligned(self, nwbfile_path: str | Path):
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            # High level groups were written to file
-            assert "BehaviorEvents" in nwbfile.acquisition
-            assert "trials" in nwbfile.intervals
+        # High level groups were written to file
+        assert "BehaviorEvents" in nwbfile.acquisition
+        assert "trials" in nwbfile.intervals
 
-            # Aligned data was written
-            assert_array_almost_equal(
-                nwbfile.acquisition["BehaviorEvents"]["event_time"][:],
-                self.aligned_behavior_event_timestamps,
-            )
-            assert_array_almost_equal(
-                nwbfile.intervals["trials"]["start_time"][:], self.aligned_trial_start_times, decimal=4
-            )
-            assert_array_almost_equal(
-                nwbfile.intervals["trials"]["stop_time"][:],
-                self.aligned_trial_start_times + self.regular_trial_length,
-                decimal=4,
-            )
+        # Aligned data was written
+        assert_array_almost_equal(
+            nwbfile.acquisition["BehaviorEvents"]["event_time"][:],
+            self.aligned_behavior_event_timestamps,
+        )
+        assert_array_almost_equal(
+            nwbfile.intervals["trials"]["start_time"][:], self.aligned_trial_start_times, decimal=4
+        )
+        assert_array_almost_equal(
+            nwbfile.intervals["trials"]["stop_time"][:],
+            self.aligned_trial_start_times + self.regular_trial_length,
+            decimal=4,
+        )
+        nwbfile.read_io.close()
 
     def test_alignment_interfaces(self):
         unaligned_trial_start_times = self.trial_interface.get_original_timestamps(column="start_time")
@@ -240,27 +240,27 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
         self.behavior_interface = MockBehaviorEventInterface(event_times=self.unaligned_behavior_event_timestamps)
 
     def assertNWBFileTimesAligned(self, nwbfile_path: str | Path):
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            # High level groups were written to file
-            assert "BehaviorEvents" in nwbfile.acquisition
-            assert "trials" in nwbfile.intervals
+        # High level groups were written to file
+        assert "BehaviorEvents" in nwbfile.acquisition
+        assert "trials" in nwbfile.intervals
 
-            # Aligned data was written
-            assert_array_almost_equal(
-                nwbfile.acquisition["BehaviorEvents"]["event_time"][:],
-                self.aligned_behavior_event_timestamps,
-                decimal=4,
-            )
-            assert_array_almost_equal(
-                nwbfile.intervals["trials"]["start_time"][:], self.aligned_trial_start_times, decimal=5
-            )
-            assert_array_almost_equal(
-                nwbfile.intervals["trials"]["stop_time"][:],
-                self.aligned_trial_start_times + self.regular_trial_length,
-                decimal=5,
-            )
+        # Aligned data was written
+        assert_array_almost_equal(
+            nwbfile.acquisition["BehaviorEvents"]["event_time"][:],
+            self.aligned_behavior_event_timestamps,
+            decimal=4,
+        )
+        assert_array_almost_equal(
+            nwbfile.intervals["trials"]["start_time"][:], self.aligned_trial_start_times, decimal=5
+        )
+        assert_array_almost_equal(
+            nwbfile.intervals["trials"]["stop_time"][:],
+            self.aligned_trial_start_times + self.regular_trial_length,
+            decimal=5,
+        )
+        nwbfile.read_io.close()
 
     def test_alignment_interfaces(self):
         unaligned_trial_start_timestamps = self.trial_interface.get_original_timestamps(column="start_time")
