@@ -226,6 +226,23 @@ class TestConditionSignal:
         assert from_full[1] == 1  # the 55.0 sample, high against the full trace's mean
         assert from_stub[1] == 0  # and low against the slice's
 
+    def test_a_sample_on_the_cut_goes_to_the_band_above_for_both_cuts(self):
+        """The tie rule, and the only place the two cuts could have disagreed.
+
+        Bands are half-open, so a sample exactly on a cut belongs above it. ``thresholds`` gets that
+        from ``np.searchsorted(..., side="right")``, which is bit-for-bit ``np.digitize``, and
+        ``binarize`` from ``>=``. Pinned because nothing else covers a tie, which is how the docstring
+        came to say "exceeded" while the code did the opposite without anything catching it.
+
+        56.0 is exactly the midpoint of 48 and 64, so ``binarize`` derives the same cut the explicit
+        ``thresholds`` spec is handed, and the two are comparable on the same sample.
+        """
+        trace = np.array([48.0, 56.0, 64.0])
+
+        assert_array_equal(_condition_signal(trace, {"thresholds": [56.0]}), np.array([0, 1, 1]))
+        assert_array_equal(_condition_signal(trace, {"binarize": "midpoint"}), np.array([0, 1, 1]))
+        assert_array_equal(np.digitize(trace, [56.0]), _condition_signal(trace, {"thresholds": [56.0]}))
+
     def test_conditioning_preserves_length(self):
         """The contract detection depends on: frame indices must still address the caller's timestamps."""
         trace = np.array([0.1, 2.0, 4.0, 0.1, 2.0])

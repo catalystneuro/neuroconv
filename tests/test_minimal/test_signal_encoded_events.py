@@ -161,7 +161,7 @@ class TestCutsInsteadOfPayloads:
 
     One spec per distinction on the same signal, each named, each durative. This is what replaced the
     payload-carrying ``value_change``, and it is lossless: the band at any instant is how many cut
-    points are currently exceeded, so the per-cut tables carry the whole trajectory.
+    points the signal has currently reached, so the per-cut tables carry the whole trajectory.
     """
 
     CUTS = [1.0, 2.0, 3.0]

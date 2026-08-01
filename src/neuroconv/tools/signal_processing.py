@@ -88,8 +88,9 @@ def _condition_signal(trace: np.ndarray, signal_conditioning: dict | None = None
         - ``{"bits": [i, ...]}`` selects bit positions out of a packed integer word. One position gives
           a ``0``/``1`` line; several are read together, least-significant first, as one coded value.
         - ``{"thresholds": [c, ...]}`` cuts at the values you supply, giving a band index: one cut is
-          binary, several give ``0 .. len(thresholds)``.
-        - ``{"binarize": "midpoint"}`` cuts at a value computed from the data.
+          binary, several give ``0 .. len(thresholds)``. Bands are half-open, so a sample exactly on a
+          cut belongs to the band above it.
+        - ``{"binarize": "midpoint"}`` cuts at a value computed from the data, on the same rule.
 
         If None (default), the trace is returned unchanged, which asserts it is already discrete-valued.
         That is the ordinary case for a recorded digital line.
@@ -154,7 +155,17 @@ def _select_bits(trace: np.ndarray, bits) -> np.ndarray:
 
 
 def _cut_at_thresholds(trace: np.ndarray, thresholds) -> np.ndarray:
-    """Cut a trace at caller-supplied values, giving a band index in ``0 .. len(thresholds)``."""
+    """Cut a trace at caller-supplied values, giving a band index in ``0 .. len(thresholds)``.
+
+    The bands are half-open, ``[c, next_c)``, so a sample sitting exactly on a cut belongs to the band
+    **above** it. That is numpy's own binning convention rather than one invented here: this call is
+    bit-for-bit ``np.digitize(trace, thresholds)``, and ``np.histogram`` treats its edges the same way.
+    :func:`_binarize` cuts the same way, so the two agree on a sample that lands on the cut.
+
+    It only ever shows on a discrete-valued signal, where naming a level as the cut makes every sample
+    at that level a tie. On an Inscopix-style line at 48 and 64, ``thresholds: [48]`` therefore puts
+    every sample high and finds nothing, while ``[64]`` or any value between the levels reads it.
+    """
     thresholds = np.asarray(list(thresholds), dtype="float64")
     if thresholds.size == 0:
         raise ValueError("signal_conditioning 'thresholds' is empty; give at least one cut point.")
@@ -173,7 +184,10 @@ def _binarize(trace: np.ndarray, method: str) -> np.ndarray:
     # cut as the full recording. The mean moves with both duty cycle and window, which would make a stub
     # and a full conversion emit different events; it stays available for a trace with an extreme outlier.
     cut = (trace.min() + trace.max()) / 2 if method == "midpoint" else trace.mean()
-    return (trace > cut).astype("int64")
+    # At or above, not above: a sample landing exactly on the cut goes high, which is the rule
+    # _cut_at_thresholds follows from np.digitize. Both cuts are alternative routes to one postcondition,
+    # so a value on the cut cannot land in a different band depending on which route was taken.
+    return (trace >= cut).astype("int64")
 
 
 def _detect_events(
@@ -213,7 +227,7 @@ def _detect_events(
         multi-valued signal admits instead, meaning "a transition of this signal is an event of this
         type"; it carries no payload, because nothing distinguishes its transitions. To distinguish
         them, cut lines and give each its own spec, which is lossless: for ``thresholds: [c1, c2, c3]``
-        the band at any instant is how many cut points are currently exceeded.
+        the band at any instant is how many cut points the signal has currently reached.
 
     Returns
     -------
