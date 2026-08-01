@@ -197,7 +197,7 @@ def _read_csv_header(file_path: Path) -> tuple[list[str], float | None]:
     stripped, but they are returned for reporting only: column identity comes from the XML's enabled signals,
     since these names are wrong on real data (see ``_CycleHeader.column_index``).
     """
-    with open(file_path, "r") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         header_line = file.readline()
         first_rows = [file.readline(), file.readline()]
 
