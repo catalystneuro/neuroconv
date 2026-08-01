@@ -358,6 +358,32 @@ def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segme
         assert nwbfile.acquisition["Video test3"].device == nwbfile.devices["Video test3 Camera Device"]
 
 
+def test_device_model_propagation(nwb_converter, nwbfile_path, metadata):
+    """A camera Device that names its model gets that DeviceModel written and linked."""
+    custom_metadata = {
+        "DeviceModels": {"camera_model": {"name": "CameraModel"}},
+        "Devices": {"custom_device": {"name": "CustomDevice", "device_model_metadata_key": "camera_model"}},
+        "Behavior": {"ExternalVideos": {"video_test1": {"device_metadata_key": "custom_device"}}},
+    }
+    metadata_copy = dict_deep_update(deepcopy(metadata), custom_metadata)
+
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])])
+
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=dict(Video1=dict(starting_frames=[0, 4])),
+        metadata=metadata_copy,
+    )
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert nwbfile.acquisition["Video test1"].device.model == nwbfile.device_models["CameraModel"]
+        # 'manufacturer' is required by NWB and absent from the metadata, so it is filled at write time
+        assert nwbfile.device_models["CameraModel"].manufacturer == "unknown"
+
+
 def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
     """Test that no device is created when the metadata doesn't have a device."""
     # Setup interface with timing information to allow conversion
