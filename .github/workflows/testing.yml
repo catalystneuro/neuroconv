@@ -52,7 +52,9 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           version: "latest"
-          enable-cache: true
+          # No cross-run cache: the isolated-extras steps below are here to prove each group installs from
+          # scratch, and a wheel served from a cache GitHub restored is not a download that happened today.
+          enable-cache: false
 
       - name: Install NeuroConv with minimal requirements
         run: uv pip install --system "."
