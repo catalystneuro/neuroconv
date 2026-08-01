@@ -45,12 +45,12 @@ def test_mock_metadata():
 
     metadata = interface.get_metadata()
 
-    expected_devices_metadata = [
-        {
+    expected_devices_metadata = {
+        "spikeglx_nidq_device": {
             "name": "NIDQBoard",
             "description": "A NIDQ board used in conjunction with SpikeGLX.",
         },
-    ]
+    }
 
     assert metadata["Devices"] == expected_devices_metadata
 

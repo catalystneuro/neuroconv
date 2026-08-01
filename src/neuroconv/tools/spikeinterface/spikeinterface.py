@@ -2050,8 +2050,12 @@ def add_recording_metadata_to_nwbfile(
     # would send list-based groups down the dict path, where they resolve to nothing and the pipeline
     # writes a placeholder device instead of the one the metadata names.
     ecephys_metadata = (metadata or {}).get("Ecephys", {})
-    groups_are_dict_based = isinstance(ecephys_metadata.get("ElectrodeGroups"), dict)
-    if metadata is not None and groups_are_dict_based:
+    electrical_series_metadata = ecephys_metadata.get("ElectricalSeries", {})
+    ecephys_is_dict_based = isinstance(ecephys_metadata.get("ElectrodeGroups"), dict) or (
+        isinstance(electrical_series_metadata, dict)
+        and any(isinstance(entry, dict) for entry in electrical_series_metadata.values())
+    )
+    if metadata is not None and ecephys_is_dict_based:
         # Devices are created lazily inside _add_electrode_groups_to_nwbfile when a group
         # references them via device_metadata_key, mirroring the roiextractors imaging-plane pattern.
         _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
