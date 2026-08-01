@@ -71,6 +71,30 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axon" / "File_axon_1.abf"))
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "axon_recording"
+        expected_devices = {
+            "axon_device": dict(
+                name="Axon Instruments",
+                description="Axon Instruments data acquisition system (pCLAMP/AxoScope)",
+                manufacturer="Molecular Devices",
+            )
+        }
+        # The series keeps the name and description the old format gives it.
+        expected_electrical_series = {
+            "axon_recording": dict(
+                name="ElectricalSeriesRaw", description="Raw acquisition traces from Axon Binary Format file."
+            )
+        }
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+        assert all(
+            electrode_group["device_metadata_key"] == "axon_device"
+            for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
+        )
+
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Check that session_start_time is extracted from ABF file
         assert "session_start_time" in metadata["NWBFile"]
@@ -459,6 +483,25 @@ class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "maxone_recording"
+        # The old format leaves the pipeline's placeholder device named "DeviceEcephys" and only rewrites
+        # its description; here the recording system is named.
+        expected_devices = {
+            "maxone_device": dict(
+                name="MaxOne",
+                description="Recorded using Maxwell version '20190530'.",
+                manufacturer="MaxWell Biosystems",
+            )
+        }
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Devices"] == expected_devices
+        assert all(
+            electrode_group["device_metadata_key"] == "maxone_device"
+            for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
+        )
+
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert len(metadata["Ecephys"]["Device"]) == 1
         assert metadata["Ecephys"]["Device"][0]["name"] == "DeviceEcephys"
@@ -482,6 +525,22 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MEArecRecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "mearec" / "mearec_test_10s.h5"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "mearec_recording"
+        # The name is the electrode template the simulation used, which the file records; the old
+        # format's invented device description is gone.
+        expected_devices = {"mearec_device": dict(name="Neuronexus-32")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Devices"] == expected_devices
+        assert all(
+            electrode_group["device_metadata_key"] == "mearec_device"
+            for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
+        )
+        # The simulation parameters stay the series description, as in the old format.
+        series_metadata = metadata["Ecephys"]["ElectricalSeries"][expected_metadata_key]
+        assert '"duration": 10.0' in series_metadata["description"]
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert len(metadata["Ecephys"]["Device"]) == 1
