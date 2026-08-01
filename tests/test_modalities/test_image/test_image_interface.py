@@ -247,6 +247,34 @@ class TestI16GrayscaleImageInterface(DataInterfaceTestMixin):
                 assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
 
 
+def test_images_are_chunked_and_compressed(tmp_path):
+    """Images written through the interface should pick up the default chunking and gzip compression.
+
+    The interface hands its data to pynwb as a `SingleImageIterator`, so this also covers that the iterator
+    reports a concrete `maxshape` for the chunk estimator to work from.
+    """
+    import h5py
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
+    generate_random_images(num_images=2, mode="RGB", output_dir_path=tmp_path, format="PNG")
+    interface = ImageInterface(folder_path=tmp_path)
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile)
+
+    nwbfile_path = tmp_path / "images.nwb"
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+    with h5py.File(nwbfile_path, "r") as file:
+        written_images = file["acquisition/Images"]
+        assert len(written_images) == 2
+        for written_image in written_images.values():
+            assert written_image.compression == "gzip"
+            assert written_image.chunks == (256, 256, 3)
+
+
 class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):
     """Test suite for ImageInterface with mixed image modes and formats."""
 
