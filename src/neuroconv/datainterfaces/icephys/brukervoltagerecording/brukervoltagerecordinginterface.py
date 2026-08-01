@@ -16,6 +16,7 @@ from ....basedatainterface import BaseDataInterface
 from ....tools.icephys import (
     _RESPONSE_CLASS,
     _add_intracellular_electrode_to_nwbfile,
+    _add_intracellular_recordings_to_nwbfile,
 )
 from ....utils import (
     DeepDict,
@@ -86,8 +87,9 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
             response is a signal other than ``Primary``.
         stimulus_type : str, optional
             What kind of run this was, written to the ``stimulus_type`` column and carried up to the sequential
-            recording. PrairieView records no protocol section, so there is nothing to derive it from; when it
-            is not given the column is omitted rather than filled with a placeholder.
+            recording. PrairieView records no protocol section, so there is nothing to derive it from; when no
+            run in the file states one the column is omitted rather than filled with a placeholder, and when
+            a sibling run states one this run's rows are left empty.
         repetition : str, optional
             Label grouping this run's sequential recording with others into a ``Repetitions`` entry (the same
             protocol repeated). Used only when combining interfaces in a converter; if set on any interface it
@@ -371,7 +373,7 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
         - ``sequence``: the run identity, shared by every cycle, which is what an aggregator groups on to build
           a SequentialRecordings entry.
         - ``stimulus_type``: what kind of run it was, only when the caller said. PrairieView records no
-          protocol, so there is nothing to derive; the column is omitted rather than filled with a placeholder
+          protocol, so there is nothing to derive; the column is omitted when no run in the file states one
           (:func:`~neuroconv.tools.icephys._build_icephys_hierarchical_tables` supplies the one NWB insists on
           at the sequential level).
         - ``repetition`` and ``condition``: only when the user gave them (when combining several electrodes in
@@ -381,32 +383,16 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
         constructing them is a terminal step that locks their membership, and a single interface cannot know
         whether it is the last contributor to the file.
         """
-        columns = {"sequence": self._run_identity}
-        if self._stimulus_type is not None:
-            columns["stimulus_type"] = self._stimulus_type
-        if self._repetition is not None:
-            columns["repetition"] = self._repetition
-        if self._condition is not None:
-            columns["condition"] = self._condition
-        column_descriptions = {
-            "sequence": "Run identity grouping rows into a sequential recording (shared by the run's cycles).",
-            "stimulus_type": "Stimulus type of the run, carried up to its sequential recording when aggregated.",
-            "repetition": "Repetition label grouping sequential recordings into a repetition.",
-            "condition": "Experimental condition label grouping repetitions.",
-        }
-        table = nwbfile.get_intracellular_recordings()
-        for name in columns:
-            if name not in table.colnames:
-                table.add_column(name=name, description=column_descriptions[name])
-
-        for start_index, count in sweep_sample_ranges:
-            nwbfile.add_intracellular_recording(
-                electrode=electrode,
-                response=response_series,
-                response_start_index=start_index,
-                response_index_count=count,
-                **columns,
-            )
+        _add_intracellular_recordings_to_nwbfile(
+            nwbfile,
+            electrode=electrode,
+            response_series=response_series,
+            sweep_sample_ranges=sweep_sample_ranges,
+            sequence=self._run_identity,
+            stimulus_type=self._stimulus_type,
+            repetition=self._repetition,
+            condition=self._condition,
+        )
 
     # ------------------------------------------------------------------ discovery (call before constructing)
 

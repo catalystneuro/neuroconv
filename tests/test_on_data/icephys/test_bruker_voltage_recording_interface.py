@@ -55,7 +55,7 @@ def write_derived_cycle(
     csv_path = tmp_path / f"{stem}.csv"
     xml_path = tmp_path / f"{stem}.xml"
 
-    xml_text = source_csv.with_suffix(".xml").read_text()
+    xml_text = source_csv.with_suffix(".xml").read_text(encoding="utf-8")
     xml_text = re.sub(r"<DataFile>[^<]+</DataFile>", f"<DataFile>{stem}</DataFile>", xml_text)
     if start_datetime is not None:
         xml_text = re.sub(r"<DateTime>[^<]+</DateTime>", f"<DateTime>{start_datetime}</DateTime>", xml_text)
@@ -65,13 +65,13 @@ def write_derived_cycle(
     if extra_signal_name is not None:
         pattern = rf"(<Name>{extra_signal_name}</Name>.*?)<Enabled>false</Enabled>"
         xml_text = re.sub(pattern, r"\1<Enabled>true</Enabled>", xml_text, count=1, flags=re.DOTALL)
-    xml_path.write_text(xml_text)
+    xml_path.write_text(xml_text, encoding="utf-8")
 
-    lines = source_csv.read_text().splitlines()
+    lines = source_csv.read_text(encoding="utf-8").splitlines()
     if extra_signal_name is not None:
         header, *rows = lines
         lines = [f"{header}, {extra_signal_name}"] + [f"{row},{row.split(',')[1]}" for row in rows]
-    csv_path.write_text("\n".join(lines) + "\n")
+    csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return csv_path
 
 
@@ -294,8 +294,8 @@ class TestColumnIdentityComesFromTheXml:
         while the header is written as ``Time(ms), Secondary, LED``, naming a signal that is not even enabled.
         """
         cycle = write_derived_cycle(tmp_path, "cc_01_cell1-001", 1, extra_signal_name="Secondary")
-        lines = cycle.read_text().splitlines()
-        cycle.write_text("\n".join(["Time(ms), Secondary, LED"] + lines[1:]) + "\n")
+        lines = cycle.read_text(encoding="utf-8").splitlines()
+        cycle.write_text("\n".join(["Time(ms), Secondary, LED"] + lines[1:]) + "\n", encoding="utf-8")
         return cycle
 
     def test_signal_names_ignore_the_header(self, tmp_path):
@@ -321,8 +321,8 @@ class TestColumnIdentityComesFromTheXml:
         """Names may disagree, but the count may not: if the two sources describe a different number of
         signals then neither describes the file and no positional mapping is safe."""
         cycle = write_derived_cycle(tmp_path, "cc_01_cell1-001", 1)
-        lines = cycle.read_text().splitlines()
-        cycle.write_text("\n".join([lines[0] + ", Extra"] + [f"{row},0" for row in lines[1:]]) + "\n")
+        lines = cycle.read_text(encoding="utf-8").splitlines()
+        cycle.write_text("\n".join([lines[0] + ", Extra"] + [f"{row},0" for row in lines[1:]]) + "\n", encoding="utf-8")
 
         with pytest.raises(ValueError, match="marks 1 signal"):
             BrukerVoltageRecordingInterface(file_paths=[cycle])
@@ -373,7 +373,7 @@ class TestSignalResolution:
 def test_the_xml_must_be_beside_the_csv(tmp_path):
     """The XML holds the units, scaling and acquisition time, so a lone CSV is not convertible."""
     lonely_csv = tmp_path / "cell1-001_Cycle00001_VoltageRecording_001.csv"
-    lonely_csv.write_text(cycle_csv_path("cc_01_cell1-001").read_text())
+    lonely_csv.write_text(cycle_csv_path("cc_01_cell1-001").read_text(encoding="utf-8"), encoding="utf-8")
 
     with pytest.raises(FileNotFoundError, match="No VoltageRecording XML beside"):
         BrukerVoltageRecordingInterface(file_paths=[lonely_csv])
@@ -429,6 +429,32 @@ class TestBrukerVoltageRecordingConverter:
         assert list(nwbfile.intracellular_recordings["stimulus_type"][:]) == ["somatic excitability"]
         assert list(nwbfile.icephys_sequential_recordings["stimulus_type"][:]) == ["somatic excitability"]
 
+    @pytest.mark.parametrize("described_first", [True, False])
+    def test_a_run_without_a_stimulus_type_joins_one_that_has_it(self, described_first):
+        """A `stimulus_type` is descriptive, not a grouping key, so runs may disagree about having one: the
+        caller may know the protocol of one cell and not another. The column belongs to the table rather than
+        to the run that introduced it, so the run with nothing to say writes an empty cell (whether it is
+        written before or after the one that does) and gets the readable placeholder at the sequential level,
+        where NWB requires a value."""
+        described = BrukerVoltageRecordingInterface(
+            file_paths=[cycle_csv_path("cc_01_cell1-001")], stimulus_type="somatic excitability"
+        )
+        undescribed = BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path("cc_03_cell2-020")])
+        order = ["Described", "Undescribed"] if described_first else ["Undescribed", "Described"]
+        interfaces = {"Described": described, "Undescribed": undescribed}
+        converter = BrukerVoltageRecordingConverter(data_interfaces={name: interfaces[name] for name in order})
+        metadata = converter.get_metadata()
+        metadata["NWBFile"]["session_description"] = "test"
+        metadata["NWBFile"]["identifier"] = "test"
+
+        nwbfile = converter.create_nwbfile(metadata=metadata)
+
+        expected = ["somatic excitability", ""] if described_first else ["", "somatic excitability"]
+        assert list(nwbfile.intracellular_recordings["stimulus_type"][:]) == expected
+        assert list(nwbfile.icephys_sequential_recordings["stimulus_type"][:]) == [
+            value or "not described" for value in expected
+        ]
+
     def test_two_amplifiers_under_one_run_are_refused(self, tmp_path):
         """Interfaces over one run share an electrode by design, which is what puts an amplifier's ``Primary``
         and ``Secondary`` on a single pipette. Two different ``PatchclampDevice`` values under one run mean two
@@ -441,10 +467,11 @@ class TestBrukerVoltageRecordingConverter:
             re.sub(
                 r"(<Name>Secondary</Name>.*?<PatchclampDevice>)[^<]+",
                 r"\1Multiclamp700B Ch2",
-                xml_path.read_text(),
+                xml_path.read_text(encoding="utf-8"),
                 count=1,
                 flags=re.DOTALL,
-            )
+            ),
+            encoding="utf-8",
         )
         first = BrukerVoltageRecordingInterface(file_paths=[cycle], response_signal_name="Primary")
         second = BrukerVoltageRecordingInterface(
