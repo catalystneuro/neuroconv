@@ -104,7 +104,7 @@ class TestIntanStimInterfaceFilePerChannel:
         interface = IntanStimInterface(file_path=self.file_path)
         metadata = interface.get_metadata()
 
-        device = metadata["Devices"][0]
+        device = metadata["Devices"]["intan_device"]
         assert device["name"] == "Intan"
         assert device["manufacturer"] == "Intan"
         assert device["description"] == "RHS Stim/Recording System"

@@ -454,7 +454,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             add_recording_metadata_to_nwbfile,
             add_recording_to_nwbfile,
         )
-        from ...tools.spikeinterface.spikeinterface import _is_dict_based_metadata
 
         recording = self.recording_extractor
         if stub_test:
@@ -462,11 +461,17 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         metadata = metadata or self._get_metadata_for_writing()
 
-        # ``metadata_key`` selects the ElectricalSeries entry in the dict-based format and is
-        # mutually exclusive with ``es_key`` downstream. Pass it only when the metadata is actually
-        # dict-based; for the old list-based format it must stay None so the pipeline routes through
-        # ``es_key``.
-        metadata_key = self.metadata_key if _is_dict_based_metadata(metadata) else None
+        # ``metadata_key`` selects the ElectricalSeries entry in the dict-based format and is mutually
+        # exclusive with ``es_key`` downstream. The question is asked of this interface's own entry rather
+        # than of the dictionary's overall shape: a converter can hand every interface one dictionary that
+        # carries another interface's dict-based block (a video camera's ``Devices``, a NIDQ board's)
+        # alongside this one's list-based ``Ecephys``, and only the presence of *this* key says which
+        # format the caller means for *this* interface.
+        electrical_series_metadata = metadata.get("Ecephys", {}).get("ElectricalSeries", {})
+        entry_is_present = (
+            isinstance(electrical_series_metadata, dict) and self.metadata_key in electrical_series_metadata
+        )
+        metadata_key = self.metadata_key if entry_is_present else None
 
         if write_electrical_series:
             if (

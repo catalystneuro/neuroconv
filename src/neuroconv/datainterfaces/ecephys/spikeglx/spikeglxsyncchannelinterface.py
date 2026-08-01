@@ -227,7 +227,9 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
             manufacturer="Imec",
         )
 
-        metadata["Devices"] = [device]
+        # Same key as ``SpikeGLXRecordingInterface`` uses for this probe, so the sync channel and
+        # the probe's streams share one device entry.
+        metadata["Devices"] = {f"neuropixels_imec{self._probe_index}": device}
 
         # TimeSeries metadata for sync channel
         if "TimeSeries" not in metadata:
@@ -324,9 +326,10 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
 
         metadata = metadata or self.get_metadata()
 
-        # Add device (probe) if not already present
-        device_metadata = metadata.get("Devices", [])
-        for device in device_metadata:
+        # Add device (probe) if not already present, from the top-level registry keyed by metadata key.
+        device_metadata = metadata.get("Devices", {})
+        device_entries = device_metadata.values() if isinstance(device_metadata, dict) else device_metadata
+        for device in device_entries:
             if device["name"] not in nwbfile.devices:
                 nwbfile.create_device(**device)
 

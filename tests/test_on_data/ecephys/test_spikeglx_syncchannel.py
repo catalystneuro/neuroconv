@@ -70,7 +70,7 @@ class TestSpikeGLXSyncChannelInterface:
         # Check device metadata
         assert "Devices" in metadata
         assert len(metadata["Devices"]) == 1
-        assert metadata["Devices"][0] == expected_device
+        assert metadata["Devices"]["neuropixels_imec0"] == expected_device
 
         # Check TimeSeries metadata
         assert "TimeSeries" in metadata

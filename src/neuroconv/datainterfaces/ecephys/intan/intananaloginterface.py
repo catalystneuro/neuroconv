@@ -175,7 +175,8 @@ class IntanAnalogInterface(BaseDataInterface):
             description=device_description,
             manufacturer="Intan",
         )
-        metadata["Devices"] = [intan_device]
+        # Same key as ``IntanRecordingInterface``: one Intan system, one registry entry.
+        metadata["Devices"] = {"intan_device": intan_device}
 
         # Add TimeSeries metadata
         channel_names = self.get_channel_names()

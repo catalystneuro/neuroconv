@@ -430,7 +430,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             description="A NIDQ board used in conjunction with SpikeGLX.",
         )
 
-        metadata["Devices"] = [device]
+        metadata["Devices"] = {"spikeglx_nidq_device": device}
 
         # TimeSeries metadata for analog channels
         if self.has_analog_channels:
@@ -520,9 +520,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         metadata = metadata or self.get_metadata()
 
-        # Add devices
-        device_metadata = metadata.get("Devices", [])
-        for device in device_metadata:
+        # Add devices from the top-level registry, which is keyed by metadata key.
+        device_metadata = metadata.get("Devices", {})
+        device_entries = device_metadata.values() if isinstance(device_metadata, dict) else device_metadata
+        for device in device_entries:
             if device["name"] not in nwbfile.devices:
                 nwbfile.create_device(**device)
 

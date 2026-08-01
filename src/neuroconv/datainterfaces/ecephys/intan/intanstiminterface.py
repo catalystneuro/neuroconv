@@ -102,7 +102,8 @@ class IntanStimInterface(BaseDataInterface):
             description="RHS Stim/Recording System",
             manufacturer="Intan",
         )
-        metadata["Devices"] = [intan_device]
+        # Same key as ``IntanRecordingInterface``: one Intan system, one registry entry.
+        metadata["Devices"] = {"intan_device": intan_device}
 
         channel_names = [str(name) for name in self.get_channel_names()]
 
