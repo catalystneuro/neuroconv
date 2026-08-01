@@ -327,6 +327,19 @@ class TestConfigurationErrors:
         with pytest.raises(ValueError, match="packed word"):
             MockSignalEncodedEventsInterface(detection_configuration={"word": [{"detection": "rising"}]})
 
+    def test_an_empty_conditioning_dict_is_not_a_back_door_around_that(self):
+        """``{}`` is falsy but not absent, so it must not slip past the check omission gets.
+
+        Left as a quiet spelling of omission it would be the one way to have a packed word read whole as
+        if it were a line, and the read-time backstop cannot catch that: a two-line word has two distinct
+        values, so the reading succeeds and writes events for a signal nobody addressed.
+        """
+        with pytest.raises(ValueError, match="empty dict"):
+            MockSignalEncodedEventsInterface(
+                digital_line_waveforms={0: "pulses", 1: "pulses"},
+                detection_configuration={"word": [{"signal_conditioning": {}, "detection": "rising"}]},
+            )
+
     def test_a_deferred_conditioning_key_raises_rather_than_being_ignored(self):
         """``hysteresis`` and ``debounce`` are designed but unbuilt; a knob that validates and does
         nothing is the silent-discard failure this validation exists to remove."""

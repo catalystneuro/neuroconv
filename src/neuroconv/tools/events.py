@@ -118,6 +118,16 @@ def _validate_spec(
             f"signal_conditioning for '{signal_source_id}' must be a dict of conditioning settings, got "
             f"{type(conditioning).__name__}."
         )
+    if not conditioning:
+        # An empty dict is not a quiet spelling of omission, and treating it as one would make it a way
+        # around the check omission gets: a word would pass here and then be read whole as if it were a
+        # line. Empty containers raise everywhere else in this grammar (the configuration itself, a
+        # signal's spec list, 'bits', 'thresholds'), so this is that rule rather than a new one.
+        raise ValueError(
+            f"signal_conditioning for '{signal_source_id}' is an empty dict, which states nothing. Drop "
+            f"the key to read the signal's own values, which is an assertion checked against its kind, "
+            f"or set one of {list(_CUTS)}."
+        )
     unknown_keys = set(conditioning) - set(_CUTS)
     if unknown_keys:
         raise ValueError(

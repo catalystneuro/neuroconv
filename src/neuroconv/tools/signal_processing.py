@@ -108,6 +108,11 @@ def _condition_signal(trace: np.ndarray, signal_conditioning: dict | None = None
         # Omission asserts the signal is already a line, or already discrete-valued for a coded reading.
         # Whether that assertion holds is checked structurally by the interface at construction, and by
         # the backstop in _detect_events at read time.
+        #
+        # Falsy rather than None on purpose, and deliberately laxer than the validator, which refuses an
+        # empty dict outright. An interface never reaches here with one, since validation rejected it at
+        # construction; this is the direct-call path, where treating an empty dict as no conditioning is
+        # the only sensible reading and is better than an IndexError further down.
         return np.asarray(trace)
 
     cuts = [cut for cut in ("bits", "thresholds", "binarize") if cut in signal_conditioning]
