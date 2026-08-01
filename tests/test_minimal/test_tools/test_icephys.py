@@ -144,6 +144,64 @@ class TestSweepTimeIntervals:
         assert nwbfile.intervals is None or "sweeps" not in nwbfile.intervals
 
 
+class TestSimultaneityIsDecidedOnTime:
+    """Which rows form one ``SimultaneousRecordings`` entry follows the sweep's resolved time, not its
+    ``(start_index, count)`` range. The two cases below are indistinguishable by index alone (different series,
+    both at index 0) and differ only in when they happened, so keying the grouping on the index range gets one
+    of them wrong whichever way it is written."""
+
+    def test_electrodes_recorded_together_are_one_entry(self):
+        """A dual patch: two electrodes, two series, both sweeps at index 0 and at the same instant."""
+        first = MockIcephysInterface(num_sweeps=1, starting_time=0.0, sequence="cell", metadata_key="a")
+        second = MockIcephysInterface(num_sweeps=1, starting_time=0.0, sequence="cell", metadata_key="b")
+
+        nwbfile = create_finalized_nwbfile([first, second])
+
+        assert len(nwbfile.intracellular_recordings) == 2
+        simultaneous_recordings = nwbfile.icephys_simultaneous_recordings
+        assert len(simultaneous_recordings) == 1
+        assert len(simultaneous_recordings["recordings"][0]) == 2
+
+    def test_one_electrode_at_different_times_stays_separate(self):
+        """Successive runs written as a series each, which is what an interface that does not concatenate its
+        sweeps produces: both rows read index 0 of their own series, yet they are 47 seconds apart and did not
+        happen at once."""
+        first = MockIcephysInterface(num_sweeps=1, starting_time=0.0, sequence="cell", metadata_key="a")
+        second = MockIcephysInterface(num_sweeps=1, starting_time=47.3, sequence="cell", metadata_key="b")
+
+        nwbfile = create_finalized_nwbfile([first, second])
+
+        assert len(nwbfile.icephys_simultaneous_recordings) == 2
+        # One sequence, so the two entries still belong to a single sequential recording.
+        assert len(nwbfile.icephys_sequential_recordings) == 1
+        # The sweeps table has always resolved through the series; the hierarchy now agrees with it rather
+        # than describing the same two rows as one moment.
+        _add_sweep_time_intervals_to_nwbfile(nwbfile)
+        assert list(nwbfile.intervals["sweeps"].start_time[:]) == pytest.approx([0.0, 47.3])
+
+
+class TestOptionalStimulusType:
+    """NWB requires a stimulus type on every sequential recording, but a format that describes none should not
+    put a column of repeated placeholders on the recordings table. The placeholder is supplied only where the
+    schema insists on one."""
+
+    def test_column_omitted_when_the_source_describes_no_stimulus(self):
+        interface = MockIcephysInterface(num_sweeps=2, stimulus_type=None)
+
+        nwbfile = create_finalized_nwbfile([interface])
+
+        assert "stimulus_type" not in nwbfile.intracellular_recordings.colnames
+        assert list(nwbfile.icephys_sequential_recordings["stimulus_type"][:]) == ["not described"]
+
+    def test_column_written_when_the_source_states_one(self):
+        interface = MockIcephysInterface(num_sweeps=2, stimulus_type="step")
+
+        nwbfile = create_finalized_nwbfile([interface])
+
+        assert list(nwbfile.intracellular_recordings["stimulus_type"][:]) == ["step", "step"]
+        assert list(nwbfile.icephys_sequential_recordings["stimulus_type"][:]) == ["step"]
+
+
 class TestMockIcephysInterface:
     """The mock's own contract, since the tools above are only as faithful as what it writes."""
 

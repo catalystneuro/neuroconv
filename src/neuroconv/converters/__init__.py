@@ -10,6 +10,9 @@ from ..datainterfaces.behavior.lightningpose.lightningposeconverter import (
     LightningPoseConverter,
 )
 from ..datainterfaces.icephys.axon.axonintracellularconverter import AxonIntracellularConverter
+from ..datainterfaces.icephys.brukervoltagerecording.brukervoltagerecordingconverter import (
+    BrukerVoltageRecordingConverter,
+)
 from ..datainterfaces.ecephys.sortedrecordinginterface import SortedRecordingConverter
 from ..datainterfaces.ecephys.spikeglx.sorted_spikeglx_converter import SortedSpikeGLXConverter
 from ..datainterfaces.ecephys.intan.intanconverter import IntanConverter
@@ -24,6 +27,7 @@ from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConvert
 
 converter_list = [
     AxonIntracellularConverter,
+    BrukerVoltageRecordingConverter,
     IntanConverter,
     LightningPoseConverter,
     OpenEphysBinaryConverter,
