@@ -21,7 +21,7 @@ class TestCSVEventsInterface:
     def single_type_file(self, tmp_path):
         file_path = tmp_path / "ttl.csv"
         lines = ["timestamps"] + [str(value) for value in SINGLE_TYPE_TIMESTAMPS]
-        file_path.write_text("\n".join(lines) + "\n")
+        file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return file_path
 
     @pytest.fixture
@@ -36,14 +36,14 @@ class TestCSVEventsInterface:
     def two_type_file(self, tmp_path):
         file_path = tmp_path / "events.csv"
         lines = ["onset,kind"] + [f"{onset},{kind}" for onset, kind in TWO_TYPE_ROWS]
-        file_path.write_text("\n".join(lines) + "\n")
+        file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return file_path
 
     @pytest.fixture
     def headerless_two_type_file(self, tmp_path):
         file_path = tmp_path / "events_headerless.csv"
         lines = [f"{onset},{kind}" for onset, kind in TWO_TYPE_ROWS]
-        file_path.write_text("\n".join(lines) + "\n")
+        file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return file_path
 
     @pytest.fixture
@@ -52,7 +52,7 @@ class TestCSVEventsInterface:
         # are quoted ("") so pandas reads them as empty-string values rather than skipping them as
         # blank lines (skip_blank_lines drops a bare empty line before it ever becomes a NaN row).
         file_path = tmp_path / "ttl.csv"
-        file_path.write_text('timestamps\n1.5\n""\n3.5\n""\n5.5\n')
+        file_path.write_text('timestamps\n1.5\n""\n3.5\n""\n5.5\n', encoding="utf-8")
         return file_path
 
     @pytest.fixture
@@ -60,7 +60,7 @@ class TestCSVEventsInterface:
         # The "b" rows have an empty onset cell (NaN) and are dropped along with their labels, so "b"
         # never becomes an event type at all.
         file_path = tmp_path / "events.csv"
-        file_path.write_text("onset,kind\n1.0,a\n,b\n3.0,a\n,b\n5.0,a\n")
+        file_path.write_text("onset,kind\n1.0,a\n,b\n3.0,a\n,b\n5.0,a\n", encoding="utf-8")
         return file_path
 
     def test_event_type_column_is_required(self, single_type_file):
@@ -182,7 +182,9 @@ class TestCSVEventsInterface:
         # column, so the merged table carries a single populated "outcome" (not one half-empty column
         # per type). This is the within-interface shared-column case the base interface enabled.
         file_path = tmp_path / "trials.csv"
-        file_path.write_text("onset,kind,outcome\n1.0,a,hit\n2.0,b,miss\n3.0,a,miss\n4.0,b,hit\n5.0,a,hit\n")
+        file_path.write_text(
+            "onset,kind,outcome\n1.0,a,hit\n2.0,b,miss\n3.0,a,miss\n4.0,b,hit\n5.0,a,hit\n", encoding="utf-8"
+        )
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
@@ -219,7 +221,7 @@ class TestCSVEventsInterface:
         # A value column seeds only its structural column_name: the CSV carries no codebook, so no
         # description and no column_categories are invented (numeric or not).
         file_path = tmp_path / "trial.csv"
-        file_path.write_text("onset,amplitude,outcome\n1.0,0.5,go\n2.0,1.5,no_go\n3.0,2.5,go\n")
+        file_path.write_text("onset,amplitude,outcome\n1.0,0.5,go\n2.0,1.5,no_go\n3.0,2.5,go\n", encoding="utf-8")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
@@ -234,7 +236,7 @@ class TestCSVEventsInterface:
         # Both a numeric and a non-numeric value column write their raw cell values directly, with no
         # MeaningsTable, since nothing was annotated.
         file_path = tmp_path / "trial.csv"
-        file_path.write_text("onset,amplitude,outcome\n1.0,0.5,go\n2.0,1.5,no_go\n3.0,2.5,go\n")
+        file_path.write_text("onset,amplitude,outcome\n1.0,0.5,go\n2.0,1.5,no_go\n3.0,2.5,go\n", encoding="utf-8")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
@@ -255,7 +257,7 @@ class TestCSVEventsInterface:
         # literal '', which would otherwise promote the whole column to object strings. The per-column
         # sniff coerces it to float (the blank becoming NaN), while the categorical column stays raw.
         file_path = tmp_path / "trial.csv"
-        file_path.write_text("onset,amplitude,outcome\n1.0,0.5,go\n2.0,,no_go\n3.0,0.9,go\n")
+        file_path.write_text("onset,amplitude,outcome\n1.0,0.5,go\n2.0,,no_go\n3.0,0.9,go\n", encoding="utf-8")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
@@ -273,7 +275,7 @@ class TestCSVEventsInterface:
         # The auto-seed is gone, but the categorical path still works when the user supplies a codebook:
         # a labels map relabels the cells and a meanings map produces a MeaningsTable.
         file_path = tmp_path / "trial.csv"
-        file_path.write_text("onset,outcome\n1.0,go\n2.0,no_go\n3.0,go\n")
+        file_path.write_text("onset,outcome\n1.0,go\n2.0,no_go\n3.0,go\n", encoding="utf-8")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
@@ -299,7 +301,7 @@ class TestCSVEventsInterface:
     def test_durations_column(self, tmp_path):
         # A durations column makes the events durative; a blank cell becomes a NaN duration.
         file_path = tmp_path / "bouts.csv"
-        file_path.write_text('onset,dur\n1.0,0.5\n2.0,0.25\n3.0,""\n')
+        file_path.write_text('onset,dur\n1.0,0.5\n2.0,0.25\n3.0,""\n', encoding="utf-8")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
@@ -317,7 +319,7 @@ class TestCSVEventsInterface:
     def test_time_unit_scales_timestamps(self, tmp_path):
         # A millisecond time unit divides the raw timestamps by 1000 to convert them to seconds.
         file_path = tmp_path / "ttl.csv"
-        file_path.write_text("timestamps\n1500\n2500\n3500\n")
+        file_path.write_text("timestamps\n1500\n2500\n3500\n", encoding="utf-8")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="timestamps",
@@ -333,7 +335,7 @@ class TestCSVEventsInterface:
         # Timestamps and durations share the recording's time base, so both are scaled by the unit; a
         # blank duration stays NaN through the division.
         file_path = tmp_path / "bouts.csv"
-        file_path.write_text('onset,dur\n1000,500\n2000,250\n3000,""\n')
+        file_path.write_text('onset,dur\n1000,500\n2000,250\n3000,""\n', encoding="utf-8")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
@@ -351,7 +353,7 @@ class TestCSVEventsInterface:
     def test_time_unit_leaves_value_columns_unscaled(self, tmp_path):
         # value_columns are arbitrary payload, not time, so the unit conversion must not touch them.
         file_path = tmp_path / "trial.csv"
-        file_path.write_text("onset,amplitude\n1000,500\n2000,250\n")
+        file_path.write_text("onset,amplitude\n1000,500\n2000,250\n", encoding="utf-8")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
@@ -404,7 +406,7 @@ class TestCSVEventsInterface:
         # 'None', 'NA', 'null' and a blank cell are real, distinct category values here; the default
         # keep_default_na=False must keep them apart instead of collapsing them into one nan label.
         file_path = tmp_path / "trial.csv"
-        file_path.write_text("onset,reward\n1.0,small\n2.0,None\n3.0,NA\n4.0,null\n5.0,\n6.0,large\n")
+        file_path.write_text("onset,reward\n1.0,small\n2.0,None\n3.0,NA\n4.0,null\n5.0,\n6.0,large\n", encoding="utf-8")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
@@ -420,7 +422,7 @@ class TestCSVEventsInterface:
     def test_read_kwargs_forwarded_to_read_csv(self, tmp_path):
         # A ';' separator with ',' as the decimal mark: only reachable through read_kwargs.
         file_path = tmp_path / "events.csv"
-        file_path.write_text("onset;kind\n1,5;a\n2,5;b\n")
+        file_path.write_text("onset;kind\n1,5;a\n2,5;b\n", encoding="utf-8")
         interface = CSVEventsInterface(
             file_path=file_path,
             timestamps_column="onset",
@@ -435,7 +437,7 @@ class TestCSVEventsInterface:
 
     def test_empty_file_writes_no_table(self, tmp_path):
         file_path = tmp_path / "ttl.csv"
-        file_path.write_text("timestamps\n")  # header only, no rows
+        file_path.write_text("timestamps\n", encoding="utf-8")  # header only, no rows
         interface = CSVEventsInterface(file_path=file_path, timestamps_column="timestamps", event_type_column=None)
         assert interface.get_metadata()["Events"]["ttl"]["event_types"] == {}
 
