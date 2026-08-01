@@ -5,7 +5,7 @@ from pathlib import Path
 from warnings import warn
 
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.image import ImageSeries
 from pynwb.ophys import OnePhotonSeries
 
@@ -118,13 +118,11 @@ class TestMiniscopeConverter:
 
     def test_run_conversion(self, tmp_path):
         """Test conversion with dual miniscope setup, multiple sessions, and time alignment."""
-        from pynwb import read_nwb
-
         # Create converter
         converter = MiniscopeConverter(folder_path=self.folder_path, user_configuration_file_path=self.config_file_path)
 
         # Run conversion
-        nwbfile_path = str(tmp_path / "test_miniscope_dual.nwb")
+        nwbfile_path = tmp_path / "test_miniscope_dual.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, stub_test=True, stub_samples=2)
 
         # Read the NWB file
@@ -306,11 +304,9 @@ class TestMiniscopeConverterBehaviorCamera:
 
     def test_run_conversion(self, tmp_path):
         """The camera folder sits six levels below the top folder, far from the legacy 'BehavCam*' depth."""
-        from pynwb import read_nwb
-
         converter = MiniscopeConverter(folder_path=self.folder_path, user_configuration_file_path=self.config_file_path)
 
-        nwbfile_path = str(tmp_path / "test_miniscope_behavior_camera.nwb")
+        nwbfile_path = tmp_path / "test_miniscope_behavior_camera.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path)
 
         nwbfile = read_nwb(nwbfile_path)
@@ -344,7 +340,7 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
     @pytest.fixture(autouse=True)
     def setup_class_fixture(self):
         """Set up test fixtures for legacy Tye Lab data."""
-        self.folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
+        self.folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"
         with pytest.warns(FutureWarning, match="Not passing 'user_configuration_file_path'"):
             self.converter = MiniscopeConverter(folder_path=self.folder_path)
         self.test_dir = Path(tempfile.mkdtemp())
@@ -385,17 +381,16 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
 
     def _assert_nwbfile_structure(self, nwbfile_path: str):
         """Helper method to assert NWB file structure."""
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert nwbfile.session_start_time.replace(tzinfo=None) == datetime(2021, 10, 7, 15, 3, 28, 635)
+        assert nwbfile.session_start_time.replace(tzinfo=None) == datetime(2021, 10, 7, 15, 3, 28, 635)
 
-            assert self.device_name in nwbfile.devices
-            assert self.behavcam_name in nwbfile.devices
-            assert self.photon_series_name in nwbfile.acquisition
-            assert isinstance(nwbfile.acquisition[self.photon_series_name], OnePhotonSeries)
-            assert self.image_series_name in nwbfile.acquisition
-            assert isinstance(nwbfile.acquisition[self.image_series_name], ImageSeries)
+        assert self.device_name in nwbfile.devices
+        assert self.behavcam_name in nwbfile.devices
+        assert self.photon_series_name in nwbfile.acquisition
+        assert isinstance(nwbfile.acquisition[self.photon_series_name], OnePhotonSeries)
+        assert self.image_series_name in nwbfile.acquisition
+        assert isinstance(nwbfile.acquisition[self.image_series_name], ImageSeries)
 
     def test_converter_metadata(self):
         """Test that metadata is correctly extracted from legacy format."""
@@ -406,21 +401,20 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
 
     def test_run_conversion(self):
         """Test basic conversion to NWB."""
-        nwbfile_path = str(self.test_dir / "test_miniscope_converter.nwb")
+        nwbfile_path = self.test_dir / "test_miniscope_converter.nwb"
         self.converter.run_conversion(nwbfile_path=nwbfile_path)
 
         self._assert_nwbfile_structure(nwbfile_path=nwbfile_path)
 
     def test_run_conversion_add_conversion_options(self):
         """Test conversion with stub options."""
-        nwbfile_path = str(self.test_dir / "test_miniscope_converter_conversion_options.nwb")
+        nwbfile_path = self.test_dir / "test_miniscope_converter_conversion_options.nwb"
         self.converter.run_conversion(
             nwbfile_path=nwbfile_path,
             **self.conversion_options,
         )
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
         num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
         assert num_samples == self.stub_samples
@@ -436,16 +430,15 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         metadata["Behavior"]["Device"][0].update(name=test_behavcam_name)
         metadata["Behavior"]["ImageSeries"][0].update(device=test_behavcam_name)
 
-        nwbfile_path = str(self.test_dir / "test_miniscope_converter_updated_metadata.nwb")
+        nwbfile_path = self.test_dir / "test_miniscope_converter_updated_metadata.nwb"
         self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert test_device_name in nwbfile.devices
-            assert test_behavcam_name in nwbfile.devices
-            assert nwbfile.devices[test_device_name] == nwbfile.imaging_planes["ImagingPlaneMiniscope"].device
-            assert nwbfile.devices[test_behavcam_name] == nwbfile.acquisition[self.image_series_name].device
+        assert test_device_name in nwbfile.devices
+        assert test_behavcam_name in nwbfile.devices
+        assert nwbfile.devices[test_device_name] == nwbfile.imaging_planes["ImagingPlaneMiniscope"].device
+        assert nwbfile.devices[test_behavcam_name] == nwbfile.acquisition[self.image_series_name].device
 
     def test_converter_in_converter(self):
         """Test MiniscopeConverter within another NWBConverter."""
@@ -459,7 +452,7 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
             )
         )
 
-        nwbfile_path = str(self.test_dir / "test_miniscope_converter_in_nwbconverter.nwb")
+        nwbfile_path = self.test_dir / "test_miniscope_converter_in_nwbconverter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path)
 
         self._assert_nwbfile_structure(nwbfile_path)
@@ -470,7 +463,7 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestMiniscopeConverter=MiniscopeConverter)
 
-        nwbfile_path = str(self.test_dir / "test_miniscope_converter_in_nwbconverter_conversion_options.nwb")
+        nwbfile_path = self.test_dir / "test_miniscope_converter_in_nwbconverter_conversion_options.nwb"
         converter = TestConverter(
             source_data=dict(
                 TestMiniscopeConverter=dict(folder_path=self.folder_path),
@@ -479,8 +472,7 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         conversion_options = dict(TestMiniscopeConverter=self.conversion_options)
         converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
         num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
         assert num_samples == self.stub_samples
@@ -502,7 +494,6 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         conversion_options = dict(MiniscopeConverter=self.conversion_options)
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
         num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
         assert num_samples == self.stub_samples
