@@ -1,4 +1,5 @@
 import re
+import sys
 import warnings
 from platform import python_version as get_python_version
 
@@ -551,19 +552,17 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 
 class TestAssertions(TestCase):
-    @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
-    def test_spike2_import_assertions_3_10(self):
+    @pytest.mark.skipif(
+        sys.platform == "win32" or python_version >= Version("3.14"),
+        reason="sonpy is installable on Windows for all supported versions, and on other platforms from 3.14",
+    )
+    def test_spike2_import_assertions(self):
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
-            exc_msg="\nThe package 'sonpy' is not available for Python version 3.10!",
-        ):
-            Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
-
-    @pytest.mark.skipif(python_version.minor != 11, reason="Only testing with Python 3.11!")
-    def test_spike2_import_assertions_3_11(self):
-        with self.assertRaisesWith(
-            exc_type=ModuleNotFoundError,
-            exc_msg="\nThe package 'sonpy' is not available for Python version 3.11!",
+            exc_msg=(
+                f"\nThe package 'sonpy' is not available on the {sys.platform} platform for "
+                f"Python version 3.{python_version.minor}!"
+            ),
         ):
             Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
