@@ -1,19 +1,105 @@
+import warnings
 from typing import Literal
 
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ... import (
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
 )
 from ....basedatainterface import BaseDataInterface
+from ....nwbconverter import ConverterPipe
 from ....utils import DeepDict, dict_deep_update, get_json_schema_from_method_signature
+
+
+class BrukerTiffConverter(ConverterPipe):
+    """Convert a Bruker Prairie View session.
+
+    Point this at the session folder (the OME-TIFF files and the ``.xml`` that describes them) and
+    every channel in it is written: one ``ImagingPlane`` and one ``TwoPhotonSeries`` per channel,
+    all referring to a single ``Device`` named ``BrukerFluorescenceMicroscope``. Planar and
+    volumetric, single-channel and multi-channel sessions are all handled; a single-channel session
+    needs no extra arguments.
+
+    ``plane_separation_type`` chooses how a volumetric session is written. ``"contiguous"``
+    (default) writes the volume as one 4D ``TwoPhotonSeries`` per channel; ``"disjoint"`` writes
+    each depth plane as its own 2D ``TwoPhotonSeries`` and ``ImagingPlane``, carrying that plane's
+    own focal depth. It has no effect on planar sessions. This replaces the deprecated
+    ``BrukerTiffMultiPlaneConverter``.
+    """
+
+    display_name = "Bruker TIFF Imaging"
+    keywords = BrukerTiffImagingInterface.keywords
+    associated_suffixes = BrukerTiffImagingInterface.associated_suffixes
+    info = "Auto-channel-enumerated converter for Bruker TIFF imaging data."
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__)
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "Folder containing Bruker .ome.tif files and the matching configuration .xml."
+        return source_schema
+
+    @validate_call
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        plane_separation_type: Literal["contiguous", "disjoint"] = "contiguous",
+        verbose: bool = False,
+    ):
+        """
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Folder containing Bruker .ome.tif files and the matching configuration .xml.
+        plane_separation_type : {"contiguous", "disjoint"}, default: "contiguous"
+            How to write volumetric data. ``"contiguous"`` writes one 4D ``TwoPhotonSeries`` per
+            channel; ``"disjoint"`` writes one 2D ``TwoPhotonSeries`` per depth plane per channel.
+            Has no effect on single-plane (planar) acquisitions.
+        verbose : bool, default: False
+        """
+        channel_names = BrukerTiffImagingInterface.get_available_channels(folder_path=folder_path)
+        single_channel = len(channel_names) == 1
+
+        # Plane count is folder-level; probe once with the full (unsliced) extractor.
+        probe_channel = None if single_channel else channel_names[0]
+        probe = BrukerTiffImagingInterface(folder_path=folder_path, channel_name=probe_channel, verbose=verbose)
+        num_planes = probe._bruker_extractor.get_num_planes() if probe.imaging_extractor.is_volumetric else 1
+        disjoint = plane_separation_type == "disjoint" and num_planes > 1
+
+        data_interfaces: dict[str, BrukerTiffImagingInterface] = {}
+        for channel_name in channel_names:
+            interface_name = "BrukerImaging" if single_channel else f"BrukerImaging_{channel_name}"
+            channel_argument = None if single_channel else channel_name
+            if disjoint:
+                for plane_index in range(num_planes):
+                    data_interfaces[f"{interface_name}_plane{plane_index}"] = BrukerTiffImagingInterface(
+                        folder_path=folder_path,
+                        channel_name=channel_argument,
+                        plane_index=plane_index,
+                        verbose=verbose,
+                    )
+            else:
+                data_interfaces[interface_name] = BrukerTiffImagingInterface(
+                    folder_path=folder_path,
+                    channel_name=channel_argument,
+                    verbose=verbose,
+                )
+
+        super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
 
 class BrukerTiffMultiPlaneConverter(BaseDataInterface):
     """
-    Converter class for Bruker imaging data with multiple channels and multiple planes.
+    Deprecated. Use :class:`~neuroconv.converters.BrukerTiffConverter` instead.
+
+    Both ``plane_separation_type`` modes are now covered by ``BrukerTiffConverter``:
+    ``"contiguous"`` (one 4D ``TwoPhotonSeries`` per channel) and ``"disjoint"`` (one 2D
+    ``TwoPhotonSeries`` per depth plane), the latter via per-plane selection on the unified
+    :class:`~neuroconv.datainterfaces.BrukerTiffImagingInterface`.
     """
 
     display_name = "Bruker TIFF Imaging (multiple channels, multiple planes)"
@@ -49,6 +135,13 @@ class BrukerTiffMultiPlaneConverter(BaseDataInterface):
         verbose : bool, default: False
             Controls verbosity.
         """
+        warnings.warn(
+            "BrukerTiffMultiPlaneConverter is deprecated and will be removed on or after December 2026. "
+            "Use BrukerTiffConverter with plane_separation_type instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         self.verbose = verbose
         self.data_interface_objects = dict()
 
@@ -59,21 +152,23 @@ class BrukerTiffMultiPlaneConverter(BaseDataInterface):
 
         channel_streams = streams["channel_streams"]
         interface_name = "BrukerImaging"
-        for channel_stream_name in channel_streams:
-            plane_streams = streams["plane_streams"][channel_stream_name]
-            for plane_stream in plane_streams:
-                if len(plane_streams) > 1:
-                    interface_name += plane_stream.replace("_", "")
-                if plane_separation_type == "contiguous":
-                    self.data_interface_objects[interface_name] = BrukerTiffMultiPlaneImagingInterface(
-                        folder_path=folder_path,
-                        stream_name=plane_stream,
-                    )
-                elif plane_separation_type == "disjoint":
-                    self.data_interface_objects[interface_name] = BrukerTiffSinglePlaneImagingInterface(
-                        folder_path=folder_path,
-                        stream_name=plane_stream,
-                    )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FutureWarning)
+            for channel_stream_name in channel_streams:
+                plane_streams = streams["plane_streams"][channel_stream_name]
+                for plane_stream in plane_streams:
+                    if len(plane_streams) > 1:
+                        interface_name += plane_stream.replace("_", "")
+                    if plane_separation_type == "contiguous":
+                        self.data_interface_objects[interface_name] = BrukerTiffMultiPlaneImagingInterface(
+                            folder_path=folder_path,
+                            stream_name=plane_stream,
+                        )
+                    elif plane_separation_type == "disjoint":
+                        self.data_interface_objects[interface_name] = BrukerTiffSinglePlaneImagingInterface(
+                            folder_path=folder_path,
+                            stream_name=plane_stream,
+                        )
 
     def get_metadata(self) -> DeepDict:
         metadata = DeepDict()
@@ -143,6 +238,13 @@ class BrukerTiffSinglePlaneConverter(BaseDataInterface):
         verbose : bool, default: False
             Controls verbosity.
         """
+        warnings.warn(
+            "BrukerTiffSinglePlaneConverter is deprecated and will be removed on or after December 2026."
+            "Use BrukerTiffImagingInterface instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         from roiextractors.extractors.tiffimagingextractors.brukertiffimagingextractor import (
             _determine_imaging_is_volumetric,
         )
@@ -156,13 +258,15 @@ class BrukerTiffSinglePlaneConverter(BaseDataInterface):
         streams = BrukerTiffSinglePlaneImagingInterface.get_streams(folder_path=folder_path)
         channel_streams = streams["channel_streams"]
         interface_name = "BrukerImaging"
-        for channel_stream_name in channel_streams:
-            if len(channel_streams) > 1:
-                interface_name += channel_stream_name.replace("_", "")
-            self.data_interface_objects[interface_name] = BrukerTiffSinglePlaneImagingInterface(
-                folder_path=folder_path,
-                stream_name=channel_stream_name,
-            )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FutureWarning)
+            for channel_stream_name in channel_streams:
+                if len(channel_streams) > 1:
+                    interface_name += channel_stream_name.replace("_", "")
+                self.data_interface_objects[interface_name] = BrukerTiffSinglePlaneImagingInterface(
+                    folder_path=folder_path,
+                    stream_name=channel_stream_name,
+                )
 
     def get_metadata(self) -> DeepDict:
         metadata = DeepDict()

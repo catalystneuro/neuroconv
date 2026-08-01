@@ -111,6 +111,41 @@ earlier ``add_*`` call.
 See `issue #1511 <https://github.com/catalystneuro/neuroconv/issues/1511>`_ for the discussion.
 
 
+.. _metadata_key_naming:
+
+The ``metadata_key`` parameter
+------------------------------
+
+**A** ``metadata_key`` **is a namespace handle: it addresses an interface's entry within the metadata
+dictionary, and nothing more.** It is not the NWB object's name. The object's ``name`` is a separate
+field *inside* that entry for the user to edit; the key is only how the entry is reached.
+
+Because the key is a handle and not a name:
+
+1. **Use snake_case.** A key reads as a dictionary handle (``doric_events``, ``tdt_events``); CamelCase is
+   reserved for the ``name`` of a neurodata type (``ElectricalSeries``, ``TrialOnset``), which lives
+   *inside* the entry.
+2. **Default to a fixed constant unless the format guarantees several instances.** When a session is a
+   single source, one file or folder maps to one interface, so a stable constant (``"doric_events"``) is
+   the readable default; two of them in one conversion is the rare case, resolved by passing
+   ``metadata_key`` explicitly. Derive the key from a structural handle the format provides (a stream
+   name, a channel) only where the format inherently produces many instances at once (SpikeGLX streams,
+   multi-channel ophys) and collision is likely. Practicality beats purity.
+3. **Be cautious inventing a uniqueness scheme.** A derived key becomes a contract the moment a user
+   writes their metadata edits against it, so if the scheme later proves wrong and has to change, those
+   users break. When an interface is likely to be instantiated several times but has no obvious
+   distinguishing handle (a stream, a channel, something the user would recognize), be wary of inventing a
+   highly specific scheme just to force uniqueness. For interfaces that consume common, generic formats
+   (CSV, Parquet, NumPy, and the like), the file stem is a reasonable derived default. This is a gray
+   area; explicit still beats implicit, so a user who needs a particular key can pass one.
+4. **Type it** ``str | None`` **and resolve the default in** ``__init__``. Take
+   ``metadata_key: str | None = None`` in the signature and compute the fallback in the body
+   (``self.metadata_key = metadata_key or ...``), not as a literal signature default. A signature default
+   can only be a static string, but the derived case in point 2 needs a value known only at construction
+   (a stream, a channel, a file stem). Resolving it in ``__init__`` covers the constant and the derived
+   case with one uniform pattern and keeps the fallback in a single place.
+
+
 Checklist for a new interface
 ------------------------------
 
@@ -120,5 +155,10 @@ When writing or reviewing an interface:
 - No key holds ``""``, ``{}``, ``None``, ``np.nan``, ``"unknown"``, or any other sentinel.
 - No object is returned that the source gives no evidence for: no imaging plane without optical
   information, no electrode group without probe information, no fiber without a fiber.
-- Required NWB fields with no source value are filled in ``add_to_nwbfile``, where the object is built.
+- Required NWB fields with no source value are filled where the object is built, in the
+  ``add_*_to_nwbfile`` call. That call may be a leaf interface writing its own objects, or a shared
+  modality pipeline such as ``tools/spikeinterface`` and ``tools/roiextractors``.
 - The metadata dictionary is not modified anywhere in the call stack.
+- The ``metadata_key`` default is a snake_case constant, unless the format inherently produces several
+  instances at once (then it is derived from a stable source handle).
+- The ``metadata_key`` is typed ``str | None``, and its default is resolved in ``__init__``.

@@ -11,6 +11,9 @@ from pynwb.ophys import OnePhotonSeries
 
 from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.converters import MiniscopeConverter
+from neuroconv.tools.roiextractors.roiextractors import (
+    _get_ophys_metadata_placeholders,
+)
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
 
 
@@ -19,6 +22,80 @@ class TestMiniscopeConverter:
 
     folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
     config_file_path = folder_path / "UserConfigFile.json"
+
+    def test_get_metadata(self):
+        """One Device and one ImagingPlane per Miniscope, one MicroscopySeries per recording."""
+        converter = MiniscopeConverter(
+            folder_path=str(self.folder_path), user_configuration_file_path=str(self.config_file_path)
+        )
+        metadata = converter.get_metadata()
+
+        # A device is shared by its recordings, so the two Miniscopes are two entries and not four. This
+        # dataset adjusted 'gain', 'led0' and 'ewl' between its two recordings, so those three are left
+        # off the shared device and reported per recording on the series below; the settings the two
+        # recordings agree on stay here.
+        expected_devices = {
+            "hpc_miniscope1": {
+                "type": "Miniscope",
+                "name": "HPCMiniscope1",
+                "compression": "GREY",
+                "deviceType": "Miniscope_V4_BNO",
+                "frameRate": "30FPS",
+                "framesPerFile": 10,
+                "device_model_metadata_key": "miniscope_v4_bno",
+            },
+            "acc_miniscope2": {
+                "type": "Miniscope",
+                "name": "ACCMiniscope2",
+                "compression": "GREY",
+                "deviceType": "Miniscope_V4_BNO",
+                "frameRate": "30FPS",
+                "framesPerFile": 10,
+                "device_model_metadata_key": "miniscope_v4_bno",
+            },
+        }
+        assert metadata["Devices"] == expected_devices
+
+        # Both Miniscopes are of the same design, so they share one model rather than carrying one each
+        assert metadata["DeviceModels"] == {"miniscope_v4_bno": {"name": "Miniscope_V4_BNO"}}
+
+        # An imaging plane belongs to a device, so it is also shared across that device's recordings.
+        # The fields NWB requires and the config says nothing about come from the placeholder template.
+        placeholder_imaging_plane = _get_ophys_metadata_placeholders()["Ophys"]["ImagingPlanes"]["default_metadata_key"]
+        imaging_planes = metadata["Ophys"]["ImagingPlanes"]
+        assert set(imaging_planes) == {"imaging_plane_ACC_miniscope2", "imaging_plane_HPC_miniscope1"}
+        assert imaging_planes["imaging_plane_ACC_miniscope2"] == {
+            **placeholder_imaging_plane,
+            "name": "ImagingPlaneACCMiniscope2",
+            "description": "Imaging plane for ACC_miniscope2 Miniscope device.",
+            "device_metadata_key": "acc_miniscope2",
+            "imaging_rate": converter.data_interface_objects[
+                "2025_06_12/15_15_04/ACC_miniscope2"
+            ].imaging_extractor.get_sampling_frequency(),
+        }
+
+        # A series belongs to a recording: two devices over two sessions is four
+        series_metadata = metadata["Ophys"]["MicroscopySeries"]
+        assert set(series_metadata) == {
+            "miniscope_imaging_ACC_miniscope2_2025_06_1215_15_04",
+            "miniscope_imaging_ACC_miniscope2_2025_06_1215_26_31",
+            "miniscope_imaging_HPC_miniscope1_2025_06_1215_15_04",
+            "miniscope_imaging_HPC_miniscope1_2025_06_1215_26_31",
+        }
+        assert series_metadata["miniscope_imaging_ACC_miniscope2_2025_06_1215_15_04"] == {
+            "name": "OnePhotonSeriesACCMiniscope22025_06_1215_15_04",
+            "unit": "px",
+            "imaging_plane_metadata_key": "imaging_plane_ACC_miniscope2",
+            # The settings this recording was made with, which the second recording of this Miniscope
+            # changed, so they cannot be stated once on the shared device.
+            "description": (
+                "Imaging data acquired with a Miniscope. Settings the Miniscope was recorded with, "
+                "which differ across the recordings of this device: ewl: 21, gain: 2, led0: 4."
+            ),
+        }
+        assert "ewl: 19, gain: 1, led0: 12" in (
+            series_metadata["miniscope_imaging_ACC_miniscope2_2025_06_1215_26_31"]["description"]
+        )
 
     def test_run_conversion(self, tmp_path):
         """Test conversion with dual miniscope setup, multiple sessions, and time alignment."""
@@ -134,6 +211,44 @@ class TestMiniscopeConverter:
         if hasattr(ho_acc_session2, "starting_time") and ho_acc_session2.starting_time is not None:
             assert ho_acc_session2.starting_time == expected_offset
             assert ho_hpc_session2.starting_time == expected_offset
+
+
+class TestMiniscopeConverterSingleRecording:
+    """A Miniscope recorded once has no settings that vary, so they all stay on its device."""
+
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "behavior_camera_with_config"
+    config_file_path = folder_path / "UserConfigFile.json"
+
+    def test_get_metadata(self):
+        converter = MiniscopeConverter(
+            folder_path=str(self.folder_path), user_configuration_file_path=str(self.config_file_path)
+        )
+        metadata = converter.get_metadata()
+
+        assert metadata["Devices"] == {
+            "miniscope_device_name": {
+                "type": "Miniscope",
+                "name": "Miniscopedevicename",
+                "compression": "GREY",
+                "deviceType": "Miniscope_V4_BNO",
+                "frameRate": "20FPS",
+                "gain": "3.5",
+                "framesPerFile": 1000,
+                "led0": 6,
+                "ROI": [600, 600],
+                "description": (
+                    "Settings recorded by the Miniscope DAQ software that the ndx-miniscope schema has "
+                    "no field for: ROI.leftEdge: 0, ROI.topEdge: 0, ewl: -4."
+                ),
+                "device_model_metadata_key": "miniscope_v4_bno",
+            },
+        }
+
+        # Nothing varies, so the series carries no per-recording settings
+        series_metadata = metadata["Ophys"]["MicroscopySeries"][
+            "miniscope_imaging_miniscopeDeviceName_2021_07_1516_18_59"
+        ]
+        assert series_metadata["description"] == "Imaging data acquired with a Miniscope."
 
 
 class TestMiniscopeConverterLegacyTyeLabFormat:

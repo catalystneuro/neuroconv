@@ -11,6 +11,7 @@ from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     FemtonicsImagingInterface,
@@ -419,6 +420,173 @@ class TestSbxImagingInterfaceSBX(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
 
+class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMixin):
+    """Tests the unified BrukerTiffImagingInterface against single-channel single-plane data."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    expected_metadata_key = "bruker_tiff_imaging"
+    expected_imaging_rate = 29.873732099062256
+    expected_scan_line_rate = 15840.580398865815
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        # The microscope is folder-level, so it is registered under its own key rather than the
+        # per-interface ``metadata_key`` that indexes the imaging plane and series.
+        device_metadata_key = "bruker_device"
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 2, 20, 15, 58, 25)
+
+        expected_devices = {
+            device_metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
+        }
+        # Only what the Bruker .xml reports. excitation_lambda, indicator, location, optical_channel
+        # and the series unit are absent on purpose; the write path fills them from the placeholder
+        # template, so emitting them here would be inventing values the source never gave.
+        expected_imaging_plane = {
+            "name": "ImagingPlane",
+            "description": "The imaging plane origin_coords units are in the microscope reference frame.",
+            "device_metadata_key": device_metadata_key,
+            "imaging_rate": self.expected_imaging_rate,
+            "grid_spacing": (1.1078125e-06, 1.1078125e-06),
+            "grid_spacing_unit": "meters",
+            "origin_coords": (0.0, 0.0),
+            "origin_coords_unit": "micrometers",
+        }
+        expected_microscopy_series = {
+            "name": "TwoPhotonSeries",
+            "imaging_plane_metadata_key": metadata_key,
+            "description": "Imaging data acquired from the Bruker Two-Photon Microscope.",
+            "field_of_view": (7.09e-05, 7.09e-05),
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
+        expected_ophys = {
+            "ImagingPlanes": {metadata_key: expected_imaging_plane},
+            "MicroscopySeries": {metadata_key: expected_microscopy_series},
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Ophys"] == expected_ophys
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            assert "BrukerFluorescenceMicroscope" in nwbfile.devices
+            assert "ImagingPlane" in nwbfile.imaging_planes
+            two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
+            assert two_photon_series.rate == self.expected_imaging_rate
+            assert two_photon_series.scan_line_rate == self.expected_scan_line_rate
+            assert two_photon_series.data.shape == (10, 64, 64)
+
+            # The interface emits none of these; the write path fills them from the placeholder
+            # template, so the file is still schema-complete despite the sparse get_metadata.
+            imaging_plane = nwbfile.imaging_planes["ImagingPlane"]
+            assert np.isnan(imaging_plane.excitation_lambda)
+            assert imaging_plane.indicator == "unknown"
+            assert imaging_plane.location == "unknown"
+            assert imaging_plane.optical_channel[0].name == "OpticalChannel"
+            assert two_photon_series.unit == "n.a."
+
+
+class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixin):
+    """Tests the unified BrukerTiffImagingInterface against single-channel volumetric data."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    expected_metadata_key = "bruker_tiff_imaging"
+    expected_volume_rate = 10.314757507168189
+    expected_scan_line_rate = 15842.086085895791
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        device_metadata_key = "bruker_device"
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 11, 3, 11, 20, 34)
+
+        expected_devices = {
+            device_metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
+        }
+        # Source-known fields only; see the single-plane case for why the optics fields are absent.
+        expected_imaging_plane = {
+            "name": "ImagingPlane",
+            "description": "The imaging plane origin_coords units are in the microscope reference frame.",
+            "device_metadata_key": device_metadata_key,
+            "imaging_rate": self.expected_volume_rate,
+            "grid_spacing": (1.1078125e-06, 1.1078125e-06, 0.00026),
+            "grid_spacing_unit": "meters",
+            "origin_coords": (56.215, 14.927, -130.0),
+            "origin_coords_unit": "micrometers",
+        }
+        expected_microscopy_series = {
+            "name": "TwoPhotonSeries",
+            "imaging_plane_metadata_key": metadata_key,
+            "description": "The volumetric imaging data acquired from the Bruker Two-Photon Microscope.",
+            "field_of_view": (7.09e-05, 7.09e-05, 0.00026),
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
+        expected_ophys = {
+            "ImagingPlanes": {metadata_key: expected_imaging_plane},
+            "MicroscopySeries": {metadata_key: expected_microscopy_series},
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Ophys"] == expected_ophys
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+            assert "BrukerFluorescenceMicroscope" in nwbfile.devices
+            two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
+            assert two_photon_series.rate == self.expected_volume_rate
+            assert two_photon_series.data.shape == (5, 64, 64, 2)
+
+
+class TestBrukerTiffImagingInterfaceDualColor(ImagingExtractorInterfaceTestMixin):
+    """Tests the unified BrukerTiffImagingInterface against multi-channel single-plane data."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
+        ),
+        channel_name="Ch1",
+    )
+    optical_series_name = "TwoPhotonSeriesCh1"
+    save_directory = OUTPUT_PATH
+
+
+class TestBrukerTiffImagingInterfaceDisjointPlane(ImagingExtractorInterfaceTestMixin):
+    """Unified interface pinned to a single depth plane of a volumetric acquisition (disjoint layout)."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        ),
+        plane_index=0,
+    )
+    optical_series_name = "TwoPhotonSeriesPlane0"
+    save_directory = OUTPUT_PATH
+
+
+# ---------------------------------------------------------------------------
+# Deprecated interfaces. Will be removed on or after December 2026.
+# These tests exercise the deprecated wrappers and assert the FutureWarning is emitted.
+# ---------------------------------------------------------------------------
+
+
 class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
     interface_kwargs = dict(
@@ -427,6 +595,13 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         )
     )
     save_directory = OUTPUT_PATH
+
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(cls, request):
@@ -506,6 +681,13 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
     )
     save_directory = OUTPUT_PATH
 
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
+
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(self, request):
         cls = request.cls
@@ -581,6 +763,13 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
     )
     save_directory = OUTPUT_PATH
 
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
+
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(cls, request):
 
@@ -641,7 +830,8 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
             / f"{self.data_interface_cls.__name__}_{self.test_name}_test_starting_time_alignment.nwb"
         )
 
-        interface = self.data_interface_cls(**self.interface_kwargs)
+        with pytest.warns(FutureWarning, match="deprecated"):
+            interface = self.data_interface_cls(**self.interface_kwargs)
 
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
@@ -672,6 +862,13 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         stream_name="Ch2",
     )
     save_directory = OUTPUT_PATH
+
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(cls, request):
@@ -1023,16 +1220,35 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
 
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635000)
 
+        # The whole device configuration reaches the registry entry, typed so it is built as an
+        # ndx-miniscope Miniscope rather than a plain Device, and keyed by the device rather than by
+        # the interface.
+        device_metadata_key = "miniscope"
         assert metadata["Devices"] == {
-            metadata_key: {"name": "Miniscope", "model_name": "Miniscope_V3"},
+            device_metadata_key: {
+                "type": "Miniscope",
+                "name": "Miniscope",
+                "compression": "FFV1",
+                "deviceType": "Miniscope_V3",
+                "frameRate": "15FPS",
+                "gain": "High",
+                "framesPerFile": 1000,
+                "led0": 47,
+                "device_model_metadata_key": "miniscope_v3",
+            },
         }
+        # The hardware design is a model, shared by every Miniscope of that design.
+        assert metadata["DeviceModels"] == {"miniscope_v3": {"name": "Miniscope_V3"}}
 
         expected_imaging_rate = self.interface.imaging_extractor.get_sampling_frequency()
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
-            "device_metadata_key": metadata_key,
+            "name": "ImagingPlane",
+            "device_metadata_key": device_metadata_key,
             "imaging_rate": expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": "OnePhotonSeries",
+            "unit": "px",
             "imaging_plane_metadata_key": metadata_key,
             "description": "Imaging data acquired with a Miniscope.",
         }
@@ -1144,6 +1360,95 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         # Verify it matches the expected value from metaData.json
         expected_start_time = datetime(2021, 10, 7, 15, 3, 28, 635000)
         assert session_start_time == expected_start_time
+
+
+class TestMiniscopeImagingInterfaceV4BNO(MiniscopeImagingInterfaceMixin):
+    """A V4 recording whose configuration exercises every branch of the config-to-device mapping.
+
+    The DAQ wrote ``gain`` as a number where the schema declares text, an ``ROI`` where the schema
+    declares a bounding box, and an ``ewl`` (the electrowetting lens position) the schema has no field
+    for at all. The recording in ``TestMiniscopeImagingInterface`` carries none of the three.
+    """
+
+    data_interface_cls = MiniscopeImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "Miniscope"
+            / "Ca_EEG3-4_FC"
+            / "2022_09_19"
+            / "09_18_41"
+            / "miniscope"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_metadata(cls, request):
+        cls = request.cls
+        cls.device_name = "miniscope"
+        cls.imaging_plane_name = "ImagingPlane"
+        cls.photon_series_name = "OnePhotonSeries"
+        cls.optical_series_name = "OnePhotonSeries"
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["Devices"] == {
+            "miniscope": {
+                "type": "Miniscope",
+                "name": "miniscope",
+                "compression": "FFV1",
+                "deviceType": "Miniscope_V4_BNO",
+                "frameRate": "30FPS",
+                # Written as 3.5 by the DAQ, declared as text by the schema.
+                "gain": "3.5",
+                "framesPerFile": 1000,
+                "led0": 1,
+                # Written as {"height": 608, "width": 608, "leftEdge": 0, "topEdge": 0}.
+                "ROI": [608, 608],
+                "description": (
+                    "Settings recorded by the Miniscope DAQ software that the ndx-miniscope schema "
+                    "has no field for: ROI.leftEdge: 0, ROI.topEdge: 0, ewl: 70."
+                ),
+                "device_model_metadata_key": "miniscope_v4_bno",
+            },
+        }
+        assert metadata["DeviceModels"] == {"miniscope_v4_bno": {"name": "Miniscope_V4_BNO"}}
+
+    def check_read_nwb(self, nwbfile_path: str):
+        from ndx_miniscope import Miniscope
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            device = nwbfile.devices[self.device_name]
+            assert isinstance(device, Miniscope)
+
+            one_photon_series = nwbfile.acquisition[self.photon_series_name]
+            assert one_photon_series.data.shape == (15, 608, 608)
+            assert one_photon_series.timestamps.shape == (15,)
+
+    def test_configuration_reaches_the_device_through_the_registry(self):
+        """The typed entry is what the registry builds the Miniscope from, values and all."""
+        from ndx_miniscope import Miniscope
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata(use_new_metadata_format=True))
+
+        device = nwbfile.devices["miniscope"]
+        assert isinstance(device, Miniscope)
+        assert device.gain == "3.5"
+        assert device.deviceType == "Miniscope_V4_BNO"
+        assert list(device.ROI) == [608, 608]
+        assert "ewl: 70" in device.description
+
+        # The hardware design is written as the DeviceModel pynwb 4 asks for, not as the deprecated
+        # 'model_name'. Its manufacturer is required by NWB and not recorded by the DAQ.
+        assert device.model is nwbfile.device_models["Miniscope_V4_BNO"]
+        assert device.model.manufacturer == "unknown"
 
 
 skip_on_darwin_arm64 = pytest.mark.skipif(

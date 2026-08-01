@@ -300,12 +300,11 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 subject_metadata["weight"] = subject_info["weight"]
                 has_any_subject_data = True
 
-        # Add Subject if we have ANY subject information, filling required fields with defaults
+        # Add Subject if we have ANY subject information. Only "sex" gets a fallback: "U" is NWB's own
+        # term for unknown, so recording it states that the file did not say. A subject_id or a species
+        # the file does not carry would be an invented value, indistinguishable once written from one
+        # the experimenter entered.
         if has_any_subject_data:
-            if "subject_id" not in subject_metadata:
-                subject_metadata["subject_id"] = "Unknown"
-            if "species" not in subject_metadata:
-                subject_metadata["species"] = "Unknown species"
             if "sex" not in subject_metadata:
                 subject_metadata["sex"] = "U"
 

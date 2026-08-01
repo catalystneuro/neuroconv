@@ -77,6 +77,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         block_index: int | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
     ):
         """
         Initialize reading of OpenEphys legacy recording (.continuous files).
@@ -92,6 +93,9 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             The index of the block to extract from the data.
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"open_ephys_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -138,11 +142,28 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             )
 
         super().__init__(
-            folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
+            folder_path=folder_path,
+            stream_name=stream_name,
+            block_index=block_index,
+            verbose=verbose,
+            es_key=es_key,
+            metadata_key=metadata_key,
         )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+        # ``metadata_key`` is a snake_case dict handle, not the series name. A session is a single Open Ephys
+        # recording, so the default is a constant; conversions that combine several streams pass their own.
+        if metadata_key is None:
+            self.metadata_key = "open_ephys_recording"
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
+
+        if use_new_metadata_format:
+            # State the series name here, where the metadata is produced: it is the interface's own, and it is
+            # independent of ``metadata_key`` (the dict key), so re-keying an entry never renames the series.
+            # No device or electrode groups are emitted: this interface has never claimed either, and the
+            # pipeline synthesizes its defaults from the channel-group properties.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeries"
 
         neo_reader = self.recording_extractor.neo_reader
         block_annotations = neo_reader.raw_annotations.get("blocks", [])

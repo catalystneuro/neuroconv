@@ -615,7 +615,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         assert metadata["Ophys"]["PlaneSegmentations"][metadata_key] == expected_plane_segmentation
 
         assert metadata["Subject"]["subject_id"] == "FV4581"
-        assert metadata["Subject"]["species"] == "Unknown species"
+        assert "species" not in metadata["Subject"]  # the file does not state it, so it is not reported
         assert metadata["Subject"]["strain"] == "CaMKIICre"
         assert metadata["Subject"]["sex"] == "M"
 
@@ -648,7 +648,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         assert "Subject" in metadata
         subject = metadata["Subject"]
         assert subject["subject_id"] == "FV4581"
-        assert subject["species"] == "Unknown species"
+        assert "species" not in subject  # the file does not state it, so it is not reported
         assert "strain" in subject
         assert subject["strain"] == "CaMKIICre"
         assert subject["sex"] == "M"

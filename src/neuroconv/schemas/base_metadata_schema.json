@@ -108,11 +108,6 @@
     },
     "Subject": {
       "type": "object",
-      "required": [
-        "subject_id",
-        "sex",
-        "species"
-      ],
       "additionalProperties": false,
       "properties": {
         "age": {
