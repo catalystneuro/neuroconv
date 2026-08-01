@@ -350,6 +350,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         stub_test: bool = False,
         parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
         write_as: Literal["raw", "lfp", "processed"] | None = None,
+        data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
         write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
@@ -378,6 +379,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_as : {'raw', 'processed', 'lfp'}, optional
             Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
             'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+        data_representation : {'digital_counts', 'physical_units'}, default='digital_counts'
+            How the trace values are materialized in the stored data array.
+            - 'digital_counts': store the raw integer samples and carry the per-channel gain in
+              ``channel_conversion`` (or a scalar ``conversion`` when homogeneous) and the offset in
+              the scalar ``offset``. Faithful and compact, but requires a common offset across channels.
+            - 'physical_units': apply each channel's gain and offset and store float physical values,
+              so the scalar ``offset`` is 0 and no ``channel_conversion`` is needed. This is the only
+              representation that can hold channels with heterogeneous per-channel offsets (and gains)
+              in a single series, at the cost of float storage and no lossless integer round-trip.
 
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
@@ -446,11 +456,25 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         metadata_key = self.metadata_key if _is_dict_based_metadata(metadata) else None
 
         if write_electrical_series:
+            if (
+                data_representation != "physical_units"
+                and recording.has_scaleable_traces()
+                and len(set(recording.get_channel_offsets())) > 1
+            ):
+                raise ValueError(
+                    "The channels of this recording have heterogeneous offsets, which a single NWB "
+                    "ElectricalSeries cannot represent. To write them as one series, pass "
+                    "data_representation='physical_units' as a conversion option to add_to_nwbfile() "
+                    "or run_conversion() (this folds each channel's offset into the data and writes "
+                    "float physical values). Alternatively, drop or separate the channels that do not "
+                    "share the common offset."
+                )
             add_recording_to_nwbfile(
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
                 parent_container=parent_container,
+                data_representation=data_representation,
                 es_key=self.es_key,
                 iterator_type=iterator_type,
                 iterator_options=iterator_options,
