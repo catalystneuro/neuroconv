@@ -171,6 +171,23 @@ def _get_fused_timestamps(folder_path: str, file_pattern: str) -> np.ndarray:
     return np.array(timestamps)
 
 
+def _get_device_folder_timestamps(folder_path: str) -> np.ndarray:
+    """Read the ``timeStamps.csv`` of a single V4 device folder as seconds.
+
+    The DAQ writes the first frame with a negative timestamp because that frame is captured before
+    the recording start marker. Following the upstream guidance the first sample is zeroed, rather
+    than shifting the whole series by it, which would displace every later frame.
+    """
+    timestamps_file_path = Path(folder_path) / "timeStamps.csv"
+    assert timestamps_file_path.is_file(), f"The timestamps file is missing from '{folder_path}'."
+
+    timestamps = pd.read_csv(timestamps_file_path)["Time Stamp (ms)"].to_numpy(dtype=float) / 1000.0
+    if timestamps.size and timestamps[0] < 0.0:
+        timestamps[0] = 0.0
+
+    return timestamps
+
+
 def _get_starting_frames(folder_path: str, video_file_pattern: str) -> list[int]:
     """Return cumulative starting frame indices for the ``.avi`` files in ``folder_path``.
 

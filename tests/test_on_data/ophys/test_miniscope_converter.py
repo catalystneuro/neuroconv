@@ -225,23 +225,21 @@ class TestMiniscopeConverterSingleRecording:
         )
         metadata = converter.get_metadata()
 
-        assert metadata["Devices"] == {
-            "miniscope_device_name": {
-                "type": "Miniscope",
-                "name": "Miniscopedevicename",
-                "compression": "GREY",
-                "deviceType": "Miniscope_V4_BNO",
-                "frameRate": "20FPS",
-                "gain": "3.5",
-                "framesPerFile": 1000,
-                "led0": 6,
-                "ROI": [600, 600],
-                "description": (
-                    "Settings recorded by the Miniscope DAQ software that the ndx-miniscope schema has "
-                    "no field for: ROI.leftEdge: 0, ROI.topEdge: 0, ewl: -4."
-                ),
-                "device_model_metadata_key": "miniscope_v4_bno",
-            },
+        assert metadata["Devices"]["miniscope_device_name"] == {
+            "type": "Miniscope",
+            "name": "Miniscopedevicename",
+            "compression": "GREY",
+            "deviceType": "Miniscope_V4_BNO",
+            "frameRate": "20FPS",
+            "gain": "3.5",
+            "framesPerFile": 1000,
+            "led0": 6,
+            "ROI": [600, 600],
+            "description": (
+                "Settings recorded by the Miniscope DAQ software that the ndx-miniscope schema has "
+                "no field for: ROI.leftEdge: 0, ROI.topEdge: 0, ewl: -4."
+            ),
+            "device_model_metadata_key": "miniscope_v4_bno",
         }
 
         # Nothing varies, so the series carries no per-recording settings
@@ -249,6 +247,77 @@ class TestMiniscopeConverterSingleRecording:
             "miniscope_imaging_miniscopeDeviceName_2021_07_1516_18_59"
         ]
         assert series_metadata["description"] == "Imaging data acquired with a Miniscope."
+
+
+class TestMiniscopeConverterBehaviorCamera:
+    """The behavior camera declared in the User Config as 'devices[cameras]'."""
+
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "behavior_camera_with_config"
+    config_file_path = folder_path / "UserConfigFile.json"
+
+    image_series_name = "ImageSeriesCameradevicename2021_07_1516_18_59"
+    photon_series_name = "OnePhotonSeriesMiniscopedevicename2021_07_1516_18_59"
+
+    def test_get_metadata(self):
+        """The camera gets a Device of its own, and its settings are described rather than dropped."""
+        converter = MiniscopeConverter(
+            folder_path=str(self.folder_path), user_configuration_file_path=str(self.config_file_path)
+        )
+        metadata = converter.get_metadata()
+
+        assert metadata["Devices"]["camera_device_name"] == {
+            "name": "Cameradevicename",
+            "description": (
+                "Behavior camera recorded by the Miniscope DAQ software. Acquisition settings: "
+                "compression: MJPG, frameRate: 50, framesPerFile: 1000, gain: 16, led0: 20."
+            ),
+            "device_model_metadata_key": "minicam_mono_xga",
+        }
+        # The camera is a different design from the Miniscope, so it carries a model of its own
+        assert metadata["DeviceModels"]["minicam_mono_xga"] == {"name": "Minicam-Mono-XGA"}
+
+        assert metadata["Behavior"]["ExternalVideos"]["video_cameraDeviceName_2021_07_1516_18_59"] == {
+            "name": self.image_series_name,
+            "description": "Video recorded by the 'cameraDeviceName' behavior camera.",
+            "unit": "Frames",
+            "device_metadata_key": "camera_device_name",
+            # The camera's ROI in the config, as (width, height)
+            "dimension": [740, 734],
+        }
+
+    def test_run_conversion(self, tmp_path):
+        """The camera folder sits six levels below the top folder, far from the legacy 'BehavCam*' depth."""
+        from pynwb import read_nwb
+
+        converter = MiniscopeConverter(
+            folder_path=str(self.folder_path), user_configuration_file_path=str(self.config_file_path)
+        )
+
+        nwbfile_path = str(tmp_path / "test_miniscope_behavior_camera.nwb")
+        converter.run_conversion(nwbfile_path=nwbfile_path)
+
+        nwbfile = read_nwb(nwbfile_path)
+
+        # Both the imaging and the behavior video are written
+        assert isinstance(nwbfile.acquisition[self.photon_series_name], OnePhotonSeries)
+        image_series = nwbfile.acquisition[self.image_series_name]
+        assert isinstance(image_series, ImageSeries)
+
+        # The video is external and points at the .avi of the camera folder
+        assert [Path(file_path).name for file_path in image_series.external_file] == ["0.avi"]
+        assert list(image_series.starting_frame) == [0]
+
+        # The camera gets its own Device and DeviceModel, separate from the Miniscope's
+        assert image_series.device.name == "Cameradevicename"
+        assert "Miniscopedevicename" in nwbfile.devices
+        assert image_series.device.model.name == "Minicam-Mono-XGA"
+        # 'manufacturer' is required by NWB and the DAQ does not record it
+        assert image_series.device.model.manufacturer == "unknown"
+
+        # Timestamps come from the camera's own timeStamps.csv. The first frame is acquired before the
+        # recording start marker, so it is zeroed rather than shifting every later frame.
+        expected_timestamps = [0.0, 0.008, 0.029, 0.049, 0.07, 0.093]
+        assert image_series.timestamps[:] == pytest.approx(expected_timestamps)
 
 
 class TestMiniscopeConverterLegacyTyeLabFormat:
