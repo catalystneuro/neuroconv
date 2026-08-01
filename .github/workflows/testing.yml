@@ -74,7 +74,7 @@ jobs:
           pytest tests/imports.py::TestImportStructure::test_datainterfaces
 
       - name: Run minimal tests
-        run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
+        run: pytest tests/test_minimal -vv -rsx -n logical --dist loadscope
 
       - name: Test ecephys machinery
         shell: bash
@@ -90,7 +90,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install ".[ecephys_minimal]"
           python -m pip install --group test --group sorting_analyzer # we test the sorting analyzer here so we need its dependencies
-          python -m pytest tests/test_modalities/test_ecephys -vv -rsx -n auto --dist loadscope
+          python -m pytest tests/test_modalities/test_ecephys -vv -rsx -n logical --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
           else
@@ -111,7 +111,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install ".[ophys_minimal]"
           python -m pip install --group test
-          python -m pytest tests/test_modalities/test_ophys -vv -rsx -n auto --dist loadscope
+          python -m pytest tests/test_modalities/test_ophys -vv -rsx -n logical --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
           else
@@ -132,7 +132,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install ".[fiber_photometry]"
           python -m pip install --group test
-          python -m pytest tests/test_modalities/test_fiber_photometry -vv -rsx -n auto --dist loadscope
+          python -m pytest tests/test_modalities/test_fiber_photometry -vv -rsx -n logical --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
           else
@@ -153,7 +153,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install ".[guppy]"
           python -m pip install --group test
-          python -m pytest tests/test_modalities/test_guppy -vv -rsx -n auto --dist loadscope
+          python -m pytest tests/test_modalities/test_guppy -vv -rsx -n logical --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
           else
@@ -174,7 +174,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install ".[behavior]"
           python -m pip install --group test
-          python -m pytest tests/test_modalities/test_behavior -vv -rsx -n auto --dist loadscope
+          python -m pytest tests/test_modalities/test_behavior -vv -rsx -n logical --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
           else
@@ -195,7 +195,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install ".[events]"
           python -m pip install --group test
-          python -m pytest tests/test_modalities/test_events -vv -rsx -n auto --dist loadscope
+          python -m pytest tests/test_modalities/test_events -vv -rsx -n logical --dist loadscope
           if [ "${{ runner.os }}" == "Windows" ]; then
             deactivate
           else
@@ -219,8 +219,9 @@ jobs:
         with:
           os: ${{ runner.os }}
 
-      - name: Run full pytest with coverage
-        run: pytest -vv -rsx -n auto --dist loadscope --cov=neuroconv --cov-report xml:./codecov.xml
+      - name: Run full pytest
+        # Ternary operator: only the job that uploads to Codecov below pays for coverage instrumentation
+        run: pytest -vv -rsx -n logical --dist loadscope ${{ (matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest') && '--cov=neuroconv --cov-report xml:./codecov.xml' || '' }}
       - name: Upload full coverage to Codecov
         if: ${{ matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest' }}
         uses: codecov/codecov-action@v4
