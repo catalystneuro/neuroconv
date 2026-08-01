@@ -57,6 +57,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
         download_plugin: bool = True,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
     ) -> None:
         """
         Load and prepare data for MaxOne.
@@ -75,6 +76,9 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
         verbose : boolean, default: True
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"maxone_recording"``.
             The key of this ElectricalSeries in the metadata dictionary.
         """
         # Handle deprecated positional arguments
@@ -122,12 +126,36 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
         if download_plugin:
             self.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+        if metadata_key is None:
+            self.metadata_key = "maxone_recording"
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         maxwell_version = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["maxwell_version"]
-        metadata["Ecephys"]["Device"][0].update(description=f"Recorded using Maxwell version '{maxwell_version}'.")
+        description = f"Recorded using Maxwell version '{maxwell_version}'."
+
+        if use_new_metadata_format:
+            from ....tools.spikeinterface.spikeinterface import _get_group_name
+
+            # The old format only rewrote the description of the pipeline's placeholder device, which left
+            # the device itself unnamed. Here the recording system is named after the format it is, with
+            # the Maxwell software version the file records as its description.
+            device_metadata_key = "maxone_device"
+            metadata["Devices"] = {
+                device_metadata_key: dict(name="MaxOne", description=description, manufacturer="MaxWell Biosystems")
+            }
+
+            channel_group_names = set(_get_group_name(recording=self.recording_extractor).tolist())
+            metadata["Ecephys"]["ElectrodeGroups"] = {
+                group_name: dict(name=group_name, device_metadata_key=device_metadata_key)
+                for group_name in channel_group_names
+            }
+
+            return metadata
+
+        metadata["Ecephys"]["Device"][0].update(description=description)
 
         return metadata
