@@ -26,7 +26,7 @@ from ....utils import (
     get_base_schema,
     get_json_schema_from_method_signature,
 )
-from ....utils.str_utils import to_camel_case, to_snake_case
+from ....utils.str_utils import to_camel_case
 
 
 class MiniscopeConverter(ConverterPipe):
@@ -311,7 +311,7 @@ class MiniscopeConverter(ConverterPipe):
                         metadata_key=series_metadata_key,
                         # The interface derives this from the device its config names, so every
                         # recording of one Miniscope lands on the same registry entry.
-                        device_metadata_key=to_snake_case(device_name),
+                        device_metadata_key=interface.device_metadata_key,
                         imaging_plane_metadata_key=f"imaging_plane_{device_name}",
                     )
 
@@ -593,6 +593,13 @@ class MiniscopeConverter(ConverterPipe):
             if region_of_interest is not None:
                 video_metadata["dimension"] = [region_of_interest["width"], region_of_interest["height"]]
 
+    def _device_metadata_keys(self) -> dict[str, str]:
+        """Map each declared Miniscope to the ``metadata["Devices"]`` key its interfaces registered it under."""
+        return {
+            interface_info["device_name"]: interface_info["device_metadata_key"]
+            for interface_info in self._imaging_interfaces.values()
+        }
+
     def _get_ophys_metadata(self) -> DeepDict:
         """Assemble the dict-based metadata of the User Config mode.
 
@@ -618,8 +625,7 @@ class MiniscopeConverter(ConverterPipe):
 
         # The registry entries the interfaces contributed are keyed per device already; only their NWB
         # names are converter business, since a device name is shared across the whole conversion.
-        for device_name in self._device_names:
-            device_metadata_key = to_snake_case(device_name)
+        for device_name, device_metadata_key in self._device_metadata_keys().items():
             if device_metadata_key in metadata["Devices"]:
                 metadata["Devices"][device_metadata_key]["name"] = self._device_names_camel_case[device_name]
 
@@ -640,7 +646,7 @@ class MiniscopeConverter(ConverterPipe):
                 **placeholder_imaging_plane,
                 "name": f"ImagingPlane{device_name_camel}",
                 "description": f"Imaging plane for {device_name} Miniscope device.",
-                "device_metadata_key": to_snake_case(device_name),
+                "device_metadata_key": self._device_metadata_keys()[device_name],
                 "imaging_rate": imaging_rates.get(device_name),
             }
         metadata["Ophys"]["ImagingPlanes"] = imaging_planes
@@ -697,7 +703,7 @@ class MiniscopeConverter(ConverterPipe):
                 for setting_name, value in first_config.items()
                 if setting_name not in varying_setting_names
             }
-            device_metadata_key = to_snake_case(device_name)
+            device_metadata_key = self._device_metadata_keys()[device_name]
             device_metadata = metadata["Devices"][device_metadata_key]
             shared_device_metadata = _config_to_miniscope_device_metadata(
                 miniscope_config={**shared_config, "name": device_name}
