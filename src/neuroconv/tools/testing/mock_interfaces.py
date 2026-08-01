@@ -554,7 +554,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         # Minimal meta so `get_metadata` works similarly to real NIDQ header
         self.meta = {"acqMnMaXaDw": "0,0,8,1", "fileCreateTime": "2020-11-03T10:35:10", "niDev1ProductName": "PCI-6259"}
         self.verbose = None
-        self.metadata_key = "SpikeGLXNIDQ"
+        self.metadata_key = "spikeglx_nidq"
         self._analog_channel_groups = {
             "nidq_analog": {
                 "channels": list(channel_ids),
@@ -1328,7 +1328,7 @@ class MockIcephysInterface(BaseDataInterface):
         inter_sweep_interval: float = 0.0,
         starting_time: float = 0.0,
         sequence: str = "run",
-        stimulus_type: str = "mock protocol",
+        stimulus_type: str | None = "mock protocol",
         repetition: str | None = None,
         condition: str | None = None,
         metadata_key: str = "mock",
@@ -1357,8 +1357,9 @@ class MockIcephysInterface(BaseDataInterface):
         sequence : str, default: "run"
             Run identity written to the ``sequence`` column of every row, the label that groups the rows into
             one sequential recording.
-        stimulus_type : str, default: "mock protocol"
-            Value of the ``stimulus_type`` column, carried up to the sequential recording when aggregated.
+        stimulus_type : str, optional, default: "mock protocol"
+            Value of the ``stimulus_type`` column, carried up to the sequential recording when aggregated. Pass
+            ``None`` to omit the column, as an interface whose format describes no stimulus does.
         repetition : str, optional
             Label grouping this run's sequential recording with others into a ``Repetitions`` entry. Written as a
             column only when given, as a real interface does.
@@ -1487,9 +1488,11 @@ class MockIcephysInterface(BaseDataInterface):
         response_series = _RESPONSE_CLASS[self.mode](**series_kwargs)
         nwbfile.add_acquisition(response_series)
 
-        # The run-level columns, denormalized onto every row exactly as a real interface writes them: the two
-        # always-present ones, plus the optional grouping levels only when the caller asked for them.
-        columns = {"sequence": self.sequence, "stimulus_type": self.stimulus_type}
+        # The run-level columns, denormalized onto every row exactly as a real interface writes them: the
+        # always-present run identity, plus the optional ones only when the caller asked for them.
+        columns = {"sequence": self.sequence}
+        if self.stimulus_type is not None:
+            columns["stimulus_type"] = self.stimulus_type
         if self.repetition is not None:
             columns["repetition"] = self.repetition
         if self.condition is not None:

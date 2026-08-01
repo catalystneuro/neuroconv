@@ -438,13 +438,18 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         # The microscope is folder-level, so it is registered under its own key rather than the
-        # per-interface ``metadata_key`` that indexes the imaging plane and series.
-        device_metadata_key = "bruker_device"
+        # per-interface ``metadata_key`` that indexes the imaging plane and series. The key carries the
+        # system the XML names, so two folders from two Bruker systems cannot merge into one entry.
+        device_metadata_key = "bruker_device_4886"
         assert metadata_key == self.expected_metadata_key
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 2, 20, 15, 58, 25)
 
         expected_devices = {
-            device_metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
+            device_metadata_key: {
+                "name": "BrukerFluorescenceMicroscope",
+                "serial_number": "E8D0-2F5E-B967-36D1-3CA0-8C25-681B-CEF3",
+                "description": "Version 5.6.64.400. NORTHWESTERN",
+            },
         }
         # Only what the Bruker .xml reports. excitation_lambda, indicator, location, optical_channel
         # and the series unit are absent on purpose; the write path fills them from the placeholder
@@ -511,12 +516,16 @@ class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixi
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
-        device_metadata_key = "bruker_device"
+        device_metadata_key = "bruker_device_4886"
         assert metadata_key == self.expected_metadata_key
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 11, 3, 11, 20, 34)
 
         expected_devices = {
-            device_metadata_key: {"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"},
+            device_metadata_key: {
+                "name": "BrukerFluorescenceMicroscope",
+                "serial_number": "E8D0-2F5E-B967-36D1-3CA0-8C25-681B-CEF3",
+                "description": "Version 5.6.64.400. NORTHWESTERN",
+            },
         }
         # Source-known fields only; see the single-plane case for why the optics fields are absent.
         expected_imaging_plane = {

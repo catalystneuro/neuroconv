@@ -62,7 +62,7 @@ class EDFAnalogInterface(BaseDataInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         channels_to_include: list[str] | None = None,
         verbose: bool = False,
-        metadata_key: str = "analog_edf_metadata_key",
+        metadata_key: str = "edf_analog",
     ):
         """
         Load and prepare analog data from EDF format.
@@ -75,8 +75,9 @@ class EDFAnalogInterface(BaseDataInterface):
             Specific channel IDs to include.
         verbose : bool, default: False
             Verbose output
-        metadata_key : str, default: "analog_edf_metadata_key"
-            Key for the TimeSeries metadata in the metadata dictionary.
+        metadata_key : str, default: "edf_analog"
+            Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry;
+            the written object's name is the entry's ``name`` field.
         """
         # Handle deprecated positional arguments
         if args:
