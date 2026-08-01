@@ -50,7 +50,7 @@ def _write_minimal_config(tmp_path, **fields):
     """Write a minimal VAME config.yaml with the given fields and return its path."""
     config = {"project_name": "unit_test_project", **fields}
     config_path = tmp_path / "config.yaml"
-    config_path.write_text(yaml.dump(config))
+    config_path.write_text(yaml.dump(config), encoding="utf-8")
     return config_path
 
 
