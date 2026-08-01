@@ -314,9 +314,10 @@ class TestMiniscopeConverterBehaviorCamera:
         # 'manufacturer' is required by NWB and the DAQ does not record it
         assert image_series.device.model.manufacturer == "unknown"
 
-        # Timestamps come from the camera's own timeStamps.csv. The first frame is acquired before the
-        # recording start marker, so it is zeroed rather than shifting every later frame.
-        expected_timestamps = [0.0, 0.008, 0.029, 0.049, 0.07, 0.093]
+        # Timestamps come from the camera's own timeStamps.csv, as recorded. The first frame is
+        # negative because the camera free-runs and that frame was exposed before the recording start
+        # marker, which is what the format says and so what is written.
+        expected_timestamps = [-0.015, 0.008, 0.029, 0.049, 0.07, 0.093]
         assert image_series.timestamps[:] == pytest.approx(expected_timestamps)
 
 
