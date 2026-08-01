@@ -87,9 +87,10 @@ def _condition_signal(trace: np.ndarray, signal_conditioning: dict | None = None
 
         - ``{"bits": [i, ...]}`` selects bit positions out of a packed integer word. One position gives
           a ``0``/``1`` line; several are read together, least-significant first, as one coded value.
-        - ``{"thresholds": [c, ...]}`` cuts at the values you supply, giving a band index: one cut is
-          binary, several give ``0 .. len(thresholds)``. Bands are half-open, so a sample exactly on a
-          cut belongs to the band above it.
+        - ``{"thresholds": [c]}`` cuts at the value you supply. Bands are half-open, so a sample
+          exactly on the cut belongs above it. Several cut points give a band index in
+          ``0 .. len(thresholds)``, which this function computes but the configuration grammar defers,
+          since no reading is worth having on it.
         - ``{"binarize": "midpoint"}`` cuts at a value computed from the data, on the same rule.
 
         If None (default), the trace is returned unchanged, which asserts it is already discrete-valued.
@@ -165,6 +166,10 @@ def _cut_at_thresholds(trace: np.ndarray, thresholds) -> np.ndarray:
     It only ever shows on a discrete-valued signal, where naming a level as the cut makes every sample
     at that level a tie. On an Inscopix-style line at 48 and 64, ``thresholds: [48]`` therefore puts
     every sample high and finds nothing, while ``[64]`` or any value between the levels reads it.
+
+    Several cut points are implemented here and **deferred by the grammar**, which admits one per spec.
+    Kept general because the band index is what makes the one-cut-per-distinction fan-out provably
+    lossless, and because allowing several later is then a validator change rather than a rewrite.
     """
     thresholds = np.asarray(list(thresholds), dtype="float64")
     if thresholds.size == 0:
@@ -223,11 +228,11 @@ def _detect_events(
         Which transitions become events. ``"rising"`` and ``"falling"`` give a point event at each edge.
         ``"high_period"`` pairs each rising edge with the next falling one, and ``"low_period"`` the
         reverse, giving a durative event. Those four need a **line**: "which direction" and "how long
-        until the opposite edge" are only defined on a two-valued signal. ``"value_change"`` is what a
-        multi-valued signal admits instead, meaning "a transition of this signal is an event of this
-        type"; it carries no payload, because nothing distinguishes its transitions. To distinguish
-        them, cut lines and give each its own spec, which is lossless: for ``thresholds: [c1, c2, c3]``
-        the band at any instant is how many cut points the signal has currently reached.
+        until the opposite edge" are only defined on a two-valued signal. ``"value_change"`` means "a
+        transition of this signal is an event of this type", pooling both directions into one event
+        type and carrying no payload, so it is the only reading a multi-valued signal admits. To tell
+        transitions apart, cut lines instead and give each its own spec, which is lossless: the band at
+        any instant is how many of the cuts are currently reached.
 
     Returns
     -------

@@ -138,20 +138,20 @@ class TestReadings:
             )
             assert interface._get_events_data_dict()["word"].durations is not None
 
-    def test_value_change_is_what_a_multi_valued_signal_admits(self):
-        """The four edge readings need a line; value_change is the one a banded trace accepts.
+    def test_value_change_pools_both_edges_into_one_event_type(self):
+        """The fifth reading: every transition is the same event type, in both directions.
 
-        It carries no payload: every transition is the same event type. Telling them apart is a
-        conditioning job, covered by the fan-out test below.
+        It carries no payload, so on a line it is rising and falling in one table rather than two.
+        Telling transitions apart is a conditioning job, covered by the fan-out test below.
         """
         interface = MockSignalEncodedEventsInterface(
-            analog_waveforms={"stim_level": "levels"},
-            detection_configuration={
-                "stim_level": [{"signal_conditioning": {"thresholds": [1.0, 2.0, 3.0]}, "detection": "value_change"}]
-            },
+            digital_line_waveforms={0: "pulses"},
+            num_events=3,
+            detection_configuration={"word": [{"signal_conditioning": {"bits": [0]}, "detection": "value_change"}]},
         )
 
-        events = interface._get_events_data_dict()["stim_level"]
+        events = interface._get_events_data_dict()["word"]
+        assert events.timestamps.size == 6  # three pulses, both edges of each
         assert events.payload == {}
         assert events.durations is None  # a point reading: a transition has no extent
 
@@ -302,21 +302,22 @@ class TestAnalogSignals:
         with pytest.raises(ValueError, match="Unknown analog waveform kind"):
             MockSignalEncodedEventsInterface(analog_waveforms={"photodiode": "sawtooth"})
 
+    def test_cutting_a_trace_into_more_than_two_bands_is_deferred(self):
+        """Every cut in the vocabulary now yields a line, so the edge readings' precondition holds.
 
-class TestReadTimeBackstop:
-    """The one check that cannot be made structurally, because it depends on the cut's width."""
+        A band index has no reading worth having: it is never written, the four edge readings refuse
+        it, and ``value_change`` on it says the band changed without saying what to. One cut point per
+        spec expresses the same thing losslessly, which is the fan-out above.
 
-    def test_a_multi_band_cut_read_as_an_edge_raises_at_read_time(self):
-        """The analog twin: three cut points give four bands, which no edge reading can read."""
-        interface = MockSignalEncodedEventsInterface(
-            analog_waveforms={"photodiode": "levels"},
-            detection_configuration={
-                "photodiode": [{"signal_conditioning": {"thresholds": [1.0, 2.0, 3.0]}, "detection": "rising"}]
-            },
-        )
-
-        with pytest.raises(ValueError, match="needs a two-valued signal"):
-            interface._get_events_data_dict()
+        Deferred rather than removed, and structurally, so it never reaches the read-time backstop.
+        """
+        with pytest.raises(ValueError, match="more than two bands"):
+            MockSignalEncodedEventsInterface(
+                analog_waveforms={"photodiode": "levels"},
+                detection_configuration={
+                    "photodiode": [{"signal_conditioning": {"thresholds": [1.0, 2.0, 3.0]}, "detection": "rising"}]
+                },
+            )
 
 
 class TestConfigurationErrors:

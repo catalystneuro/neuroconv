@@ -51,8 +51,8 @@ def _validate_detection_configuration(detection_configuration: dict, available_s
     ValueError
         If the configuration is empty, names a signal not in ``available_signals``, gives a signal
         something other than a non-empty list, or holds a malformed spec: an unrecognized key, no
-        ``detection``, more than one cut, a cut the signal's kind does not admit, or a bit position the
-        word does not carry. Also if the configuration's identifiers do not resolve: two event types
+        ``detection``, more than one cut, a cut the signal's kind does not admit, a bit position the
+        word does not carry, or a cut into more than two bands. Also if the identifiers do not resolve: two event types
         reaching the same identifier (rule 4) or a fan-out whose components do not stringify into a
         stable name (rule 5).
     """
@@ -179,6 +179,19 @@ def _validate_spec(
         raise ValueError(
             f"signal_conditioning for '{signal_source_id}' sets 'thresholds', but that signal is already "
             "a single digital line. Omit signal_conditioning to read its own values."
+        )
+    if "thresholds" in conditioning and len(list(conditioning["thresholds"])) != 1:
+        # Cutting into more than two bands is deferred, for the same shape of reason multi-bit 'bits' is:
+        # the multi-valued result has no reading that says what it is worth. The band index is never
+        # written anywhere, so the four edge readings refuse it and only 'value_change' accepts it, which
+        # reports that the band changed without saying what to. One cut point per spec keeps every cut in
+        # the vocabulary agreeing on one postcondition, a two-valued signal, which is what the edge
+        # readings need. Deferring is the reversible direction: allowing several later invalidates nothing.
+        raise ValueError(
+            f"signal_conditioning for '{signal_source_id}' sets 'thresholds' "
+            f"{list(conditioning['thresholds'])}, but cutting a trace into more than two bands is not "
+            "supported yet. Give one cut point per spec and one spec per distinction you care about, "
+            "which is lossless: the band at any instant is how many of them are currently reached."
         )
     if kind == "word" and cuts != ["bits"]:
         # The other half of the word's own rule, and the same argument that rejects omission on one: a
