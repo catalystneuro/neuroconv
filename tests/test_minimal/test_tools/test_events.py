@@ -75,6 +75,19 @@ class TestValidateDetectionConfiguration:
         """``_detect_events`` owns the reading vocabulary and raises on an invalid one, so this does not."""
         validate_detection_configuration({"DI/O-1": [{"detection": "not_a_reading"}]}, AVAILABLE_SIGNALS)
 
+    def test_binarize_on_a_line_is_deliberately_still_allowed(self):
+        """The one exception to "each kind admits one cut", kept because the grammar names the case.
+
+        ``thresholds`` on a line is refused as redundant, but a line can be conceptually two-valued and
+        numerically not: a stray sample between the levels makes the read-time backstop raise, and
+        ``{"binarize": "midpoint"}`` is the documented one-step fix. Refusing it here for symmetry would
+        close off the escape hatch and leave that signal unconvertible.
+        """
+        validate_detection_configuration(
+            {"DI/O-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]},
+            {"DI/O-1": {"kind": "line"}},
+        )
+
     def test_a_word_that_declares_no_inventory_admits_any_bit(self):
         """Declared means checked, absent means admitted, the same way an absent ``kind`` is admitted.
 

@@ -350,6 +350,21 @@ class TestConfigurationErrors:
                 }
             )
 
+    def test_cutting_a_word_at_a_magnitude_raises(self):
+        """A word admits exactly one route, ``bits``, and both other cuts read its pattern as a number.
+
+        The two live checks pair up: omitting conditioning on a word is rejected because a word is
+        several signals, and cutting one is rejected for the same reason. Values 0, 1, 2, 3 on a
+        two-line word are four combinations of two lines, so a threshold at 1.5 asks which of them are
+        "large", which is not a question about the experiment.
+        """
+        for conditioning in ({"thresholds": [1.5]}, {"binarize": "midpoint"}):
+            with pytest.raises(ValueError, match="cuts a packed word"):
+                MockSignalEncodedEventsInterface(
+                    digital_line_waveforms={0: "pulses", 1: "pulses"},
+                    detection_configuration={"word": [{"signal_conditioning": conditioning, "detection": "rising"}]},
+                )
+
     def test_reading_several_bits_together_is_deferred(self):
         """The coded-word reading needs a strobe guard to know when the word is settled, and has none.
 

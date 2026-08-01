@@ -179,6 +179,18 @@ def _validate_spec(
             f"signal_conditioning for '{signal_source_id}' sets 'thresholds', but that signal is already "
             "a single digital line. Omit signal_conditioning to read its own values."
         )
+    if kind == "word" and cuts != ["bits"]:
+        # The other half of the word's own rule, and the same argument that rejects omission on one: a
+        # word is several signals until the caller says which bits form one value, so cutting its integer
+        # at a magnitude reads a bit pattern as a number. Values 0, 1, 2, 3 on a two-line word are four
+        # combinations of two independent lines, not four levels of one signal, and a threshold at 1.5
+        # asks which of them are "large". 'binarize' is the same mistake with the cut derived instead of
+        # given. Without this a word reached its cuts through a route omission was closed off from.
+        raise ValueError(
+            f"signal_conditioning for '{signal_source_id}' cuts a packed word with '{cuts[0]}', which "
+            "reads its bit pattern as a magnitude. A word is several signals until you say which bits "
+            "form one value, so name the line you want with 'bits'."
+        )
 
 
 def _validate_omission(signal_source_id: str, kind: str | None) -> None:
