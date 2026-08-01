@@ -5,12 +5,16 @@
   "description": "Base schema for the metafile",
   "version": "0.1.0",
   "type": "object",
-  "required": ["NWBFile"],
+  "required": [
+    "NWBFile"
+  ],
   "properties": {
     "NWBFile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["session_start_time"],
+      "required": [
+        "session_start_time"
+      ],
       "properties": {
         "keywords": {
           "description": "Terms to search over",
@@ -117,7 +121,10 @@
         },
         "age__reference": {
           "type": "string",
-          "enum": ["birth", "gestational"],
+          "enum": [
+            "birth",
+            "gestational"
+          ],
           "description": "Age is with reference to this event. Can be 'birth' or 'gestational'.",
           "default": "birth"
         },
@@ -161,6 +168,87 @@
         "strain": {
           "type": "string",
           "description": "The strain of the subject, e.g., 'C57BL/6J'"
+        }
+      }
+    },
+    "Devices": {
+      "type": [
+        "object",
+        "array"
+      ],
+      "additionalProperties": {
+        "$ref": "#/definitions/DeviceRegistryEntry"
+      },
+      "items": {
+        "$ref": "#/definitions/DeviceRegistryEntry"
+      }
+    },
+    "DeviceModels": {
+      "type": [
+        "object",
+        "array"
+      ],
+      "additionalProperties": {
+        "$ref": "#/definitions/DeviceModelRegistryEntry"
+      },
+      "items": {
+        "$ref": "#/definitions/DeviceModelRegistryEntry"
+      }
+    }
+  },
+  "definitions": {
+    "DeviceRegistryEntry": {
+      "title": "DeviceRegistryEntry",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[^/]*$"
+        },
+        "description": {
+          "type": "string"
+        },
+        "manufacturer": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "Device class or extension type to build."
+        },
+        "device_model_metadata_key": {
+          "type": "string",
+          "description": "Key of this device's model in metadata['DeviceModels']."
+        }
+      }
+    },
+    "DeviceModelRegistryEntry": {
+      "title": "DeviceModelRegistryEntry",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[^/]*$"
+        },
+        "description": {
+          "type": "string"
+        },
+        "manufacturer": {
+          "type": "string"
+        },
+        "model_number": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "DeviceModel class or extension type to build."
         }
       }
     }

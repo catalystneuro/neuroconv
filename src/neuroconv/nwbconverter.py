@@ -31,6 +31,7 @@ from .utils import (
 )
 from .utils.dict import DeepDict
 from .utils.json_schema import (
+    _metadata_uses_dict_format,
     _NWBConversionOptionsEncoder,
     _NWBSourceDataEncoder,
     validate_metadata,
@@ -153,7 +154,14 @@ class NWBConverter:
 
     def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
-        metadata_schema = self.get_metadata_schema()
+        # See ``BaseDataInterface.validate_metadata``: the merged interface schemas describe the old
+        # list-based format, so dict-based metadata is validated against the base schema until the
+        # modalities declare their dict shape.
+        if _metadata_uses_dict_format(metadata):
+            metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
+        else:
+            metadata_schema = self.get_metadata_schema()
+
         if append_mode:
             # Eliminate required from NWBFile
             nwbfile_schema = metadata_schema["properties"]["NWBFile"]

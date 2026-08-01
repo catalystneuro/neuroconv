@@ -1003,7 +1003,10 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             metadata["NWBFile"]["session_start_time"] = session_start_time
             metadata["Ophys"] = {
                 "PlaneSegmentations": {
-                    self.metadata_key: {"description": "Segmentation data from mock generator."},
+                    self.metadata_key: {
+                        "name": "PlaneSegmentation",
+                        "description": "Segmentation data from mock generator.",
+                    },
                 },
             }
             return metadata

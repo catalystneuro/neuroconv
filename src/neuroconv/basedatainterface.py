@@ -26,7 +26,11 @@ from .utils import (
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import _NWBSourceDataEncoder, validate_metadata
+from .utils.json_schema import (
+    _metadata_uses_dict_format,
+    _NWBSourceDataEncoder,
+    validate_metadata,
+)
 
 
 class BaseDataInterface(ABC):
@@ -105,7 +109,15 @@ class BaseDataInterface(ABC):
 
     def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
-        metdata_schema = self.get_metadata_schema()
+        # The modality schemas returned by ``get_metadata_schema`` still describe the old list-based
+        # format, which rejects dict-based metadata outright ("'Device' is a required property"). Until
+        # each modality declares its dict shape, dict-based metadata is validated against the base schema
+        # instead, so it can at least reach ``run_conversion``. List-based metadata is unaffected.
+        if _metadata_uses_dict_format(metadata):
+            metdata_schema = BaseDataInterface.get_metadata_schema(self)
+        else:
+            metdata_schema = self.get_metadata_schema()
+
         if append_mode:
             # Eliminate required from NWBFile
             nwbfile_schema = metdata_schema["properties"]["NWBFile"]
