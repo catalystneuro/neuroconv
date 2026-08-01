@@ -357,3 +357,63 @@ class TestConfigurationErrors:
     def test_an_unknown_waveform_kind_raises(self):
         with pytest.raises(ValueError, match="Unknown waveform kind"):
             MockSignalEncodedEventsInterface(digital_line_waveforms={0: "flat_high"})
+
+
+class TestBitsWithinTheDeclaredInventory:
+    """A spec may only name a bit position the word actually carries.
+
+    The check the word dialect needs and no other cut does. It is structural, taken from the format's
+    declaration, because the data cannot answer it: a bit that was never acquired is zero at every
+    sample, which is bit-for-bit what an acquired line that never fired looks like, and that second
+    case must convert to a zero-row table rather than fail. So the two are separable only before the
+    samples are read, and only by what the header declared.
+    """
+
+    def test_a_bit_the_word_does_not_carry_raises(self):
+        with pytest.raises(ValueError, match="does not carry"):
+            MockSignalEncodedEventsInterface(
+                digital_line_waveforms={0: "pulses", 3: "pulses"},
+                detection_configuration={"word": [{"signal_conditioning": {"bits": [7]}, "detection": "rising"}]},
+            )
+
+    def test_a_bit_inside_a_gap_in_the_inventory_raises(self):
+        """The case a real fixture cannot state: every ``.nidq.meta`` anyone has declares ``0:7``.
+
+        A contiguous inventory only ever exercises "past the end", so a check written against one
+        would pass just as well if it compared against ``max(bits)`` instead of membership.
+        """
+        with pytest.raises(ValueError, match=r"bit position\(s\) \[1\]"):
+            MockSignalEncodedEventsInterface(
+                digital_line_waveforms={0: "pulses", 3: "pulses"},
+                detection_configuration={"word": [{"signal_conditioning": {"bits": [1]}, "detection": "rising"}]},
+            )
+
+    def test_the_message_lists_the_positions_the_word_does_carry(self):
+        """What the caller needs to fix it, which for a real word is its ``niXDChans1`` entries."""
+        with pytest.raises(ValueError, match=r"bit positions are \[0, 3\]"):
+            MockSignalEncodedEventsInterface(
+                digital_line_waveforms={0: "pulses", 3: "pulses"},
+                detection_configuration={"word": [{"signal_conditioning": {"bits": [1]}, "detection": "rising"}]},
+            )
+
+    def test_a_declared_bit_across_the_gap_is_read_normally(self):
+        """The other side of the same test: membership, not a range, so bit 3 is perfectly addressable."""
+        interface = MockSignalEncodedEventsInterface(
+            digital_line_waveforms={0: "pulses", 3: "pulses"},
+            detection_configuration={"word": [{"signal_conditioning": {"bits": [3]}, "detection": "high_period"}]},
+        )
+
+        assert interface._get_events_data_dict()["word"].timestamps.size == 4
+
+    def test_a_declared_line_that_never_fired_still_converts(self):
+        """The case this check must not swallow: recorded, never toggled, so a faithful zero-row table.
+
+        Its output is identical to the rejected one above, which is the whole reason the rejection has
+        to happen at construction and from the declaration rather than from the samples.
+        """
+        interface = MockSignalEncodedEventsInterface(
+            digital_line_waveforms={0: "pulses", 3: "idle"},
+            detection_configuration={"word": [{"signal_conditioning": {"bits": [3]}, "detection": "high_period"}]},
+        )
+
+        assert interface._get_events_data_dict()["word"].timestamps.size == 0

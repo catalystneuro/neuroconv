@@ -41,17 +41,19 @@ def validate_detection_configuration(detection_configuration: dict, available_si
         The signals discovered in the file, keyed by ``signal_source_id``. Each value is a descriptor
         whose ``kind`` is ``"line"`` (one digital line), ``"word"`` (a packed integer), ``"analog"`` (a
         continuous trace), or absent when the format records no kind. The kind decides which cut is
-        legal and whether ``signal_conditioning`` may be omitted; everything else in the descriptor is
-        the interface's own addressing and stays opaque here.
+        legal and whether ``signal_conditioning`` may be omitted. A word may additionally declare
+        ``bits``, the line positions it carries, which is checked against the positions a spec asks
+        for. Everything else in the descriptor is the interface's own addressing and stays opaque here.
 
     Raises
     ------
     ValueError
         If the configuration is empty, names a signal not in ``available_signals``, gives a signal
         something other than a non-empty list, or holds a malformed spec: an unrecognized key, no
-        ``detection``, more than one cut, or a cut the signal's kind does not admit. Also if the
-        configuration's identifiers do not resolve: two event types reaching the same identifier (rule 4)
-        or a fan-out whose components do not stringify into a stable name (rule 5).
+        ``detection``, more than one cut, a cut the signal's kind does not admit, or a bit position the
+        word does not carry. Also if the configuration's identifiers do not resolve: two event types
+        reaching the same identifier (rule 4) or a fan-out whose components do not stringify into a
+        stable name (rule 5).
     """
     if not detection_configuration:
         raise ValueError(
@@ -75,16 +77,22 @@ def validate_detection_configuration(detection_configuration: dict, available_si
                 f"detection_configuration entry for '{signal_source_id}' is an empty list. Drop the "
                 "signal to skip it, or give it at least one detection spec."
             )
-        kind = available_signals[signal_source_id].get("kind")
+        descriptor = available_signals[signal_source_id]
+        # Read out the declared fields rather than handing the descriptor over, so what this function
+        # sees of an interface's addressing stays exactly these two and the rest stays opaque.
+        kind = descriptor.get("kind")
+        available_bits = descriptor.get("bits")
         for spec in specs:
-            _validate_spec(spec=spec, signal_source_id=signal_source_id, kind=kind)
+            _validate_spec(spec=spec, signal_source_id=signal_source_id, kind=kind, available_bits=available_bits)
     # Rules 4 and 5 are properties of the *derived* identifiers rather than of the configuration text, so
     # the only way to check them is to derive. Resolving is what raises them, and it is free inside the
     # loop that computes the identifiers, which is why they live there rather than being restated here.
     _resolve_event_types(detection_configuration)
 
 
-def _validate_spec(spec: dict, signal_source_id: str, kind: str | None) -> None:
+def _validate_spec(
+    spec: dict, signal_source_id: str, kind: str | None, available_bits: list[int] | None = None
+) -> None:
     """Validate one detection spec, raising ``ValueError`` naming the stage that rejected it."""
     unknown_keys = set(spec) - set(_SPEC_KEYS)
     if unknown_keys:
@@ -140,6 +148,22 @@ def _validate_spec(spec: dict, signal_source_id: str, kind: str | None) -> None:
             "debounce guard to know when the word is settled, and the two will land together. Name one "
             "bit per spec to read each line on its own."
         )
+    if "bits" in conditioning and available_bits is not None:
+        # Structural, from the format's own declaration, and it costs no data read. The failure it
+        # prevents is silent: an unacquired bit is zero at every sample, so it reads as a line that
+        # never toggled and writes a zero-row table. That is exactly what an acquired line that never
+        # fired writes, and the design requires *that* to succeed, so the two cannot be told apart
+        # afterwards. Only the header separates them, which is why this is checked here and never from
+        # the samples. A word whose format declares no inventory omits 'bits' and gets no check, the
+        # same way a signal whose kind is unknown is admitted.
+        absent_bits = [bit for bit in conditioning["bits"] if bit not in available_bits]
+        if absent_bits:
+            raise ValueError(
+                f"signal_conditioning for '{signal_source_id}' names bit position(s) {absent_bits}, "
+                f"which this recording does not carry. Its bit positions are {sorted(available_bits)}. "
+                "An unrecorded bit is zero at every sample, so it would write an empty table rather "
+                "than fail."
+            )
     if "thresholds" in conditioning and kind == "line":
         raise ValueError(
             f"signal_conditioning for '{signal_source_id}' sets 'thresholds', but that signal is already "

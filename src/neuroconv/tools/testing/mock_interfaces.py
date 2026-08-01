@@ -476,8 +476,11 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         ----------
         digital_line_waveforms : dict, optional
             The synthetic word: ``{bit position: waveform kind}``, or ``{bit position: (line name,
-            waveform kind)}`` to name the line. The keys are the recorded bit inventory and need not be
-            contiguous, so a configuration naming an absent bit can be exercised. A named line becomes
+            waveform kind)}`` to name the line. The keys are the recorded bit inventory, reaching the
+            validator as the word descriptor's ``bits``, and they need not be contiguous, so a
+            configuration naming a bit the word does not carry can be exercised in the gap as well as
+            past the end. No real fixture can state the gap case, since every ``.nidq.meta`` anyone has
+            declares ``niXDChans1=0:7``. A named line becomes
             that event type's identifier under the default configuration (the ``event_name`` route,
             rule 3); an unnamed one falls to the derived form, ``word_bit0_high_period``. Naming is what
             keeps the default legible, at the price of the default no longer exercising derivation, so a
@@ -558,8 +561,12 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         self.metadata_key = metadata_key or "mock_signal_encoded_events"
 
         # Discovery, faked: one packed word, whose kind is what makes bit selection legal on it and
-        # omitting conditioning illegal. A real interface settles this from its file's structure.
-        self._available_signals = {self.SIGNAL_SOURCE_ID: {"kind": "word"}}
+        # omitting conditioning illegal, and whose `bits` are the positions it carries. A real interface
+        # settles both from its file's structure: SpikeGLX declares the inventory as niXDChans1, and the
+        # keys of digital_line_waveforms stand in for that declaration here.
+        self._available_signals = {
+            self.SIGNAL_SOURCE_ID: {"kind": "word", "bits": sorted(self._digital_line_waveforms)}
+        }
         self._available_signals.update({name: {"kind": "analog"} for name in self._analog_waveforms})
         if detection_configuration is None:
             detection_configuration = self._default_detection_configuration()
@@ -581,7 +588,9 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # Analog signals are absent from this: `thresholds` has no defensible default, and inventing one
         # fabricates events.
         specs = []
-        for bit in sorted(self._digital_line_waveforms):
+        # Fanned out over the word descriptor's declared inventory rather than over the waveforms
+        # directly, which is the same loop a real interface runs over the positions its header declares.
+        for bit in self._available_signals[self.SIGNAL_SOURCE_ID]["bits"]:
             spec = {"signal_conditioning": {"bits": [bit]}, "detection": "high_period"}
             line_name = self._digital_line_names.get(bit)
             if line_name is not None:

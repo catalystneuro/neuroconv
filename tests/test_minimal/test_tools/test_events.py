@@ -75,6 +75,18 @@ class TestValidateDetectionConfiguration:
         """``_detect_events`` owns the reading vocabulary and raises on an invalid one, so this does not."""
         validate_detection_configuration({"DI/O-1": [{"detection": "not_a_reading"}]}, AVAILABLE_SIGNALS)
 
+    def test_a_word_that_declares_no_inventory_admits_any_bit(self):
+        """Declared means checked, absent means admitted, the same way an absent ``kind`` is admitted.
+
+        Only reachable here: every interface with a word declares its positions, so a descriptor that
+        omits ``bits`` is the shape a future format with no such declaration would take. Optional is
+        the point, since the inventory is a header fact and not every header states one.
+        """
+        validate_detection_configuration(
+            {"XD0": [{"signal_conditioning": {"bits": [11]}, "detection": "rising"}]},
+            {"XD0": {"kind": "word"}},
+        )
+
 
 class TestResolveDetectionPlan:
     """Identifier derivation: one spec keeps the signal's handle, several fan out."""
