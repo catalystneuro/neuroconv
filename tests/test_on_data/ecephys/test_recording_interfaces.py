@@ -100,6 +100,29 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axona" / "axona_raw.bin"))
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "axona_recording"
+        expected_devices = {
+            "axona_device": dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
+        }
+        # One group per tetrode, each linked to the single Axona device.
+        expected_electrode_groups = {
+            group_name: dict(name=group_name, device_metadata_key="axona_device") for group_name in ("1", "2", "3", "4")
+        }
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        # Old list-based format: the Axona device lives in the Ecephys.Device list and every electrode
+        # group points at it by name.
+        assert metadata["Ecephys"]["Device"] == [
+            dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
+        ]
+        for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
+            assert electrode_group["device"] == "Axona"
+
 
 class TestBiocamRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = BiocamRecordingInterface
@@ -582,6 +605,20 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
             "name": "AcqSystem1 DigitalLynxSX",
             "description": "Cheetah 6.4.1.dev0",
         }
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "neuralynx_recording"
+        # The acquisition system and the Cheetah version come from the header; the description is the
+        # application name and version the file was written with.
+        expected_devices = {"neuralynx_device": dict(name="AcqSystem1 DigitalLynxSX", description="Cheetah 6.4.1.dev0")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Devices"] == expected_devices
+        assert all(
+            electrode_group["device_metadata_key"] == "neuralynx_device"
+            for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
+        )
+        assert metadata["NWBFile"]["session_id"] == "f58d55bb-22f6-4682-b3a2-aa116fabb78e"
 
 
 class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
