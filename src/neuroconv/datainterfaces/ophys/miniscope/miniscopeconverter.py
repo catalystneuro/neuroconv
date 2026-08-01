@@ -11,8 +11,14 @@ from .miniscopeimagingdatainterface import (
 )
 from ... import MiniscopeBehaviorInterface, MiniscopeHeadOrientationInterface
 from ....nwbconverter import ConverterPipe
-from ....utils import get_json_schema_from_method_signature
-from ....utils.str_utils import to_camel_case
+from ....tools.nwb_helpers import get_default_nwbfile_metadata
+from ....utils import (
+    DeepDict,
+    dict_deep_update,
+    get_base_schema,
+    get_json_schema_from_method_signature,
+)
+from ....utils.str_utils import to_camel_case, to_snake_case
 
 
 class MiniscopeConverter(ConverterPipe):
@@ -202,6 +208,8 @@ class MiniscopeConverter(ConverterPipe):
         self._folder_path = Path(folder_path)
         self.data_interface_objects: dict[str, object] = {}
         self._user_configuration_file_path = user_configuration_file_path
+        # Per-interface bookkeeping for the imaging devices declared in the User Config.
+        self._imaging_interfaces: dict[str, dict] = {}
 
         data_interfaces = {}
         if self._user_configuration_file_path is not None:
@@ -245,7 +253,11 @@ class MiniscopeConverter(ConverterPipe):
             # Create CamelCase mapping for device names
             self._device_names_camel_case = {name: to_camel_case(name) for name in self._device_names}
 
-            all_paths = [p for p in fixed_data_path.glob("**") if p.is_dir()]
+            # Sorted so discovery does not depend on the order the filesystem hands back. The imaging
+            # plane of a device takes the imaging rate of the first recording found for it, and two
+            # recordings of one Miniscope differ slightly in rate, so glob order would otherwise decide
+            # which one reaches the file.
+            all_paths = sorted(path for path in fixed_data_path.glob("**") if path.is_dir())
             device_folders_dict = {}
             for device_name in self._device_names:
                 device_folders_dict[device_name] = [p for p in all_paths if p.name == device_name]
@@ -257,9 +269,30 @@ class MiniscopeConverter(ConverterPipe):
                 for device_folder_path in device_folders_dict[device_name]:
                     # Use as_posix() to ensure forward slashes on all platforms and avoid windows backslashes
                     interface_name = device_folder_path.relative_to(fixed_data_path).as_posix()
-                    interface = MiniscopeImagingInterface(folder_path=device_folder_path)
+                    # Remove slashes and strip the device folder name from the end of the interface
+                    # path, e.g. "2025_06_12/15_15_04/ACC_miniscope2" -> "2025_06_1215_15_04"
+                    interface_relative_path = interface_name.replace("/", "")
+                    if interface_relative_path.endswith(device_name):
+                        interface_relative_path = interface_relative_path[: -len(device_name)]
+
+                    # The series is per recording, while the device and its imaging plane are per
+                    # device and shared by every recording made with it.
+                    series_metadata_key = f"miniscope_imaging_{device_name}_{interface_relative_path}"
+                    interface = MiniscopeImagingInterface(
+                        folder_path=device_folder_path, metadata_key=series_metadata_key
+                    )
                     data_interfaces[interface_name] = interface
                     self._interface_to_device_mapping[interface_name] = device_name
+                    self._imaging_interfaces[interface_name] = dict(
+                        device_name=device_name,
+                        folder_path=device_folder_path,
+                        relative_path=interface_relative_path,
+                        metadata_key=series_metadata_key,
+                        # The interface derives this from the device its config names, so every
+                        # recording of one Miniscope lands on the same registry entry.
+                        device_metadata_key=to_snake_case(device_name),
+                        imaging_plane_metadata_key=f"imaging_plane_{device_name}",
+                    )
 
                     # Check for head orientation data in the same device folder
                     head_orientation_file_path = device_folder_path / "headOrientation.csv"
@@ -391,7 +424,140 @@ class MiniscopeConverter(ConverterPipe):
                 aligned_timestamps = ho_interface.get_timestamps() + time_offset
                 ho_interface.set_aligned_timestamps(aligned_timestamps)
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
+        if self._user_configuration_file_path is None:
+            return self._get_legacy_metadata()
+
+        return self._get_ophys_metadata()
+
+    def _get_ophys_metadata(self) -> DeepDict:
+        """Assemble the dict-based metadata of the User Config mode.
+
+        One ``Devices`` entry and one ``Ophys.ImagingPlanes`` entry per Miniscope, shared by all of its
+        recordings, and one ``Ophys.MicroscopySeries`` entry per recording pointing at them.
+        """
+        from ....tools.roiextractors.roiextractors import (
+            _get_ophys_metadata_placeholders,
+        )
+
+        metadata = get_default_nwbfile_metadata()
+        for interface in self.data_interface_objects.values():
+            if isinstance(interface, MiniscopeImagingInterface):
+                interface_metadata = interface.get_metadata(use_new_metadata_format=True)
+            else:
+                interface_metadata = interface.get_metadata()
+            # Entries are keyed, so a later interface sharing a key carries the same content and should
+            # replace it. Appending would also dedupe a device's ``ROI``, and a square sensor's
+            # ``[600, 600]`` would reach the file as ``[600]``.
+            metadata = dict_deep_update(metadata, interface_metadata, append_list=False)
+
+        metadata["NWBFile"]["session_start_time"] = self._converter_session_start_time
+
+        # The registry entries the interfaces contributed are keyed per device already; only their NWB
+        # names are converter business, since a device name is shared across the whole conversion.
+        for device_name in self._device_names:
+            device_metadata_key = to_snake_case(device_name)
+            if device_metadata_key in metadata["Devices"]:
+                metadata["Devices"][device_metadata_key]["name"] = self._device_names_camel_case[device_name]
+
+        self._move_per_recording_settings_to_the_series(metadata=metadata)
+
+        # An imaging plane belongs to a device, not to a recording, so the per-interface entries the
+        # interfaces contributed are replaced by one entry per device.
+        placeholder_imaging_plane = _get_ophys_metadata_placeholders()["Ophys"]["ImagingPlanes"]["default_metadata_key"]
+        imaging_rates = {}
+        for interface_info in self._imaging_interfaces.values():
+            plane_metadata = metadata["Ophys"]["ImagingPlanes"].get(interface_info["metadata_key"], {})
+            imaging_rates.setdefault(interface_info["device_name"], plane_metadata.get("imaging_rate"))
+
+        imaging_planes = {}
+        for device_name in self._device_names:
+            device_name_camel = self._device_names_camel_case[device_name]
+            imaging_planes[f"imaging_plane_{device_name}"] = {
+                **placeholder_imaging_plane,
+                "name": f"ImagingPlane{device_name_camel}",
+                "description": f"Imaging plane for {device_name} Miniscope device.",
+                "device_metadata_key": to_snake_case(device_name),
+                "imaging_rate": imaging_rates.get(device_name),
+            }
+        metadata["Ophys"]["ImagingPlanes"] = imaging_planes
+
+        for interface_info in self._imaging_interfaces.values():
+            device_name_camel = self._device_names_camel_case[interface_info["device_name"]]
+            metadata["Ophys"]["MicroscopySeries"][interface_info["metadata_key"]].update(
+                name=f"OnePhotonSeries{device_name_camel}{interface_info['relative_path']}",
+                imaging_plane_metadata_key=interface_info["imaging_plane_metadata_key"],
+            )
+
+        return metadata
+
+    def _move_per_recording_settings_to_the_series(self, *, metadata: DeepDict) -> None:
+        """Keep on a device only the settings all of its recordings agree on.
+
+        The ndx-miniscope schema declares acquisition settings as attributes of the ``Miniscope``
+        device, but the DAQ writes them per recording, and an experimenter who refocuses the lens or
+        changes the LED power between two recordings of one Miniscope makes them disagree. A device is
+        shared by its recordings and can hold one value, so the settings that vary are reported on each
+        ``MicroscopySeries``, which is the recording they are true of, instead of one of them being
+        asserted for all.
+        """
+        from ._miniscope_readers import (
+            _config_to_miniscope_device_metadata,
+            _read_miniscope_config,
+        )
+
+        interfaces_per_device = {device_name: [] for device_name in self._device_names}
+        for interface_info in self._imaging_interfaces.values():
+            interfaces_per_device[interface_info["device_name"]].append(interface_info)
+
+        for device_name, interface_infos in interfaces_per_device.items():
+            configs = {
+                interface_info["metadata_key"]: _read_miniscope_config(folder_path=str(interface_info["folder_path"]))
+                for interface_info in interface_infos
+            }
+            # ``repr`` because a setting may be a dict (``ROI``), which is not hashable.
+            setting_names = {setting_name for config in configs.values() for setting_name in config}
+            varying_setting_names = sorted(
+                setting_name
+                for setting_name in setting_names
+                if len({repr(config.get(setting_name)) for config in configs.values()}) > 1
+            )
+            if not varying_setting_names:
+                continue
+
+            # Rebuilding the entry from the settings they agree on is what drops a varying one from the
+            # device's typed fields and from the description that carries the ones the schema has no
+            # field for, in one step and by the same mapping the interface used.
+            first_config = next(iter(configs.values()))
+            shared_config = {
+                setting_name: value
+                for setting_name, value in first_config.items()
+                if setting_name not in varying_setting_names
+            }
+            device_metadata_key = to_snake_case(device_name)
+            device_metadata = metadata["Devices"][device_metadata_key]
+            shared_device_metadata = _config_to_miniscope_device_metadata(
+                miniscope_config={**shared_config, "name": device_name}
+            )
+            shared_device_metadata["name"] = self._device_names_camel_case[device_name]
+            if "device_model_metadata_key" in device_metadata:
+                shared_device_metadata["device_model_metadata_key"] = device_metadata["device_model_metadata_key"]
+            metadata["Devices"][device_metadata_key] = shared_device_metadata
+
+            for series_metadata_key, config in configs.items():
+                varying_settings = ", ".join(
+                    f"{setting_name}: {config[setting_name]}"
+                    for setting_name in varying_setting_names
+                    if setting_name in config
+                )
+                series_metadata = metadata["Ophys"]["MicroscopySeries"][series_metadata_key]
+                series_metadata["description"] = (
+                    f"{series_metadata['description']} Settings the Miniscope was recorded with, which "
+                    f"differ across the recordings of this device: {varying_settings}."
+                )
+
+    def _get_legacy_metadata(self) -> DeepDict:
+        """Assemble the old list-based metadata of the deprecated folder-discovery mode."""
         from neuroconv.tools.roiextractors.roiextractors_pending_deprecation import (
             _get_default_ophys_metadata_old_metadata_list,
         )
@@ -446,6 +612,23 @@ class MiniscopeConverter(ConverterPipe):
 
         return metadata
 
+    def get_metadata_schema(self) -> dict:
+        metadata_schema = super().get_metadata_schema()
+        if self._user_configuration_file_path is None:
+            return metadata_schema
+
+        # The imaging interfaces describe the list-based Ophys shape in their schema, which is not what
+        # they are asked for here, and the registries are declared per interface today (strictly by the
+        # video interface, permissively by others). Until they are declared once at the top level, the
+        # dict-based blocks are accepted as-is.
+        for tag in ("Devices", "DeviceModels", "Ophys"):
+            metadata_schema["properties"][tag] = get_base_schema(tag=tag)
+            metadata_schema["properties"][tag]["additionalProperties"] = True
+        metadata_schema["required"] = [
+            requirement for requirement in metadata_schema.get("required", []) if requirement != "Ophys"
+        ]
+        return metadata_schema
+
     def get_conversion_options_schema(self) -> dict:
         """Allow standard stub options alongside per-interface schemas."""
 
@@ -488,7 +671,9 @@ class MiniscopeConverter(ConverterPipe):
         ophys_interface_names = self._get_ophys_interface_names()
         conversion_options_base = {interface_name: {} for interface_name in ophys_interface_names}
         for series_index, interface_name in enumerate(ophys_interface_names):
-            conversion_options_base[interface_name]["photon_series_index"] = series_index
+            if self._user_configuration_file_path is None:
+                # The dict-based metadata addresses a series by its metadata key, not by position.
+                conversion_options_base[interface_name]["photon_series_index"] = series_index
             conversion_options_base[interface_name]["stub_test"] = stub_test
             conversion_options_base[interface_name]["stub_samples"] = stub_samples
 
@@ -536,7 +721,9 @@ class MiniscopeConverter(ConverterPipe):
         ophys_interface_names = self._get_ophys_interface_names()
         conversion_options_base = {interface_name: {} for interface_name in ophys_interface_names}
         for series_index, interface_name in enumerate(ophys_interface_names):
-            conversion_options_base[interface_name]["photon_series_index"] = series_index
+            if self._user_configuration_file_path is None:
+                # The dict-based metadata addresses a series by its metadata key, not by position.
+                conversion_options_base[interface_name]["photon_series_index"] = series_index
             conversion_options_base[interface_name]["stub_test"] = stub_test
             conversion_options_base[interface_name]["stub_samples"] = stub_samples
 

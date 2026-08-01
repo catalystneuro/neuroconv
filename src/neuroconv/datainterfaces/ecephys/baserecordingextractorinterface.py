@@ -138,14 +138,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             # also marks the metadata as dict-based, so the pipeline dispatches to the new path). The
             # default device and electrode groups are left to the pipeline, which creates a default
             # device and synthesizes one group per channel-group from the recording's ``group`` properties.
-            metadata["Ecephys"] = dict()
-            if self.es_key is not None:
-                metadata["Ecephys"]["ElectricalSeries"] = {
-                    self.metadata_key: dict(
-                        name=self.metadata_key,
-                        description=f"Acquisition traces for the {self.metadata_key}.",
-                    )
-                }
+            # The name is the NWB-conventional default, independent of ``es_key`` (legacy, to be removed) and
+            # of ``metadata_key`` (the dict key). No description: a generic one carries no information, so it
+            # is left to the interfaces, which can say something the source actually supports, and otherwise
+            # to the write pipeline.
+            metadata["Ecephys"] = {"ElectricalSeries": {self.metadata_key: dict(name="ElectricalSeries")}}
 
             return metadata
 
@@ -304,12 +301,18 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             The resulting groups determine how electrode groups and electrodes are organized
             in the NWB file, with each group corresponding to one ElectrodeGroup.
         """
-        # Set the probe to the recording extractor
-        self.recording_extractor._set_probes(
-            probe,
-            in_place=True,
-            group_mode=group_mode,
-        )
+        from probeinterface import ProbeGroup
+
+        # Set the probe to the recording extractor. SpikeInterface 0.105 removed the private
+        # `_set_probes`, which took either a Probe or a ProbeGroup; the public entry points are split
+        # by type, so dispatch here.
+        # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where these calls
+        # are always in place and the argument is deprecated. It is required on 0.104, which otherwise
+        # returns a new recording and leaves this one unchanged.
+        if isinstance(probe, ProbeGroup):
+            self.recording_extractor.set_probegroup(probe, group_mode=group_mode, in_place=True)
+        else:
+            self.recording_extractor.set_probe(probe, group_mode=group_mode, in_place=True)
 
         # Spike interface sets the "group" property
         # But neuroconv allows "group_name" property to override spike interface "group" value
@@ -347,6 +350,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         stub_test: bool = False,
         parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
         write_as: Literal["raw", "lfp", "processed"] | None = None,
+        data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
         write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
@@ -375,6 +379,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_as : {'raw', 'processed', 'lfp'}, optional
             Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
             'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+        data_representation : {'digital_counts', 'physical_units'}, default='digital_counts'
+            How the trace values are materialized in the stored data array.
+            - 'digital_counts': store the raw integer samples and carry the per-channel gain in
+              ``channel_conversion`` (or a scalar ``conversion`` when homogeneous) and the offset in
+              the scalar ``offset``. Faithful and compact, but requires a common offset across channels.
+            - 'physical_units': apply each channel's gain and offset and store float physical values,
+              so the scalar ``offset`` is 0 and no ``channel_conversion`` is needed. This is the only
+              representation that can hold channels with heterogeneous per-channel offsets (and gains)
+              in a single series, at the cost of float storage and no lossless integer round-trip.
 
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
@@ -443,11 +456,25 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         metadata_key = self.metadata_key if _is_dict_based_metadata(metadata) else None
 
         if write_electrical_series:
+            if (
+                data_representation != "physical_units"
+                and recording.has_scaleable_traces()
+                and len(set(recording.get_channel_offsets())) > 1
+            ):
+                raise ValueError(
+                    "The channels of this recording have heterogeneous offsets, which a single NWB "
+                    "ElectricalSeries cannot represent. To write them as one series, pass "
+                    "data_representation='physical_units' as a conversion option to add_to_nwbfile() "
+                    "or run_conversion() (this folds each channel's offset into the data and writes "
+                    "float physical values). Alternatively, drop or separate the channels that do not "
+                    "share the common offset."
+                )
             add_recording_to_nwbfile(
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
                 parent_container=parent_container,
+                data_representation=data_representation,
                 es_key=self.es_key,
                 iterator_type=iterator_type,
                 iterator_options=iterator_options,

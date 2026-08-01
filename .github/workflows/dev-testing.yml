@@ -57,22 +57,28 @@ jobs:
           pip install --no-cache-dir .[full]
           pip install --group test --group sorting_analyzer
 
+      # --force-reinstall --no-deps on every dev install: pip skips a git install when the
+      # cloned project declares a version it already has (probeinterface main declares the
+      # released 0.3.2), which silently leaves the release in place. --no-deps keeps each
+      # step to the one package it names, so a later step cannot pull an earlier dev
+      # install back to its release as a dependency.
       - name: Dev gallery - ROIExtractors
-        run: pip install --no-cache-dir git+https://github.com/CatalystNeuro/roiextractors@main
+        run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/CatalystNeuro/roiextractors@main
       - name: Dev gallery - DANDI
-        run: pip install --no-cache-dir git+https://github.com/dandi/dandi-cli@master
+        if: matrix.python-version != '3.10'  # dandi requires >=3.11
+        run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/dandi/dandi-cli@master
       - name: Dev gallery - PyNWB
-        run: pip install --no-cache-dir git+https://github.com/NeurodataWithoutBorders/pynwb@dev
+        run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/NeurodataWithoutBorders/pynwb@dev
       - name: Dev gallery - ProbeInterface
-        run: pip install --no-cache-dir git+https://github.com/spikeinterface/probeinterface@main
+        run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/spikeinterface/probeinterface@main
       - name: Dev gallery - SpikeInterface
-        run: pip install --no-cache-dir "spikeinterface[test_core] @ git+https://github.com/spikeinterface/spikeinterface@main"
+        run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/spikeinterface/spikeinterface@main
       - name: Dev gallery - NEO
-        run: pip install --no-cache-dir git+https://github.com/NeuralEnsemble/python-neo@master
+        run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF
-        run: pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf@dev
+        run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/hdmf-dev/hdmf@dev
       - name: Dev gallery - HDMF-ZARR
-        run : pip install --no-cache-dir git+https://github.com/hdmf-dev/hdmf-zarr@dev
+        run : pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/hdmf-dev/hdmf-zarr@dev
 
       - name: Display installed packages and their sources
         run: |

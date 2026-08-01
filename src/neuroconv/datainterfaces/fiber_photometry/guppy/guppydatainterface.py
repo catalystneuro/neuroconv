@@ -1,7 +1,6 @@
 import json
 import re
 import warnings
-from datetime import datetime, timezone
 from pathlib import Path
 
 import h5py
@@ -382,11 +381,7 @@ class _GuppyInterface(BaseDataInterface):
         time_correction_path = self._folder_path / f"timeCorrection_{recording_site}.hdf5"
         assert time_correction_path.is_file(), f"Missing {time_correction_path} for recording_site '{recording_site}'."
         with h5py.File(time_correction_path, "r") as f:
-            # `timeRecStart` is absent for some acquisition formats (e.g. headerless CSV inputs)
-            # that do not carry an absolute recording start time.
-            time_rec_start = float(f["timeRecStart"][0]) if "timeRecStart" in f else None
             return dict(
-                time_rec_start=time_rec_start,
                 timestamps=f["timestampNew"][:],
                 sampling_rate=float(f["sampling_rate"][0]),
             )
@@ -479,12 +474,6 @@ class _GuppyInterface(BaseDataInterface):
     def get_metadata(self) -> DeepDict:
         """Return metadata pre-populated from the GuPPy outputs and parameters file."""
         metadata = super().get_metadata()
-
-        first_recording_site = self._recording_sites[0]
-        time_correction = self._read_time_correction(first_recording_site)
-        if time_correction["time_rec_start"] is not None:
-            session_start_datetime = datetime.fromtimestamp(time_correction["time_rec_start"], tz=timezone.utc)
-            metadata["NWBFile"]["session_start_time"] = session_start_datetime
 
         guppy_parameters = self._guppy_parameters
 

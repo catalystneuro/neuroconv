@@ -229,6 +229,17 @@ def _add_device_model_to_nwbfile(
         return nwbfile.device_models[model_name]
 
     model_kwargs = {key: value for key, value in device_model_metadata.items() if key != "type"}
+
+    # Required by the NWB ``DeviceModel`` but rarely recorded by an acquisition file. Fill any missing
+    # one at write time rather than forcing every ``get_metadata`` to state a manufacturer its source
+    # never named. The placeholder is an explicit unknown-marker, as in the ophys and ecephys templates,
+    # so it reads as "the source did not say" rather than as a value. Mirrors
+    # ``_add_imaging_plane_to_nwbfile`` and ``_add_electrode_groups_to_nwbfile``.
+    required_fields = ["manufacturer"]
+    default_device_model_metadata = {"manufacturer": "unknown"}
+    for field in required_fields:
+        model_kwargs.setdefault(field, default_device_model_metadata[field])
+
     model_class = _resolve_type(
         device_model_metadata.get("type", "DeviceModel"), sources=_DEVICE_MODEL_TYPE_SOURCES, base_class=DeviceModel
     )
