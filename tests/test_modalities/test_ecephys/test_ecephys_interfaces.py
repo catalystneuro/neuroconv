@@ -213,14 +213,8 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         # "Devices" not in metadata).
         assert "Devices" not in metadata
         metadata_key = self.interface.metadata_key
-        assert metadata["Ecephys"] == {
-            "ElectricalSeries": {
-                metadata_key: {
-                    "name": metadata_key,
-                    "description": f"Acquisition traces for the {metadata_key}.",
-                }
-            }
-        }
+        # No description: the base emits none, leaving it to the interfaces and the write pipeline.
+        assert metadata["Ecephys"] == {"ElectricalSeries": {metadata_key: {"name": "ElectricalSeries"}}}
 
     def test_metadata_key_passed_to_add_recording(self, setup_interface):
         from unittest.mock import patch
