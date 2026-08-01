@@ -273,6 +273,13 @@ class MiniscopeConverter(ConverterPipe):
             device_folders_dict = {}
             for device_name in self._device_names:
                 device_folders_dict[device_name] = [p for p in all_paths if p.name == device_name]
+                if not device_folders_dict[device_name]:
+                    warnings.warn(
+                        f"No folder named '{device_name}' was found under '{fixed_data_path}', so the Miniscope "
+                        "the User Config declares under 'devices[miniscopes]' will be omitted from the conversion.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
 
             self._interface_to_device_mapping = {}
             for device_name in self._device_names:
@@ -332,6 +339,13 @@ class MiniscopeConverter(ConverterPipe):
             self._camera_names_camel_case = {name: to_camel_case(name) for name in self._camera_names}
             for camera_name in self._camera_names:
                 camera_folder_paths = [path for path in all_paths if path.name == camera_name]
+                if not camera_folder_paths:
+                    warnings.warn(
+                        f"No folder named '{camera_name}' was found under '{fixed_data_path}', so the behavior camera "
+                        "the User Config declares under 'devices[cameras]' will be omitted from the conversion.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
                 for camera_folder_path in camera_folder_paths:
                     interface_name = camera_folder_path.relative_to(fixed_data_path).as_posix()
                     video_file_paths = natsort.natsorted(camera_folder_path.glob("*.avi"))
