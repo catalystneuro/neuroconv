@@ -26,7 +26,7 @@ from ....utils import (
     get_base_schema,
     get_json_schema_from_method_signature,
 )
-from ....utils.str_utils import to_camel_case, to_snake_case
+from ....utils.str_utils import to_camel_case
 
 
 class MiniscopeConverter(ConverterPipe):
