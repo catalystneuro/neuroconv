@@ -1,8 +1,9 @@
-"""Tools for the discrete-events data interfaces."""
+"""Tools for the discrete-events data interfaces.
 
-# TODO before the next release: make validate_detection_configuration and resolve_detection_plan
-# private. Nothing here has shipped in a tagged release, so the rename costs no deprecation, and
-# everything in this module is interface-internal rather than a surface anyone should import.
+Everything here is private. It is the shared implementation the signal-encoded events interfaces call,
+not a surface anyone should import: a caller writes a ``detection_configuration`` and hands it to an
+interface, which is where the documented contract lives.
+"""
 
 # The alternative cuts: three routes to a discrete-valued signal, exactly one of which may appear in a
 # spec's signal_conditioning. Which one is legal is decided by the signal's kind, not by the caller.
@@ -13,7 +14,7 @@ _CUTS = ("bits", "thresholds", "binarize")
 _SPEC_KEYS = ("signal_conditioning", "detection", "event_name")
 
 
-def validate_detection_configuration(detection_configuration: dict, available_signals: dict) -> None:
+def _validate_detection_configuration(detection_configuration: dict, available_signals: dict) -> None:
     """Validate a ``detection_configuration``, raising ``ValueError`` on a bad entry.
 
     The one construction-time check. It answers both "is this well formed" (per-spec structure, checked
@@ -263,7 +264,7 @@ def _resolve_event_types(detection_configuration: dict) -> list[tuple[str, str, 
     return event_types
 
 
-def resolve_detection_plan(detection_configuration: dict) -> dict[str, list[tuple[str, dict]]]:
+def _resolve_detection_plan(detection_configuration: dict) -> dict[str, list[tuple[str, dict]]]:
     """Resolve a ``detection_configuration`` into ``{signal_source_id: [(event_type_source_id, spec), ...]}``.
 
     The structure the read walks, built from the ``detection_configuration`` alone. It is **grouped by
