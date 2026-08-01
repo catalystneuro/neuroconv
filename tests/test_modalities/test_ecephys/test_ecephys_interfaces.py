@@ -206,7 +206,6 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface
     interface_kwargs = dict(num_channels=4, durations=[0.100])
-    use_new_metadata_format = True
 
     def check_extracted_metadata(self, metadata: dict):
         # New dict-based format: the interface emits only the ElectricalSeries entry keyed by

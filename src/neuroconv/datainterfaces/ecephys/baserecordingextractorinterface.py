@@ -460,7 +460,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         if stub_test:
             recording = _stub_recording(recording=recording)
 
-        metadata = metadata or self.get_metadata()
+        metadata = metadata or self._get_metadata_for_writing()
 
         # ``metadata_key`` selects the ElectricalSeries entry in the dict-based format and is
         # mutually exclusive with ``es_key`` downstream. Pass it only when the metadata is actually

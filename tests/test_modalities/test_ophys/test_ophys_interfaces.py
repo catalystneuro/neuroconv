@@ -18,7 +18,6 @@ from neuroconv.tools.testing.mock_interfaces import (
 class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = MockImagingInterface
     interface_kwargs = dict()
-    use_new_metadata_format = True
 
     def test_always_write_timestamps(self, setup_interface):
         # By default the MockImagingInterface has a uniform sampling rate
@@ -64,7 +63,6 @@ class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
     data_interface_cls = MockSegmentationInterface
     interface_kwargs = dict()
-    use_new_metadata_format = True
 
     def check_extracted_metadata(self, metadata: dict):
         """MockSegmentationInterface returns a mock-specific segmentation description."""

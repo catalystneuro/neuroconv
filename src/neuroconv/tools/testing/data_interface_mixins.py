@@ -56,13 +56,7 @@ class DataInterfaceTestMixin:
         arguments to the constructor. Each dictionary will be tested one at a time.
     save_directory : Path, optional
         Directory where test files should be saved.
-    use_new_metadata_format : bool
-        Set to True on a test class whose interface emits the dict-based metadata format, so the shared
-        conversion tests exercise that format rather than the old list-based one. Transitional: it goes
-        when ``use_new_metadata_format`` goes from the interfaces themselves.
     """
-
-    use_new_metadata_format: bool = False
 
     data_interface_cls: type[BaseDataInterface]
     interface_kwargs: dict
@@ -104,19 +98,12 @@ class DataInterfaceTestMixin:
         """Override this method to make assertions about specific extracted metadata values."""
         pass
 
-    def get_metadata_for_conversion(self, interface=None) -> dict:
-        """Return the metadata the conversion tests write with, in this interface's format."""
-        interface = interface or self.interface
-        if self.use_new_metadata_format:
-            return interface.get_metadata(use_new_metadata_format=True)
-        return interface.get_metadata()
-
     def test_no_metadata_mutation(self, setup_interface):
         """Ensure the metadata object is not altered by `add_to_nwbfile` method."""
 
         nwbfile = mock_NWBFile()
 
-        metadata = self.get_metadata_for_conversion()
+        metadata = self.interface.get_metadata()
         metadata_before_add_method = deepcopy(metadata)
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
@@ -127,7 +114,7 @@ class DataInterfaceTestMixin:
 
         nwbfile_path = str(tmp_path / f"conversion_with_backend{backend}-{self.test_name}.nwb")
 
-        metadata = self.get_metadata_for_conversion()
+        metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
@@ -145,7 +132,7 @@ class DataInterfaceTestMixin:
 
     @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
     def test_run_conversion_with_backend_configuration(self, setup_interface, tmp_path, backend):
-        metadata = self.get_metadata_for_conversion()
+        metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
@@ -163,7 +150,7 @@ class DataInterfaceTestMixin:
 
     @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
     def test_configure_backend_for_equivalent_nwbfiles(self, setup_interface, tmp_path, backend):
-        metadata = self.get_metadata_for_conversion()
+        metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
