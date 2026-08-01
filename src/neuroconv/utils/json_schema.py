@@ -74,15 +74,19 @@ class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
 NWBMetaDataEncoder = _NWBMetaDataEncoder
 
 
-def _metadata_uses_dict_format(metadata: dict) -> bool:
+def _metadata_uses_old_list_format(metadata: dict) -> bool:
     """
-    Detect whether a metadata dictionary is in the dict-based format.
+    Detect whether a metadata dictionary is in the old list-based format.
+
+    Transitional, and deliberately written around the format that is going away: the singular,
+    list-valued modality keys and the legacy list-valued top-level ``Devices``. When the old format is
+    removed this function goes with it, and the callers keep the branch they already take for everything
+    else.
 
     This is a shape sniff for validation routing only. The write pipelines have their own,
     modality-specific detectors (``tools.spikeinterface._is_dict_based_metadata`` and
-    ``tools.roiextractors._is_dict_based_metadata``), which also decide which write path to take and
-    therefore treat ambiguous metadata differently from each other. This one answers a narrower
-    question: is there anything here that the old list-based schemas cannot describe?
+    ``tools.roiextractors._is_dict_based_metadata``), which also choose a write path and therefore treat
+    ambiguous metadata differently from each other.
 
     Parameters
     ----------
@@ -92,27 +96,27 @@ def _metadata_uses_dict_format(metadata: dict) -> bool:
     Returns
     -------
     bool
-        True when the metadata carries dict-based structures, False otherwise (including for empty or
-        ambiguous metadata, which the old schemas describe just as well).
+        True when the metadata carries old list-based structures, False otherwise (including for empty
+        or ambiguous metadata, which the current schemas describe just as well).
     """
-    if isinstance(metadata.get("Devices"), dict) or isinstance(metadata.get("DeviceModels"), dict):
+    if isinstance(metadata.get("Devices"), list):
         return True
 
-    keyed_registries = {
-        "Ecephys": ("ElectrodeGroups",),
-        "Ophys": ("ImagingPlanes", "MicroscopySeries", "PlaneSegmentations", "RoiResponses", "SegmentationImages"),
+    list_valued_keys = {
+        "Ecephys": ("Device", "ElectrodeGroup"),
+        "Ophys": ("Device", "ImagingPlane"),
     }
-    for modality, registry_names in keyed_registries.items():
+    for modality, key_names in list_valued_keys.items():
         modality_metadata = metadata.get(modality, {})
-        if any(registry_name in modality_metadata for registry_name in registry_names):
+        if any(isinstance(modality_metadata.get(key_name), list) for key_name in key_names):
             return True
 
-    # "ElectricalSeries" exists in both formats: a mapping of per-``metadata_key`` entries is the
-    # dict-based one, a flat mapping of fields is the old one.
+    # "ElectricalSeries" exists in both formats: a flat mapping of fields is the old one, a mapping of
+    # per-``metadata_key`` entries is not.
     electrical_series = metadata.get("Ecephys", {}).get("ElectricalSeries")
     if isinstance(electrical_series, dict) and electrical_series:
         first_entry = next(iter(electrical_series.values()))
-        if isinstance(first_entry, dict):
+        if not isinstance(first_entry, dict):
             return True
 
     return False

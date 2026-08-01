@@ -27,7 +27,7 @@ from .utils import (
 )
 from .utils.dict import DeepDict
 from .utils.json_schema import (
-    _metadata_uses_dict_format,
+    _metadata_uses_old_list_format,
     _NWBSourceDataEncoder,
     validate_metadata,
 )
@@ -107,22 +107,22 @@ class BaseDataInterface(ABC):
 
         return metadata
 
-    def _get_metadata_schema_for_dict_format(self) -> dict:
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
-        Return the schema used to validate dict-based metadata.
+        Return the schema used to validate metadata in the old list-based format.
 
-        Most interfaces already describe the dict format in ``get_metadata_schema`` (the video, pose,
-        events and fiber photometry families each declare their own), so the default is that schema. The
-        modality bases that still describe the old list-based format override this to fall back to the
-        base schema, since validating dict-based metadata against a list-based schema fails on its
-        ``required`` entries. Those overrides go when those schemas are migrated.
+        Transitional. Most interfaces describe one format only, so this is their own schema. The modality
+        bases whose ``get_metadata_schema`` still describes the old format override it the other way
+        round: they answer here with that schema and hand ``get_metadata_schema`` callers the base schema,
+        which is what dict-based metadata can be validated against. Both go when those schemas are
+        migrated.
         """
         return self.get_metadata_schema()
 
     def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
-        if _metadata_uses_dict_format(metadata):
-            metdata_schema = self._get_metadata_schema_for_dict_format()
+        if _metadata_uses_old_list_format(metadata):
+            metdata_schema = self._get_metadata_schema_for_old_list_format()
         else:
             metdata_schema = self.get_metadata_schema()
 
