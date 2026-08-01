@@ -27,6 +27,11 @@ _STIMULUS_CLASS = {
     "current_clamp": CurrentClampStimulusSeries,
 }
 
+# NWB requires a `stimulus_type` on every SequentialRecordings entry, so a source that describes none still has
+# to put a string there. It is written only at that level: an interface with nothing to say omits the column from
+# the recordings table entirely rather than filling every row with a placeholder.
+_UNDESCRIBED_STIMULUS_TYPE = "not described"
+
 
 def _get_icephys_metadata_placeholders() -> DeepDict:
     """
@@ -151,19 +156,29 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
     """
     Build the icephys hierarchy tables from the grouping columns on the intracellular-recordings table.
 
-    Reads, per row: the response ``(start_index, count)`` timing range, ``sequence``, ``stimulus_type``, and the
-    optional ``repetition`` / ``condition`` columns, then groups upward:
+    Reads, per row: the response's sweep timing, ``sequence``, and the optional ``stimulus_type`` /
+    ``repetition`` / ``condition`` columns, then groups upward:
 
-    - rows of one ``sequence`` sharing a timing range -> one ``SimultaneousRecordings`` entry,
+    - rows of one ``sequence`` covering the same span of time -> one ``SimultaneousRecordings`` entry,
     - the simultaneous entries of one ``sequence`` -> one ``SequentialRecordings`` entry (with its stimulus type),
     - the sequentials of one ``repetition`` -> one ``Repetitions`` entry (present, or identity per sequence
       when a ``condition`` needs a repetitions rung beneath it),
     - the repetitions of one ``condition`` -> one ``ExperimentalConditions`` entry (only if the column is present).
 
+    Simultaneity is decided on the sweep's resolved start and stop time rather than on its ``(start_index,
+    count)`` range, because an index is only a proxy for time while every series shares one clock origin. Two
+    electrodes of a dual patch write two series that both start at index 0 and are genuinely simultaneous; an
+    interface writing one series per sweep also produces rows that all start at index 0, and those are not. Only
+    the resolved time separates the two cases, and it groups the dual patch correctly either way. This is the same
+    notion of sweep identity :func:`_add_sweep_time_intervals_to_nwbfile` keys on, so the two projections of these
+    rows cannot disagree.
+
     Each grouping value is constant within a sequence (a run), so the run-level attributes are read off any of
     its rows. When a ``repetition`` column is absent, each sequence is its own repetition (identity grouping,
     the same width-1 default ``SimultaneousRecordings`` uses for a single electrode), so a ``condition`` without
-    a ``repetition`` still builds: it groups those identity repetitions.
+    a ``repetition`` still builds: it groups those identity repetitions. A ``stimulus_type`` column is likewise
+    optional: NWB requires the field on the sequential recording, so a placeholder is supplied there when the
+    source described none, but the recordings table is left without a column of repeated placeholders.
 
     Parameters
     ----------
@@ -178,7 +193,7 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
     column_names = intracellular_recordings.colnames
     responses = intracellular_recordings["responses"]["response"]
     sequences = intracellular_recordings["sequence"]
-    stimulus_types = intracellular_recordings["stimulus_type"]
+    stimulus_types = intracellular_recordings["stimulus_type"] if "stimulus_type" in column_names else None
     repetitions = intracellular_recordings["repetition"] if "repetition" in column_names else None
     conditions = intracellular_recordings["condition"] if "condition" in column_names else None
 
@@ -192,12 +207,16 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
             sequence_order.append(sequence_value)
             timing_groups_by_sequence[sequence_value] = {}
             attributes_by_sequence[sequence_value] = dict(
-                stimulus_type=stimulus_types[row_index],
+                stimulus_type=stimulus_types[row_index] if stimulus_types is not None else None,
                 repetition=repetitions[row_index] if repetitions is not None else None,
                 condition=conditions[row_index] if conditions is not None else None,
             )
         response_reference = responses[row_index]
-        timing_key = (response_reference.idx_start, response_reference.count)
+        timing_key = _get_sweep_start_and_stop_time(
+            series=response_reference.timeseries,
+            start_index=response_reference.idx_start,
+            count=response_reference.count,
+        )
         timing_groups_by_sequence[sequence_value].setdefault(timing_key, []).append(row_index)
 
     # Simultaneous + sequential: one sequential per sequence.
@@ -208,9 +227,10 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
             nwbfile.add_icephys_simultaneous_recording(recordings=timing_groups[timing_key])
             for timing_key in sorted(timing_groups)
         ]
+        stimulus_type = attributes_by_sequence[sequence_value]["stimulus_type"]
         sequential_index_by_sequence[sequence_value] = nwbfile.add_icephys_sequential_recording(
             simultaneous_recordings=simultaneous_indices,
-            stimulus_type=attributes_by_sequence[sequence_value]["stimulus_type"],
+            stimulus_type=_UNDESCRIBED_STIMULUS_TYPE if stimulus_type is None else stimulus_type,
         )
 
     # The repetitions level is built when it was requested (a `repetition` column) or when `condition` needs a
