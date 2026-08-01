@@ -679,6 +679,19 @@ class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "test1" / "test1.dat"))
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "neuroscope_recording"
+        # The .xml gives the shank structure and no device, so the groups are keyed by name and link to
+        # nothing; the old format's empty location and placeholder device link are not carried over.
+        expected_electrode_groups = {"Group1": dict(name="Group1"), "Group2": dict(name="Group2")}
+        expected_electrode_column_names = ["shank_electrode_number", "group_name"]
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert "Devices" not in metadata
+        assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
+        # Electrode-table columns keep their list shape; the dict migration is a follow-up.
+        assert [column["name"] for column in metadata["Ecephys"]["Electrodes"]] == expected_electrode_column_names
+
 
 class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions:
 
