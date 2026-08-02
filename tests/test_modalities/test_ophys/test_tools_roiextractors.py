@@ -3473,18 +3473,16 @@ class TestAddSegmentation:
         assert series_b.rois.table.name == "PlaneSegmentationB"
 
     def test_missing_required_plane_segmentation_fields_are_defaulted(self):
-        """A PlaneSegmentation entry that omits `description` is not rejected; the write path fills it
-        from the placeholder template instead of raising."""
+        """A PlaneSegmentation entry that omits `name` and `description` is not rejected; the write path
+        fills both from the placeholder template instead of raising, and leaves the caller's dict alone."""
         nwbfile = mock_NWBFile()
         segmentation_extractor = generate_dummy_segmentation_extractor()
 
         metadata = {
             "Ophys": {
                 "PlaneSegmentations": {
-                    "my_seg": {
-                        "name": "PlaneSegmentation",
-                        # description intentionally omitted -> defaulted at write time
-                    },
+                    # name and description intentionally omitted -> defaulted at write time
+                    "my_seg": {},
                 },
             },
         }
@@ -3497,7 +3495,70 @@ class TestAddSegmentation:
         )
 
         plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentation"]
+        assert plane_segmentation.name == "PlaneSegmentation"
         assert plane_segmentation.description == "Segmented ROIs"
+        # The traces resolve the same defaulted name rather than raising on the missing key.
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert fluorescence.roi_response_series["RoiResponseSeries"].rois.table is plane_segmentation
+        assert metadata["Ophys"]["PlaneSegmentations"]["my_seg"] == {}
+
+    def test_second_unnamed_plane_segmentation_raises(self):
+        """Two entries that both leave `name` to the default would collapse onto one PlaneSegmentation and
+        silently drop the second one's ROIs, so the second write raises instead. A name the caller states
+        is how two interfaces deliberately share one, and that stays allowed."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "first_seg": {"description": "First segmentation"},
+                    "second_seg": {"description": "Second segmentation"},
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="first_seg",
+        )
+
+        with pytest.raises(ValueError, match="does not name its own"):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="second_seg",
+            )
+
+    def test_quality_metric_properties_are_described(self):
+        """The quality metrics every segmenter names identically are written with the descriptions the old
+        list-based path gives them; any other extractor property keeps an empty one."""
+        nwbfile = mock_NWBFile()
+        num_rois = 5
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rois=num_rois)
+
+        roi_ids = segmentation_extractor.get_roi_ids()
+        for property_key in ("snr", "r_values", "cnn_preds"):
+            segmentation_extractor.set_property(property_key, np.arange(num_rois, dtype=np.float32), ids=roi_ids)
+        segmentation_extractor.set_property("accepted", np.ones(num_rois, dtype=bool), ids=roi_ids)
+
+        metadata = {"Ophys": {"PlaneSegmentations": {"my_seg": {"name": "PlaneSegmentation"}}}}
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
+        )
+
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentation"]
+        assert plane_segmentation["snr"].description == "Signal-to-noise ratio for each component"
+        assert plane_segmentation["r_values"].description == "Spatial correlation values for each component"
+        assert plane_segmentation["cnn_preds"].description == "CNN classifier predictions for component quality"
+        assert plane_segmentation["accepted"].description == ""
 
     def test_missing_required_roi_response_fields_are_defaulted(self):
         """An ROI response entry that omits `unit` is not rejected; the write path fills it from the

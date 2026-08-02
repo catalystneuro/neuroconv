@@ -334,9 +334,6 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_no_metadata_mutation(self):
         pass
 
-    def test_run_conversion_with_backend_configuration(self):
-        pass
-
     def test_interface_alignment(self):
         pass
 
