@@ -1,19 +1,3 @@
-"""Tests for the events half of ``SpikeGLXNIDQInterface``.
-
-Driven through the public interface rather than through the private
-``_SpikeGLXNIDQEventsInterface``, since that class is constructed by its parent and never by a user.
-What is covered here is what is specific to NIDQ: the packed-word addressing (a line is word plus bit,
-not a named channel), the analog channels being derivable through the same grammar, and the suppression
-case that only exists because this interface writes more than events. The zero-configuration default and
-the deprecated ``digital_channel_groups`` path live in ``test_nidq_interface.py`` alongside the analog
-tests.
-
-The validator's own rejections (a word spec with no ``bits``, an analog spec with no cut,
-``bits`` aimed at an analog signal, a numeric ``binarize`` fan-out with no ``event_name``) are format
-independent and belong on ``MockSignalEncodedEventsInterface``, which declares both kinds, rather than
-here where they would need gin data to reach the same code.
-"""
-
 import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -31,11 +15,6 @@ BOTH_KINDS_FOLDER = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
 DIGITAL_ONLY_FOLDER = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
 
 
-def _events_interface(interface):
-    """The private events half the public interface builds."""
-    return interface._events_interface
-
-
 class TestSignalInventory:
     """The inventory is what the validator gates on, and it is settled from the header alone."""
 
@@ -47,23 +26,30 @@ class TestSignalInventory:
         positions it carries come from ``niXDChans1``.
         """
         interface = SpikeGLXNIDQInterface(folder_path=BOTH_KINDS_FOLDER)
-        available_signals = _events_interface(interface)._available_signals
+        available_signals = interface._events_interface._available_signals
 
-        assert available_signals["XD0"] == {
-            "kind": "word",
-            "channel_id": "nidq#XD0",
-            "bits": [0, 1, 2, 3, 4, 5, 6, 7],
+        expected_available_signals = {
+            "XD0": {"kind": "word", "channel_id": "nidq#XD0", "bits": [0, 1, 2, 3, 4, 5, 6, 7]},
+            "XA0": {"kind": "analog", "channel_id": "nidq#XA0"},
+            "XA1": {"kind": "analog", "channel_id": "nidq#XA1"},
+            "XA2": {"kind": "analog", "channel_id": "nidq#XA2"},
+            "XA3": {"kind": "analog", "channel_id": "nidq#XA3"},
+            "XA4": {"kind": "analog", "channel_id": "nidq#XA4"},
+            "XA5": {"kind": "analog", "channel_id": "nidq#XA5"},
+            "XA6": {"kind": "analog", "channel_id": "nidq#XA6"},
+            "XA7": {"kind": "analog", "channel_id": "nidq#XA7"},
         }
-        for index in range(8):
-            assert available_signals[f"XA{index}"] == {"kind": "analog", "channel_id": f"nidq#XA{index}"}
+        assert available_signals == expected_available_signals
 
-    def test_the_stream_prefix_is_dropped_from_the_handle(self):
+    def test_a_board_with_no_analog_channels_inventories_only_its_word(self):
         """The handle is the board's own name, not the reader's stream-qualified channel id."""
         interface = SpikeGLXNIDQInterface(folder_path=DIGITAL_ONLY_FOLDER)
-        available_signals = _events_interface(interface)._available_signals
+        available_signals = interface._events_interface._available_signals
 
-        assert set(available_signals) == {"XD0"}
-        assert available_signals["XD0"]["channel_id"] == "nidq#XD0"
+        expected_available_signals = {
+            "XD0": {"kind": "word", "channel_id": "nidq#XD0", "bits": [0, 1, 2, 3, 4, 5, 6, 7]},
+        }
+        assert available_signals == expected_available_signals
 
 
 class TestAnalogDerivation:
@@ -130,25 +116,31 @@ class TestAnalogDerivation:
 class TestSignalAddressing:
     """How a signal is named, decided from the header at construction with no sample read."""
 
-    def test_the_readers_stream_qualified_id_is_also_accepted(self):
-        """`nidq#XD0` works as well as `XD0`, because this interface's own API hands back the former.
+    def test_neo_addressing_is_accepted_for_backwards_compatibility(self):
+        """`nidq#XD0` still reaches `XD0`, behind a `FutureWarning`, until August 2027.
 
-        `get_channel_names()` returns stream-qualified ids and the released `analog_channel_groups` keys
-        on them, so refusing that spelling would make the interface contradict itself. The board's own
-        handle stays canonical: the derived identifier, and hence the table name, has no prefix.
+        The board's own name is canonical: `~snsChanMap`, CatGT and `get_channel_names()` all say
+        `XD0`, and the derived identifier, hence the written table name, carries no prefix. neo builds
+        its channel ids by prefixing the stream so they stay unique across a run's imec and NI streams,
+        and this interface handed those ids back from `get_channel_names()` and took them in
+        `analog_channel_groups` for its first few releases, so user code has them.
         """
-        interface = SpikeGLXNIDQInterface(
-            folder_path=DIGITAL_ONLY_FOLDER,
-            detection_configuration={"nidq#XD0": [{"signal_conditioning": {"bits": [0]}, "detection": "rising"}]},
-        )
-        assert "nidq#XD0" in interface.get_channel_names()  # the spelling the user would have on hand
+        with pytest.warns(FutureWarning, match="neo's stream-qualified id"):
+            interface = SpikeGLXNIDQInterface(
+                folder_path=DIGITAL_ONLY_FOLDER,
+                detection_configuration={"nidq#XD0": [{"signal_conditioning": {"bits": [0]}, "detection": "rising"}]},
+            )
+        assert interface.get_channel_names() == ["XD0"]  # what the interface itself now shows
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
         assert set(nwbfile.events.keys()) == {"XD0"}
 
     def test_giving_one_signal_under_both_spellings_is_refused(self):
-        """The two spellings collapse to one key, so accepting both would drop one entry in silence."""
+        """The two spellings collapse to one key, so accepting both would drop one entry in silence.
+
+        This case exists only because neo addressing is still accepted, so it goes when that does.
+        """
         with pytest.raises(ValueError, match="names the signal 'XD0' twice"):
             SpikeGLXNIDQInterface(
                 folder_path=DIGITAL_ONLY_FOLDER,

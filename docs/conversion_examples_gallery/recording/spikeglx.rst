@@ -188,7 +188,8 @@ instead of ``bits``:
 Cut points are expressed in the signal's **stored values**, not in volts. The companion ``TimeSeries``
 written for the same channel declares its physical unit and a conversion factor, so the two numbers
 differ; ``interface.recording_extractor.get_traces(channel_ids=["nidq#XA3"])`` shows the values a
-threshold is compared against.
+threshold is compared against (the reader keeps neo's stream-qualified ids; this interface's own
+arguments take the board's names).
 
 .. note::
 
@@ -218,10 +219,10 @@ different signal types (e.g., audio, sensors, accelerometers).
     >>> # Specify channel groups at initialization
     >>> analog_channel_groups = {
     ...     "audio": {
-    ...         "channels": ["nidq#XA0"],  # Single channel for audio
+    ...         "channels": ["XA0"],  # Single channel for audio
     ...     },
     ...     "accel": {
-    ...         "channels": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],  # Group 3 channels for accelerometer
+    ...         "channels": ["XA3", "XA4", "XA5"],  # Group 3 channels for accelerometer
     ...     },
     ... }
     >>> interface = SpikeGLXNIDQInterface(

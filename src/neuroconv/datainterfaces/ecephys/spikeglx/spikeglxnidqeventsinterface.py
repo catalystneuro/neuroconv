@@ -1,5 +1,7 @@
 """Interface for discrete events derived from the SpikeGLX NIDQ board's sampled signals."""
 
+import warnings
+
 import numpy as np
 
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
@@ -14,6 +16,19 @@ from ....tools.signal_processing import (
     _frames_to_seconds,
 )
 from ....utils import DeepDict
+
+# A NIDQ channel is addressed by the board's own name, ``XA0``, which is what ``~snsChanMap``, the
+# SpikeGLX user interface and CatGT all show. neo builds its channel ids by prefixing the stream
+# (``nidq#XA0``) so that ids stay unique across a run's imec and NI streams, and because this interface
+# handed those ids straight back for its first few releases, that spelling reached user code. It is
+# still accepted wherever a channel is named, behind this warning. It lives here rather than in
+# spikeglxnidqinterface.py only because that module imports this one.
+_NEO_ADDRESSING_DEPRECATION = (
+    "Addressing a NIDQ channel by neo's stream-qualified id ('nidq#XA0') is deprecated and will be "
+    "removed on or after August 2027. Use the board's own name ('XA0'), which is what the SpikeGLX "
+    "header, CatGT and get_channel_names() all show. The stream prefix distinguishes nothing here, "
+    "since this interface only ever reads the nidq stream."
+)
 
 
 class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
@@ -105,25 +120,30 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         if detection_configuration is None:
             detection_configuration = self._get_default_detection_configuration()
         else:
-            # Accept the reader's stream-qualified channel id as well as the board's own handle. The
-            # canonical form is the board's ("XD0"), matching ~snsChanMap, the SpikeGLX interface and
-            # CatGT, and matching how every other events interface keys on the source's own name. But
-            # SpikeGLXNIDQInterface.get_channel_names() hands back "nidq#XD0", and the released
-            # analog_channel_groups keys on that form too, so rejecting it would make the pair
-            # contradict itself. The prefix is redundant here in any case: there is only ever one stream.
+            # The signal_source_id is the board's own handle ("XD0"), matching ~snsChanMap, the SpikeGLX
+            # user interface and CatGT, and matching how every other events interface keys on the source's
+            # own name. neo's stream-qualified id ("nidq#XD0") is accepted too, as a temporary
+            # backwards-compatibility shim: this interface handed those ids back from get_channel_names()
+            # and took them in analog_channel_groups for its first few releases, so user code has them.
+            # Both now warn and go on or after August 2027, together with this block and the collision
+            # check inside it, which exists only because two spellings do.
             normalized = {}
+            used_neo_addressing = False
             for signal_source_id, specs in detection_configuration.items():
                 handle = str(signal_source_id).split("#")[-1]
+                used_neo_addressing |= "#" in str(signal_source_id)
                 if handle in normalized:
                     # Both spellings of one signal. Rewriting them into a dict would keep whichever came
                     # last and drop the other in silence, which is exactly the failure this module's
                     # validation exists to remove.
                     raise ValueError(
-                        f"detection_configuration names the signal '{handle}' twice, once with the "
-                        f"reader's stream prefix and once without. Both spellings address the same "
+                        f"detection_configuration names the signal '{handle}' twice, once with neo's "
+                        f"stream prefix and once without. Both spellings address the same "
                         "signal, so give it a single entry holding all of its detection specs."
                     )
                 normalized[handle] = specs
+            if used_neo_addressing:
+                warnings.warn(_NEO_ADDRESSING_DEPRECATION, FutureWarning, stacklevel=4)
             detection_configuration = normalized
         # One construction-time check, on the default as well as on a caller-supplied configuration: the
         # default is machine-built but its inputs are not, so it too can resolve two event types to the

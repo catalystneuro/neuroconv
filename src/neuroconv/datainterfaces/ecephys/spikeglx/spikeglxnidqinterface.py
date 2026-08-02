@@ -7,7 +7,10 @@ import numpy as np
 from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
 
-from .spikeglxnidqeventsinterface import _SpikeGLXNIDQEventsInterface
+from .spikeglxnidqeventsinterface import (
+    _NEO_ADDRESSING_DEPRECATION,
+    _SpikeGLXNIDQEventsInterface,
+)
 from ....basedatainterface import BaseDataInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
 from ....utils import (
@@ -81,20 +84,24 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             If None (default), all analog channels are written as a single TimeSeries.
             If empty dict {}, no analog channels are written.
 
+            Channels are named as the board names them (``"XA0"``), which is what ``get_channel_names``
+            returns. neo's stream-qualified ids (``"nidq#XA0"``) are also accepted, deprecated and
+            removed on or after August 2027.
+
             Structure:
                 {
                     "group_key": {
-                        "channels": ["channel_id_1", "channel_id_2", ...],
+                        "channels": ["channel_name_1", "channel_name_2", ...],
                     },
                 }
 
             Example:
                 {
                     "audio": {
-                        "channels": ["nidq#XA0"],
+                        "channels": ["XA0"],
                     },
                     "accel": {
-                        "channels": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],
+                        "channels": ["XA3", "XA4", "XA5"],
                     },
                 }
         digital_channel_groups : dict[str, dict], optional
@@ -246,7 +253,9 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         # Resolve to defaults if None, then validate
         self._analog_channel_groups = (
-            analog_channel_groups if analog_channel_groups is not None else self._get_default_analog_channel_groups()
+            self._normalize_analog_channel_groups(analog_channel_groups)
+            if analog_channel_groups is not None
+            else self._get_default_analog_channel_groups()
         )
         self._validate_analog_channel_groups()
 
@@ -363,6 +372,44 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         metadata["Events"][self.metadata_key] = {"event_types": event_types}
         return metadata
 
+    def _resolve_channel_id(self, channel_name: str) -> str:
+        """Map either spelling of a channel onto the reader's own id, which is what reads a trace.
+
+        The board's name (``XA0``) is what a caller states and what :meth:`get_channel_names` shows;
+        neo's stream-qualified id (``nidq#XA0``) is what ``get_traces`` and ``select_channels`` take.
+        A name the board does not have comes back unchanged, so the caller's own spelling is what the
+        validation below names in its error.
+        """
+        channel_name = str(channel_name)
+        if "#" in channel_name:  # already neo addressing; the caller warns
+            return channel_name
+        for channel_id in self.recording_extractor.get_channel_ids():
+            if str(channel_id).split("#")[-1] == channel_name:
+                return str(channel_id)
+        return channel_name
+
+    def _normalize_analog_channel_groups(self, analog_channel_groups: dict) -> dict:
+        """Rewrite a caller's ``channels`` onto the reader's ids, warning once on neo addressing.
+
+        Everything downstream (validation, ``select_channels``, the group's channel names) works in the
+        reader's ids, so the two accepted spellings collapse here and nowhere else.
+        """
+        normalized = {}
+        used_neo_addressing = False
+        for group_key, group_config in analog_channel_groups.items():
+            if not isinstance(group_config, dict) or "channels" not in group_config:
+                normalized[group_key] = group_config  # left for _validate_analog_channel_groups to reject
+                continue
+            channels = [str(channel_name) for channel_name in group_config["channels"]]
+            used_neo_addressing |= any("#" in channel_name for channel_name in channels)
+            normalized[group_key] = {
+                **group_config,
+                "channels": [self._resolve_channel_id(channel_name) for channel_name in channels],
+            }
+        if used_neo_addressing:
+            warnings.warn(_NEO_ADDRESSING_DEPRECATION, FutureWarning, stacklevel=4)
+        return normalized
+
     def _validate_analog_channel_groups(self) -> None:
         """Validate analog_channel_groups structure and channel IDs."""
         all_analog_ids_set = set(self.analog_channel_ids)
@@ -375,7 +422,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             if invalid_channels:
                 raise ValueError(
                     f"Invalid channels in group '{group_key}': {invalid_channels}. "
-                    f"Available analog channels: {self.analog_channel_ids}"
+                    f"Available analog channels: {[name.split('#')[-1] for name in self.analog_channel_ids]}"
                 )
 
     def _validate_digital_channel_groups(self) -> None:
@@ -590,9 +637,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         Returns
         -------
         list of str
-            The names of all channels in the NIDQ recording.
+            The names of all channels in the NIDQ recording, as the board itself names them
+            (``XA0``, ``XD0``), which is what ``~snsChanMap`` and the SpikeGLX user interface show.
         """
-        return list(self.recording_extractor.get_channel_ids())
+        return [str(channel_id).split("#")[-1] for channel_id in self.recording_extractor.get_channel_ids()]
 
     def add_to_nwbfile(
         self,
@@ -757,17 +805,19 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         Parameters
         ----------
         channel_name : str
-            Name of the channel in the .nidq.bin file.
+            Name of the channel in the .nidq.bin file, as the board names it (``"XA0"``).
 
         Returns
         -------
         rising_times : numpy.ndarray
             The times of the rising TTL pulses.
         """
+        if "#" in str(channel_name):
+            warnings.warn(_NEO_ADDRESSING_DEPRECATION, FutureWarning, stacklevel=2)
+        channel_id = self._resolve_channel_id(channel_name)
+
         # TODO: consider RAM cost of these operations and implement safer buffering version
-        rising_frames = get_rising_frames_from_ttl(
-            trace=self.recording_extractor.get_traces(channel_ids=[channel_name])
-        )
+        rising_frames = get_rising_frames_from_ttl(trace=self.recording_extractor.get_traces(channel_ids=[channel_id]))
 
         nidq_timestamps = self.recording_extractor.get_times()
         rising_times = nidq_timestamps[rising_frames]

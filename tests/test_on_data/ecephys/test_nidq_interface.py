@@ -376,6 +376,45 @@ def test_nidq_analog_data(tmp_path):
     assert len(nwbfile.devices) == 1
 
 
+def test_get_channel_names_are_the_boards_own_names():
+    """The accessor shows what `~snsChanMap` and the SpikeGLX user interface show, not neo's ids.
+
+    neo prefixes its channel ids with the stream (`nidq#XA0`) so they stay unique across a run's imec
+    and NI streams. Inside this interface the prefix is a constant, since it only ever opens the nidq
+    stream, so the names it hands out are the board's own and match what its arguments take.
+    """
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+    interface = SpikeGLXNIDQInterface(folder_path=folder_path)
+
+    assert interface.get_channel_names() == ["XA0", "XA1", "XA2", "XA3", "XA4", "XA5", "XA6", "XA7", "XD0"]
+
+
+def test_neo_addressing_is_accepted_for_backwards_compatibility(tmp_path):
+    """Every place a channel is named still takes `nidq#XA0`, behind a `FutureWarning`, until Aug 2027.
+
+    The released interface returned neo's ids from `get_channel_names` and took them in
+    `analog_channel_groups`, so user code has them.
+    """
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+
+    with pytest.warns(FutureWarning, match="neo's stream-qualified id"):
+        interface = SpikeGLXNIDQInterface(
+            folder_path=folder_path,
+            analog_channel_groups={"audio": {"channels": ["nidq#XA0"]}},
+        )
+
+    with pytest.warns(FutureWarning, match="neo's stream-qualified id"):
+        neo_addressed_times = interface.get_event_times_from_ttl(channel_name="nidq#XA0")
+    np.testing.assert_array_equal(neo_addressed_times, interface.get_event_times_from_ttl(channel_name="XA0"))
+
+    # The deprecated spelling selects the same channel, so it writes the same file as the board's name.
+    nwbfile_path = tmp_path / "nidq_test_neo_addressing.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+
+    nwbfile = read_nwb(nwbfile_path)
+    assert nwbfile.acquisition["Audio"].data.shape[1] == 1
+
+
 def test_nidq_analog_metadata_customization(tmp_path):
     """Test dividing analog channels into multiple TimeSeries with init-time grouping."""
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
@@ -385,13 +424,13 @@ def test_nidq_analog_metadata_customization(tmp_path):
         folder_path=folder_path,
         analog_channel_groups={
             "audio": {
-                "channels": ["nidq#XA0", "nidq#XA1"],
+                "channels": ["XA0", "XA1"],
             },
             "accelerometer": {
-                "channels": ["nidq#XA2", "nidq#XA3", "nidq#XA4"],
+                "channels": ["XA2", "XA3", "XA4"],
             },
             "temperature": {
-                "channels": ["nidq#XA5", "nidq#XA6", "nidq#XA7"],
+                "channels": ["XA5", "XA6", "XA7"],
             },
         },
     )
@@ -459,7 +498,7 @@ def test_nidq_analog_invalid_channels_at_init(tmp_path):
             folder_path=folder_path,
             analog_channel_groups={
                 "audio": {
-                    "channels": ["nidq#XA0", "nidq#XA99"],  # XA99 doesn't exist
+                    "channels": ["XA0", "XA99"],  # XA99 doesn't exist
                 },
             },
         )
@@ -488,10 +527,10 @@ def test_nidq_analog_groups_with_default_metadata(tmp_path):
         folder_path=folder_path,
         analog_channel_groups={
             "audio": {
-                "channels": ["nidq#XA0", "nidq#XA1"],
+                "channels": ["XA0", "XA1"],
             },
             "sensors": {
-                "channels": ["nidq#XA2", "nidq#XA3"],
+                "channels": ["XA2", "XA3"],
             },
         },
     )
