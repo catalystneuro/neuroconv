@@ -291,7 +291,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             imaging_extractor = self.imaging_extractor
 
         # TODO: change to self.get_metadata(use_new_metadata_format=True) when all imaging interfaces are migrated
-        metadata = metadata or self.get_metadata()
+        metadata = metadata or self._get_metadata_for_writing()
 
         add_imaging_to_nwbfile(
             imaging=imaging_extractor,
