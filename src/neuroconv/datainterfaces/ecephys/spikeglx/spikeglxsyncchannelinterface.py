@@ -327,7 +327,16 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         metadata = metadata or self.get_metadata()
 
         # Add device (probe) if not already present, from the top-level registry keyed by metadata key.
+        # The list shape this interface used to emit is named rather than silently accepted, so a script
+        # written against it is told what to change instead of failing on an attribute deep in here.
         device_metadata = metadata.get("Devices", {})
+        if isinstance(device_metadata, list):
+            device_metadata_key = f"neuropixels_imec{self._probe_index}"
+            raise ValueError(
+                "metadata['Devices'] is a list. It is now a registry keyed by metadata key, so this "
+                f"interface's entry belongs under '{device_metadata_key}': "
+                f"metadata['Devices'] = {{'{device_metadata_key}': {{'name': ..., 'description': ...}}}}."
+            )
         for device in device_metadata.values():
             if device["name"] not in nwbfile.devices:
                 nwbfile.create_device(**device)
