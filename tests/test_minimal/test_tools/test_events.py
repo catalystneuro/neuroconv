@@ -97,13 +97,12 @@ class TestValidateDetectionConfiguration:
             AVAILABLE_SIGNALS,
         )
 
-    def test_binarize_on_a_line_is_deliberately_still_allowed(self):
-        """The one exception to "each kind admits one cut", kept because the grammar names the case.
+    def test_binarize_is_how_a_line_is_spelled(self):
+        """A line takes ``{"binarize": "midpoint"}``, which is the whole of what omission used to mean.
 
-        ``thresholds`` on a line is refused as redundant, but a line can be conceptually two-valued and
-        numerically not: a stray sample between the levels makes the read-time backstop raise, and
-        ``{"binarize": "midpoint"}`` is the documented one-step fix. Refusing it here for symmetry would
-        close off the escape hatch and leave that signal unconvertible.
+        The cut falls strictly between two distinct values whatever they are, so it reads a 0/1 line and
+        an Inscopix-style 48/64 line alike without the caller knowing either. It also rescues a line that
+        is conceptually two-valued and numerically not, where a stray sample sits between the levels.
         """
         _validate_detection_configuration(
             {"DI/O-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]},

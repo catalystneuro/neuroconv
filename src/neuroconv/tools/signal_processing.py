@@ -227,12 +227,12 @@ def _detect_events(
     detection : {"rising", "falling", "high_period", "low_period", "value_change"}
         Which transitions become events. ``"rising"`` and ``"falling"`` give a point event at each edge.
         ``"high_period"`` pairs each rising edge with the next falling one, and ``"low_period"`` the
-        reverse, giving a durative event. Those four need a **line**: "which direction" and "how long
-        until the opposite edge" are only defined on a two-valued signal. ``"value_change"`` means "a
-        transition of this signal is an event of this type", pooling both directions into one event
-        type and carrying no payload, so it is the only reading a multi-valued signal admits. To tell
-        transitions apart, cut lines instead and give each its own spec, which is lossless: the band at
-        any instant is how many of the cuts are currently reached.
+        reverse, giving a durative event. ``"value_change"`` means "a transition of this signal is an
+        event of this type", pooling both directions into one event type and carrying no payload, so on
+        the line conditioning always hands over it is exactly ``"rising"`` together with ``"falling"``,
+        in one table rather than two. It used to be the reading a *multi-valued* signal admitted, which
+        stopped being a distinct job when every cut started guaranteeing a line. To tell transitions
+        apart, cut one line per distinction and give each its own spec.
 
     Returns
     -------
@@ -264,9 +264,9 @@ def _detect_events(
     difference = np.diff(discrete_trace)
 
     if detection == "value_change":
-        # Every transition is an event of the one type, with nothing to tell them apart. The reading a
-        # multi-valued signal admits, and the only one that does not require a line. Distinguishing the
-        # values is a conditioning job (cut a line per distinction), not a payload.
+        # Every transition is an event of the one type, with nothing to tell them apart. On a line that
+        # is rising and falling pooled, so this is a packaging choice rather than a distinct reading.
+        # Distinguishing the values is a conditioning job (cut a line per distinction), not a payload.
         return np.flatnonzero(difference) + 1, None
 
     rising_frames = np.flatnonzero(difference > 0) + 1
