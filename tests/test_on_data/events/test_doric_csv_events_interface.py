@@ -57,7 +57,10 @@ class TestDoricCSVEvents:
     def test_rising_detection_is_onset_only(self):
         """detection='rising' reads point events (onset timestamps only, no duration column)."""
         interface = DoricCSVEventsInterface(
-            file_path=FILE_PATH, detection_configuration={"DI/O-1": [{"detection": "rising"}]}
+            file_path=FILE_PATH,
+            detection_configuration={
+                "DI/O-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
+            },
         )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
