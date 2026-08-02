@@ -132,6 +132,7 @@ Events
     Doric Events <events/doric_events>
     NPM Events <events/npm_events>
     TDT Events <events/tdt_events>
+    Inscopix GPIO <events/inscopix_gpio>
 
 
 Image
