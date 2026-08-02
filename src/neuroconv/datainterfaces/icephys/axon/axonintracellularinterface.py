@@ -12,6 +12,7 @@ from ....tools.icephys import (
     _RESPONSE_CLASS,
     _STIMULUS_CLASS,
     _add_intracellular_electrode_to_nwbfile,
+    _add_intracellular_recordings_to_nwbfile,
 )
 from ....utils import (
     DeepDict,
@@ -363,36 +364,17 @@ class AxonIntracellularInterface(BaseDataInterface):
         whatever reaches the known-complete file; the per-sweep rows written here are always safe to append to, so
         this contribution stays composable.
         """
-        columns = {
-            "sequence": self._run_identity,
-            "stimulus_type": self._extract_and_format_stimulus_type(),
-        }
-        if self._repetition is not None:
-            columns["repetition"] = self._repetition
-        if self._condition is not None:
-            columns["condition"] = self._condition
-        column_descriptions = {
-            "sequence": "Run identity grouping rows into a sequential recording (shared per source file).",
-            "stimulus_type": "Stimulus type of the run, carried up to its sequential recording when aggregated.",
-            "repetition": "Repetition label grouping sequential recordings into a repetition.",
-            "condition": "Experimental condition label grouping repetitions.",
-        }
-        table = nwbfile.get_intracellular_recordings()
-        for name in columns:
-            if name not in table.colnames:
-                table.add_column(name=name, description=column_descriptions[name])
-
-        for start_index, count in sweep_sample_ranges:
-            kwargs = dict(
-                electrode=electrode,
-                response=response_series,
-                response_start_index=start_index,
-                response_index_count=count,
-            )
-            if stimulus_series is not None:
-                kwargs.update(stimulus=stimulus_series, stimulus_start_index=start_index, stimulus_index_count=count)
-            kwargs.update(columns)
-            nwbfile.add_intracellular_recording(**kwargs)
+        _add_intracellular_recordings_to_nwbfile(
+            nwbfile,
+            electrode=electrode,
+            response_series=response_series,
+            sweep_sample_ranges=sweep_sample_ranges,
+            sequence=self._run_identity,
+            stimulus_series=stimulus_series,
+            stimulus_type=self._extract_and_format_stimulus_type(),
+            repetition=self._repetition,
+            condition=self._condition,
+        )
 
     # ------------------------------------------------------------------ discovery (call before constructing)
 

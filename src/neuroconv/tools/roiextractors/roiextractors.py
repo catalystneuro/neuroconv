@@ -391,8 +391,10 @@ def _add_photon_series_to_nwbfile(
     # Copy to avoid mutation
     photon_series_kwargs = photon_series_metadata.copy()
 
-    # Required by the NWB photon-series object; default any the interface did not supply from the
-    # central placeholder template rather than raising. See ``_add_imaging_plane_to_nwbfile``.
+    # Required by the NWB photon-series object; default any the interface did not supply from the central
+    # placeholder template rather than raising. See ``_add_imaging_plane_to_nwbfile``. The default name is
+    # the generic ``MicroscopySeries``: an interface that knows what it is writing states its own name,
+    # as ``BaseImagingExtractorInterface`` does.
     required_fields = ["name", "unit"]
     default_series = _get_ophys_metadata_placeholders()["Ophys"]["MicroscopySeries"]["default_metadata_key"]
     for field in required_fields:
@@ -499,8 +501,8 @@ def _add_plane_segmentation_to_nwbfile(
     plane_seg_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key].copy()
 
     # Required by the NWB ``PlaneSegmentation`` object; default any the interface did not supply from the
-    # central placeholder template. ``name`` is deliberately not defaulted here: entries are reused by
-    # name below, so two unnamed segmentations would silently collapse into one.
+    # central placeholder template. ``name`` is defaulted where the segmentation is built, which is also
+    # where reusing a defaulted name is rejected rather than silently collapsing two segmentations.
     # See ``_add_imaging_plane_to_nwbfile``.
     required_fields = ["description"]
     default_plane_seg = _get_ophys_metadata_placeholders()["Ophys"]["PlaneSegmentations"]["default_metadata_key"]
@@ -529,10 +531,21 @@ def _add_plane_segmentation_to_nwbfile(
         image_segmentation = ImageSegmentation(name=image_segmentation_name)
         ophys_module.add(image_segmentation)
 
-    plane_segmentation_name = plane_seg_metadata["name"]
+    # The name defaults to the neurodata type being written, as the photon series does. Reuse by name is
+    # how two interfaces deliberately share one segmentation, so it stays allowed for a name the caller
+    # stated; a name that was defaulted cannot express that intent, and reusing it would silently drop the
+    # second interface's ROIs, so it is an error instead.
+    name_was_defaulted = "name" not in plane_seg_metadata
+    plane_segmentation_name = plane_seg_metadata.setdefault("name", "PlaneSegmentation")
 
-    # If PlaneSegmentation already exists, return early
     if plane_segmentation_name in image_segmentation.plane_segmentations:
+        if name_was_defaulted:
+            raise ValueError(
+                f"A PlaneSegmentation named '{plane_segmentation_name}' is already in the file, and "
+                f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}'] does not name its own. Give it "
+                "a 'name' to write a second segmentation, or use 1 metadata key to share one."
+            )
+        # If PlaneSegmentation already exists, return early
         return nwbfile
 
     # Extract ROI data
@@ -570,11 +583,19 @@ def _add_plane_segmentation_to_nwbfile(
             pixel_mask_to_write = [tuple(x) for x in pixel_mask]
             plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, **{mask_type_kwarg: pixel_mask_to_write})
 
-    # Add all extractor properties as columns (acceptance, quality metrics, etc.)
+    # Add all extractor properties as columns (acceptance, quality metrics, etc.). The quality metrics
+    # below are named the same way by every segmenter that reports them, so their descriptions are known
+    # here rather than left empty; this is the same set the old list-based path describes.
+    known_property_descriptions = {
+        "snr": "Signal-to-noise ratio for each component",
+        "r_values": "Spatial correlation values for each component",
+        "cnn_preds": "CNN classifier predictions for component quality",
+    }
     available_properties = segmentation_extractor.get_property_keys()
     for property_key in available_properties:
         values = segmentation_extractor.get_property(key=property_key, ids=roi_ids)
-        plane_segmentation.add_column(name=property_key, description="", data=values)
+        description = known_property_descriptions.get(property_key, "")
+        plane_segmentation.add_column(name=property_key, description=description, data=values)
 
     image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
 
@@ -657,8 +678,9 @@ def _add_roi_response_traces_to_nwbfile(
     else:
         roi_responses_metadata = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
 
-    # Resolve PlaneSegmentation via the same metadata_key
-    plane_segmentation_name = metadata["Ophys"]["PlaneSegmentations"][metadata_key]["name"]
+    # Resolve PlaneSegmentation via the same metadata_key, defaulting its name the same way the
+    # segmentation writer does.
+    plane_segmentation_name = metadata["Ophys"]["PlaneSegmentations"][metadata_key].get("name", "PlaneSegmentation")
     ophys_module = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
     image_segmentation = ophys_module["ImageSegmentation"]
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
