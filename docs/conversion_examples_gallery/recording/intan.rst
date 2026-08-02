@@ -317,8 +317,11 @@ that was recorded but never toggles is still written, as an empty table.
 To read specific lines, pass a ``detection_configuration`` keyed by their header names. Each line gets a
 **list** of detection specs, one per event type you want from it, and a spec's ``detection`` is one of
 ``"rising"`` or ``"falling"`` (point events at that edge) or ``"high_period"`` / ``"low_period"``
-(durative events with a duration, the latter for an active-low line). An Intan digital line is already a
-``0``/``1`` signal, so no ``signal_conditioning`` applies:
+(durative events with a duration, the latter for an active-low line). Every spec also states how its
+signal becomes a line, in ``signal_conditioning``. An Intan digital line already is one, which is what
+``{"binarize": "midpoint"}`` is for: it cuts strictly between the signal's two levels, whatever they
+are, so you do not have to know them. Stating it is deliberate rather than defaulted, so that what an
+event type is read from is always something you chose:
 
 .. code-block:: python
 
@@ -329,7 +332,13 @@ To read specific lines, pass a ``detection_configuration`` keyed by their header
     ...         # choose for whatever device is wired to it; it replaces the derived identifier, and
     ...         # pinning it now means the identifier does not move if you later read the same line two
     ...         # ways. Without it, the line keeps its header name.
-    ...         "DIGITAL-IN-01": [{"detection": "rising", "event_name": "camera_sync"}],
+    ...         "DIGITAL-IN-01": [
+    ...             {
+    ...                 "signal_conditioning": {"binarize": "midpoint"},
+    ...                 "detection": "rising",
+    ...                 "event_name": "camera_sync",
+    ...             }
+    ...         ],
     ...     },
     ...     verbose=False,
     ... )
