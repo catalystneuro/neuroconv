@@ -2301,26 +2301,22 @@ def write_recording_to_nwbfile(
 def _compose_waveform_mean_description(
     *,
     waveform_means: np.ndarray,
-    unit_electrode_indices: list[list[int]] | None,
     peak_sample: int | None,
     source_description: str | None,
 ) -> str:
     """
     Build the description of the `waveform_mean` column.
 
-    Three facts about the column have no field of their own in the schema: which columns of the
-    channel axis are padding, where the peak sits inside the window, and what conversion was applied
-    to reach the volts that the fixed `unit` attribute claims. This composes whichever of them the
-    caller stated into the column description, which is the only place a consumer can find them.
+    Two facts about the column have no field of their own in the schema: where the peak sits inside
+    the window, and what conversion was applied to reach the volts that the fixed `unit` attribute
+    claims. This composes whichever of them the caller stated into the column description, which is
+    the only place a consumer can find them.
 
     Parameters
     ----------
     waveform_means : np.ndarray
         The waveforms about to be written, of shape (num_units, num_samples) or
         (num_units, num_samples, num_channels).
-    unit_electrode_indices : list of lists of int, optional
-        The electrodes each unit is written against. When present, the channel axis is aligned to
-        them and the alignment is stated.
     peak_sample : int, optional
         Index of the sample the waveforms are aligned on.
     source_description : str, optional
@@ -2331,16 +2327,10 @@ def _compose_waveform_mean_description(
     str
         The column description.
     """
-    nothing_to_state = unit_electrode_indices is None and peak_sample is None and source_description is None
-    if nothing_to_state:
+    if peak_sample is None and source_description is None:
         return "the spike waveform mean for each spike unit"
 
     sentences = ["The mean waveform for each unit."]
-    if unit_electrode_indices is not None and waveform_means.ndim == 3:
-        sentences.append(
-            "Column i of the channel axis is the electrode at position i of this unit's electrodes entry; "
-            "a unit with fewer electrodes than the width of the array is zero-padded on the right."
-        )
     if peak_sample is not None:
         sentences.append(f"The waveform peak is at sample {peak_sample} of {waveform_means.shape[1]}.")
     if source_description is not None:
@@ -2638,7 +2628,6 @@ def _add_units_table_to_nwbfile(
         data_to_add["waveform_mean"].update(
             description=_compose_waveform_mean_description(
                 waveform_means=waveform_means,
-                unit_electrode_indices=unit_electrode_indices,
                 peak_sample=waveform_peak_sample,
                 source_description=waveform_source_description,
             ),
