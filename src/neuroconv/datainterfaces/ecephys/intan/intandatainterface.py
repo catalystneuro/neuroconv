@@ -84,7 +84,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             Verbose
         es_key : str, default: "ElectricalSeries"
         metadata_key : str, optional
-            Key that indexes this interface's entries in the dict-based metadata. Defaults to the value of ``es_key``.
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to ``"intan_recording"``.
         ignore_integrity_checks : bool, default: False
             If True, data that violates integrity assumptions will be loaded. At the moment the only integrity
             check performed is that timestamps are continuous. If False, an error will be raised if the check fails.
@@ -139,6 +139,11 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
         super().__init__(**init_kwargs)
 
+        # ``metadata_key`` is a snake_case dict handle, not the series name. Intan is single-stream, so the
+        # default is a constant; conversions that combine several sources pass their own.
+        if metadata_key is None:
+            self.metadata_key = "intan_recording"
+
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         system = self.file_path.suffix  # .rhd or .rhs
         device_description = {".rhd": "RHD Recording System", ".rhs": "RHS Stim/Recording System"}[system]
@@ -147,9 +152,9 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             from ....tools.spikeinterface.spikeinterface import _get_group_name
 
             metadata = super().get_metadata(use_new_metadata_format=True)
-            # The base names the ElectricalSeries after ``metadata_key`` (the dict key). Intan is
-            # single-stream, so override it with the fixed ``"ElectricalSeries"`` (matching the old-format
-            # branch below) so a custom ``metadata_key`` re-keys the entry without renaming the series.
+            # State the series name here, where the metadata is produced: Intan is single-stream, so it is the
+            # fixed "ElectricalSeries" (matching the old-format branch below), independent of ``metadata_key``
+            # (the dict key), so re-keying an entry never renames the written series.
             metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeries"
 
             device_metadata_key = "intan_device"

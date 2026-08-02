@@ -174,14 +174,14 @@ only the lines you care about to avoid the empty tables, or ``{}`` to write no e
 still writing the analog channels.
 
 The analog channels can be read as events too, since a TTL wired into an analog input is a common way
-to get more lines out of a board. An analog signal is cut into a discrete one with ``thresholds``
+to get more lines out of a board. An analog signal is cut into a discrete one with ``binarize``
 instead of ``bits``:
 
 .. code-block:: python
 
     >>> detection_configuration = {
     ...     "XA3": [
-    ...         {"signal_conditioning": {"thresholds": [550.0]}, "detection": "rising"},
+    ...         {"signal_conditioning": {"binarize": 550.0}, "detection": "rising"},
     ...     ],
     ... }
 

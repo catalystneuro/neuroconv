@@ -5,8 +5,8 @@ import numpy as np
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools.events import (
     _get_event_type_source_ids,
-    resolve_detection_plan,
-    validate_detection_configuration,
+    _resolve_detection_plan,
+    _validate_detection_configuration,
 )
 from ....tools.signal_processing import (
     _condition_signal,
@@ -34,7 +34,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
     cut; every other one names its lines in the header.
 
     Analog channels are inventoried alongside the digital words, so ``XA``/``MA`` can be cut into events
-    with ``thresholds`` (a photodiode or a lever trace read as a discrete signal). They are never derived
+    with ``binarize`` (a photodiode or a lever trace cut into a discrete signal). They are never derived
     by default, since there is no defensible cut point to invent.
     """
 
@@ -62,7 +62,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             ``"XD0"`` for a digital word or ``"XA1"`` for an analog channel). Each value is a **list** of
             detection specs, one per event type derived from that signal. A digital word's spec must
             carry ``signal_conditioning={"bits": [n]}`` naming the one line to read; an analog channel's
-            must carry ``signal_conditioning={"thresholds": [c, ...]}`` plus an ``event_name``. A spec's
+            must carry ``signal_conditioning={"binarize": c}`` plus an ``event_name``. A spec's
             ``detection`` is one of ``"rising"`` / ``"falling"`` (a point event at each edge),
             ``"high_period"`` / ``"low_period"`` (a durative event), or ``"value_change"``, and it is
             required. If None (default), every line of every digital word is read as a ``high_period``
@@ -128,7 +128,15 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         # One construction-time check, on the default as well as on a caller-supplied configuration: the
         # default is machine-built but its inputs are not, so it too can resolve two event types to the
         # same identifier. Validation covers structure and identifier resolution alike.
-        validate_detection_configuration(detection_configuration, self._available_signals)
+        #
+        # `{}` is exempt, and is the one place it means anything. The shared grammar refuses an empty
+        # configuration because selecting nothing is normally a mistake, and that rule stays intact:
+        # nothing empty is ever handed to it. Here `{}` is not a configuration at all but a suppression
+        # sentinel, "keep the analog channels, write no events", which this interface alone needs because
+        # a converter builds it for you and dropping it is not an option. It mirrors the released
+        # `analog_channel_groups={}`, so the pair keeps meaning the same thing on both sides.
+        if detection_configuration:
+            _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
     @staticmethod
@@ -201,7 +209,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         and nothing in the file distinguishes the two; a coded word therefore needs an explicit spec and
         is deliberately not reachable from here.
 
-        Analog channels are skipped rather than guessed: ``thresholds`` has no defensible default, and
+        Analog channels are skipped rather than guessed: a continuous trace has no defensible cut, and
         inventing one would fabricate events.
         """
         detection_configuration = {}
@@ -231,7 +239,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         """Build the internal event representation by carving and edge-detecting each signal, cached.
 
         Each entry of the resolved plan becomes one :class:`_EventsData`: the signal's trace is
-        conditioned per the spec (a bit carved out of the word, or an analog trace cut at thresholds),
+        conditioned per the spec (a bit carved out of the word, or an analog trace cut at a level),
         read into onset frames and, for a durative reading, offset frames, and both are then converted
         through the recording's own clock.
 
@@ -247,7 +255,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         # Built here rather than held on the interface: the configuration is the source of truth, and the
         # plan is pure and cheap to rebuild. Grouped by signal, so a word is read once however many lines
         # are carved out of it.
-        detection_plan = resolve_detection_plan(self._detection_configuration)
+        detection_plan = _resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
         for signal_source_id, detection_specs in detection_plan.items():
@@ -255,11 +263,11 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             # Unscaled (the extractor's default). Required for a word, whose value *is* the bit pattern:
             # SpikeGLX declares one input range for the device, so the reader hands digital channels the
             # same volts-per-count gain as the analog ones and applying it would destroy what `bits`
-            # carves. Analog channels are read the same way, so a `thresholds` cut point is expressed in
+            # carves. Analog channels are read the same way, so a `binarize` cut point is expressed in
             # the signal's stored values, matching every other interface using this grammar.
             trace = np.ravel(self.recording_extractor.get_traces(channel_ids=[channel_id]))
             for event_type_source_id, spec in detection_specs:
-                conditioned = _condition_signal(trace, spec.get("signal_conditioning"))
+                conditioned = _condition_signal(trace, spec["signal_conditioning"])
                 onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
                 onsets, durations = _frames_to_seconds(
                     onset_frames, offset_frames, self.recording_extractor.sample_index_to_time

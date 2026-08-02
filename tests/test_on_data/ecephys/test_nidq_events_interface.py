@@ -8,8 +8,8 @@ case that only exists because this interface writes more than events. The zero-c
 the deprecated ``digital_channel_groups`` path live in ``test_nidq_interface.py`` alongside the analog
 tests.
 
-The validator's own rejections (a word spec with no ``bits``, an analog spec with no ``thresholds``,
-``bits`` aimed at an analog signal, a ``thresholds`` fan-out with no ``event_name``) are format
+The validator's own rejections (a word spec with no ``bits``, an analog spec with no cut,
+``bits`` aimed at an analog signal, a numeric ``binarize`` fan-out with no ``event_name``) are format
 independent and belong on ``MockSignalEncodedEventsInterface``, which declares both kinds, rather than
 here where they would need gin data to reach the same code.
 """
@@ -67,10 +67,10 @@ class TestSignalInventory:
 
 
 class TestAnalogDerivation:
-    """An analog channel is derivable through the same grammar, cut with ``thresholds``."""
+    """An analog channel is derivable through the same grammar, cut with ``binarize``."""
 
     def test_an_analog_channel_is_cut_into_events(self):
-        """``thresholds`` turns a continuous trace into a discrete one, which is then read as events.
+        """``binarize`` turns a continuous trace into a discrete one, which is then read as events.
 
         The cut point is in the signal's **stored values**, matching every other interface on this
         grammar (Inscopix cuts on raw amplitudes too). ``XA3`` here is noise spanning 167 to 561 with
@@ -80,9 +80,7 @@ class TestAnalogDerivation:
         """
         interface = SpikeGLXNIDQInterface(
             folder_path=BOTH_KINDS_FOLDER,
-            detection_configuration={
-                "XA3": [{"signal_conditioning": {"thresholds": [550.0]}, "detection": "high_period"}]
-            },
+            detection_configuration={"XA3": [{"signal_conditioning": {"binarize": 550.0}, "detection": "high_period"}]},
         )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
@@ -98,20 +96,20 @@ class TestAnalogDerivation:
         assert crossings["timestamp"][0] == pytest.approx(11.1225312)
         assert crossings["duration"][0] == pytest.approx(1 / interface.recording_extractor.get_sampling_frequency())
 
-    def test_thresholds_are_stored_values_not_the_physical_unit(self):
+    def test_a_cut_is_in_stored_values_not_the_physical_unit(self):
         """The cut is compared against the samples as stored, so it is in ADC counts, not volts.
 
         Worth pinning because the companion `TimeSeries` this same interface writes for the same channel
         declares `unit="V"` with a conversion factor, so the two numbers differ by ~10^4 and a reader
         could reasonably assume otherwise. `signal_conditioning` is a raw-signal vocabulary throughout:
         `bits` indexes stored bit positions and `binarize` derives its cut from stored values, so
-        `thresholds` cutting at stored values is the consistent choice rather than an oversight.
+        `binarize` cutting at stored values is the consistent choice rather than an oversight.
         """
         counts_threshold = 550.0
         interface = SpikeGLXNIDQInterface(
             folder_path=BOTH_KINDS_FOLDER,
             detection_configuration={
-                "XA3": [{"signal_conditioning": {"thresholds": [counts_threshold]}, "detection": "rising"}]
+                "XA3": [{"signal_conditioning": {"binarize": counts_threshold}, "detection": "rising"}]
             },
         )
         nwbfile = mock_NWBFile()
@@ -130,7 +128,7 @@ class TestAnalogDerivation:
         interface = SpikeGLXNIDQInterface(
             folder_path=BOTH_KINDS_FOLDER,
             detection_configuration={
-                "XA3": [{"signal_conditioning": {"thresholds": [550.0]}, "detection": "rising"}],
+                "XA3": [{"signal_conditioning": {"binarize": 550.0}, "detection": "rising"}],
                 "XD0": [{"signal_conditioning": {"bits": [0]}, "detection": "high_period"}],
             },
         )

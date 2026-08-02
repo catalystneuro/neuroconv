@@ -7,8 +7,12 @@ import numpy as np
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
+from ._miniscope_readers import (
+    _config_to_miniscope_device_metadata,
+    _config_to_miniscope_device_model_metadata,
+)
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DeepDict, dict_deep_update
+from ....utils import DeepDict, dict_deep_update, to_snake_case
 
 
 class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
@@ -395,6 +399,30 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         return MiniscopeImagingExtractor._get_session_start_time(miniscope_folder_path=folder_path)
 
+    @property
+    def device_metadata_key(self) -> str:
+        """The ``metadata["Devices"]`` key this recording's Miniscope is registered under.
+
+        Keyed by the Miniscope rather than by the per-interface ``metadata_key``, because their
+        cardinalities differ: one Miniscope recorded over several sessions is one device but one series
+        per session, and registering one device name under several keys is rejected. Reading it off the
+        device is also what lets a converter's interfaces agree on the entry without being told.
+        """
+        return to_snake_case(self._read_device_name())
+
+    def _read_device_name(self) -> str:
+        """Return the ``deviceName`` of this recording's device folder, or the default."""
+        from roiextractors import MiniscopeImagingExtractor
+
+        device_metadata_path = self._device_folder_path / "metaData.json"
+        if not device_metadata_path.exists():
+            return "Miniscope"
+
+        miniscope_config = MiniscopeImagingExtractor._read_device_folder_metadata(
+            metadata_file_path=str(device_metadata_path)
+        )
+        return miniscope_config.get("deviceName", "Miniscope")
+
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """Get metadata with device information from Miniscope configuration.
 
@@ -418,6 +446,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         device_name = "Miniscope"  # Default
         model_name = None
+        miniscope_config = None
         if device_metadata_path.exists():
             miniscope_config = MiniscopeImagingExtractor._read_device_folder_metadata(
                 metadata_file_path=str(device_metadata_path)
@@ -433,19 +462,35 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
         if use_new_metadata_format:
-            device_entry = {"name": device_name}
-            if model_name is not None:
-                device_entry["model_name"] = model_name
-            metadata["Devices"] = {self.metadata_key: device_entry}
+            device_metadata_key = self.device_metadata_key
+            # The whole device configuration reaches the Miniscope device, which the registry builds
+            # from the 'type' field; nothing here is written by hand.
+            if miniscope_config is not None:
+                device_entry = _config_to_miniscope_device_metadata(
+                    miniscope_config={**miniscope_config, "name": device_name}
+                )
+                # The model is keyed by the hardware design it names, since every Miniscope of that
+                # design shares it, and is linked from the device the way pynwb 4 asks for.
+                model_entry = _config_to_miniscope_device_model_metadata(miniscope_config=miniscope_config)
+                if model_entry is not None:
+                    device_model_metadata_key = to_snake_case(model_entry["name"])
+                    device_entry["device_model_metadata_key"] = device_model_metadata_key
+                    metadata["DeviceModels"] = {device_model_metadata_key: model_entry}
+            else:
+                device_entry = {"type": "Miniscope", "name": device_name}
+            metadata["Devices"] = {device_metadata_key: device_entry}
             metadata["Ophys"] = {
                 "ImagingPlanes": {
                     self.metadata_key: {
-                        "device_metadata_key": self.metadata_key,
+                        "name": "ImagingPlane",
+                        "device_metadata_key": device_metadata_key,
                         "imaging_rate": self.imaging_extractor.get_sampling_frequency(),
                     },
                 },
                 "MicroscopySeries": {
                     self.metadata_key: {
+                        "name": "OnePhotonSeries",
+                        "unit": "px",
                         "imaging_plane_metadata_key": self.metadata_key,
                         "description": "Imaging data acquired with a Miniscope.",
                     },
@@ -512,14 +557,13 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             )
             photon_series_type = positional_values.get("photon_series_type", photon_series_type)
 
-        from ndx_miniscope.utils import add_miniscope_device
+        from ....tools.roiextractors.roiextractors import _is_dict_based_metadata
 
-        # Add Miniscope device - required for proper ndx_miniscope.Miniscope device type
-        if metadata is not None and "Devices" in metadata and self.metadata_key in metadata.get("Devices", {}):
-            device_metadata = metadata["Devices"][self.metadata_key]
-        else:
-            device_metadata = metadata["Ophys"]["Device"][0]
-        add_miniscope_device(nwbfile=nwbfile, device_metadata=device_metadata)
+        if not _is_dict_based_metadata(metadata if metadata is not None else self.get_metadata()):
+            # Old list-based path: the device is not in the registry, so it is written here.
+            from ndx_miniscope.utils import add_miniscope_device
+
+            add_miniscope_device(nwbfile=nwbfile, device_metadata=metadata["Ophys"]["Device"][0])
 
         super().add_to_nwbfile(
             nwbfile=nwbfile,

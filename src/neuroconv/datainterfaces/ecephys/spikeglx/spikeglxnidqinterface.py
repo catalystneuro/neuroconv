@@ -136,7 +136,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             (``"XD0"`` for a digital word, ``"XA1"`` for an analog channel). SpikeGLX saves its digital
             lines packed into one integer word per channel, so a line is reached by naming the word and
             the bit: ``{"XD0": [{"signal_conditioning": {"bits": [0]}, "detection": "high_period"}]}``.
-            An analog channel is cut into events with ``{"thresholds": [c, ...]}`` plus an
+            An analog channel is cut into events with ``{"binarize": c}`` plus an
             ``event_name``. If None (default), every line of every digital word is read as a
             ``high_period`` and the analog channels are skipped.
 
