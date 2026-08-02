@@ -161,7 +161,12 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             When True, includes only NWBFile basics.
         """
         if use_new_metadata_format:
-            return super().get_metadata()
+            metadata = super().get_metadata()
+            # Mirrors ``BaseRecordingExtractorInterface``: the base states the conventional default name
+            # for the series it writes, and interfaces that know better overwrite it. ``MicroscopySeries``
+            # is the forward-looking generic, used wherever the source does not say what was imaged.
+            metadata["Ophys"] = {"MicroscopySeries": {self.metadata_key: dict(name="MicroscopySeries")}}
+            return metadata
 
         # Old list-based path (unchanged)
         from ...tools.roiextractors import get_nwb_imaging_metadata
