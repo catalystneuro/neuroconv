@@ -62,83 +62,67 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = Non
 
 
 _DETECTION_READINGS = ("rising", "falling", "high_period", "low_period", "value_change")
-_BINARIZE_METHODS = ("midpoint", "mean")
+_CUTS = ("bits", "binarize")
+_BINARIZE_METHODS = ("midpoint",)
 
 
-def _condition_signal(trace: np.ndarray, signal_conditioning: dict | None = None) -> np.ndarray:
-    """Condition a sampled signal into a discrete-valued one of the same length, on the same timeline.
+def _condition_signal(trace: np.ndarray, signal_conditioning: dict) -> np.ndarray:
+    """Condition a sampled signal into a line of the same length, on the same timeline.
 
     The first of the two stages a signal-encoded events source runs (the second is
     :func:`_detect_events`). The boundary between them is where the data type changes: conditioning is
     signal-to-signal, detection is signal-to-events.
 
-    **The postcondition is the contract:** whatever comes back is discrete-valued, the same length as
-    the input, and indexed on the same timeline. Length preservation is what lets :func:`_detect_events`
-    return frame indices that still address the caller's original timestamps, so a step that resampled
-    or dropped samples would silently break the conversion downstream and does not belong here.
+    **The postcondition is the contract:** whatever comes back is two-valued, the same length as the
+    input, and indexed on the same timeline. Two-valued is what the edge readings need, and having every
+    cut guarantee it is why detection needs no check of its own. Length preservation is what lets
+    :func:`_detect_events` return frame indices that still address the caller's original timestamps, so a
+    step that resampled or dropped samples would silently break the conversion and does not belong here.
 
     Parameters
     ----------
     trace : numpy.ndarray
         A one-dimensional sampled signal.
-    signal_conditioning : dict, optional
-        How to reach a discrete-valued signal. Exactly one *cut* may appear, and which one is legal is
-        decided by the signal rather than by the caller:
+    signal_conditioning : dict
+        How the signal becomes a line, holding exactly one cut. Which one is legal is decided by the
+        signal rather than by the caller:
 
-        - ``{"bits": [i, ...]}`` selects bit positions out of a packed integer word. One position gives
-          a ``0``/``1`` line; several are read together, least-significant first, as one coded value.
-        - ``{"thresholds": [c]}`` cuts at the value you supply. Bands are half-open, so a sample
-          exactly on the cut belongs above it. Several cut points give a band index in
-          ``0 .. len(thresholds)``, which this function computes but the configuration grammar defers,
-          since no reading is worth having on it.
-        - ``{"binarize": "midpoint"}`` cuts at a value computed from the data, on the same rule.
+        - ``{"bits": [i]}`` selects a bit position out of a packed integer word, giving that wire's
+          ``0``/``1`` line. Several positions are read together, least-significant first, as one coded
+          value; the configuration grammar defers that reading pending its strobe guard.
+        - ``{"binarize": c}`` cuts at the number you give, and ``{"binarize": "midpoint"}`` at
+          ``(min + max) / 2``, derived from the data. Bands are half-open, so a sample sitting exactly on
+          the cut belongs above it, which is ``np.digitize``'s convention.
 
-        If None (default), the trace is returned unchanged, which asserts it is already discrete-valued.
-        That is the ordinary case for a recorded digital line.
+        Required. A signal that is already a line takes ``{"binarize": "midpoint"}``, which cuts strictly
+        between its two levels whatever they are, so the caller need not know them.
 
     Returns
     -------
     numpy.ndarray
-        The conditioned signal, same length as ``trace``.
+        The conditioned line, same length as ``trace``, in the narrowest signed integer type that holds
+        it (see :func:`_smallest_signed_dtype`).
 
     Raises
     ------
     ValueError
-        If more than one cut is given, or a cut's parameters are unusable.
+        If ``signal_conditioning`` is not exactly one known cut, or a cut's parameters are unusable.
     """
-    if not signal_conditioning:
-        # Omission asserts the signal is already a line, or already discrete-valued for a coded reading.
-        # Whether that assertion holds is checked structurally by the interface at construction, and by
-        # the backstop in _detect_events at read time.
-        #
-        # Falsy rather than None on purpose, and deliberately laxer than the validator, which refuses an
-        # empty dict outright. An interface never reaches here with one, since validation rejected it at
-        # construction; this is the direct-call path, where treating an empty dict as no conditioning is
-        # the only sensible reading and is better than an IndexError further down.
-        return np.asarray(trace)
-
-    cuts = [cut for cut in ("bits", "thresholds", "binarize") if cut in signal_conditioning]
-    if len(cuts) > 1:
+    if not isinstance(signal_conditioning, dict) or not signal_conditioning:
         raise ValueError(
-            f"signal_conditioning sets more than one cut ({cuts}). 'bits', 'thresholds' and 'binarize' "
-            "are alternative routes to a discrete-valued signal, so exactly one of them applies."
+            "signal_conditioning must be a dict holding exactly one cut, "
+            f"{list(_CUTS)}, got {signal_conditioning!r}."
         )
-    if not cuts:
-        # Reachable only by calling this directly, since an interface's validator rejects an unrecognized
-        # conditioning key first. Named settings that are designed but unbuilt ('hysteresis', 'debounce')
-        # land here, so the message says the key is not implemented rather than letting a bare KeyError out.
+    cuts = [cut for cut in _CUTS if cut in signal_conditioning]
+    if len(cuts) != 1:
         raise ValueError(
-            f"signal_conditioning {sorted(signal_conditioning)} sets no cut. One of 'bits', 'thresholds' "
-            "or 'binarize' is required; pass None to leave a signal that is already discrete-valued "
-            "unconditioned. Any other setting is not implemented."
+            f"signal_conditioning {sorted(signal_conditioning)} must hold exactly one cut, {list(_CUTS)}. "
+            "Named settings that are designed but unbuilt ('hysteresis', 'debounce') land here."
         )
 
-    trace = np.asarray(trace)
     if "bits" in signal_conditioning:
         return _select_bits(trace=trace, bits=signal_conditioning["bits"])
-    if "thresholds" in signal_conditioning:
-        return _cut_at_thresholds(trace=trace, thresholds=signal_conditioning["thresholds"])
-    return _binarize(trace=trace, method=signal_conditioning["binarize"])
+    return _binarize(trace=trace, cut=signal_conditioning["binarize"])
 
 
 def _smallest_signed_dtype(maximum: int) -> np.dtype:
@@ -178,62 +162,33 @@ def _select_bits(trace: np.ndarray, bits) -> np.ndarray:
     return value
 
 
-def _cut_at_thresholds(trace: np.ndarray, thresholds) -> np.ndarray:
-    """Cut a trace at caller-supplied values, giving a band index in ``0 .. len(thresholds)``.
-
-    The bands are half-open, ``[c, next_c)``, so a sample sitting exactly on a cut belongs to the band
-    **above** it. That is numpy's own binning convention rather than one invented here: this call is
-    bit-for-bit ``np.digitize(trace, thresholds)``, and ``np.histogram`` treats its edges the same way.
-    :func:`_binarize` cuts the same way, so the two agree on a sample that lands on the cut.
-
-    It only ever shows on a discrete-valued signal, where naming a level as the cut makes every sample
-    at that level a tie. On an Inscopix-style line at 48 and 64, ``thresholds: [48]`` therefore puts
-    every sample high and finds nothing, while ``[64]`` or any value between the levels reads it.
-
-    Several cut points are implemented here and **deferred by the grammar**, which admits one per spec.
-    Kept general because the band index is what makes the one-cut-per-distinction fan-out provably
-    lossless, and because allowing several later is then a validator change rather than a rewrite.
-    """
-    thresholds = np.asarray(list(thresholds), dtype="float64")
-    if thresholds.size == 0:
-        raise ValueError("signal_conditioning 'thresholds' is empty; give at least one cut point.")
-    if np.any(np.diff(thresholds) <= 0):
-        raise ValueError(f"signal_conditioning 'thresholds' must be strictly increasing, got {list(thresholds)}.")
-    # The band index is bounded by len(thresholds), so it needs no more room than that, where
-    # searchsorted's own intp result is eight bytes per sample for a value that is almost always 0 or 1.
-    return np.searchsorted(thresholds, trace, side="right").astype(_smallest_signed_dtype(maximum=thresholds.size))
-
-
-def _binarize(trace: np.ndarray, method: str) -> np.ndarray:
-    """Cut a two-level but numerically noisy trace at a value derived from the data itself."""
-    if method not in _BINARIZE_METHODS:
-        raise ValueError(f"Invalid binarize method '{method}'. Valid methods are {list(_BINARIZE_METHODS)}.")
+def _binarize(trace: np.ndarray, cut) -> np.ndarray:
+    """Cut a magnitude into a line, at a number the caller gives or at one derived from the data."""
     trace = np.asarray(trace)
-    if np.issubdtype(trace.dtype, np.floating) and np.isnan(trace).any():
-        # A derived cut is NaN if any sample is, and `trace >= nan` is False everywhere, so the signal
-        # goes constant and the conversion writes a zero-row table for a channel that fired. Refuse
-        # instead: a NaN in a signal is a defect in the file (a blank cell in a Doric CSV column reads as
-        # one), not something the caller chose, and it is the one input where a cut cannot mean anything.
-        raise ValueError(
-            "signal_conditioning 'binarize' cannot derive a cut from a signal containing NaN, since the "
-            "cut would be NaN and every sample would fall below it, silently writing a zero-row table. "
-            "Clean the signal, or give the cut as a number instead of deriving it."
-        )
-    # Both statistics come back as Python scalars rather than through a float64 copy of the whole trace.
-    # `.item()` is what makes that safe: an integer dtype yields a Python int, which cannot overflow, and
-    # taking `min + max` in the native dtype instead would wrap (a uint8 line at 128 and 224 would cut at
-    # 48, putting every sample high and finding nothing).
-    if method == "midpoint":
-        # Invariant under windowing: unchanged by any sample lying between the two levels, so a stub_test
-        # slice containing both levels derives the same cut as the full recording. The mean moves with
-        # both duty cycle and window, which would make a stub and a full conversion emit different
-        # events; it stays available for a trace with an extreme outlier.
+    if isinstance(cut, str):
+        if cut not in _BINARIZE_METHODS:
+            raise ValueError(f"Invalid binarize method '{cut}'. Valid methods are {list(_BINARIZE_METHODS)}.")
+        if np.issubdtype(trace.dtype, np.floating) and np.isnan(trace).any():
+            # A derived cut is NaN if any sample is, and `trace >= nan` is False everywhere, so the
+            # signal goes constant and the conversion writes a zero-row table for a channel that fired.
+            # Refuse instead: a NaN is a defect in the file (a blank cell in a Doric CSV column reads as
+            # one), not something the caller chose, and it is the one input a derived cut cannot read.
+            raise ValueError(
+                "signal_conditioning 'binarize' cannot derive a cut from a signal containing NaN, since "
+                "the cut would be NaN and every sample would fall below it, silently writing a zero-row "
+                "table. Clean the signal, or give the cut as a number instead of deriving it."
+            )
+        # "midpoint" is invariant under windowing: unchanged by any sample lying between the two levels,
+        # so a stub_test slice containing both levels derives the same cut as the full recording. It also
+        # cannot miss on a line, since (min + max) / 2 falls strictly between two distinct values whatever
+        # they are, which is why it is the spelling for a signal that is already one.
+        #
+        # Both statistics come back as Python scalars rather than through a float64 copy of the trace.
+        # `.item()` is what makes that safe: an integer dtype yields a Python int, which cannot overflow,
+        # where `min + max` in the native dtype would wrap (a uint8 line at 128 and 224 would cut at 48,
+        # putting every sample high and finding nothing).
         cut = (trace.min().item() + trace.max().item()) / 2
-    else:
-        cut = trace.mean().item()
-    # At or above, not above: a sample landing exactly on the cut goes high, which is the rule
-    # _cut_at_thresholds follows from np.digitize. Both cuts are alternative routes to one postcondition,
-    # so a value on the cut cannot land in a different band depending on which route was taken.
+    # At or above, not above, which is np.digitize's convention for a bin edge.
     #
     # int8 rather than the bare boolean: np.diff on a boolean array computes `!=`, so every transition
     # would read as rising and none as falling, silently.
@@ -313,20 +268,6 @@ def _detect_events(
         # multi-valued signal admits, and the only one that does not require a line. Distinguishing the
         # values is a conditioning job (cut a line per distinction), not a payload.
         return np.flatnonzero(difference) + 1, None
-
-    # The read-time backstop, and the contract the four edge readings rest on: they are only meaningful
-    # on a two-valued signal, since with
-    # three or more levels there is no fact about which of them count as high. "At most two", not
-    # exactly two, because a line that never toggles has one value and must still convert (to a
-    # zero-row table) rather than fail.
-    distinct_values = np.unique(discrete_trace)
-    if distinct_values.size > 2:
-        raise ValueError(
-            f"detection '{detection}' needs a two-valued signal, but this one has {distinct_values.size} "
-            "distinct values. Either condition it into a line first ('thresholds' for an analog trace, "
-            "'binarize' for a numerically noisy one, one spec per distinction you care about), or read "
-            "it as 'value_change', which treats every transition as the same event type."
-        )
 
     rising_frames = np.flatnonzero(difference > 0) + 1
     falling_frames = np.flatnonzero(difference < 0) + 1

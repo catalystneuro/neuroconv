@@ -5,12 +5,15 @@ not a surface anyone should import: a caller writes a ``detection_configuration`
 interface, which is where the documented contract lives.
 """
 
-# The alternative cuts: three routes to a discrete-valued signal, exactly one of which may appear in a
-# spec's signal_conditioning. Which one is legal is decided by the signal's kind, not by the caller.
+# The two cuts: the routes a signal takes to become a line. Exactly one appears in every spec, and which
+# one is legal is decided by the signal's kind rather than by the caller. 'bits' names a wire inside a
+# packed word; 'binarize' cuts a magnitude, at a number you give or at "midpoint", derived from the data.
+#
 # These are also the *only* settings signal_conditioning recognizes: hysteresis and debounce are designed
 # but unbuilt, so they hit the unrecognized-key error rather than validating and doing nothing, which is
 # the silent-discard failure this validation exists to remove. They land with their implementation.
-_CUTS = ("bits", "thresholds", "binarize")
+_CUTS = ("bits", "binarize")
+_BINARIZE_METHODS = ("midpoint",)
 _SPEC_KEYS = ("signal_conditioning", "detection", "event_name")
 
 
@@ -25,10 +28,10 @@ def _validate_detection_configuration(detection_configuration: dict, available_s
 
     A shared helper for the signal-encoded events interfaces (each derives events from a sampled
     signal). ``detection_configuration`` maps each ``signal_source_id`` to a **list** of detection
-    specs, one per event type derived from that signal. A spec is all-or-nothing: pass ``None`` instead
-    of a configuration to read every signal with the interface's default reading, or name signals and
-    state each spec in full. A half-filled spec is an error rather than a silent fallback, so the
-    reading an event type is written with is always one the caller chose.
+    specs, one per event type derived from that signal. A spec is all-or-nothing and states both stages:
+    pass ``None`` instead of a configuration to read every signal with the interface's default reading,
+    or name signals and give each spec a ``signal_conditioning`` and a ``detection``. A half-filled spec
+    is an error rather than a silent fallback, so what an event type is written from is always chosen.
 
     The ``detection`` *value* is deliberately not checked here:
     :func:`~neuroconv.tools.signal_processing._detect_events` is the single source of truth for the
@@ -42,19 +45,19 @@ def _validate_detection_configuration(detection_configuration: dict, available_s
         The signals discovered in the file, keyed by ``signal_source_id``. Each value is a descriptor
         whose ``kind`` is ``"line"`` (one digital line), ``"word"`` (a packed integer), ``"analog"`` (a
         continuous trace), or absent when the format records no kind. The kind decides which cut is
-        legal and whether ``signal_conditioning`` may be omitted. A word may additionally declare
-        ``bits``, the line positions it carries, which is checked against the positions a spec asks
-        for. Everything else in the descriptor is the interface's own addressing and stays opaque here.
+        legal. A word may additionally declare ``bits``, the line positions it carries, which is checked
+        against the positions a spec asks for. Everything else in the descriptor is the interface's own
+        addressing and stays opaque here.
 
     Raises
     ------
     ValueError
         If the configuration is empty, names a signal not in ``available_signals``, gives a signal
         something other than a non-empty list, or holds a malformed spec: an unrecognized key, no
-        ``detection``, more than one cut, a cut the signal's kind does not admit, a bit position the
-        word does not carry, or a cut into more than two bands. Also if the identifiers do not resolve: two event types
-        reaching the same identifier (rule 4) or a fan-out whose components do not stringify into a
-        stable name (rule 5).
+        ``detection``, no ``signal_conditioning``, other than exactly one cut, a cut the signal's kind
+        does not admit, or a bit position the word does not carry. Also if the identifiers do not
+        resolve: two event types reaching the same identifier (rule 4) or a fan-out whose components do
+        not stringify into a stable name (rule 5).
     """
     if not detection_configuration:
         raise ValueError(
@@ -106,28 +109,21 @@ def _validate_spec(
         raise ValueError(
             f"detection_configuration spec for '{signal_source_id}' does not set 'detection'. Every "
             "spec must state how its signal's transitions become events; pass None instead of a "
-            "detection_configuration to read every signal with the default reading."
+            "detection_configuration to read every signal with the interface's default reading."
         )
 
     conditioning = spec.get("signal_conditioning")
     if conditioning is None:
-        _validate_omission(signal_source_id=signal_source_id, kind=kind)
-        return
+        raise ValueError(
+            f"detection_configuration spec for '{signal_source_id}' does not set 'signal_conditioning'. "
+            f"Every spec states how its signal becomes a line: {list(_CUTS)}. A signal that is already "
+            "one takes {'binarize': 'midpoint'}, which cuts between its two levels whatever they are."
+        )
 
     if not isinstance(conditioning, dict):
         raise ValueError(
             f"signal_conditioning for '{signal_source_id}' must be a dict of conditioning settings, got "
             f"{type(conditioning).__name__}."
-        )
-    if not conditioning:
-        # An empty dict is not a quiet spelling of omission, and treating it as one would make it a way
-        # around the check omission gets: a word would pass here and then be read whole as if it were a
-        # line. Empty containers raise everywhere else in this grammar (the configuration itself, a
-        # signal's spec list, 'bits', 'thresholds'), so this is that rule rather than a new one.
-        raise ValueError(
-            f"signal_conditioning for '{signal_source_id}' is an empty dict, which states nothing. Drop "
-            f"the key to read the signal's own values, which is an assertion checked against its kind, "
-            f"or set one of {list(_CUTS)}."
         )
     unknown_keys = set(conditioning) - set(_CUTS)
     if unknown_keys:
@@ -136,11 +132,10 @@ def _validate_spec(
             f"Valid settings are {list(_CUTS)}."
         )
     cuts = [cut for cut in _CUTS if cut in conditioning]
-    if len(cuts) > 1:
+    if len(cuts) != 1:
         raise ValueError(
-            f"signal_conditioning for '{signal_source_id}' sets more than one cut ({cuts}). 'bits', "
-            "'thresholds' and 'binarize' are alternative routes to a discrete-valued signal, so exactly "
-            "one of them applies."
+            f"signal_conditioning for '{signal_source_id}' sets {len(cuts)} cuts ({cuts}), and a spec "
+            f"holds exactly one. {list(_CUTS)} are alternative routes to a line, so one applies."
         )
     if "bits" in conditioning and kind not in ("word", None):
         raise ValueError(
@@ -175,57 +170,22 @@ def _validate_spec(
                 "An unrecorded bit is zero at every sample, so it would write an empty table rather "
                 "than fail."
             )
-    if "thresholds" in conditioning and kind == "line":
+    if "binarize" in conditioning and not isinstance(conditioning["binarize"], (str, int, float)):
         raise ValueError(
-            f"signal_conditioning for '{signal_source_id}' sets 'thresholds', but that signal is already "
-            "a single digital line. Omit signal_conditioning to read its own values."
-        )
-    if "thresholds" in conditioning and len(list(conditioning["thresholds"])) != 1:
-        # Cutting into more than two bands is deferred, for the same shape of reason multi-bit 'bits' is:
-        # the multi-valued result has no reading that says what it is worth. The band index is never
-        # written anywhere, so the four edge readings refuse it and only 'value_change' accepts it, which
-        # reports that the band changed without saying what to. One cut point per spec keeps every cut in
-        # the vocabulary agreeing on one postcondition, a two-valued signal, which is what the edge
-        # readings need. Deferring is the reversible direction: allowing several later invalidates nothing.
-        raise ValueError(
-            f"signal_conditioning for '{signal_source_id}' sets 'thresholds' "
-            f"{list(conditioning['thresholds'])}, but cutting a trace into more than two bands is not "
-            "supported yet. Give one cut point per spec and one spec per distinction you care about, "
-            "which is lossless: the band at any instant is how many of them are currently reached."
+            f"signal_conditioning 'binarize' for '{signal_source_id}' must be {list(_BINARIZE_METHODS)} "
+            f"to derive the cut from the data, or a number to give it, got "
+            f"{type(conditioning['binarize']).__name__}."
         )
     if kind == "word" and cuts != ["bits"]:
-        # The other half of the word's own rule, and the same argument that rejects omission on one: a
-        # word is several signals until the caller says which bits form one value, so cutting its integer
-        # at a magnitude reads a bit pattern as a number. Values 0, 1, 2, 3 on a two-line word are four
-        # combinations of two independent lines, not four levels of one signal, and a threshold at 1.5
-        # asks which of them are "large". 'binarize' is the same mistake with the cut derived instead of
-        # given. Without this a word reached its cuts through a route omission was closed off from.
+        # A word is several signals until the caller says which bits form one value, so cutting its
+        # integer at a magnitude reads a bit pattern as a number. Values 0, 1, 2, 3 on a two-line word
+        # are four combinations of two independent lines, not four levels of one signal, and a cut at
+        # 1.5 asks which of them are "large". The derived cut is the same mistake with the number
+        # computed rather than given, so both spellings of 'binarize' are refused here.
         raise ValueError(
             f"signal_conditioning for '{signal_source_id}' cuts a packed word with '{cuts[0]}', which "
             "reads its bit pattern as a magnitude. A word is several signals until you say which bits "
             "form one value, so name the line you want with 'bits'."
-        )
-
-
-def _validate_omission(signal_source_id: str, kind: str | None) -> None:
-    """Check the assertion that omitting ``signal_conditioning`` makes, structurally and with no data read.
-
-    Omission says the signal is already discrete-valued. A line qualifies. A packed word does not, since
-    it is several signals until the caller says which bits form one value. An analog trace does not,
-    since nothing decides which of its values count as high. A signal whose kind the format does not
-    record is admitted here and left to the read-time backstop in
-    :func:`~neuroconv.tools.signal_processing._detect_events`.
-    """
-    if kind == "word":
-        raise ValueError(
-            f"'{signal_source_id}' is a packed word, so its spec needs signal_conditioning with 'bits' "
-            "saying which bit positions to read. A word is several signals until you say which bits "
-            "form one value."
-        )
-    if kind == "analog":
-        raise ValueError(
-            f"'{signal_source_id}' is an analog signal, so its spec needs signal_conditioning with "
-            "'thresholds' saying where to cut it. There is no defensible default cut."
         )
 
 
@@ -248,9 +208,10 @@ def _resolve_event_types(detection_configuration: dict) -> list[tuple[str, str, 
        identifier pinned against later edits, since a signal going from one spec to several moves it
        from rule 1 to rule 2 and the derived form changes.
     4. Identifiers must be unique across the whole configuration.
-    5. ``event_name`` is required when a fan-out spec cuts with ``thresholds``, whose cut points do not
-       stringify into a stable valid name. Stated as an exclusion so absence is fine: a signal with no
-       conditioning, or one carving a single bit, derives perfectly well.
+    5. ``event_name`` is required when a fan-out spec gives ``binarize`` a **number**, since a cut point
+       does not stringify into a stable valid name. Stated as an exclusion so absence is fine: a spec
+       carving a single bit, or one cutting at ``"midpoint"``, derives perfectly well, because neither
+       carries a free value and the specs are then told apart by their reading.
 
     Returns a list rather than a generator so rule 4 is always checked in full, even by a caller that
     would otherwise stop early.
@@ -334,9 +295,11 @@ def _get_event_type_source_ids(detection_configuration: dict) -> list[str]:
 def _derive_event_type_source_id(signal_source_id: str, spec: dict) -> str:
     """Build a fan-out spec's identifier from its signal handle plus its distinguishing components."""
     conditioning = spec.get("signal_conditioning") or {}
-    if "thresholds" in conditioning:
+    if not isinstance(conditioning.get("binarize", "midpoint"), str):
+        # A given cut is a number, and numbers do not stringify into a stable valid name. Derived cuts
+        # do: "midpoint" carries no free value, so two specs sharing it are told apart by their reading.
         raise ValueError(
-            f"'{signal_source_id}' fans out on 'thresholds', whose cut points do not stringify into a "
+            f"'{signal_source_id}' fans out on a 'binarize' cut point, which does not stringify into a "
             "stable identifier. Give each of its specs an 'event_name'."
         )
     components = []

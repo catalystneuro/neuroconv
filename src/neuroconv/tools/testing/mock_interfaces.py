@@ -443,9 +443,9 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
     arrays.
 
     ``analog_waveforms`` adds continuous signals alongside the word. They were originally planned as a
-    separate mock, on the grounds that the ``thresholds`` carve is distinct enough from the ``bits``
+    separate mock, on the grounds that cutting a continuous trace is distinct enough from the ``bits``
     carve to test apart from it. They live here because the conditioning machinery turned out to be
-    shared rather than parallel: ``thresholds`` and ``binarize`` are cuts in the same
+    shared rather than parallel: a given cut and a derived one are the same ``binarize`` in the same
     :func:`~neuroconv.tools.signal_processing._condition_signal`, so a mock that exercises one and not the
     other leaves shipped code with no end-to-end coverage. Hysteresis, the genuinely analog-only knob, is
     still unbuilt and is what a separate mock would be for.
@@ -506,7 +506,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
             signal of its own, and ``"word"`` itself is reserved. Each value is one of:
 
             - ``"levels"``: a trace stepping through four amplitudes, which no edge reading can read
-              without being told where to cut, so it is what ``thresholds`` and the band-index case need.
+              without being told where to cut, so it is what a given ``binarize`` cut point needs.
             - ``"noisy_two_level"``: a trace that is conceptually a line and numerically is not, sitting
               near two amplitudes with jitter on every sample, which is what ``binarize`` exists for.
 
@@ -585,8 +585,8 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         but wrong for a trial-code word. A coded word therefore cannot be reached by this path and has to
         be configured explicitly.
         """
-        # Analog signals are absent from this: `thresholds` has no defensible default, and inventing one
-        # fabricates events.
+        # Analog signals are absent from this: a continuous trace has no defensible default cut, and
+        # inventing one fabricates events. "midpoint" is defensible only for a signal already two-valued.
         specs = []
         # Fanned out over the word descriptor's declared inventory rather than over the waveforms
         # directly, which is the same loop a real interface runs over the positions its header declares.
@@ -686,7 +686,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         for signal_source_id, detection_specs in detection_plan.items():
             signal = self._get_signal(signal_source_id)
             for event_type_source_id, spec in detection_specs:
-                conditioned = _condition_signal(signal, spec.get("signal_conditioning"))
+                conditioned = _condition_signal(signal, spec["signal_conditioning"])
                 onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
                 onsets, durations = _frames_to_seconds(onset_frames, offset_frames, timestamps)
                 events_data_dict[event_type_source_id] = _EventsData(

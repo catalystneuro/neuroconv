@@ -22,7 +22,12 @@ class TestValidateDetectionConfiguration:
 
     def test_valid_configuration_passes(self):
         _validate_detection_configuration(
-            {"DI/O-1": [{"detection": "high_period"}], "DI/O-2": [{"detection": "rising", "event_name": "Lick"}]},
+            {
+                "DI/O-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}],
+                "DI/O-2": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising", "event_name": "Lick"}
+                ],
+            },
             AVAILABLE_SIGNALS,
         )
 
@@ -33,12 +38,17 @@ class TestValidateDetectionConfiguration:
 
     def test_unknown_signal_raises(self):
         with pytest.raises(ValueError, match="not one of the file's signals"):
-            _validate_detection_configuration({"DI/O-9": [{"detection": "rising"}]}, AVAILABLE_SIGNALS)
+            _validate_detection_configuration(
+                {"DI/O-9": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]},
+                AVAILABLE_SIGNALS,
+            )
 
     def test_bare_dict_instead_of_list_raises(self):
         """A signal's value is always a list, since a signal may yield several event types."""
         with pytest.raises(ValueError, match="must be a list of detection specs"):
-            _validate_detection_configuration({"DI/O-1": {"detection": "rising"}}, AVAILABLE_SIGNALS)
+            _validate_detection_configuration(
+                {"DI/O-1": {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}}, AVAILABLE_SIGNALS
+            )
 
     def test_empty_spec_list_raises(self):
         """Drop the signal to skip it; an empty list says nothing."""
@@ -54,7 +64,12 @@ class TestValidateDetectionConfiguration:
         """A stray or misspelled key fails loudly instead of being accepted and never read."""
         with pytest.raises(ValueError, match="unrecognized key"):
             _validate_detection_configuration(
-                {"DI/O-1": [{"detection": "rising", "threshold": 0.4}]}, AVAILABLE_SIGNALS
+                {
+                    "DI/O-1": [
+                        {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising", "threshold": 0.4}
+                    ]
+                },
+                AVAILABLE_SIGNALS,
             )
 
     def test_identifiers_that_do_not_resolve_are_rejected_here_too(self):
@@ -67,15 +82,20 @@ class TestValidateDetectionConfiguration:
         with pytest.raises(ValueError, match="same identifier"):
             _validate_detection_configuration(
                 {
-                    "DI/O-1": [{"detection": "high_period"}],
-                    "DI/O-2": [{"detection": "rising", "event_name": "DI/O-1"}],
+                    "DI/O-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}],
+                    "DI/O-2": [
+                        {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising", "event_name": "DI/O-1"}
+                    ],
                 },
                 AVAILABLE_SIGNALS,
             )
 
     def test_detection_value_is_not_checked_here(self):
         """``_detect_events`` owns the reading vocabulary and raises on an invalid one, so this does not."""
-        _validate_detection_configuration({"DI/O-1": [{"detection": "not_a_reading"}]}, AVAILABLE_SIGNALS)
+        _validate_detection_configuration(
+            {"DI/O-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "not_a_reading"}]},
+            AVAILABLE_SIGNALS,
+        )
 
     def test_binarize_on_a_line_is_deliberately_still_allowed(self):
         """The one exception to "each kind admits one cut", kept because the grammar names the case.
@@ -108,30 +128,60 @@ class TestResolveDetectionPlan:
 
     def test_one_spec_keeps_the_signal_handle(self):
         """Rule 1 keeps a zero-configuration conversion's identifiers equal to the acquisition strings."""
-        detection_plan = _resolve_detection_plan({"DI/O-1": [{"detection": "high_period"}]})
+        detection_plan = _resolve_detection_plan(
+            {"DI/O-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}]}
+        )
 
-        assert detection_plan == {"DI/O-1": [("DI/O-1", {"detection": "high_period"})]}
+        assert detection_plan == {
+            "DI/O-1": [("DI/O-1", {"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"})]
+        }
 
     def test_several_specs_fan_out_on_the_reading(self):
-        detection_plan = _resolve_detection_plan({"DI/O-1": [{"detection": "rising"}, {"detection": "falling"}]})
+        detection_plan = _resolve_detection_plan(
+            {
+                "DI/O-1": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"},
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"},
+                ]
+            }
+        )
 
         assert detection_plan == {
             "DI/O-1": [
-                ("DI/O-1_rising", {"detection": "rising"}),
-                ("DI/O-1_falling", {"detection": "falling"}),
+                ("DI/O-1_rising", {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}),
+                ("DI/O-1_falling", {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"}),
             ]
         }
 
     def test_event_name_replaces_the_derived_identifier(self):
         """Rule 3, which is also how a caller pins an identifier against later edits to that signal."""
-        detection_configuration = {"DI/O-1": [{"detection": "rising", "event_name": "Lick"}, {"detection": "falling"}]}
+        detection_configuration = {
+            "DI/O-1": [
+                {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising", "event_name": "Lick"},
+                {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"},
+            ]
+        }
 
         assert _get_event_type_source_ids(detection_configuration) == ["Lick", "DI/O-1_falling"]
 
     def test_derivation_is_content_based_not_positional(self):
         """Reordering a signal's specs renames nothing, so a list is order-insensitive."""
-        forward = _get_event_type_source_ids({"DI/O-1": [{"detection": "rising"}, {"detection": "falling"}]})
-        reversed_order = _get_event_type_source_ids({"DI/O-1": [{"detection": "falling"}, {"detection": "rising"}]})
+        forward = _get_event_type_source_ids(
+            {
+                "DI/O-1": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"},
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"},
+                ]
+            }
+        )
+        reversed_order = _get_event_type_source_ids(
+            {
+                "DI/O-1": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"},
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"},
+                ]
+            }
+        )
 
         assert set(forward) == set(reversed_order)
 
@@ -142,8 +192,11 @@ class TestResolveDetectionPlan:
         per-signal rules above cannot see it.
         """
         detection_configuration = {
-            "DI/O-1": [{"detection": "rising"}, {"detection": "falling"}],
-            "DI/O-2": [{"detection": "high_period"}],
+            "DI/O-1": [
+                {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"},
+                {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"},
+            ],
+            "DI/O-2": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}],
         }
 
         assert _get_event_type_source_ids(detection_configuration) == [
@@ -157,7 +210,11 @@ class TestResolveDetectionPlan:
         with pytest.raises(ValueError, match="same identifier"):
             _resolve_detection_plan(
                 {
-                    "DI/O-1": [{"detection": "rising", "event_name": "Pulse"}],
-                    "DI/O-2": [{"detection": "rising", "event_name": "Pulse"}],
+                    "DI/O-1": [
+                        {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising", "event_name": "Pulse"}
+                    ],
+                    "DI/O-2": [
+                        {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising", "event_name": "Pulse"}
+                    ],
                 }
             )

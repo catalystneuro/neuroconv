@@ -172,7 +172,7 @@ class TestCutsInsteadOfPayloads:
             detection_configuration={
                 "stim_level": [
                     {
-                        "signal_conditioning": {"thresholds": [cut]},
+                        "signal_conditioning": {"binarize": cut},
                         "detection": "high_period",
                         "event_name": f"Above{index}",
                     }
@@ -254,7 +254,7 @@ class TestAnalogSignals:
         interface = MockSignalEncodedEventsInterface(
             analog_waveforms={"photodiode": "levels"},
             detection_configuration={
-                "photodiode": [{"signal_conditioning": {"thresholds": [2.0]}, "detection": "high_period"}]
+                "photodiode": [{"signal_conditioning": {"binarize": 2.0}, "detection": "high_period"}]
             },
         )
 
@@ -283,9 +283,9 @@ class TestAnalogSignals:
 
         assert event_type_ids(interface) == ["word"]
 
-    def test_an_edge_reading_on_an_unconditioned_analog_trace_raises(self):
-        """Rejected structurally at construction, before any sample is read."""
-        with pytest.raises(ValueError, match="analog signal"):
+    def test_a_spec_with_no_conditioning_raises(self):
+        """Every spec states how its signal becomes a line; there is no pass-through spelling."""
+        with pytest.raises(ValueError, match="does not set 'signal_conditioning'"):
             MockSignalEncodedEventsInterface(
                 analog_waveforms={"photodiode": "levels"},
                 detection_configuration={"photodiode": [{"detection": "rising"}]},
@@ -302,40 +302,16 @@ class TestAnalogSignals:
         with pytest.raises(ValueError, match="Unknown analog waveform kind"):
             MockSignalEncodedEventsInterface(analog_waveforms={"photodiode": "sawtooth"})
 
-    def test_cutting_a_trace_into_more_than_two_bands_is_deferred(self):
-        """Every cut in the vocabulary now yields a line, so the edge readings' precondition holds.
-
-        A band index has no reading worth having: it is never written, the four edge readings refuse
-        it, and ``value_change`` on it says the band changed without saying what to. One cut point per
-        spec expresses the same thing losslessly, which is the fan-out above.
-
-        Deferred rather than removed, and structurally, so it never reaches the read-time backstop.
-        """
-        with pytest.raises(ValueError, match="more than two bands"):
-            MockSignalEncodedEventsInterface(
-                analog_waveforms={"photodiode": "levels"},
-                detection_configuration={
-                    "photodiode": [{"signal_conditioning": {"thresholds": [1.0, 2.0, 3.0]}, "detection": "rising"}]
-                },
-            )
-
 
 class TestConfigurationErrors:
     """The grammar's rules, reached through a real interface rather than against the validator directly."""
 
-    def test_omitting_conditioning_on_a_word_raises(self):
-        """A word is several signals until the caller says which bits form one value."""
-        with pytest.raises(ValueError, match="packed word"):
+    def test_a_spec_must_state_how_its_signal_becomes_a_line(self):
+        """No conditioning at all, and an empty one, are the same mistake and get the same treatment."""
+        with pytest.raises(ValueError, match="does not set 'signal_conditioning'"):
             MockSignalEncodedEventsInterface(detection_configuration={"word": [{"detection": "rising"}]})
 
-    def test_an_empty_conditioning_dict_is_not_a_back_door_around_that(self):
-        """``{}`` is falsy but not absent, so it must not slip past the check omission gets.
-
-        Left as a quiet spelling of omission it would be the one way to have a packed word read whole as
-        if it were a line, and the read-time backstop cannot catch that: a two-line word has two distinct
-        values, so the reading succeeds and writes events for a signal nobody addressed.
-        """
-        with pytest.raises(ValueError, match="empty dict"):
+        with pytest.raises(ValueError, match="exactly one"):
             MockSignalEncodedEventsInterface(
                 digital_line_waveforms={0: "pulses", 1: "pulses"},
                 detection_configuration={"word": [{"signal_conditioning": {}, "detection": "rising"}]},
@@ -359,7 +335,7 @@ class TestConfigurationErrors:
         two-line word are four combinations of two lines, so a threshold at 1.5 asks which of them are
         "large", which is not a question about the experiment.
         """
-        for conditioning in ({"thresholds": [1.5]}, {"binarize": "midpoint"}):
+        for conditioning in ({"binarize": 1.5}, {"binarize": "midpoint"}):
             with pytest.raises(ValueError, match="cuts a packed word"):
                 MockSignalEncodedEventsInterface(
                     digital_line_waveforms={0: "pulses", 1: "pulses"},

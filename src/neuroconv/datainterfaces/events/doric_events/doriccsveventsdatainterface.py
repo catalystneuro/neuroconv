@@ -91,9 +91,11 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every discovered line as a
             # "high_period", the lossless durative reading (onset at the rising edge, duration to the
-            # falling edge, for an active-high line).
+            # falling edge, for an active-high line). The "midpoint" cut is what a line takes: it falls
+            # strictly between the two levels whatever they are, so it needs no knowledge of the file.
             detection_configuration = {
-                signal_source_id: [{"detection": "high_period"}] for signal_source_id in self._available_signals
+                signal_source_id: [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}]
+                for signal_source_id in self._available_signals
             }
         # One construction-time check, on the default as well as on a caller-supplied configuration: the
         # default is machine-built but its inputs are not, so it too can resolve two event types to the
@@ -190,7 +192,7 @@ class DoricCSVEventsInterface(BaseEventsInterface):
             for event_type_source_id, spec in detection_specs:
                 # A DoricStudio digital column is already a 0/1 signal, so no conditioning applies and
                 # the reading is taken from the signal's own values, with no cut anywhere.
-                conditioned = _condition_signal(data, spec.get("signal_conditioning"))
+                conditioned = _condition_signal(data, spec["signal_conditioning"])
                 onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
                 onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)
                 events_data_dict[event_type_source_id] = _EventsData(

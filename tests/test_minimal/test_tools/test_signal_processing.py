@@ -173,11 +173,14 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
 class TestConditionSignal:
     """Conditioning is signal-to-signal: it returns a discrete-valued signal of the same length."""
 
-    def test_omission_returns_the_trace_unchanged(self):
-        """Omitting conditioning asserts the signal is already discrete-valued, the recorded-line case."""
-        line = np.array([0, 0, 1, 1, 0], dtype="int16")
-        assert_array_equal(_condition_signal(line), line)
-        assert_array_equal(_condition_signal(line, None), line)
+    def test_a_signal_that_is_already_a_line_is_cut_at_its_midpoint(self):
+        """There is no pass-through: every signal states how it becomes a line, and a line says midpoint.
+
+        The cut falls strictly between the two levels whatever they are, so the caller needs to know
+        neither the levels nor that they happen to be 0 and 1.
+        """
+        for line in (np.array([0, 0, 1, 1, 0], dtype="int16"), np.array([48, 48, 64, 64, 48], dtype="uint8")):
+            assert_array_equal(_condition_signal(line, {"binarize": "midpoint"}), np.array([0, 0, 1, 1, 0]))
 
     def test_one_bit_gives_a_line_and_several_give_a_coded_value(self):
         word = np.array([0, 1, 3, 3, 2, 0], dtype="int64")
@@ -186,9 +189,10 @@ class TestConditionSignal:
         # Least-significant first, so [0, 1] reconstructs the two-bit word itself.
         assert_array_equal(_condition_signal(word, {"bits": [0, 1]}), word)
 
-    def test_thresholds_give_a_band_index(self):
+    def test_a_given_cut_reads_an_analog_trace(self):
+        """The other mode: a number, for a signal whose cut is a real experimental choice."""
         trace = np.array([0.1, 0.1, 2.0, 2.0, 4.0, 0.1])
-        assert_array_equal(_condition_signal(trace, {"thresholds": [1.0, 3.0]}), np.array([0, 0, 1, 1, 2, 0]))
+        assert_array_equal(_condition_signal(trace, {"binarize": 1.0}), np.array([0, 0, 1, 1, 1, 0]))
 
     # A line at 48 and 64 carrying one sample at 55, between the levels. The slice keeps both levels, so
     # the midpoint derives the same cut from either while the mean does not, and the sample at 55 is
@@ -211,37 +215,18 @@ class TestConditionSignal:
             _condition_signal(stub, {"binarize": "midpoint"}),
         )
 
-    def test_binarize_mean_moves_with_the_window(self):
-        """Why the mean is not the default: one sample lands on opposite sides of the two cuts.
+    def test_a_sample_on_the_cut_goes_above_it(self):
+        """The tie rule: bands are half-open, which is ``np.digitize``'s convention for a bin edge.
 
-        The full trace means 54.5 and the slice means 57.75, so the sample at 55 reads high in a full
-        conversion and low in a stub of it. Same physical sample, same file, two different events.
-        """
-        full = self.TWO_LEVEL_TRACE
-        stub = full[self.STUB_START :]
-
-        from_full = _condition_signal(full, {"binarize": "mean"})[self.STUB_START :]
-        from_stub = _condition_signal(stub, {"binarize": "mean"})
-
-        assert from_full[1] == 1  # the 55.0 sample, high against the full trace's mean
-        assert from_stub[1] == 0  # and low against the slice's
-
-    def test_a_sample_on_the_cut_goes_to_the_band_above_for_both_cuts(self):
-        """The tie rule, and the only place the two cuts could have disagreed.
-
-        Bands are half-open, so a sample exactly on a cut belongs above it. ``thresholds`` gets that
-        from ``np.searchsorted(..., side="right")``, which is bit-for-bit ``np.digitize``, and
-        ``binarize`` from ``>=``. Pinned because nothing else covers a tie, which is how the docstring
-        came to say "exceeded" while the code did the opposite without anything catching it.
-
-        56.0 is exactly the midpoint of 48 and 64, so ``binarize`` derives the same cut the explicit
-        ``thresholds`` spec is handed, and the two are comparable on the same sample.
+        Pinned because nothing else covers a tie, which is how the docstring came to say "exceeded"
+        while the code did the opposite without anything catching it. 56.0 is exactly the midpoint of 48
+        and 64, so the derived and the given cut land on the same number and must agree on that sample.
         """
         trace = np.array([48.0, 56.0, 64.0])
 
-        assert_array_equal(_condition_signal(trace, {"thresholds": [56.0]}), np.array([0, 1, 1]))
+        assert_array_equal(_condition_signal(trace, {"binarize": 56.0}), np.array([0, 1, 1]))
         assert_array_equal(_condition_signal(trace, {"binarize": "midpoint"}), np.array([0, 1, 1]))
-        assert_array_equal(np.digitize(trace, [56.0]), _condition_signal(trace, {"thresholds": [56.0]}))
+        assert_array_equal(np.digitize(trace, [56.0]), _condition_signal(trace, {"binarize": 56.0}))
 
     def test_conditioning_returns_a_narrow_signed_integer(self):
         """The output is bounded and tiny while the arrays are whole recordings, so width is chosen.
@@ -254,7 +239,7 @@ class TestConditionSignal:
 
         assert _condition_signal(word, {"bits": [0]}).dtype == np.int8
         assert _condition_signal(word, {"bits": list(range(8))}).dtype == np.int16  # 255 needs two bytes
-        assert _condition_signal(word, {"thresholds": [1.0]}).dtype == np.int8
+        assert _condition_signal(word, {"binarize": 1.0}).dtype == np.int8
         assert _condition_signal(word, {"binarize": "midpoint"}).dtype == np.int8
 
     def test_a_derived_cut_does_not_overflow_the_signal_dtype(self):
@@ -284,16 +269,16 @@ class TestConditionSignal:
     def test_conditioning_preserves_length(self):
         """The contract detection depends on: frame indices must still address the caller's timestamps."""
         trace = np.array([0.1, 2.0, 4.0, 0.1, 2.0])
-        for conditioning in ({"thresholds": [1.0, 3.0]}, {"binarize": "midpoint"}, None):
+        for conditioning in ({"binarize": 1.0}, {"binarize": "midpoint"}):
             assert _condition_signal(trace, conditioning).size == trace.size
+        word = np.array([0, 1, 3, 2, 1], dtype="uint16")
+        assert _condition_signal(word, {"bits": [0]}).size == word.size
 
-    def test_two_cuts_raise(self):
-        with pytest.raises(ValueError, match="more than one cut"):
-            _condition_signal(np.array([0, 1]), {"bits": [0], "thresholds": [0.5]})
-
-    def test_unsorted_thresholds_raise(self):
-        with pytest.raises(ValueError, match="strictly increasing"):
-            _condition_signal(np.array([0.0, 1.0]), {"thresholds": [3.0, 1.0]})
+    def test_conditioning_holds_exactly_one_cut(self):
+        """Not zero, not two. A deferred-but-named setting (hysteresis, debounce) lands here as zero."""
+        for conditioning in ({}, {"hysteresis": 0.1}, {"bits": [0], "binarize": 0.5}):
+            with pytest.raises(ValueError, match="exactly one cut"):
+                _condition_signal(np.array([0, 1]), conditioning)
 
 
 class TestDetectEvents:
@@ -343,11 +328,6 @@ class TestDetectEvents:
         """One distinct value passes the backstop: it must convert to a zero-row table, not fail."""
         onsets, offsets = _detect_events(np.ones(10), detection="high_period")
         assert onsets.size == 0
-
-    def test_edge_reading_on_a_multi_level_signal_raises(self):
-        """The read-time backstop: with three levels there is no fact about which count as high."""
-        with pytest.raises(ValueError, match="needs a two-valued signal"):
-            _detect_events(np.array([0, 1, 2, 1, 0]), detection="rising")
 
     def test_an_unsigned_line_reads_the_same_as_a_signed_one(self):
         """Differencing an unsigned dtype wraps, which would turn every fall into a rise.
