@@ -87,8 +87,8 @@ class DataInterfaceTestMixin:
         return self.interface, self.test_name
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_default_conversion_options(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_default_conversion_options(cls):
         cls.conversion_options = cls.conversion_options or dict()
         return cls.conversion_options
 
@@ -193,8 +193,8 @@ class TemporalAlignmentMixin:
         return self.interface, self.test_name
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_default_conversion_options(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_default_conversion_options(cls):
         cls.conversion_options = cls.conversion_options or dict()
         return cls.conversion_options
 
