@@ -11,7 +11,7 @@ from neuroconv.tools.testing import MockSpikeGLXNIDQInterface
 def test_current_default_inferred_ttl_times():
     interface = MockSpikeGLXNIDQInterface()
 
-    channel_names = ["nidq#XA0", "nidq#XA1", "nidq#XA2", "nidq#XA3", "nidq#XA4", "nidq#XA5", "nidq#XA6", "nidq#XA7"]
+    channel_names = ["XA0", "XA1", "XA2", "XA3", "XA4", "XA5", "XA6", "XA7"]
     inferred_starting_times = list()
     for channel_index, channel_name in enumerate(channel_names):
         inferred_starting_times.append(interface.get_event_times_from_ttl(channel_name=channel_name))
@@ -25,7 +25,7 @@ def test_current_default_inferred_ttl_times():
 def test_explicit_original_default_inferred_ttl_times():
     interface = MockSpikeGLXNIDQInterface(signal_duration=7.0, ttl_times=None, ttl_duration=1.0)
 
-    channel_names = ["nidq#XA0", "nidq#XA1", "nidq#XA2", "nidq#XA3", "nidq#XA4", "nidq#XA5", "nidq#XA6", "nidq#XA7"]
+    channel_names = ["XA0", "XA1", "XA2", "XA3", "XA4", "XA5", "XA6", "XA7"]
     expected_ttl_times = [[1.0 * (1 + 2 * period) + 0.1 * channel for period in range(3)] for channel in range(8)]
     for channel_index, channel_name in enumerate(channel_names):
         inferred_ttl_times = interface.get_event_times_from_ttl(channel_name=channel_name)
@@ -36,7 +36,7 @@ def test_custom_inferred_ttl_times():
     custom_ttl_times = [[1.2], [3.6], [0.7, 4.5], [5.1]]
     interface = MockSpikeGLXNIDQInterface(ttl_times=custom_ttl_times)
 
-    channel_names = ["nidq#XA0", "nidq#XA1", "nidq#XA2", "nidq#XA3"]
+    channel_names = ["XA0", "XA1", "XA2", "XA3"]
     for channel_index, channel_name in enumerate(channel_names):
         inferred_ttl_times = interface.get_event_times_from_ttl(channel_name=channel_name)
         assert_array_almost_equal(inferred_ttl_times, custom_ttl_times[channel_index], decimal=4)

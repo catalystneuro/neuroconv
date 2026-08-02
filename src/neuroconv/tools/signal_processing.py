@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 
 
@@ -291,9 +293,9 @@ def _detect_events(
 def _frames_to_seconds(
     onset_frames: np.ndarray,
     offset_frames: np.ndarray | None,
-    timestamps: np.ndarray,
+    timestamps: np.ndarray | Callable[[np.ndarray], np.ndarray],
 ) -> tuple[np.ndarray, np.ndarray | None]:
-    """Convert event frames to onset times and durations in seconds, by indexing the timestamps.
+    """Convert event frames to onset times and durations in seconds, by reading the clock at each frame.
 
     The third and last shared step, and the one the interfaces used to each do slightly differently.
     Durations come from reading the clock at both ends of an event and subtracting, which is exact
@@ -307,8 +309,13 @@ def _frames_to_seconds(
         Frame indices of the event onsets, from :func:`_detect_events`.
     offset_frames : numpy.ndarray or None
         Closing frames, or None for a point reading. ``NaN`` marks an event with no closing edge.
-    timestamps : numpy.ndarray
-        The signal's own clock, one entry per frame.
+    timestamps : numpy.ndarray or callable
+        The signal's own clock. An **array** holds one timestamp per frame and is indexed at the event
+        frames, which is what a source storing its clock (Doric, Inscopix) hands over. A **callable**
+        takes an array of frame indices and returns their times, for a source that derives its clock
+        from a sampling rate instead of storing one (Intan, SpikeGLX NIDQ): materialising three hours at
+        30 kHz to read a few dozen indices would cost hundreds of megabytes for nothing, and the
+        callable reads only the frames the events actually landed on.
 
     Returns
     -------
@@ -319,14 +326,20 @@ def _frames_to_seconds(
         event whose offset is missing (a truncated interval), which is what NWB's ``DurationVectorData``
         expects.
     """
-    timestamps = np.asarray(timestamps, dtype="float64")
-    onsets = timestamps[onset_frames]
+    if callable(timestamps):
+        read_clock = timestamps
+    else:
+        clock = np.asarray(timestamps, dtype="float64")
+        read_clock = lambda frames: clock[frames]  # noqa: E731
+
+    onsets = np.asarray(read_clock(onset_frames), dtype="float64")
     if offset_frames is None:
         return onsets, None
 
     durations = np.full(onsets.shape, np.nan, dtype="float64")
     closed = ~np.isnan(offset_frames)
-    durations[closed] = timestamps[offset_frames[closed].astype("int64")] - onsets[closed]
+    closing_times = np.asarray(read_clock(offset_frames[closed].astype("int64")), dtype="float64")
+    durations[closed] = closing_times - onsets[closed]
     return onsets, durations
 
 
