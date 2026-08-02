@@ -118,8 +118,8 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
             )
             return neo_reader._axon_info["rec_datetime"]
 
-    def get_metadata_schema(self) -> dict:
-        metadata_schema = super().get_metadata_schema()
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        metadata_schema = super()._get_metadata_schema_for_old_list_format()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
             ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
         )

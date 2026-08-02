@@ -26,7 +26,11 @@ from .utils import (
     load_dict_from_file,
 )
 from .utils.dict import DeepDict
-from .utils.json_schema import _NWBSourceDataEncoder, validate_metadata
+from .utils.json_schema import (
+    _metadata_uses_old_list_format,
+    _NWBSourceDataEncoder,
+    validate_metadata,
+)
 
 
 class BaseDataInterface(ABC):
@@ -103,9 +107,25 @@ class BaseDataInterface(ABC):
 
         return metadata
 
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        """
+        Return the schema used to validate metadata in the old list-based format.
+
+        Transitional. Most interfaces describe one format only, so this is their own schema. The modality
+        bases whose ``get_metadata_schema`` still describes the old format override it the other way
+        round: they answer here with that schema and hand ``get_metadata_schema`` callers the base schema,
+        which is what dict-based metadata can be validated against. Both go when those schemas are
+        migrated.
+        """
+        return self.get_metadata_schema()
+
     def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
-        metdata_schema = self.get_metadata_schema()
+        if _metadata_uses_old_list_format(metadata):
+            metdata_schema = self._get_metadata_schema_for_old_list_format()
+        else:
+            metdata_schema = self.get_metadata_schema()
+
         if append_mode:
             # Eliminate required from NWBFile
             nwbfile_schema = metdata_schema["properties"]["NWBFile"]
