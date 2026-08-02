@@ -48,10 +48,11 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        """TiffImagingInterface does not extract ophys metadata from the source, so the Ophys section is empty.
+        """TiffImagingInterface reads no ophys metadata from the source, so it claims no device and takes
+        the base's generic series name: nothing in the file says what was imaged.
 
         See https://github.com/catalystneuro/neuroconv/issues/1557"""
-        assert "Ophys" not in metadata
+        assert metadata["Ophys"] == {"MicroscopySeries": {"tiff_imaging": dict(name="MicroscopySeries")}}
         assert "Devices" not in metadata
 
 
@@ -390,10 +391,11 @@ class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        """Hdf5ImagingInterface does not extract ophys metadata from the source, so the Ophys section is empty.
+        """Hdf5ImagingInterface reads no ophys metadata from the source, so it claims no device and takes
+        the base's generic series name: nothing in the file says what was imaged.
 
         See https://github.com/catalystneuro/neuroconv/issues/1557"""
-        assert "Ophys" not in metadata
+        assert metadata["Ophys"] == {"MicroscopySeries": {"hdf5_imaging": dict(name="MicroscopySeries")}}
         assert "Devices" not in metadata
 
 
