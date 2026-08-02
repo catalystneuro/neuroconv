@@ -7,7 +7,7 @@ import pytest
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from packaging import version
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import (
@@ -278,12 +278,12 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 assert expected_value == extracted_value
 
         # Test addition to electrodes table!~
-        with NWBHDF5IO(self.nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            electrode_table = nwbfile.electrodes.to_dataframe()
-            electrode_table_row = electrode_table.query(f"channel_name=='{channel_id}'").iloc[0]
-            for key, value in expected_channel_properties_electrodes.items():
-                assert electrode_table_row[key] == value
+        nwbfile = read_nwb(self.nwbfile_path)
+        electrode_table = nwbfile.electrodes.to_dataframe()
+        electrode_table_row = electrode_table.query(f"channel_name=='{channel_id}'").iloc[0]
+        for key, value in expected_channel_properties_electrodes.items():
+            assert electrode_table_row[key] == value
+        nwbfile.read_io.close()
 
 
 @pytest.mark.skipif(
@@ -334,16 +334,10 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_no_metadata_mutation(self):
         pass
 
-    def test_run_conversion_with_backend(self):
-        pass
-
     def test_run_conversion_with_backend_configuration(self):
         pass
 
     def test_interface_alignment(self):
-        pass
-
-    def test_configure_backend_for_equivalent_nwbfiles(self):
         pass
 
     def test_conversion_options_schema_valid(self):
@@ -1137,14 +1131,13 @@ class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert_array_equal(gains, expected_channel_gains)
 
     def check_read_nwb(self, nwbfile_path: str):
-        from pynwb import NWBHDF5IO
 
         expected_conversion_factor = self.test_gain_value * 1e-6
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            for _, electrical_series in nwbfile.acquisition.items():
-                assert np.isclose(electrical_series.conversion, expected_conversion_factor)
+        nwbfile = read_nwb(nwbfile_path)
+        for _, electrical_series in nwbfile.acquisition.items():
+            assert np.isclose(electrical_series.conversion, expected_conversion_factor)
 
+        nwbfile.read_io.close()
         return super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 

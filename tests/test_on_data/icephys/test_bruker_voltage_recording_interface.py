@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.icephys import CurrentClampSeries, IZeroClampSeries, VoltageClampSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -114,28 +114,28 @@ class TestBrukerCurrentClamp(DataInterfaceTestMixin):
         }
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            assert len(nwbfile.acquisition) == 1
-            response = nwbfile.acquisition["CurrentClampSeriesCell1001Primary"]
-            assert isinstance(response, CurrentClampSeries)
-            assert response.electrode.device.name == "Multiclamp700B Ch1"
+        nwbfile = read_nwb(nwbfile_path)
+        assert len(nwbfile.acquisition) == 1
+        response = nwbfile.acquisition["CurrentClampSeriesCell1001Primary"]
+        assert isinstance(response, CurrentClampSeries)
+        assert response.electrode.device.name == "Multiclamp700B Ch1"
 
-            # A single cycle is regularly sampled, so it is written with a rate rather than timestamps.
-            assert response.rate == 10_000.0
-            assert response.starting_time == 0.0
+        # A single cycle is regularly sampled, so it is written with a rate rather than timestamps.
+        assert response.rate == 10_000.0
+        assert response.starting_time == 0.0
 
-            # The samples are stored exactly as the CSV holds them; the whole scale chain lives in
-            # `conversion`, which takes raw * Multiplier / Divisor into volts.
-            assert response.data[0] == pytest.approx(-0.81695556640625)
-            assert response.conversion == pytest.approx(0.1)
-            assert response.data[0] * response.conversion == pytest.approx(-0.081695556640625)
+        # The samples are stored exactly as the CSV holds them; the whole scale chain lives in
+        # `conversion`, which takes raw * Multiplier / Divisor into volts.
+        assert response.data[0] == pytest.approx(-0.81695556640625)
+        assert response.conversion == pytest.approx(0.1)
+        assert response.data[0] * response.conversion == pytest.approx(-0.081695556640625)
 
-            # One row per cycle, addressing the whole series, with no stimulus half and no placeholder column.
-            recordings = nwbfile.intracellular_recordings
-            assert len(recordings) == 1
-            assert recordings.colnames == ("sequence",)
-            assert recordings["sequence"][0] == "cell1-001"
+        # One row per cycle, addressing the whole series, with no stimulus half and no placeholder column.
+        recordings = nwbfile.intracellular_recordings
+        assert len(recordings) == 1
+        assert recordings.colnames == ("sequence",)
+        assert recordings["sequence"][0] == "cell1-001"
+        nwbfile.read_io.close()
 
     def test_signal_names_lists_the_recorded_columns(self):
         assert BrukerVoltageRecordingInterface.get_signal_names(file_path=self.file_path) == ["Primary"]
@@ -154,14 +154,14 @@ class TestBrukerVoltageClamp(DataInterfaceTestMixin):
         assert metadata["Devices"]["multiclamp700b"]["name"] == "Multiclamp700B"
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            response = nwbfile.acquisition["VoltageClampSeriesCell1LED12018Primary"]
-            assert isinstance(response, VoltageClampSeries)
-            # 20 kHz here against 10 kHz in the current-clamp files, so the rate is read and not assumed.
-            assert response.rate == 20_000.0
-            # pA through a 0.005 divisor: (1 / 0.005) * 1e-12 amperes per stored unit.
-            assert response.conversion == pytest.approx(2e-10)
+        nwbfile = read_nwb(nwbfile_path)
+        response = nwbfile.acquisition["VoltageClampSeriesCell1LED12018Primary"]
+        assert isinstance(response, VoltageClampSeries)
+        # 20 kHz here against 10 kHz in the current-clamp files, so the rate is read and not assumed.
+        assert response.rate == 20_000.0
+        # pA through a 0.005 divisor: (1 / 0.005) * 1e-12 amperes per stored unit.
+        assert response.conversion == pytest.approx(2e-10)
+        nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize(
