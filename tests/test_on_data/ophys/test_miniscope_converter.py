@@ -23,14 +23,14 @@ def test_declared_device_without_a_folder_warns(tmp_path, device_kind, declared_
     import json
 
     folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
-    user_config = json.loads((folder_path / "UserConfigFile.json").read_text())
+    user_config = json.loads((folder_path / "UserConfigFile.json").read_text(encoding="utf-8"))
     devices = user_config["devices"].setdefault(device_kind, {})
     # Rename one declared device (or add one, for the cameras this dataset has none of) so that
     # nothing on disk matches it
     devices.pop(declared_name, None)
     devices["a_device_with_no_folder"] = {"deviceType": "Miniscope_V4_BNO"}
     config_file_path = tmp_path / "UserConfigFile.json"
-    config_file_path.write_text(json.dumps(user_config))
+    config_file_path.write_text(json.dumps(user_config), encoding="utf-8")
 
     with pytest.warns(UserWarning, match="No folder named 'a_device_with_no_folder' was found"):
         MiniscopeConverter(folder_path=folder_path, user_configuration_file_path=config_file_path)
@@ -42,14 +42,14 @@ def test_legacy_user_config_device_list_raises(tmp_path, device_kind):
     import json
 
     folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
-    user_config = json.loads((folder_path / "UserConfigFile.json").read_text())
+    user_config = json.loads((folder_path / "UserConfigFile.json").read_text(encoding="utf-8"))
     # Rewrite the devices of one kind into the legacy shape: a list, with the key moved inline
     devices = user_config["devices"].get(device_kind, {"a_device": {"deviceType": "Miniscope_V4_BNO"}})
     user_config["devices"][device_kind] = [
         {"deviceName": device_name, **device_config} for device_name, device_config in devices.items()
     ]
     config_file_path = tmp_path / "UserConfigFile.json"
-    config_file_path.write_text(json.dumps(user_config))
+    config_file_path.write_text(json.dumps(user_config), encoding="utf-8")
 
     with pytest.raises(NotImplementedError, match=f"devices\\[{device_kind}\\] as a list of devices"):
         MiniscopeConverter(folder_path=folder_path, user_configuration_file_path=config_file_path)

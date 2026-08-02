@@ -384,8 +384,8 @@ class TestSuite2pSegmentationInterfaceChan1Plane0(SegmentationExtractorInterface
     )
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
         plane_suffix = "Chan1Plane0"
         cls.imaging_plane_names = "ImagingPlane" + plane_suffix
         cls.plane_segmentation_names = "PlaneSegmentation" + plane_suffix
@@ -460,8 +460,8 @@ class TestSuite2pSegmentationInterfaceChan2Plane0(SegmentationExtractorInterface
     )
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
 
         plane_suffix = "Chan2Plane0"
         cls.imaging_plane_names = "ImagingPlane" + plane_suffix
