@@ -308,6 +308,18 @@ def _add_imaging_plane_to_nwbfile(
     for field in required_fields:
         imaging_plane_kwargs.setdefault(field, default_imaging_plane[field])
 
+    # The same rule one level down: an interface that knows a channel's name but not its emission
+    # wavelength states the name alone, and the entry is completed here rather than rejected by
+    # ``OpticalChannel``. Only a lone channel takes the default name, since two channels defaulted to the
+    # same name would collide inside the imaging plane.
+    default_optical_channel = default_imaging_plane["optical_channel"][0]
+    optical_channels = imaging_plane_kwargs["optical_channel"]
+    if len(optical_channels) > 1:
+        default_optical_channel = {field: value for field, value in default_optical_channel.items() if field != "name"}
+    imaging_plane_kwargs["optical_channel"] = [
+        {**default_optical_channel, **optical_channel} for optical_channel in optical_channels
+    ]
+
     # Check if already exists
     imaging_plane_name = imaging_plane_kwargs["name"]
     if imaging_plane_name in nwbfile.imaging_planes:
