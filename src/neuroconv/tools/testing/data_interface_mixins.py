@@ -90,6 +90,17 @@ class DataInterfaceTestMixin:
 
     def test_metadata(self, setup_interface):
         metadata = self.interface.get_metadata()
+
+        # `test_metadata_schema_valid` checks the schema is well formed; this checks the metadata satisfies
+        # it. `get_metadata` reports only what the source carries, and a source that knows no session start
+        # time legitimately omits it for the writer to default, so validate the metadata the writer would
+        # receive. The json round trip is what turns datetimes into something jsonschema can validate.
+        metadata_for_validation = deepcopy(metadata)
+        if "session_start_time" not in metadata_for_validation["NWBFile"]:
+            metadata_for_validation["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        schema = self.interface.get_metadata_schema()
+        validate(json.loads(json.dumps(metadata_for_validation, cls=_NWBMetaDataEncoder)), schema)
+
         self.check_extracted_metadata(metadata)
 
     def check_extracted_metadata(self, metadata: dict):
@@ -108,27 +119,25 @@ class DataInterfaceTestMixin:
         assert metadata == metadata_before_add_method
 
     @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-    def test_run_conversion_with_backend_configuration(self, setup_interface, tmp_path, backend):
-        """Write the interface out with its own default backend configuration and validate the result.
+    def test_all_conversion_checks(self, setup_interface, tmp_path, backend):
+        """Write the interface out and validate what lands on disk, once per backend.
 
-        This is the only file each interface writes per backend. `run_conversion(backend=...)` resolves the
-        same default configuration internally, so writing both spellings per interface buys nothing; that
-        equivalence is covered once on a mock interface in `tests/test_minimal/test_interfaces_run_conversion.py`.
+        `run_conversion` resolves the default backend configuration internally, so passing one explicitly
+        writes the same file; that equivalence is covered once on a mock interface in
+        `tests/test_minimal/test_interfaces_run_conversion.py`.
         """
         metadata = self.interface.get_metadata()
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
-        nwbfile_path = str(tmp_path / f"conversion_with_backend_configuration{backend}-{self.test_name}.nwb")
+        nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}_{backend}.nwb")
         self.nwbfile_path = nwbfile_path
 
-        nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        backend_configuration = self.interface.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path,
             overwrite=True,
             metadata=metadata,
-            backend_configuration=backend_configuration,
+            backend=backend,
             **self.conversion_options,
         )
 
@@ -138,24 +147,6 @@ class DataInterfaceTestMixin:
         # Custom checks tend to write more files of their own, so they run against one backend only
         if backend == "hdf5":
             self.run_custom_checks()
-
-    def test_all_conversion_checks(self, setup_interface):
-        """Build the interface through an `NWBConverter`, which is where its metadata meets the base schema.
-
-        Nothing is written here: the file a converter produces is the file the interface produces, and that
-        one is already read back and checked in `test_run_conversion_with_backend_configuration`.
-        """
-
-        class TestNWBConverter(NWBConverter):
-            data_interface_classes = dict(Test=type(self.interface))
-
-        converter = TestNWBConverter(source_data=dict(Test=self.interface_kwargs))
-
-        metadata = converter.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        converter.create_nwbfile(metadata=metadata, conversion_options=dict(Test=self.conversion_options))
 
     @abstractmethod
     def check_read_nwb(self, nwbfile_path: str):
@@ -853,9 +844,6 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def test_metadata_schema_valid(self):
         pass
 
-    def test_run_conversion_with_backend_configuration(self):
-        pass
-
     def test_no_metadata_mutation(self):
         pass
 
@@ -1093,9 +1081,6 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
         pass
 
     def test_conversion_options_schema_valid(self):
-        pass
-
-    def test_run_conversion_with_backend_configuration(self):
         pass
 
     def test_no_metadata_mutation(self):
