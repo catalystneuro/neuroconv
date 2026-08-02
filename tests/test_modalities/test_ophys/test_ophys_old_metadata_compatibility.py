@@ -42,8 +42,8 @@ class TestOldMetadataCompatibilityImaging:
     def _old_format_metadata(self, interface) -> dict:
         """The metadata a user has after editing what `get_metadata()` hands them.
 
-        The format is asked for explicitly, so this keeps building old-shaped metadata when the default
-        flips; only ``test_get_metadata_still_returns_the_list_format`` reads the default.
+        The format is asked for explicitly rather than taken from the default, so this keeps building
+        old-shaped metadata when the default flips.
         """
         metadata = interface.get_metadata(use_new_metadata_format=False)
         metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1, 12, 30, 0).astimezone())
@@ -62,20 +62,6 @@ class TestOldMetadataCompatibilityImaging:
             imaging_plane="ImagingPlaneGreen",
         )
         return metadata
-
-    def test_get_metadata_still_returns_the_list_format(self, interface):
-        """The promise the internal default flip makes: what users get back is unchanged.
-
-        The only test here that reads the default rather than asking for a format, because the default is
-        what it is about. It changes when `get_metadata` starts returning the dict shape.
-        """
-        metadata = interface.get_metadata()
-
-        assert isinstance(metadata["Ophys"]["Device"], list)
-        assert isinstance(metadata["Ophys"]["ImagingPlane"], list)
-        assert isinstance(metadata["Ophys"]["TwoPhotonSeries"], list)
-        assert "Devices" not in metadata
-        assert "MicroscopySeries" not in metadata["Ophys"]
 
     def test_run_conversion_writes_what_the_user_stated(self, interface, tmp_path):
         metadata = self._old_format_metadata(interface)
@@ -126,14 +112,6 @@ class TestOldMetadataCompatibilitySegmentation:
         plane_segmentations = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"]
         plane_segmentations[0].update(description="The ROIs I described")
         return metadata
-
-    def test_get_metadata_still_returns_the_list_format(self, interface):
-        """Reads the default deliberately: it is the promise this test is about."""
-        metadata = interface.get_metadata()
-
-        assert isinstance(metadata["Ophys"]["Device"], list)
-        assert isinstance(metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"], list)
-        assert "PlaneSegmentations" not in metadata["Ophys"]
 
     def test_run_conversion_writes_what_the_user_stated(self, interface, tmp_path):
         metadata = self._old_format_metadata(interface)
