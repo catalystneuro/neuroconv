@@ -372,9 +372,66 @@ class TestKilosortSortingInterfaceVersion4(SortingExtractorInterfaceTestMixin):
         assert "channel_map.npy" in description
         assert "channel_positions.npy" in description
 
+    def check_mapping_derived_from_the_templates_narrows_the_waveforms(self):
+        """With electrodes to label the channel axis, the templates are written over the footprint."""
+        from neuroconv.converters import SortedRecordingConverter
+        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+        recording_interface = MockRecordingInterface(num_channels=32, durations=[10.0], sampling_frequency=25000.0)
+        sorting_interface = self.data_interface_cls(**self.interface_kwargs)
+
+        unit_ids_to_channel_ids = sorting_interface.get_unit_ids_to_channel_ids(recording_interface=recording_interface)
+        assert [str(channel_id) for channel_id in unit_ids_to_channel_ids[0]] == [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+        ]
+
+        converter = SortedRecordingConverter(
+            recording_interface=recording_interface,
+            sorting_interface=sorting_interface,
+            unit_ids_to_channel_ids=unit_ids_to_channel_ids,
+        )
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = converter.create_nwbfile(metadata=metadata)
+
+        waveform_means = np.asarray(nwbfile.units["waveform_mean"][:])
+        assert waveform_means.shape == (6, 61, 10)
+        assert nwbfile.units["electrodes"].get(0, index=True) == [0, 1, 2, 3, 4, 16, 17, 18, 19, 20]
+        # Narrowing the axis does not change the values it holds.
+        np.testing.assert_allclose(
+            np.abs(waveform_means).max(axis=(1, 2)) * 1e6, [154.2, 30.7, 10.9, 57.8, 326.4, 75.1], atol=0.05
+        )
+
+    def check_a_recording_that_was_not_sorted_is_rejected(self):
+        """`params.py` states the shape of the binary, which rules out some wrong recordings."""
+        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+        with pytest.raises(ValueError, match="32 channels but this recording has 16"):
+            self.interface.get_unit_ids_to_channel_ids(
+                recording_interface=MockRecordingInterface(num_channels=16, durations=[10.0])
+            )
+
+        with pytest.raises(ValueError, match="Kilosort was run at 25000.0 Hz"):
+            self.interface.get_unit_ids_to_channel_ids(
+                recording_interface=MockRecordingInterface(
+                    num_channels=32, durations=[10.0], sampling_frequency=30000.0
+                )
+            )
+
     def run_custom_checks(self):
         self.check_templates_are_zeroed_outside_their_footprint()
         self.check_nothing_is_claimed_about_electrodes()
+        self.check_mapping_derived_from_the_templates_narrows_the_waveforms()
+        self.check_a_recording_that_was_not_sorted_is_rejected()
 
 
 class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin):

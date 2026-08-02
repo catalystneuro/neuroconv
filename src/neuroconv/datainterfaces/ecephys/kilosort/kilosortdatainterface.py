@@ -126,7 +126,98 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         peak_sample = ops.get("nt0min")
         return None if peak_sample is None else int(peak_sample)
 
-    def _get_waveform_data(self) -> dict | None:
+    def _get_footprint_masks(self) -> np.ndarray:
+        """The channels Kilosort fit each template on, as a (n_templates, n_channels) boolean mask."""
+        templates = np.load(Path(self.source_data["folder_path"]) / "templates.npy")
+        return np.abs(templates).sum(axis=1) != 0
+
+    def _get_cluster_ids(self) -> np.ndarray:
+        """The template row each of this interface's units was written at."""
+        cluster_ids = self.sorting_extractor.get_property("original_cluster_id")
+        if cluster_ids is None:
+            cluster_ids = self.sorting_extractor.unit_ids
+        return np.asarray(cluster_ids, dtype=int)
+
+    def get_unit_ids_to_channel_ids(
+        self,
+        *,
+        recording_interface: "BaseRecordingExtractorInterface | None" = None,
+        channel_ids: list | np.ndarray | None = None,
+    ) -> dict:
+        """
+        Build the unit-to-channel mapping that :py:class:`~neuroconv.converters.SortedRecordingConverter` takes.
+
+        Each unit maps to the channels Kilosort fit its template on, in ascending channel order, named by the
+        channel ids of the recording. `channel_map.npy` states which channels of the sorted binary those are,
+        so the caller supplies the recording whose channels that binary holds, and by doing so asserts that it
+        is the recording Kilosort was run on, with the same channels in the same order. This interface cannot
+        verify that assertion, only reject the mismatches the sorter folder records.
+
+        Parameters
+        ----------
+        recording_interface : BaseRecordingExtractorInterface, optional
+            The recording Kilosort was run on. Its channel count and sampling frequency are checked against
+            what the sorter folder states.
+        channel_ids : list or np.ndarray, optional
+            The channel ids of that recording, in its own order, for a caller who has no interface. Only the
+            length can be checked.
+
+        Returns
+        -------
+        dict
+            Maps each unit id of this interface to a list of channel ids.
+        """
+        if (recording_interface is None) == (channel_ids is None):
+            raise ValueError("Pass exactly one of `recording_interface` or `channel_ids`.")
+
+        if recording_interface is not None:
+            recording = recording_interface.recording_extractor
+            channel_ids = recording.channel_ids
+            self._validate_recording(recording=recording)
+
+        channel_ids = np.asarray(channel_ids)
+        channel_map = np.load(Path(self.source_data["folder_path"]) / "channel_map.npy").reshape(-1)
+        if channel_map.max(initial=-1) >= channel_ids.size:
+            raise ValueError(
+                f"Kilosort sorted channel {channel_map.max()} of its input binary, but the recording given "
+                f"here has only {channel_ids.size} channels. This is not the recording Kilosort was run on."
+            )
+
+        footprint_masks = self._get_footprint_masks()
+        return {
+            unit_id: [channel_ids[channel_map[channel]] for channel in np.flatnonzero(footprint_masks[cluster_id])]
+            for unit_id, cluster_id in zip(self.sorting_extractor.unit_ids, self._get_cluster_ids())
+        }
+
+    def _validate_recording(self, recording) -> None:
+        """
+        Reject recordings the sorter folder can prove are not the one Kilosort was run on.
+
+        `params.py` records the channel count and sampling rate of the binary, and Kilosort 4 repeats them in
+        `ops.npy` as `n_chan_bin` and `fs`. Note the check is against the channel count of the **binary**, not
+        the length of `channel_map.npy`, which is a subset whenever channels were excluded from the sort.
+        Nothing here is conclusive: a different recording of the same shape passes.
+        """
+        folder_path = Path(self.source_data["folder_path"])
+        params = {}
+        exec((folder_path / "params.py").read_text(encoding="utf-8"), params)
+
+        number_of_channels_in_binary = params.get("n_channels_dat")
+        if number_of_channels_in_binary is not None and recording.get_num_channels() != number_of_channels_in_binary:
+            raise ValueError(
+                f"Kilosort was run on a binary with {number_of_channels_in_binary} channels but this recording "
+                f"has {recording.get_num_channels()}. If channels were removed before sorting, pass the "
+                "recording that was sorted rather than the raw one."
+            )
+
+        sampling_frequency = params.get("sample_rate")
+        if sampling_frequency is not None and not np.isclose(recording.get_sampling_frequency(), sampling_frequency):
+            raise ValueError(
+                f"Kilosort was run at {sampling_frequency} Hz but this recording is at "
+                f"{recording.get_sampling_frequency()} Hz."
+            )
+
+    def _get_waveform_data(self, unit_electrode_indices: list[list[int]] | None = None) -> dict | None:
         """
         Reconstruct the templates from the sorter folder, in volts.
 
@@ -170,10 +261,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
             return None
 
         templates = np.load(templates_file_path)
-        cluster_ids = self.sorting_extractor.get_property("original_cluster_id")
-        if cluster_ids is None:
-            cluster_ids = self.sorting_extractor.unit_ids
-        cluster_ids = np.asarray(cluster_ids, dtype=int)
+        cluster_ids = self._get_cluster_ids()
         if cluster_ids.max(initial=-1) >= templates.shape[0]:
             raise ValueError(
                 f"This sorting has cluster ids up to {cluster_ids.max()} but {templates_file_path} holds only "
@@ -182,11 +270,68 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
                 "than Kilosort output and reading its templates is not supported."
             )
 
+        # The footprint is the set of channels Kilosort fit each template on, and it is only visible here,
+        # while the templates are still whitened: they are exactly zero off the footprint, and unwhitening
+        # is about to destroy that. Summing the absolute value over the sample axis collapses each
+        # (template, channel) pair to zero or non-zero.
         footprint_masks = np.abs(templates).sum(axis=1) != 0
+
+        # Kilosort learns its templates on whitened data, so they are in no physical unit until the
+        # whitening is undone. The einsum applies the inverse whitening matrix across the channel axis of
+        # every template, leaving the units of whatever Kilosort was fed.
         templates = np.einsum("ij,klj->kli", np.load(whitening_file_path), templates)
+
+        # Those units are the recording's, so the gain converts them to microvolts and 1e-6 to the volts
+        # that the schema fixes `waveform_mean` to. No offset: Kilosort high-passes before anything else,
+        # so the templates carry no DC term to correct.
         templates = templates * float(gain_to_uV) * 1e-6
-        waveform_means = np.where(footprint_masks[:, np.newaxis, :], templates, 0.0)
-        waveform_means = waveform_means[cluster_ids].astype("float32")
+
+        # Templates are indexed by cluster id, which is the row Kilosort wrote them at, while the units of
+        # this interface may be a filtered subset in a different order. Selecting by `cluster_ids` puts both
+        # arrays in the order of `self.sorting_extractor.unit_ids`, which is what the units table expects.
+        templates = templates[cluster_ids]
+        footprint_masks = footprint_masks[cluster_ids]
+
+        footprint_sizes = footprint_masks.sum(axis=1)
+        electrode_counts = None if unit_electrode_indices is None else [len(unit) for unit in unit_electrode_indices]
+        write_footprint = electrode_counts is not None and electrode_counts == footprint_sizes.tolist()
+
+        if write_footprint:
+            # The units are linked to electrodes, and those electrodes are this unit's footprint, so the
+            # channel axis is narrowed to it and column `j` is the electrode at position `j` of the unit's
+            # `electrodes` entry. Both are in ascending channel order, which is what `get_unit_ids_to_channel_ids`
+            # produces. The array stays rectangular, so a narrower unit is padded on the right and its own
+            # `electrodes` entry declares how much of the row is data.
+            waveform_means = np.zeros(
+                shape=(cluster_ids.size, templates.shape[1], int(footprint_sizes.max(initial=0))), dtype="float32"
+            )
+            for unit_index, mask in enumerate(footprint_masks):
+                channels = np.flatnonzero(mask)
+                waveform_means[unit_index, :, : channels.size] = templates[unit_index][:, channels]
+            axis_description = (
+                "Column j of the channel axis is the electrode at position j of this unit's electrodes entry; "
+                "a unit with fewer electrodes than the width of the array is zero-padded on the right."
+            )
+        else:
+            # `whitening_mat_inv` is dense, so unwhitening spread every template over every channel. Off the
+            # footprint those values are the inverse-whitening of a zero, which describes the noise covariance
+            # rather than the cell, so they are put back to zero. The array stays probe-width, which keeps
+            # column `i` the same channel for every unit and leaves the footprint readable as the non-zero set.
+            waveform_means = np.where(footprint_masks[:, np.newaxis, :], templates, 0.0).astype("float32")
+            axis_description = (
+                "The channel axis holds every channel Kilosort sorted, in the order of channel_map.npy, and is "
+                "the same for every unit; a unit is exactly zero on the channels its template was not fit on. "
+                "The geometry of those channels is in channel_positions.npy in the sorter folder, and is not "
+                "written here because a phy folder states no acquisition device to hang an electrodes table on."
+            )
+            if electrode_counts is not None:
+                warnings.warn(
+                    "The electrodes given for each unit are not the channels Kilosort fit its template on, so "
+                    "the waveforms are written over every sorted channel instead of over those electrodes. "
+                    "Use `get_unit_ids_to_channel_ids()` to derive the mapping from the templates themselves.",
+                    UserWarning,
+                    stacklevel=3,
+                )
 
         return dict(
             means=waveform_means,
@@ -196,11 +341,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
             source_description=(
                 "These are the templates Kilosort fit, unwhitened with whitening_mat_inv.npy and converted to "
                 f"volts with a gain of {gain_to_uV} microvolts per unit given to the interface; the sorter "
-                "stores them whitened and in the units of its input. The channel axis holds every channel "
-                "Kilosort sorted, in the order of channel_map.npy, and is the same for every unit; a unit is "
-                "exactly zero on the channels its template was not fit on. The geometry of those channels is "
-                "in channel_positions.npy in the sorter folder, and is not written here because a phy folder "
-                "states no acquisition device to hang an electrodes table on."
+                f"stores them whitened and in the units of its input. {axis_description}"
             ),
         )
 
@@ -218,8 +359,11 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         parent_container: Literal["units", "processing"] = "units",
         waveform_data_dict: dict | None = None,
     ):
+        # The layout follows the linkage: with electrodes to label the channel axis the templates are
+        # narrowed to each unit's footprint, and without them the axis has to be self-describing, so it
+        # spans every sorted channel.
         if waveform_data_dict is None:
-            waveform_data_dict = self._get_waveform_data()
+            waveform_data_dict = self._get_waveform_data(unit_electrode_indices=unit_electrode_indices)
 
         super().add_to_nwbfile(
             nwbfile=nwbfile,
