@@ -43,27 +43,27 @@ class IntanConverter(ConverterPipe):
         "RHD2000 auxiliary input channel": {
             "interface_name": "AnalogAuxiliary",
             "interface": IntanAnalogInterface,
-            "metadata_key": "time_series_intan_auxiliary",
+            "metadata_key": "intan_auxiliary",
         },
         "USB board ADC input channel": {
             "interface_name": "AnalogADCInput",
             "interface": IntanAnalogInterface,
-            "metadata_key": "time_series_intan_adc_input",
+            "metadata_key": "intan_adc_input",
         },
         "USB board ADC output channel": {
             "interface_name": "AnalogADCOutput",
             "interface": IntanAnalogInterface,
-            "metadata_key": "time_series_intan_adc_output",
+            "metadata_key": "intan_adc_output",
         },
         "DC Amplifier channel": {
             "interface_name": "AnalogDC",
             "interface": IntanAnalogInterface,
-            "metadata_key": "time_series_intan_dc",
+            "metadata_key": "intan_dc",
         },
         "Stim channel": {
             "interface_name": "Stim",
             "interface": IntanStimInterface,
-            "metadata_key": "time_series_intan_stim",
+            "metadata_key": "intan_stim",
         },
     }
 

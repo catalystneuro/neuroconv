@@ -615,9 +615,8 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         return self.interface, self.test_name
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
-
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
 
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.optical_channel_metadata = dict(
@@ -700,8 +699,8 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         return self.interface, self.test_name
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
 
         cls.photon_series_name = "TwoPhotonSeries"
         cls.num_samples = 5
@@ -782,9 +781,8 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         return self.interface, self.test_name
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
-
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
 
         cls.photon_series_name = "TwoPhotonSeriesCh2000002"
         cls.num_samples = 5
@@ -882,9 +880,9 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         return self.interface, self.test_name
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
+    @classmethod
+    def setup_metadata(cls):
 
-        cls = request.cls
         cls.photon_series_name = "TwoPhotonSeriesCh2"
         cls.num_samples = 10
         cls.image_shape = (512, 512)
@@ -970,8 +968,8 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
         cls.device_metadata = dict(name="Microscope")
         cls.optical_channel_metadata = dict(
             name="OpticalChannel",
@@ -1139,8 +1137,8 @@ class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
 
         cls.device_name = "Miniscope"
 
@@ -1204,8 +1202,8 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
         cls.device_name = "Miniscope"
         cls.imaging_plane_name = "ImagingPlane"
         cls.photon_series_name = "OnePhotonSeries"
@@ -1396,8 +1394,8 @@ class TestMiniscopeImagingInterfaceV4BNO(MiniscopeImagingInterfaceMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
         cls.device_name = "miniscope"
         cls.imaging_plane_name = "ImagingPlane"
         cls.photon_series_name = "OnePhotonSeries"

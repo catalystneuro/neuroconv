@@ -51,9 +51,8 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
 
         cls.pose_estimation_name = "PoseEstimation"
         cls.original_video_height = 406
