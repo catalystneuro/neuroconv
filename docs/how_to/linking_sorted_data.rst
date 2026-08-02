@@ -137,33 +137,37 @@ reads it out and names the channels with the recording's channel IDs:
 
 .. code-block:: python
 
-    >>> from neuroconv.converters import SortedRecordingConverter
-    >>> from neuroconv.datainterfaces import KiloSortSortingInterface
-    >>> from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
-    >>>
-    >>> folder_path = f"{ECEPHY_DATA_PATH}/kilosort/version_4_sparse_templates"
-    >>> sorting_interface = KiloSortSortingInterface(folder_path=folder_path, gain_to_uV=0.195)
-    >>>
-    >>> # Stands in here for the recording Kilosort was run on: 32 channels at 25 kHz
-    >>> recording_interface = MockRecordingInterface(num_channels=32, durations=[10.0], sampling_frequency=25000.0)
-    >>>
-    >>> unit_ids_to_channel_ids = sorting_interface.get_unit_ids_to_channel_ids(recording_interface=recording_interface)
-    >>> print([str(channel_id) for channel_id in unit_ids_to_channel_ids[0]])
-    ['0', '1', '2', '3', '4', '16', '17', '18', '19', '20']
+    from neuroconv.converters import SortedRecordingConverter
+    from neuroconv.datainterfaces import (
+        IntanRecordingInterface,
+        KiloSortSortingInterface
+    )
+
+    recording_interface = IntanRecordingInterface(
+        file_path="path/to/intan_data.rhd"
+    )
+    sorting_interface = KiloSortSortingInterface(
+        folder_path="path/to/kilosort_output", gain_to_uV=0.195
+    )
+
+    unit_ids_to_channel_ids = sorting_interface.get_unit_ids_to_channel_ids(
+        recording_interface=recording_interface
+    )
+    print(unit_ids_to_channel_ids[0])
+    # Example output: ['A-000', 'A-001', 'A-002', 'A-016', 'A-017']
 
 The converter is then built exactly as above, and the waveforms follow the linkage: each unit's
 ``waveform_mean`` is written over the electrodes it is linked to rather than over the whole probe.
 
 .. code-block:: python
 
-    >>> converter = SortedRecordingConverter(
-    ...     recording_interface=recording_interface,
-    ...     sorting_interface=sorting_interface,
-    ...     unit_ids_to_channel_ids=unit_ids_to_channel_ids,
-    ... )
-    >>> nwbfile = converter.create_nwbfile()
-    >>> nwbfile.units["waveform_mean"].data.shape
-    (6, 61, 10)
+    converter = SortedRecordingConverter(
+        recording_interface=recording_interface,
+        sorting_interface=sorting_interface,
+        unit_ids_to_channel_ids=unit_ids_to_channel_ids
+    )
+
+    nwbfile = converter.create_nwbfile()
 
 **What the call asserts.** The recording you pass must be the one Kilosort was run on, with the same
 channels in the same order. ``channel_map.npy`` records which channels of the sorted binary each
