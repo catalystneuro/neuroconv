@@ -168,7 +168,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         ChannelName = _to_camel_case(self.channel_name)
 
         if use_new_metadata_format:
-            metadata["Devices"] = {self.metadata_key: {"description": device_description}}
+            metadata["Devices"] = {self.metadata_key: {"name": "ThorMicroscope", "description": device_description}}
             metadata["Ophys"] = {
                 "ImagingPlanes": {
                     self.metadata_key: {
@@ -180,6 +180,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
                 },
                 "MicroscopySeries": {
                     self.metadata_key: {
+                        "name": f"TwoPhotonSeries{ChannelName}",
                         "imaging_plane_metadata_key": self.metadata_key,
                         "field_of_view": [width_um * 1e-6, height_um * 1e-6],
                     },

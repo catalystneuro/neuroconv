@@ -99,11 +99,15 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         """
         if use_new_metadata_format:
             metadata = super().get_metadata(use_new_metadata_format=True)
-            metadata["Devices"] = {self.metadata_key: {"description": "Scanbox imaging"}}
+            metadata["Devices"] = {self.metadata_key: {"name": "Microscope", "description": "Scanbox imaging"}}
             metadata["Ophys"] = {
+                "ImagingPlanes": {
+                    self.metadata_key: {"device_metadata_key": self.metadata_key},
+                },
                 "MicroscopySeries": {
                     self.metadata_key: {
                         "description": "Imaging data acquired with Scanbox.",
+                        "imaging_plane_metadata_key": self.metadata_key,
                     },
                 },
             }

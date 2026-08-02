@@ -611,8 +611,10 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
 
         expected_plane_segmentation = {
             "description": "Inscopix cell segmentation using cnmfe with traces in dF over noise",
+            "imaging_plane_metadata_key": metadata_key,
         }
         assert metadata["Ophys"]["PlaneSegmentations"][metadata_key] == expected_plane_segmentation
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {"device_metadata_key": metadata_key}
 
         assert metadata["Subject"]["subject_id"] == "FV4581"
         assert "species" not in metadata["Subject"]  # the file does not state it, so it is not reported
@@ -714,13 +716,16 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         """Check the new dict-based metadata format on a fixture without rich device metadata."""
         metadata_key = "inscopix_segmentation"
 
-        # No device name/serial/software in this fixture, so no Devices entry
-        assert "Devices" not in metadata
+        # The fixture records no device name, serial or software, so the entry carries only the generic
+        # name the file is written with.
+        assert metadata["Devices"] == {metadata_key: {"name": "Microscope"}}
 
         expected_plane_segmentation = {
             "description": "Inscopix cell segmentation using cnmfe with traces in dF over noise",
+            "imaging_plane_metadata_key": metadata_key,
         }
         assert metadata["Ophys"]["PlaneSegmentations"][metadata_key] == expected_plane_segmentation
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {"device_metadata_key": metadata_key}
 
         # No subject info in this fixture
         assert "Subject" not in metadata
