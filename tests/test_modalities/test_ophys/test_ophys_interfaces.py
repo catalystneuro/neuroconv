@@ -18,6 +18,8 @@ from neuroconv.tools.testing.mock_interfaces import (
 class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = MockImagingInterface
     interface_kwargs = dict()
+    # The mock reads no imaging modality from its source, so it keeps the base's generic series name.
+    optical_series_name = "MicroscopySeries"
 
     def test_always_write_timestamps(self, setup_interface):
         # By default the MockImagingInterface has a uniform sampling rate
