@@ -264,8 +264,9 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         # The events half of the board. Private and constructed here rather than by the user: NIDQ analog
         # and digital signals share one board and one clock, so the board keeps one public interface and
-        # this object is the part of it that owns the EventsTable writer. It shares the recording
-        # extractor, so both halves read one file handle and one clock.
+        # this object is the part of it that owns the EventsTable writer. It opens its own reader on the
+        # same file rather than borrowing this one, for the reasons its own __init__ gives; both readers
+        # see one immutable file and therefore one clock.
         # A deprecated digital_channel_groups is translated into the new grammar rather than writing
         # through a second path: each group becomes a rising and a falling spec on its line, routed into
         # one table, which is structurally what its LabeledEvents was. `None` is not translated, since
@@ -293,6 +294,12 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         ``labels_map[0]`` the falling one (its labels sorted ``OFF`` before ``ON``). Both readings of the
         same line become two specs, and the returned routing sends them into a single table, which is the
         one ``LabeledEvents`` the group used to produce.
+
+        A label names a state inside one group's table, so two groups may legitimately give theirs the
+        same one, the way two ``LabeledEvents`` could each carry ``["off", "on"]``. An identifier is
+        global, and ``event_name`` is both in the shared grammar, so the identifier is qualified by the
+        group here and :meth:`_rewrite_legacy_events_metadata` puts the bare label back as what the
+        ``event_type`` column shows. The routing carries both, keyed by identifier.
         """
         word_handles = [str(ch).split("#")[-1] for ch in self.recording_extractor.get_channel_ids() if "XD" in str(ch)]
         word_handle = word_handles[0]
@@ -304,15 +311,17 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             line_name = str(channel_id).split("#")[-1]  # the reader's per-line name, e.g. "XD5"
             line = int(line_name[2:])
             labels_map = channel_config["labels_map"]
-            rising_name = str(labels_map.get(1, f"{group_key}_on"))
-            falling_name = str(labels_map.get(0, f"{group_key}_off"))
+            rising_label = str(labels_map.get(1, f"{group_key}_on"))
+            falling_label = str(labels_map.get(0, f"{group_key}_off"))
+            rising_id = f"{group_key}_{rising_label}"
+            falling_id = f"{group_key}_{falling_label}"
             detection_configuration.setdefault(word_handle, []).extend(
                 [
-                    {"signal_conditioning": {"bits": [line]}, "detection": "rising", "event_name": rising_name},
-                    {"signal_conditioning": {"bits": [line]}, "detection": "falling", "event_name": falling_name},
+                    {"signal_conditioning": {"bits": [line]}, "detection": "rising", "event_name": rising_id},
+                    {"signal_conditioning": {"bits": [line]}, "detection": "falling", "event_name": falling_id},
                 ]
             )
-            routing[group_key] = [rising_name, falling_name]
+            routing[group_key] = {rising_id: rising_label, falling_id: falling_label}
         return detection_configuration, routing
 
     def _rewrite_legacy_events_metadata(self, metadata: dict) -> dict:
@@ -333,7 +342,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         event_tables = dict(metadata["Events"].get("EventTables", {}))
         event_types = {}
-        for group_key, event_type_source_ids in self._legacy_events_routing.items():
+        for group_key, labels_by_event_type_source_id in self._legacy_events_routing.items():
             group_metadata = legacy_block.get(group_key, {})
             defaults = default_metadata.get(group_key, {})
             event_tables[group_key] = {
@@ -343,10 +352,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             # `meanings` was appended to the description as a stopgap; it has a real home now, as the
             # per-type description that the writer turns into a MeaningsTable.
             meanings = group_metadata.get("meanings", {})
-            for event_type_source_id in event_type_source_ids:
-                entry = {"event_name": event_type_source_id, "table_metadata_key": group_key}
-                if event_type_source_id in meanings:
-                    entry["event_description"] = meanings[event_type_source_id]
+            for event_type_source_id, label in labels_by_event_type_source_id.items():
+                entry = {"event_name": label, "table_metadata_key": group_key}
+                if label in meanings:
+                    entry["event_description"] = meanings[label]
                 event_types[event_type_source_id] = entry
 
         metadata["Events"]["EventTables"] = event_tables

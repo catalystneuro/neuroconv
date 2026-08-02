@@ -114,6 +114,41 @@ def test_nidq_digital_channel_groups_is_deprecated(tmp_path):
     assert np.sum(event_types == "exposure_end") == 163
 
 
+def test_nidq_digital_channel_groups_may_reuse_labels_across_groups(tmp_path):
+    """Two groups may label their states the same way, the way two `LabeledEvents` could.
+
+    A label names a state inside one group's table, so `{0: "off", 1: "on"}` on every line is what the
+    released argument's own error messages suggest and what a user reading them would write. The shared
+    grammar's identifiers are global, so the translation qualifies them by group and hands the bare
+    labels back at write time; without that the second group's `on` collides with the first's and the
+    interface refuses to construct.
+    """
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
+    digital_channel_groups = {
+        "camera": {"channels": {"nidq#XD0": {"labels_map": {0: "off", 1: "on"}}}},
+        "lick": {"channels": {"nidq#XD1": {"labels_map": {0: "off", 1: "on"}}}},
+    }
+
+    with pytest.warns(FutureWarning, match="digital_channel_groups is deprecated"):
+        interface = SpikeGLXNIDQInterface(folder_path=folder_path, digital_channel_groups=digital_channel_groups)
+
+    nwbfile_path = tmp_path / "nidq_test_digital_shared_labels.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+
+    nwbfile = read_nwb(nwbfile_path)
+    assert set(nwbfile.events.keys()) == {"Camera", "Lick"}  # one table per group, as before
+
+    event_types = np.asarray(nwbfile.events["Camera"]["event_type"][:])
+    assert np.sum(event_types == "on") == 163
+    assert np.sum(event_types == "off") == 163
+
+    # XD1 was recorded and never fired, which is a result rather than a reason to drop the table. Both
+    # of its readings route into one table, so this is also the merged-table shape written with no rows.
+    lick = nwbfile.events["Lick"]
+    assert len(lick) == 0
+    assert set(lick.colnames) == {"timestamp", "event_type"}
+
+
 def test_nidq_detection_configuration_and_digital_channel_groups_conflict():
     """The two spellings write different NWB objects, so asking for both is an error, not a merge."""
     folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"

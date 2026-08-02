@@ -162,7 +162,7 @@ metadata decides how they are presented.
 ``detection`` says which transitions become events and is required. ``"rising"`` and ``"falling"``
 give a point event at each edge; ``"high_period"`` and ``"low_period"`` give a durative event, an
 onset plus the span to the opposite edge. ``event_name`` replaces the derived identifier and also
-names the written table (``camera_frame`` above becomes a table named ``CameraFrame``); without it
+names the written table (``camera_exposure`` above becomes a table named ``CameraExposure``); without it
 the identifier is derived from the signal and its reading, for example ``XD0_bit0_high_period``.
 
 If ``detection_configuration`` is ``None`` (the default), every line the file's ``niXDChans1`` header
