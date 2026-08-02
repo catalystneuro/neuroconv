@@ -52,6 +52,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         stream_name: str | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -65,6 +66,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             Call `NeuralynxRecordingInterface.get_stream_names(folder_path=...)` to see what streams are available.
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"neuralynx_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -100,7 +104,11 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             stream_name=stream_name,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
         )
+
+        if metadata_key is None:
+            self.metadata_key = "neuralynx_recording"
 
         # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
         for key in self.recording_extractor.get_property_keys():
@@ -108,20 +116,20 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
-    def get_metadata(self) -> DeepDict:
+    def _extract_header_metadata(self) -> tuple[dict, dict | None]:
+        """Read the Neuralynx header into NWBFile fields and, when the header names one, a device."""
         neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
         # remove filter related entries already covered by `add_recording_extractor_properties`
         neo_metadata = {k: v for k, v in neo_metadata.items() if not k.lower().startswith("dsp")}
 
-        # map Neuralynx metadata to NWB
-        nwb_metadata = {"NWBFile": {}, "Ecephys": {"Device": []}}
+        nwbfile_metadata = {}
         neuralynx_device = None
         if "SessionUUID" in neo_metadata:
             # note: SessionUUID can not be used as 'identifier' as this requires uuid4
-            nwb_metadata["NWBFile"]["session_id"] = neo_metadata.pop("SessionUUID")
+            nwbfile_metadata["session_id"] = neo_metadata.pop("SessionUUID")
         if "recording_opened" in neo_metadata:
-            nwb_metadata["NWBFile"]["session_start_time"] = neo_metadata.pop("recording_opened")
+            nwbfile_metadata["session_start_time"] = neo_metadata.pop("recording_opened")
         if "AcquisitionSystem" in neo_metadata:
             neuralynx_device = {"name": neo_metadata.pop("AcquisitionSystem")}
         elif "HardwareSubSystemType" in neo_metadata:
@@ -131,10 +139,41 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
                 name = neo_metadata.pop("ApplicationName", "")
                 version = str(neo_metadata.pop("ApplicationVersion", ""))
                 neuralynx_device["description"] = f"{name} {version}"
-            nwb_metadata["Ecephys"]["Device"].append(neuralynx_device)
 
         neo_metadata = {k: str(v) for k, v in neo_metadata.items()}
-        nwb_metadata["NWBFile"]["notes"] = json.dumps(neo_metadata, ensure_ascii=True)
+        nwbfile_metadata["notes"] = json.dumps(neo_metadata, ensure_ascii=True)
+
+        return nwbfile_metadata, neuralynx_device
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        nwbfile_metadata, neuralynx_device = self._extract_header_metadata()
+
+        if use_new_metadata_format:
+            from ....tools.spikeinterface.spikeinterface import _get_group_name
+
+            metadata = super().get_metadata(use_new_metadata_format=True)
+            metadata["NWBFile"].update(nwbfile_metadata)
+
+            # The header only names an acquisition system on some setups, so the device is emitted when
+            # there is one and left to the write pipeline's default otherwise.
+            if neuralynx_device is not None:
+                device_metadata_key = "neuralynx_device"
+                metadata["Devices"] = {device_metadata_key: neuralynx_device}
+
+                # Link every channel group to the device so it reaches the file: devices are created
+                # lazily when an electrode group references them. Only the fields the source carries are
+                # emitted; the required description and location are defaulted by the write pipeline.
+                channel_group_names = set(_get_group_name(recording=self.recording_extractor).tolist())
+                metadata["Ecephys"]["ElectrodeGroups"] = {
+                    group_name: dict(name=group_name, device_metadata_key=device_metadata_key)
+                    for group_name in channel_group_names
+                }
+
+            return metadata
+
+        nwb_metadata = {"NWBFile": nwbfile_metadata, "Ecephys": {"Device": []}}
+        if neuralynx_device is not None:
+            nwb_metadata["Ecephys"]["Device"].append(neuralynx_device)
 
         return dict_deep_update(super().get_metadata(), nwb_metadata)
 

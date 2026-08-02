@@ -31,7 +31,7 @@ def get_gpio_channel_inventory(file_path) -> list[dict]:
     continuous signals versus discrete events is a human call. This returns, per channel, its name,
     sample count, and value set/range, so a user can eyeball which lines are 0/1 (digital), which are
     multi-level codes, and which are continuous, and pick ``exclude_channels`` /
-    ``detection_configuration`` / ``thresholds`` accordingly.
+    ``detection_configuration`` / ``binarize`` accordingly.
 
     Returns
     -------

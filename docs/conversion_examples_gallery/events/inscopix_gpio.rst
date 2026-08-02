@@ -49,24 +49,25 @@ per event type you want from it. A spec's ``detection`` picks which transitions 
 giving a duration), ``"rising"``/``"falling"`` (only the up/down transitions, as point events), or
 ``"value_change"`` (a point event at every transition).
 
-A channel that is already two-valued needs no ``signal_conditioning`` at all, whatever its levels: a
-``0``/``1`` line and a line at 48 and 64 both read correctly with no cut, since a rising edge is simply a
-transition to the higher value. A multi-level channel needs ``{"thresholds": [...]}`` to say where to
-cut. To keep the levels of a coded channel apart, cut it once per level and give each spec its own
-``event_name``, as below: each cut becomes a durative event type with real start and stop times, and the
-level the channel occupies at any instant is how many of them are open, so nothing is lost.
+Every spec also carries a ``signal_conditioning`` saying how its channel becomes a two-valued line. A
+channel that is already two-valued takes ``{"binarize": "midpoint"}``, whose cut falls strictly between
+its levels whatever they are, so a ``0``/``1`` line and a line at 48 and 64 both read correctly without
+you knowing either. A coded channel takes ``{"binarize": c}`` naming where to cut. To keep the levels of
+a coded channel apart, cut it once per level and give each spec its own ``event_name``, as below: each
+cut becomes a durative event type with real start and stop times, and the level the channel occupies at
+any instant is how many of them are open, so nothing is lost.
 
 .. code-block:: python
 
     >>> from neuroconv.datainterfaces import InscopixGpioEventsInterface
     >>>
     >>> detection_configuration = {
-    ...     # A 0/1 frame clock, already a line, so no conditioning.
-    ...     "BNC Sync Output": [{"detection": "rising"}],
+    ...     # A 0/1 frame clock: the derived cut lands between its two levels.
+    ...     "BNC Sync Output": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}],
     ...     # A four-level odor-concentration code, cut once per level.
     ...     "GPIO-2": [
-    ...         {"signal_conditioning": {"thresholds": [136]}, "detection": "high_period", "event_name": "odor_low"},
-    ...         {"signal_conditioning": {"thresholds": [192]}, "detection": "high_period", "event_name": "odor_high"},
+    ...         {"signal_conditioning": {"binarize": 136}, "detection": "high_period", "event_name": "odor_low"},
+    ...         {"signal_conditioning": {"binarize": 192}, "detection": "high_period", "event_name": "odor_high"},
     ...     ],
     ... }
     >>> interface = InscopixGpioEventsInterface(

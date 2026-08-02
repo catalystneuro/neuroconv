@@ -213,14 +213,8 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         # "Devices" not in metadata).
         assert "Devices" not in metadata
         metadata_key = self.interface.metadata_key
-        assert metadata["Ecephys"] == {
-            "ElectricalSeries": {
-                metadata_key: {
-                    "name": metadata_key,
-                    "description": f"Acquisition traces for the {metadata_key}.",
-                }
-            }
-        }
+        # No description: the base emits none, leaving it to the interfaces and the write pipeline.
+        assert metadata["Ecephys"] == {"ElectricalSeries": {metadata_key: {"name": "ElectricalSeries"}}}
 
     def test_metadata_key_passed_to_add_recording(self, setup_interface):
         from unittest.mock import patch
@@ -241,6 +235,25 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         with patch("neuroconv.tools.spikeinterface.add_recording_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=old_metadata)
             assert mock_add.call_args.kwargs["metadata_key"] is None
+
+    def test_heterogeneous_offset_error_points_to_conversion_option(self):
+        """Heterogeneous offsets on the default path raise an interface-oriented error that points at
+        passing data_representation as a conversion option (distinct from the tools-level message)."""
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+        interface.recording_extractor.set_channel_offsets(offsets=[0, 0, 1, 1, 2])  # heterogeneous
+
+        expected_error_msg = (
+            "The channels of this recording have heterogeneous offsets, which a single NWB "
+            "ElectricalSeries cannot represent. To write them as one series, pass "
+            "data_representation='physical_units' as a conversion option to add_to_nwbfile() "
+            "or run_conversion() (this folds each channel's offset into the data and writes "
+            "float physical values). Alternatively, drop or separate the channels that do not "
+            "share the common offset."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile())
 
     def test_stub(self, setup_interface):
         interface = self.interface

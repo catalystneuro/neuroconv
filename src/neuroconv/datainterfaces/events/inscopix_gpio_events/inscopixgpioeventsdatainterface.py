@@ -11,8 +11,8 @@ from ...ophys.inscopix.inscopixgpiodatainterface import (
 )
 from ....tools.events import (
     _get_event_type_source_ids,
-    resolve_detection_plan,
-    validate_detection_configuration,
+    _resolve_detection_plan,
+    _validate_detection_configuration,
 )
 from ....tools.signal_processing import (
     _condition_signal,
@@ -37,9 +37,9 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
     you do not name is not read. Use :meth:`get_available_channels` to inspect the file first.
 
     That missing flag also makes this the one interface whose signals have **no kind**, so the validator
-    cannot reject a cut structurally and the caller carries the assertion that a named channel really is
-    readable as discrete events. A wrong assertion still fails loudly rather than silently: an edge
-    reading on a channel with more than two distinct values raises at read time.
+    admits every cut and the caller carries the assertion that a named channel really is readable as
+    discrete events. :meth:`get_available_channels` is what makes that assertion informed: it reports
+    each channel's value set, so a coded channel is visible as one before a cut is chosen for it.
     """
 
     keywords = ("events", "inscopix", "gpio")
@@ -64,23 +64,26 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
             Path to the ``.gpio`` Inscopix file.
         detection_configuration : dict
             Which channels to read and how, keyed by the channel's ``signal_source_id`` (its name in the
-            file, e.g. ``{"BNC Sync Output": [{"detection": "rising"}]}``). Each value is a **list** of
+            file, e.g. ``{"BNC Sync Output": [{"signal_conditioning": {"binarize": "midpoint"},
+            "detection": "rising"}]}``). Each value is a **list** of
             detection specs, one per event type derived from that channel, since a channel can yield more
             than one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point event at each
             edge), ``"high_period"`` / ``"low_period"`` (a durative event, onset at one edge and duration
             to the next opposite edge), or ``"value_change"`` (a point event at every transition), and it
-            is required. ``signal_conditioning`` is omitted for a channel that is already two-valued (a
-            ``0``/``1`` line, or a line at 48 and 64, both of which read correctly with no cut); a
-            multi-level channel takes ``{"thresholds": [c, ...]}``. An optional ``event_name`` replaces
-            the derived identifier and is required when a channel fans out on ``thresholds``.
+            is required. ``signal_conditioning`` is required too and says how the channel becomes a line:
+            a channel that is already two-valued takes ``{"binarize": "midpoint"}``, whose cut falls
+            strictly between its levels whatever they are (a ``0``/``1`` line and a line at 48 and 64
+            alike), and a coded channel takes ``{"binarize": c}`` naming where to cut. An optional
+            ``event_name`` replaces the derived identifier and is required when a channel fans out on
+            numeric cuts, since a cut point does not stringify into a stable name.
 
             To distinguish the levels of a coded channel, cut it into one line per level and give each its
             own spec, rather than reading the code itself::
 
                 {"GPIO-2": [
-                    {"signal_conditioning": {"thresholds": [136]}, "detection": "high_period",
+                    {"signal_conditioning": {"binarize": 136}, "detection": "high_period",
                      "event_name": "odor_present"},
-                    {"signal_conditioning": {"thresholds": [192]}, "detection": "high_period",
+                    {"signal_conditioning": {"binarize": 192}, "detection": "high_period",
                      "event_name": "odor_high"},
                 ]}
 
@@ -105,7 +108,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         # the validator admits every cut and every omission here and the read-time backstop is what
         # catches a channel that does not support the reading asked of it.
         self._available_signals = self._get_available_signals(self.source_data["file_path"])
-        validate_detection_configuration(detection_configuration, self._available_signals)
+        _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
     @staticmethod
@@ -126,8 +129,8 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
 
         Richer than the interface's own discovery, and the thing to call before writing a
         ``detection_configuration``: it reports each channel's value set, which is what tells you whether
-        a channel is a line (read it with no conditioning), a coded level (cut it with ``thresholds``), or
-        a continuous signal (not events at all). It reads every channel's amplitudes, which is why the
+        a channel is a line (cut it at ``"midpoint"``), a coded level (cut it once per level), or a
+        continuous signal (not events at all). It reads every channel's amplitudes, which is why the
         interface does not call it.
         """
         return get_gpio_channel_inventory(file_path)
@@ -167,7 +170,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
 
         gpio = _read_gpio(self.source_data["file_path"])
         # Grouped by signal, so a channel is read once however many event types it yields.
-        detection_plan = resolve_detection_plan(self._detection_configuration)
+        detection_plan = _resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
         for signal_source_id, detection_specs in detection_plan.items():
