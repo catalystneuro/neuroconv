@@ -141,17 +141,40 @@ def _condition_signal(trace: np.ndarray, signal_conditioning: dict | None = None
     return _binarize(trace=trace, method=signal_conditioning["binarize"])
 
 
+def _smallest_signed_dtype(maximum: int) -> np.dtype:
+    """The narrowest signed integer type holding ``0 .. maximum``, for a conditioned signal's values.
+
+    Conditioning's output is bounded and tiny (a line is 0/1, a band index by its cut count, a coded word
+    by its bit count), while the arrays are whole recordings, so the width is worth choosing rather than
+    defaulting to ``int64``. **Signed** so :func:`_detect_events` has nothing to promote before
+    differencing, and an integer rather than a boolean, since ``np.diff`` on a boolean array computes
+    ``!=`` rather than a difference and would report every transition as a rising edge.
+    """
+    for candidate in ("int8", "int16", "int32", "int64"):
+        if maximum <= np.iinfo(candidate).max:
+            return np.dtype(candidate)
+    raise ValueError(f"No signed integer type holds {maximum}.")  # unreachable: int64 covers any real case
+
+
 def _select_bits(trace: np.ndarray, bits) -> np.ndarray:
-    """Pull bit positions out of a packed integer word, several read together as one coded value."""
+    """Pull bit positions out of a packed integer word, several read together as one coded value.
+
+    The result is the narrowest **signed** integer type that holds it, which is one byte for the ordinary
+    single-bit line. Width follows ``len(bits)`` rather than being fixed, because a coded read builds its
+    value with ``<< position`` and ``1 << 7`` already overflows a signed byte. Signed rather than
+    unsigned so :func:`_detect_events` has nothing to promote, and never boolean, since ``np.diff`` on a
+    boolean array computes ``!=`` rather than a difference and would report every transition as rising.
+    """
     bits = list(bits)
     if not bits:
         raise ValueError("signal_conditioning 'bits' is empty; name at least one bit position.")
-    word = np.asarray(trace).astype("int64")
+    dtype = _smallest_signed_dtype(maximum=2 ** len(bits) - 1)
+    word = np.asarray(trace)
     # Least-significant first, so bits [0, 1] reads bit 0 as the low bit of the resulting code. A single
     # position therefore gives a plain 0/1 line, which is the common case.
-    value = np.zeros(word.shape, dtype="int64")
+    value = np.zeros(word.shape, dtype=dtype)
     for position, bit in enumerate(bits):
-        value |= ((word >> int(bit)) & 1) << position
+        value |= ((word >> int(bit)) & 1).astype(dtype) << position
     return value
 
 
@@ -176,23 +199,45 @@ def _cut_at_thresholds(trace: np.ndarray, thresholds) -> np.ndarray:
         raise ValueError("signal_conditioning 'thresholds' is empty; give at least one cut point.")
     if np.any(np.diff(thresholds) <= 0):
         raise ValueError(f"signal_conditioning 'thresholds' must be strictly increasing, got {list(thresholds)}.")
-    return np.searchsorted(thresholds, np.asarray(trace, dtype="float64"), side="right")
+    # The band index is bounded by len(thresholds), so it needs no more room than that, where
+    # searchsorted's own intp result is eight bytes per sample for a value that is almost always 0 or 1.
+    return np.searchsorted(thresholds, trace, side="right").astype(_smallest_signed_dtype(maximum=thresholds.size))
 
 
 def _binarize(trace: np.ndarray, method: str) -> np.ndarray:
     """Cut a two-level but numerically noisy trace at a value derived from the data itself."""
     if method not in _BINARIZE_METHODS:
         raise ValueError(f"Invalid binarize method '{method}'. Valid methods are {list(_BINARIZE_METHODS)}.")
-    trace = np.asarray(trace, dtype="float64")
-    # "midpoint" is the default elsewhere because it is invariant under windowing: it is unchanged by any
-    # sample lying between the two levels, so a stub_test slice containing both levels derives the same
-    # cut as the full recording. The mean moves with both duty cycle and window, which would make a stub
-    # and a full conversion emit different events; it stays available for a trace with an extreme outlier.
-    cut = (trace.min() + trace.max()) / 2 if method == "midpoint" else trace.mean()
+    trace = np.asarray(trace)
+    if np.issubdtype(trace.dtype, np.floating) and np.isnan(trace).any():
+        # A derived cut is NaN if any sample is, and `trace >= nan` is False everywhere, so the signal
+        # goes constant and the conversion writes a zero-row table for a channel that fired. Refuse
+        # instead: a NaN in a signal is a defect in the file (a blank cell in a Doric CSV column reads as
+        # one), not something the caller chose, and it is the one input where a cut cannot mean anything.
+        raise ValueError(
+            "signal_conditioning 'binarize' cannot derive a cut from a signal containing NaN, since the "
+            "cut would be NaN and every sample would fall below it, silently writing a zero-row table. "
+            "Clean the signal, or give the cut as a number instead of deriving it."
+        )
+    # Both statistics come back as Python scalars rather than through a float64 copy of the whole trace.
+    # `.item()` is what makes that safe: an integer dtype yields a Python int, which cannot overflow, and
+    # taking `min + max` in the native dtype instead would wrap (a uint8 line at 128 and 224 would cut at
+    # 48, putting every sample high and finding nothing).
+    if method == "midpoint":
+        # Invariant under windowing: unchanged by any sample lying between the two levels, so a stub_test
+        # slice containing both levels derives the same cut as the full recording. The mean moves with
+        # both duty cycle and window, which would make a stub and a full conversion emit different
+        # events; it stays available for a trace with an extreme outlier.
+        cut = (trace.min().item() + trace.max().item()) / 2
+    else:
+        cut = trace.mean().item()
     # At or above, not above: a sample landing exactly on the cut goes high, which is the rule
     # _cut_at_thresholds follows from np.digitize. Both cuts are alternative routes to one postcondition,
     # so a value on the cut cannot land in a different band depending on which route was taken.
-    return (trace >= cut).astype("int64")
+    #
+    # int8 rather than the bare boolean: np.diff on a boolean array computes `!=`, so every transition
+    # would read as rising and none as falling, silently.
+    return (trace >= cut).astype("int8")
 
 
 def _detect_events(

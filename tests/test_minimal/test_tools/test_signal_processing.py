@@ -243,6 +243,44 @@ class TestConditionSignal:
         assert_array_equal(_condition_signal(trace, {"binarize": "midpoint"}), np.array([0, 1, 1]))
         assert_array_equal(np.digitize(trace, [56.0]), _condition_signal(trace, {"thresholds": [56.0]}))
 
+    def test_conditioning_returns_a_narrow_signed_integer(self):
+        """The output is bounded and tiny while the arrays are whole recordings, so width is chosen.
+
+        Signed, so :func:`_detect_events` has nothing to promote. Never boolean: ``np.diff`` on a
+        boolean array computes ``!=`` rather than a difference, which would report every transition as
+        rising and none as falling, silently. Width follows the bound, so a coded read still fits.
+        """
+        word = np.array([0, 1, 3, 2], dtype="uint16")
+
+        assert _condition_signal(word, {"bits": [0]}).dtype == np.int8
+        assert _condition_signal(word, {"bits": list(range(8))}).dtype == np.int16  # 255 needs two bytes
+        assert _condition_signal(word, {"thresholds": [1.0]}).dtype == np.int8
+        assert _condition_signal(word, {"binarize": "midpoint"}).dtype == np.int8
+
+    def test_a_derived_cut_does_not_overflow_the_signal_dtype(self):
+        """``min + max`` taken in the native dtype wraps, and the failure is a silent empty table.
+
+        A uint8 line at 128 and 224 sums to 352, which wraps to 96 and halves to a cut of 48; every
+        sample is then at or above it, the line goes constant and no events are found. The cut is
+        therefore computed from Python scalars, where integer arithmetic cannot overflow.
+        """
+        for dtype, low, high in (("uint8", 128, 224), ("int8", 100, 120), ("int16", 20000, 30000)):
+            line = np.array([low, low, high, high, low], dtype=dtype)
+
+            conditioned = _condition_signal(line, {"binarize": "midpoint"})
+
+            assert_array_equal(conditioned, np.array([0, 0, 1, 1, 0]))
+            assert_array_equal(_detect_events(conditioned, "rising")[0], np.array([2]))
+
+    def test_a_derived_cut_refuses_a_trace_holding_nan(self):
+        """The cut would be NaN, every sample would fall below it, and the table would be empty.
+
+        A defect in the file rather than a choice the caller made (a blank cell in a Doric CSV digital
+        column reads as NaN), and the one input where a derived cut cannot mean anything.
+        """
+        with pytest.raises(ValueError, match="cannot derive a cut from a signal containing NaN"):
+            _condition_signal(np.array([0.0, 1.0, np.nan, 0.0]), {"binarize": "midpoint"})
+
     def test_conditioning_preserves_length(self):
         """The contract detection depends on: frame indices must still address the caller's timestamps."""
         trace = np.array([0.1, 2.0, 4.0, 0.1, 2.0])
