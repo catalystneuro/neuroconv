@@ -44,6 +44,30 @@ def _raise_if_miniscope_v3_format(folder_path: str) -> None:
         )
 
 
+def _raise_if_legacy_user_config_device_list(user_config: dict) -> None:
+    """Raise a ``NotImplementedError`` if a User Config declares its devices in the legacy list form.
+
+    The DAQ's own schema (``deviceConfigs/userConfigSchema.json`` in Miniscope-DAQ-QT-Software) allows
+    ``devices[miniscopes]`` and ``devices[cameras]`` in two shapes: the current one, an object keyed by
+    device name, and a legacy one, an array of devices each carrying its own ``deviceName``. neuroconv
+    reads the current form, and no file in the legacy form has ever reached us, so rather than write
+    discovery we cannot test against a real config, we say so and ask for one.
+    """
+    devices = user_config.get("devices", {})
+    legacy_device_kinds = [kind for kind in ("miniscopes", "cameras") if isinstance(devices.get(kind), list)]
+    if legacy_device_kinds:
+        raise NotImplementedError(
+            f"This User Config declares {' and '.join(f'devices[{kind}]' for kind in legacy_device_kinds)} "
+            "as a list of devices, which is the legacy form of the Miniscope DAQ config schema. "
+            "neuroconv supports the current form, an object keyed by device name, e.g. "
+            '\'"miniscopes": {"HPC_miniscope1": {...}}\' rather than '
+            '\'"miniscopes": [{"deviceName": "HPC_miniscope1", ...}]\'. '
+            "We have no recording in the legacy form to test against, so please open an issue at "
+            "https://github.com/catalystneuro/neuroconv/issues and attach this config file so we can "
+            "add support for it with proper test coverage."
+        )
+
+
 def _read_miniscope_config(folder_path: str) -> dict:
     """Read a Miniscope V4 ``metaData.json`` into a device metadata dict.
 
@@ -169,6 +193,19 @@ def _get_fused_timestamps(folder_path: str, file_pattern: str) -> np.ndarray:
         timestamps.extend(timestamps_per_file)
 
     return np.array(timestamps)
+
+
+def _get_device_folder_timestamps(folder_path: str) -> np.ndarray:
+    """Read the ``timeStamps.csv`` of a single V4 device folder as seconds.
+
+    The values are passed through as the DAQ recorded them, offsets from the recording start marker.
+    The first frame is usually negative, because the camera free-runs and the frame in flight when
+    the marker lands was exposed before it. That is what the format says, so it is what is written.
+    """
+    timestamps_file_path = Path(folder_path) / "timeStamps.csv"
+    assert timestamps_file_path.is_file(), f"The timestamps file is missing from '{folder_path}'."
+
+    return pd.read_csv(timestamps_file_path)["Time Stamp (ms)"].to_numpy(dtype=float) / 1000.0
 
 
 def _get_starting_frames(folder_path: str, video_file_pattern: str) -> list[int]:
