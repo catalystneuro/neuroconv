@@ -101,12 +101,16 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceT
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         assert metadata_key == self.expected_metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Devices"] == {
+            "scan_image_microscope": {"name": "Microscope", "description": self.expected_device_description}
+        }
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
-            "device_metadata_key": metadata_key,
+            "name": self.imaging_plane_name,
+            "device_metadata_key": "scan_image_microscope",
             "imaging_rate": self.expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
             "imaging_plane_metadata_key": metadata_key,
             "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
             "scan_line_rate": self.expected_scan_line_rate,
@@ -163,12 +167,16 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceT
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         assert metadata_key == self.expected_metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Devices"] == {
+            "scan_image_microscope": {"name": "Microscope", "description": self.expected_device_description}
+        }
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
-            "device_metadata_key": metadata_key,
+            "name": self.imaging_plane_name,
+            "device_metadata_key": "scan_image_microscope",
             "imaging_rate": self.expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
             "imaging_plane_metadata_key": metadata_key,
             "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
             "scan_line_rate": self.expected_scan_line_rate,
@@ -279,12 +287,16 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTest
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         assert metadata_key == self.expected_metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Devices"] == {
+            "scan_image_microscope": {"name": "Microscope", "description": self.expected_device_description}
+        }
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
-            "device_metadata_key": metadata_key,
+            "name": self.imaging_plane_name,
+            "device_metadata_key": "scan_image_microscope",
             "imaging_rate": self.expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
             "imaging_plane_metadata_key": metadata_key,
             "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
             "scan_line_rate": self.expected_scan_line_rate,
@@ -350,6 +362,40 @@ class TestScanImageImagingInterfacesAssertions:
             ScanImageImagingInterface(file_path=file_path, plane_index=20, interleave_slice_samples=True)
 
 
+def test_two_channels_of_one_acquisition_share_one_device_entry():
+    """A device is per instrument while an interface is per channel, so the two interfaces of one
+    multi-channel acquisition derive the same registry key and merge into a single entry. Keyed by
+    ``metadata_key`` instead they would be two entries carrying one name, which the duplicate-name check
+    rejects. No single-interface test can reach this."""
+    from neuroconv.utils import dict_deep_update
+    from neuroconv.utils.json_schema import _validate_device_registry_names
+
+    file_path = str(
+        OPHYS_DATA_PATH
+        / "imaging_datasets"
+        / "ScanImage"
+        / "planar_two_channels_single_file"
+        / "planar_two_ch_single_files_00001_00001.tif"
+    )
+    first = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 1")
+    second = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 2")
+    assert first.metadata_key != second.metadata_key
+
+    merged = {}
+    for interface in (first, second):
+        merged = dict_deep_update(merged, dict(interface.get_metadata(use_new_metadata_format=True)))
+
+    assert list(merged["Devices"]) == ["scan_image_microscope"]
+    _validate_device_registry_names(merged)
+
+    # The per-interface registries stay per interface, so neither channel's objects collide.
+    assert set(merged["Ophys"]["ImagingPlanes"]) == {first.metadata_key, second.metadata_key}
+    imaging_plane_names = {entry["name"] for entry in merged["Ophys"]["ImagingPlanes"].values()}
+    series_names = {entry["name"] for entry in merged["Ophys"]["MicroscopySeries"].values()}
+    assert len(imaging_plane_names) == 2
+    assert len(series_names) == 2
+
+
 @pytest.mark.skipif(platform.machine() == "arm64", reason="Interface not supported on arm64 architecture")
 class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageLegacyImagingInterface
@@ -364,11 +410,14 @@ class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
         metadata_key = self.interface.metadata_key
         assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
         assert metadata["Devices"] == {
-            metadata_key: {"description": "Microscope controlled by ScanImage (legacy v3.8)"},
+            "scan_image_microscope": {
+                "name": "Microscope",
+                "description": "Microscope controlled by ScanImage (legacy v3.8)",
+            },
         }
         assert metadata["Ophys"]["ImagingPlanes"] == {
             metadata_key: {
-                "device_metadata_key": metadata_key,
+                "device_metadata_key": "scan_image_microscope",
                 "imaging_rate": self.expected_sampling_frequency,
             },
         }
@@ -407,10 +456,16 @@ class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         """SbxImagingInterface extracts device provenance and format-specific series description."""
         metadata_key = self.interface.metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": "Scanbox imaging"}}
+        assert metadata["Devices"] == {"scanbox_microscope": {"name": "Microscope", "description": "Scanbox imaging"}}
         assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {"device_metadata_key": "scanbox_microscope"},
+            },
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Scanbox."},
+                metadata_key: {
+                    "description": "Imaging data acquired with Scanbox.",
+                    "imaging_plane_metadata_key": metadata_key,
+                },
             },
         }
 
@@ -1020,6 +1075,8 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
                 metadata_key: {
                     "description": "Imaging data acquired with Micro-Manager.",
                     "imaging_plane_metadata_key": metadata_key,
+                    "unit": "px",
+                    "format": "tiff",
                 },
             },
         }
@@ -1112,7 +1169,10 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 10, 18, 17, 39, 19, tzinfo=timezone.utc)
 
         expected_devices = {
-            metadata_key: {"description": "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041"},
+            "thor_microscope": {
+                "name": "ThorMicroscope",
+                "description": "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041",
+            },
         }
         assert metadata["Devices"] == expected_devices
 
@@ -1127,6 +1187,7 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
 
         # MicroscopySeries
         series = ophys["MicroscopySeries"][metadata_key]
+        assert series["name"] == "TwoPhotonSeriesChanA"
         assert series["imaging_plane_metadata_key"] == metadata_key
         assert series["field_of_view"] == pytest.approx([452.7e-6, 452.7e-6])
 
@@ -1538,14 +1599,18 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
 
         expected_ophys = {
+            "ImagingPlanes": {
+                metadata_key: {"device_metadata_key": "inscopix_microscope"},
+            },
             "MicroscopySeries": {
                 metadata_key: {
                     "description": "Imaging data acquired with Inscopix nVista.",
+                    "imaging_plane_metadata_key": metadata_key,
                 },
             },
         }
         assert metadata["Ophys"] == expected_ophys
-        assert "Devices" not in metadata
+        assert metadata["Devices"] == {"inscopix_microscope": {"name": "Microscope"}}
         assert "Subject" not in metadata
 
 
@@ -1635,18 +1700,25 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtract
         assert metadata["NWBFile"]["session_id"] == "Session 20200917-093000"
 
         assert metadata["Devices"] == {
-            metadata_key: {
+            "inscopix_fa_1234567": {
                 "name": "Dual Color",
                 "description": "Inscopix Microscope (Serial: FA-1234567, Software: 1.5.0)",
             }
         }
         assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {
+                    "device_metadata_key": "inscopix_fa_1234567",
+                    "description": (
+                        "The plane or volume being imaged by the microscope. "
+                        "(Exposure Time (ms): 79; Gain: 2; Focus: 30)"
+                    ),
+                },
+            },
             "MicroscopySeries": {
                 metadata_key: {
                     "description": "Imaging data acquired with Inscopix nVista.",
-                    "exposure_time_ms": 79,
-                    "microscope_gain": 2,
-                    "microscope_focus": 30,
+                    "imaging_plane_metadata_key": metadata_key,
                 },
             },
         }
@@ -1715,14 +1787,18 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
 
         expected_ophys = {
+            "ImagingPlanes": {
+                metadata_key: {"device_metadata_key": "inscopix_microscope"},
+            },
             "MicroscopySeries": {
                 metadata_key: {
                     "description": "Imaging data acquired with Inscopix nVista.",
+                    "imaging_plane_metadata_key": metadata_key,
                 },
             },
         }
         assert metadata["Ophys"] == expected_ophys
-        assert "Devices" not in metadata
+        assert metadata["Devices"] == {"inscopix_microscope": {"name": "Microscope"}}
         assert "Subject" not in metadata
 
 
@@ -1809,13 +1885,17 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
 
         # Devices
         assert metadata["Devices"] == {
-            metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
+            "femtonics_microscope": {
+                "name": "Microscope",
+                "description": "Femtonics MESc (version: MESc 3.3, revision: 4356)",
+            },
         }
 
         ophys = metadata["Ophys"]
 
         # ImagingPlanes
         imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["device_metadata_key"] == "femtonics_microscope"
         assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
         assert imaging_plane["grid_spacing_unit"] == "meters"
         assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
@@ -1909,13 +1989,17 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 
         # Devices
         assert metadata["Devices"] == {
-            metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
+            "femtonics_microscope": {
+                "name": "Microscope",
+                "description": "Femtonics MESc (version: MESc 3.3, revision: 4356)",
+            },
         }
 
         ophys = metadata["Ophys"]
 
         # ImagingPlanes
         imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["device_metadata_key"] == "femtonics_microscope"
         assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
         assert imaging_plane["grid_spacing_unit"] == "meters"
         assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
