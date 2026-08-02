@@ -31,6 +31,7 @@ from .utils import (
 )
 from .utils.dict import DeepDict
 from .utils.json_schema import (
+    _metadata_uses_old_list_format,
     _NWBConversionOptionsEncoder,
     _NWBSourceDataEncoder,
     validate_metadata,
@@ -151,9 +152,21 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        """Merge the schemas the interfaces use for the old list-based format (see ``BaseDataInterface``)."""
+        metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
+        for data_interface in self.data_interface_objects.values():
+            interface_schema = unroot_schema(data_interface._get_metadata_schema_for_old_list_format())
+            metadata_schema = dict_deep_update(metadata_schema, interface_schema)
+        return metadata_schema
+
     def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
-        metadata_schema = self.get_metadata_schema()
+        if _metadata_uses_old_list_format(metadata):
+            metadata_schema = self._get_metadata_schema_for_old_list_format()
+        else:
+            metadata_schema = self.get_metadata_schema()
+
         if append_mode:
             # Eliminate required from NWBFile
             nwbfile_schema = metadata_schema["properties"]["NWBFile"]

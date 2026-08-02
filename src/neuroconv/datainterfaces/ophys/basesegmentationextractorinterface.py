@@ -33,6 +33,19 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     def get_metadata_schema(self) -> dict:
         """
+        Compile the metadata schema.
+
+        The modality block of this schema has not been migrated to the dict-based format yet, so what it
+        describes is the old list-based one. It is returned by
+        ``_get_metadata_schema_for_old_list_format`` for validating that format, and until the dict shape
+        is declared here this method answers with the base schema, which dict-based metadata satisfies.
+        """
+        from ...basedatainterface import BaseDataInterface
+
+        return BaseDataInterface.get_metadata_schema(self)
+
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        """
         Generate the metadata schema for Ophys data, updating required fields and properties.
 
         This method builds upon the base schema and customizes it for Ophys-specific metadata, including required
