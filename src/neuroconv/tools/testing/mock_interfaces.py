@@ -560,8 +560,8 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         super().__init__(verbose=verbose)
         self.metadata_key = metadata_key or "mock_signal_encoded_events"
 
-        # Discovery, faked: one packed word, whose kind is what makes bit selection legal on it and
-        # omitting conditioning illegal, and whose `bits` are the positions it carries. A real interface
+        # Discovery, faked: one packed word, whose kind is what makes bit selection legal on it and a
+        # magnitude cut illegal, and whose `bits` are the positions it carries. A real interface
         # settles both from its file's structure: SpikeGLX declares the inventory as niXDChans1, and the
         # keys of digital_line_waveforms stand in for that declaration here.
         self._available_signals = {

@@ -64,12 +64,15 @@ class DoricEventsInterface(BaseEventsInterface):
             Path to the ``.doric`` HDF5 file.
         detection_configuration : dict, optional
             Which digital lines to read and how, keyed by the line's ``signal_source_id`` (its
-            ``DigitalIO`` dataset key, e.g. ``{"Camera1": [{"detection": "high_period"}]}``). Each value
+            ``DigitalIO`` dataset key, e.g. ``{"Camera1": [{"signal_conditioning": {"binarize":
+            "midpoint"}, "detection": "high_period"}]}``). Each value
             is a **list** of detection specs, one per event type derived from that line, since a line can
             yield more than one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point
             event at each edge) or ``"high_period"`` / ``"low_period"`` (a durative event, onset at one
             edge and duration to the next opposite edge), and it is required. ``signal_conditioning`` is
-            omitted for a ``.doric`` line, which is already a ``0``/``1`` signal. An optional
+            required too and says how the signal becomes a line: a ``.doric`` line is already
+            ``0``/``1``, so it takes ``{"binarize": "midpoint"}``, whose cut falls strictly between the
+            two levels whatever they are. An optional
             ``event_name`` replaces the derived identifier and pins it against later edits. If None
             (default), every digital line in the file is read as a ``high_period``, lossless for an
             active-high line; use ``"low_period"`` for an active-low one. When given, only the named
@@ -88,8 +91,7 @@ class DoricEventsInterface(BaseEventsInterface):
         self.metadata_key = metadata_key or "doric_events"
         # available_signals: signal_source_id (the line's dataset key, e.g. "Camera1" or "DI--O-1") -> its
         # {kind, data_path, time_path} descriptor. Every discovered signal is a digital line, already a
-        # 0/1 signal, so no signal conditioning arises for this format; kind "line" is what lets the
-        # validator reject a cut on one.
+        # 0/1 signal, and kind "line" is what lets the validator reject a bit carve on one.
         self._available_signals = self._get_available_signals(self.source_data["file_path"])
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every discovered line as a
@@ -246,8 +248,8 @@ class DoricEventsInterface(BaseEventsInterface):
         one that never opens) keeps its entry with empty timestamps, which the writer renders as a
         zero-row table.
 
-        A ``.doric`` line is already a ``0``/``1`` signal, so no conditioning runs here and the reading is
-        applied to the signal's own values.
+        A ``.doric`` line is already a ``0``/``1`` signal, so its cut is the derived midpoint, which
+        lands between the two levels and hands detection back the same line.
         """
         if self._events_data_dict is not None:
             return self._events_data_dict
@@ -266,8 +268,8 @@ class DoricEventsInterface(BaseEventsInterface):
                 data = np.asarray(f[paths["data_path"]][:], dtype="float64")
                 time = np.asarray(f[paths["time_path"]][:], dtype="float64")
                 for event_type_source_id, spec in detection_specs:
-                    # A .doric digital line is already a 0/1 signal, so no conditioning applies and the
-                    # reading is taken from the signal's own values, with no cut anywhere.
+                    # A .doric digital line is already 0/1, so its cut is the derived midpoint, which
+                    # lands between the two levels and hands detection back the same line.
                     conditioned = _condition_signal(data, spec["signal_conditioning"])
                     onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
                     onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)

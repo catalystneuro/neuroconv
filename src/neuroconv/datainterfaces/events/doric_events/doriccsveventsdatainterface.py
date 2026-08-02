@@ -58,12 +58,15 @@ class DoricCSVEventsInterface(BaseEventsInterface):
             Path to the DoricStudio CSV export.
         detection_configuration : dict, optional
             Which digital lines to read and how, keyed by the line's ``signal_source_id`` (its column
-            name, e.g. ``{"DI/O-1": [{"detection": "high_period"}]}``). Each value is a **list** of
+            name, e.g. ``{"DI/O-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection":
+            "high_period"}]}``). Each value is a **list** of
             detection specs, one per event type derived from that line, since a line can yield more than
             one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point event at each
             edge) or ``"high_period"`` / ``"low_period"`` (a durative event, onset at one edge and
-            duration to the next opposite edge), and it is required. ``signal_conditioning`` is omitted
-            for a DoricStudio digital column, which is already a ``0``/``1`` signal. An optional
+            duration to the next opposite edge), and it is required. ``signal_conditioning`` is required
+            too and says how the signal becomes a line: a DoricStudio digital column is already
+            ``0``/``1``, so it takes ``{"binarize": "midpoint"}``, whose cut falls strictly between the
+            two levels whatever they are. An optional
             ``event_name`` replaces the derived identifier and pins it against later edits. If None
             (default), every digital line in the file is read as a ``high_period``, lossless for an
             active-high line; use ``"low_period"`` for an active-low one. When given, only the named
@@ -83,8 +86,7 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         self._time_column, digital_columns = self._discover_columns(self.source_data["file_path"])
         # available_signals: signal_source_id (the column name, e.g. "DI/O-1") -> its {kind, column}
         # descriptor. The header group "Digital I/O" makes every discovered signal a digital line, settled
-        # structurally with no data read, so no signal conditioning arises for this format; kind "line" is
-        # what lets the validator reject a cut on one.
+        # structurally with no data read, which is what lets the validator reject a bit carve on one.
         # Whether a line fired is a property of this recording, not of intent, so a line that never
         # toggles is still a (possibly empty) event type.
         self._available_signals = {str(column[1]): {"kind": "line", "column": column} for column in digital_columns}
@@ -190,8 +192,8 @@ class DoricCSVEventsInterface(BaseEventsInterface):
             column = self._available_signals[signal_source_id]["column"]
             data = dataframe[column].to_numpy(dtype="float64")
             for event_type_source_id, spec in detection_specs:
-                # A DoricStudio digital column is already a 0/1 signal, so no conditioning applies and
-                # the reading is taken from the signal's own values, with no cut anywhere.
+                # A DoricStudio digital column is already 0/1, so its cut is the derived midpoint,
+                # which lands between the two levels and hands detection back the same line.
                 conditioned = _condition_signal(data, spec["signal_conditioning"])
                 onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
                 onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)
