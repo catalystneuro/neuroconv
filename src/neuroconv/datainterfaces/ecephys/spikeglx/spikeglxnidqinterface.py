@@ -520,10 +520,17 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         metadata = metadata or self.get_metadata()
 
-        # Add devices from the top-level registry, which is keyed by metadata key.
+        # Add devices from the top-level registry, which is keyed by metadata key. The list shape this
+        # interface used to emit is named rather than silently accepted, so a script written against it
+        # is told what to change instead of failing on an attribute deep in here.
         device_metadata = metadata.get("Devices", {})
-        device_entries = device_metadata.values() if isinstance(device_metadata, dict) else device_metadata
-        for device in device_entries:
+        if isinstance(device_metadata, list):
+            raise ValueError(
+                "metadata['Devices'] is a list. It is now a registry keyed by metadata key, so this "
+                "interface's entry belongs under 'spikeglx_nidq_device': "
+                "metadata['Devices'] = {'spikeglx_nidq_device': {'name': ..., 'description': ...}}."
+            )
+        for device in device_metadata.values():
             if device["name"] not in nwbfile.devices:
                 nwbfile.create_device(**device)
 

@@ -47,13 +47,9 @@ def _is_dict_based_metadata(metadata: dict) -> bool:
 
     Returns True for dict-based, False for list-based.
     """
-    # A dict-valued top-level ``Devices`` is the dict-based shape. A list-valued ``Devices``
-    # is the legacy top-level emission used by unmigrated interfaces such as
-    # ``SpikeGLXNIDQInterface``, ``SpikeGLXSyncChannelInterface``, ``IntanAnalogInterface``,
-    # and ``IntanStimInterface``: ``metadata["Devices"] = [device_dict, ...]``. Those must
-    # route to the old-list-format path so downstream code that iterates the list (e.g.
-    # ``for device in metadata["Devices"]: ...``) keeps working until each interface is
-    # migrated to emit dict-shaped ``Devices``.
+    # A dict-valued top-level ``Devices`` is the dict-based shape. A list-valued ``Devices`` is the
+    # legacy shape, ``metadata["Devices"] = [device_dict, ...]``. No interface emits it any more, so this
+    # branch now only catches hand-written metadata, which must still route to the old-list-format path.
     if isinstance(metadata.get("Devices"), dict):
         return True
 

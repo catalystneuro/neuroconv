@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pytest
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import SpikeGLXSyncChannelInterface
 
@@ -188,6 +189,19 @@ def test_metadata_key_does_not_rename_series():
     time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
     assert set(time_series_metadata) == {"my_sync"}
     assert time_series_metadata["my_sync"]["name"] == "TimeSeriesImec0Sync"
+
+
+def test_legacy_list_shaped_devices_names_the_new_key():
+    """A script written against the list shape is told which key its entry now belongs under, rather
+    than failing on an attribute of the list deep inside the write."""
+    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0"
+    interface = SpikeGLXSyncChannelInterface(folder_path=folder_path, stream_id="imec0.ap-SYNC")
+
+    metadata = interface.get_metadata()
+    metadata["Devices"] = [{"name": "MyLabProbe", "description": "The probe in rig 3."}]
+
+    with pytest.raises(ValueError, match="neuropixels_imec0"):
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
 
 if __name__ == "__main__":
