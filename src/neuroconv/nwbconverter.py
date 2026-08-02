@@ -178,6 +178,10 @@ class NWBConverter:
         Transitional, and the converter twin of ``BaseDataInterface._get_metadata_for_writing``: converters
         that override ``get_metadata`` without the argument (``MiniscopeConverter``, for one) are asked
         plainly.
+
+        Remove this method, and the signature check in ``_get_interface_metadata``, when the old
+        list-based format is removed: every ``get_metadata`` returns the dict format by then and the
+        callers go back to ``metadata or self.get_metadata()``.
         """
         return self._get_interface_metadata(interface=self, use_new_metadata_format=True)
 

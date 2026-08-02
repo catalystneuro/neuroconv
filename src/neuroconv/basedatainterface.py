@@ -125,7 +125,11 @@ class BaseDataInterface(ABC):
 
         Transitional: ``get_metadata`` still hands users the old list-based format by default, but what
         NeuroConv writes for itself is the dict-based one. Interfaces that emit only the dict format do not
-        take the argument and are asked plainly. Both go when the format flips.
+        take the argument and are asked plainly.
+
+        Remove this method when the old list-based format is removed. At that point ``get_metadata``
+        returns the dict format unconditionally, ``use_new_metadata_format`` is gone, and every caller
+        below goes back to ``metadata or self.get_metadata()``.
         """
         import inspect
 
