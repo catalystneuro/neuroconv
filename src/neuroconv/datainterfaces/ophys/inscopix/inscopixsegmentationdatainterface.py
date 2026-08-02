@@ -120,10 +120,9 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             if session_info.get("session_name"):
                 metadata["NWBFile"]["session_id"] = session_info["session_name"]
 
-            # Devices
-            device_entry = {}
-            if device_info.get("device_name"):
-                device_entry["name"] = device_info["device_name"]
+            # Devices. The name is a convention for writing the file rather than something the source
+            # states, so it falls back to the generic microscope name the old format used.
+            device_entry = {"name": device_info.get("device_name") or "Microscope"}
             desc_parts = []
             if device_info.get("device_serial_number"):
                 desc_parts.append(f"Serial: {device_info['device_serial_number']}")
@@ -142,8 +141,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     desc_parts.append(f"{field}: {value}")
             if desc_parts:
                 device_entry["description"] = f"Inscopix Microscope ({', '.join(desc_parts)})"
-            if device_entry:
-                metadata["Devices"] = {self.metadata_key: device_entry}
+            metadata["Devices"] = {self.metadata_key: device_entry}
 
             # PlaneSegmentations
             plane_segmentation_description = "Inscopix cell segmentation"
@@ -153,8 +151,14 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 plane_segmentation_description += f" with traces in {analysis_info['trace_units']}"
 
             metadata["Ophys"] = {
+                "ImagingPlanes": {
+                    self.metadata_key: {"device_metadata_key": self.metadata_key},
+                },
                 "PlaneSegmentations": {
-                    self.metadata_key: {"description": plane_segmentation_description},
+                    self.metadata_key: {
+                        "description": plane_segmentation_description,
+                        "imaging_plane_metadata_key": self.metadata_key,
+                    },
                 },
             }
         elif session_info.get("session_name"):

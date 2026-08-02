@@ -261,10 +261,16 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             if version is not None:
                 device_description = f"Microscope and acquisition data with ScanImage (version {version})"
             metadata["Devices"] = {
-                self.metadata_key: {"description": device_description},
+                self.metadata_key: {"name": "Microscope", "description": device_description},
             }
 
+            # The channel and plane are what distinguish one interface's objects from another's in a
+            # multi-channel conversion, so they are named here rather than left to the generic defaults.
+            channel_string = self.channel_name.replace(" ", "").capitalize()
+            plane_string = f"Plane{self.plane_index}" if self.plane_index is not None else ""
+
             imaging_plane_entry = {
+                "name": f"ImagingPlane{channel_string}{plane_string}",
                 "device_metadata_key": self.metadata_key,
                 "imaging_rate": sampling_frequency,
             }
@@ -276,6 +282,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
                 imaging_plane_entry["origin_coords_unit"] = "meters"
 
             microscopy_series_entry = {
+                "name": f"{self.photon_series_type}{channel_string}{plane_string}",
                 "imaging_plane_metadata_key": self.metadata_key,
                 "description": f"Imaging data acquired using ScanImage for {self.channel_name}",
             }
@@ -597,7 +604,10 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
 
         if use_new_metadata_format:
             metadata["Devices"] = {
-                self.metadata_key: {"description": "Microscope controlled by ScanImage (legacy v3.8)"},
+                self.metadata_key: {
+                    "name": "Microscope",
+                    "description": "Microscope controlled by ScanImage (legacy v3.8)",
+                },
             }
             imaging_plane_entry = {
                 "device_metadata_key": self.metadata_key,

@@ -46,6 +46,8 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         sampling_frequency=15.0,  # typically provided by user
     )
     save_directory = OUTPUT_PATH
+    # The tiff reader states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
     def check_extracted_metadata(self, metadata: dict):
         """TiffImagingInterface reads no ophys metadata from the source, so it claims no device and takes
@@ -58,6 +60,9 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
 
 class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
     """Test TiffImagingInterface with multi-file TIFF data using file_paths parameter."""
+
+    # The tiff reader states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
     data_interface_cls = TiffImagingInterface
     interface_kwargs = dict(
@@ -101,12 +106,16 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceT
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         assert metadata_key == self.expected_metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Devices"] == {
+            metadata_key: {"name": "Microscope", "description": self.expected_device_description}
+        }
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "name": self.imaging_plane_name,
             "device_metadata_key": metadata_key,
             "imaging_rate": self.expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
             "imaging_plane_metadata_key": metadata_key,
             "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
             "scan_line_rate": self.expected_scan_line_rate,
@@ -163,12 +172,16 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceT
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         assert metadata_key == self.expected_metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Devices"] == {
+            metadata_key: {"name": "Microscope", "description": self.expected_device_description}
+        }
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "name": self.imaging_plane_name,
             "device_metadata_key": metadata_key,
             "imaging_rate": self.expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
             "imaging_plane_metadata_key": metadata_key,
             "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
             "scan_line_rate": self.expected_scan_line_rate,
@@ -279,12 +292,16 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTest
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         assert metadata_key == self.expected_metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Devices"] == {
+            metadata_key: {"name": "Microscope", "description": self.expected_device_description}
+        }
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
+            "name": self.imaging_plane_name,
             "device_metadata_key": metadata_key,
             "imaging_rate": self.expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
             "imaging_plane_metadata_key": metadata_key,
             "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
             "scan_line_rate": self.expected_scan_line_rate,
@@ -358,13 +375,15 @@ class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
 
     expected_session_start_time = datetime(2017, 10, 9, 16, 57, 7, 967000)
     expected_sampling_frequency = 3.90625
+    # The legacy reader states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
     expected_description = '{"state.configPath": "\'C:\\\\Users\\\\Kishore Kuchibhotla\\\\Desktop\\\\FromOld2P_params\\\\ScanImage_cfgfiles\'", "state.configName": "\'Behavior_2channel\'", "state.software.version": "3.8", "state.software.minorRev": "0", "state.software.beta": "1", "state.software.betaNum": "4", "state.acq.externallyTriggered": "0", "state.acq.startTrigInputTerminal": "1", "state.acq.startTrigEdge": "\'Rising\'", "state.acq.nextTrigInputTerminal": "[]", "state.acq.nextTrigEdge": "\'Rising\'", "state.acq.nextTrigAutoAdvance": "0", "state.acq.nextTrigStopImmediate": "1", "state.acq.nextTrigAdvanceGap": "0", "state.acq.pureNextTriggerMode": "0", "state.acq.numberOfZSlices": "1", "state.acq.zStepSize": "187", "state.acq.numAvgFramesSaveGUI": "1", "state.acq.numAvgFramesSave": "1", "state.acq.numAvgFramesDisplay": "1", "state.acq.averaging": "1", "state.acq.averagingDisplay": "0", "state.acq.numberOfFrames": "1220", "state.acq.numberOfRepeats": "Inf", "state.acq.repeatPeriod": "10", "state.acq.stackCenteredOffset": "[]", "state.acq.stackParkBetweenSlices": "0", "state.acq.linesPerFrame": "256", "state.acq.pixelsPerLine": "256", "state.acq.pixelTime": "3.2e-06", "state.acq.binFactor": "16", "state.acq.frameRate": "3.90625", "state.acq.zoomFactor": "2", "state.acq.scanAngleMultiplierFast": "1", "state.acq.scanAngleMultiplierSlow": "1", "state.acq.scanRotation": "0", "state.acq.scanShiftFast": "1.25", "state.acq.scanShiftSlow": "-0.75", "state.acq.xstep": "0.5", "state.acq.ystep": "0.5", "state.acq.staircaseSlowDim": "0", "state.acq.slowDimFlybackFinalLine": "1", "state.acq.slowDimDiscardFlybackLine": "0", "state.acq.msPerLine": "1", "state.acq.fillFraction": "0.8192", "state.acq.samplesAcquiredPerLine": "4096", "state.acq.acqDelay": "8.32e-05", "state.acq.scanDelay": "9e-05", "state.acq.bidirectionalScan": "1", "state.acq.baseZoomFactor": "1", "state.acq.outputRate": "100000", "state.acq.inputRate": "5000000", "state.acq.inputBitDepth": "12", "state.acq.pockelsClosedOnFlyback": "1", "state.acq.pockelsFillFracAdjust": "4e-05", "state.acq.pmtOffsetChannel1": "0.93603515625", "state.acq.pmtOffsetChannel2": "-0.106689453125", "state.acq.pmtOffsetChannel3": "-0.789306640625", "state.acq.pmtOffsetChannel4": "-1.0419921875", "state.acq.pmtOffsetAutoSubtractChannel1": "0", "state.acq.pmtOffsetAutoSubtractChannel2": "0", "state.acq.pmtOffsetAutoSubtractChannel3": "0", "state.acq.pmtOffsetAutoSubtractChannel4": "0", "state.acq.pmtOffsetStdDevChannel1": "0.853812996333255", "state.acq.pmtOffsetStdDevChannel2": "0.87040286645618", "state.acq.pmtOffsetStdDevChannel3": "0.410833641563274", "state.acq.pmtOffsetStdDevChannel4": "0.20894370294704", "state.acq.rboxZoomSetting": "0", "state.acq.acquiringChannel1": "1", "state.acq.acquiringChannel2": "0", "state.acq.acquiringChannel3": "0", "state.acq.acquiringChannel4": "0", "state.acq.savingChannel1": "1", "state.acq.savingChannel2": "0", "state.acq.savingChannel3": "0", "state.acq.savingChannel4": "0", "state.acq.imagingChannel1": "1", "state.acq.imagingChannel2": "0", "state.acq.imagingChannel3": "0", "state.acq.imagingChannel4": "0", "state.acq.maxImage1": "0", "state.acq.maxImage2": "0", "state.acq.maxImage3": "0", "state.acq.maxImage4": "0", "state.acq.inputVoltageRange1": "10", "state.acq.inputVoltageRange2": "10", "state.acq.inputVoltageRange3": "10", "state.acq.inputVoltageRange4": "10", "state.acq.inputVoltageInvert1": "0", "state.acq.inputVoltageInvert2": "0", "state.acq.inputVoltageInvert3": "0", "state.acq.inputVoltageInvert4": "0", "state.acq.numberOfChannelsSave": "1", "state.acq.numberOfChannelsAcquire": "1", "state.acq.maxMode": "0", "state.acq.fastScanningX": "1", "state.acq.fastScanningY": "0", "state.acq.framesPerFile": "Inf", "state.acq.clockExport.frameClockPolarityHigh": "1", "state.acq.clockExport.frameClockPolarityLow": "0", "state.acq.clockExport.frameClockGateSource": "0", "state.acq.clockExport.frameClockEnable": "1", "state.acq.clockExport.frameClockPhaseShiftUS": "0", "state.acq.clockExport.frameClockGated": "0", "state.acq.clockExport.lineClockPolarityHigh": "1", "state.acq.clockExport.lineClockPolarityLow": "0", "state.acq.clockExport.lineClockGatedEnable": "0", "state.acq.clockExport.lineClockGateSource": "0", "state.acq.clockExport.lineClockAutoSource": "1", "state.acq.clockExport.lineClockEnable": "0", "state.acq.clockExport.lineClockPhaseShiftUS": "0", "state.acq.clockExport.lineClockGated": "0", "state.acq.clockExport.pixelClockPolarityHigh": "1", "state.acq.clockExport.pixelClockPolarityLow": "0", "state.acq.clockExport.pixelClockGateSource": "0", "state.acq.clockExport.pixelClockAutoSource": "1", "state.acq.clockExport.pixelClockEnable": "0", "state.acq.clockExport.pixelClockPhaseShiftUS": "0", "state.acq.clockExport.pixelClockGated": "0", "state.init.eom.powerTransitions.timeString": "\'\'", "state.init.eom.powerTransitions.powerString": "\'\'", "state.init.eom.powerTransitions.transitionCountString": "\'\'", "state.init.eom.uncagingPulseImporter.pathnameText": "\'\'", "state.init.eom.uncagingPulseImporter.powerConversionFactor": "1", "state.init.eom.uncagingPulseImporter.lineConversionFactor": "2", "state.init.eom.uncagingPulseImporter.enabled": "0", "state.init.eom.uncagingPulseImporter.currentPosition": "0", "state.init.eom.uncagingPulseImporter.syncToPhysiology": "0", "state.init.eom.powerBoxStepper.pbsArrayString": "\'[]\'", "state.init.eom.uncagingMapper.enabled": "0", "state.init.eom.uncagingMapper.perGrab": "1", "state.init.eom.uncagingMapper.perFrame": "0", "state.init.eom.uncagingMapper.numberOfPixels": "4", "state.init.eom.uncagingMapper.pixelGenerationUserFunction": "\'\'", "state.init.eom.uncagingMapper.currentPixels": "[]", "state.init.eom.uncagingMapper.currentPosition": "[]", "state.init.eom.uncagingMapper.syncToPhysiology": "0", "state.init.eom.numberOfBeams": "0", "state.init.eom.focusLaserList": "\'PockelsCell-1\'", "state.init.eom.grabLaserList": "\'PockelsCell-1\'", "state.init.eom.snapLaserList": "\'PockelsCell-1\'", "state.init.eom.maxPhotodiodeVoltage": "0", "state.init.eom.boxWidth": "[]", "state.init.eom.powerBoxWidthsInMs": "[]", "state.init.eom.min": "[]", "state.init.eom.maxPower": "[]", "state.init.eom.usePowerArray": "0", "state.init.eom.showBoxArray": "[]", "state.init.eom.boxPowerArray": "[]", "state.init.eom.boxPowerOffArray": "[]", "state.init.eom.startFrameArray": "[]", "state.init.eom.endFrameArray": "[]", "state.init.eom.powerBoxNormCoords": "[]", "state.init.eom.powerVsZEnable": "1", "state.init.eom.powerLzArray": "[]", "state.init.eom.powerLzOverride": "0", "state.cycle.cycleOn": "0", "state.cycle.cycleName": "\'\'", "state.cycle.cyclePath": "\'\'", "state.cycle.cycleLength": "2", "state.cycle.numCycleRepeats": "1", "state.motor.motorZEnable": "0", "state.motor.absXPosition": "659.6", "state.motor.absYPosition": "-10386.6", "state.motor.absZPosition": "-8068.4", "state.motor.absZZPosition": "NaN", "state.motor.relXPosition": "0", "state.motor.relYPosition": "0", "state.motor.relZPosition": "-5.99999999999909", "state.motor.relZZPosition": "NaN", "state.motor.distance": "5.99999999999909", "state.internal.averageSamples": "0", "state.internal.highPixelValue1": "16384", "state.internal.lowPixelValue1": "0", "state.internal.highPixelValue2": "16384", "state.internal.lowPixelValue2": "0", "state.internal.highPixelValue3": "500", "state.internal.lowPixelValue3": "0", "state.internal.highPixelValue4": "500", "state.internal.lowPixelValue4": "0", "state.internal.figureColormap1": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.figureColormap2": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.figureColormap3": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.figureColormap4": "\'$scim_colorMap(\'\'gray\'\',8,5)\'", "state.internal.repeatCounter": "0", "state.internal.startupTimeString": "\'10/9/2017 14:38:30.957\'", "state.internal.triggerTimeString": "\'10/9/2017 16:57:07.967\'", "state.internal.softTriggerTimeString": "\'10/9/2017 16:57:07.970\'", "state.internal.triggerTimeFirstString": "\'10/9/2017 16:57:07.967\'", "state.internal.triggerFrameDelayMS": "0", "state.init.eom.powerConversion1": "10", "state.init.eom.rejected_light1": "0", "state.init.eom.photodiodeOffset1": "0", "state.init.eom.powerConversion2": "10", "state.init.eom.rejected_light2": "0", "state.init.eom.photodiodeOffset2": "0", "state.init.eom.powerConversion3": "10", "state.init.eom.rejected_light3": "0", "state.init.eom.photodiodeOffset3": "0", "state.init.voltsPerOpticalDegree": "0.333", "state.init.scanOffsetAngleX": "0", "state.init.scanOffsetAngleY": "0"}'
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
         assert metadata["Devices"] == {
-            metadata_key: {"description": "Microscope controlled by ScanImage (legacy v3.8)"},
+            metadata_key: {"name": "Microscope", "description": "Microscope controlled by ScanImage (legacy v3.8)"},
         }
         assert metadata["Ophys"]["ImagingPlanes"] == {
             metadata_key: {
@@ -389,6 +408,8 @@ class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = Hdf5ImagingInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "hdf5" / "demoMovie.hdf5"))
     save_directory = OUTPUT_PATH
+    # The hdf5 reader states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
     def check_extracted_metadata(self, metadata: dict):
         """Hdf5ImagingInterface reads no ophys metadata from the source, so it claims no device and takes
@@ -403,14 +424,22 @@ class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = SbxImagingInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.mat"))
     save_directory = OUTPUT_PATH
+    # Scanbox states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
     def check_extracted_metadata(self, metadata: dict):
         """SbxImagingInterface extracts device provenance and format-specific series description."""
         metadata_key = self.interface.metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": "Scanbox imaging"}}
+        assert metadata["Devices"] == {metadata_key: {"name": "Microscope", "description": "Scanbox imaging"}}
         assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {"device_metadata_key": metadata_key},
+            },
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Scanbox."},
+                metadata_key: {
+                    "description": "Imaging data acquired with Scanbox.",
+                    "imaging_plane_metadata_key": metadata_key,
+                },
             },
         }
 
@@ -420,6 +449,8 @@ class TestSbxImagingInterfaceSBX(ImagingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.sbx"))
 
     save_directory = OUTPUT_PATH
+    # Scanbox states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
 
 class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMixin):
@@ -968,6 +999,8 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "MicroManagerTif" / "TS12_20220407_20hz_noteasy_1")
     )
     save_directory = OUTPUT_PATH
+    # Micro-Manager states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_metadata(self, request):
@@ -1022,6 +1055,8 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
                 metadata_key: {
                     "description": "Imaging data acquired with Micro-Manager.",
                     "imaging_plane_metadata_key": metadata_key,
+                    "unit": "px",
+                    "format": "tiff",
                 },
             },
         }
@@ -1038,11 +1073,14 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         optical_channel = imaging_plane.optical_channel[0]
         assert optical_channel.name == self.optical_channel_metadata["name"]
         assert optical_channel.description == self.optical_channel_metadata["description"]
-        assert imaging_plane.description == self.imaging_plane_metadata["description"]
+        # Micro-Manager records no imaging plane description, and the dict path states only what the
+        # source says rather than the generic sentence the old format supplied.
+        assert imaging_plane.description is None
         assert imaging_plane.imaging_rate == self.imaging_plane_metadata["imaging_rate"]
-        assert self.two_photon_series_metadata["name"] in nwbfile.acquisition
-        two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
-        assert two_photon_series.description == self.two_photon_series_metadata["description"]
+        assert self.optical_series_name in nwbfile.acquisition
+        two_photon_series = nwbfile.acquisition[self.optical_series_name]
+        # The interface states its own series description, where the old format took the generic one.
+        assert two_photon_series.description == "Imaging data acquired with Micro-Manager."
         assert two_photon_series.unit == self.two_photon_series_metadata["unit"]
         assert two_photon_series.format == self.two_photon_series_metadata["format"]
         assert_array_equal(two_photon_series.dimension[:], self.two_photon_series_metadata["dimension"])
@@ -1114,7 +1152,10 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 10, 18, 17, 39, 19, tzinfo=timezone.utc)
 
         expected_devices = {
-            metadata_key: {"description": "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041"},
+            metadata_key: {
+                "name": "ThorMicroscope",
+                "description": "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041",
+            },
         }
         assert metadata["Devices"] == expected_devices
 
@@ -1129,6 +1170,7 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
 
         # MicroscopySeries
         series = ophys["MicroscopySeries"][metadata_key]
+        assert series["name"] == "TwoPhotonSeriesChanA"
         assert series["imaging_plane_metadata_key"] == metadata_key
         assert series["field_of_view"] == pytest.approx([452.7e-6, 452.7e-6])
 
@@ -1487,7 +1529,8 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
     )
-    optical_series_name = "OnePhotonSeries"
+    # Inscopix states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
@@ -1540,14 +1583,18 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
 
         expected_ophys = {
+            "ImagingPlanes": {
+                metadata_key: {"device_metadata_key": metadata_key},
+            },
             "MicroscopySeries": {
                 metadata_key: {
                     "description": "Imaging data acquired with Inscopix nVista.",
+                    "imaging_plane_metadata_key": metadata_key,
                 },
             },
         }
         assert metadata["Ophys"] == expected_ophys
-        assert "Devices" not in metadata
+        assert metadata["Devices"] == {metadata_key: {"name": "Microscope"}}
         assert "Subject" not in metadata
 
 
@@ -1609,7 +1656,8 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtract
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd")
     )
-    optical_series_name = "OnePhotonSeries"
+    # Inscopix states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
@@ -1643,12 +1691,19 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtract
             }
         }
         assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {
+                    "device_metadata_key": metadata_key,
+                    "description": (
+                        "The plane or volume being imaged by the microscope. "
+                        "(Exposure Time (ms): 79; Gain: 2; Focus: 30)"
+                    ),
+                },
+            },
             "MicroscopySeries": {
                 metadata_key: {
                     "description": "Imaging data acquired with Inscopix nVista.",
-                    "exposure_time_ms": 79,
-                    "microscope_gain": 2,
-                    "microscope_focus": 30,
+                    "imaging_plane_metadata_key": metadata_key,
                 },
             },
         }
@@ -1662,7 +1717,8 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = InscopixImagingInterface
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
-    optical_series_name = "OnePhotonSeries"
+    # Inscopix states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
@@ -1717,14 +1773,18 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
 
         expected_ophys = {
+            "ImagingPlanes": {
+                metadata_key: {"device_metadata_key": metadata_key},
+            },
             "MicroscopySeries": {
                 metadata_key: {
                     "description": "Imaging data acquired with Inscopix nVista.",
+                    "imaging_plane_metadata_key": metadata_key,
                 },
             },
         }
         assert metadata["Ophys"] == expected_ophys
-        assert "Devices" not in metadata
+        assert metadata["Devices"] == {metadata_key: {"name": "Microscope"}}
         assert "Subject" not in metadata
 
 
@@ -1738,6 +1798,8 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
         channel_name="UG",
     )
     save_directory = OUTPUT_PATH
+    # Femtonics states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
@@ -1811,13 +1873,14 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
 
         # Devices
         assert metadata["Devices"] == {
-            metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
+            metadata_key: {"name": "Microscope", "description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
         }
 
         ophys = metadata["Ophys"]
 
         # ImagingPlanes
         imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["device_metadata_key"] == metadata_key
         assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
         assert imaging_plane["grid_spacing_unit"] == "meters"
         assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
@@ -1838,6 +1901,8 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
         channel_name="UG",
     )
     save_directory = OUTPUT_PATH
+    # Femtonics states no series name, so the generic one is written.
+    optical_series_name = "MicroscopySeries"
 
     # TODO: remove when old list-based metadata format is removed
     def check_extracted_metadata_old_list_format(self, metadata: dict):
@@ -1911,13 +1976,14 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 
         # Devices
         assert metadata["Devices"] == {
-            metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
+            metadata_key: {"name": "Microscope", "description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
         }
 
         ophys = metadata["Ophys"]
 
         # ImagingPlanes
         imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["device_metadata_key"] == metadata_key
         assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
         assert imaging_plane["grid_spacing_unit"] == "meters"
         assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
