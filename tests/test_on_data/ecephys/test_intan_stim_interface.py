@@ -104,7 +104,7 @@ class TestIntanStimInterfaceFilePerChannel:
         interface = IntanStimInterface(file_path=self.file_path)
         metadata = interface.get_metadata()
 
-        device = metadata["Devices"][0]
+        device = metadata["Devices"]["intan_device"]
         assert device["name"] == "Intan"
         assert device["manufacturer"] == "Intan"
         assert device["description"] == "RHS Stim/Recording System"
@@ -184,3 +184,17 @@ def test_stub_conversion(tmp_path):
     ts = nwbfile.stimulus["TimeSeriesIntanStim"]
     assert ts.data.shape[0] <= 100
     assert ts.data.shape[1] == 128
+
+
+def test_metadata_key_does_not_rename_series():
+    """The key addresses the entry; the TimeSeries name lives inside it and is unaffected."""
+    file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
+
+    default_interface = IntanStimInterface(file_path=file_path)
+    assert default_interface.metadata_key == "intan_stim"
+    assert default_interface.get_metadata()["TimeSeries"]["intan_stim"]["name"] == "TimeSeriesIntanStim"
+
+    custom_interface = IntanStimInterface(file_path=file_path, metadata_key="my_stim")
+    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
+    assert set(time_series_metadata) == {"my_stim"}
+    assert time_series_metadata["my_stim"]["name"] == "TimeSeriesIntanStim"

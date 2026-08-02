@@ -1,7 +1,9 @@
 from datetime import datetime
 
+import pytest
 from numpy.testing import assert_array_almost_equal
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.testing import MockSpikeGLXNIDQInterface
 
@@ -45,12 +47,12 @@ def test_mock_metadata():
 
     metadata = interface.get_metadata()
 
-    expected_devices_metadata = [
-        {
+    expected_devices_metadata = {
+        "spikeglx_nidq_device": {
             "name": "NIDQBoard",
             "description": "A NIDQ board used in conjunction with SpikeGLX.",
         },
-    ]
+    }
 
     assert metadata["Devices"] == expected_devices_metadata
 
@@ -71,3 +73,15 @@ def test_mock_run_conversion(tmp_path):
 
         assert "NIDQBoard" in nwbfile.devices
         assert len(nwbfile.devices) == 1
+
+
+def test_legacy_list_shaped_devices_names_the_new_key():
+    """A script written against the list shape is told which key its entry now belongs under, rather
+    than failing on an attribute of the list deep inside the write."""
+    interface = MockSpikeGLXNIDQInterface()
+
+    metadata = interface.get_metadata()
+    metadata["Devices"] = [{"name": "MyLabNIDQBoard", "description": "The board in rig 3."}]
+
+    with pytest.raises(ValueError, match="spikeglx_nidq_device"):
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
