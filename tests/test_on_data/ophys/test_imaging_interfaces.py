@@ -1231,8 +1231,9 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
 
         # The whole device configuration reaches the registry entry, typed so it is built as an
         # ndx-miniscope Miniscope rather than a plain Device, and keyed by the device rather than by
-        # the interface.
-        device_metadata_key = "miniscope"
+        # the interface. The key is public, so a user annotating the device does not have to guess it.
+        device_metadata_key = self.interface.device_metadata_key
+        assert device_metadata_key == "miniscope"
         assert metadata["Devices"] == {
             device_metadata_key: {
                 "type": "Miniscope",
@@ -1402,6 +1403,7 @@ class TestMiniscopeImagingInterfaceV4BNO(MiniscopeImagingInterfaceMixin):
         cls.optical_series_name = "OnePhotonSeries"
 
     def check_extracted_metadata(self, metadata: dict):
+        assert self.interface.device_metadata_key == "miniscope"
         assert metadata["Devices"] == {
             "miniscope": {
                 "type": "Miniscope",

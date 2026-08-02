@@ -76,6 +76,7 @@ jobs:
           pytest tests/imports.py::TestImportStructure::test_top_level
           pytest tests/imports.py::TestImportStructure::test_tools
           pytest tests/imports.py::TestImportStructure::test_datainterfaces
+          pytest tests/imports.py::test_datainterfaces_import
 
       - name: Run minimal tests
         run: pytest tests/test_minimal -vv -rsx -n logical --dist loadscope
