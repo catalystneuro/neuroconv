@@ -1,12 +1,23 @@
-"""Coverage for the old list-based metadata format on the ecephys write path.
+"""Old-shaped metadata still produces the file the user asked for, ecephys.
 
-NeuroConv fills its own metadata with the dict-based format, and the test mixins ask every interface for
-that format too, so nothing else in the suite writes a file from list-based metadata. The format is still
-supported for users who pass their own, which is what these tests keep exercising: not only that the old
-writers produce the right objects, but that the format dispatch still routes list-shaped metadata to them
-now that dict is what everything else uses.
+The contract these tests hold NeuroConv to: a script that passes list-based metadata gets the values it
+stated written to the file, whatever NeuroConv does internally. That is the whole of what "the old format
+is still supported" means, so it is asserted directly rather than inferred from the writers.
 
-Delete this module together with the old list-based format.
+They exist because nothing else exercises it any more. NeuroConv fills its own metadata with the dict-based
+format and the shared test mixins ask every interface for that format too, so no other test in the suite
+converts from list-based metadata. Without this module the old format would be shipping code that nothing
+runs, which is worse than not supporting it.
+
+The assertions are about values the caller stated, a named and described device, per-group descriptions and
+locations, a series name, rather than about defaults. The failure they are built to catch is not the old
+writer computing something wrong; it is the format dispatch quietly sending old metadata down the dict path,
+where those edits are ignored and defaults are written in their place.
+
+They outlive the old writers. When old metadata is translated at the boundary of ``add_to_nwbfile`` and the
+``_old_list_format`` writers are deleted, these assertions do not change: they become the proof that
+translation preserves what the user stated. Delete this module only when the old shape stops being accepted
+at all, together with ``use_new_metadata_format``.
 """
 
 from datetime import datetime
@@ -19,7 +30,7 @@ from neuroconv import ConverterPipe
 from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
 
-class TestOldListMetadataFormatEcephys:
+class TestOldMetadataCompatibilityEcephys:
     """Write files from list-based `Ecephys` metadata the way a user's script still has it."""
 
     @pytest.fixture
