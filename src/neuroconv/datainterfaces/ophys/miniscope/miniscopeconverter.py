@@ -23,7 +23,6 @@ from ....tools.nwb_helpers import get_default_nwbfile_metadata
 from ....utils import (
     DeepDict,
     dict_deep_update,
-    get_base_schema,
     get_json_schema_from_method_signature,
 )
 from ....utils.str_utils import to_camel_case, to_snake_case
@@ -780,23 +779,6 @@ class MiniscopeConverter(ConverterPipe):
         metadata["Ophys"]["ImagingPlane"] = imaging_plane_metadata
 
         return metadata
-
-    def get_metadata_schema(self) -> dict:
-        metadata_schema = super().get_metadata_schema()
-        if self._user_configuration_file_path is None:
-            return metadata_schema
-
-        # The imaging interfaces describe the list-based Ophys shape in their schema, which is not what
-        # they are asked for here, and the registries are declared per interface today (strictly by the
-        # video interface, permissively by others). Until they are declared once at the top level, the
-        # dict-based blocks are accepted as-is.
-        for tag in ("Devices", "DeviceModels", "Ophys"):
-            metadata_schema["properties"][tag] = get_base_schema(tag=tag)
-            metadata_schema["properties"][tag]["additionalProperties"] = True
-        metadata_schema["required"] = [
-            requirement for requirement in metadata_schema.get("required", []) if requirement != "Ophys"
-        ]
-        return metadata_schema
 
     def get_conversion_options_schema(self) -> dict:
         """Allow standard stub options alongside per-interface schemas."""

@@ -63,7 +63,8 @@ class Test_GuppyInterface:
     """
 
     @pytest.fixture(scope="class")
-    def mock_guppy_output_folder(self, tmp_path_factory):
+    @classmethod
+    def mock_guppy_output_folder(cls, tmp_path_factory):
         """Generate the schema-faithful mock GuPPy output once per test class.
 
         The interface only reads from this folder (the error/mutation tests copy it first), so it

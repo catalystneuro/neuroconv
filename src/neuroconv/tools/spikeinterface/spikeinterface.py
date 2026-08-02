@@ -300,7 +300,14 @@ def add_recording_to_nwbfile(
             "'acquisition', 'processing/LFP', or 'processing/FilteredEphys'!"
         )
 
-    if metadata is not None and metadata_key is None and _is_dict_based_metadata(metadata):
+    # Ask whether this metadata carries dict-based *ElectricalSeries* entries rather than whether it looks
+    # dict-based anywhere: a converter hands every interface one dictionary, and another interface's
+    # dict-based block (a camera's ``Devices``, a NIDQ board's) says nothing about this one's Ecephys.
+    electrical_series_metadata = (metadata or {}).get("Ecephys", {}).get("ElectricalSeries", {})
+    has_keyed_entries = isinstance(electrical_series_metadata, dict) and any(
+        isinstance(entry, dict) for entry in electrical_series_metadata.values()
+    )
+    if metadata is not None and metadata_key is None and has_keyed_entries:
         raise ValueError(
             "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
             "`metadata['Ecephys']['ElectricalSeries']` entry to write, so it is required whenever "
@@ -2025,7 +2032,18 @@ def add_recording_metadata_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     """
-    if metadata is not None and _is_dict_based_metadata(metadata):
+    # Decide on the block this function actually writes, the electrode groups, rather than on the
+    # dictionary's overall shape: in a converter another interface's dict-based ``Devices`` (a NIDQ
+    # board's, a camera's) can sit beside this recording's list-based ``Ecephys``, and routing on that
+    # would send list-based groups down the dict path, where they resolve to nothing and the pipeline
+    # writes a placeholder device instead of the one the metadata names.
+    ecephys_metadata = (metadata or {}).get("Ecephys", {})
+    electrical_series_metadata = ecephys_metadata.get("ElectricalSeries", {})
+    ecephys_is_dict_based = isinstance(ecephys_metadata.get("ElectrodeGroups"), dict) or (
+        isinstance(electrical_series_metadata, dict)
+        and any(isinstance(entry, dict) for entry in electrical_series_metadata.values())
+    )
+    if metadata is not None and ecephys_is_dict_based:
         # Devices are created lazily inside _add_electrode_groups_to_nwbfile when a group
         # references them via device_metadata_key, mirroring the roiextractors imaging-plane pattern.
         _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
