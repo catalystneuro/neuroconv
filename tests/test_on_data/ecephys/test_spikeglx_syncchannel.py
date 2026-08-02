@@ -70,7 +70,7 @@ class TestSpikeGLXSyncChannelInterface:
         # Check device metadata
         assert "Devices" in metadata
         assert len(metadata["Devices"]) == 1
-        assert metadata["Devices"][0] == expected_device
+        assert metadata["Devices"]["neuropixels_imec0"] == expected_device
 
         # Check TimeSeries metadata
         assert "TimeSeries" in metadata
@@ -147,8 +147,8 @@ class TestSpikeGLXSyncChannelInterface:
 
         # Verify metadata is generated correctly for LF stream
         metadata = interface.get_metadata()
-        assert metadata["TimeSeries"]["SpikeGLXSync"]["name"] == "TimeSeriesImec0Sync"
-        assert "LF stream" in metadata["TimeSeries"]["SpikeGLXSync"]["description"]
+        assert metadata["TimeSeries"]["spikeglx_sync"]["name"] == "TimeSeriesImec0Sync"
+        assert "LF stream" in metadata["TimeSeries"]["spikeglx_sync"]["description"]
 
         # Create NWBFile without iterator wrapping to access data directly
         nwbfile = interface.create_nwbfile(stub_test=True, iterator_type=None)
@@ -172,6 +172,22 @@ class TestSpikeGLXSyncChannelInterface:
         import numpy as np
 
         np.testing.assert_array_equal(timeseries.data[:], expected_traces)
+
+
+def test_metadata_key_does_not_rename_series():
+    """The key addresses the entry; the TimeSeries name is derived from the probe and is unaffected."""
+    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0"
+
+    default_interface = SpikeGLXSyncChannelInterface(folder_path=folder_path, stream_id="imec0.ap-SYNC")
+    assert default_interface.metadata_key == "spikeglx_sync"
+    assert default_interface.get_metadata()["TimeSeries"]["spikeglx_sync"]["name"] == "TimeSeriesImec0Sync"
+
+    custom_interface = SpikeGLXSyncChannelInterface(
+        folder_path=folder_path, stream_id="imec0.ap-SYNC", metadata_key="my_sync"
+    )
+    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
+    assert set(time_series_metadata) == {"my_sync"}
+    assert time_series_metadata["my_sync"]["name"] == "TimeSeriesImec0Sync"
 
 
 if __name__ == "__main__":

@@ -554,7 +554,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         # Minimal meta so `get_metadata` works similarly to real NIDQ header
         self.meta = {"acqMnMaXaDw": "0,0,8,1", "fileCreateTime": "2020-11-03T10:35:10", "niDev1ProductName": "PCI-6259"}
         self.verbose = None
-        self.metadata_key = "SpikeGLXNIDQ"
+        self.metadata_key = "spikeglx_nidq"
         self._analog_channel_groups = {
             "nidq_analog": {
                 "channels": list(channel_ids),
