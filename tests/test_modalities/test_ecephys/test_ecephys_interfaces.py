@@ -13,6 +13,7 @@ from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import Spike2RecordingInterface
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.testing.mock_interfaces import (
+    MockIcephysInterface,
     MockRecordingInterface,
     MockSortingInterface,
 )
@@ -548,6 +549,32 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         probe = interface.recording_extractor.get_probe()
         expected_contact_ids = probe.contact_ids
         np.testing.assert_array_equal(electrode_names, expected_contact_ids)
+
+
+def test_recording_routes_on_its_own_block_in_a_mixed_converter():
+    """A converter builds one metadata dictionary and hands the same one to every interface, so an
+    interface that emits only the dict-based format contributes a dict-shaped top-level ``Devices``
+    while a recording interface contributes a list-based ``Ecephys``. One dictionary, two shapes: the
+    recording has to read its own block rather than the dictionary's overall shape, or it looks for a
+    keyed ``ElectricalSeries`` entry its own ``get_metadata`` never wrote."""
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    dict_only_interface = MockIcephysInterface()
+    converter = ConverterPipe(data_interfaces=dict(Recording=recording_interface, Icephys=dict_only_interface))
+
+    metadata = converter.get_metadata()
+    assert isinstance(metadata["Devices"], dict)  # contributed by the dict-only interface
+    assert "name" in metadata["Ecephys"]["ElectricalSeries"]  # list-based: a flat dict of fields, not entries
+
+    nwbfile = mock_NWBFile()
+    recording_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+    assert "ElectricalSeries" in nwbfile.acquisition
+    # The electrode groups route on the Ecephys block too, so the device is the one the recording's own
+    # metadata names rather than the placeholder the dict path falls back to.
+    assert "DeviceEcephys" in nwbfile.devices
+    assert "Device" not in nwbfile.devices
 
 
 class TestAssertions(TestCase):
