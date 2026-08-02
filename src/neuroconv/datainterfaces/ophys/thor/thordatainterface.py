@@ -168,11 +168,15 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         ChannelName = _to_camel_case(self.channel_name)
 
         if use_new_metadata_format:
-            metadata["Devices"] = {self.metadata_key: {"name": "ThorMicroscope", "description": device_description}}
+            # Keyed by the microscope rather than by this interface, since one ThorLabs system images
+            # every channel and each channel is its own interface.
+            device_metadata_key = "thor_microscope"
+            metadata["Devices"] = {device_metadata_key: {"name": "ThorMicroscope", "description": device_description}}
             metadata["Ophys"] = {
                 "ImagingPlanes": {
                     self.metadata_key: {
                         "name": f"ImagingPlane{ChannelName}",
+                        "device_metadata_key": device_metadata_key,
                         "optical_channel": [{"name": ChannelName}],
                         "grid_spacing": [pixel_size_um * 1e-6, pixel_size_um * 1e-6],
                         "grid_spacing_unit": "meters",

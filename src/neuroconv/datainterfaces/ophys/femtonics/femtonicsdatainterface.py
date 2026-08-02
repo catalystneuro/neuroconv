@@ -238,9 +238,12 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 pmt_description = ", ".join(desc_parts)
 
         if use_new_metadata_format:
+            # The registry is keyed by the microscope rather than by this interface, whose key carries the
+            # session, unit and channel: those are several views of one Femtonics system.
+            device_metadata_key = "femtonics_microscope"
             if version_parts:
                 metadata["Devices"] = {
-                    self.metadata_key: {
+                    device_metadata_key: {
                         "name": "Microscope",
                         "description": f"Femtonics MESc ({', '.join(version_parts)})",
                     },
@@ -250,7 +253,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             # rather than being shadowed by the placeholder device the writer would otherwise synthesize.
             imaging_plane_entry = {}
             if version_parts:
-                imaging_plane_entry["device_metadata_key"] = self.metadata_key
+                imaging_plane_entry["device_metadata_key"] = device_metadata_key
             if x_size is not None and y_size is not None:
                 imaging_plane_entry["grid_spacing"] = [float(x_size) * 1e-6, float(y_size) * 1e-6]
                 imaging_plane_entry["grid_spacing_unit"] = "meters"
