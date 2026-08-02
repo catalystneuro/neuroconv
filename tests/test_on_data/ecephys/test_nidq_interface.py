@@ -28,7 +28,7 @@ def test_nidq_digital_data(tmp_path):
     interface = SpikeGLXNIDQInterface(folder_path=folder_path)
 
     metadata = interface.get_metadata()
-    default_metadata_key = "SpikeGLXNIDQ"
+    default_metadata_key = "spikeglx_nidq"
     event_types = metadata["Events"][default_metadata_key]["event_types"]
 
     # One event type per declared line, identified by word plus bit plus reading.
@@ -340,13 +340,13 @@ def test_nidq_analog_data(tmp_path):
     interface = SpikeGLXNIDQInterface(folder_path=folder_path)
 
     # Test metadata structure with default metadata_key
-    assert interface.metadata_key == "SpikeGLXNIDQ"
+    assert interface.metadata_key == "spikeglx_nidq"
     metadata = interface.get_metadata()
     time_series_metadata = metadata.get("TimeSeries", {})
 
     # Expected TimeSeries metadata structure (default: single TimeSeries with all channels)
     expected_time_series_metadata = {
-        "SpikeGLXNIDQ": {
+        "spikeglx_nidq": {
             "nidq_analog": {
                 "name": "TimeSeriesNIDQ",
                 "description": "Analog data from the NIDQ board. Channels are ['XA0', 'XA1', 'XA2', 'XA3', 'XA4', 'XA5', 'XA6', 'XA7'] in that order.",
@@ -398,7 +398,7 @@ def test_nidq_analog_metadata_customization(tmp_path):
 
     # Get metadata - should have 3 group entries with CamelCase names
     metadata = interface.get_metadata()
-    time_series_metadata = metadata["TimeSeries"]["SpikeGLXNIDQ"]
+    time_series_metadata = metadata["TimeSeries"]["spikeglx_nidq"]
 
     # Check that metadata has correct structure with default CamelCase names
     assert "audio" in time_series_metadata
@@ -412,14 +412,14 @@ def test_nidq_analog_metadata_customization(tmp_path):
     assert time_series_metadata["temperature"]["name"] == "Temperature"
 
     # Customize metadata (names and descriptions)
-    metadata["TimeSeries"]["SpikeGLXNIDQ"]["audio"]["name"] = "TimeSeriesAudioSignals"
-    metadata["TimeSeries"]["SpikeGLXNIDQ"]["audio"]["description"] = "Audio signals from microphones"
+    metadata["TimeSeries"]["spikeglx_nidq"]["audio"]["name"] = "TimeSeriesAudioSignals"
+    metadata["TimeSeries"]["spikeglx_nidq"]["audio"]["description"] = "Audio signals from microphones"
 
-    metadata["TimeSeries"]["SpikeGLXNIDQ"]["accelerometer"]["name"] = "TimeSeriesAccelerometer"
-    metadata["TimeSeries"]["SpikeGLXNIDQ"]["accelerometer"]["description"] = "3-axis accelerometer data"
+    metadata["TimeSeries"]["spikeglx_nidq"]["accelerometer"]["name"] = "TimeSeriesAccelerometer"
+    metadata["TimeSeries"]["spikeglx_nidq"]["accelerometer"]["description"] = "3-axis accelerometer data"
 
-    metadata["TimeSeries"]["SpikeGLXNIDQ"]["temperature"]["name"] = "TimeSeriesTemperature"
-    metadata["TimeSeries"]["SpikeGLXNIDQ"]["temperature"]["description"] = "Temperature sensor readings"
+    metadata["TimeSeries"]["spikeglx_nidq"]["temperature"]["name"] = "TimeSeriesTemperature"
+    metadata["TimeSeries"]["spikeglx_nidq"]["temperature"]["description"] = "Temperature sensor readings"
 
     # Write to NWB and verify multiple TimeSeries were created
     nwbfile_path = tmp_path / "nidq_test_multiple_timeseries.nwb"
@@ -521,7 +521,7 @@ def test_nidq_analog_backward_compatibility(tmp_path):
 
     # Should behave exactly like main branch - single TimeSeries with all channels
     metadata = interface.get_metadata()
-    time_series_metadata = metadata["TimeSeries"]["SpikeGLXNIDQ"]
+    time_series_metadata = metadata["TimeSeries"]["spikeglx_nidq"]
 
     # Should have single "nidq_analog" entry
     assert "nidq_analog" in time_series_metadata
@@ -553,7 +553,7 @@ def test_analog_empty_dict_excludes_all_channels():
 
     # But no TimeSeries metadata is generated
     metadata = interface.get_metadata()
-    time_series_metadata = metadata.get("TimeSeries", {}).get("SpikeGLXNIDQ", {})
+    time_series_metadata = metadata.get("TimeSeries", {}).get("spikeglx_nidq", {})
     assert time_series_metadata == {}
 
     # And no acquisition is written
@@ -577,9 +577,24 @@ def test_digital_empty_dict_excludes_all_channels():
 
     # But no Events metadata is generated
     metadata = interface.get_metadata()
-    events_metadata = metadata.get("Events", {}).get("SpikeGLXNIDQ", {})
+    events_metadata = metadata.get("Events", {}).get("spikeglx_nidq", {})
     assert events_metadata == {}
 
     # And no acquisition is written
     nwbfile = interface.create_nwbfile()
     assert len(nwbfile.acquisition) == 0
+
+
+def test_metadata_key_does_not_rename_series():
+    """The key addresses the entries; the TimeSeries names live inside them and are unaffected."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+
+    default_interface = SpikeGLXNIDQInterface(folder_path=folder_path)
+    assert default_interface.metadata_key == "spikeglx_nidq"
+    default_entry = default_interface.get_metadata()["TimeSeries"]["spikeglx_nidq"]
+    assert default_entry["nidq_analog"]["name"] == "TimeSeriesNIDQ"
+
+    custom_interface = SpikeGLXNIDQInterface(folder_path=folder_path, metadata_key="my_nidq")
+    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
+    assert set(time_series_metadata) == {"my_nidq"}
+    assert time_series_metadata["my_nidq"]["nidq_analog"]["name"] == "TimeSeriesNIDQ"

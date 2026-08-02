@@ -51,7 +51,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         folder_path: DirectoryPath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        metadata_key: str = "SpikeGLXNIDQ",
+        metadata_key: str = "spikeglx_nidq",
         analog_channel_groups: dict[str, dict] | None = None,
         digital_channel_groups: dict[str, dict] | None = None,
         detection_configuration: dict | None = None,
@@ -69,10 +69,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Path to the folder containing the .nidq.bin file.
         verbose : bool, default: False
             Whether to output verbose text.
-        metadata_key : str, default: "SpikeGLXNIDQ"
+        metadata_key : str, default: "spikeglx_nidq"
             Key used to organize metadata in the metadata dictionary. This is especially useful
             when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used
-            to organize TimeSeries and Events metadata.
+            to organize TimeSeries and Events metadata. It addresses the entries; the written objects'
+            names are their ``name`` fields.
         analog_channel_groups : dict[str, dict], optional
             Dictionary mapping group names to analog channel configurations.
             Each group specifies which channels to include and will be written as a separate
@@ -561,7 +562,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             description="A NIDQ board used in conjunction with SpikeGLX.",
         )
 
-        metadata["Devices"] = [device]
+        metadata["Devices"] = {"spikeglx_nidq_device": device}
 
         # TimeSeries metadata for analog channels
         if self.has_analog_channels:
@@ -660,9 +661,17 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         metadata = metadata or self.get_metadata()
 
-        # Add devices
-        device_metadata = metadata.get("Devices", [])
-        for device in device_metadata:
+        # Add devices from the top-level registry, which is keyed by metadata key. The list shape this
+        # interface used to emit is named rather than silently accepted, so a script written against it
+        # is told what to change instead of failing on an attribute deep in here.
+        device_metadata = metadata.get("Devices", {})
+        if isinstance(device_metadata, list):
+            raise ValueError(
+                "metadata['Devices'] is a list. It is now a registry keyed by metadata key, so this "
+                "interface's entry belongs under 'spikeglx_nidq_device': "
+                "metadata['Devices'] = {'spikeglx_nidq_device': {'name': ..., 'description': ...}}."
+            )
+        for device in device_metadata.values():
             if device["name"] not in nwbfile.devices:
                 nwbfile.create_device(**device)
 

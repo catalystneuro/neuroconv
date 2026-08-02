@@ -32,6 +32,9 @@ MODE_CONFIGS = {
     "I;16N": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
 }
 
+# Modes whose raw layout Pillow cannot infer from the array dtype alone
+RAW_ONLY_MODES = ("1", "I;16", "I;16L", "I;16B", "I;16N")
+
 
 def generate_random_images(
     num_images, width=256, height=256, mode="RGB", seed=None, output_dir_path="generated_images", format="PNG"
@@ -86,7 +89,12 @@ def generate_random_images(
         elif mode == "P":
             palette = rng.integers(0, 256, (256, 3), dtype=np.uint8)
 
-        image = Image.fromarray(array, mode=mode)
+        if mode in RAW_ONLY_MODES:
+            # Pillow 13 drops `mode=` on `fromarray` for modes it cannot infer from the array dtype, so these
+            # have to name the raw layout explicitly. This produces the same bytes `fromarray` did.
+            image = Image.frombuffer(mode, (width, height), array.tobytes(), "raw", mode, 0, 1)
+        else:
+            image = Image.fromarray(array, mode=mode)
         if mode == "P":
             image.putpalette(palette.flatten())
         filename = output_dir_path / f"image{i}_{format}_{mode}.{format_ext}"

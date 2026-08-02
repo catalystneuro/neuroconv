@@ -48,7 +48,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         *,
         folder_path,
         detection_configuration: dict | None = None,
-        metadata_key: str = "SpikeGLXNIDQ",
+        metadata_key: str = "spikeglx_nidq",
         verbose: bool = False,
     ):
         """Initialize the events half of a NIDQ conversion.
@@ -67,7 +67,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             ``"high_period"`` / ``"low_period"`` (a durative event), or ``"value_change"``, and it is
             required. If None (default), every line of every digital word is read as a ``high_period``
             and the analog channels are skipped.
-        metadata_key : str, default: "SpikeGLXNIDQ"
+        metadata_key : str, default: "spikeglx_nidq"
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
         verbose : bool, default: False
             Whether to output verbose text.
