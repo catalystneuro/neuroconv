@@ -412,15 +412,34 @@ class TestKilosortSortingInterfaceVersion4(SortingExtractorInterfaceTestMixin):
         nwbfile = mock_NWBFile()
         add_recording_metadata_to_nwbfile(recording=self._make_matching_recording(), nwbfile=nwbfile)
 
+        # interface_kwargs carries a gain, so the templates were meant to be written.
         interface = self.data_interface_cls(**self.interface_kwargs)
         with pytest.raises(ValueError, match="register_recording"):
             interface.add_to_nwbfile(nwbfile=nwbfile)
+
+    def check_foreign_electrodes_table_without_a_gain_only_warns(self):
+        """A conversion that never asked for waveforms keeps working next to another interface's table."""
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        from neuroconv.tools.spikeinterface import add_recording_metadata_to_nwbfile
+
+        nwbfile = mock_NWBFile()
+        add_recording_metadata_to_nwbfile(recording=self._make_matching_recording(), nwbfile=nwbfile)
+
+        interface = self.data_interface_cls(folder_path=self.interface_kwargs["folder_path"])
+        with pytest.warns(UserWarning, match="without electrodes and without waveforms"):
+            interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        assert "electrodes" not in nwbfile.units.colnames
+        assert "waveform_mean" not in nwbfile.units.colnames
+        assert len(nwbfile.units) == 6
 
     def run_custom_checks(self):
         self.check_templates_are_restricted_to_their_footprint()
         self.check_electrodes_are_built_from_the_sorter_folder()
         self.check_registered_recording_resolves_the_electrode_rows()
         self.check_foreign_electrodes_table_raises()
+        self.check_foreign_electrodes_table_without_a_gain_only_warns()
 
 
 class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin):

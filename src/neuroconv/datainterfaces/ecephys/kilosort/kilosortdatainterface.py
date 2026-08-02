@@ -268,12 +268,29 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
                 )
             electrode_indices = np.asarray(electrode_rows)[channel_map]
         else:
+            # Nothing here connects `channel_map`'s indices to rows another interface wrote. Since this
+            # branch is only reached without a registered recording, an explicit gain is the only one left,
+            # and it is what says whether waveforms were wanted: a caller who passed one has to be told,
+            # and one who did not gets the units this interface wrote before it read any templates.
+            if self.source_data["gain_to_uV"] is None:
+                warnings.warn(
+                    f"The file already has an electrodes table that this interface did not write, and "
+                    f"{folder_path} states which channels its units came from only as indices into the "
+                    "recording Kilosort was run on, so its units are written without electrodes and "
+                    "without waveforms. Attach that recording with "
+                    "`register_recording(recording_interface=...)` to write them.",
+                    UserWarning,
+                    stacklevel=3,
+                )
+                return None, None
+
             raise ValueError(
                 f"The file already has an electrodes table that this interface did not write, and "
                 f"{folder_path} states which channels its units came from only as indices into the "
-                "recording Kilosort was run on, which is not enough to find their rows. Attach that "
-                "recording with `register_recording(recording_interface=...)` so the units can be linked "
-                "to their electrodes."
+                "recording Kilosort was run on, which is not enough to find their rows. A `gain_to_uV` "
+                "was given, so the templates were meant to be written and are not being skipped silently. "
+                "Attach the recording Kilosort was run on with `register_recording(recording_interface=...)` "
+                "so the units can be linked to their electrodes."
             )
 
         templates_file_path = folder_path / "templates.npy"
