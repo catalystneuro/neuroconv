@@ -269,7 +269,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
             # The channel and plane are what distinguish one interface's objects from another's in a
             # multi-channel conversion, so they are named here rather than left to the generic defaults.
-            channel_string = self.channel_name.replace(" ", "").capitalize()
+            # A single-channel single-plane file states neither, and its objects take the plain names.
+            channel_string = self.channel_name.replace(" ", "").capitalize() if self.channel_name is not None else ""
             plane_string = f"Plane{self.plane_index}" if self.plane_index is not None else ""
 
             imaging_plane_entry = {

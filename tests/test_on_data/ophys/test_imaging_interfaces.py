@@ -367,6 +367,40 @@ class TestScanImageImagingInterfacesAssertions:
             ScanImageImagingInterface(file_path=file_path, plane_index=20, interleave_slice_samples=True)
 
 
+def test_two_channels_of_one_acquisition_share_one_device_entry():
+    """A device is per instrument while an interface is per channel, so the two interfaces of one
+    multi-channel acquisition derive the same registry key and merge into a single entry. Keyed by
+    ``metadata_key`` instead they would be two entries carrying one name, which the duplicate-name check
+    rejects. No single-interface test can reach this."""
+    from neuroconv.utils import dict_deep_update
+    from neuroconv.utils.json_schema import _validate_device_registry_names
+
+    file_path = str(
+        OPHYS_DATA_PATH
+        / "imaging_datasets"
+        / "ScanImage"
+        / "planar_two_channels_single_file"
+        / "planar_two_ch_single_files_00001_00001.tif"
+    )
+    first = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 1")
+    second = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 2")
+    assert first.metadata_key != second.metadata_key
+
+    merged = {}
+    for interface in (first, second):
+        merged = dict_deep_update(merged, dict(interface.get_metadata(use_new_metadata_format=True)))
+
+    assert list(merged["Devices"]) == ["scan_image_microscope"]
+    _validate_device_registry_names(merged)
+
+    # The per-interface registries stay per interface, so neither channel's objects collide.
+    assert set(merged["Ophys"]["ImagingPlanes"]) == {first.metadata_key, second.metadata_key}
+    imaging_plane_names = {entry["name"] for entry in merged["Ophys"]["ImagingPlanes"].values()}
+    series_names = {entry["name"] for entry in merged["Ophys"]["MicroscopySeries"].values()}
+    assert len(imaging_plane_names) == 2
+    assert len(series_names) == 2
+
+
 @pytest.mark.skipif(platform.machine() == "arm64", reason="Interface not supported on arm64 architecture")
 class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageLegacyImagingInterface

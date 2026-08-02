@@ -2657,6 +2657,87 @@ class TestAddImaging:
         assert optical_channel.name == "OpticalChannel"
         assert np.isnan(optical_channel.emission_lambda)
 
+    def test_partially_stated_optical_channel_is_defaulted(self):
+        """An interface that knows a channel's name but not its emission wavelength states the name alone.
+        The entry is completed from the placeholder template rather than rejected by ``OpticalChannel``,
+        so knowing more about the source cannot produce a worse outcome than knowing nothing."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        # Only the channel name is known; description and emission_lambda are not.
+                        "optical_channel": [{"name": "ChanA"}],
+                    },
+                },
+                "MicroscopySeries": {
+                    "my_series": {"name": "TwoPhotonSeries", "imaging_plane_metadata_key": "my_plane"},
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        optical_channel = nwbfile.imaging_planes["ImagingPlane"].optical_channel[0]
+        assert optical_channel.name == "ChanA"
+        assert np.isnan(optical_channel.emission_lambda)
+        assert optical_channel.description == "An optical channel of the microscope."
+
+    def test_several_partially_stated_optical_channels_keep_their_own_names(self):
+        """The default name is withheld when the list holds several entries, since two channels defaulted
+        to one name would collide inside the imaging plane."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        "optical_channel": [{"name": "ChanA"}, {"name": "ChanB"}],
+                    },
+                },
+                "MicroscopySeries": {
+                    "my_series": {"name": "TwoPhotonSeries", "imaging_plane_metadata_key": "my_plane"},
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        optical_channels = nwbfile.imaging_planes["ImagingPlane"].optical_channel
+        assert [channel.name for channel in optical_channels] == ["ChanA", "ChanB"]
+        assert all(np.isnan(channel.emission_lambda) for channel in optical_channels)
+
+    def test_registered_device_is_written_rather_than_shadowed(self):
+        """A device the interface registers is only reached through an imaging plane that links it. An
+        entry nothing references is replaced by the placeholder, and its description is lost, so the link
+        is what makes the registered device the one in the file."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "Devices": {"my_device": {"name": "Microscope", "description": "Scanbox imaging"}},
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {"name": "ImagingPlane", "device_metadata_key": "my_device"},
+                },
+                "MicroscopySeries": {
+                    "my_series": {"name": "TwoPhotonSeries", "imaging_plane_metadata_key": "my_plane"},
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        assert len(nwbfile.devices) == 1
+        device = nwbfile.imaging_planes["ImagingPlane"].device
+        assert device.name == "Microscope"
+        assert device.description == "Scanbox imaging"
+
     def test_missing_required_series_fields_are_defaulted(self):
         """A series entry that omits `unit` is not rejected; the write path fills it from the placeholder
         template instead of raising."""
