@@ -74,6 +74,54 @@ class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
 NWBMetaDataEncoder = _NWBMetaDataEncoder
 
 
+def _metadata_uses_old_list_format(metadata: dict) -> bool:
+    """
+    Detect whether a metadata dictionary is in the old list-based format.
+
+    Transitional, and deliberately written around the format that is going away: the singular,
+    list-valued modality keys and the legacy list-valued top-level ``Devices``. When the old format is
+    removed this function goes with it, and the callers keep the branch they already take for everything
+    else.
+
+    This is a shape sniff for validation routing only. The write pipelines have their own,
+    modality-specific detectors (``tools.spikeinterface._is_dict_based_metadata`` and
+    ``tools.roiextractors._is_dict_based_metadata``), which also choose a write path and therefore treat
+    ambiguous metadata differently from each other.
+
+    Parameters
+    ----------
+    metadata : dict
+        The metadata dictionary to inspect.
+
+    Returns
+    -------
+    bool
+        True when the metadata carries old list-based structures, False otherwise (including for empty
+        or ambiguous metadata, which the current schemas describe just as well).
+    """
+    if isinstance(metadata.get("Devices"), list):
+        return True
+
+    list_valued_keys = {
+        "Ecephys": ("Device", "ElectrodeGroup"),
+        "Ophys": ("Device", "ImagingPlane"),
+    }
+    for modality, key_names in list_valued_keys.items():
+        modality_metadata = metadata.get(modality, {})
+        if any(isinstance(modality_metadata.get(key_name), list) for key_name in key_names):
+            return True
+
+    # "ElectricalSeries" exists in both formats: a flat mapping of fields is the old one, a mapping of
+    # per-``metadata_key`` entries is not.
+    electrical_series = metadata.get("Ecephys", {}).get("ElectricalSeries")
+    if isinstance(electrical_series, dict) and electrical_series:
+        first_entry = next(iter(electrical_series.values()))
+        if not isinstance(first_entry, dict):
+            return True
+
+    return False
+
+
 def _validate_device_registry_names(metadata: dict[str, dict]) -> None:
     """Require 1 metadata key for each device or device model name."""
     for registry_name, object_name in (

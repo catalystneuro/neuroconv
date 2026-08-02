@@ -8,6 +8,7 @@ import pytest
 from hdmf.testing import TestCase
 from packaging.version import Version
 from probeinterface import Probe, ProbeGroup
+from pynwb import NWBHDF5IO
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import Spike2RecordingInterface
@@ -548,6 +549,35 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         probe = interface.recording_extractor.get_probe()
         expected_contact_ids = probe.contact_ids
         np.testing.assert_array_equal(electrode_names, expected_contact_ids)
+
+
+def test_run_conversion(tmp_path):
+    # The metadata an interface returns has to survive validation to reach the writer at all. The
+    # ``use_new_metadata_format`` argument is the only transitional part of this test: when the flag goes
+    # and the dict format is what ``get_metadata`` returns, the argument drops and the test stands as is.
+    interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    metadata = interface.get_metadata(use_new_metadata_format=True)
+
+    nwbfile_path = tmp_path / "interface_conversion.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["name"] in nwbfile.acquisition
+
+
+def test_run_conversion_through_converter(tmp_path):
+    # Same, through a converter, which validates against its own merged schema rather than an interface's.
+    interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    converter = ConverterPipe(data_interfaces=dict(Recording=interface))
+
+    metadata = interface.get_metadata(use_new_metadata_format=True)
+    nwbfile_path = tmp_path / "converter_conversion.nwb"
+    converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["name"] in nwbfile.acquisition
 
 
 class TestAssertions(TestCase):
