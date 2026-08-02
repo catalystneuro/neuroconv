@@ -260,8 +260,11 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             device_description = "Microscope controlled by ScanImage"
             if version is not None:
                 device_description = f"Microscope and acquisition data with ScanImage (version {version})"
+            # Keyed by the microscope rather than by this interface, whose key carries the channel and
+            # plane: a multi-channel acquisition is several interfaces on one microscope.
+            device_metadata_key = "scan_image_microscope"
             metadata["Devices"] = {
-                self.metadata_key: {"name": "Microscope", "description": device_description},
+                device_metadata_key: {"name": "Microscope", "description": device_description},
             }
 
             # The channel and plane are what distinguish one interface's objects from another's in a
@@ -272,7 +275,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
             imaging_plane_entry = {
                 "name": f"ImagingPlane{channel_string}{plane_string}",
-                "device_metadata_key": self.metadata_key,
+                "device_metadata_key": device_metadata_key,
                 "imaging_rate": sampling_frequency,
             }
             if grid_spacing is not None:
@@ -604,14 +607,15 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         extracted_description = json.dumps(self.image_metadata) if self.image_metadata else None
 
         if use_new_metadata_format:
+            device_metadata_key = "scan_image_microscope"
             metadata["Devices"] = {
-                self.metadata_key: {
+                device_metadata_key: {
                     "name": "Microscope",
                     "description": "Microscope controlled by ScanImage (legacy v3.8)",
                 },
             }
             imaging_plane_entry = {
-                "device_metadata_key": self.metadata_key,
+                "device_metadata_key": device_metadata_key,
                 "imaging_rate": float(self.sampling_frequency),
             }
             microscopy_series_entry = {

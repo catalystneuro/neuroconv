@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DeepDict
+from ....utils import DeepDict, to_snake_case
 
 
 def _read_isxd_json_metadata_tail(file_path) -> dict:
@@ -184,8 +184,14 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
         # Device information
         if use_new_metadata_format:
             # The name is a convention for writing the file rather than something the source states, so
-            # it falls back to the generic microscope name the old format used.
+            # it falls back to the generic microscope name the old format used. The registry is keyed by
+            # the microscope, on the serial number when the file records one, so this interface and the
+            # segmentation interface of the same session resolve to one entry.
             device_entry = {"name": device_info.get("device_name") or "Microscope"}
+            serial_number = device_info.get("device_serial_number")
+            device_metadata_key = (
+                f"inscopix_{to_snake_case(str(serial_number))}" if serial_number else "inscopix_microscope"
+            )
             description_parts = []
             if device_info.get("device_serial_number"):
                 description_parts.append(f"Serial: {device_info['device_serial_number']}")
@@ -193,11 +199,11 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 description_parts.append(f"Software: {device_info['acquisition_software_version']}")
             if description_parts:
                 device_entry["description"] = f"Inscopix Microscope ({', '.join(description_parts)})"
-            metadata["Devices"] = {self.metadata_key: device_entry}
+            metadata["Devices"] = {device_metadata_key: device_entry}
 
             # ImagingPlanes. The acquisition settings have no field on any NWB class, so they are stated
             # in the description, which is where the old format carried them too.
-            imaging_plane_entry = {"device_metadata_key": self.metadata_key}
+            imaging_plane_entry = {"device_metadata_key": device_metadata_key}
             acquisition_details = []
             if device_info.get("exposure_time_ms"):
                 acquisition_details.append(f"Exposure Time (ms): {device_info['exposure_time_ms']}")
