@@ -39,6 +39,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
         stream_name: str = "WB-Wideband",
     ):
         """
@@ -51,6 +52,9 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"plexon_recording"``.
         stream_name: str, optional
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the wideband data.
@@ -87,10 +91,15 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
         assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
+        super().__init__(
+            file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key, stream_name=stream_name
+        )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+        if metadata_key is None:
+            self.metadata_key = "plexon_recording"
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         neo_reader = self.recording_extractor.neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):
@@ -132,6 +141,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeriesLF",
+        metadata_key: str | None = None,
         stream_name: str = "FPl-Low Pass Filtered",
     ):
         """
@@ -144,6 +154,9 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         verbose : bool, default: False
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"plexon_lfp"``.
         stream_name: str, default: "FPl-Low Pass Filtered""
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the FPllow pass filtered data.
@@ -184,10 +197,21 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         invalid_stream_names = ["WB-Wideband", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
         assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, stream_name=stream_name)
+        super().__init__(
+            file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key, stream_name=stream_name
+        )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+        if metadata_key is None:
+            self.metadata_key = "plexon_lfp"
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
+
+        if use_new_metadata_format:
+            # The base emits the NWB-conventional "ElectricalSeries" name. This interface writes the
+            # low-pass filtered stream, so it states its own name here, matching the old list-based format.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeriesLF"
+
         neo_reader = self.recording_extractor.neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):
@@ -238,8 +262,13 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
 
     @validate_call
     def __init__(
-        self, file_path: FilePath, *args, verbose: bool = False, es_key: str = "ElectricalSeries"
-    ):  # TODO: change to * (keyword only) on or after August 2026
+        self,
+        file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
+    ):
         """
         Load and prepare data for Plexon.
 
@@ -250,6 +279,9 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"plexon2_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -292,10 +324,14 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
             file_path=file_path,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
         )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+        if metadata_key is None:
+            self.metadata_key = "plexon2_recording"
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         neo_reader = self.recording_extractor.neo_reader
 

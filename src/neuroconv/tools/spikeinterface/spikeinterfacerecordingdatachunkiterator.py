@@ -14,7 +14,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         self,
         recording: BaseRecording,
         segment_index: int = 0,
-        return_scaled: bool = False,
+        return_in_uV: bool = False,
         buffer_gb: float | None = None,
         buffer_shape: tuple | None = None,
         chunk_mb: float | None = None,
@@ -33,8 +33,8 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         segment_index : int, optional
             The recording segment to iterate on.
             Defaults to 0.
-        return_scaled : bool, optional
-            Whether to return the trace data in scaled units (uV, if True) or in the raw data type (if False).
+        return_in_uV : bool, optional
+            Whether to return the trace data in microvolts (if True) or in the raw data type (if False).
             Defaults to False.
         buffer_gb : float, optional
             The upper bound on size in gigabytes (GB) of each selection from the iteration.
@@ -67,7 +67,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         """
         self.recording = recording
         self.segment_index = segment_index
-        self.return_scaled = return_scaled
+        self.return_in_uV = return_in_uV
         self.channel_ids = recording.get_channel_ids()
         super().__init__(
             buffer_gb=buffer_gb,
@@ -117,7 +117,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             channel_ids=self.channel_ids[selection[1]],
             start_frame=selection[0].start,
             end_frame=selection[0].stop,
-            return_in_uV=self.return_scaled,
+            return_in_uV=self.return_in_uV,
         )
 
     def _get_dtype(self):

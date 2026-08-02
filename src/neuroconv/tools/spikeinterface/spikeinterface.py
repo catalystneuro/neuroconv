@@ -5,6 +5,7 @@ from typing import Any, Literal
 import numpy as np
 import psutil
 import pynwb
+from hdmf.common.table import VectorIndex
 from hdmf.data_utils import AbstractDataChunkIterator
 from pydantic import FilePath
 from spikeinterface import BaseRecording, BaseSorting, SortingAnalyzer
@@ -193,6 +194,7 @@ def add_recording_to_nwbfile(
     *,
     parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
     write_as: Literal["raw", "processed", "lfp"] | None = None,
+    data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
     es_key: str | None = None,
     iterator_type: str = "v2",
     iterator_options: dict | None = None,
@@ -242,6 +244,15 @@ def add_recording_to_nwbfile(
     write_as : {'raw', 'processed', 'lfp'}, optional
         Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
         'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+    data_representation : {'digital_counts', 'physical_units'}, default: 'digital_counts'
+        How the trace values are materialized in the stored data array.
+        - 'digital_counts': store the raw integer samples and carry the per-channel gain in
+          ``channel_conversion`` (or a scalar ``conversion`` when homogeneous) and the offset in the
+          scalar ``offset``. Faithful and compact, but requires a common offset across channels.
+        - 'physical_units': apply each channel's gain and offset and store float physical values, so
+          the scalar ``offset`` is 0 and no ``channel_conversion`` is needed. This is the only
+          representation that can hold heterogeneous per-channel offsets (and gains) in a single
+          series, at the cost of float storage and no lossless integer round-trip.
     es_key : str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series.
         Used with the old list-based metadata format; ignored when ``metadata_key`` is provided.
@@ -311,6 +322,7 @@ def add_recording_to_nwbfile(
             segment_index=segment_index,
             metadata=metadata,
             parent_container=parent_container,
+            data_representation=data_representation,
             es_key=es_key,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
@@ -451,6 +463,7 @@ def _add_recording_segment_to_nwbfile(
     metadata: dict | None = None,
     segment_index: int = 0,
     parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
+    data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
     es_key: str | None = None,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -511,7 +524,19 @@ def _add_recording_segment_to_nwbfile(
     )
     eseries_kwargs["electrodes"] = electrode_table_region
 
-    if recording.has_scaleable_traces():
+    if data_representation == "physical_units":
+        if not recording.has_scaleable_traces():
+            raise ValueError(
+                "data_representation='physical_units' requires the recording to have gains and offsets "
+                "to convert the samples to microvolts, but this recording has none."
+            )
+        # The traces are written already in microvolts (each channel's gain and offset folded in), so
+        # only the microvolt-to-volt factor remains and the shared offset is zero. This is the only
+        # representation that can hold heterogeneous per-channel gains and offsets in a single series.
+        eseries_kwargs["conversion"] = 1e-6
+        eseries_kwargs["offset"] = 0.0
+        # No channel_conversion: the per-channel gain is already applied to the stored data.
+    elif recording.has_scaleable_traces():
         # Spikeinterface gains and offsets are gains and offsets to micro volts.
         # The units of the ElectricalSeries should be volts so we scale correspondingly.
         micro_to_volts_conversion_factor = 1e-6
@@ -545,6 +570,7 @@ def _add_recording_segment_to_nwbfile(
     ephys_data_iterator = _recording_traces_to_hdmf_iterator(
         recording=recording,
         segment_index=segment_index,
+        data_representation=data_representation,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
     )
@@ -1040,7 +1066,7 @@ def _get_null_value_for_property(property: str, sample_data: Any, null_values_fo
 
     """
 
-    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", float: np.nan, complex: np.nan}
+    type_to_default_value = {list: [], str: "", float: np.nan, complex: np.nan}
 
     # Check for numpy scalar types
     sample_data = sample_data.item() if isinstance(sample_data, np.generic) else sample_data
@@ -1048,6 +1074,10 @@ def _get_null_value_for_property(property: str, sample_data: Any, null_values_fo
     default_value = null_values_for_properties.get(property, None)
 
     if default_value is None:
+        # Rows of a multi-dimensional column such as `waveform_mean` need a null of their own
+        # shape; a scalar cannot sit next to rows of shape (num_samples, num_channels).
+        if isinstance(sample_data, np.ndarray) and np.issubdtype(sample_data.dtype, np.floating):
+            return np.full(shape=sample_data.shape, fill_value=np.nan, dtype=sample_data.dtype)
         sample_data_type = type(sample_data)
         default_value = type_to_default_value.get(sample_data_type, None)
         if default_value is None:
@@ -1067,6 +1097,38 @@ def _get_null_value_for_property(property: str, sample_data: Any, null_values_fo
             raise ValueError(error_msg)
 
     return default_value
+
+
+def _get_null_value_for_column(column, property: str, null_values_for_properties: dict[str, Any]) -> Any:
+    """
+    Retrieve the null value for a row appended to an already existing column of a `DynamicTable`.
+
+    Parameters
+    ----------
+    column : VectorData or VectorIndex
+        The existing column that the null value has to fit into.
+    property : str
+        The name of the column, used to look up a user provided null value and to report errors.
+    null_values_for_properties : dict of str to Any
+        A dictionary mapping properties to their respective default values.
+
+    Returns
+    -------
+    Any
+        The null value to pass for this column when adding a row.
+    """
+
+    # A ragged column takes an empty row whatever its element type is. This includes a
+    # `DynamicTableRegion` such as `electrodes`, where reading a sample value to inspect its type
+    # would also dereference the rows it points at in the target table.
+    if isinstance(column, VectorIndex):
+        return null_values_for_properties.get(property, [])
+
+    return _get_null_value_for_property(
+        property=property,
+        sample_data=column[:][0],
+        null_values_for_properties=null_values_for_properties,
+    )
 
 
 def _add_electrodes_to_nwbfile(
@@ -1250,10 +1312,9 @@ def _add_electrodes_to_nwbfile(
     # See https://github.com/catalystneuro/neuroconv/issues/1629
     if len(channel_ids_to_add) > 0:
         for property in properties_requiring_null_values:
-            sample_data = nwbfile.electrodes[property][:][0]
-            null_value = _get_null_value_for_property(
+            null_value = _get_null_value_for_column(
+                column=nwbfile.electrodes[property],
                 property=property,
-                sample_data=sample_data,
                 null_values_for_properties=null_values_for_properties,
             )
             nul_values_for_rows[property] = null_value
@@ -1318,7 +1379,8 @@ def _add_electrodes_to_nwbfile(
         if not adding_ragged_array:
             sample_data = data[0]
             dtype = data.dtype
-            extended_data = np.empty(shape=electrode_table_size, dtype=dtype)
+            # Rows of a multi-dimensional property keep their own shape in the extended column.
+            extended_data = np.empty(shape=(electrode_table_size, *data.shape[1:]), dtype=dtype)
             extended_data[indices_for_new_data] = data
 
             null_value = _get_null_value_for_property(
@@ -1412,7 +1474,7 @@ def _check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment
 def _recording_traces_to_hdmf_iterator(
     recording: BaseRecording,
     segment_index: int = None,
-    return_scaled: bool = False,
+    data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
     iterator_type: str | None = "v2",
     iterator_options: dict = None,
 ) -> AbstractDataChunkIterator:
@@ -1424,8 +1486,9 @@ def _recording_traces_to_hdmf_iterator(
         A recording extractor from spikeinterface
     segment_index : int, optional
         The recording segment to add to the NWBFile.
-    return_scaled : bool, defaults to False
-        When True recording extractor objects from spikeinterface return their traces in microvolts.
+    data_representation : {"digital_counts", "physical_units"}, defaults to "digital_counts"
+        "physical_units" materializes the traces in microvolts (each channel's gain and offset applied);
+        "digital_counts" keeps the raw sample values.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -1453,14 +1516,18 @@ def _recording_traces_to_hdmf_iterator(
 
     iterator_options = dict() if iterator_options is None else iterator_options
 
+    # "physical_units" materializes the traces in microvolts (gains and offsets folded in);
+    # "digital_counts" keeps the raw sample values.
+    return_in_uV = data_representation == "physical_units"
+
     if iterator_type is None:
         _check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
-        traces_as_iterator = recording.get_traces(return_scaled=return_scaled, segment_index=segment_index)
+        traces_as_iterator = recording.get_traces(return_in_uV=return_in_uV, segment_index=segment_index)
     elif iterator_type == "v2":
         traces_as_iterator = SpikeInterfaceRecordingDataChunkIterator(
             recording=recording,
             segment_index=segment_index,
-            return_scaled=return_scaled,
+            return_in_uV=return_in_uV,
             **iterator_options,
         )
     else:
@@ -1491,6 +1558,14 @@ def _report_variable_offset(recording: BaseRecording) -> None:
     message_lines.append("Multiple offsets were found per channel IDs:")
     for offset, ids in offset_to_channel_ids.items():
         message_lines.append(f"  Offset {offset}: Channel IDs {ids}")
+    message_lines.append("")
+    message_lines.append(
+        "A single ElectricalSeries can store only one scalar offset. To write these channels as one "
+        "series anyway, pass data_representation='physical_units' to add_recording_to_nwbfile (this "
+        "folds each channel's offset into the data and writes float physical values). Alternatively, "
+        "drop the channels that do not share the common offset with "
+        "recording.remove_channels(remove_channel_ids=[...]) and write them as their own series."
+    )
     message = "\n".join(message_lines)
 
     raise ValueError(message)
@@ -2513,7 +2588,9 @@ def _add_units_table_to_nwbfile(
         unit_names_used_previously = []
         if "unit_name" in units_table_previous_columns:
             unit_names_used_previously = units_table["unit_name"].data
-        has_electrodes_column = "electrodes" in units_table.colnames
+        # Electrodes are only used to discriminate between units with the same name when the
+        # current call actually provides them; otherwise there is nothing to compare against.
+        has_electrodes_column = "electrodes" in units_table.colnames and unit_electrode_indices is not None
 
         rows_in_data = [index for index in range(num_units)]
         if not has_electrodes_column:
@@ -2525,8 +2602,11 @@ def _add_units_table_to_nwbfile(
                     rows_to_add.append(index)
                 else:
                     unit_name = unit_name_array[index]
-                    previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]].electrodes
-                    if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
+                    # `index=True` returns the electrode indices of the row as they are stored,
+                    # without dereferencing them into a DataFrame of the electrodes table.
+                    matching_rows = np.where(units_table["unit_name"][:] == unit_name)[0]
+                    previous_electrodes = units_table["electrodes"].get(matching_rows[0], index=True)
+                    if list(previous_electrodes) != list(unit_electrode_indices[index]):
                         rows_to_add.append(index)
 
     # Add rows for pre-existing columns. Each row needs values for all existing columns;
@@ -2536,11 +2616,13 @@ def _add_units_table_to_nwbfile(
     # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
     # See https://github.com/catalystneuro/neuroconv/issues/1629
     if len(rows_to_add) > 0:
-        for property in properties_requiring_null_values - {"electrodes"}:  # TODO, fix electrodes
-            sample_data = units_table[property][:][0]
-            null_value = _get_null_value_for_property(
+        for property in properties_requiring_null_values:
+            # `electrodes` is one of these: units added without electrode indices to a table that
+            # already has the column get an empty region, because passing no value at all makes
+            # pynwb write `None` into the DynamicTableRegion and fail when hdmf checks its bounds.
+            null_value = _get_null_value_for_column(
+                column=units_table[property],
                 property=property,
-                sample_data=sample_data,
                 null_values_for_properties=null_values_for_properties,
             )
             null_values_for_row[property] = null_value
@@ -2600,7 +2682,8 @@ def _add_units_table_to_nwbfile(
         if not adding_ragged_array:
             sample_data = data[0]
             dtype = data.dtype
-            extended_data = np.empty(shape=unit_table_size, dtype=dtype)
+            # Rows of a multi-dimensional property keep their own shape in the extended column.
+            extended_data = np.empty(shape=(unit_table_size, *data.shape[1:]), dtype=dtype)
             extended_data[indices_for_new_data] = data
 
             null_value = _get_null_value_for_property(

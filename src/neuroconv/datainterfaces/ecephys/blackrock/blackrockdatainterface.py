@@ -53,6 +53,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         nsx_override: FilePath | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
     ):
         """
         Load and prepare data corresponding to Blackrock interface.
@@ -63,6 +64,9 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             Path to the Blackrock file with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
         verbose: bool, default: True
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"blackrock_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -106,10 +110,13 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             self.file_path = file_path
 
         self.stream_id = str(nsx_to_load)
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+        if metadata_key is None:
+            self.metadata_key = "blackrock_recording"
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         # Open file and extract headers
         basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:

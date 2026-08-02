@@ -5,8 +5,8 @@ from pydantic import FilePath, validate_call
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools.events import (
     _get_event_type_source_ids,
-    resolve_detection_plan,
-    validate_detection_configuration,
+    _resolve_detection_plan,
+    _validate_detection_configuration,
 )
 from ....tools.signal_processing import (
     _condition_signal,
@@ -70,13 +70,16 @@ class IntanDigitalInterface(BaseEventsInterface):
             supported by this interface; pass a single recording.
         detection_configuration : dict, optional
             Which digital lines to read and how, keyed by the line's ``signal_source_id`` (the header's
-            name for it, e.g. ``{"DIGITAL-IN-01": [{"detection": "rising"}]}``). Each value is a **list**
+            name for it, e.g. ``{"DIGITAL-IN-01": [{"signal_conditioning": {"binarize": "midpoint"},
+            "detection": "rising"}]}``). Each value is a **list**
             of detection specs, one per event type derived from that line, since a line can yield more
             than one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point event at each
             edge) or ``"high_period"`` / ``"low_period"`` (a durative event, onset at one edge and
-            duration to the next opposite edge), and it is required. ``signal_conditioning`` is omitted
-            for an Intan digital line, which is already a ``0``/``1`` signal. An optional ``event_name``
-            replaces the derived identifier and pins it against later edits.
+            duration to the next opposite edge), and it is required. ``signal_conditioning`` is required
+            too and says how the signal becomes a line: an Intan digital line is already ``0``/``1``, so
+            it takes ``{"binarize": "midpoint"}``, whose cut falls strictly between the two levels
+            whatever they are. An optional ``event_name`` replaces the derived identifier and pins it
+            against later edits.
 
             If None (default), every line the header exposes is read as a ``"high_period"``, lossless for
             an active-high line; use ``"low_period"`` for an active-low one. When given, only the named
@@ -94,18 +97,19 @@ class IntanDigitalInterface(BaseEventsInterface):
         # available_signals: signal_source_id (the header's channel name) -> its descriptor. Every
         # discovered signal is a "line" because the word is already demultiplexed into strictly 0/1
         # per-line traces, which is settled structurally and is what lets the validator reject both a
-        # 'bits' carve (there is no packed word left to carve) and a 'thresholds' cut (already a line).
+        # 'bits' carve: there is no packed word left to carve.
         self._available_signals = self._get_available_signals(self._recording_extractors)
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every line as a "high_period", the
             # lossless durative reading (onset at the rising edge, duration to the falling edge).
             detection_configuration = {
-                signal_source_id: [{"detection": "high_period"}] for signal_source_id in self._available_signals
+                signal_source_id: [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}]
+                for signal_source_id in self._available_signals
             }
         # One construction-time check, on the default as well as on a caller-supplied configuration: the
         # default is machine-built but its inputs are not, so it too can resolve two event types to the
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
-        validate_detection_configuration(detection_configuration, self._available_signals)
+        _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
         super().__init__(
@@ -178,7 +182,7 @@ class IntanDigitalInterface(BaseEventsInterface):
         # Built here rather than held on the interface: the configuration is the source of truth, and the
         # plan is pure and cheap to rebuild. Grouped by signal, so a line is read once however many event
         # types it yields.
-        detection_plan = resolve_detection_plan(self._detection_configuration)
+        detection_plan = _resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
         for signal_source_id, detection_specs in detection_plan.items():
@@ -190,7 +194,7 @@ class IntanDigitalInterface(BaseEventsInterface):
             for event_type_source_id, spec in detection_specs:
                 # An Intan digital line arrives already demultiplexed into a 0/1 trace, so no conditioning
                 # applies and the reading is taken from the line's own values, with no cut anywhere.
-                conditioned = _condition_signal(trace, spec.get("signal_conditioning"))
+                conditioned = _condition_signal(trace, spec["signal_conditioning"])
                 onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
                 onsets, durations = _frames_to_seconds(onset_frames, offset_frames, read_clock)
                 events_data_dict[event_type_source_id] = _EventsData(

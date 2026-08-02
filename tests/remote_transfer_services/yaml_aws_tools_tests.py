@@ -57,7 +57,7 @@ class TestRcloneTransferBatchJob(unittest.TestCase):
             "team_drive = \n",
             "\n",
         ]
-        with open(file=self.test_config_file_path, mode="w") as io:
+        with open(file=self.test_config_file_path, mode="w", encoding="utf-8") as io:
             io.writelines(rclone_config_contents)
 
         self.efs_client = boto3.client(

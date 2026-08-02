@@ -85,10 +85,18 @@ class TestIntanDigitalInterface:
             file_path=self.FILE_PATH,
             detection_configuration={
                 "DIGITAL-IN-01": [
-                    {"detection": "rising", "event_name": "rising"},
-                    {"detection": "falling", "event_name": "falling"},
-                    {"detection": "high_period", "event_name": "high_period"},
-                    {"detection": "low_period", "event_name": "low_period"},
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising", "event_name": "rising"},
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling", "event_name": "falling"},
+                    {
+                        "signal_conditioning": {"binarize": "midpoint"},
+                        "detection": "high_period",
+                        "event_name": "high_period",
+                    },
+                    {
+                        "signal_conditioning": {"binarize": "midpoint"},
+                        "detection": "low_period",
+                        "event_name": "low_period",
+                    },
                 ]
             },
         )
@@ -206,8 +214,8 @@ class TestIntanDigitalBothWords:
         interface = IntanDigitalInterface(
             file_path=self.FILE_PATH,
             detection_configuration={
-                "DIGITAL-IN-14": [{"detection": "high_period"}],
-                "DIGITAL-OUT-14": [{"detection": "high_period"}],
+                "DIGITAL-IN-14": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}],
+                "DIGITAL-OUT-14": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}],
             },
         )
         nwbfile = mock_NWBFile()
@@ -253,9 +261,15 @@ class TestIntanDigitalBothWords:
             file_path=self.FILE_PATH,
             metadata_key=metadata_key,  # namespaces this interface's Events block
             detection_configuration={
-                "DIGITAL-IN-13": [{"detection": "rising", "event_name": onset_id}],  # point onset
-                "DIGITAL-IN-14": [{"detection": "high_period", "event_name": high_id}],  # high span
-                "DIGITAL-IN-15": [{"detection": "low_period", "event_name": low_id}],  # low span
+                "DIGITAL-IN-13": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising", "event_name": onset_id}
+                ],  # point onset
+                "DIGITAL-IN-14": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period", "event_name": high_id}
+                ],  # high span
+                "DIGITAL-IN-15": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "low_period", "event_name": low_id}
+                ],  # low span
             },
         )
         metadata = interface.get_metadata()
@@ -313,9 +327,15 @@ class TestIntanDigitalBothWords:
         interface = IntanDigitalInterface(
             file_path=self.FILE_PATH,
             detection_configuration={
-                "DIGITAL-IN-13": [{"detection": "rising", "event_name": "onset"}],  # stays solo
-                "DIGITAL-IN-14": [{"detection": "high_period", "event_name": "high"}],  # pooled
-                "DIGITAL-IN-15": [{"detection": "low_period", "event_name": "low"}],  # pooled
+                "DIGITAL-IN-13": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising", "event_name": "onset"}
+                ],  # stays solo
+                "DIGITAL-IN-14": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period", "event_name": "high"}
+                ],  # pooled
+                "DIGITAL-IN-15": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "low_period", "event_name": "low"}
+                ],  # pooled
             },
         )
         metadata = interface.get_metadata()
@@ -369,12 +389,25 @@ class TestIntanDigitalConfigurationIsCheckedAgainstTheInventory:
                 },
             )
 
-    def test_a_line_needs_no_thresholds(self):
-        with pytest.raises(ValueError, match="already\\na single digital line|already a single digital line"):
+    def test_a_line_takes_a_cut_but_not_a_bit_carve(self):
+        """A line's spelling is a cut; what it refuses is `bits`, since there is no word left to carve.
+
+        Intan's reader demultiplexes the digital word before this interface sees it, so every signal it
+        exposes is a line and none of them is a packed integer.
+        """
+        interface = IntanDigitalInterface(
+            file_path=self.FILE_PATH,
+            detection_configuration={
+                "DIGITAL-IN-01": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
+            },
+        )
+        assert interface._get_events_data_dict()["DIGITAL-IN-01"].timestamps.size >= 0
+
+        with pytest.raises(ValueError, match="not a packed\\nword|not a packed word"):
             IntanDigitalInterface(
                 file_path=self.FILE_PATH,
                 detection_configuration={
-                    "DIGITAL-IN-01": [{"signal_conditioning": {"thresholds": [0.5]}, "detection": "rising"}]
+                    "DIGITAL-IN-01": [{"signal_conditioning": {"bits": [0]}, "detection": "rising"}]
                 },
             )
 
@@ -384,5 +417,7 @@ class TestIntanDigitalConfigurationIsCheckedAgainstTheInventory:
         with pytest.raises(ValueError, match=r"'DIN-00', which is not one of the file's signals: \['DIGITAL-IN-01'\]"):
             IntanDigitalInterface(
                 file_path=self.FILE_PATH,
-                detection_configuration={"DIN-00": [{"detection": "rising"}]},
+                detection_configuration={
+                    "DIN-00": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
+                },
             )

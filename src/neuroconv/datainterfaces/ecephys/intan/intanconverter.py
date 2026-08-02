@@ -160,7 +160,10 @@ class IntanConverter(ConverterPipe):
             if entry["interface"] is IntanAnalogInterface:
                 interface_kwargs["stream_name"] = stream_name
             elif entry["interface"] is IntanRecordingInterface:
-                interface_kwargs["es_key"] = interface_kwargs.pop("metadata_key")
+                # The recording interface takes both: ``metadata_key`` keys the dict-based metadata and
+                # ``es_key`` keys the old list-based metadata, which used this same name before the dict
+                # format existed.
+                interface_kwargs["es_key"] = interface_kwargs["metadata_key"]
             if saved_files_are_split:
                 interface_kwargs["saved_files_are_split"] = True
             data_interfaces[entry["interface_name"]] = entry["interface"](**interface_kwargs)

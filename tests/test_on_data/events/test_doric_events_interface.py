@@ -72,7 +72,10 @@ class TestDoricEventsSingleLine:
     def test_rising_detection_is_onset_only(self):
         """detection='rising' reads point events (onset timestamps only, no duration column)."""
         interface = DoricEventsInterface(
-            file_path=self.FILE_PATH, detection_configuration={"Camera1": [{"detection": "rising"}]}
+            file_path=self.FILE_PATH,
+            detection_configuration={
+                "Camera1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
+            },
         )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
@@ -85,7 +88,12 @@ class TestDoricEventsSingleLine:
         """A signal yielding two event types derives an identifier per spec, handle plus its reading."""
         interface = DoricEventsInterface(
             file_path=self.FILE_PATH,
-            detection_configuration={"Camera1": [{"detection": "rising"}, {"detection": "falling"}]},
+            detection_configuration={
+                "Camera1": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"},
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"},
+                ]
+            },
         )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
@@ -212,7 +220,10 @@ class TestDoricEventsMultiLine:
     def test_selection_by_inclusion(self):
         """Naming one line derives only that line; the others are not written."""
         interface = DoricEventsInterface(
-            file_path=self.FILE_PATH, detection_configuration={"CAM1": [{"detection": "high_period"}]}
+            file_path=self.FILE_PATH,
+            detection_configuration={
+                "CAM1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}]
+            },
         )
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
