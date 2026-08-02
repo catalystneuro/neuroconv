@@ -119,9 +119,7 @@ def _get_ophys_metadata_placeholders():
         },
         "MicroscopySeries": {
             default_metadata_key: {
-                # The name is defaulted from the photon series type where the series is built, since only
-                # there is the type known; see ``_add_photon_series_to_nwbfile``.
-                "name": "TwoPhotonSeries",
+                "name": "MicroscopySeries",
                 "unit": "n.a.",
                 "imaging_plane_metadata_key": default_metadata_key,
             },
@@ -393,14 +391,14 @@ def _add_photon_series_to_nwbfile(
     # Copy to avoid mutation
     photon_series_kwargs = photon_series_metadata.copy()
 
-    # Required by the NWB photon-series object; default any the interface did not supply rather than
-    # raising. See ``_add_imaging_plane_to_nwbfile``. The name defaults to the neurodata type being
-    # written, not to the ``MicroscopySeries`` registry key: that key is a forward-looking handle that no
-    # file records, while the object's name goes into the file and has to be true of the object, which is
-    # a ``TwoPhotonSeries`` or a ``OnePhotonSeries`` today.
-    photon_series_kwargs.setdefault("name", photon_series_type)
+    # Required by the NWB photon-series object; default any the interface did not supply from the central
+    # placeholder template rather than raising. See ``_add_imaging_plane_to_nwbfile``. The default name is
+    # the generic ``MicroscopySeries``: an interface that knows what it is writing states its own name,
+    # as ``BaseImagingExtractorInterface`` does.
+    required_fields = ["name", "unit"]
     default_series = _get_ophys_metadata_placeholders()["Ophys"]["MicroscopySeries"]["default_metadata_key"]
-    photon_series_kwargs.setdefault("unit", default_series["unit"])
+    for field in required_fields:
+        photon_series_kwargs.setdefault(field, default_series[field])
 
     # Resolve imaging plane
     imaging_plane_metadata_key = photon_series_kwargs.pop("imaging_plane_metadata_key", None)

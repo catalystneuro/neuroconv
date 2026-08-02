@@ -813,13 +813,10 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         metadata["NWBFile"]["session_start_time"] = session_start_time
         if use_new_metadata_format:
-            metadata["Ophys"] = {
-                "MicroscopySeries": {
-                    self.metadata_key: {
-                        "description": "Imaging data from mock generator.",
-                    },
-                },
-            }
+            # Add to the entry the base already named rather than replacing the block.
+            metadata["Ophys"]["MicroscopySeries"][self.metadata_key].update(
+                description="Imaging data from mock generator."
+            )
         return metadata
 
     def add_to_nwbfile(
