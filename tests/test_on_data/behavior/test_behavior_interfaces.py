@@ -182,8 +182,8 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
         folder_path = Path(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
         cls.device_name = "BehavCam2"
         cls.image_series_name = "BehavCamImageSeries"
