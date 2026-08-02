@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from hdmf.testing import TestCase
 from parameterized import parameterized
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import (
     DoricFiberPhotometryInterface,
@@ -341,189 +341,185 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
         expected_fiber_photometry_response_series = deepcopy(self.expected_fiber_photometry_response_series)
         expected_fiber_photometry_table = deepcopy(self.expected_fiber_photometry_table)
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            # Check device models
-            for device_model_dict in expected_device_models:
-                expected_name = device_model_dict.pop("name")
-                assert (
-                    expected_name in nwbfile.device_models
-                ), f"Device model {expected_name} not found in NWBFile device models"
-                device_model = nwbfile.device_models[expected_name]
-                for key, expected_value in device_model_dict.items():
-                    if isinstance(expected_value, list):
-                        np.testing.assert_equal(
-                            getattr(device_model, key), expected_value
-                        ), f"Device model {expected_name} attribute {key} is {getattr(device_model, key)} but expected {expected_value}"
-                    else:
-                        assert (
-                            getattr(device_model, key) == expected_value
-                        ), f"Device model {expected_name} attribute {key} is {getattr(device_model, key)} but expected {expected_value}"
-
-            # Check devices
-            for device_dict in expected_devices:
-                expected_name = device_dict.pop("name")
-                assert expected_name in nwbfile.devices
-                expected_model = device_dict.pop("model")
-                assert (
-                    expected_model in nwbfile.device_models
-                ), f"Device model {expected_model} not found in NWBFile device models"
-                expected_model = nwbfile.device_models[expected_model]
-                device = nwbfile.devices[expected_name]
-                assert (
-                    device.model is expected_model
-                ), f"Device {expected_name} model is {device.model} but expected {expected_model}"
-                for key, expected_value in device_dict.items():
-                    if isinstance(expected_value, list):
-                        np.testing.assert_equal(
-                            getattr(device, key), expected_value
-                        ), f"Device {expected_name} attribute {key} is {getattr(device, key)} but expected {expected_value}"
-                    else:
-                        assert (
-                            getattr(device, key) == expected_value
-                        ), f"Device {expected_name} attribute {key} is {getattr(device, key)} but expected {expected_value}"
-
-            # Check biological containers
-            fiber_photometry_lab_meta_data = nwbfile.lab_meta_data["fiber_photometry"]
-
-            # Check fiber photometry viruses
-            if expected_fiber_photometry_viruses:
-                assert (
-                    fiber_photometry_lab_meta_data.fiber_photometry_viruses is not None
-                ), "FiberPhotometryViruses container not found"
-                viruses = fiber_photometry_lab_meta_data.fiber_photometry_viruses.viral_vectors
-                assert len(viruses) == len(
-                    expected_fiber_photometry_viruses
-                ), f"Expected {len(expected_fiber_photometry_viruses)} viruses but found {len(viruses)}"
-
-                for virus_dict in expected_fiber_photometry_viruses:
-                    expected_name = virus_dict.pop("name")
-                    assert expected_name in viruses, f"Virus {expected_name} not found in FiberPhotometryViruses"
-                    virus = viruses[expected_name]
-                    for key, expected_value in virus_dict.items():
-                        assert (
-                            getattr(virus, key) == expected_value
-                        ), f"Virus {expected_name} attribute {key} is {getattr(virus, key)} but expected {expected_value}"
-
-            # Check fiber photometry virus injections
-            if expected_fiber_photometry_virus_injections:
-                assert (
-                    fiber_photometry_lab_meta_data.fiber_photometry_virus_injections is not None
-                ), "FiberPhotometryVirusInjections container not found"
-                virus_injections = (
-                    fiber_photometry_lab_meta_data.fiber_photometry_virus_injections.viral_vector_injections
-                )
-                assert len(virus_injections) == len(
-                    expected_fiber_photometry_virus_injections
-                ), f"Expected {len(expected_fiber_photometry_virus_injections)} virus injections but found {len(virus_injections)}"
-
-                for virus_injection_dict in expected_fiber_photometry_virus_injections:
-                    expected_name = virus_injection_dict.pop("name")
-                    expected_viral_vector = virus_injection_dict.pop("viral_vector")
+        # Check device models
+        for device_model_dict in expected_device_models:
+            expected_name = device_model_dict.pop("name")
+            assert (
+                expected_name in nwbfile.device_models
+            ), f"Device model {expected_name} not found in NWBFile device models"
+            device_model = nwbfile.device_models[expected_name]
+            for key, expected_value in device_model_dict.items():
+                if isinstance(expected_value, list):
+                    np.testing.assert_equal(
+                        getattr(device_model, key), expected_value
+                    ), f"Device model {expected_name} attribute {key} is {getattr(device_model, key)} but expected {expected_value}"
+                else:
                     assert (
-                        expected_name in virus_injections
-                    ), f"Virus injection {expected_name} not found in FiberPhotometryVirusInjections"
-                    virus_injection = virus_injections[expected_name]
+                        getattr(device_model, key) == expected_value
+                    ), f"Device model {expected_name} attribute {key} is {getattr(device_model, key)} but expected {expected_value}"
+
+        # Check devices
+        for device_dict in expected_devices:
+            expected_name = device_dict.pop("name")
+            assert expected_name in nwbfile.devices
+            expected_model = device_dict.pop("model")
+            assert (
+                expected_model in nwbfile.device_models
+            ), f"Device model {expected_model} not found in NWBFile device models"
+            expected_model = nwbfile.device_models[expected_model]
+            device = nwbfile.devices[expected_name]
+            assert (
+                device.model is expected_model
+            ), f"Device {expected_name} model is {device.model} but expected {expected_model}"
+            for key, expected_value in device_dict.items():
+                if isinstance(expected_value, list):
+                    np.testing.assert_equal(
+                        getattr(device, key), expected_value
+                    ), f"Device {expected_name} attribute {key} is {getattr(device, key)} but expected {expected_value}"
+                else:
                     assert (
-                        virus_injection.viral_vector.name == expected_viral_vector
-                    ), f"Virus injection {expected_name} viral vector is {virus_injection.viral_vector.name} but expected {expected_viral_vector}"
-                    for key, expected_value in virus_injection_dict.items():
-                        assert (
-                            getattr(virus_injection, key) == expected_value
-                        ), f"Virus injection {expected_name} attribute {key} is {getattr(virus_injection, key)} but expected {expected_value}"
+                        getattr(device, key) == expected_value
+                    ), f"Device {expected_name} attribute {key} is {getattr(device, key)} but expected {expected_value}"
 
-            # Check fiber photometry indicators
-            if expected_fiber_photometry_indicators:
-                assert (
-                    fiber_photometry_lab_meta_data.fiber_photometry_indicators is not None
-                ), "FiberPhotometryIndicators container not found"
-                indicators = fiber_photometry_lab_meta_data.fiber_photometry_indicators.indicators
-                assert len(indicators) == len(
-                    expected_fiber_photometry_indicators
-                ), f"Expected {len(expected_fiber_photometry_indicators)} indicators but found {len(indicators)}"
+        # Check biological containers
+        fiber_photometry_lab_meta_data = nwbfile.lab_meta_data["fiber_photometry"]
 
-                for indicator_dict in expected_fiber_photometry_indicators:
-                    expected_name = indicator_dict.pop("name")
+        # Check fiber photometry viruses
+        if expected_fiber_photometry_viruses:
+            assert (
+                fiber_photometry_lab_meta_data.fiber_photometry_viruses is not None
+            ), "FiberPhotometryViruses container not found"
+            viruses = fiber_photometry_lab_meta_data.fiber_photometry_viruses.viral_vectors
+            assert len(viruses) == len(
+                expected_fiber_photometry_viruses
+            ), f"Expected {len(expected_fiber_photometry_viruses)} viruses but found {len(viruses)}"
+
+            for virus_dict in expected_fiber_photometry_viruses:
+                expected_name = virus_dict.pop("name")
+                assert expected_name in viruses, f"Virus {expected_name} not found in FiberPhotometryViruses"
+                virus = viruses[expected_name]
+                for key, expected_value in virus_dict.items():
                     assert (
-                        expected_name in indicators
-                    ), f"Indicator {expected_name} not found in FiberPhotometryIndicators"
-                    indicator = indicators[expected_name]
-                    if "viral_vector_injection" in indicator_dict:
-                        expected_viral_vector_injection = indicator_dict.pop("viral_vector_injection")
-                        assert (
-                            indicator.viral_vector_injection.name == expected_viral_vector_injection
-                        ), f"Indicator {expected_name} viral vector injection is {indicator.viral_vector_injection.name} but expected {expected_viral_vector_injection}"
-                    for key, expected_value in indicator_dict.items():
-                        assert (
-                            getattr(indicator, key) == expected_value
-                        ), f"Indicator {expected_name} attribute {key} is {getattr(indicator, key)} but expected {expected_value}"
+                        getattr(virus, key) == expected_value
+                    ), f"Virus {expected_name} attribute {key} is {getattr(virus, key)} but expected {expected_value}"
 
-            # Check object relationships
-            # 1. Devices properly reference their models
-            for device_dict in deepcopy(self.expected_devices):
-                device_name = device_dict["name"]
-                if device_name in nwbfile.devices:
-                    device = nwbfile.devices[device_name]
-                    if hasattr(device, "model") and device.model is not None:
-                        model_name = device.model.name
-                        assert (
-                            model_name in nwbfile.device_models
-                        ), f"Device {device_name} references model {model_name} which is not found in device_models"
-                        assert hasattr(
-                            nwbfile.device_models[model_name], "manufacturer"
-                        ), f"Device model {model_name} should have manufacturer attribute"
+        # Check fiber photometry virus injections
+        if expected_fiber_photometry_virus_injections:
+            assert (
+                fiber_photometry_lab_meta_data.fiber_photometry_virus_injections is not None
+            ), "FiberPhotometryVirusInjections container not found"
+            virus_injections = fiber_photometry_lab_meta_data.fiber_photometry_virus_injections.viral_vector_injections
+            assert len(virus_injections) == len(
+                expected_fiber_photometry_virus_injections
+            ), f"Expected {len(expected_fiber_photometry_virus_injections)} virus injections but found {len(virus_injections)}"
 
-            for cvs_dict in expected_commanded_voltage_series:
-                expected_name = cvs_dict.pop("name")
-                assert expected_name in nwbfile.acquisition
-                cvs = nwbfile.acquisition[expected_name]
-                for key, expected_value in cvs_dict.items():
+            for virus_injection_dict in expected_fiber_photometry_virus_injections:
+                expected_name = virus_injection_dict.pop("name")
+                expected_viral_vector = virus_injection_dict.pop("viral_vector")
+                assert (
+                    expected_name in virus_injections
+                ), f"Virus injection {expected_name} not found in FiberPhotometryVirusInjections"
+                virus_injection = virus_injections[expected_name]
+                assert (
+                    virus_injection.viral_vector.name == expected_viral_vector
+                ), f"Virus injection {expected_name} viral vector is {virus_injection.viral_vector.name} but expected {expected_viral_vector}"
+                for key, expected_value in virus_injection_dict.items():
                     assert (
-                        getattr(cvs, key) == expected_value
-                    ), f"CommandedVoltageSeries {expected_name} attribute {key} is {getattr(cvs, key)} but expected {expected_value}"
+                        getattr(virus_injection, key) == expected_value
+                    ), f"Virus injection {expected_name} attribute {key} is {getattr(virus_injection, key)} but expected {expected_value}"
 
-            for fp_dict in expected_fiber_photometry_response_series:
-                expected_name = fp_dict.pop("name")
-                assert expected_name in nwbfile.acquisition
-                fp = nwbfile.acquisition[expected_name]
-                assert (
-                    fp.description == fp_dict["description"]
-                ), f"FiberPhotometryResponseSeries {expected_name} description is {fp.description} but expected {fp_dict['description']}"
-                assert (
-                    fp.unit == fp_dict["unit"]
-                ), f"FiberPhotometryResponseSeries {expected_name} unit is {fp.unit} but expected {fp_dict['unit']}"
-                assert (
-                    fp.fiber_photometry_table_region.data[:] == fp_dict["fiber_photometry_table_region"]
-                ), f"FiberPhotometryResponseSeries {expected_name} region is {fp.fiber_photometry_table_region.data[:]} but expected {fp_dict['fiber_photometry_table_region']}"
-                assert (
-                    fp.fiber_photometry_table_region.description == fp_dict["fiber_photometry_table_region_description"]
-                ), f"FiberPhotometryResponseSeries {expected_name} region description is {fp.fiber_photometry_table_region.description} but expected {fp_dict['fiber_photometry_table_region_description']}"
+        # Check fiber photometry indicators
+        if expected_fiber_photometry_indicators:
+            assert (
+                fiber_photometry_lab_meta_data.fiber_photometry_indicators is not None
+            ), "FiberPhotometryIndicators container not found"
+            indicators = fiber_photometry_lab_meta_data.fiber_photometry_indicators.indicators
+            assert len(indicators) == len(
+                expected_fiber_photometry_indicators
+            ), f"Expected {len(expected_fiber_photometry_indicators)} indicators but found {len(indicators)}"
 
-            fiber_photometry_table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
-            assert fiber_photometry_table.name == expected_fiber_photometry_table["name"]
-            assert fiber_photometry_table.description == expected_fiber_photometry_table["description"]
-            for i, row_dict in enumerate(expected_fiber_photometry_table["rows"]):
-                expected_location = row_dict.pop("location")
-                location_index = fiber_photometry_table.colnames.index("location")
-                expected_excitation_wavelength = row_dict.pop("excitation_wavelength_in_nm")
-                excitation_wavelength_index = fiber_photometry_table.colnames.index("excitation_wavelength_in_nm")
-                expected_emission_wavelength = row_dict.pop("emission_wavelength_in_nm")
-                emission_wavelength_index = fiber_photometry_table.colnames.index("emission_wavelength_in_nm")
-                assert (
-                    expected_location == fiber_photometry_table.columns[location_index][i]
-                ), f"FiberPhotometryTable row {i} location is {fiber_photometry_table.columns['location'][i]} but expected {expected_location}"
-                assert (
-                    expected_excitation_wavelength == fiber_photometry_table.columns[excitation_wavelength_index][i]
-                ), f"FiberPhotometryTable row {i} excitation_wavelength is {fiber_photometry_table.columns['excitation_wavelength_in_nm'][i]} but expected {expected_excitation_wavelength}"
-                assert (
-                    expected_emission_wavelength == fiber_photometry_table.columns[emission_wavelength_index][i]
-                ), f"FiberPhotometryTable row {i} emission_wavelength is {fiber_photometry_table.columns['emission_wavelength_in_nm'][i]} but expected {expected_emission_wavelength}"
-                for key, expected_value in row_dict.items():
-                    key_index = fiber_photometry_table.colnames.index(key)
+            for indicator_dict in expected_fiber_photometry_indicators:
+                expected_name = indicator_dict.pop("name")
+                assert expected_name in indicators, f"Indicator {expected_name} not found in FiberPhotometryIndicators"
+                indicator = indicators[expected_name]
+                if "viral_vector_injection" in indicator_dict:
+                    expected_viral_vector_injection = indicator_dict.pop("viral_vector_injection")
                     assert (
-                        expected_value == fiber_photometry_table.columns[key_index].data[i].name
-                    ), f"FiberPhotometryTable row {i} attribute {key} is {fiber_photometry_table.columns[key_index].data[i].name} but expected {expected_value}"
+                        indicator.viral_vector_injection.name == expected_viral_vector_injection
+                    ), f"Indicator {expected_name} viral vector injection is {indicator.viral_vector_injection.name} but expected {expected_viral_vector_injection}"
+                for key, expected_value in indicator_dict.items():
+                    assert (
+                        getattr(indicator, key) == expected_value
+                    ), f"Indicator {expected_name} attribute {key} is {getattr(indicator, key)} but expected {expected_value}"
+
+        # Check object relationships
+        # 1. Devices properly reference their models
+        for device_dict in deepcopy(self.expected_devices):
+            device_name = device_dict["name"]
+            if device_name in nwbfile.devices:
+                device = nwbfile.devices[device_name]
+                if hasattr(device, "model") and device.model is not None:
+                    model_name = device.model.name
+                    assert (
+                        model_name in nwbfile.device_models
+                    ), f"Device {device_name} references model {model_name} which is not found in device_models"
+                    assert hasattr(
+                        nwbfile.device_models[model_name], "manufacturer"
+                    ), f"Device model {model_name} should have manufacturer attribute"
+
+        for cvs_dict in expected_commanded_voltage_series:
+            expected_name = cvs_dict.pop("name")
+            assert expected_name in nwbfile.acquisition
+            cvs = nwbfile.acquisition[expected_name]
+            for key, expected_value in cvs_dict.items():
+                assert (
+                    getattr(cvs, key) == expected_value
+                ), f"CommandedVoltageSeries {expected_name} attribute {key} is {getattr(cvs, key)} but expected {expected_value}"
+
+        for fp_dict in expected_fiber_photometry_response_series:
+            expected_name = fp_dict.pop("name")
+            assert expected_name in nwbfile.acquisition
+            fp = nwbfile.acquisition[expected_name]
+            assert (
+                fp.description == fp_dict["description"]
+            ), f"FiberPhotometryResponseSeries {expected_name} description is {fp.description} but expected {fp_dict['description']}"
+            assert (
+                fp.unit == fp_dict["unit"]
+            ), f"FiberPhotometryResponseSeries {expected_name} unit is {fp.unit} but expected {fp_dict['unit']}"
+            assert (
+                fp.fiber_photometry_table_region.data[:] == fp_dict["fiber_photometry_table_region"]
+            ), f"FiberPhotometryResponseSeries {expected_name} region is {fp.fiber_photometry_table_region.data[:]} but expected {fp_dict['fiber_photometry_table_region']}"
+            assert (
+                fp.fiber_photometry_table_region.description == fp_dict["fiber_photometry_table_region_description"]
+            ), f"FiberPhotometryResponseSeries {expected_name} region description is {fp.fiber_photometry_table_region.description} but expected {fp_dict['fiber_photometry_table_region_description']}"
+
+        fiber_photometry_table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+        assert fiber_photometry_table.name == expected_fiber_photometry_table["name"]
+        assert fiber_photometry_table.description == expected_fiber_photometry_table["description"]
+        for i, row_dict in enumerate(expected_fiber_photometry_table["rows"]):
+            expected_location = row_dict.pop("location")
+            location_index = fiber_photometry_table.colnames.index("location")
+            expected_excitation_wavelength = row_dict.pop("excitation_wavelength_in_nm")
+            excitation_wavelength_index = fiber_photometry_table.colnames.index("excitation_wavelength_in_nm")
+            expected_emission_wavelength = row_dict.pop("emission_wavelength_in_nm")
+            emission_wavelength_index = fiber_photometry_table.colnames.index("emission_wavelength_in_nm")
+            assert (
+                expected_location == fiber_photometry_table.columns[location_index][i]
+            ), f"FiberPhotometryTable row {i} location is {fiber_photometry_table.columns['location'][i]} but expected {expected_location}"
+            assert (
+                expected_excitation_wavelength == fiber_photometry_table.columns[excitation_wavelength_index][i]
+            ), f"FiberPhotometryTable row {i} excitation_wavelength is {fiber_photometry_table.columns['excitation_wavelength_in_nm'][i]} but expected {expected_excitation_wavelength}"
+            assert (
+                expected_emission_wavelength == fiber_photometry_table.columns[emission_wavelength_index][i]
+            ), f"FiberPhotometryTable row {i} emission_wavelength is {fiber_photometry_table.columns['emission_wavelength_in_nm'][i]} but expected {expected_emission_wavelength}"
+            for key, expected_value in row_dict.items():
+                key_index = fiber_photometry_table.colnames.index(key)
+                assert (
+                    expected_value == fiber_photometry_table.columns[key_index].data[i].name
+                ), f"FiberPhotometryTable row {i} attribute {key} is {fiber_photometry_table.columns[key_index].data[i].name} but expected {expected_value}"
+        nwbfile.read_io.close()
 
     @parameterized.expand(
         [
@@ -597,7 +593,7 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
         with pytest.raises(AssertionError, match=error_message):
             nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_1.nwb")
             self.interface = self.data_interface_cls(**self.interface_kwargs)
-            super().check_run_conversion_with_backend(nwbfile_path=nwbfile_path, metadata=metadata)
+            super().check_run_conversion_with_backend_configuration(nwbfile_path=nwbfile_path, metadata=metadata)
         self.conversion_options["stub_test"] = False
         self.conversion_options["t2"] = 1.0
 

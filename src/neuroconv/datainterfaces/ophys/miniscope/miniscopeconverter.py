@@ -5,12 +5,20 @@ from pathlib import Path
 from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
 
+from ._miniscope_readers import (
+    _get_device_folder_timestamps,
+    _get_starting_frames,
+    _raise_if_legacy_user_config_device_list,
+    _read_miniscope_config,
+)
 from .miniscopeimagingdatainterface import (
     MiniscopeImagingInterface,
     _MiniscopeMultiRecordingInterface,
 )
 from ... import MiniscopeBehaviorInterface, MiniscopeHeadOrientationInterface
+from ...behavior.video.externalvideointerface import ExternalVideoInterface
 from ....nwbconverter import ConverterPipe
+from ....tools import get_package
 from ....tools.nwb_helpers import get_default_nwbfile_metadata
 from ....utils import (
     DeepDict,
@@ -89,6 +97,8 @@ class MiniscopeConverter(ConverterPipe):
           date, time) used to build the on-disk folder hierarchy.
         - ``devices[miniscopes]``: mapping of Miniscope device names (e.g., ``"ACC_miniscope2"``) to their
           acquisition parameters.
+        - ``devices[cameras]``: the same mapping for the behavior cameras. Both device names are the
+          names of the folders holding the recordings of that device.
 
         Example 1 - Dual Miniscope with 5-level hierarchy::
 
@@ -178,8 +188,8 @@ class MiniscopeConverter(ConverterPipe):
                         └── metaData.json
 
         The converter walks the directory structure, creating one imaging interface per Miniscope device and
-        preserving their individual timestamps. Behavior video is added only if ``BehavCam_`` folders (with
-        metadata) are present. For devices recorded multiple times, each timestamp folder is instantiated as a
+        preserving their individual timestamps. Behavior video is added for every camera declared under
+        ``devices[cameras]``. For devices recorded multiple times, each timestamp folder is instantiated as a
         separate interface labeled ``SegmentXX`` (with zero padding based on the total number of segments) so
         repeated recordings remain distinct while sharing a common device definition.
 
@@ -208,8 +218,11 @@ class MiniscopeConverter(ConverterPipe):
         self._folder_path = Path(folder_path)
         self.data_interface_objects: dict[str, object] = {}
         self._user_configuration_file_path = user_configuration_file_path
-        # Per-interface bookkeeping for the imaging devices declared in the User Config.
+        # Per-interface bookkeeping for the imaging devices and behavior cameras of the User Config.
         self._imaging_interfaces: dict[str, dict] = {}
+        self._behavior_video_interfaces: dict[str, dict] = {}
+        self._camera_names: list[str] = []
+        self._camera_names_camel_case: dict[str, str] = {}
 
         data_interfaces = {}
         if self._user_configuration_file_path is not None:
@@ -217,6 +230,7 @@ class MiniscopeConverter(ConverterPipe):
             config_path = Path(self._user_configuration_file_path)
             with config_path.open(encoding="utf-8") as f:
                 self._user_config = json.load(f)
+            _raise_if_legacy_user_config_device_list(user_config=self._user_config)
 
             data_directory_path_in_config = self._user_config.get("dataDirectory", "")
             data_directory_name_in_json = data_directory_path_in_config.split("/")[-1]
@@ -261,6 +275,13 @@ class MiniscopeConverter(ConverterPipe):
             device_folders_dict = {}
             for device_name in self._device_names:
                 device_folders_dict[device_name] = [p for p in all_paths if p.name == device_name]
+                if not device_folders_dict[device_name]:
+                    warnings.warn(
+                        f"No folder named '{device_name}' was found under '{fixed_data_path}', so the Miniscope "
+                        "the User Config declares under 'devices[miniscopes]' will be omitted from the conversion.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
 
             self._interface_to_device_mapping = {}
             for device_name in self._device_names:
@@ -290,7 +311,7 @@ class MiniscopeConverter(ConverterPipe):
                         metadata_key=series_metadata_key,
                         # The interface derives this from the device its config names, so every
                         # recording of one Miniscope lands on the same registry entry.
-                        device_metadata_key=to_snake_case(device_name),
+                        device_metadata_key=interface.device_metadata_key,
                         imaging_plane_metadata_key=f"imaging_plane_{device_name}",
                     )
 
@@ -310,6 +331,77 @@ class MiniscopeConverter(ConverterPipe):
                             metadata_key=metadata_key,
                         )
                         self._interface_to_device_mapping[head_orientation_interface_name] = device_name
+
+            # Behavior cameras are declared in the same User Config as the miniscopes, under
+            # 'devices[cameras]', so their folders are discovered the same way as the imaging device
+            # folders rather than by globbing the lab-specific 'BehavCam*' name at a fixed depth.
+            natsort = get_package(package_name="natsort", installation_instructions="pip install natsort")
+            camera_devices = self._user_config.get("devices", {}).get("cameras", {})
+            self._camera_names = list(camera_devices)
+            self._camera_names_camel_case = {name: to_camel_case(name) for name in self._camera_names}
+            for camera_name in self._camera_names:
+                camera_folder_paths = [path for path in all_paths if path.name == camera_name]
+                if not camera_folder_paths:
+                    warnings.warn(
+                        f"No folder named '{camera_name}' was found under '{fixed_data_path}', so the behavior camera "
+                        "the User Config declares under 'devices[cameras]' will be omitted from the conversion.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                for camera_folder_path in camera_folder_paths:
+                    interface_name = camera_folder_path.relative_to(fixed_data_path).as_posix()
+                    video_file_paths = natsort.natsorted(camera_folder_path.glob("*.avi"))
+                    if not video_file_paths:
+                        warnings.warn(
+                            f"No behavior videos (.avi files) were found in '{camera_folder_path}' for camera "
+                            f"'{camera_name}'. This camera folder will be omitted from the conversion.",
+                            UserWarning,
+                            stacklevel=2,
+                        )
+                        continue
+
+                    # Same flattening as the imaging series names, e.g.
+                    # "2021_07_15/16_18_59/cameraDeviceName" -> "2021_07_1516_18_59"
+                    interface_relative_path = interface_name.replace("/", "")
+                    if interface_relative_path.endswith(camera_name):
+                        interface_relative_path = interface_relative_path[: -len(camera_name)]
+
+                    camera_name_camel = self._camera_names_camel_case[camera_name]
+                    metadata_key = f"video_{camera_name}_{interface_relative_path}"
+                    image_series_name = f"ImageSeries{camera_name_camel}{interface_relative_path}"
+
+                    interface = ExternalVideoInterface(
+                        file_paths=video_file_paths,
+                        metadata_key=metadata_key,
+                        video_name=image_series_name,
+                        verbose=verbose,
+                    )
+
+                    # The .avi files of a camera folder share a single timeStamps.csv, so the
+                    # timestamps are split back per file to match the ImageSeries segments.
+                    starting_frames = _get_starting_frames(
+                        folder_path=str(camera_folder_path), video_file_pattern="*.avi"
+                    )
+                    timestamps = _get_device_folder_timestamps(folder_path=str(camera_folder_path))
+                    segment_boundaries = list(starting_frames) + [len(timestamps)]
+                    interface.set_aligned_timestamps(
+                        aligned_timestamps=[
+                            timestamps[segment_start:segment_stop]
+                            for segment_start, segment_stop in zip(segment_boundaries[:-1], segment_boundaries[1:])
+                        ]
+                    )
+
+                    data_interfaces[interface_name] = interface
+                    self._behavior_video_interfaces[interface_name] = dict(
+                        camera_name=camera_name,
+                        session_folder_path=camera_folder_path.parent,
+                        starting_frames=starting_frames,
+                        metadata_key=metadata_key,
+                        # One Device per camera, shared across the recordings of that camera.
+                        device_metadata_key=to_snake_case(camera_name),
+                        image_series_name=image_series_name,
+                        camera_config=_read_miniscope_config(folder_path=str(camera_folder_path)),
+                    )
         else:
             # Legacy mode: use _MiniscopeMultiRecordingInterface for backwards compatibility
             warnings.warn(
@@ -343,13 +435,15 @@ class MiniscopeConverter(ConverterPipe):
             # Create CamelCase mapping for device names
             self._device_names_camel_case = {device_name: to_camel_case(device_name)}
 
-        super().__init__(data_interfaces=data_interfaces)
+        super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
-        # Attempt to initialize the behavior interface; skip gracefully if the expected files are absent.
-        try:
-            self.data_interface_objects["MiniscopeBehavCam"] = MiniscopeBehaviorInterface(folder_path=folder_path)
-        except AssertionError:
-            if self.verbose:
+        if self._user_configuration_file_path is None:
+            # Legacy layout: the behavior videos sit in 'BehavCam*' folders one level below the top
+            # folder. Config-driven layouts are handled by the camera discovery above.
+            behavior_video_file_paths = list(self._folder_path.glob("*/BehavCam*/*.avi"))
+            if behavior_video_file_paths:
+                self.data_interface_objects["MiniscopeBehavCam"] = MiniscopeBehaviorInterface(folder_path=folder_path)
+            elif self.verbose:
                 print(
                     "Miniscope behavior videos were not found under the provided folder and will be omitted from conversion."
                 )
@@ -364,10 +458,25 @@ class MiniscopeConverter(ConverterPipe):
     def _get_ophys_interface_names(self) -> list[str]:
         """Get names of ophys interfaces, excluding behavior and head orientation interfaces."""
         return [
-            k
-            for k in self.data_interface_objects
-            if k != "MiniscopeBehavCam" and not self._is_head_orientation_interface(k)
+            interface_name
+            for interface_name, interface in self.data_interface_objects.items()
+            if isinstance(interface, (MiniscopeImagingInterface, _MiniscopeMultiRecordingInterface))
         ]
+
+    def _get_behavior_video_interface_names(self) -> list[str]:
+        """Get names of the behavior camera interfaces discovered from the User Config."""
+        return [
+            interface_name
+            for interface_name in self._behavior_video_interfaces
+            if interface_name in self.data_interface_objects
+        ]
+
+    def _get_behavior_video_conversion_options(self) -> dict[str, dict]:
+        """Pass the per-file starting frames that an external-file ImageSeries needs."""
+        return {
+            interface_name: dict(starting_frames=self._behavior_video_interfaces[interface_name]["starting_frames"])
+            for interface_name in self._get_behavior_video_interface_names()
+        }
 
     def _get_head_orientation_interface_names(self) -> list[str]:
         """Get names of head orientation interfaces."""
@@ -413,6 +522,17 @@ class MiniscopeConverter(ConverterPipe):
             time_offset = (session_start_time - min_session_start_time).total_seconds()
             interface.set_aligned_starting_time(aligned_starting_time=time_offset)
 
+        # Align the behavior cameras with the session they were recorded in
+        for video_interface_name in self._get_behavior_video_interface_names():
+            session_folder_path = self._behavior_video_interfaces[video_interface_name]["session_folder_path"]
+            session_start_time = MiniscopeImagingInterface._get_session_start_time(folder_path=session_folder_path)
+            if session_start_time is None:
+                continue
+            time_offset = (session_start_time - min_session_start_time).total_seconds()
+            self.data_interface_objects[video_interface_name].set_aligned_starting_time(
+                aligned_starting_time=time_offset
+            )
+
         # Align head orientation interfaces with their paired imaging interfaces
         for ho_interface_name in self._get_head_orientation_interface_names():
             # Extract the paired imaging interface name (remove "/HeadOrientation" suffix)
@@ -428,7 +548,57 @@ class MiniscopeConverter(ConverterPipe):
         if self._user_configuration_file_path is None:
             return self._get_legacy_metadata()
 
-        return self._get_ophys_metadata()
+        metadata = self._get_ophys_metadata()
+        self._add_behavior_video_metadata(metadata=metadata)
+        return metadata
+
+    def _add_behavior_video_metadata(self, *, metadata: DeepDict) -> None:
+        """Name each behavior video after its camera and session, and share one Device per camera.
+
+        The interface defaults to a camera ``Device`` of its own per video, but a camera recorded over
+        several sessions is one camera, so every recording of it is pointed at a single entry, the way
+        the imaging interfaces share the Miniscope they were recorded with.
+        """
+        for video_interface_name in self._get_behavior_video_interface_names():
+            video_interface_info = self._behavior_video_interfaces[video_interface_name]
+            camera_config = dict(video_interface_info["camera_config"])
+            camera_config.pop("name", None)
+            device_type = camera_config.pop("deviceType", None)
+            region_of_interest = camera_config.pop("ROI", None)
+            acquisition_settings = ", ".join(f"{key}: {value}" for key, value in sorted(camera_config.items()))
+
+            device_metadata = dict(
+                name=self._camera_names_camel_case[video_interface_info["camera_name"]],
+                description=(
+                    "Behavior camera recorded by the Miniscope DAQ software. "
+                    f"Acquisition settings: {acquisition_settings}."
+                ),
+            )
+            if device_type is not None:
+                # 'deviceType' is the camera hardware the config was written against, shared by every
+                # camera of that type. The manufacturer it does not record is filled at write time.
+                device_model_metadata_key = to_snake_case(device_type)
+                metadata["DeviceModels"][device_model_metadata_key] = dict(name=device_type)
+                device_metadata["device_model_metadata_key"] = device_model_metadata_key
+            metadata["Devices"][video_interface_info["device_metadata_key"]] = device_metadata
+            # The interface defaults to a Device of its own; the shared one above replaces it.
+            metadata["Devices"].pop(f"{video_interface_info['metadata_key']}_camera", None)
+
+            video_metadata = metadata["Behavior"]["ExternalVideos"][video_interface_info["metadata_key"]]
+            video_metadata["name"] = video_interface_info["image_series_name"]
+            video_metadata["description"] = (
+                f"Video recorded by the '{video_interface_info['camera_name']}' behavior camera."
+            )
+            video_metadata["device_metadata_key"] = video_interface_info["device_metadata_key"]
+            if region_of_interest is not None:
+                video_metadata["dimension"] = [region_of_interest["width"], region_of_interest["height"]]
+
+    def _device_metadata_keys(self) -> dict[str, str]:
+        """Map each declared Miniscope to the ``metadata["Devices"]`` key its interfaces registered it under."""
+        return {
+            interface_info["device_name"]: interface_info["device_metadata_key"]
+            for interface_info in self._imaging_interfaces.values()
+        }
 
     def _get_ophys_metadata(self) -> DeepDict:
         """Assemble the dict-based metadata of the User Config mode.
@@ -455,8 +625,7 @@ class MiniscopeConverter(ConverterPipe):
 
         # The registry entries the interfaces contributed are keyed per device already; only their NWB
         # names are converter business, since a device name is shared across the whole conversion.
-        for device_name in self._device_names:
-            device_metadata_key = to_snake_case(device_name)
+        for device_name, device_metadata_key in self._device_metadata_keys().items():
             if device_metadata_key in metadata["Devices"]:
                 metadata["Devices"][device_metadata_key]["name"] = self._device_names_camel_case[device_name]
 
@@ -477,7 +646,7 @@ class MiniscopeConverter(ConverterPipe):
                 **placeholder_imaging_plane,
                 "name": f"ImagingPlane{device_name_camel}",
                 "description": f"Imaging plane for {device_name} Miniscope device.",
-                "device_metadata_key": to_snake_case(device_name),
+                "device_metadata_key": self._device_metadata_keys()[device_name],
                 "imaging_rate": imaging_rates.get(device_name),
             }
         metadata["Ophys"]["ImagingPlanes"] = imaging_planes
@@ -534,7 +703,7 @@ class MiniscopeConverter(ConverterPipe):
                 for setting_name, value in first_config.items()
                 if setting_name not in varying_setting_names
             }
-            device_metadata_key = to_snake_case(device_name)
+            device_metadata_key = self._device_metadata_keys()[device_name]
             device_metadata = metadata["Devices"][device_metadata_key]
             shared_device_metadata = _config_to_miniscope_device_metadata(
                 miniscope_config={**shared_config, "name": device_name}
@@ -677,6 +846,7 @@ class MiniscopeConverter(ConverterPipe):
             conversion_options_base[interface_name]["stub_test"] = stub_test
             conversion_options_base[interface_name]["stub_samples"] = stub_samples
 
+        conversion_options_base.update(self._get_behavior_video_conversion_options())
         conversion_options_base.update(conversion_options)
 
         super().add_to_nwbfile(
@@ -727,6 +897,7 @@ class MiniscopeConverter(ConverterPipe):
             conversion_options_base[interface_name]["stub_test"] = stub_test
             conversion_options_base[interface_name]["stub_samples"] = stub_samples
 
+        conversion_options_base.update(self._get_behavior_video_conversion_options())
         conversion_options_base.update(conversion_options)
 
         super().run_conversion(
