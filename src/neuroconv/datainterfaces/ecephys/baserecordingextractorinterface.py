@@ -84,7 +84,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.metadata_key = metadata_key if metadata_key is not None else es_key
         self._number_of_segments = self.recording_extractor.get_num_segments()
 
-    def _get_metadata_schema_for_old_list_format(self) -> dict:
+    def get_metadata_schema(self) -> dict:
         """
         Compile the metadata schema.
 
@@ -142,19 +142,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 {self.es_key: get_schema_from_hdmf_class(ElectricalSeries)}
             )
         return metadata_schema
-
-    def get_metadata_schema(self) -> dict:
-        """
-        Compile the metadata schema.
-
-        The modality block of this schema has not been migrated to the dict-based format yet, so what it
-        describes is the old list-based one. It is returned by
-        ``_get_metadata_schema_for_old_list_format`` for validating that format, and until the dict shape
-        is declared here this method answers with the base schema, which dict-based metadata satisfies.
-        """
-        from ...basedatainterface import BaseDataInterface
-
-        return BaseDataInterface.get_metadata_schema(self)
 
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         metadata = super().get_metadata()
