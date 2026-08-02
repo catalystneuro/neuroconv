@@ -393,6 +393,8 @@ def add_sorting_to_nwbfile(
             - "sds": np.ndarray of shape (num_units, num_samples, num_channels), optional
             - "sampling_rate": float, the sampling rate of the waveforms in Hz
             - "unit": str, the unit of measurement (default: "volts")
+            - "peak_sample": int, the sample the waveforms are aligned on, optional
+            - "source_description": str, a sentence on provenance and conversion, optional
     write_as : {'units', 'processing'}, optional
         Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
     """
@@ -411,6 +413,8 @@ def add_sorting_to_nwbfile(
         _waveform_sds = waveform_data_dict.get("sds")
         _waveform_rate = waveform_data_dict.get("sampling_rate")
         _waveform_unit = waveform_data_dict.get("unit", "volts")
+        _waveform_peak_sample = waveform_data_dict.get("peak_sample")
+        _waveform_source_description = waveform_data_dict.get("source_description")
     elif waveform_means is not None:
         # Deprecated path - emit FutureWarning for gradual migration
         warnings.warn(
@@ -423,11 +427,15 @@ def add_sorting_to_nwbfile(
         _waveform_sds = waveform_sds
         _waveform_rate = None
         _waveform_unit = "volts"
+        _waveform_peak_sample = None
+        _waveform_source_description = None
     else:
         _waveform_means = None
         _waveform_sds = None
         _waveform_rate = None
         _waveform_unit = "volts"
+        _waveform_peak_sample = None
+        _waveform_source_description = None
 
     # Resolution from sorting's sampling frequency
     _resolution = 1.0 / sorting.get_sampling_frequency()
@@ -453,6 +461,8 @@ def add_sorting_to_nwbfile(
         null_values_for_properties=null_values_for_properties,
         waveform_rate=_waveform_rate,
         waveform_unit=_waveform_unit,
+        waveform_peak_sample=_waveform_peak_sample,
+        waveform_source_description=_waveform_source_description,
         resolution=_resolution,
     )
 
@@ -2270,6 +2280,57 @@ def write_recording_to_nwbfile(
             print(f"NWB file saved at {nwbfile_path}!")
 
 
+def _compose_waveform_mean_description(
+    *,
+    waveform_means: np.ndarray,
+    unit_electrode_indices: list[list[int]] | None,
+    peak_sample: int | None,
+    source_description: str | None,
+) -> str:
+    """
+    Build the description of the `waveform_mean` column.
+
+    Three facts about the column have no field of their own in the schema: which columns of the
+    channel axis are padding, where the peak sits inside the window, and what conversion was applied
+    to reach the volts that the fixed `unit` attribute claims. This composes whichever of them the
+    caller stated into the column description, which is the only place a consumer can find them.
+
+    Parameters
+    ----------
+    waveform_means : np.ndarray
+        The waveforms about to be written, of shape (num_units, num_samples) or
+        (num_units, num_samples, num_channels).
+    unit_electrode_indices : list of lists of int, optional
+        The electrodes each unit is written against. When present, the channel axis is aligned to
+        them and the alignment is stated.
+    peak_sample : int, optional
+        Index of the sample the waveforms are aligned on.
+    source_description : str, optional
+        A sentence about the provenance and conversion of the waveforms.
+
+    Returns
+    -------
+    str
+        The column description.
+    """
+    nothing_to_state = unit_electrode_indices is None and peak_sample is None and source_description is None
+    if nothing_to_state:
+        return "the spike waveform mean for each spike unit"
+
+    sentences = ["The mean waveform for each unit."]
+    if unit_electrode_indices is not None and waveform_means.ndim == 3:
+        sentences.append(
+            "Column i of the channel axis is the electrode at position i of this unit's electrodes entry; "
+            "a unit with fewer electrodes than the width of the array is zero-padded on the right."
+        )
+    if peak_sample is not None:
+        sentences.append(f"The waveform peak is at sample {peak_sample} of {waveform_means.shape[1]}.")
+    if source_description is not None:
+        sentences.append(source_description)
+
+    return " ".join(sentences)
+
+
 def _add_units_table_to_nwbfile(
     sorting: BaseSorting,
     nwbfile: pynwb.NWBFile,
@@ -2286,6 +2347,8 @@ def _add_units_table_to_nwbfile(
     *,
     waveform_rate: float | None = None,
     waveform_unit: str = "volts",
+    waveform_peak_sample: int | None = None,
+    waveform_source_description: str | None = None,
     resolution: float | None = None,
     null_values_for_properties: dict | None = None,
 ):
@@ -2407,6 +2470,12 @@ def _add_units_table_to_nwbfile(
         Sampling rate of the waveform data in Hz. Sets Units.waveform_rate attribute.
     waveform_unit : str, default: "volts"
         Unit of measurement for waveform data. Sets Units.waveform_unit attribute.
+    waveform_peak_sample : int, optional
+        Index of the sample the waveforms are aligned on. The schema has no field for it, so it is
+        stated in the `waveform_mean` column description.
+    waveform_source_description : str, optional
+        A sentence describing where the waveforms come from and what conversion was applied to them,
+        appended to the `waveform_mean` column description.
     resolution : float, optional
         The smallest possible difference between two spike times in seconds.
         Sets Units.resolution attribute.
@@ -2549,7 +2618,12 @@ def _add_units_table_to_nwbfile(
 
     if waveform_means is not None:
         data_to_add["waveform_mean"].update(
-            description="the spike waveform mean for each spike unit",
+            description=_compose_waveform_mean_description(
+                waveform_means=waveform_means,
+                unit_electrode_indices=unit_electrode_indices,
+                peak_sample=waveform_peak_sample,
+                source_description=waveform_source_description,
+            ),
             data=waveform_means,
             index=False,
         )

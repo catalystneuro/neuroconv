@@ -344,6 +344,8 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 - "sds": np.ndarray of shape (num_units, num_samples, num_channels), optional
                 - "sampling_rate": float, the sampling rate of the waveforms in Hz
                 - "unit": str, the unit of measurement (default: "volts")
+                - "peak_sample": int, the sample the waveforms are aligned on, optional
+                - "source_description": str, a sentence on provenance and conversion, optional
         write_as : {'units', 'processing'}, optional
             Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
         """
