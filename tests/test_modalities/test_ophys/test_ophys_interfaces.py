@@ -41,7 +41,10 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
         metadata_key = self.interface.metadata_key
         assert metadata["Ophys"] == {
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data from mock generator."},
+                metadata_key: {
+                    "name": "MicroscopySeries",
+                    "description": "Imaging data from mock generator.",
+                },
             },
         }
 
@@ -70,7 +73,10 @@ class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
         metadata_key = self.interface.metadata_key
         assert metadata["Ophys"] == {
             "PlaneSegmentations": {
-                metadata_key: {"description": "Segmentation data from mock generator."},
+                metadata_key: {
+                    "name": "PlaneSegmentation",
+                    "description": "Segmentation data from mock generator.",
+                },
             },
         }
 
