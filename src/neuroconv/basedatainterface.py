@@ -119,6 +119,24 @@ class BaseDataInterface(ABC):
         """
         return self.get_metadata_schema()
 
+    def _get_metadata_for_writing(self) -> DeepDict:
+        """
+        Return the metadata used when the caller passes none.
+
+        Transitional: ``get_metadata`` still hands users the old list-based format by default, but what
+        NeuroConv writes for itself is the dict-based one. Interfaces that emit only the dict format do not
+        take the argument and are asked plainly.
+
+        Remove this method when the old list-based format is removed. At that point ``get_metadata``
+        returns the dict format unconditionally, ``use_new_metadata_format`` is gone, and every caller
+        below goes back to ``metadata or self.get_metadata()``.
+        """
+        import inspect
+
+        if "use_new_metadata_format" in inspect.signature(self.get_metadata).parameters:
+            return self.get_metadata(use_new_metadata_format=True)
+        return self.get_metadata()
+
     def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
         if _metadata_uses_old_list_format(metadata):
@@ -161,7 +179,7 @@ class BaseDataInterface(ABC):
             The in-memory object with this interface's data added to it.
         """
         if metadata is None:
-            metadata = self.get_metadata()
+            metadata = self._get_metadata_for_writing()
 
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
@@ -242,7 +260,7 @@ class BaseDataInterface(ABC):
             )
 
         if metadata is None:
-            metadata = self.get_metadata()
+            metadata = self._get_metadata_for_writing()
         self.validate_metadata(metadata=metadata, append_mode=append_on_disk_nwbfile)
 
         writing_new_file = not append_on_disk_nwbfile

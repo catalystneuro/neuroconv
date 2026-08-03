@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pytest
 from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import SpikeGLXSyncChannelInterface
 
@@ -70,7 +71,7 @@ class TestSpikeGLXSyncChannelInterface:
         # Check device metadata
         assert "Devices" in metadata
         assert len(metadata["Devices"]) == 1
-        assert metadata["Devices"][0] == expected_device
+        assert metadata["Devices"]["neuropixels_imec0"] == expected_device
 
         # Check TimeSeries metadata
         assert "TimeSeries" in metadata
@@ -147,8 +148,8 @@ class TestSpikeGLXSyncChannelInterface:
 
         # Verify metadata is generated correctly for LF stream
         metadata = interface.get_metadata()
-        assert metadata["TimeSeries"]["SpikeGLXSync"]["name"] == "TimeSeriesImec0Sync"
-        assert "LF stream" in metadata["TimeSeries"]["SpikeGLXSync"]["description"]
+        assert metadata["TimeSeries"]["spikeglx_sync"]["name"] == "TimeSeriesImec0Sync"
+        assert "LF stream" in metadata["TimeSeries"]["spikeglx_sync"]["description"]
 
         # Create NWBFile without iterator wrapping to access data directly
         nwbfile = interface.create_nwbfile(stub_test=True, iterator_type=None)
@@ -172,6 +173,35 @@ class TestSpikeGLXSyncChannelInterface:
         import numpy as np
 
         np.testing.assert_array_equal(timeseries.data[:], expected_traces)
+
+
+def test_metadata_key_does_not_rename_series():
+    """The key addresses the entry; the TimeSeries name is derived from the probe and is unaffected."""
+    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0"
+
+    default_interface = SpikeGLXSyncChannelInterface(folder_path=folder_path, stream_id="imec0.ap-SYNC")
+    assert default_interface.metadata_key == "spikeglx_sync"
+    assert default_interface.get_metadata()["TimeSeries"]["spikeglx_sync"]["name"] == "TimeSeriesImec0Sync"
+
+    custom_interface = SpikeGLXSyncChannelInterface(
+        folder_path=folder_path, stream_id="imec0.ap-SYNC", metadata_key="my_sync"
+    )
+    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
+    assert set(time_series_metadata) == {"my_sync"}
+    assert time_series_metadata["my_sync"]["name"] == "TimeSeriesImec0Sync"
+
+
+def test_legacy_list_shaped_devices_names_the_new_key():
+    """A script written against the list shape is told which key its entry now belongs under, rather
+    than failing on an attribute of the list deep inside the write."""
+    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0"
+    interface = SpikeGLXSyncChannelInterface(folder_path=folder_path, stream_id="imec0.ap-SYNC")
+
+    metadata = interface.get_metadata()
+    metadata["Devices"] = [{"name": "MyLabProbe", "description": "The probe in rig 3."}]
+
+    with pytest.raises(ValueError, match="neuropixels_imec0"):
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
 
 if __name__ == "__main__":

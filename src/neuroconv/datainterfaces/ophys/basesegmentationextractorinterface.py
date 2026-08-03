@@ -298,7 +298,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             stub_samples = min([stub_samples, segmentation_extractor.get_num_samples()])
             segmentation_extractor = segmentation_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
 
-        metadata = metadata or self.get_metadata()
+        metadata = metadata or self._get_metadata_for_writing()
 
         add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,

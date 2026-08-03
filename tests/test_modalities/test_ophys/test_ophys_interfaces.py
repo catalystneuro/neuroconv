@@ -18,12 +18,16 @@ from neuroconv.tools.testing.mock_interfaces import (
 class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = MockImagingInterface
     interface_kwargs = dict()
+    # The mock reads no imaging modality from its source, so it keeps the base's generic series name.
+    optical_series_name = "MicroscopySeries"
 
     def test_always_write_timestamps(self, setup_interface):
         # By default the MockImagingInterface has a uniform sampling rate
 
         nwbfile = self.interface.create_nwbfile(always_write_timestamps=True)
-        two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
+        # The base names the series it writes, as the recording base does; interfaces that know the
+        # imaging modality overwrite it.
+        two_photon_series = nwbfile.acquisition["MicroscopySeries"]
         imaging = self.interface.imaging_extractor
         expected_timestamps = imaging.get_timestamps()
 
@@ -174,7 +178,7 @@ class TestMockImagingInterfaceArgsDeprecation:
             w for w in caught_warnings if issubclass(w.category, FutureWarning) and "positionally" in str(w.message)
         ]
         assert len(positional_arg_warnings) == 0
-        assert "TwoPhotonSeries" in nwbfile.acquisition
+        assert "MicroscopySeries" in nwbfile.acquisition
 
     def test_create_nwbfile_passes_conversion_options_as_keywords(self):
         """Test that create_nwbfile passes conversion options as keywords to add_to_nwbfile."""
@@ -191,4 +195,4 @@ class TestMockImagingInterfaceArgsDeprecation:
         assert len(positional_arg_warnings) == 0
         # Verify data was written to processing/ophys
         assert "ophys" in nwbfile.processing
-        assert "TwoPhotonSeries" in nwbfile.processing["ophys"].data_interfaces
+        assert "MicroscopySeries" in nwbfile.processing["ophys"].data_interfaces

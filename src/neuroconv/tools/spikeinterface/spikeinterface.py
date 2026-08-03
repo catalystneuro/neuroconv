@@ -47,13 +47,9 @@ def _is_dict_based_metadata(metadata: dict) -> bool:
 
     Returns True for dict-based, False for list-based.
     """
-    # A dict-valued top-level ``Devices`` is the dict-based shape. A list-valued ``Devices``
-    # is the legacy top-level emission used by unmigrated interfaces such as
-    # ``SpikeGLXNIDQInterface``, ``SpikeGLXSyncChannelInterface``, ``IntanAnalogInterface``,
-    # and ``IntanStimInterface``: ``metadata["Devices"] = [device_dict, ...]``. Those must
-    # route to the old-list-format path so downstream code that iterates the list (e.g.
-    # ``for device in metadata["Devices"]: ...``) keeps working until each interface is
-    # migrated to emit dict-shaped ``Devices``.
+    # A dict-valued top-level ``Devices`` is the dict-based shape. A list-valued ``Devices`` is the
+    # legacy shape, ``metadata["Devices"] = [device_dict, ...]``. No interface emits it any more, so this
+    # branch now only catches hand-written metadata, which must still route to the old-list-format path.
     if isinstance(metadata.get("Devices"), dict):
         return True
 
@@ -1614,7 +1610,7 @@ def add_recording_as_time_series_to_nwbfile(
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
-    metadata_key: str = "TimeSeries",
+    metadata_key: str | None = None,
     parent_container: Literal["acquisition", "stimulus"] = "acquisition",
 ):
     """
@@ -1631,8 +1627,8 @@ def add_recording_as_time_series_to_nwbfile(
         Should be of the format::
 
             metadata['TimeSeries'] = {
-                'metadata_key': {
-                    "name": "my_name",
+                'my_time_series': {
+                    "name": "TimeSeriesMyName",
                     'description': 'my_description',
                     'unit': 'my_unit',
                     "offset": offset_to_unit_value,
@@ -1641,9 +1637,13 @@ def add_recording_as_time_series_to_nwbfile(
                     ...
                 }
             }
-        Where the metadata_key is used to look up metadata in the metadata dictionary.
-    metadata_key: str
-        The entry in TimeSeries metadata to use.
+        Where ``metadata_key`` (here ``'my_time_series'``) addresses the entry, and the entry's
+        ``name`` names the written TimeSeries. The two are independent.
+    metadata_key: str, optional
+        The entry in ``metadata["TimeSeries"]`` to write. Required whenever the metadata carries a
+        ``"TimeSeries"`` block, and the key must be present in it: an unresolvable key raises rather
+        than silently writing defaults over the caller's edits. Pass no metadata at all to write the
+        recording from its own properties with default naming.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -1661,6 +1661,23 @@ def add_recording_as_time_series_to_nwbfile(
         The NWB container to add the TimeSeries to. Use "stimulus" for data that was
         applied to the system (e.g., electrical stimulation current).
     """
+
+    # ``metadata_key`` addresses an entry, so it is only meaningful when there is a block to address.
+    # Checked with ``in`` rather than ``[]`` because ``metadata`` is routinely a ``DeepDict``, whose
+    # ``__getitem__`` would auto-create the block and make this guard pass on a dict that never had one.
+    if metadata is not None and "TimeSeries" in metadata:
+        if metadata_key is None:
+            raise ValueError(
+                "Metadata with a 'TimeSeries' block was passed but no `metadata_key` was provided. "
+                "`metadata_key` selects which `metadata['TimeSeries']` entry to write, so it is required "
+                "whenever that block is present. To write the recording with default metadata, pass no "
+                "metadata at all."
+            )
+        if metadata_key not in metadata["TimeSeries"]:
+            raise ValueError(
+                f"metadata['TimeSeries'] does not contain key '{metadata_key}'. "
+                f"Available keys: {list(metadata['TimeSeries'])}."
+            )
 
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):
@@ -1685,7 +1702,7 @@ def _add_time_series_segment_to_nwbfile(
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
-    metadata_key: str = "time_series_metadata_key",
+    metadata_key: str | None = None,
     parent_container: Literal["acquisition", "stimulus"] = "acquisition",
 ):
     """
@@ -1701,8 +1718,9 @@ def _add_time_series_segment_to_nwbfile(
     # Build TimeSeries kwargs from recording properties
     tseries_kwargs = {}
 
-    # Get user-provided metadata
-    user_metadata = metadata.get("TimeSeries", {}).get(metadata_key, {})
+    # Get user-provided metadata. ``metadata_key`` is None only when no ``TimeSeries`` block was
+    # passed (the public function raises otherwise), so there is nothing to look up.
+    user_metadata = {} if metadata_key is None else metadata.get("TimeSeries", {}).get(metadata_key, {})
 
     # Extract unit, conversion, offset from recording properties if not in metadata
     if "unit" not in user_metadata:
