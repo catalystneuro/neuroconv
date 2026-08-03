@@ -37,6 +37,7 @@ from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.intan.intananaloginterface import IntanAnalogInterface
+from .ecephys.intan.intandigitalinterface import IntanDigitalInterface
 from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
@@ -149,6 +150,7 @@ interface_list = [
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
     IntanAnalogInterface,
+    IntanDigitalInterface,
     IntanStimInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
@@ -271,6 +273,7 @@ interfaces_by_category = dict(
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
+        IntanDigital=IntanDigitalInterface,
         IntanStim=IntanStimInterface,
     ),
     icephys=dict(
