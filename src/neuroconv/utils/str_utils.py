@@ -1,4 +1,40 @@
 import math
+import re
+
+
+def to_snake_case(name: str) -> str:
+    """Convert a CamelCase, hyphenated or spaced string to snake_case.
+
+    The inverse of :func:`to_camel_case`, for turning a name a device or file reports into the
+    snake_case key a metadata registry is keyed by.
+
+    Parameters
+    ----------
+    name : str
+        String to convert.
+
+    Returns
+    -------
+    str
+        snake_case version of the input string.
+
+    Examples
+    --------
+    >>> to_snake_case("Miniscope")
+    'miniscope'
+    >>> to_snake_case("HPC_miniscope1")
+    'hpc_miniscope1'
+    >>> to_snake_case("Miniscope_V4_BNO")
+    'miniscope_v4_bno'
+    >>> to_snake_case("MyDeviceName")
+    'my_device_name'
+    """
+    name = re.sub(r"[\s-]+", "_", name.strip())
+    # Split runs of words written without separators: 'miniscopeV4' and 'HPCMiniscope' both split.
+    name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name)
+    name = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", "_", name)
+    name = re.sub(r"_+", "_", name)
+    return name.lower().strip("_")
 
 
 def to_camel_case(name: str) -> str:

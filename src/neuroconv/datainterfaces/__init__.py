@@ -7,9 +7,7 @@ from .behavior.lightningpose.lightningposedatainterface import (
 )
 from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
-from .behavior.miniscope.miniscopeheadorientationinterface import (
-    MiniscopeHeadOrientationInterface,
-)
+from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.vame.vamedatainterface import VameInterface
@@ -55,9 +53,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeRecordingInterface,
     NeuroScopeSortingInterface,
 )
-from .ecephys.openephys.openephybinarysanaloginterface import (
-    OpenEphysBinaryAnalogInterface,
-)
+from .ecephys.openephys.openephybinarysanaloginterface import OpenEphysBinaryAnalogInterface
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
@@ -87,9 +83,11 @@ from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
 from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
+from .icephys.brukervoltagerecording.brukervoltagerecordinginterface import BrukerVoltageRecordingInterface
 
 # Ophys
 from .ophys.brukertiff.brukertiffdatainterface import (
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
 )
@@ -98,9 +96,7 @@ from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
 from .ophys.femtonics.femtonicsdatainterface import FemtonicsImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
-from .ophys.inscopix.inscopixsegmentationdatainterface import (
-    InscopixSegmentationInterface,
-)
+from .ophys.inscopix.inscopixsegmentationdatainterface import InscopixSegmentationInterface
 from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
@@ -114,18 +110,15 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
-from .fiber_photometry.csv.csvfiberphotometrydatainterface import (
-    CSVFiberPhotometryInterface,
-)
+from .fiber_photometry.csv.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
 from .fiber_photometry.csv.multifilecsvfiberphotometrydatainterface import (
     MultiFileCSVFiberPhotometryInterface,
 )
-from .fiber_photometry.doric.doricfiberphotometrydatainterface import (
-    DoricFiberPhotometryInterface,
+from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
+from .fiber_photometry.npm.npmfiberphotometrydatainterface import (
+    NPMFiberPhotometryInterface,
 )
-from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import (
-    TDTFiberPhotometryInterface,
-)
+from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
 
@@ -138,7 +131,9 @@ from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 # Events
 from .events.csv_events.csveventsdatainterface import CSVEventsInterface
+from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
 from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
+from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
@@ -192,6 +187,7 @@ interface_list = [
     # Icephys
     AbfInterface,
     AxonIntracellularInterface,
+    BrukerVoltageRecordingInterface,
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
@@ -206,6 +202,7 @@ interface_list = [
     InscopixImagingInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
@@ -214,6 +211,7 @@ interface_list = [
     MultiFileCSVFiberPhotometryInterface,
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
+    NPMFiberPhotometryInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
@@ -236,7 +234,9 @@ interface_list = [
     ImageInterface,
     # Events
     CSVEventsInterface,
+    DoricCSVEventsInterface,
     DoricEventsInterface,
+    NPMEventsInterface,
     TDTEventsInterface,
 ]
 
@@ -264,6 +264,7 @@ interfaces_by_category = dict(
     fiber_photometry={
         "DoricFiberPhotometry": DoricFiberPhotometryInterface,
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+        "NPMFiberPhotometry": NPMFiberPhotometryInterface,
         "CSVFiberPhotometry": CSVFiberPhotometryInterface,
         "MultiFileCSVFiberPhotometry": MultiFileCSVFiberPhotometryInterface,
     },
@@ -275,7 +276,11 @@ interfaces_by_category = dict(
         IntanDigital=IntanDigitalInterface,
         IntanStim=IntanStimInterface,
     ),
-    icephys=dict(Abf=AbfInterface, AxonIntracellular=AxonIntracellularInterface),
+    icephys=dict(
+        Abf=AbfInterface,
+        AxonIntracellular=AxonIntracellularInterface,
+        BrukerVoltageRecording=BrukerVoltageRecordingInterface,
+    ),
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
@@ -294,7 +299,9 @@ interfaces_by_category = dict(
     ),
     events=dict(
         CSVEvents=CSVEventsInterface,
+        DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,
+        NPMEvents=NPMEventsInterface,
         TDTEvents=TDTEventsInterface,
     ),
 )

@@ -43,8 +43,8 @@ class TestAudioInterface(AudioInterfaceTestMixin):
     data_interface_cls = AudioInterface
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_test(self, request, tmp_path_factory):
-        cls = request.cls
+    @classmethod
+    def setup_test(cls, tmp_path_factory):
 
         cls.session_start_time = datetime.now(tz=gettz(name="US/Pacific"))
         cls.num_frames = int(1e7)

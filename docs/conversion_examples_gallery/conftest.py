@@ -31,11 +31,9 @@ def add_data_space(doctest_namespace, tmp_path, request):
         doctest_namespace["mda_sampling_frequency"] = 30_000.0
 
     # CSV fiber photometry has no gin fixture; generate small per-channel CSVs on-the-fly for the
-    # csv_fp.rst / multifile_csv_fp.rst doctests so the gallery entries themselves can stay focused on
-    # the conversion API rather than on synthesis code.
+    # csv_fp.rst doctests so the gallery entry itself can stay focused on the conversion API rather
+    # than on synthesis code.
     if test_path is not None and Path(str(test_path)).name == "csv_fp.rst":
-        doctest_namespace["csv_signal_channel_path"] = _generate_csv_signal_channel(tmp_path)
-    if test_path is not None and Path(str(test_path)).name == "multifile_csv_fp.rst":
         doctest_namespace["csv_signal_channel_path"] = _generate_csv_signal_channel(tmp_path)
         doctest_namespace["csv_control_channel_path"] = _generate_csv_control_channel(tmp_path)
 

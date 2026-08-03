@@ -75,9 +75,20 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.photon_series_type = photon_series_type
         self.metadata_key = metadata_key
 
-    def get_metadata_schema(
-        self,
-    ) -> dict:
+    def get_metadata_schema(self) -> dict:
+        """
+        Compile the metadata schema.
+
+        The modality block of this schema has not been migrated to the dict-based format yet, so what it
+        describes is the old list-based one. It is returned by
+        ``_get_metadata_schema_for_old_list_format`` for validating that format, and until the dict shape
+        is declared here this method answers with the base schema, which dict-based metadata satisfies.
+        """
+        from ...basedatainterface import BaseDataInterface
+
+        return BaseDataInterface.get_metadata_schema(self)
+
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
         Retrieve the metadata schema for the optical physiology (Ophys) data.
 
@@ -150,7 +161,12 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             When True, includes only NWBFile basics.
         """
         if use_new_metadata_format:
-            return super().get_metadata()
+            metadata = super().get_metadata()
+            # Mirrors ``BaseRecordingExtractorInterface``: the base states the conventional default name
+            # for the series it writes, and interfaces that know better overwrite it. ``MicroscopySeries``
+            # is the forward-looking generic, used wherever the source does not say what was imaged.
+            metadata["Ophys"] = {"MicroscopySeries": {self.metadata_key: dict(name="MicroscopySeries")}}
+            return metadata
 
         # Old list-based path (unchanged)
         from ...tools.roiextractors import get_nwb_imaging_metadata

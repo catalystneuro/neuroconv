@@ -8,9 +8,10 @@ import numpy as np
 import pytest
 from dateutil.tz import tzoffset
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import (
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     FemtonicsImagingInterface,
@@ -47,10 +48,11 @@ class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        """TiffImagingInterface does not extract ophys metadata from the source, so the Ophys section is empty.
+        """TiffImagingInterface reads no ophys metadata from the source, so it claims no device and takes
+        the base's generic series name: nothing in the file says what was imaged.
 
         See https://github.com/catalystneuro/neuroconv/issues/1557"""
-        assert "Ophys" not in metadata
+        assert metadata["Ophys"] == {"MicroscopySeries": {"tiff_imaging": dict(name="MicroscopySeries")}}
         assert "Devices" not in metadata
 
 
@@ -99,12 +101,16 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceT
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         assert metadata_key == self.expected_metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Devices"] == {
+            "scan_image_microscope": {"name": "Microscope", "description": self.expected_device_description}
+        }
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
-            "device_metadata_key": metadata_key,
+            "name": self.imaging_plane_name,
+            "device_metadata_key": "scan_image_microscope",
             "imaging_rate": self.expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
             "imaging_plane_metadata_key": metadata_key,
             "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
             "scan_line_rate": self.expected_scan_line_rate,
@@ -112,26 +118,26 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceT
 
     def check_read_nwb(self, nwbfile_path: str):
         """Test reading the NWB file for multi-plane ScanImage data."""
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert self.imaging_plane_name in nwbfile.imaging_planes
-            assert self.photon_series_name in nwbfile.acquisition
+        assert self.imaging_plane_name in nwbfile.imaging_planes
+        assert self.photon_series_name in nwbfile.acquisition
 
-            two_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
-            assert two_photon_series.unit == "n.a."
-            assert two_photon_series.data.dtype == np.int16
+        two_photon_series = nwbfile.acquisition[self.photon_series_name]
+        assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
+        assert two_photon_series.unit == "n.a."
+        assert two_photon_series.data.dtype == np.int16
 
-            assert two_photon_series.rate == self.expected_rate
-            assert two_photon_series.starting_time == self.expected_starting_time
+        assert two_photon_series.rate == self.expected_rate
+        assert two_photon_series.starting_time == self.expected_starting_time
 
-            imaging_extractor = self.interface.imaging_extractor
-            data_from_extractor = imaging_extractor.get_series()
-            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
+        imaging_extractor = self.interface.imaging_extractor
+        data_from_extractor = imaging_extractor.get_series()
+        assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
 
-            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
-            assert len(optical_channels) == 1
+        optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
+        assert len(optical_channels) == 1
+        nwbfile.read_io.close()
 
 
 class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceTestMixin):
@@ -161,12 +167,16 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceT
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         assert metadata_key == self.expected_metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Devices"] == {
+            "scan_image_microscope": {"name": "Microscope", "description": self.expected_device_description}
+        }
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
-            "device_metadata_key": metadata_key,
+            "name": self.imaging_plane_name,
+            "device_metadata_key": "scan_image_microscope",
             "imaging_rate": self.expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
             "imaging_plane_metadata_key": metadata_key,
             "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
             "scan_line_rate": self.expected_scan_line_rate,
@@ -174,26 +184,26 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceT
 
     def check_read_nwb(self, nwbfile_path: str):
         """Test reading the NWB file for multi-plane ScanImage data."""
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert self.imaging_plane_name in nwbfile.imaging_planes
-            assert self.photon_series_name in nwbfile.acquisition
+        assert self.imaging_plane_name in nwbfile.imaging_planes
+        assert self.photon_series_name in nwbfile.acquisition
 
-            two_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
-            assert two_photon_series.unit == "n.a."
-            assert two_photon_series.data.dtype == np.int16
+        two_photon_series = nwbfile.acquisition[self.photon_series_name]
+        assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
+        assert two_photon_series.unit == "n.a."
+        assert two_photon_series.data.dtype == np.int16
 
-            assert two_photon_series.rate == self.expected_rate
-            assert two_photon_series.starting_time == self.expected_starting_time
+        assert two_photon_series.rate == self.expected_rate
+        assert two_photon_series.starting_time == self.expected_starting_time
 
-            imaging_extractor = self.interface.imaging_extractor
-            data_from_extractor = imaging_extractor.get_series()
-            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
+        imaging_extractor = self.interface.imaging_extractor
+        data_from_extractor = imaging_extractor.get_series()
+        assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1, 3))
 
-            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
-            assert len(optical_channels) == 1
+        optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
+        assert len(optical_channels) == 1
+        nwbfile.read_io.close()
 
 
 class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTestMixin):
@@ -277,12 +287,16 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTest
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         assert metadata_key == self.expected_metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": self.expected_device_description}}
+        assert metadata["Devices"] == {
+            "scan_image_microscope": {"name": "Microscope", "description": self.expected_device_description}
+        }
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
-            "device_metadata_key": metadata_key,
+            "name": self.imaging_plane_name,
+            "device_metadata_key": "scan_image_microscope",
             "imaging_rate": self.expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
             "imaging_plane_metadata_key": metadata_key,
             "description": f"Imaging data acquired using ScanImage for {self.interface_kwargs['channel_name']}",
             "scan_line_rate": self.expected_scan_line_rate,
@@ -290,28 +304,28 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTest
 
     def check_read_nwb(self, nwbfile_path: str):
         """Test reading the NWB file for single-plane ScanImage data."""
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert self.imaging_plane_name in nwbfile.imaging_planes
-            assert self.photon_series_name in nwbfile.acquisition
+        assert self.imaging_plane_name in nwbfile.imaging_planes
+        assert self.photon_series_name in nwbfile.acquisition
 
-            two_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
-            assert two_photon_series.unit == "n.a."
-            assert two_photon_series.data.dtype == np.int16
-            assert two_photon_series.rate is None
-            assert two_photon_series.starting_time is None
+        two_photon_series = nwbfile.acquisition[self.photon_series_name]
+        assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
+        assert two_photon_series.unit == "n.a."
+        assert two_photon_series.data.dtype == np.int16
+        assert two_photon_series.rate is None
+        assert two_photon_series.starting_time is None
 
-            imaging_extractor = self.interface.imaging_extractor
-            times_from_extractor = imaging_extractor._times
-            assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
+        imaging_extractor = self.interface.imaging_extractor
+        times_from_extractor = imaging_extractor._times
+        assert_array_equal(two_photon_series.timestamps[:], times_from_extractor)
 
-            data_from_extractor = imaging_extractor.get_series()
-            assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
+        data_from_extractor = imaging_extractor.get_series()
+        assert_array_equal(two_photon_series.data[:], data_from_extractor.transpose(0, 2, 1))
 
-            optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
-            assert len(optical_channels) == 1
+        optical_channels = nwbfile.imaging_planes[self.imaging_plane_name].optical_channel
+        assert len(optical_channels) == 1
+        nwbfile.read_io.close()
 
 
 class TestScanImageImagingInterfacesAssertions:
@@ -348,6 +362,40 @@ class TestScanImageImagingInterfacesAssertions:
             ScanImageImagingInterface(file_path=file_path, plane_index=20, interleave_slice_samples=True)
 
 
+def test_two_channels_of_one_acquisition_share_one_device_entry():
+    """A device is per instrument while an interface is per channel, so the two interfaces of one
+    multi-channel acquisition derive the same registry key and merge into a single entry. Keyed by
+    ``metadata_key`` instead they would be two entries carrying one name, which the duplicate-name check
+    rejects. No single-interface test can reach this."""
+    from neuroconv.utils import dict_deep_update
+    from neuroconv.utils.json_schema import _validate_device_registry_names
+
+    file_path = str(
+        OPHYS_DATA_PATH
+        / "imaging_datasets"
+        / "ScanImage"
+        / "planar_two_channels_single_file"
+        / "planar_two_ch_single_files_00001_00001.tif"
+    )
+    first = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 1")
+    second = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 2")
+    assert first.metadata_key != second.metadata_key
+
+    merged = {}
+    for interface in (first, second):
+        merged = dict_deep_update(merged, dict(interface.get_metadata(use_new_metadata_format=True)))
+
+    assert list(merged["Devices"]) == ["scan_image_microscope"]
+    _validate_device_registry_names(merged)
+
+    # The per-interface registries stay per interface, so neither channel's objects collide.
+    assert set(merged["Ophys"]["ImagingPlanes"]) == {first.metadata_key, second.metadata_key}
+    imaging_plane_names = {entry["name"] for entry in merged["Ophys"]["ImagingPlanes"].values()}
+    series_names = {entry["name"] for entry in merged["Ophys"]["MicroscopySeries"].values()}
+    assert len(imaging_plane_names) == 2
+    assert len(series_names) == 2
+
+
 @pytest.mark.skipif(platform.machine() == "arm64", reason="Interface not supported on arm64 architecture")
 class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageLegacyImagingInterface
@@ -362,11 +410,14 @@ class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
         metadata_key = self.interface.metadata_key
         assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
         assert metadata["Devices"] == {
-            metadata_key: {"description": "Microscope controlled by ScanImage (legacy v3.8)"},
+            "scan_image_microscope": {
+                "name": "Microscope",
+                "description": "Microscope controlled by ScanImage (legacy v3.8)",
+            },
         }
         assert metadata["Ophys"]["ImagingPlanes"] == {
             metadata_key: {
-                "device_metadata_key": metadata_key,
+                "device_metadata_key": "scan_image_microscope",
                 "imaging_rate": self.expected_sampling_frequency,
             },
         }
@@ -389,10 +440,11 @@ class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        """Hdf5ImagingInterface does not extract ophys metadata from the source, so the Ophys section is empty.
+        """Hdf5ImagingInterface reads no ophys metadata from the source, so it claims no device and takes
+        the base's generic series name: nothing in the file says what was imaged.
 
         See https://github.com/catalystneuro/neuroconv/issues/1557"""
-        assert "Ophys" not in metadata
+        assert metadata["Ophys"] == {"MicroscopySeries": {"hdf5_imaging": dict(name="MicroscopySeries")}}
         assert "Devices" not in metadata
 
 
@@ -404,10 +456,16 @@ class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         """SbxImagingInterface extracts device provenance and format-specific series description."""
         metadata_key = self.interface.metadata_key
-        assert metadata["Devices"] == {metadata_key: {"description": "Scanbox imaging"}}
+        assert metadata["Devices"] == {"scanbox_microscope": {"name": "Microscope", "description": "Scanbox imaging"}}
         assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {"device_metadata_key": "scanbox_microscope"},
+            },
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data acquired with Scanbox."},
+                metadata_key: {
+                    "description": "Imaging data acquired with Scanbox.",
+                    "imaging_plane_metadata_key": metadata_key,
+                },
             },
         }
 
@@ -419,6 +477,182 @@ class TestSbxImagingInterfaceSBX(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
 
+class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMixin):
+    """Tests the unified BrukerTiffImagingInterface against single-channel single-plane data."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    expected_metadata_key = "bruker_tiff_imaging"
+    expected_imaging_rate = 29.873732099062256
+    expected_scan_line_rate = 15840.580398865815
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        # The microscope is folder-level, so it is registered under its own key rather than the
+        # per-interface ``metadata_key`` that indexes the imaging plane and series. The key carries the
+        # system the XML names, so two folders from two Bruker systems cannot merge into one entry.
+        device_metadata_key = "bruker_device_4886"
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 2, 20, 15, 58, 25)
+
+        expected_devices = {
+            device_metadata_key: {
+                "name": "BrukerFluorescenceMicroscope",
+                "serial_number": "E8D0-2F5E-B967-36D1-3CA0-8C25-681B-CEF3",
+                "description": "Version 5.6.64.400. NORTHWESTERN",
+            },
+        }
+        # Only what the Bruker .xml reports. excitation_lambda, indicator, location, optical_channel
+        # and the series unit are absent on purpose; the write path fills them from the placeholder
+        # template, so emitting them here would be inventing values the source never gave.
+        expected_imaging_plane = {
+            "name": "ImagingPlane",
+            "description": "The imaging plane origin_coords units are in the microscope reference frame.",
+            "device_metadata_key": device_metadata_key,
+            "imaging_rate": self.expected_imaging_rate,
+            "grid_spacing": (1.1078125e-06, 1.1078125e-06),
+            "grid_spacing_unit": "meters",
+            "origin_coords": (0.0, 0.0),
+            "origin_coords_unit": "micrometers",
+        }
+        expected_microscopy_series = {
+            "name": "TwoPhotonSeries",
+            "imaging_plane_metadata_key": metadata_key,
+            "description": "Imaging data acquired from the Bruker Two-Photon Microscope.",
+            "field_of_view": (7.09e-05, 7.09e-05),
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
+        expected_ophys = {
+            "ImagingPlanes": {metadata_key: expected_imaging_plane},
+            "MicroscopySeries": {metadata_key: expected_microscopy_series},
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Ophys"] == expected_ophys
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        assert "BrukerFluorescenceMicroscope" in nwbfile.devices
+        assert "ImagingPlane" in nwbfile.imaging_planes
+        two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
+        assert two_photon_series.rate == self.expected_imaging_rate
+        assert two_photon_series.scan_line_rate == self.expected_scan_line_rate
+        assert two_photon_series.data.shape == (10, 64, 64)
+
+        # The interface emits none of these; the write path fills them from the placeholder
+        # template, so the file is still schema-complete despite the sparse get_metadata.
+        imaging_plane = nwbfile.imaging_planes["ImagingPlane"]
+        assert np.isnan(imaging_plane.excitation_lambda)
+        assert imaging_plane.indicator == "unknown"
+        assert imaging_plane.location == "unknown"
+        assert imaging_plane.optical_channel[0].name == "OpticalChannel"
+        assert two_photon_series.unit == "n.a."
+        nwbfile.read_io.close()
+
+
+class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixin):
+    """Tests the unified BrukerTiffImagingInterface against single-channel volumetric data."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    expected_metadata_key = "bruker_tiff_imaging"
+    expected_volume_rate = 10.314757507168189
+    expected_scan_line_rate = 15842.086085895791
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        device_metadata_key = "bruker_device_4886"
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 11, 3, 11, 20, 34)
+
+        expected_devices = {
+            device_metadata_key: {
+                "name": "BrukerFluorescenceMicroscope",
+                "serial_number": "E8D0-2F5E-B967-36D1-3CA0-8C25-681B-CEF3",
+                "description": "Version 5.6.64.400. NORTHWESTERN",
+            },
+        }
+        # Source-known fields only; see the single-plane case for why the optics fields are absent.
+        expected_imaging_plane = {
+            "name": "ImagingPlane",
+            "description": "The imaging plane origin_coords units are in the microscope reference frame.",
+            "device_metadata_key": device_metadata_key,
+            "imaging_rate": self.expected_volume_rate,
+            "grid_spacing": (1.1078125e-06, 1.1078125e-06, 0.00026),
+            "grid_spacing_unit": "meters",
+            "origin_coords": (56.215, 14.927, -130.0),
+            "origin_coords_unit": "micrometers",
+        }
+        expected_microscopy_series = {
+            "name": "TwoPhotonSeries",
+            "imaging_plane_metadata_key": metadata_key,
+            "description": "The volumetric imaging data acquired from the Bruker Two-Photon Microscope.",
+            "field_of_view": (7.09e-05, 7.09e-05, 0.00026),
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
+        expected_ophys = {
+            "ImagingPlanes": {metadata_key: expected_imaging_plane},
+            "MicroscopySeries": {metadata_key: expected_microscopy_series},
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Ophys"] == expected_ophys
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        assert "BrukerFluorescenceMicroscope" in nwbfile.devices
+        two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
+        assert two_photon_series.rate == self.expected_volume_rate
+        assert two_photon_series.data.shape == (5, 64, 64, 2)
+        nwbfile.read_io.close()
+
+
+class TestBrukerTiffImagingInterfaceDualColor(ImagingExtractorInterfaceTestMixin):
+    """Tests the unified BrukerTiffImagingInterface against multi-channel single-plane data."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
+        ),
+        channel_name="Ch1",
+    )
+    optical_series_name = "TwoPhotonSeriesCh1"
+    save_directory = OUTPUT_PATH
+
+
+class TestBrukerTiffImagingInterfaceDisjointPlane(ImagingExtractorInterfaceTestMixin):
+    """Unified interface pinned to a single depth plane of a volumetric acquisition (disjoint layout)."""
+
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        ),
+        plane_index=0,
+    )
+    optical_series_name = "TwoPhotonSeriesPlane0"
+    save_directory = OUTPUT_PATH
+
+
+# ---------------------------------------------------------------------------
+# Deprecated interfaces. Will be removed on or after December 2026.
+# These tests exercise the deprecated wrappers and assert the FutureWarning is emitted.
+# ---------------------------------------------------------------------------
+
+
 class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
     interface_kwargs = dict(
@@ -428,10 +662,16 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
 
-        cls = request.cls
+    @pytest.fixture(scope="class", autouse=True)
+    @classmethod
+    def setup_metadata(cls):
 
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.optical_channel_metadata = dict(
@@ -474,27 +714,27 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     def check_read_nwb(self, nwbfile_path: str):
         """Check the ophys metadata made it to the NWB file"""
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert self.device_metadata["name"] in nwbfile.devices
-            assert nwbfile.devices[self.device_metadata["name"]].description == self.device_metadata["description"]
-            assert self.imaging_plane_metadata["name"] in nwbfile.imaging_planes
-            imaging_plane = nwbfile.imaging_planes[self.imaging_plane_metadata["name"]]
-            optical_channel = imaging_plane.optical_channel[0]
-            assert optical_channel.name == self.optical_channel_metadata["name"]
-            assert optical_channel.description == self.optical_channel_metadata["description"]
-            assert imaging_plane.description == self.imaging_plane_metadata["description"]
-            assert imaging_plane.imaging_rate == self.imaging_plane_metadata["imaging_rate"]
-            assert_array_equal(imaging_plane.grid_spacing[:], self.imaging_plane_metadata["grid_spacing"])
-            assert self.two_photon_series_metadata["name"] in nwbfile.acquisition
-            two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
-            assert two_photon_series.description == self.two_photon_series_metadata["description"]
-            assert two_photon_series.unit == self.two_photon_series_metadata["unit"]
-            assert two_photon_series.scan_line_rate == self.two_photon_series_metadata["scan_line_rate"]
-            assert_array_equal(two_photon_series.field_of_view[:], self.two_photon_series_metadata["field_of_view"])
+        assert self.device_metadata["name"] in nwbfile.devices
+        assert nwbfile.devices[self.device_metadata["name"]].description == self.device_metadata["description"]
+        assert self.imaging_plane_metadata["name"] in nwbfile.imaging_planes
+        imaging_plane = nwbfile.imaging_planes[self.imaging_plane_metadata["name"]]
+        optical_channel = imaging_plane.optical_channel[0]
+        assert optical_channel.name == self.optical_channel_metadata["name"]
+        assert optical_channel.description == self.optical_channel_metadata["description"]
+        assert imaging_plane.description == self.imaging_plane_metadata["description"]
+        assert imaging_plane.imaging_rate == self.imaging_plane_metadata["imaging_rate"]
+        assert_array_equal(imaging_plane.grid_spacing[:], self.imaging_plane_metadata["grid_spacing"])
+        assert self.two_photon_series_metadata["name"] in nwbfile.acquisition
+        two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
+        assert two_photon_series.description == self.two_photon_series_metadata["description"]
+        assert two_photon_series.unit == self.two_photon_series_metadata["unit"]
+        assert two_photon_series.scan_line_rate == self.two_photon_series_metadata["scan_line_rate"]
+        assert_array_equal(two_photon_series.field_of_view[:], self.two_photon_series_metadata["field_of_view"])
 
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+        nwbfile.read_io.close()
 
 
 class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestMixin):
@@ -506,9 +746,16 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
     )
     save_directory = OUTPUT_PATH
 
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
+
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
 
         cls.photon_series_name = "TwoPhotonSeries"
         cls.num_samples = 5
@@ -563,12 +810,12 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         assert metadata["Ophys"] == self.ophys_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
-            photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
-            np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
-            assert photon_series.rate == 20.629515014336377
+        nwbfile = read_nwb(nwbfile_path)
+        photon_series = nwbfile.acquisition[self.photon_series_name]
+        assert photon_series.data.shape == (self.num_samples, *self.image_shape)
+        np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
+        assert photon_series.rate == 20.629515014336377
+        nwbfile.read_io.close()
 
 
 class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterfaceTestMixin):
@@ -581,10 +828,16 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
     )
     save_directory = OUTPUT_PATH
 
-    @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
 
-        cls = request.cls
+    @pytest.fixture(scope="class", autouse=True)
+    @classmethod
+    def setup_metadata(cls):
 
         cls.photon_series_name = "TwoPhotonSeriesCh2000002"
         cls.num_samples = 5
@@ -641,7 +894,8 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
             / f"{self.data_interface_cls.__name__}_{self.test_name}_test_starting_time_alignment.nwb"
         )
 
-        interface = self.data_interface_cls(**self.interface_kwargs)
+        with pytest.warns(FutureWarning, match="deprecated"):
+            interface = self.data_interface_cls(**self.interface_kwargs)
 
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
@@ -649,18 +903,18 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
         metadata = interface.get_metadata()
         interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert nwbfile.acquisition[self.photon_series_name].starting_time == aligned_starting_time
+        assert nwbfile.acquisition[self.photon_series_name].starting_time == aligned_starting_time
+        nwbfile.read_io.close()
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
-            photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
-            np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
-            assert photon_series.rate == 10.314757507168189
+        nwbfile = read_nwb(nwbfile_path)
+        photon_series = nwbfile.acquisition[self.photon_series_name]
+        assert photon_series.data.shape == (self.num_samples, *self.image_shape)
+        np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
+        assert photon_series.rate == 10.314757507168189
+        nwbfile.read_io.close()
 
 
 class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestMixin):
@@ -673,10 +927,17 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
     )
     save_directory = OUTPUT_PATH
 
-    @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
+    @pytest.fixture
+    def setup_interface(self, request):
+        self.test_name: str = ""
+        with pytest.warns(FutureWarning, match="deprecated"):
+            self.interface = self.data_interface_cls(**self.interface_kwargs)
+        return self.interface, self.test_name
 
-        cls = request.cls
+    @pytest.fixture(scope="class", autouse=True)
+    @classmethod
+    def setup_metadata(cls):
+
         cls.photon_series_name = "TwoPhotonSeriesCh2"
         cls.num_samples = 10
         cls.image_shape = (512, 512)
@@ -727,12 +988,12 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         assert metadata["Ophys"] == self.ophys_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
-            photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert photon_series.data.shape == (self.num_samples, *self.image_shape)
-            np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
-            assert photon_series.rate == 29.873615189896864
+        nwbfile = read_nwb(nwbfile_path)
+        photon_series = nwbfile.acquisition[self.photon_series_name]
+        assert photon_series.data.shape == (self.num_samples, *self.image_shape)
+        np.testing.assert_array_equal(photon_series.dimension[:], self.image_shape)
+        assert photon_series.rate == 29.873615189896864
+        nwbfile.read_io.close()
 
     def check_nwbfile_temporal_alignment(self):
         nwbfile_path = str(
@@ -748,10 +1009,10 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         metadata = interface.get_metadata()
         interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert nwbfile.acquisition[self.photon_series_name].starting_time == aligned_starting_time
+        assert nwbfile.acquisition[self.photon_series_name].starting_time == aligned_starting_time
+        nwbfile.read_io.close()
 
 
 class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
@@ -762,8 +1023,8 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
         cls.device_metadata = dict(name="Microscope")
         cls.optical_channel_metadata = dict(
             name="OpticalChannel",
@@ -814,6 +1075,8 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
                 metadata_key: {
                     "description": "Imaging data acquired with Micro-Manager.",
                     "imaging_plane_metadata_key": metadata_key,
+                    "unit": "px",
+                    "format": "tiff",
                 },
             },
         }
@@ -823,24 +1086,24 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
 
         # Assuming you would create and write an NWB file here before reading it back
 
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(str(nwbfile_path))
 
-            assert self.imaging_plane_metadata["name"] in nwbfile.imaging_planes
-            imaging_plane = nwbfile.imaging_planes[self.imaging_plane_metadata["name"]]
-            optical_channel = imaging_plane.optical_channel[0]
-            assert optical_channel.name == self.optical_channel_metadata["name"]
-            assert optical_channel.description == self.optical_channel_metadata["description"]
-            assert imaging_plane.description == self.imaging_plane_metadata["description"]
-            assert imaging_plane.imaging_rate == self.imaging_plane_metadata["imaging_rate"]
-            assert self.two_photon_series_metadata["name"] in nwbfile.acquisition
-            two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
-            assert two_photon_series.description == self.two_photon_series_metadata["description"]
-            assert two_photon_series.unit == self.two_photon_series_metadata["unit"]
-            assert two_photon_series.format == self.two_photon_series_metadata["format"]
-            assert_array_equal(two_photon_series.dimension[:], self.two_photon_series_metadata["dimension"])
+        assert self.imaging_plane_metadata["name"] in nwbfile.imaging_planes
+        imaging_plane = nwbfile.imaging_planes[self.imaging_plane_metadata["name"]]
+        optical_channel = imaging_plane.optical_channel[0]
+        assert optical_channel.name == self.optical_channel_metadata["name"]
+        assert optical_channel.description == self.optical_channel_metadata["description"]
+        assert imaging_plane.description == self.imaging_plane_metadata["description"]
+        assert imaging_plane.imaging_rate == self.imaging_plane_metadata["imaging_rate"]
+        assert self.two_photon_series_metadata["name"] in nwbfile.acquisition
+        two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
+        assert two_photon_series.description == self.two_photon_series_metadata["description"]
+        assert two_photon_series.unit == self.two_photon_series_metadata["unit"]
+        assert two_photon_series.format == self.two_photon_series_metadata["format"]
+        assert_array_equal(two_photon_series.dimension[:], self.two_photon_series_metadata["dimension"])
 
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+        nwbfile.read_io.close()
 
 
 class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
@@ -906,7 +1169,10 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 10, 18, 17, 39, 19, tzinfo=timezone.utc)
 
         expected_devices = {
-            metadata_key: {"description": "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041"},
+            "thor_microscope": {
+                "name": "ThorMicroscope",
+                "description": "ThorLabs 2P Microscope running ThorImageLS 5.0.2023.10041",
+            },
         }
         assert metadata["Devices"] == expected_devices
 
@@ -921,6 +1187,7 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
 
         # MicroscopySeries
         series = ophys["MicroscopySeries"][metadata_key]
+        assert series["name"] == "TwoPhotonSeriesChanA"
         assert series["imaging_plane_metadata_key"] == metadata_key
         assert series["field_of_view"] == pytest.approx([452.7e-6, 452.7e-6])
 
@@ -931,8 +1198,8 @@ class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
 
         cls.device_name = "Miniscope"
 
@@ -996,8 +1263,8 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(cls, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
         cls.device_name = "Miniscope"
         cls.imaging_plane_name = "ImagingPlane"
         cls.photon_series_name = "OnePhotonSeries"
@@ -1023,16 +1290,36 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
 
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635000)
 
+        # The whole device configuration reaches the registry entry, typed so it is built as an
+        # ndx-miniscope Miniscope rather than a plain Device, and keyed by the device rather than by
+        # the interface. The key is public, so a user annotating the device does not have to guess it.
+        device_metadata_key = self.interface.device_metadata_key
+        assert device_metadata_key == "miniscope"
         assert metadata["Devices"] == {
-            metadata_key: {"name": "Miniscope", "model_name": "Miniscope_V3"},
+            device_metadata_key: {
+                "type": "Miniscope",
+                "name": "Miniscope",
+                "compression": "FFV1",
+                "deviceType": "Miniscope_V3",
+                "frameRate": "15FPS",
+                "gain": "High",
+                "framesPerFile": 1000,
+                "led0": 47,
+                "device_model_metadata_key": "miniscope_v3",
+            },
         }
+        # The hardware design is a model, shared by every Miniscope of that design.
+        assert metadata["DeviceModels"] == {"miniscope_v3": {"name": "Miniscope_V3"}}
 
         expected_imaging_rate = self.interface.imaging_extractor.get_sampling_frequency()
         assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {
-            "device_metadata_key": metadata_key,
+            "name": "ImagingPlane",
+            "device_metadata_key": device_metadata_key,
             "imaging_rate": expected_imaging_rate,
         }
         assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": "OnePhotonSeries",
+            "unit": "px",
             "imaging_plane_metadata_key": metadata_key,
             "description": "Imaging data acquired with a Miniscope.",
         }
@@ -1041,38 +1328,37 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         """Override check_read_nwb for single-recording interface expectations."""
         import numpy as np
         from ndx_miniscope import Miniscope
-        from pynwb import NWBHDF5IO
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert self.device_name in nwbfile.devices
-            device = nwbfile.devices[self.device_name]
-            assert isinstance(device, Miniscope)
-            imaging_plane = nwbfile.imaging_planes[self.imaging_plane_name]
-            assert imaging_plane.device.name == self.device_name
+        assert self.device_name in nwbfile.devices
+        device = nwbfile.devices[self.device_name]
+        assert isinstance(device, Miniscope)
+        imaging_plane = nwbfile.imaging_planes[self.imaging_plane_name]
+        assert imaging_plane.device.name == self.device_name
 
-            # Check OnePhotonSeries - updated for single recording (5 frames, not 15)
-            assert self.photon_series_name in nwbfile.acquisition
-            one_photon_series = nwbfile.acquisition[self.photon_series_name]
-            assert one_photon_series.unit == "px"
-            assert one_photon_series.data.shape == (5, 752, 480)  # Single recording has 5 frames
-            assert one_photon_series.data.dtype == np.uint8
+        # Check OnePhotonSeries - updated for single recording (5 frames, not 15)
+        assert self.photon_series_name in nwbfile.acquisition
+        one_photon_series = nwbfile.acquisition[self.photon_series_name]
+        assert one_photon_series.unit == "px"
+        assert one_photon_series.data.shape == (5, 752, 480)  # Single recording has 5 frames
+        assert one_photon_series.data.dtype == np.uint8
 
-            # After roiextractors #509, MiniscopeImagingExtractor provides native timestamps
-            # from timeStamps.csv, so the photon series uses timestamps instead of rate
-            assert one_photon_series.rate is None  # Uses timestamps instead of rate
-            assert one_photon_series.timestamps is not None  # Now uses hardware timestamps
-            assert len(one_photon_series.timestamps) == 5
-            assert one_photon_series.starting_frame is None
+        # After roiextractors #509, MiniscopeImagingExtractor provides native timestamps
+        # from timeStamps.csv, so the photon series uses timestamps instead of rate
+        assert one_photon_series.rate is None  # Uses timestamps instead of rate
+        assert one_photon_series.timestamps is not None  # Now uses hardware timestamps
+        assert len(one_photon_series.timestamps) == 5
+        assert one_photon_series.starting_frame is None
 
-            # Verify that interface can get original timestamps
-            interface_times = self.interface.get_original_timestamps()
-            assert interface_times is not None
-            assert len(interface_times) == 5
+        # Verify that interface can get original timestamps
+        interface_times = self.interface.get_original_timestamps()
+        assert interface_times is not None
+        assert len(interface_times) == 5
 
-            # Verify timestamps match between interface and NWB
-            np.testing.assert_array_almost_equal(one_photon_series.timestamps[:], interface_times)
+        # Verify timestamps match between interface and NWB
+        np.testing.assert_array_almost_equal(one_photon_series.timestamps[:], interface_times)
+        nwbfile.read_io.close()
 
     def test_file_paths_parameter(self):
         """Test using file_paths parameter for non-standard structures."""
@@ -1144,6 +1430,96 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         # Verify it matches the expected value from metaData.json
         expected_start_time = datetime(2021, 10, 7, 15, 3, 28, 635000)
         assert session_start_time == expected_start_time
+
+
+class TestMiniscopeImagingInterfaceV4BNO(MiniscopeImagingInterfaceMixin):
+    """A V4 recording whose configuration exercises every branch of the config-to-device mapping.
+
+    The DAQ wrote ``gain`` as a number where the schema declares text, an ``ROI`` where the schema
+    declares a bounding box, and an ``ewl`` (the electrowetting lens position) the schema has no field
+    for at all. The recording in ``TestMiniscopeImagingInterface`` carries none of the three.
+    """
+
+    data_interface_cls = MiniscopeImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "Miniscope"
+            / "Ca_EEG3-4_FC"
+            / "2022_09_19"
+            / "09_18_41"
+            / "miniscope"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    @pytest.fixture(scope="class", autouse=True)
+    @classmethod
+    def setup_metadata(cls):
+        cls.device_name = "miniscope"
+        cls.imaging_plane_name = "ImagingPlane"
+        cls.photon_series_name = "OnePhotonSeries"
+        cls.optical_series_name = "OnePhotonSeries"
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert self.interface.device_metadata_key == "miniscope"
+        assert metadata["Devices"] == {
+            "miniscope": {
+                "type": "Miniscope",
+                "name": "miniscope",
+                "compression": "FFV1",
+                "deviceType": "Miniscope_V4_BNO",
+                "frameRate": "30FPS",
+                # Written as 3.5 by the DAQ, declared as text by the schema.
+                "gain": "3.5",
+                "framesPerFile": 1000,
+                "led0": 1,
+                # Written as {"height": 608, "width": 608, "leftEdge": 0, "topEdge": 0}.
+                "ROI": [608, 608],
+                "description": (
+                    "Settings recorded by the Miniscope DAQ software that the ndx-miniscope schema "
+                    "has no field for: ROI.leftEdge: 0, ROI.topEdge: 0, ewl: 70."
+                ),
+                "device_model_metadata_key": "miniscope_v4_bno",
+            },
+        }
+        assert metadata["DeviceModels"] == {"miniscope_v4_bno": {"name": "Miniscope_V4_BNO"}}
+
+    def check_read_nwb(self, nwbfile_path: str):
+        from ndx_miniscope import Miniscope
+
+        nwbfile = read_nwb(nwbfile_path)
+
+        device = nwbfile.devices[self.device_name]
+        assert isinstance(device, Miniscope)
+
+        one_photon_series = nwbfile.acquisition[self.photon_series_name]
+        assert one_photon_series.data.shape == (15, 608, 608)
+        assert one_photon_series.timestamps.shape == (15,)
+        nwbfile.read_io.close()
+
+    def test_configuration_reaches_the_device_through_the_registry(self):
+        """The typed entry is what the registry builds the Miniscope from, values and all."""
+        from ndx_miniscope import Miniscope
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata(use_new_metadata_format=True))
+
+        device = nwbfile.devices["miniscope"]
+        assert isinstance(device, Miniscope)
+        assert device.gain == "3.5"
+        assert device.deviceType == "Miniscope_V4_BNO"
+        assert list(device.ROI) == [608, 608]
+        assert "ewl: 70" in device.description
+
+        # The hardware design is written as the DeviceModel pynwb 4 asks for, not as the deprecated
+        # 'model_name'. Its manufacturer is required by NWB and not recorded by the DAQ.
+        assert device.model is nwbfile.device_models["Miniscope_V4_BNO"]
+        assert device.model.manufacturer == "unknown"
 
 
 skip_on_darwin_arm64 = pytest.mark.skipif(
@@ -1223,14 +1599,18 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
         assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
 
         expected_ophys = {
+            "ImagingPlanes": {
+                metadata_key: {"device_metadata_key": "inscopix_microscope"},
+            },
             "MicroscopySeries": {
                 metadata_key: {
                     "description": "Imaging data acquired with Inscopix nVista.",
+                    "imaging_plane_metadata_key": metadata_key,
                 },
             },
         }
         assert metadata["Ophys"] == expected_ophys
-        assert "Devices" not in metadata
+        assert metadata["Devices"] == {"inscopix_microscope": {"name": "Microscope"}}
         assert "Subject" not in metadata
 
 
@@ -1320,18 +1700,25 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtract
         assert metadata["NWBFile"]["session_id"] == "Session 20200917-093000"
 
         assert metadata["Devices"] == {
-            metadata_key: {
+            "inscopix_fa_1234567": {
                 "name": "Dual Color",
                 "description": "Inscopix Microscope (Serial: FA-1234567, Software: 1.5.0)",
             }
         }
         assert metadata["Ophys"] == {
+            "ImagingPlanes": {
+                metadata_key: {
+                    "device_metadata_key": "inscopix_fa_1234567",
+                    "description": (
+                        "The plane or volume being imaged by the microscope. "
+                        "(Exposure Time (ms): 79; Gain: 2; Focus: 30)"
+                    ),
+                },
+            },
             "MicroscopySeries": {
                 metadata_key: {
                     "description": "Imaging data acquired with Inscopix nVista.",
-                    "exposure_time_ms": 79,
-                    "microscope_gain": 2,
-                    "microscope_focus": 30,
+                    "imaging_plane_metadata_key": metadata_key,
                 },
             },
         }
@@ -1400,14 +1787,18 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(1970, 1, 1, 0, 0, 0)
 
         expected_ophys = {
+            "ImagingPlanes": {
+                metadata_key: {"device_metadata_key": "inscopix_microscope"},
+            },
             "MicroscopySeries": {
                 metadata_key: {
                     "description": "Imaging data acquired with Inscopix nVista.",
+                    "imaging_plane_metadata_key": metadata_key,
                 },
             },
         }
         assert metadata["Ophys"] == expected_ophys
-        assert "Devices" not in metadata
+        assert metadata["Devices"] == {"inscopix_microscope": {"name": "Microscope"}}
         assert "Subject" not in metadata
 
 
@@ -1494,13 +1885,17 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
 
         # Devices
         assert metadata["Devices"] == {
-            metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
+            "femtonics_microscope": {
+                "name": "Microscope",
+                "description": "Femtonics MESc (version: MESc 3.3, revision: 4356)",
+            },
         }
 
         ophys = metadata["Ophys"]
 
         # ImagingPlanes
         imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["device_metadata_key"] == "femtonics_microscope"
         assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
         assert imaging_plane["grid_spacing_unit"] == "meters"
         assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)
@@ -1594,13 +1989,17 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
 
         # Devices
         assert metadata["Devices"] == {
-            metadata_key: {"description": "Femtonics MESc (version: MESc 3.3, revision: 4356)"},
+            "femtonics_microscope": {
+                "name": "Microscope",
+                "description": "Femtonics MESc (version: MESc 3.3, revision: 4356)",
+            },
         }
 
         ophys = metadata["Ophys"]
 
         # ImagingPlanes
         imaging_plane = ophys["ImagingPlanes"][metadata_key]
+        assert imaging_plane["device_metadata_key"] == "femtonics_microscope"
         assert imaging_plane["grid_spacing"] == pytest.approx([1.7821140546875e-6, 1.7821140546875e-6])
         assert imaging_plane["grid_spacing_unit"] == "meters"
         assert imaging_plane["imaging_rate"] == pytest.approx(30.962890625)

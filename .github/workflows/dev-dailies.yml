@@ -14,7 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - id: load_python_versions
-        run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
+        run: |
+          MINIMUM=$(cat ./.github/workflows/min_python_version.txt)
+          MAXIMUM=$(cat ./.github/workflows/max_python_version.txt)
+          echo "python_versions=[\"$MINIMUM\", \"$MAXIMUM\"]" >> "$GITHUB_OUTPUT"
       - id: load_os_versions
         run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
 
@@ -40,7 +43,7 @@ jobs:
     uses: ./.github/workflows/live-service-testing.yml
     secrets:
       DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
-      EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
+      EMBER_SANDBOX_API_KEY: ${{ secrets.EMBER_SANDBOX_API_KEY }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}

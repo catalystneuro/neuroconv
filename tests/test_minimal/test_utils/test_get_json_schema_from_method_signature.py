@@ -218,6 +218,14 @@ def test_get_json_schema_from_example_data_interface():
             },
             "verbose": {"default": False, "type": "boolean", "description": "Allows verbose.\nDefault is False."},
             "es_key": {"default": "ElectricalSeries", "type": "string"},
+            "metadata_key": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+                "description": (
+                    "Key that indexes this interface's entries in the dict-based metadata. Defaults to\n"
+                    '``"alpha_omega_recording"``.'
+                ),
+            },
         },
         "required": ["folder_path"],
         "type": "object",

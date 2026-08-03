@@ -279,12 +279,18 @@ Intan Digital Data Conversion
 
 Convert Intan digital TTL lines to discrete events using
 :py:class:`~neuroconv.datainterfaces.ecephys.intan.intandigitalinterface.IntanDigitalInterface`.
-The controller packs its 16 digital input (or output) lines into one 16-bit word per sample; this
-interface carves individual lines out of that word, edge-detects each, and writes them as
-``pynwb.event.EventsTable`` objects into ``nwbfile.events``.
+The controller packs its 16 digital input lines (and its 16 digital output lines) into one 16-bit word
+per sample, and the header names every line it recorded. This interface reads each named line,
+edge-detects it, and writes them as ``pynwb.event.EventsTable`` objects into ``nwbfile.events``.
 
-With no ``event_specs`` (the default), every digital line that actually toggles is derived as one
-event, using the lossless ``"high_period"`` reading (a durative event per pulse, with a duration).
+Lines are addressed by the header's own name (``DIGITAL-IN-01``, ``DIN-00``, ``DIGITAL-OUT-05``), which
+is what the acquisition software shows. Because every line is named individually, one interface covers
+whichever digital words the file carries and there is no stream to pick. To see the names a file offers,
+construct the interface with no configuration and read the event types off ``get_metadata()``.
+
+With no ``detection_configuration`` (the default), every line the header exposes is derived as one event
+type, using the lossless ``"high_period"`` reading (a durative event per pulse, with a duration). A line
+that was recorded but never toggles is still written, as an empty table.
 
 .. code-block:: python
 
@@ -296,7 +302,6 @@ event, using the lossless ``"high_period"`` reading (a durative event per pulse,
     >>>
     >>> interface_digital = IntanDigitalInterface(
     ...     file_path=file_path_digital,
-    ...     stream_name="USB board digital input channel",
     ...     verbose=False,
     ... )
     >>>
@@ -309,31 +314,40 @@ event, using the lossless ``"high_period"`` reading (a durative event per pulse,
     >>> nwbfile_path_digital = output_folder / "intan_digital_conversion.nwb"
     >>> interface_digital.run_conversion(nwbfile_path=nwbfile_path_digital, metadata=metadata_digital, overwrite=True)
 
-To name specific lines and choose what to detect, pass an ``event_specs`` keyed by the format's
-bit positions (not the reader's channel names, so a saved config does not depend on the backend).
-Each entry is ``{"bits": [i], "detect": ...}`` where ``detect`` is one of ``"rising"`` or
-``"falling"`` (point events at that edge) or ``"high_period"`` / ``"low_period"`` (durative events
-with a duration, the latter for an active-low line):
+To read specific lines, pass a ``detection_configuration`` keyed by their header names. Each line gets a
+**list** of detection specs, one per event type you want from it, and a spec's ``detection`` is one of
+``"rising"`` or ``"falling"`` (point events at that edge) or ``"high_period"`` / ``"low_period"``
+(durative events with a duration, the latter for an active-low line). Every spec also states how its
+signal becomes a line, in ``signal_conditioning``. An Intan digital line already is one, which is what
+``{"binarize": "midpoint"}`` is for: it cuts strictly between the signal's two levels, whatever they
+are, so you do not have to know them. Stating it is deliberate rather than defaulted, so that what an
+event type is read from is always something you chose:
 
 .. code-block:: python
 
     >>> interface_digital = IntanDigitalInterface(
     ...     file_path=file_path_digital,
-    ...     stream_name="USB board digital input channel",
-    ...     event_specs={
-    ...         # The key ("camera_sync") is a name you choose for whatever device is wired to that
-    ...         # line; it is not read from the file. Only the bit position ("bits": [0]) comes from
-    ...         # Intan. With no event_specs, lines are named after their native header channel name.
-    ...         "camera_sync": {"bits": [0], "detect": "rising"},
+    ...     detection_configuration={
+    ...         # The key is the line's name in the Intan header. The optional "event_name" is a name you
+    ...         # choose for whatever device is wired to it; it replaces the derived identifier, and
+    ...         # pinning it now means the identifier does not move if you later read the same line two
+    ...         # ways. Without it, the line keeps its header name.
+    ...         "DIGITAL-IN-01": [
+    ...             {
+    ...                 "signal_conditioning": {"binarize": "midpoint"},
+    ...                 "detection": "rising",
+    ...                 "event_name": "camera_sync",
+    ...             }
+    ...         ],
     ...     },
     ...     verbose=False,
     ... )
 
 To skip digital events entirely, do not construct this interface (or ``exclude_streams`` the digital
-word in the converter); an empty ``event_specs={}`` raises rather than silently writing nothing.
-When several lines should share one events table, point their ``table_metadata_key`` at a common key
-in the editable metadata (see the events metadata guide). ``IntanConverter`` also routes the digital
-input/output streams to this interface automatically with the default config.
+word in the converter); an empty ``detection_configuration={}`` raises rather than silently writing
+nothing. When several lines should share one events table, point their ``table_metadata_key`` at a
+common key in the editable metadata (see the events metadata guide). ``IntanConverter`` also routes the
+digital input/output streams to this interface automatically with the default configuration.
 
 .. _intan-split-files:
 
