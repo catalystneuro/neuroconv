@@ -107,15 +107,10 @@ class DataInterfaceTestMixin:
     def test_metadata(self, setup_interface):
         metadata = self.interface.get_metadata()
 
-        # `test_metadata_schema_valid` checks the schema is well formed; this checks the metadata satisfies
-        # it. `get_metadata` reports only what the source carries, and a source that knows no session start
-        # time legitimately omits it for the writer to default, so validate the metadata the writer would
-        # receive. The json round trip is what turns datetimes into something jsonschema can validate.
         metadata_for_validation = deepcopy(metadata)
         if "session_start_time" not in metadata_for_validation["NWBFile"]:
             metadata_for_validation["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        schema = self.interface.get_metadata_schema()
-        validate(json.loads(json.dumps(metadata_for_validation, cls=_NWBMetaDataEncoder)), schema)
+        self.interface.validate_metadata(metadata=metadata_for_validation)
 
         self.check_extracted_metadata(metadata)
 
