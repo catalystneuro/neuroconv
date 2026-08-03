@@ -52,6 +52,14 @@ def read_doric_hdf5_stream(file_path, data_path):
         return np.asarray(file[data_path][:])
 
 
+def digital_line_rising_edges(file_path, group_path, line_name):
+    """The times a digital line goes low-to-high, which is what its events become."""
+    line = read_doric_hdf5_stream(file_path, f"{group_path}/{line_name}")
+    times = read_doric_hdf5_stream(file_path, f"{group_path}/Time")
+    rising = np.flatnonzero((line[1:] > 0) & (line[:-1] == 0)) + 1
+    return times[rising].tolist()
+
+
 class DoricConverterTestMixin:
     """Shared assertions; each subclass supplies one layout's fixtures and expectations.
 
@@ -68,12 +76,22 @@ class DoricConverterTestMixin:
         return folder_path
 
     @pytest.fixture
-    def guppy_output_folder(self, tmp_path):
+    def event_onsets(self, acquisition_folder):
+        """Onsets for the mock to record as GuPPy's, defaulting to the generator's own.
+
+        Only a layout whose tests convert needs real ones -- the converter matches them against the
+        events table it builds from the acquisition file.
+        """
+        return None
+
+    @pytest.fixture
+    def guppy_output_folder(self, tmp_path, event_onsets):
         return generate_mock_guppy_output_folder(
             tmp_path / "session_output_1",
             recording_site_to_stores=self.RECORDING_SITE_TO_STORES,
             event_store_to_name=self.EVENT_STORE_TO_NAME,
             cross_correlation_pairs=(),
+            event_onsets=event_onsets,
         )
 
     @pytest.fixture
@@ -141,12 +159,22 @@ class TestGuppyConverterDoricModernHDF5(DoricConverterTestMixin):
     }
     EVENT_STORE_TO_NAME = {"DigitalIO/Camera1": "camera_frames", "DigitalIO/DigitalCh1": "port_entries"}
     EXPECTED_EVENT_NAME_TO_COUNT = {"camera_frames": 6, "port_entries": 0}
+    DIGITAL_IO_GROUP = "DataAcquisition/BBC300/Signals/Series0001/DigitalIO"
 
     @staticmethod
     def read_expected_store_data(file_path, store_id):
         group, dataset = store_id.split("/")
         prefix = "ROISignals/Series0001" if group.startswith("CAM1EXC") else "Signals/Series0001"
         return read_doric_hdf5_stream(file_path, f"DataAcquisition/BBC300/{prefix}/{group}/{dataset}")
+
+    @pytest.fixture
+    def event_onsets(self, acquisition_folder):
+        """This layout converts, so the mock records the lines' real rising edges as GuPPy's onsets."""
+        file_path = acquisition_folder / self.ACQUISITION_FILE_NAME
+        return {
+            event_name: digital_line_rising_edges(file_path, self.DIGITAL_IO_GROUP, store_id.split("/")[-1])
+            for store_id, event_name in self.EVENT_STORE_TO_NAME.items()
+        }
 
     def test_session_start_time_comes_from_the_doric_file(self, converter):
         """The modern layout carries a ``Created`` attribute, so the acquisition wins the metadata merge."""

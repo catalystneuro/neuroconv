@@ -1,5 +1,6 @@
 from typing import Literal
 
+import numpy as np
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
@@ -508,23 +509,59 @@ class GuppyConverter(ConverterPipe):
             )
         processing_module.add(recording_sites_table)
 
-        # Events: each row links to its event type's occurrence rows in the merged EventsTable. A session
-        # whose storesList holds no event store writes no such table, and there is nothing for the
-        # converter to link -- the GuPPy interface then builds the link-free registry itself, exactly as
-        # it does when run standalone.
+        # Events: each row links to the occurrence rows in the merged EventsTable that GuPPy actually
+        # analyzed. A session whose storesList holds no event store writes no such table, and there is
+        # nothing for the converter to link -- the GuPPy interface then builds the link-free registry
+        # itself, exactly as it does when run standalone.
         if not self._events_interface_names:
             return
         merged_events_table = nwbfile.events[_MERGED_EVENTS_TABLE_NAME]
         event_type_column = list(merged_events_table["event_type"][:])
+        timestamp_column = np.asarray(merged_events_table["timestamp"][:], dtype=np.float64)
+        analyzed_event_onsets = guppy_interface.analyzed_event_onsets
         events_table = ndx_guppy.GuppyEventsTable(
             name=_EVENTS_TABLE_NAME,
             description=_EVENTS_TABLE_DESCRIPTION,
             target_tables={"events": merged_events_table},
         )
         for event_name in guppy_interface.event_names:
-            occurrence_rows = [index for index, event_type in enumerate(event_type_column) if event_type == event_name]
-            events_table.add_row(event_name=event_name, events=occurrence_rows)
+            candidate_rows = [index for index, event_type in enumerate(event_type_column) if event_type == event_name]
+            events_table.add_row(
+                event_name=event_name,
+                events=self._select_analyzed_rows(
+                    event_name=event_name,
+                    candidate_rows=candidate_rows,
+                    candidate_timestamps=timestamp_column[candidate_rows],
+                    analyzed_onsets=analyzed_event_onsets[event_name],
+                ),
+            )
         processing_module.add(events_table)
+
+    @staticmethod
+    def _select_analyzed_rows(
+        *,
+        event_name: str,
+        candidate_rows: list[int],
+        candidate_timestamps: np.ndarray,
+        analyzed_onsets: np.ndarray,
+    ) -> list[int]:
+        """Pick the merged-table rows whose timestamps are the ones GuPPy kept for this event.
+
+        GuPPy drops onsets it cannot build a trial around, so the acquisition table legitimately holds
+        occurrences that no GuPPy product covers. Matching is by timestamp rather than exact identity
+        because GuPPy applies its own time correction on the way to writing them.
+        """
+        analyzed_rows = []
+        for onset in analyzed_onsets:
+            matches = np.flatnonzero(np.isclose(candidate_timestamps, onset, rtol=0.0, atol=1e-6))
+            assert matches.size == 1, (
+                f"GuPPy analyzed an onset of {onset} s for event '{event_name}', which matches "
+                f"{matches.size} occurrences in the '{_MERGED_EVENTS_TABLE_NAME}' table. Every GuPPy "
+                f"onset must correspond to exactly one acquisition occurrence; none means the two "
+                f"disagree about the event's time base, several means the occurrences are ambiguous."
+            )
+            analyzed_rows.append(candidate_rows[int(matches[0])])
+        return analyzed_rows
 
     def _derive_recording_site_to_table_rows(self, metadata: dict) -> dict[str, list[int]]:
         """Map each GuPPy recording site to the acquisition ``FiberPhotometryTable`` row indices of its stores.

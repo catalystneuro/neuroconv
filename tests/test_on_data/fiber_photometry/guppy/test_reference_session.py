@@ -78,6 +78,11 @@ RAW_EVENT_ONSETS = {
     "nose_poke": [20.0, 58.0, 100.0, 128.0],
     "reward_delivery": [3.0, 15.0, 35.0, 36.0, 55.0, 75.0, 95.0, 125.0],
 }
+# What GuPPy kept, per <event>_<recording_site>.hdf5 -- the onsets it actually built trials around.
+ANALYZED_EVENT_ONSETS = {
+    "nose_poke": [20.0, 58.0, 100.0, 128.0],
+    "reward_delivery": [15.0, 35.0, 55.0, 75.0, 95.0, 125.0],
+}
 
 # Trials are concatenated across events in storesList order: nose_poke's four, then reward_delivery's six.
 # These are ten of the twelve onsets the raw event CSVs carry, because GuPPy drops an onset earlier than
@@ -295,11 +300,46 @@ class TestGuppyReferenceSession:
         timestamps = events_dataframe.timestamp.to_numpy()
         np.testing.assert_array_equal(timestamps, np.sort(timestamps))
 
+    def test_registry_references_only_the_onsets_guppy_analyzed(self, module):
+        """Each registry row points at the occurrences GuPPy built trials from, not every occurrence.
+
+        GuPPy discards an onset it cannot build a trial around: reward at 3.0 s is earlier than
+        abs(baselineCorrectionStart) = 5 s, and reward at 36.0 s is within timeInterval = 2 s of 35.0 s.
+        Both stay in the acquisition table and neither is claimed here.
+        """
         events_table = module["events"]
         for row, event_name in enumerate(EVENT_NAMES):
             referenced = events_table["events"][row]
             assert set(referenced["event_type"]) == {event_name}
-            assert len(referenced) == len(RAW_EVENT_ONSETS[event_name])
+            np.testing.assert_array_equal(
+                np.sort(referenced["timestamp"].to_numpy()), ANALYZED_EVENT_ONSETS[event_name]
+            )
+
+        discarded = set(RAW_EVENT_ONSETS["reward_delivery"]) - set(ANALYZED_EVENT_ONSETS["reward_delivery"])
+        assert discarded == {3.0, 36.0}
+
+    def test_registry_row_count_matches_every_products_trial_count(self, module):
+        """The rows referenced across the whole registry equal the trials in every peri-event product.
+
+        The two sides never meet before this assertion: the registry comes from
+        ``<event>_<recording_site>.hdf5`` by way of the converter, while each product's trial count comes
+        from float-parsed column labels and index rows by way of the interface. They agree only if our
+        account of which occurrences GuPPy analyzed is right.
+        """
+        events_table = module["events"]
+        total_referenced_rows = sum(len(events_table["events"][row]) for row in range(len(events_table.id)))
+        assert total_referenced_rows == NUM_PSTH_TRIALS
+
+        trial_counts = {}
+        for name, product in module.data_interfaces.items():
+            if product.neurodata_type == "GuppyPSTH":
+                trial_counts[name] = product.traces.shape[1]
+            elif product.neurodata_type == "GuppyPeakAUC":
+                trial_counts[name] = product.peak_positive.shape[1]
+            elif product.neurodata_type == "GuppyCrossCorrelation":
+                trial_counts[name] = product.trials.shape[1]
+        assert trial_counts, "No peri-event products were written, so the invariant proves nothing."
+        assert set(trial_counts.values()) == {total_referenced_rows}, trial_counts
 
     def test_metadata_schema_includes_both_subinterfaces(self, converter):
         """The GuPPy block and the acquisition block coexist in one metadata schema."""

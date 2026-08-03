@@ -156,6 +156,9 @@ class _GuppyInterface(BaseDataInterface):
         valid_signal_intervals_by_recording_site = self._discover_valid_signal_intervals(
             folder_path=folder_path, recording_sites=recording_sites
         )
+        analyzed_event_onsets = self._discover_analyzed_event_onsets(
+            folder_path=folder_path, event_names=event_names, recording_sites=recording_sites
+        )
         remove_artifacts_flag = guppy_parameters.get("removeArtifacts")
         if remove_artifacts_flag is True and not valid_signal_intervals_by_recording_site:
             warnings.warn(
@@ -181,6 +184,7 @@ class _GuppyInterface(BaseDataInterface):
         self._psths = psths
         self._peak_aucs = peak_aucs
         self._valid_signal_intervals_by_recording_site = valid_signal_intervals_by_recording_site
+        self._analyzed_event_onsets = analyzed_event_onsets
         self._guppy_parameters = guppy_parameters
 
     # ------------------------------------------------------------------ #
@@ -196,6 +200,15 @@ class _GuppyInterface(BaseDataInterface):
     def event_names(self) -> list[str]:
         """The discovered event names, in the canonical GuppyEventsTable row order."""
         return list(self._event_names)
+
+    @property
+    def analyzed_event_onsets(self) -> dict[str, np.ndarray]:
+        """The onsets GuPPy kept for each event, keyed by event name.
+
+        A converter that owns the merged events table uses these to reference only the occurrences
+        GuPPy actually built trials from, rather than every occurrence of the event type.
+        """
+        return {event_name: onsets.copy() for event_name, onsets in self._analyzed_event_onsets.items()}
 
     @property
     def recording_site_to_store_ids(self) -> dict[str, dict[str, str]]:
@@ -393,6 +406,44 @@ class _GuppyInterface(BaseDataInterface):
             ), f"Expected even number of coordinates in {path}, got {time_values.shape[0]}."
             result[recording_site] = time_values.reshape(-1, 2)
         return result
+
+    @staticmethod
+    def _discover_analyzed_event_onsets(
+        folder_path: Path, event_names: list[str], recording_sites: list[str]
+    ) -> dict[str, np.ndarray]:
+        """Read the onsets GuPPy kept for each event from ``<event>_<recording_site>.hdf5``.
+
+        GuPPy does not build a trial for every occurrence of an event: it drops an onset that falls
+        earlier than ``abs(baselineCorrectionStart)`` into the recording, and the later of any pair
+        closer together than ``timeInterval``. The survivors are what every peri-event product is built
+        from, so they are what the events registry should reference.
+
+        The file is written per event per recording site during preprocessing and rewritten with the
+        survivors when PSTHs are computed, so its contents are the right answer either way.
+        """
+        analyzed_event_onsets = {}
+        for event_name in event_names:
+            onsets_by_recording_site = {}
+            for recording_site in recording_sites:
+                onsets_path = folder_path / f"{event_name}_{recording_site}.hdf5"
+                assert onsets_path.is_file(), (
+                    f"{onsets_path.name} not found in {folder_path}; GuPPy writes one per event per "
+                    f"recording site, so this does not look like a complete GuPPy output folder."
+                )
+                with h5py.File(onsets_path, "r") as onsets_file:
+                    onsets_by_recording_site[recording_site] = np.asarray(onsets_file["ts"][:], dtype=np.float64)
+
+            first_recording_site = recording_sites[0]
+            reference_onsets = onsets_by_recording_site[first_recording_site]
+            for recording_site, onsets in onsets_by_recording_site.items():
+                assert np.array_equal(onsets, reference_onsets), (
+                    f"GuPPy kept different onsets for event '{event_name}' on recording sites "
+                    f"'{first_recording_site}' ({reference_onsets.size}) and '{recording_site}' "
+                    f"({onsets.size}). GuppyEventsTable has one row per event and cannot represent a "
+                    f"per-recording-site onset list."
+                )
+            analyzed_event_onsets[event_name] = reference_onsets
+        return analyzed_event_onsets
 
     def _read_time_correction(self, recording_site: str) -> dict:
         time_correction_path = self._folder_path / f"timeCorrection_{recording_site}.hdf5"

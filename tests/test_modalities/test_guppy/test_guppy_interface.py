@@ -16,6 +16,7 @@ artifact window on every recording site. Between the two, both binning modes are
 
 import shutil
 
+import h5py
 import numpy as np
 import pandas
 import pytest
@@ -37,6 +38,9 @@ MOCK_SAMPLING_RATE = 200.0
 MOCK_STARTING_TIME = 1.0
 BIN_EDGES_PER_EVENT = [[0.0, 3.0], [3.0, 4.0]]
 VALID_SIGNAL_INTERVALS = [[1.25, 1.75], [2.0, 2.5]]
+# The generator's default onsets, shared by every event: they label the trial columns of every
+# peri-event product and fill <event>_<recording_site>.hdf5.
+MOCK_TRIAL_ONSETS = [10.0, 20.0, 30.0, 40.0]
 
 
 class TestExtractBins:
@@ -302,4 +306,41 @@ class TestGuppyInterfaceBehavior:
         shutil.copytree(guppy_output_folder, copied_folder)
         (copied_folder / "GuPPyParamtersUsed.json").unlink()
         with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):
+            _GuppyInterface(folder_path=str(copied_folder))
+
+    # ------------------------------------------------------------------ the onsets GuPPy analyzed
+
+    def test_analyzed_event_onsets_are_read_per_event(self, interface):
+        """``<event>_<recording_site>.hdf5`` holds the onsets GuPPy built trials around."""
+        assert set(interface.analyzed_event_onsets) == set(EVENT_NAMES)
+        for onsets in interface.analyzed_event_onsets.values():
+            np.testing.assert_array_equal(onsets, MOCK_TRIAL_ONSETS)
+
+    def test_analyzed_event_onsets_are_a_copy(self, interface):
+        """Mutating the returned arrays must not reach back into the interface's own state."""
+        interface.analyzed_event_onsets[EVENT_NAMES[0]][0] = -1.0
+        np.testing.assert_array_equal(interface.analyzed_event_onsets[EVENT_NAMES[0]], MOCK_TRIAL_ONSETS)
+
+    def test_missing_event_onsets_file_raises(self, guppy_output_folder, tmp_path):
+        """GuPPy writes one per event per recording site, so a folder lacking one is incomplete."""
+        copied_folder = tmp_path / "guppy_output_copy"
+        shutil.copytree(guppy_output_folder, copied_folder)
+        (copied_folder / f"{EVENT_NAMES[0]}_{RECORDING_SITES[0]}.hdf5").unlink()
+        with pytest.raises(AssertionError, match=f"{EVENT_NAMES[0]}_{RECORDING_SITES[0]}.hdf5 not found"):
+            _GuppyInterface(folder_path=str(copied_folder))
+
+    def test_recording_sites_disagreeing_on_onsets_raises(self, guppy_output_folder, tmp_path):
+        """GuppyEventsTable has one row per event, so a per-site onset list cannot be represented.
+
+        The filter GuPPy applies depends on each site's own recordingStart, so divergence is possible in
+        principle; it must surface rather than have the converter silently pick one site's answer.
+        """
+        copied_folder = tmp_path / "guppy_output_copy"
+        shutil.copytree(guppy_output_folder, copied_folder)
+        diverging_path = copied_folder / f"{EVENT_NAMES[0]}_{RECORDING_SITES[1]}.hdf5"
+        diverging_path.unlink()
+        with h5py.File(diverging_path, "w") as onsets_file:
+            onsets_file.create_dataset("ts", data=np.array(MOCK_TRIAL_ONSETS[:-1], dtype=np.float64))
+
+        with pytest.raises(AssertionError, match=f"different onsets for event '{EVENT_NAMES[0]}'"):
             _GuppyInterface(folder_path=str(copied_folder))

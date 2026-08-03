@@ -17,6 +17,7 @@ coupling the converter requires.
 
 from datetime import datetime, timezone
 
+import numpy as np
 import pytest
 from pynwb import NWBHDF5IO
 
@@ -34,6 +35,11 @@ from ...setup_paths import OPHYS_DATA_PATH
 SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"
 
 RECORDING_SITES = ["dms", "dls"]
+EPOC_TO_EVENT_NAME = {"LNRW": "rewarded_nose_pokes", "LNnR": "unrewarded_nose_pokes", "PrtR": "port_entries"}
+# The converter matches GuPPy's analyzed onsets against the events table it builds from the tank, so the
+# mock has to be given real epoc onsets. Only a handful per event, because they also label every
+# peri-event product's trial columns and LNnR alone fires 1457 times.
+NUM_MOCK_TRIALS = 4
 EXPECTED_TDT_SESSION_START_TIME = datetime(2020, 7, 21, 17, 2, 24, 999999, tzinfo=timezone.utc)
 EXPECTED_ACQUISITION_INTERFACE_NAMES = {"FiberPhotometry_signal", "FiberPhotometry_control"}
 # The mock GuPPy timebase is regular: 1.0 s of lights-on delay, then 200 Hz.
@@ -42,9 +48,20 @@ MOCK_GUPPY_RATE = 200.0
 
 
 class TestGuppyConverterTDT:
+    @pytest.fixture(scope="class")
+    def epoc_onsets(self):
+        """The first few onsets of each epoc GuPPy listed, read straight from the tank."""
+        import tdt
+
+        block = tdt.read_block(str(SESSION_FOLDER), evtype=["epocs"])
+        return {
+            event_name: np.asarray(block.epocs[epoc_name].onset)[:NUM_MOCK_TRIALS].tolist()
+            for epoc_name, event_name in EPOC_TO_EVENT_NAME.items()
+        }
+
     @pytest.fixture
-    def guppy_output_folder(self, tmp_path):
-        return generate_mock_guppy_output_folder(tmp_path / "guppy_output")
+    def guppy_output_folder(self, tmp_path, epoc_onsets):
+        return generate_mock_guppy_output_folder(tmp_path / "guppy_output", event_onsets=epoc_onsets)
 
     @pytest.fixture
     def converter(self, guppy_output_folder):
@@ -91,11 +108,7 @@ class TestGuppyConverterTDT:
         events_interface = converter.data_interface_objects["Events"]
         event_types = converter.get_metadata()["Events"][events_interface.metadata_key]["event_types"]
         epoc_name_to_event_name = {epoc_name: entry["event_name"] for epoc_name, entry in event_types.items()}
-        assert epoc_name_to_event_name == {
-            "LNRW": "rewarded_nose_pokes",
-            "LNnR": "unrewarded_nose_pokes",
-            "PrtR": "port_entries",
-        }
+        assert epoc_name_to_event_name == EPOC_TO_EVENT_NAME
 
     def test_guppy_timestamps_are_not_realigned_onto_the_tdt_clock(self, converter, metadata, tmp_path):
         """GuPPy traces keep their native timestamps -- no cross-system offset is applied.
