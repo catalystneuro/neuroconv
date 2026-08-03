@@ -1,9 +1,16 @@
-"""Tests for ``GuppyConverter(acquisition_format="npm")``.
+"""Tests for the NPM seam of ``GuppyConverter``.
 
-Real NPM acquisition files from GIN paired with a mock GuPPy output. NPM store names are *synthetic* --
-GuPPy invents ``file0_chod3`` while demultiplexing an interleaved recording, and none of its three parts
-appear on disk -- so the expected data is computed here from GuPPy's own arithmetic
+Only what is specific to ``acquisition_format="npm"``. Everything format-independent -- role grouping,
+fiber-region linking, event merging, the registries -- is asserted once in ``test_reference_session``.
+
+NPM has the hardest seam of the four, because its store names are *synthetic*: GuPPy invents
+``file0_chod3`` while demultiplexing an interleaved recording, and none of its three parts appear on
+disk. Decoding one means reproducing GuPPy's own arithmetic -- which file index, which channel slot,
+which region column -- so the expected data here is computed from that arithmetic
 (``arange(first_row, num_rows, num_channels)``) rather than taken from any interface.
+
+The assertions stop at the constructed interface rather than running a conversion, since the decode is
+settled at construction.
 
 Both raw paths point at one staged folder, mirroring a real GuPPy session: the acquisition CSV and its
 event CSV live together, which is also what makes the ``file<N>`` indices line up with GuPPy's.
@@ -15,7 +22,6 @@ import shutil
 import numpy as np
 import pandas
 import pytest
-from pynwb import NWBHDF5IO
 
 from neuroconv.converters import GuppyConverter
 from neuroconv.datainterfaces.events.csv_events.csveventsdatainterface import (
@@ -29,22 +35,11 @@ from neuroconv.datainterfaces.fiber_photometry.guppy.npm_utils import (
     npm_store_to_demux,
 )
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
-from neuroconv.utils import dict_deep_update
 
-from ._guppy_converter_metadata import (
-    build_device_metadata,
-    build_fiber_photometry_metadata,
-    build_series_metadata,
-)
-from ..setup_paths import OPHYS_DATA_PATH
+from ...setup_paths import OPHYS_DATA_PATH
 
 NPM_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "NPM"
 NPM_EVENTS_FOLDER = OPHYS_DATA_PATH / "events_datasets" / "NPM"
-MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
-EXPECTED_RESPONSE_SERIES_NAMES = {
-    "FiberPhotometryResponseSeriesSignal",
-    "FiberPhotometryResponseSeriesControl",
-}
 
 
 def guppy_channel_rows(file_path, *, state_column, slot_ordinal):
@@ -101,74 +96,31 @@ class NPMConverterTestMixin:
             acquisition_format="npm",
         )
 
-    @pytest.fixture
-    def metadata(self, converter):
-        recording_sites = list(self.RECORDING_SITE_TO_STORES)
-        metadata = converter.get_metadata()
-        metadata = dict_deep_update(metadata, build_device_metadata(recording_sites))
-        metadata["FiberPhotometry"] = dict_deep_update(
-            metadata["FiberPhotometry"], build_fiber_photometry_metadata(recording_sites)
-        )
-        metadata["FiberPhotometry"] = dict_deep_update(
-            metadata["FiberPhotometry"], build_series_metadata(recording_sites)
-        )
-        return metadata
+    def test_synthetic_store_names_decode_to_the_right_rows_and_columns(self, converter, session_folder):
+        """Each ``file<N>_ch<slot><column>`` store resolves to the samples GuPPy's demultiplexer picks.
 
-    def test_run_conversion_writes_role_grouped_acquisition(self, converter, metadata, tmp_path, session_folder):
-        """Two series, one per LED slot, each column-stacking that slot's column from every site."""
-        nwbfile_path = tmp_path / "npm.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
+        This is the whole of the NPM seam. The store name exists nowhere on disk, so decoding it means
+        reproducing GuPPy's arithmetic exactly -- get the phase or the stride wrong and the interface
+        reads a real column of real numbers that simply belongs to the other LED.
+        """
         source_path = session_folder / self.ACQUISITION_FILE_NAME
+        for role in ("signal", "control"):
+            interface = converter.data_interface_objects[f"FiberPhotometry_{role}"]
+            store_ids = [stores[role] for stores in self.RECORDING_SITE_TO_STORES.values()]
+            (stream_name,) = interface.source_data["stream_names"]
 
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            nwbfile = io.read()
-            assert EXPECTED_RESPONSE_SERIES_NAMES == set(nwbfile.acquisition)
+            demultiplexed = np.asarray(interface._get_stream_data(stream_name=stream_name))
+            if demultiplexed.ndim == 1:  # a single recording site is squeezed to one dimension
+                demultiplexed = demultiplexed[:, np.newaxis]
+            assert demultiplexed.shape[1] == len(store_ids)
+            for column, store_id in enumerate(store_ids):
+                expected = self.read_expected_store_data(source_path, store_id)
+                np.testing.assert_array_equal(demultiplexed[:, column], expected)
 
-            for role, series_name in [
-                ("signal", "FiberPhotometryResponseSeriesSignal"),
-                ("control", "FiberPhotometryResponseSeriesControl"),
-            ]:
-                series = nwbfile.acquisition[series_name]
-                store_ids = [stores[role] for stores in self.RECORDING_SITE_TO_STORES.values()]
-                data = np.asarray(series.data)
-                if data.ndim == 1:  # a single recording site is squeezed to one dimension
-                    data = data[:, np.newaxis]
-                assert data.shape[1] == len(store_ids)
-                for column, store_id in enumerate(store_ids):
-                    expected = self.read_expected_store_data(source_path, store_id)
-                    np.testing.assert_array_equal(data[:, column], expected)
-
-    def test_run_conversion_links_recording_sites_to_their_own_fibers(self, converter, metadata, tmp_path):
-        """Each GuPPy recording site's registry row points at that site's own acquisition rows."""
-        nwbfile_path = tmp_path / "npm_registry.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
-
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            nwbfile = io.read()
-            recording_sites_table = nwbfile.processing["guppy"]["recording_sites"]
-            for row in range(len(recording_sites_table.id)):
-                recording_site = str(recording_sites_table["recording_site"][row])
-                linked = recording_sites_table["fiber_photometry_table_region"][row]
-                assert set(linked["location"]) == {recording_site.upper()}
-                assert sorted(linked["excitation_wavelength_in_nm"]) == [405.0, 465.0]
-
-    def test_run_conversion_merges_events_named_as_guppy_named_them(self, converter, metadata, tmp_path):
-        """Every event store GuPPy listed lands in one BehavioralEvents table under its semantic name."""
-        nwbfile_path = tmp_path / "npm_events.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
-
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            nwbfile = io.read()
-            assert set(nwbfile.events) == {MERGED_EVENTS_TABLE_NAME}
-            events_dataframe = nwbfile.events[MERGED_EVENTS_TABLE_NAME].to_dataframe()
-            counts = {
-                name: int((events_dataframe.event_type == name).sum()) for name in self.EVENT_STORE_TO_NAME.values()
-            }
-            assert counts == self.EXPECTED_EVENT_NAME_TO_COUNT
-
-            registry = nwbfile.processing["guppy"]["events"]
-            registry_names = {str(registry["event_name"][row]) for row in range(len(registry.id))}
-            assert registry_names == set(self.EVENT_STORE_TO_NAME.values())
+    def test_event_store_ids_map_to_the_names_guppy_gave_them(self, converter):
+        """GuPPy's ``event<N>`` store ids are synthetic too, and must round-trip back to the source file."""
+        for store_id in self.EVENT_STORE_TO_NAME:
+            assert store_id in converter._event_source_id_to_store_id.values()
 
 
 class TestGuppyConverterNPMInterleaved(NPMConverterTestMixin):
@@ -186,7 +138,6 @@ class TestGuppyConverterNPMInterleaved(NPMConverterTestMixin):
         f"roi0{index}": {"signal": f"file0_chod{index}", "control": f"file0_chev{index}"} for index in (1, 2, 3)
     }
     EVENT_STORE_TO_NAME = {"eventTrue": "cue_on", "eventFalse": "cue_off"}
-    EXPECTED_EVENT_NAME_TO_COUNT = {"cue_on": 5, "cue_off": 5}
     NPM_PARAMETERS = {
         "npm_split_events": [False, True],
         "npm_time_units": ["seconds", "seconds"],
@@ -222,7 +173,6 @@ class TestGuppyConverterNPMTwoClocks(NPMConverterTestMixin):
         f"roi0{index}": {"signal": f"file0_chod{index}", "control": f"file0_chev{index}"} for index in (1, 2, 3, 4)
     }
     EVENT_STORE_TO_NAME = {"event1": "trial_start", "event3": "trial_end"}
-    EXPECTED_EVENT_NAME_TO_COUNT = {"trial_start": 10, "trial_end": 10}
     NPM_PARAMETERS = {
         "npm_split_events": [False, True],
         "npm_time_units": ["milliseconds", "milliseconds"],
@@ -267,7 +217,6 @@ class TestGuppyConverterNPMHeaderless(NPMConverterTestMixin):
         f"roi0{index}": {"signal": f"file0_chod{index}", "control": f"file0_chev{index}"} for index in (1, 2, 3)
     }
     EVENT_STORE_TO_NAME = {"event0": "ttl"}
-    EXPECTED_EVENT_NAME_TO_COUNT = {"ttl": 10}
     NPM_PARAMETERS = {
         "npm_split_events": [False, False],
         "npm_time_units": ["milliseconds", "milliseconds"],
