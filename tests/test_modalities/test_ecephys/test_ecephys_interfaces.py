@@ -578,23 +578,10 @@ def test_recording_routes_on_its_own_block_in_a_mixed_converter():
     assert "Device" not in nwbfile.devices
 
 
-def test_run_conversion(tmp_path):
-    # The metadata an interface returns has to survive validation to reach the writer at all. The
-    # ``use_new_metadata_format`` argument is the only transitional part of this test: when the flag goes
-    # and the dict format is what ``get_metadata`` returns, the argument drops and the test stands as is.
-    interface = MockRecordingInterface(num_channels=4, durations=[0.100])
-    metadata = interface.get_metadata(use_new_metadata_format=True)
-
-    nwbfile_path = tmp_path / "interface_conversion.nwb"
-    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
-
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        nwbfile = io.read()
-        assert metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["name"] in nwbfile.acquisition
-
-
 def test_run_conversion_through_converter(tmp_path):
-    # Same, through a converter, which validates against its own merged schema rather than an interface's.
+    # Dict metadata has to survive validation to reach the writer, and a converter validates against its own
+    # merged schema rather than an interface's. The interface-level equivalent of this test was removed once
+    # the shared test mixins started writing dict metadata for every interface on real data.
     interface = MockRecordingInterface(num_channels=4, durations=[0.100])
     converter = ConverterPipe(data_interfaces=dict(Recording=interface))
 

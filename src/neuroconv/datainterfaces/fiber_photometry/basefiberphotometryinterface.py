@@ -127,9 +127,13 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: series_metadata}))
 
     def get_metadata_schema(self) -> dict:
-        """Return a permissive schema for the ``FiberPhotometry`` and top-level device metadata blocks."""
+        """Return a permissive schema for the ``FiberPhotometry`` block.
+
+        The device registries are declared centrally in ``base_metadata_schema.json``, so only
+        ``FiberPhotometry`` still needs an escape hatch here, until it gets a declaration of its own.
+        """
         metadata_schema = super().get_metadata_schema()
-        for tag in ("FiberPhotometry", "Devices", "DeviceModels"):
+        for tag in ("FiberPhotometry",):
             metadata_schema["properties"][tag] = get_base_schema(tag=tag)
             metadata_schema["properties"][tag]["additionalProperties"] = True
         return metadata_schema
