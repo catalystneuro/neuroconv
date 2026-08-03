@@ -343,9 +343,12 @@ event type is read from is always something you chose:
     ...     verbose=False,
     ... )
 
-To skip digital events entirely, do not construct this interface; an empty ``detection_configuration={}``
-raises rather than silently writing nothing. When several lines should share one events table, point
-their ``table_metadata_key`` at a common key in the editable metadata (see the events metadata guide).
+To skip digital events entirely, do not construct this interface (or ``exclude_streams`` the digital
+word in the converter); an empty ``detection_configuration={}`` raises rather than silently writing
+nothing. When several lines should share one events table, point their ``table_metadata_key`` at a
+common key in the editable metadata (see the events metadata guide). ``IntanConverter`` also routes the
+digital input/output streams to this interface automatically with the default configuration.
+
 
 .. _intan-split-files:
 
