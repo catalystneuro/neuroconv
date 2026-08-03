@@ -29,6 +29,7 @@ from .utils import (
     load_dict_from_file,
     unroot_schema,
 )
+from .utils._metadata_translation import _translate_old_metadata
 from .utils.dict import DeepDict
 from .utils.json_schema import (
     _metadata_uses_old_list_format,
@@ -195,6 +196,10 @@ class NWBConverter:
 
     def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
+        # See ``BaseDataInterface.validate_metadata``: converted before checking, so validation sees one
+        # shape, and the conversion is thrown away rather than passed on.
+        metadata = _translate_old_metadata(metadata)
+
         if _metadata_uses_old_list_format(metadata):
             metadata_schema = self._get_metadata_schema_for_old_list_format()
         else:
