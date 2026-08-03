@@ -18,8 +18,8 @@ from neuroconv.converters import GuppyConverter
 
 from ...setup_paths import OPHYS_DATA_PATH
 
-SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "CSV" / "sample_data_csv_2"
-GUPPY_OUTPUT_FOLDER = SESSION_FOLDER / "sample_data_csv_2_output_1"
+SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "Guppy" / "guppy_example_1"
+GUPPY_OUTPUT_FOLDER = SESSION_FOLDER / "guppy_example_1_output_1"
 
 # storesList.csv order, which is the order each role interface opens its files in.
 ROLE_TO_STORE_IDS = {

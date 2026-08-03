@@ -1,7 +1,7 @@
 """The GuPPy reference session: the one module in this directory whose inputs GuPPy itself produced.
 
-``sample_data_csv_2`` is a synthetic CSV session that a stock GuPPy 2.0.0a9 run processed end to end,
-so its ``sample_data_csv_2_output_1`` folder is genuine GuPPy output. Every other module here pairs a
+``guppy_example_1`` is a synthetic CSV session that a stock GuPPy 2.0.0a9 run processed end to end,
+so its ``guppy_example_1_output_1`` folder is genuine GuPPy output. Every other module here pairs a
 real acquisition file with ``mock_guppy``, a hand-written replica of GuPPy's on-disk format.
 
 Two rules keep this module an independent check on that replica.
@@ -39,10 +39,10 @@ from ._metadata import (
 )
 from ...setup_paths import OPHYS_DATA_PATH
 
-SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "CSV" / "sample_data_csv_2"
-GUPPY_OUTPUT_FOLDER = SESSION_FOLDER / "sample_data_csv_2_output_1"
+SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "Guppy" / "guppy_example_1"
+GUPPY_OUTPUT_FOLDER = SESSION_FOLDER / "guppy_example_1_output_1"
 # GuPPy prefixes every peak-AUC row label with the session name, which it takes from the folder name.
-SESSION_NAME = "sample_data_csv_2"
+SESSION_NAME = "guppy_example_1"
 
 # storesList.csv pairs six raw stores with the labels GuPPy gave them:
 #     dms_control_channel,dms_signal_channel,nac_control_channel,nac_signal_channel,poke_ttl,reward_ttl
