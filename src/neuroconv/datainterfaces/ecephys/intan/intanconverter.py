@@ -31,8 +31,9 @@ class IntanConverter(ConverterPipe):
 
     # Maps header stream name to interface routing.
     # "interface_name" and "interface" are routing fields consumed by the converter loop.
-    # All remaining keys are forwarded verbatim as constructor kwargs. stream_name and
-    # file_path are always injected by the loop; only interface-specific extras appear here.
+    # All remaining keys are forwarded verbatim as constructor kwargs. file_path is always injected by
+    # the loop, and stream_name for the interfaces that take one; only interface-specific extras appear
+    # here. Two stream names may share an "interface_name", in which case one instance covers both.
     _ROUTING_KEYS = frozenset({"interface_name", "interface"})
     _STREAM_TO_INTERFACE = {
         "RHD2000 amplifier channel": {
@@ -70,15 +71,19 @@ class IntanConverter(ConverterPipe):
             "interface": IntanStimInterface,
             "metadata_key": "intan_stim",
         },
+        # Both digital words route to one interface: it addresses lines by the header's own name for
+        # them, whose DIGITAL-IN / DIGITAL-OUT prefixes already say which word a line came off, so it
+        # covers whichever words a file carries without being told. Two entries pointing at one
+        # interface_name is how a file holding both still builds a single instance.
         "USB board digital input channel": {
-            "interface_name": "DigitalInput",
+            "interface_name": "Digital",
             "interface": IntanDigitalInterface,
-            "metadata_key": "intan_digital_input",
+            "metadata_key": "intan_digital",
         },
         "USB board digital output channel": {
-            "interface_name": "DigitalOutput",
+            "interface_name": "Digital",
             "interface": IntanDigitalInterface,
-            "metadata_key": "intan_digital_output",
+            "metadata_key": "intan_digital",
         },
     }
 
@@ -173,6 +178,11 @@ class IntanConverter(ConverterPipe):
             if stream_name not in self._STREAM_TO_INTERFACE:
                 continue
             entry = self._STREAM_TO_INTERFACE[stream_name]
+            if entry["interface_name"] in data_interfaces:
+                # Several streams can share one sub-interface, which is how both digital words end up in
+                # a single IntanDigitalInterface: it reads whichever of them the file carries, so the
+                # second stream to come round is already covered by the instance the first one built.
+                continue
             if saved_files_are_split and entry["interface"] is IntanDigitalInterface:
                 # IntanDigitalInterface has no saved_files_are_split support: there is no test data with
                 # both split files and digital lines, so the concatenation path is unverified for events.
@@ -189,7 +199,7 @@ class IntanConverter(ConverterPipe):
                 continue
             interface_kwargs = dict(file_path=file_path)
             interface_kwargs.update({k: v for k, v in entry.items() if k not in self._ROUTING_KEYS})
-            if entry["interface"] in (IntanAnalogInterface, IntanDigitalInterface):
+            if entry["interface"] is IntanAnalogInterface:
                 interface_kwargs["stream_name"] = stream_name
             elif entry["interface"] is IntanRecordingInterface:
                 # The recording interface takes both: ``metadata_key`` keys the dict-based metadata and

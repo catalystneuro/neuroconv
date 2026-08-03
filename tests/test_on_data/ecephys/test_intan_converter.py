@@ -116,7 +116,8 @@ class TestStreamDiscoveryAndRouting:
     @pytest.mark.parametrize(
         "file_path, expected_interface_names",
         [
-            # RHS traditional: digital input/output words route to IntanDigitalInterface.
+            # RHS traditional: both digital words are present and share the one "Digital" interface,
+            # which addresses their lines by the header's own names and so covers each of them.
             (
                 RHS_TRADITIONAL,
                 {
@@ -124,14 +125,14 @@ class TestStreamDiscoveryAndRouting:
                     "AnalogADCInput",
                     "AnalogADCOutput",
                     "Stim",
-                    "DigitalInput",
-                    "DigitalOutput",
+                    "Digital",
                 },
             ),
-            # Only fixture exercising the auxiliary stream (digital input present, no digital output).
+            # Only fixture exercising the auxiliary stream (digital input present, no digital output),
+            # so the same "Digital" interface here covers one word rather than two.
             (
                 RHD_FILE_PER_SIGNAL,
-                {"Recording", "AnalogAuxiliary", "AnalogADCInput", "DigitalInput"},
+                {"Recording", "AnalogAuxiliary", "AnalogADCInput", "Digital"},
             ),
             # Only fixture exercising the DC Amplifier stream.
             (
@@ -142,8 +143,7 @@ class TestStreamDiscoveryAndRouting:
                     "AnalogADCOutput",
                     "AnalogDC",
                     "Stim",
-                    "DigitalInput",
-                    "DigitalOutput",
+                    "Digital",
                 },
             ),
         ],
