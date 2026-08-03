@@ -43,17 +43,6 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         ] = "Folder containing Bruker .ome.tif files and the matching configuration .xml."
         return source_schema
 
-    def get_metadata_schema(self) -> dict:
-        """Return a schema compatible with the new dict-based Ophys metadata format.
-
-        The base imaging schema requires legacy ``Ophys.Device`` / ``Ophys.ImagingPlane`` /
-        ``Ophys.TwoPhotonSeries`` lists, which this interface does not produce. We bypass those
-        requirements and only validate ``NWBFile`` baseline metadata.
-        """
-        from ....basedatainterface import BaseDataInterface
-
-        return BaseDataInterface.get_metadata_schema(self)
-
     @classmethod
     def get_available_channels(cls, folder_path: DirectoryPath) -> list[str]:
         """Return the channel names available in the Bruker dataset, in acquisition order.

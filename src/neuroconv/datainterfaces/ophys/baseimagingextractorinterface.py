@@ -8,6 +8,7 @@ from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
 
+from ._metadata_schema import _get_ophys_registry_entry_definitions, _keyed_registry
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     DeepDict,
@@ -79,14 +80,25 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         """
         Compile the metadata schema.
 
-        The modality block of this schema has not been migrated to the dict-based format yet, so what it
-        describes is the old list-based one. It is returned by
-        ``_get_metadata_schema_for_old_list_format`` for validating that format, and until the dict shape
-        is declared here this method answers with the base schema, which dict-based metadata satisfies.
+        The registries are objects keyed by ``metadata_key``, and the entries stay permissive: an entry is
+        passed to a pynwb constructor, so it may legitimately carry any field that constructor takes. What is
+        pinned is the shape, that an entry is an object, and the cross-reference fields
+        (``device_metadata_key``, ``imaging_plane_metadata_key``) that no hdmf class knows about.
+
+        Metadata in the old list-based format is validated against
+        ``_get_metadata_schema_for_old_list_format``, and both go when that format does.
         """
         from ...basedatainterface import BaseDataInterface
 
-        return BaseDataInterface.get_metadata_schema(self)
+        metadata_schema = BaseDataInterface.get_metadata_schema(self)
+        metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
+        metadata_schema["properties"]["Ophys"]["required"] = []
+        metadata_schema["properties"]["Ophys"]["properties"] = dict(
+            ImagingPlanes=_keyed_registry("#/properties/Ophys/definitions/ImagingPlaneEntry"),
+            MicroscopySeries=_keyed_registry("#/properties/Ophys/definitions/MicroscopySeriesEntry"),
+        )
+        metadata_schema["properties"]["Ophys"]["definitions"] = _get_ophys_registry_entry_definitions()
+        return metadata_schema
 
     def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
