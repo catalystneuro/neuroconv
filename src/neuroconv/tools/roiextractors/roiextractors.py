@@ -1435,6 +1435,13 @@ def add_segmentation_to_nwbfile(
         if metadata_key is None:
             metadata_key = addressed_name
         metadata = _translate_old_metadata(metadata, metadata_key=metadata_key, plane_segmentation_name=addressed_name)
+        # The old format's defaults declare six trace roles on every segmentation, so a translated block
+        # asks for traces from extractors that expose none, `InscopixSegmentationInterface` among them.
+        # That is boilerplate rather than a request, and the old writer answered it by writing nothing, so
+        # the block goes here rather than letting the writer reject metadata the caller never wrote.
+        traces = segmentation_extractor.get_traces_dict().values()
+        if not any(trace is not None and trace.size != 0 for trace in traces):
+            metadata["Ophys"] = {key: value for key, value in metadata["Ophys"].items() if key != "RoiResponses"}
 
     if _is_dict_based_metadata(metadata):
         metadata_key = metadata_key or "default_metadata_key"
