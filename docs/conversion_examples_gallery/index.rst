@@ -59,6 +59,7 @@ Intracellular electrophysiology
     :maxdepth: 1
 
     Axon Binary Format (ABF) <recording/abf>
+    Bruker VoltageRecording <recording/brukervoltagerecording>
 
 Optical physiology
 ------------------

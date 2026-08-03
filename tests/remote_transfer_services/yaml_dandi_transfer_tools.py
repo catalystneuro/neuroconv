@@ -5,6 +5,7 @@ from pathlib import Path
 
 import dandi.dandiapi
 import pytest
+from dandi.exceptions import NotFoundError
 
 from neuroconv import run_conversion_from_yaml
 
@@ -12,6 +13,24 @@ from ..test_on_data.setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 
 DANDI_SANDBOX_API_KEY = os.getenv("DANDI_SANDBOX_API_KEY")
 HAVE_DANDI_KEY = DANDI_SANDBOX_API_KEY is not None and DANDI_SANDBOX_API_KEY != ""  # can be "" from external forks
+
+MAXIMUM_WAIT_IN_SECONDS = 120
+POLL_INTERVAL_IN_SECONDS = 2
+
+
+def _asset_is_from_this_run(dandiset: dandi.dandiapi.RemoteDandiset, asset_path: str) -> bool:
+    """Whether the sandbox holds an asset at this path that this run uploaded.
+
+    Past runs leave an asset at the same path, so existence alone is not enough: the modification time is
+    what separates the upload under test from its predecessor.
+    """
+    try:
+        asset = dandiset.get_asset_by_path(path=asset_path)
+    except NotFoundError:
+        return False
+
+    date_modified = datetime.fromisoformat(asset.get_raw_metadata()["dateModified"].replace("Z", "+00:00"))
+    return datetime.now(timezone.utc) - date_modified < timedelta(minutes=10)
 
 
 @pytest.mark.skipif(
@@ -28,8 +47,6 @@ def test_run_conversion_from_yaml_with_dandi_upload():
         overwrite=True,
     )
 
-    time.sleep(60)  # Give some buffer room for server to process before making assertions against DANDI API
-
     client = dandi.dandiapi.DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
     dandiset = client.get_dandiset("200560")
 
@@ -38,11 +55,16 @@ def test_run_conversion_from_yaml_with_dandi_upload():
         "sub-yaml-002/sub-yaml-002_ses-test-yaml-2_ecephys.nwb",
         "sub-YAML-Subject-Name/sub-YAML-Subject-Name_ses-test-YAML-3_ecephys.nwb",
     ]
-    for asset_path in expected_asset_paths:
-        test_asset = dandiset.get_asset_by_path(path=asset_path)  # Will error if not found
-        test_asset_metadata = test_asset.get_raw_metadata()
 
-        # Past uploads may have created the same apparent file, so look at the modification time to ensure
-        # this test is actually testing the most recent upload
-        date_modified = datetime.fromisoformat(test_asset_metadata["dateModified"].replace("Z", "+00:00"))
-        assert datetime.now(timezone.utc) - date_modified < timedelta(minutes=10)
+    # The sandbox needs a moment to register an upload, so wait for it rather than sleeping a flat minute:
+    # this returns as soon as the server is ready and still fails if it never becomes ready.
+    deadline = time.monotonic() + MAXIMUM_WAIT_IN_SECONDS
+    while True:
+        pending_asset_paths = [path for path in expected_asset_paths if not _asset_is_from_this_run(dandiset, path)]
+        if not pending_asset_paths:
+            break
+        assert time.monotonic() < deadline, (
+            f"The DANDI sandbox did not report {pending_asset_paths} as uploaded by this run "
+            f"within {MAXIMUM_WAIT_IN_SECONDS} seconds!"
+        )
+        time.sleep(POLL_INTERVAL_IN_SECONDS)

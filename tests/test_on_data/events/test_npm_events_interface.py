@@ -196,7 +196,7 @@ class TestNPMEventsInterface:
             "0.0,1,0,DigitalCh1,KeyDown",
             "1.0,0,1,DigitalCh2,KeyUp",
         ]
-        file_path.write_text("\n".join(rows) + "\n")
+        file_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
         with pytest.raises(ValueError, match="headerless two-column CSV"):
             NPMEventsInterface(file_path=file_path)

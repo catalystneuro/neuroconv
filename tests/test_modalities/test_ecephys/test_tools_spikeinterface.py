@@ -39,6 +39,7 @@ from neuroconv.tools.spikeinterface.spikeinterface import (
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
+from neuroconv.utils import DeepDict
 
 testing_session_time = datetime.now().astimezone()
 
@@ -364,7 +365,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         # Test equality of data in Volts. Data in spikeextractors is in microvolts when scaled
         extracted_data = electrical_series.data[:]
         data_in_volts = extracted_data * channel_conversion_vector + offset_scalar
-        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e-6
+        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_in_uV=True) * 1e-6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_variable_offsets_assertion(self):
@@ -1417,16 +1418,21 @@ class TestAddTimeSeries:
         recording.set_property("offset_to_physical_unit", offsets)
 
         # Create metadata with a different unit
-        metadata = {"TimeSeries": {"TimeSeries": {"unit": "custom_unit"}}}
+        metadata = {"TimeSeries": {"my_time_series": {"unit": "custom_unit"}}}
 
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
 
         add_recording_as_time_series_to_nwbfile(
-            recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_time_series",
+            iterator_type=None,
         )
 
-        # Verify the time series has the unit from metadata
+        # Verify the time series has the unit from metadata. The key addressed the entry; the name
+        # still comes from the default, which is what keeps the two independent.
         time_series = nwbfile.acquisition["TimeSeries"]
         assert time_series.unit == "custom_unit"
 
@@ -1450,13 +1456,17 @@ class TestAddTimeSeries:
         recording.set_property("offset_to_physical_unit", offsets)
 
         # Create metadata with custom unit, conversion, and offset
-        metadata = {"TimeSeries": {"TimeSeries": {"unit": "custom_unit", "conversion": 3.0, "offset": 1.5}}}
+        metadata = {"TimeSeries": {"my_time_series": {"unit": "custom_unit", "conversion": 3.0, "offset": 1.5}}}
 
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
 
         add_recording_as_time_series_to_nwbfile(
-            recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_time_series",
+            iterator_type=None,
         )
 
         # Verify the time series has the values from metadata
@@ -1464,6 +1474,68 @@ class TestAddTimeSeries:
         assert time_series.unit == "custom_unit"
         assert time_series.conversion == 3.0
         assert time_series.offset == 1.5
+
+
+class TestAddTimeSeriesMetadataKeyResolution:
+    """``metadata_key`` addresses an entry, so it is required exactly when there is one to address."""
+
+    @staticmethod
+    def _recording():
+        return generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+
+    def test_no_metadata_needs_no_key(self):
+        """The bare call stays legal: nothing is addressed, so the series is built from the recording."""
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_time_series_to_nwbfile(recording=self._recording(), nwbfile=nwbfile, iterator_type=None)
+
+        assert "TimeSeries" in nwbfile.acquisition
+
+    def test_metadata_without_a_time_series_block_needs_no_key(self):
+        """A converter passes the whole metadata dict; only a TimeSeries block makes a key meaningful."""
+        nwbfile = mock_NWBFile()
+        metadata = {"NWBFile": {"session_description": "no TimeSeries block here"}}
+
+        add_recording_as_time_series_to_nwbfile(
+            recording=self._recording(), nwbfile=nwbfile, metadata=metadata, iterator_type=None
+        )
+
+        assert "TimeSeries" in nwbfile.acquisition
+
+    def test_deep_dict_without_a_time_series_block_does_not_raise(self):
+        """``get_metadata`` returns a DeepDict, whose ``[]`` would vivify the block the guard tests for."""
+        nwbfile = mock_NWBFile()
+        metadata = DeepDict()
+        metadata["NWBFile"]["session_description"] = "no TimeSeries block here"
+
+        add_recording_as_time_series_to_nwbfile(
+            recording=self._recording(), nwbfile=nwbfile, metadata=metadata, iterator_type=None
+        )
+
+        assert "TimeSeries" in nwbfile.acquisition
+
+    def test_time_series_block_without_a_key_raises(self):
+        nwbfile = mock_NWBFile()
+        metadata = {"TimeSeries": {"my_time_series": {"unit": "custom_unit"}}}
+
+        with pytest.raises(ValueError, match="no `metadata_key` was provided"):
+            add_recording_as_time_series_to_nwbfile(
+                recording=self._recording(), nwbfile=nwbfile, metadata=metadata, iterator_type=None
+            )
+
+    def test_key_absent_from_the_block_raises(self):
+        """A stale key must fail loudly rather than write defaults over the caller's edits."""
+        nwbfile = mock_NWBFile()
+        metadata = {"TimeSeries": {"my_time_series": {"unit": "custom_unit"}}}
+
+        with pytest.raises(ValueError, match="does not contain key 'stale_key'"):
+            add_recording_as_time_series_to_nwbfile(
+                recording=self._recording(),
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="stale_key",
+                iterator_type=None,
+            )
 
 
 class TestAddSpatialSeries:
@@ -2618,6 +2690,65 @@ class TestAddRecording:
         # per-``write_as`` defaults, not the placeholder factory.
         assert "ElectricalSeriesRaw" in nwbfile.acquisition
         assert len(nwbfile.electrodes) == recording.get_num_channels()
+
+    def test_physical_units_writes_single_series_with_heterogeneous_offset(self):
+        """`data_representation='physical_units'` folds each channel's gain and offset into float
+        data, so channels with heterogeneous offsets fit in one ElectricalSeries."""
+        recording = generate_recording(num_channels=5, durations=[0.1])
+        recording = recording.rename_channels(new_channel_ids=["a", "b", "c", "d", "e"])
+        recording.set_channel_gains(gains=[1.0, 1.0, 2.0, 2.0, 3.0])
+        recording.set_channel_offsets(offsets=[0.0, 0.0, 1.0, 1.0, 2.0])  # heterogeneous offsets
+
+        nwbfile = mock_NWBFile()
+        add_recording_to_nwbfile(
+            recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
+        )
+
+        electrical_series = nwbfile.acquisition["ElectricalSeriesRaw"]
+        # The heterogeneous offsets are folded into the data: one series, scalar offset 0, only the
+        # microvolt-to-volt conversion, and no per-channel channel_conversion.
+        assert electrical_series.offset == 0.0
+        assert electrical_series.conversion == 1e-6
+        assert electrical_series.channel_conversion is None
+
+        stored_data = electrical_series.data[:]
+        assert np.issubdtype(stored_data.dtype, np.floating)
+        assert stored_data.shape[1] == 5  # all five channels in a single series
+        expected_microvolts = recording.get_traces(segment_index=0, return_in_uV=True)
+        np.testing.assert_array_almost_equal(stored_data, expected_microvolts)
+
+    def test_physical_units_error_points_to_option_on_heterogeneous_offset(self):
+        """The default (`digital_counts`) still rejects heterogeneous offsets, and the error points
+        the user at the `physical_units` option."""
+        recording = generate_recording(num_channels=5, durations=[0.1])
+        recording.set_channel_gains(gains=[1, 1, 1, 1, 1])
+        recording.set_channel_offsets(offsets=[0, 0, 1, 1, 2])  # heterogeneous offsets
+
+        nwbfile = mock_NWBFile()
+        expected_error_msg = (
+            "A single ElectricalSeries can store only one scalar offset. To write these channels as one "
+            "series anyway, pass data_representation='physical_units' to add_recording_to_nwbfile (this "
+            "folds each channel's offset into the data and writes float physical values). Alternatively, "
+            "drop the channels that do not share the common offset with "
+            "recording.remove_channels(remove_channel_ids=[...]) and write them as their own series."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+    def test_physical_units_requires_scaleable_traces(self):
+        """`physical_units` needs gains and offsets on the recording; without them it errors clearly."""
+        traces = np.ones(shape=(10, 3), dtype="float32")
+        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)  # no gains/offsets
+
+        nwbfile = mock_NWBFile()
+        expected_error_msg = (
+            "data_representation='physical_units' requires the recording to have gains and offsets "
+            "to convert the samples to microvolts, but this recording has none."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            add_recording_to_nwbfile(
+                recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
+            )
 
     def test_full_metadata_specification(self):
         """User-supplied fields land on every created object and the cross-links resolve.

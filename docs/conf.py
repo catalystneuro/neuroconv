@@ -176,7 +176,7 @@ def update_version_switcher_in_read_the_docs(app, config):
 
     # Update switcher.json with PR/branch entry
     # switcher.json structure: [{"name": str, "version": str, "url": str}, ...]
-    with open(switcher_path, "r") as f:
+    with open(switcher_path, "r", encoding="utf-8") as f:
         switcher_entries = json.load(f)
 
     # Avoid duplicated entries
@@ -186,7 +186,7 @@ def update_version_switcher_in_read_the_docs(app, config):
 
     # Add and save new entry
     switcher_entries.append(entry_to_add)
-    with open(switcher_path, "w") as f:
+    with open(switcher_path, "w", encoding="utf-8") as f:
         json.dump(switcher_entries, f, indent=4)
 
 

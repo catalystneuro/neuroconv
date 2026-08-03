@@ -37,6 +37,7 @@ from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.intan.intananaloginterface import IntanAnalogInterface
+from .ecephys.intan.intandigitalinterface import IntanDigitalInterface
 from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
@@ -82,6 +83,7 @@ from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
 from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
+from .icephys.brukervoltagerecording.brukervoltagerecordinginterface import BrukerVoltageRecordingInterface
 
 # Ophys
 from .ophys.brukertiff.brukertiffdatainterface import (
@@ -148,6 +150,7 @@ interface_list = [
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
     IntanAnalogInterface,
+    IntanDigitalInterface,
     IntanStimInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
@@ -184,6 +187,7 @@ interface_list = [
     # Icephys
     AbfInterface,
     AxonIntracellularInterface,
+    BrukerVoltageRecordingInterface,
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
@@ -269,9 +273,14 @@ interfaces_by_category = dict(
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
+        IntanDigital=IntanDigitalInterface,
         IntanStim=IntanStimInterface,
     ),
-    icephys=dict(Abf=AbfInterface, AxonIntracellular=AxonIntracellularInterface),
+    icephys=dict(
+        Abf=AbfInterface,
+        AxonIntracellular=AxonIntracellularInterface,
+        BrukerVoltageRecording=BrukerVoltageRecordingInterface,
+    ),
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,

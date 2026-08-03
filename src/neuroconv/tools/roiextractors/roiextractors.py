@@ -298,17 +298,27 @@ def _add_imaging_plane_to_nwbfile(
     # Copy to avoid mutation
     imaging_plane_kwargs = imaging_plane_metadata.copy()
 
-    # Validate required fields
+    # These are required by the NWB ``ImagingPlane`` object but an interface often knows only some of
+    # them (a name and a device link, say). Fill any missing one from the central placeholder template
+    # at write time rather than forcing every ``get_metadata`` to emit a placeholder it cannot justify.
+    # The templates are explicit unknown-markers (``np.nan``, ``"unknown"``), so defaulting them states
+    # that the source did not say, not a fabricated value. Mirrors ``_add_electrode_groups_to_nwbfile``.
     required_fields = ["name", "excitation_lambda", "indicator", "location", "optical_channel"]
-    missing_fields = [field for field in required_fields if field not in imaging_plane_kwargs]
-    if missing_fields:
-        default_imaging_plane = _get_ophys_metadata_placeholders()["Ophys"]["ImagingPlanes"]["default_metadata_key"]
-        placeholder_hint = "\n".join(f"  {field}: {default_imaging_plane[field]!r}" for field in missing_fields)
-        raise ValueError(
-            f"Imaging plane metadata is missing required fields.\n"
-            f"For a complete NWB file, the following fields should be provided. "
-            f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-        )
+    default_imaging_plane = _get_ophys_metadata_placeholders()["Ophys"]["ImagingPlanes"]["default_metadata_key"]
+    for field in required_fields:
+        imaging_plane_kwargs.setdefault(field, default_imaging_plane[field])
+
+    # The same rule one level down: an interface that knows a channel's name but not its emission
+    # wavelength states the name alone, and the entry is completed here rather than rejected by
+    # ``OpticalChannel``. Only a lone channel takes the default name, since two channels defaulted to the
+    # same name would collide inside the imaging plane.
+    default_optical_channel = default_imaging_plane["optical_channel"][0]
+    optical_channels = imaging_plane_kwargs["optical_channel"]
+    if len(optical_channels) > 1:
+        default_optical_channel = {field: value for field, value in default_optical_channel.items() if field != "name"}
+    imaging_plane_kwargs["optical_channel"] = [
+        {**default_optical_channel, **optical_channel} for optical_channel in optical_channels
+    ]
 
     # Check if already exists
     imaging_plane_name = imaging_plane_kwargs["name"]
@@ -319,7 +329,9 @@ def _add_imaging_plane_to_nwbfile(
     # which is exposed through the registry under its default key so every device is added by the
     # canonical path.
     device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
-    devices_metadata = {"Devices": dict((metadata or {}).get("Devices", {}))}
+    # The whole metadata goes to the helper, since a device entry may name its model by
+    # ``device_model_metadata_key``; only the ``Devices`` registry is rebuilt, for the placeholder below.
+    devices_metadata = {**(metadata or {}), "Devices": dict((metadata or {}).get("Devices", {}))}
     if device_metadata_key is None:
         # Only synthesize the placeholder when nothing was referenced, so a user device that happens
         # to share the placeholder's name is not turned into a duplicate-name conflict.
@@ -391,17 +403,14 @@ def _add_photon_series_to_nwbfile(
     # Copy to avoid mutation
     photon_series_kwargs = photon_series_metadata.copy()
 
-    # Validate required fields
+    # Required by the NWB photon-series object; default any the interface did not supply from the central
+    # placeholder template rather than raising. See ``_add_imaging_plane_to_nwbfile``. The default name is
+    # the generic ``MicroscopySeries``: an interface that knows what it is writing states its own name,
+    # as ``BaseImagingExtractorInterface`` does.
     required_fields = ["name", "unit"]
-    missing_fields = [field for field in required_fields if field not in photon_series_kwargs]
-    if missing_fields:
-        default_series = _get_ophys_metadata_placeholders()["Ophys"]["MicroscopySeries"]["default_metadata_key"]
-        placeholder_hint = "\n".join(f"  {field}: {default_series[field]!r}" for field in missing_fields)
-        raise ValueError(
-            f"Microscopy series metadata is missing required fields.\n"
-            f"For a complete NWB file, the following fields should be provided. "
-            f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-        )
+    default_series = _get_ophys_metadata_placeholders()["Ophys"]["MicroscopySeries"]["default_metadata_key"]
+    for field in required_fields:
+        photon_series_kwargs.setdefault(field, default_series[field])
 
     # Resolve imaging plane
     imaging_plane_metadata_key = photon_series_kwargs.pop("imaging_plane_metadata_key", None)
@@ -503,17 +512,14 @@ def _add_plane_segmentation_to_nwbfile(
     """
     plane_seg_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key].copy()
 
-    # Validate required fields
+    # Required by the NWB ``PlaneSegmentation`` object; default any the interface did not supply from the
+    # central placeholder template. ``name`` is defaulted where the segmentation is built, which is also
+    # where reusing a defaulted name is rejected rather than silently collapsing two segmentations.
+    # See ``_add_imaging_plane_to_nwbfile``.
     required_fields = ["description"]
-    missing_fields = [field for field in required_fields if field not in plane_seg_metadata]
-    if missing_fields:
-        default_plane_seg = _get_ophys_metadata_placeholders()["Ophys"]["PlaneSegmentations"]["default_metadata_key"]
-        placeholder_hint = "\n".join(f"  {field}: {default_plane_seg[field]!r}" for field in missing_fields)
-        raise ValueError(
-            f"Plane segmentation metadata is missing required fields.\n"
-            f"For a complete NWB file, the following fields should be provided. "
-            f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-        )
+    default_plane_seg = _get_ophys_metadata_placeholders()["Ophys"]["PlaneSegmentations"]["default_metadata_key"]
+    for field in required_fields:
+        plane_seg_metadata.setdefault(field, default_plane_seg[field])
 
     # Resolve imaging plane
     imaging_plane_metadata_key = plane_seg_metadata.pop("imaging_plane_metadata_key", None)
@@ -537,10 +543,21 @@ def _add_plane_segmentation_to_nwbfile(
         image_segmentation = ImageSegmentation(name=image_segmentation_name)
         ophys_module.add(image_segmentation)
 
-    plane_segmentation_name = plane_seg_metadata["name"]
+    # The name defaults to the neurodata type being written, as the photon series does. Reuse by name is
+    # how two interfaces deliberately share one segmentation, so it stays allowed for a name the caller
+    # stated; a name that was defaulted cannot express that intent, and reusing it would silently drop the
+    # second interface's ROIs, so it is an error instead.
+    name_was_defaulted = "name" not in plane_seg_metadata
+    plane_segmentation_name = plane_seg_metadata.setdefault("name", "PlaneSegmentation")
 
-    # If PlaneSegmentation already exists, return early
     if plane_segmentation_name in image_segmentation.plane_segmentations:
+        if name_was_defaulted:
+            raise ValueError(
+                f"A PlaneSegmentation named '{plane_segmentation_name}' is already in the file, and "
+                f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}'] does not name its own. Give it "
+                "a 'name' to write a second segmentation, or use 1 metadata key to share one."
+            )
+        # If PlaneSegmentation already exists, return early
         return nwbfile
 
     # Extract ROI data
@@ -578,11 +595,19 @@ def _add_plane_segmentation_to_nwbfile(
             pixel_mask_to_write = [tuple(x) for x in pixel_mask]
             plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, **{mask_type_kwarg: pixel_mask_to_write})
 
-    # Add all extractor properties as columns (acceptance, quality metrics, etc.)
+    # Add all extractor properties as columns (acceptance, quality metrics, etc.). The quality metrics
+    # below are named the same way by every segmenter that reports them, so their descriptions are known
+    # here rather than left empty; this is the same set the old list-based path describes.
+    known_property_descriptions = {
+        "snr": "Signal-to-noise ratio for each component",
+        "r_values": "Spatial correlation values for each component",
+        "cnn_preds": "CNN classifier predictions for component quality",
+    }
     available_properties = segmentation_extractor.get_property_keys()
     for property_key in available_properties:
         values = segmentation_extractor.get_property(key=property_key, ids=roi_ids)
-        plane_segmentation.add_column(name=property_key, description="", data=values)
+        description = known_property_descriptions.get(property_key, "")
+        plane_segmentation.add_column(name=property_key, description=description, data=values)
 
     image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
 
@@ -665,8 +690,9 @@ def _add_roi_response_traces_to_nwbfile(
     else:
         roi_responses_metadata = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
 
-    # Resolve PlaneSegmentation via the same metadata_key
-    plane_segmentation_name = metadata["Ophys"]["PlaneSegmentations"][metadata_key]["name"]
+    # Resolve PlaneSegmentation via the same metadata_key, defaulting its name the same way the
+    # segmentation writer does.
+    plane_segmentation_name = metadata["Ophys"]["PlaneSegmentations"][metadata_key].get("name", "PlaneSegmentation")
     ophys_module = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
     image_segmentation = ophys_module["ImageSegmentation"]
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
@@ -715,22 +741,21 @@ def _add_roi_response_traces_to_nwbfile(
         if trace_name not in roi_responses_metadata:
             continue
 
-        trace_metadata = roi_responses_metadata[trace_name]
+        # Copy before defaulting; this entry is a live reference into the caller's metadata dict.
+        trace_metadata = roi_responses_metadata[trace_name].copy()
 
-        # Validate required fields
+        # Required by the NWB ``RoiResponseSeries`` object; default any the interface did not supply from
+        # the central placeholder template, falling back to an arbitrary trace template for a trace type
+        # the template does not name. ``name`` is deliberately not defaulted: series are reused by name
+        # below, so two unnamed traces would silently collapse into one.
+        # See ``_add_imaging_plane_to_nwbfile``.
         required_fields = ["unit"]
-        missing_fields = [field for field in required_fields if field not in trace_metadata]
-        if missing_fields:
-            default_roi_responses = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
-            default_trace = default_roi_responses.get(
-                trace_name, next(v for v in default_roi_responses.values() if isinstance(v, dict))
-            )
-            placeholder_hint = "\n".join(f"  {field}: {default_trace[field]!r}" for field in missing_fields)
-            raise ValueError(
-                f"ROI response series '{trace_name}' metadata is missing required fields.\n"
-                f"For a complete NWB file, the following fields should be provided. "
-                f"If missing, a placeholder can be used instead:\n{placeholder_hint}"
-            )
+        default_roi_responses = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
+        default_trace = default_roi_responses.get(
+            trace_name, next(v for v in default_roi_responses.values() if isinstance(v, dict))
+        )
+        for field in required_fields:
+            trace_metadata.setdefault(field, default_trace[field])
 
         # Skip if series already exists
         series_name = trace_metadata["name"]

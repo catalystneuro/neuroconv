@@ -47,13 +47,9 @@ def _is_dict_based_metadata(metadata: dict) -> bool:
 
     Returns True for dict-based, False for list-based.
     """
-    # A dict-valued top-level ``Devices`` is the dict-based shape. A list-valued ``Devices``
-    # is the legacy top-level emission used by unmigrated interfaces such as
-    # ``SpikeGLXNIDQInterface``, ``SpikeGLXSyncChannelInterface``, ``IntanAnalogInterface``,
-    # and ``IntanStimInterface``: ``metadata["Devices"] = [device_dict, ...]``. Those must
-    # route to the old-list-format path so downstream code that iterates the list (e.g.
-    # ``for device in metadata["Devices"]: ...``) keeps working until each interface is
-    # migrated to emit dict-shaped ``Devices``.
+    # A dict-valued top-level ``Devices`` is the dict-based shape. A list-valued ``Devices`` is the
+    # legacy shape, ``metadata["Devices"] = [device_dict, ...]``. No interface emits it any more, so this
+    # branch now only catches hand-written metadata, which must still route to the old-list-format path.
     if isinstance(metadata.get("Devices"), dict):
         return True
 
@@ -194,6 +190,7 @@ def add_recording_to_nwbfile(
     *,
     parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
     write_as: Literal["raw", "processed", "lfp"] | None = None,
+    data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
     es_key: str | None = None,
     iterator_type: str = "v2",
     iterator_options: dict | None = None,
@@ -243,6 +240,15 @@ def add_recording_to_nwbfile(
     write_as : {'raw', 'processed', 'lfp'}, optional
         Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
         'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+    data_representation : {'digital_counts', 'physical_units'}, default: 'digital_counts'
+        How the trace values are materialized in the stored data array.
+        - 'digital_counts': store the raw integer samples and carry the per-channel gain in
+          ``channel_conversion`` (or a scalar ``conversion`` when homogeneous) and the offset in the
+          scalar ``offset``. Faithful and compact, but requires a common offset across channels.
+        - 'physical_units': apply each channel's gain and offset and store float physical values, so
+          the scalar ``offset`` is 0 and no ``channel_conversion`` is needed. This is the only
+          representation that can hold heterogeneous per-channel offsets (and gains) in a single
+          series, at the cost of float storage and no lossless integer round-trip.
     es_key : str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series.
         Used with the old list-based metadata format; ignored when ``metadata_key`` is provided.
@@ -290,7 +296,14 @@ def add_recording_to_nwbfile(
             "'acquisition', 'processing/LFP', or 'processing/FilteredEphys'!"
         )
 
-    if metadata is not None and metadata_key is None and _is_dict_based_metadata(metadata):
+    # Ask whether this metadata carries dict-based *ElectricalSeries* entries rather than whether it looks
+    # dict-based anywhere: a converter hands every interface one dictionary, and another interface's
+    # dict-based block (a camera's ``Devices``, a NIDQ board's) says nothing about this one's Ecephys.
+    electrical_series_metadata = (metadata or {}).get("Ecephys", {}).get("ElectricalSeries", {})
+    has_keyed_entries = isinstance(electrical_series_metadata, dict) and any(
+        isinstance(entry, dict) for entry in electrical_series_metadata.values()
+    )
+    if metadata is not None and metadata_key is None and has_keyed_entries:
         raise ValueError(
             "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
             "`metadata['Ecephys']['ElectricalSeries']` entry to write, so it is required whenever "
@@ -312,6 +325,7 @@ def add_recording_to_nwbfile(
             segment_index=segment_index,
             metadata=metadata,
             parent_container=parent_container,
+            data_representation=data_representation,
             es_key=es_key,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
@@ -452,6 +466,7 @@ def _add_recording_segment_to_nwbfile(
     metadata: dict | None = None,
     segment_index: int = 0,
     parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
+    data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
     es_key: str | None = None,
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -512,7 +527,19 @@ def _add_recording_segment_to_nwbfile(
     )
     eseries_kwargs["electrodes"] = electrode_table_region
 
-    if recording.has_scaleable_traces():
+    if data_representation == "physical_units":
+        if not recording.has_scaleable_traces():
+            raise ValueError(
+                "data_representation='physical_units' requires the recording to have gains and offsets "
+                "to convert the samples to microvolts, but this recording has none."
+            )
+        # The traces are written already in microvolts (each channel's gain and offset folded in), so
+        # only the microvolt-to-volt factor remains and the shared offset is zero. This is the only
+        # representation that can hold heterogeneous per-channel gains and offsets in a single series.
+        eseries_kwargs["conversion"] = 1e-6
+        eseries_kwargs["offset"] = 0.0
+        # No channel_conversion: the per-channel gain is already applied to the stored data.
+    elif recording.has_scaleable_traces():
         # Spikeinterface gains and offsets are gains and offsets to micro volts.
         # The units of the ElectricalSeries should be volts so we scale correspondingly.
         micro_to_volts_conversion_factor = 1e-6
@@ -546,6 +573,7 @@ def _add_recording_segment_to_nwbfile(
     ephys_data_iterator = _recording_traces_to_hdmf_iterator(
         recording=recording,
         segment_index=segment_index,
+        data_representation=data_representation,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
     )
@@ -1449,7 +1477,7 @@ def _check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment
 def _recording_traces_to_hdmf_iterator(
     recording: BaseRecording,
     segment_index: int = None,
-    return_scaled: bool = False,
+    data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
     iterator_type: str | None = "v2",
     iterator_options: dict = None,
 ) -> AbstractDataChunkIterator:
@@ -1461,8 +1489,9 @@ def _recording_traces_to_hdmf_iterator(
         A recording extractor from spikeinterface
     segment_index : int, optional
         The recording segment to add to the NWBFile.
-    return_scaled : bool, defaults to False
-        When True recording extractor objects from spikeinterface return their traces in microvolts.
+    data_representation : {"digital_counts", "physical_units"}, defaults to "digital_counts"
+        "physical_units" materializes the traces in microvolts (each channel's gain and offset applied);
+        "digital_counts" keeps the raw sample values.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -1490,14 +1519,18 @@ def _recording_traces_to_hdmf_iterator(
 
     iterator_options = dict() if iterator_options is None else iterator_options
 
+    # "physical_units" materializes the traces in microvolts (gains and offsets folded in);
+    # "digital_counts" keeps the raw sample values.
+    return_in_uV = data_representation == "physical_units"
+
     if iterator_type is None:
         _check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
-        traces_as_iterator = recording.get_traces(return_scaled=return_scaled, segment_index=segment_index)
+        traces_as_iterator = recording.get_traces(return_in_uV=return_in_uV, segment_index=segment_index)
     elif iterator_type == "v2":
         traces_as_iterator = SpikeInterfaceRecordingDataChunkIterator(
             recording=recording,
             segment_index=segment_index,
-            return_scaled=return_scaled,
+            return_in_uV=return_in_uV,
             **iterator_options,
         )
     else:
@@ -1528,6 +1561,14 @@ def _report_variable_offset(recording: BaseRecording) -> None:
     message_lines.append("Multiple offsets were found per channel IDs:")
     for offset, ids in offset_to_channel_ids.items():
         message_lines.append(f"  Offset {offset}: Channel IDs {ids}")
+    message_lines.append("")
+    message_lines.append(
+        "A single ElectricalSeries can store only one scalar offset. To write these channels as one "
+        "series anyway, pass data_representation='physical_units' to add_recording_to_nwbfile (this "
+        "folds each channel's offset into the data and writes float physical values). Alternatively, "
+        "drop the channels that do not share the common offset with "
+        "recording.remove_channels(remove_channel_ids=[...]) and write them as their own series."
+    )
     message = "\n".join(message_lines)
 
     raise ValueError(message)
@@ -1559,7 +1600,7 @@ def add_recording_as_time_series_to_nwbfile(
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
-    metadata_key: str = "TimeSeries",
+    metadata_key: str | None = None,
     parent_container: Literal["acquisition", "stimulus"] = "acquisition",
 ):
     """
@@ -1576,8 +1617,8 @@ def add_recording_as_time_series_to_nwbfile(
         Should be of the format::
 
             metadata['TimeSeries'] = {
-                'metadata_key': {
-                    "name": "my_name",
+                'my_time_series': {
+                    "name": "TimeSeriesMyName",
                     'description': 'my_description',
                     'unit': 'my_unit',
                     "offset": offset_to_unit_value,
@@ -1586,9 +1627,13 @@ def add_recording_as_time_series_to_nwbfile(
                     ...
                 }
             }
-        Where the metadata_key is used to look up metadata in the metadata dictionary.
-    metadata_key: str
-        The entry in TimeSeries metadata to use.
+        Where ``metadata_key`` (here ``'my_time_series'``) addresses the entry, and the entry's
+        ``name`` names the written TimeSeries. The two are independent.
+    metadata_key: str, optional
+        The entry in ``metadata["TimeSeries"]`` to write. Required whenever the metadata carries a
+        ``"TimeSeries"`` block, and the key must be present in it: an unresolvable key raises rather
+        than silently writing defaults over the caller's edits. Pass no metadata at all to write the
+        recording from its own properties with default naming.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -1606,6 +1651,23 @@ def add_recording_as_time_series_to_nwbfile(
         The NWB container to add the TimeSeries to. Use "stimulus" for data that was
         applied to the system (e.g., electrical stimulation current).
     """
+
+    # ``metadata_key`` addresses an entry, so it is only meaningful when there is a block to address.
+    # Checked with ``in`` rather than ``[]`` because ``metadata`` is routinely a ``DeepDict``, whose
+    # ``__getitem__`` would auto-create the block and make this guard pass on a dict that never had one.
+    if metadata is not None and "TimeSeries" in metadata:
+        if metadata_key is None:
+            raise ValueError(
+                "Metadata with a 'TimeSeries' block was passed but no `metadata_key` was provided. "
+                "`metadata_key` selects which `metadata['TimeSeries']` entry to write, so it is required "
+                "whenever that block is present. To write the recording with default metadata, pass no "
+                "metadata at all."
+            )
+        if metadata_key not in metadata["TimeSeries"]:
+            raise ValueError(
+                f"metadata['TimeSeries'] does not contain key '{metadata_key}'. "
+                f"Available keys: {list(metadata['TimeSeries'])}."
+            )
 
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):
@@ -1630,7 +1692,7 @@ def _add_time_series_segment_to_nwbfile(
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
-    metadata_key: str = "time_series_metadata_key",
+    metadata_key: str | None = None,
     parent_container: Literal["acquisition", "stimulus"] = "acquisition",
 ):
     """
@@ -1646,8 +1708,9 @@ def _add_time_series_segment_to_nwbfile(
     # Build TimeSeries kwargs from recording properties
     tseries_kwargs = {}
 
-    # Get user-provided metadata
-    user_metadata = metadata.get("TimeSeries", {}).get(metadata_key, {})
+    # Get user-provided metadata. ``metadata_key`` is None only when no ``TimeSeries`` block was
+    # passed (the public function raises otherwise), so there is nothing to look up.
+    user_metadata = {} if metadata_key is None else metadata.get("TimeSeries", {}).get(metadata_key, {})
 
     # Extract unit, conversion, offset from recording properties if not in metadata
     if "unit" not in user_metadata:
@@ -1977,7 +2040,18 @@ def add_recording_metadata_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     """
-    if metadata is not None and _is_dict_based_metadata(metadata):
+    # Decide on the block this function actually writes, the electrode groups, rather than on the
+    # dictionary's overall shape: in a converter another interface's dict-based ``Devices`` (a NIDQ
+    # board's, a camera's) can sit beside this recording's list-based ``Ecephys``, and routing on that
+    # would send list-based groups down the dict path, where they resolve to nothing and the pipeline
+    # writes a placeholder device instead of the one the metadata names.
+    ecephys_metadata = (metadata or {}).get("Ecephys", {})
+    electrical_series_metadata = ecephys_metadata.get("ElectricalSeries", {})
+    ecephys_is_dict_based = isinstance(ecephys_metadata.get("ElectrodeGroups"), dict) or (
+        isinstance(electrical_series_metadata, dict)
+        and any(isinstance(entry, dict) for entry in electrical_series_metadata.values())
+    )
+    if metadata is not None and ecephys_is_dict_based:
         # Devices are created lazily inside _add_electrode_groups_to_nwbfile when a group
         # references them via device_metadata_key, mirroring the roiextractors imaging-plane pattern.
         _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)

@@ -88,6 +88,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         stub_test: bool = False,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -104,6 +105,9 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         stub_test : bool, default: False
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"open_ephys_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -156,8 +160,18 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             )
 
         super().__init__(
-            folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
+            folder_path=folder_path,
+            stream_name=stream_name,
+            block_index=block_index,
+            verbose=verbose,
+            es_key=es_key,
+            metadata_key=metadata_key,
         )
+
+        # ``metadata_key`` is a snake_case dict handle, not the series name. A session is a single Open Ephys
+        # recording, so the default is a constant; conversions that combine several streams pass their own.
+        if metadata_key is None:
+            self.metadata_key = "open_ephys_recording"
 
         # Check if the recording has ADC channels
         recording = self.recording_extractor
@@ -198,10 +212,17 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
                     self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         from ._openephys_utils import _get_session_start_time
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
+
+        if use_new_metadata_format:
+            # State the series name here, where the metadata is produced: it is the interface's own, and it is
+            # independent of ``metadata_key`` (the dict key), so re-keying an entry never renames the series.
+            # No device or electrode groups are emitted: this interface has never claimed either, and the
+            # pipeline synthesizes its defaults from the channel-group properties.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeries"
 
         session_start_time = _get_session_start_time(element=self._xml_root)
         if session_start_time is not None:

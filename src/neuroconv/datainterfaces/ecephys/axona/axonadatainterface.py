@@ -41,8 +41,13 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         return AxonaRecordingExtractor
 
     def __init__(
-        self, file_path: FilePath, *args, verbose: bool = False, es_key: str = "ElectricalSeries"
-    ):  # TODO: change to * (keyword only) on or after August 2026
+        self,
+        file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
+    ):
         """
 
         Parameters
@@ -51,6 +56,9 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
             Path to .bin file.
         verbose: bool, optional, default: True
         es_key: str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"axona_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -79,7 +87,11 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
             verbose = positional_values.get("verbose", verbose)
             es_key = positional_values.get("es_key", es_key)
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+
+        if metadata_key is None:
+            self.metadata_key = "axona_recording"
+
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
 
         # Set the channel groups
@@ -129,11 +141,38 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
         return ecephys_metadata
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)
+
+        if use_new_metadata_format:
+            from ....tools.spikeinterface.spikeinterface import _get_group_name
+
+            # The acquisition system and the software version that wrote the file are the provenance the
+            # .set header carries, so the device is registered once at the top level and every tetrode
+            # group links to it through ``device_metadata_key``.
+            device_metadata_key = "axona_device"
+            sw_version = self.metadata_in_set_file["sw_version"]
+            metadata["Devices"] = {
+                device_metadata_key: dict(
+                    name="Axona",
+                    description=f"Axona DacqUSB, sw_version={sw_version}",
+                    manufacturer="Axona",
+                )
+            }
+
+            # One group per tetrode. Only the fields the source carries are emitted: the old format's
+            # empty ``location`` and its templated group description are inventions, and the write
+            # pipeline defaults what NWB requires.
+            channel_group_names = set(_get_group_name(recording=self.recording_extractor).tolist())
+            metadata["Ecephys"]["ElectrodeGroups"] = {
+                group_name: dict(name=group_name, device_metadata_key=device_metadata_key)
+                for group_name in channel_group_names
+            }
+
+            return metadata
 
         ecephys_metadata = self.extract_ecephys_metadata()
         metadata["Ecephys"].update(ecephys_metadata)

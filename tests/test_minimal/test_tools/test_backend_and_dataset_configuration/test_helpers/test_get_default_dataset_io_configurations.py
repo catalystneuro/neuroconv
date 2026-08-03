@@ -6,9 +6,9 @@ import numpy as np
 import pytest
 from hdmf.common import VectorData
 from hdmf.data_utils import DataChunkIterator
-from pynwb.base import DynamicTable
+from pynwb.base import DynamicTable, ExternalImage, Images
 from pynwb.behavior import CompassDirection
-from pynwb.image import ImageSeries
+from pynwb.image import GrayscaleImage, ImageSeries
 from pynwb.misc import Units
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.behavior import mock_SpatialSeries
@@ -89,6 +89,43 @@ def test_configuration_on_external_image_series(backend: Literal["hdf5", "zarr"]
     nwbfile = mock_NWBFile()
     image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0, format="external", num_samples=1)
     nwbfile.add_acquisition(image_series)
+
+    dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+
+    assert len(dataset_configurations) == 0
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuration_on_image(backend: Literal["hdf5", "zarr"]):
+    # The pixel-data image types inherit from NWBData rather than NWBContainer and so need their own dispatch
+    array = np.zeros(shape=(64, 64), dtype="uint8")
+    image = GrayscaleImage(name="TestImage", data=array)
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(Images(name="TestImages", images=[image]))
+
+    dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+
+    assert len(dataset_configurations) == 1
+
+    dataset_configuration = dataset_configurations[0]
+    assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
+    assert dataset_configuration.object_id == image.object_id
+    assert dataset_configuration.location_in_file == "acquisition/TestImages/TestImage/data"
+    assert dataset_configuration.full_shape == array.shape
+    assert dataset_configuration.dtype == array.dtype
+    assert dataset_configuration.chunk_shape == array.shape
+    assert dataset_configuration.buffer_shape == array.shape
+    assert dataset_configuration.compression_method == "gzip"
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuration_on_external_image(backend: Literal["hdf5", "zarr"]):
+    # ExternalImage shares the BaseImage parent but its data is a single path string, not an array
+    external_image = ExternalImage(name="TestExternalImage", data="image.png", image_format="PNG")
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(Images(name="TestImages", images=[external_image]))
 
     dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
 
