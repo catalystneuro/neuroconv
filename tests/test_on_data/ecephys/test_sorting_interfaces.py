@@ -248,6 +248,8 @@ class TestPhySortingInterface(SortingExtractorInterfaceTestMixin):
 
 
 class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
+    """Kilosort 2.5 output: no ops.npy, and templates fit on every channel."""
+
     data_interface_cls = KiloSortSortingInterface
     interface_kwargs = dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0"))
     save_directory = OUTPUT_PATH
@@ -273,6 +275,10 @@ class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
             ),
             dict(name="ch", description="The channel label of the best channel, as defined by the user."),
             dict(name="sh", description="The shank label of the best channel."),
+            dict(
+                name="max_electrode",
+                description="Index into the electrodes table for the electrode with maximum spike amplitude for this unit.",
+            ),
         ]
 
     def check_units_table_propagation(self):
@@ -296,8 +302,263 @@ class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
         )
         assert nwbfile.units["original_cluster_id"].description == "Original cluster ID assigned by Kilosort."
 
+    def check_no_gain_writes_no_waveforms(self):
+        """Kilosort records no gain and the schema fixes the column to volts, so there is nothing to write."""
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        with pytest.warns(UserWarning, match="No gain is available"):
+            nwbfile = self.interface.create_nwbfile(metadata=metadata)
+
+        assert "waveform_mean" not in nwbfile.units.colnames
+
+    def check_templates_of_kilosort_two_point_five(self):
+        """These templates are fit on all 32 channels, so nothing is zeroed, and there is no ops.npy."""
+        interface = self.data_interface_cls(**self.interface_kwargs, gain_to_uV=1.0)
+        metadata = interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        waveform_means = np.asarray(nwbfile.units["waveform_mean"][:])
+        assert waveform_means.shape == (13, 82, 32)
+        assert np.all(np.abs(waveform_means).max(axis=1) > 0.0), "A full-channel footprint zeroes nothing"
+        # Without ops.npy there is no peak sample to state.
+        assert "waveform peak" not in nwbfile.units["waveform_mean"].description
+
     def run_custom_checks(self):
         self.check_units_table_propagation()
+        self.check_no_gain_writes_no_waveforms()
+        self.check_templates_of_kilosort_two_point_five()
+
+
+class TestKilosortSortingInterfaceVersion4(SortingExtractorInterfaceTestMixin):
+    """Kilosort 4 output, whose templates are fit on a subset of the channels."""
+
+    data_interface_cls = KiloSortSortingInterface
+    interface_kwargs = dict(folder_path=str(DATA_PATH / "kilosort" / "version_4_sparse_templates"), gain_to_uV=0.195)
+    save_directory = OUTPUT_PATH
+
+    def check_templates_are_zeroed_outside_their_footprint(self):
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = self.interface.create_nwbfile(metadata=metadata)
+
+        # The channel axis spans every channel Kilosort sorted, the same for every unit.
+        waveform_means = np.asarray(nwbfile.units["waveform_mean"][:])
+        assert waveform_means.shape == (6, 61, 32)
+        assert waveform_means.dtype == np.float32
+
+        # Kilosort fit each of these templates on 10 of the 32 channels; the rest are exactly zero, which is
+        # what unwhitening would otherwise fill in with the noise covariance.
+        non_zero_channels = [np.flatnonzero(np.abs(waveform_means[unit]).sum(axis=0) != 0) for unit in range(6)]
+        assert all(channels.size == 10 for channels in non_zero_channels)
+        np.testing.assert_array_equal(non_zero_channels[0], [0, 1, 2, 3, 4, 16, 17, 18, 19, 20])
+        np.testing.assert_array_equal(non_zero_channels[3], [9, 10, 11, 12, 13, 25, 26, 27, 28, 29])
+
+        # Unwhitened and scaled by 0.195 microvolts per unit, in volts.
+        peaks_in_micro_volts = np.abs(waveform_means).max(axis=(1, 2)) * 1e6
+        np.testing.assert_allclose(peaks_in_micro_volts, [154.2, 30.7, 10.9, 57.8, 326.4, 75.1], atol=0.05)
+
+    def check_nothing_is_claimed_about_electrodes(self):
+        """The folder cannot say which electrodes its channels are, so the file does not pretend to."""
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = self.interface.create_nwbfile(metadata=metadata)
+
+        assert nwbfile.electrodes is None
+        assert "electrodes" not in nwbfile.units.colnames
+        assert "max_electrode" not in nwbfile.units.colnames
+
+        # The description carries what the schema has no field for, including what makes the axis joinable
+        # to a recording later.
+        description = nwbfile.units["waveform_mean"].description
+        assert "The waveform peak is at sample 20 of 61." in description
+        assert "channel_map.npy" in description
+        assert "channel_positions.npy" in description
+
+    def check_mapping_derived_from_the_templates_narrows_the_waveforms(self):
+        """With electrodes to label the channel axis, the templates are written over the footprint."""
+        from neuroconv.converters import SortedRecordingConverter
+        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+        recording_interface = MockRecordingInterface(num_channels=32, durations=[10.0], sampling_frequency=25000.0)
+        sorting_interface = self.data_interface_cls(**self.interface_kwargs)
+
+        unit_ids_to_channel_ids = sorting_interface.get_unit_ids_to_channel_ids(recording_interface=recording_interface)
+        assert [str(channel_id) for channel_id in unit_ids_to_channel_ids[0]] == [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+        ]
+
+        converter = SortedRecordingConverter(
+            recording_interface=recording_interface,
+            sorting_interface=sorting_interface,
+            unit_ids_to_channel_ids=unit_ids_to_channel_ids,
+        )
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = converter.create_nwbfile(metadata=metadata)
+
+        waveform_means = np.asarray(nwbfile.units["waveform_mean"][:])
+        assert waveform_means.shape == (6, 61, 10)
+        assert nwbfile.units["electrodes"].get(0, index=True) == [0, 1, 2, 3, 4, 16, 17, 18, 19, 20]
+        # Narrowing the axis does not change the values it holds.
+        np.testing.assert_allclose(
+            np.abs(waveform_means).max(axis=(1, 2)) * 1e6, [154.2, 30.7, 10.9, 57.8, 326.4, 75.1], atol=0.05
+        )
+
+    def check_a_recording_that_was_not_sorted_is_rejected(self):
+        """`params.py` states the shape of the binary, which rules out some wrong recordings."""
+        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+        with pytest.raises(ValueError, match="32 channels but this recording has 16"):
+            self.interface.get_unit_ids_to_channel_ids(
+                recording_interface=MockRecordingInterface(num_channels=16, durations=[10.0])
+            )
+
+        with pytest.raises(ValueError, match="Kilosort was run at 25000.0 Hz"):
+            self.interface.get_unit_ids_to_channel_ids(
+                recording_interface=MockRecordingInterface(
+                    num_channels=32, durations=[10.0], sampling_frequency=30000.0
+                )
+            )
+
+    def check_sparse_with_electrodes_table_writes_a_self_consistent_file(self):
+        """This representation makes the interface state the geometry and link the units to it."""
+        interface = self.data_interface_cls(
+            **self.interface_kwargs, waveform_representation="sparse_with_electrodes_table"
+        )
+        metadata = interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        # The table holds the sorted channels, so a unit's rows are the positions of its footprint.
+        electrodes = nwbfile.electrodes.to_dataframe()
+        assert len(electrodes) == 32
+        assert electrodes["rel_x"].tolist() == [0.0] * 16 + [20.0] * 16
+        assert nwbfile.units["electrodes"].get(0, index=True) == [0, 1, 2, 3, 4, 16, 17, 18, 19, 20]
+
+        # With electrodes to label it, the channel axis narrows to the footprint.
+        assert np.asarray(nwbfile.units["waveform_mean"][:]).shape == (6, 61, 10)
+        assert list(nwbfile.units["max_electrode"].data) == [16, 18, 23, 27, 29, 14]
+
+    def check_inventing_a_table_alongside_real_electrodes_is_refused(self):
+        """The representation asks the interface to invent a table; supplied electrodes mean one exists."""
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        interface = self.data_interface_cls(
+            **self.interface_kwargs, waveform_representation="sparse_with_electrodes_table"
+        )
+        with pytest.raises(ValueError, match="electrodes were also supplied"):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), unit_electrode_indices=[[0]] * 6)
+
+    def check_inventing_a_table_next_to_an_existing_one_is_refused(self):
+        """
+        Appending to somebody else's table would silently point the units at their rows.
+
+        The rows this interface writes land after the ones already there, but the footprint it links them
+        by is positions in its own channel order, so the units would come out on the other table's
+        electrodes with nothing to reveal it.
+        """
+        from neuroconv import ConverterPipe
+        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+        converter = ConverterPipe(
+            data_interfaces=dict(
+                recording=MockRecordingInterface(num_channels=32, durations=[10.0], sampling_frequency=25000.0),
+                sorting=self.data_interface_cls(
+                    **self.interface_kwargs, waveform_representation="sparse_with_electrodes_table"
+                ),
+            )
+        )
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        with pytest.raises(ValueError, match="the file already has one that something else wrote"):
+            converter.create_nwbfile(metadata=metadata)
+
+    def check_none_writes_no_waveforms_and_reads_no_templates(self):
+        """The way to say spike times only, without withholding the gain to mean it."""
+        interface = self.data_interface_cls(**self.interface_kwargs, waveform_representation="none")
+        metadata = interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert "waveform_mean" not in nwbfile.units.colnames
+        assert "max_electrode" not in nwbfile.units.colnames
+        assert nwbfile.units["spike_times"] is not None
+
+    def check_none_keeps_the_electrodes_a_converter_supplies(self):
+        """ "none" answers whether waveforms are written, not whether the units are linked."""
+        from neuroconv.converters import SortedRecordingConverter
+        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+        recording_interface = MockRecordingInterface(num_channels=32, durations=[10.0], sampling_frequency=25000.0)
+        sorting_interface = self.data_interface_cls(**self.interface_kwargs, waveform_representation="none")
+        converter = SortedRecordingConverter(
+            recording_interface=recording_interface,
+            sorting_interface=sorting_interface,
+            unit_ids_to_channel_ids=sorting_interface.get_unit_ids_to_channel_ids(
+                recording_interface=recording_interface
+            ),
+        )
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = converter.create_nwbfile(metadata=metadata)
+
+        assert nwbfile.units["electrodes"].get(0, index=True) == [0, 1, 2, 3, 4, 16, 17, 18, 19, 20]
+        assert "waveform_mean" not in nwbfile.units.colnames
+        assert "max_electrode" not in nwbfile.units.colnames
+
+    def check_an_unknown_representation_is_rejected(self):
+        with pytest.raises(ValueError, match="`waveform_representation` must be one of"):
+            self.data_interface_cls(**self.interface_kwargs, waveform_representation="sparse")
+
+    def run_custom_checks(self):
+        self.check_templates_are_zeroed_outside_their_footprint()
+        self.check_nothing_is_claimed_about_electrodes()
+        self.check_sparse_with_electrodes_table_writes_a_self_consistent_file()
+        self.check_inventing_a_table_alongside_real_electrodes_is_refused()
+        self.check_inventing_a_table_next_to_an_existing_one_is_refused()
+        self.check_none_writes_no_waveforms_and_reads_no_templates()
+        self.check_none_keeps_the_electrodes_a_converter_supplies()
+        self.check_an_unknown_representation_is_rejected()
+        self.check_mapping_derived_from_the_templates_narrows_the_waveforms()
+        self.check_a_recording_that_was_not_sorted_is_rejected()
+
+
+def test_folder_without_templates_still_writes_its_units(tmp_path):
+    """Everything the interface reads about a unit's channels is in templates.npy, and it may be absent."""
+    import shutil
+
+    folder_path = tmp_path / "phy_without_templates"
+    shutil.copytree(DATA_PATH / "phy" / "phy_example_0", folder_path)
+    (folder_path / "templates.npy").unlink()
+
+    interface = KiloSortSortingInterface(folder_path=folder_path, gain_to_uV=1.0)
+    metadata = interface.get_metadata()
+    metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+    with pytest.warns(UserWarning, match="No templates found"):
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+    assert len(nwbfile.units) == 13
+    assert "waveform_mean" not in nwbfile.units.colnames
+
+    # Asking for the representation that needs them says so instead of failing on the missing file.
+    interface = KiloSortSortingInterface(
+        folder_path=folder_path, gain_to_uV=1.0, waveform_representation="sparse_with_electrodes_table"
+    )
+    with pytest.raises(ValueError, match="holds no templates.npy"):
+        interface.create_nwbfile(metadata=metadata)
 
 
 class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin):

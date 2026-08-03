@@ -55,23 +55,25 @@ handles this by requiring an explicit mapping between unit IDs and their associa
 Using Intan Recording Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This example demonstrates linking data from an Intan recording system with
-Kilosort sorting results:
+The mapping is something you supply, because most sorting formats record only which
+spikes belong to which unit and say nothing about which channels those units were
+detected on. This example demonstrates linking data from an Intan recording system with
+MountainSort sorting results:
 
 .. code-block:: python
 
     from neuroconv.converters import SortedRecordingConverter
     from neuroconv.datainterfaces import (
         IntanRecordingInterface,
-        KiloSortSortingInterface
+        MdaSortingInterface
     )
 
     # Initialize interfaces
     recording_interface = IntanRecordingInterface(
         file_path="path/to/intan_data.rhd"
     )
-    sorting_interface = KiloSortSortingInterface(
-        folder_path="path/to/kilosort_output"
+    sorting_interface = MdaSortingInterface(
+        file_path="path/to/firings.mda", sampling_frequency=30_000.0
     )
 
 Examine the available channel and unit IDs:
@@ -102,6 +104,10 @@ Create the mapping between units and channels. This mapping specifies which reco
 
     Every unit from the sorting interface must have a corresponding channel mapping. The channel IDs must exactly match those from the recording interface.
 
+.. note::
+
+    A few sorting formats do record which channels each unit was detected on. Where they do, the interface offers a helper that reads it out, and the dictionary above should not be written by hand: see :ref:`Deriving the Mapping from Kilosort Output <deriving_mapping_from_kilosort>`. Everything else on this page, including the converter itself, is the same either way.
+
 Create the converter and run the conversion:
 
 .. code-block:: python
@@ -116,6 +122,77 @@ Create the converter and run the conversion:
     from neuroconv.tools import configure_and_write_nwbfile
     configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="path/to/output.nwb")
 
+
+.. _deriving_mapping_from_kilosort:
+
+Deriving the Mapping from Kilosort Output
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Kilosort is one of the formats that does record which channels each unit was detected on: it fits
+every template on a fixed number of nearby channels and leaves it exactly zero everywhere else, so
+the mapping is in ``templates.npy`` and does not have to be written by hand. This is a convenience
+specific to Kilosort; the converter and everything else above are unchanged.
+:py:meth:`~neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface.KiloSortSortingInterface.get_unit_ids_to_channel_ids`
+reads it out and names the channels with the recording's channel IDs:
+
+.. code-block:: python
+
+    from neuroconv.converters import SortedRecordingConverter
+    from neuroconv.datainterfaces import (
+        IntanRecordingInterface,
+        KiloSortSortingInterface
+    )
+
+    recording_interface = IntanRecordingInterface(
+        file_path="path/to/intan_data.rhd"
+    )
+    sorting_interface = KiloSortSortingInterface(
+        folder_path="path/to/kilosort_output", gain_to_uV=0.195
+    )
+
+    unit_ids_to_channel_ids = sorting_interface.get_unit_ids_to_channel_ids(
+        recording_interface=recording_interface
+    )
+    print(unit_ids_to_channel_ids[0])
+    # Example output: ['A-000', 'A-001', 'A-002', 'A-016', 'A-017']
+
+The converter is then built exactly as above, and the waveforms follow the linkage: each unit's
+``waveform_mean`` is written over the electrodes it is linked to rather than over the whole probe.
+
+.. code-block:: python
+
+    converter = SortedRecordingConverter(
+        recording_interface=recording_interface,
+        sorting_interface=sorting_interface,
+        unit_ids_to_channel_ids=unit_ids_to_channel_ids
+    )
+
+    nwbfile = converter.create_nwbfile()
+
+**What the call asserts.** The recording you pass must be the one Kilosort was run on, with the same
+channels in the same order. ``channel_map.npy`` records which channels of the sorted binary each
+template lives on, as positions rather than names, so nothing in the sorter folder can confirm that
+your recording is that binary. The helper rejects what the folder can disprove, comparing the channel
+count and sampling rate against ``params.py``, but a different recording of the same shape will pass.
+
+**The mistake this catches.** If bad channels were removed before the binary was written, pass the
+recording that was sorted rather than the raw one, since the channel positions differ. Note also
+that ``dat_path`` in ``params.py`` is not a reliable way to identify the original recording: Kilosort
+2.5 points it at ``temp_wh.dat``, its own whitened and filtered copy, rather than at your data.
+
+The same mapping is what :py:class:`~neuroconv.converters.SortedSpikeGLXConverter` takes for the
+multi-probe case below, so derive it once per probe and pass it through in the same way.
+
+**How this combines with** ``waveform_representation``. Once the converter supplies the electrodes,
+they decide the layout, so the interface's ``"dense"`` default gives way to them and there is nothing
+to set. ``"none"`` still means what it says, and pairs with linking perfectly well: the units come
+out on their real electrodes with no waveforms. ``"sparse_with_electrodes_table"`` is refused here,
+because it asks the interface to invent a probe while you are handing it a real one.
+
+**If you do not link at all**, the Kilosort interface still writes the templates. The channel axis
+then spans every channel Kilosort sorted, in ``channel_map.npy`` order and the same for every unit,
+and is not connected to any electrode. That is a complete output rather than a degraded one, so there
+is no reason to invent a pairing in order to satisfy this page.
 
 SpikeGLX Multi-Probe Data
 --------------------------------------------------------
