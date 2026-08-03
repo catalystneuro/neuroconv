@@ -1,23 +1,18 @@
 """The GuPPy reference session: the one module in this directory whose inputs GuPPy itself produced.
 
-Every other module here pairs a real acquisition file with ``mock_guppy``, a hand-written replica of
-GuPPy's on-disk format. Because the same author wrote that replica and the reader, no assertion made
-against it can catch the failure mode that reaches users -- our belief about GuPPy's format being
-wrong. This module is the anchor that can: ``sample_data_csv_2`` is a synthetic CSV session that a
-stock GuPPy 2.0.0a9 run processed end to end, so its ``sample_data_csv_2_output_1`` folder is genuine
-GuPPy output.
+``sample_data_csv_2`` is a synthetic CSV session that a stock GuPPy 2.0.0a9 run processed end to end,
+so its ``sample_data_csv_2_output_1`` folder is genuine GuPPy output. Every other module here pairs a
+real acquisition file with ``mock_guppy``, a hand-written replica of GuPPy's on-disk format.
 
-Two rules keep that anchor worth having.
+Two rules keep this module an independent check on that replica.
 
 * Do not add the reference session to the acquisition-format modules, and do not add ``mock_guppy``
-  here. The split is the point.
+  here.
 * Every expectation is read straight off disk with plain ``h5py``/``pandas``/``numpy`` calls, or is a
   hard-coded literal. Nothing in this module may import from
-  ``neuroconv.datainterfaces.fiber_photometry.guppy`` -- computing an expectation with the code under
-  test would put the tautology back one layer down.
+  ``neuroconv.datainterfaces.fiber_photometry.guppy``.
 
-The subject is the public ``GuppyConverter``, not ``_GuppyInterface``: the interface is not meant to
-run standalone, so reading GuPPy's outputs is verified through the door users actually use.
+The subject is the public ``GuppyConverter``, not ``_GuppyInterface``.
 
 The session's own parameters complement what the mock covers. GuPPy ran here with
 ``use_time_or_trials="Time (min)"`` (decimal ``bin_(0.0-1.0)`` labels), ``artifactsRemovalMethod="replace
@@ -87,8 +82,7 @@ ANALYZED_EVENT_ONSETS = {
 # Trials are concatenated across events in storesList order: nose_poke's four, then reward_delivery's six.
 # These are ten of the twelve onsets the raw event CSVs carry, because GuPPy drops an onset earlier than
 # abs(baselineCorrectionStart) = 5 s (reward at 3.0) and the later of any pair closer than
-# timeInterval = 2 s (reward at 36.0, against 35.0). The raw onsets are ``test_csv``'s literals; keeping
-# the two sets apart is what stops either module from passing by reading the other side's file.
+# timeInterval = 2 s (reward at 36.0, against 35.0).
 PSTH_TRIAL_ONSETS = [20.0, 58.0, 100.0, 128.0, 15.0, 35.0, 55.0, 75.0, 95.0, 125.0]
 PSTH_TRIALS_PER_EVENT = [4, 6]
 NUM_PSTH_TRIALS = 10
@@ -109,8 +103,7 @@ TRANSIENT_COUNTS = {("dms", "dff"): 10, ("dms", "z_score"): 10, ("nac", "dff"): 
 # the valid-signal intervals object carries exactly one row.
 VALID_SIGNAL_INTERVALS = {"nac": [[2.0, 149.0]]}
 
-# The full manifest of what a GuPPy run of this shape lands in /processing/guppy/. Spelled out rather
-# than counted, so an object that silently stops being written fails here.
+# The full manifest of what a GuPPy run of this shape lands in /processing/guppy/.
 EXPECTED_MODULE_CONTENTS = {
     "recording_sites": "GuppyRecordingSitesTable",
     "events": "GuppyEventsTable",
@@ -249,26 +242,19 @@ class TestGuppyReferenceSession:
         np.testing.assert_array_equal(parameters.peak_end_points[:], PEAK_WINDOW_STOPS)
 
     def test_registries_name_what_storeslist_named(self, module):
-        """Both registries are populated from storesList.csv: its recording sites and its event labels.
-
-        The outward links these rows carry into the acquisition tables are the converter's, and are
-        covered alongside the other acquisition formats in ``test_csv``.
-        """
+        """Both registries are populated from storesList.csv: its recording sites and its event labels."""
         assert list(module["recording_sites"]["recording_site"].data) == RECORDING_SITES
         assert list(module["events"]["event_name"].data) == EVENT_NAMES
 
     # ------------------------------------------------------------------ format-independent converter wiring
     #
-    # Everything in this section is the same for every acquisition format, so it is asserted here once
-    # rather than in each of test_csv/test_tdt/test_doric/test_npm. Those modules cover only their own
-    # seam: which files or streams a GuPPy store id resolves to, and where the session start time
-    # comes from.
+    # Asserted here once for every acquisition format; test_csv/test_tdt/test_doric/test_npm cover only
+    # their own seam.
 
     def test_acquisition_is_grouped_by_role_and_stacked_in_stores_list_order(self, nwbfile):
         """One series per excitation wavelength, column-stacking that role's store from every site.
 
-        Comparing the columns to their sources is how the stacking *order* is pinned: the converter zips
-        recording sites against fiber-table rows positionally, so a swapped column would mislabel a site.
+        Each column is compared to its source file, which pins the stacking order as well as the values.
         """
         assert set(nwbfile.acquisition) == set(ROLE_TO_SERIES_NAME.values())
         for role, store_ids in ROLE_TO_STORE_IDS.items():
@@ -319,13 +305,7 @@ class TestGuppyReferenceSession:
         assert discarded == {3.0, 36.0}
 
     def test_registry_row_count_matches_every_products_trial_count(self, module):
-        """The rows referenced across the whole registry equal the trials in every peri-event product.
-
-        The two sides never meet before this assertion: the registry comes from
-        ``<event>_<recording_site>.hdf5`` by way of the converter, while each product's trial count comes
-        from float-parsed column labels and index rows by way of the interface. They agree only if our
-        account of which occurrences GuPPy analyzed is right.
-        """
+        """The rows referenced across the whole registry equal the trials in every peri-event product."""
         events_table = module["events"]
         total_referenced_rows = sum(len(events_table["events"][row]) for row in range(len(events_table.id)))
         assert total_referenced_rows == NUM_PSTH_TRIALS
@@ -364,11 +344,7 @@ class TestGuppyReferenceSession:
             converter._derive_recording_site_to_table_rows(mutable_metadata)
 
     def test_table_region_length_mismatch_raises(self, converter, mutable_metadata):
-        """A region naming fewer rows than the series stacks columns fails loudly.
-
-        The zip of recording sites against region rows is only meaningful when the two line up, so a
-        short region must not silently drop the trailing recording site.
-        """
+        """A region naming fewer rows than the series stacks columns fails loudly."""
         mutable_metadata["FiberPhotometry"]["signal"]["fiber_photometry_table_region"] = ["dms_signal"]
         with pytest.raises(AssertionError, match="stacks 2 store"):
             converter._derive_recording_site_to_table_rows(mutable_metadata)

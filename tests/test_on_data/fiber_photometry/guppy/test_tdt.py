@@ -11,8 +11,7 @@ module to be named something else.
 
 The real data is the small (~1 MB) Photo_249 stubbed tank already shared with the TDT fiber photometry
 and events interface tests. The mock GuPPy generator's default store and event names
-(Dv1A/Dv2A/Dv3B/Dv4B, LNRW/LNnR/PrtR) are exactly the ones this tank exposes, which is the only
-coupling the converter requires.
+(Dv1A/Dv2A/Dv3B/Dv4B, LNRW/LNnR/PrtR) are exactly the ones this tank exposes.
 """
 
 from datetime import datetime, timezone
@@ -85,7 +84,7 @@ class TestGuppyConverterTDT:
         return metadata
 
     def test_one_events_interface_covers_the_whole_tank(self, converter):
-        """Every epoc lives in one tank, so TDT needs a single events interface (CSV needs one per file)."""
+        """Every epoc lives in one tank, so TDT needs a single events interface."""
         assert set(converter.data_interface_objects) == EXPECTED_ACQUISITION_INTERFACE_NAMES | {"Events", "Guppy"}
 
     def test_session_start_time_taken_from_tdt(self, converter):
@@ -113,9 +112,8 @@ class TestGuppyConverterTDT:
     def test_guppy_timestamps_are_not_realigned_onto_the_tdt_clock(self, converter, metadata, tmp_path):
         """GuPPy traces keep their native timestamps -- no cross-system offset is applied.
 
-        TDT is the only format where this could go wrong, because it is the only one whose acquisition
-        has a clock origin of its own to align against. GuPPy and TDT already share that origin, so the
-        first sample must stay at the 1 s lights-on delay rather than being shoved to the stream start.
+        GuPPy and TDT already share a clock origin, so the first sample stays at the 1 s lights-on delay
+        rather than being shoved to the stream start.
         """
         nwbfile_path = tmp_path / "tdt_guppy_alignment.nwb"
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)

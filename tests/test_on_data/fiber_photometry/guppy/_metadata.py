@@ -1,8 +1,7 @@
 """The user-supplied ``FiberPhotometry`` provenance chain, shared by every module in this directory.
 
-No interface fabricates this chain -- every fiber photometry conversion requires the caller to
-supply it -- so each converter test has to build one. These builders are parameterized by recording
-site, which is the only thing that differs between the acquisition formats' fixtures.
+The builders are parameterized by recording site, which is the only thing that differs between the
+acquisition formats' fixtures.
 
 Row order matters: the table is laid out site-major and signal-before-control, which fixes the row
 indices each GuPPy recording site is expected to own (site 0 -> rows 0 and 1, and so on).

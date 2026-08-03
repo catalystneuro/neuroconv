@@ -9,7 +9,7 @@ by the tail of its internal path, while a DoricStudio ``.csv`` export names it b
 translation. Each layout therefore gets its own class.
 
 Most assertions here stop at the constructed interface rather than running a conversion, since the
-translation is settled at construction. The two that do convert are noted individually.
+translation is settled at construction.
 
 Each class stages its one acquisition file into ``tmp_path``, because the shared GIN folder holds all
 four Doric files and a GuPPy session folder must hold exactly one.
@@ -127,11 +127,7 @@ class DoricConverterTestMixin:
             assert store_id in mapping
 
     def test_resolved_streams_hold_the_stores_samples(self, converter, acquisition_folder):
-        """Each store id resolves to the stream actually holding that store's samples.
-
-        Translation is the whole of the Doric seam, and a mapping that resolves to the *wrong* stream
-        would still look complete to the test above -- only the data tells them apart.
-        """
+        """Each store id resolves to the stream actually holding that store's samples."""
         source_path = acquisition_folder / self.ACQUISITION_FILE_NAME
         for role in ("signal", "control"):
             interface = converter.data_interface_objects[f"FiberPhotometry_{role}"]
@@ -184,9 +180,7 @@ class TestGuppyConverterDoricModernHDF5(DoricConverterTestMixin):
     def test_a_line_that_never_toggles_still_earns_an_event_type(self, converter, metadata, tmp_path):
         """``DigitalCh1`` is high throughout, contributing zero occurrences but keeping its registry row.
 
-        This is Doric-specific: unlike the TDT and CSV events interfaces, which drop an event type with
-        no occurrences, the Doric ones keep it. Asserted through a conversion because a zero-occurrence
-        type only shows up as an absence in the written table.
+        The Doric events interfaces keep an event type with no occurrences; the TDT and CSV ones drop it.
         """
         nwbfile_path = tmp_path / "doric_events.nwb"
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
@@ -220,17 +214,13 @@ class TestGuppyConverterDoricLegacyHDF5(DoricConverterTestMixin):
         return read_doric_hdf5_stream(file_path, f"Traces/Console/{store_id}/{store_id}")
 
     def test_no_session_start_time_without_a_created_attribute(self, converter):
-        """The legacy layout carries no clock origin, and no GuPPy output supplies one either.
-
-        The caller has to provide it, which is why the metadata fixture does.
-        """
+        """The legacy layout carries no clock origin, and no GuPPy output supplies one either."""
         assert "session_start_time" not in converter.get_metadata()["NWBFile"]
 
     def test_no_event_stores_builds_no_events_interface(self, converter, metadata, tmp_path):
         """A storesList with only signal/control stores yields no events interface and no events table.
 
-        Converted rather than asserted at construction because the interesting half is what the written
-        file does *not* contain, plus a GuPPy events registry that exists but has no rows.
+        The GuPPy events registry is still written, with no rows.
         """
         assert converter._events_interface_names == []
         assert not any(name.startswith("Events") for name in converter.data_interface_objects)

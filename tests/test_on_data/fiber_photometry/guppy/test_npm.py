@@ -97,12 +97,7 @@ class NPMConverterTestMixin:
         )
 
     def test_synthetic_store_names_decode_to_the_right_rows_and_columns(self, converter, session_folder):
-        """Each ``file<N>_ch<slot><column>`` store resolves to the samples GuPPy's demultiplexer picks.
-
-        This is the whole of the NPM seam. The store name exists nowhere on disk, so decoding it means
-        reproducing GuPPy's arithmetic exactly -- get the phase or the stride wrong and the interface
-        reads a real column of real numbers that simply belongs to the other LED.
-        """
+        """Each ``file<N>_ch<slot><column>`` store resolves to the samples GuPPy's demultiplexer picks."""
         source_path = session_folder / self.ACQUISITION_FILE_NAME
         for role in ("signal", "control"):
             interface = converter.data_interface_objects[f"FiberPhotometry_{role}"]
@@ -154,9 +149,8 @@ class TestGuppyConverterNPMInterleaved(NPMConverterTestMixin):
     def test_slot_maps_to_its_excitation_wavelength(self, converter):
         """The LED state's low three bits name the wavelength, and the interface selects on those bits.
 
-        Asserted through the resulting demux rather than the argument, because that is what decides which
-        rows are read: 415 nm keeps both `17` and `273`, since the digital input going high mid-recording
-        sets a bit above the excitation ones without changing which LED fired.
+        415 nm keeps both `17` and `273`: the digital input going high mid-recording sets a bit above the
+        excitation ones without changing which LED fired.
         """
         signal = converter.data_interface_objects["FiberPhotometry_signal"]
         control = converter.data_interface_objects["FiberPhotometry_control"]
@@ -205,10 +199,9 @@ class TestGuppyConverterNPMHeaderless(NPMConverterTestMixin):
     from ``noChannels``), and ``event0`` means the whole event file as one type, which
     ``NPMEventsInterface`` cannot express because it always splits by label.
 
-    Not a coincidence that both fallbacks appear together -- these two files come from GuPPy's
-    ``sampleData_NPM_5``, whose real storesList is literally ``file0_chev1,file0_chod1,event0``. Their
-    timestamps share the millisecond clock, but the GIN acquisition stub is truncated to 40 rows, so the
-    event onsets fall past its end; that is fine for wiring but is not a physical pairing.
+    Both files come from GuPPy's ``sampleData_NPM_5``, whose real storesList is literally
+    ``file0_chev1,file0_chod1,event0``. Their timestamps share the millisecond clock, but the GIN
+    acquisition stub is truncated to 40 rows, so the event onsets fall past its end.
     """
 
     ACQUISITION_SOURCE = NPM_FOLDER / "no_header_no_state_column" / "three_regions_milliseconds.csv"

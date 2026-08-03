@@ -41,10 +41,7 @@ class TestGuppyConverterCSV:
         )
 
     def test_one_events_interface_per_store_file(self, converter):
-        """CSV keeps each event store in its own file, so each needs its own interface.
-
-        TDT, by contrast, reads every epoc out of one tank and needs only one.
-        """
+        """CSV keeps each event store in its own file, so each needs its own interface."""
         assert set(converter.data_interface_objects) == (
             EXPECTED_ACQUISITION_INTERFACE_NAMES | EXPECTED_EVENTS_INTERFACE_NAMES | {"Guppy"}
         )
