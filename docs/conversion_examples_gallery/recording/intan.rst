@@ -349,6 +349,7 @@ nothing. When several lines should share one events table, point their ``table_m
 common key in the editable metadata (see the events metadata guide). ``IntanConverter`` also routes the
 digital input/output streams to this interface automatically with the default configuration.
 
+
 .. _intan-split-files:
 
 Converting a session saved as multiple files
