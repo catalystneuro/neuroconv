@@ -7,7 +7,7 @@ import pytest
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from packaging import version
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import (
@@ -71,6 +71,30 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axon" / "File_axon_1.abf"))
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "axon_recording"
+        expected_devices = {
+            "axon_device": dict(
+                name="Axon Instruments",
+                description="Axon Instruments data acquisition system (pCLAMP/AxoScope)",
+                manufacturer="Molecular Devices",
+            )
+        }
+        # The series keeps the name and description the old format gives it.
+        expected_electrical_series = {
+            "axon_recording": dict(
+                name="ElectricalSeriesRaw", description="Raw acquisition traces from Axon Binary Format file."
+            )
+        }
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+        assert all(
+            electrode_group["device_metadata_key"] == "axon_device"
+            for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
+        )
+
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Check that session_start_time is extracted from ABF file
         assert "session_start_time" in metadata["NWBFile"]
@@ -99,6 +123,29 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonaRecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axona" / "axona_raw.bin"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "axona_recording"
+        expected_devices = {
+            "axona_device": dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
+        }
+        # One group per tetrode, each linked to the single Axona device.
+        expected_electrode_groups = {
+            group_name: dict(name=group_name, device_metadata_key="axona_device") for group_name in ("1", "2", "3", "4")
+        }
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        # Old list-based format: the Axona device lives in the Ecephys.Device list and every electrode
+        # group points at it by name.
+        assert metadata["Ecephys"]["Device"] == [
+            dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
+        ]
+        for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
+            assert electrode_group["device"] == "Axona"
 
 
 class TestBiocamRecordingInterface(RecordingExtractorInterfaceTestMixin):
@@ -231,12 +278,12 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 assert expected_value == extracted_value
 
         # Test addition to electrodes table!~
-        with NWBHDF5IO(self.nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            electrode_table = nwbfile.electrodes.to_dataframe()
-            electrode_table_row = electrode_table.query(f"channel_name=='{channel_id}'").iloc[0]
-            for key, value in expected_channel_properties_electrodes.items():
-                assert electrode_table_row[key] == value
+        nwbfile = read_nwb(self.nwbfile_path)
+        electrode_table = nwbfile.electrodes.to_dataframe()
+        electrode_table_row = electrode_table.query(f"channel_name=='{channel_id}'").iloc[0]
+        for key, value in expected_channel_properties_electrodes.items():
+            assert electrode_table_row[key] == value
+        nwbfile.read_io.close()
 
 
 @pytest.mark.skipif(
@@ -287,16 +334,7 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_no_metadata_mutation(self):
         pass
 
-    def test_run_conversion_with_backend(self):
-        pass
-
-    def test_run_conversion_with_backend_configuration(self):
-        pass
-
     def test_interface_alignment(self):
-        pass
-
-    def test_configure_backend_for_equivalent_nwbfiles(self):
         pass
 
     def test_conversion_options_schema_valid(self):
@@ -436,6 +474,25 @@ class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "maxone_recording"
+        # The old format leaves the pipeline's placeholder device named "DeviceEcephys" and only rewrites
+        # its description; here the recording system is named.
+        expected_devices = {
+            "maxone_device": dict(
+                name="MaxOne",
+                description="Recorded using Maxwell version '20190530'.",
+                manufacturer="MaxWell Biosystems",
+            )
+        }
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Devices"] == expected_devices
+        assert all(
+            electrode_group["device_metadata_key"] == "maxone_device"
+            for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
+        )
+
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert len(metadata["Ecephys"]["Device"]) == 1
         assert metadata["Ecephys"]["Device"][0]["name"] == "DeviceEcephys"
@@ -459,6 +516,22 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MEArecRecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "mearec" / "mearec_test_10s.h5"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "mearec_recording"
+        # The name is the electrode template the simulation used, which the file records; the old
+        # format's invented device description is gone.
+        expected_devices = {"mearec_device": dict(name="Neuronexus-32")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Devices"] == expected_devices
+        assert all(
+            electrode_group["device_metadata_key"] == "mearec_device"
+            for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
+        )
+        # The simulation parameters stay the series description, as in the old format.
+        series_metadata = metadata["Ecephys"]["ElectricalSeries"][expected_metadata_key]
+        assert '"duration": 10.0' in series_metadata["description"]
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert len(metadata["Ecephys"]["Device"]) == 1
@@ -583,11 +656,38 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
             "description": "Cheetah 6.4.1.dev0",
         }
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "neuralynx_recording"
+        # The acquisition system and the Cheetah version come from the header; the description is the
+        # application name and version the file was written with.
+        expected_devices = {"neuralynx_device": dict(name="AcqSystem1 DigitalLynxSX", description="Cheetah 6.4.1.dev0")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Devices"] == expected_devices
+        assert all(
+            electrode_group["device_metadata_key"] == "neuralynx_device"
+            for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
+        )
+        assert metadata["NWBFile"]["session_id"] == "f58d55bb-22f6-4682-b3a2-aa116fabb78e"
+
 
 class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuroScopeRecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "test1" / "test1.dat"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "neuroscope_recording"
+        # The .xml gives the shank structure and no device, so the groups are keyed by name and link to
+        # nothing; the old format's empty location and placeholder device link are not carried over.
+        expected_electrode_groups = {"Group1": dict(name="Group1"), "Group2": dict(name="Group2")}
+        expected_electrode_column_names = ["shank_electrode_number", "group_name"]
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert "Devices" not in metadata
+        assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
+        # Electrode-table columns keep their list shape; the dict migration is a follow-up.
+        assert [column["name"] for column in metadata["Ecephys"]["Electrodes"]] == expected_electrode_column_names
 
 
 class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions:
@@ -1028,14 +1128,13 @@ class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert_array_equal(gains, expected_channel_gains)
 
     def check_read_nwb(self, nwbfile_path: str):
-        from pynwb import NWBHDF5IO
 
         expected_conversion_factor = self.test_gain_value * 1e-6
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            for _, electrical_series in nwbfile.acquisition.items():
-                assert np.isclose(electrical_series.conversion, expected_conversion_factor)
+        nwbfile = read_nwb(nwbfile_path)
+        for _, electrical_series in nwbfile.acquisition.items():
+            assert np.isclose(electrical_series.conversion, expected_conversion_factor)
 
+        nwbfile.read_io.close()
         return super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 

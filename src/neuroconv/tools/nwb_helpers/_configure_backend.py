@@ -7,6 +7,7 @@ from hdmf.common import Data
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from packaging import version
 from pynwb import NWBFile, TimeSeries, get_manager
+from pynwb.core import NWBData
 
 from ._configuration_models._base_dataset_io import _find_location_in_memory_nwbfile
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
@@ -75,6 +76,14 @@ def configure_backend(
                 data_chunk_iterator_class=data_chunk_iterator_class,
                 data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
             )
+            if isinstance(neurodata_object, NWBData):
+                # `Data.set_data_io` above assigns to the name-mangled `_Data__data`, but `NWBData` declares its
+                # own `__data` attribute and a `data` property reading `_NWBData__data`, which shadows the parent.
+                # Without re-syncing the child attribute the DataIO wrapping is silently dropped for every NWBData
+                # subclass, the pixel-data Image types among them.
+                # TODO: remove once https://github.com/NeurodataWithoutBorders/pynwb/pull/2233 ships, which lets
+                # the parent own the storage, and the minimum pynwb version is bumped past it.
+                neurodata_object._NWBData__data = neurodata_object._Data__data
         # TimeSeries data or timestamps
         elif isinstance(neurodata_object, TimeSeries) and not is_dataset_linked:
             neurodata_object.set_data_io(

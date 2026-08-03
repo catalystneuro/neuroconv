@@ -9,11 +9,13 @@ import pytest
 from hdmf.testing import TestCase
 from packaging.version import Version
 from probeinterface import Probe, ProbeGroup
+from pynwb import NWBHDF5IO
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import Spike2RecordingInterface
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.testing.mock_interfaces import (
+    MockIcephysInterface,
     MockRecordingInterface,
     MockSortingInterface,
 )
@@ -549,6 +551,48 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         probe = interface.recording_extractor.get_probe()
         expected_contact_ids = probe.contact_ids
         np.testing.assert_array_equal(electrode_names, expected_contact_ids)
+
+
+def test_recording_routes_on_its_own_block_in_a_mixed_converter():
+    """A converter builds one metadata dictionary and hands the same one to every interface, so an
+    interface that emits only the dict-based format contributes a dict-shaped top-level ``Devices``
+    while a recording interface contributes a list-based ``Ecephys``. One dictionary, two shapes: the
+    recording has to read its own block rather than the dictionary's overall shape, or it looks for a
+    keyed ``ElectricalSeries`` entry its own ``get_metadata`` never wrote."""
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    dict_only_interface = MockIcephysInterface()
+    converter = ConverterPipe(data_interfaces=dict(Recording=recording_interface, Icephys=dict_only_interface))
+
+    metadata = converter.get_metadata()
+    assert isinstance(metadata["Devices"], dict)  # contributed by the dict-only interface
+    assert "name" in metadata["Ecephys"]["ElectricalSeries"]  # list-based: a flat dict of fields, not entries
+
+    nwbfile = mock_NWBFile()
+    recording_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+    assert "ElectricalSeries" in nwbfile.acquisition
+    # The electrode groups route on the Ecephys block too, so the device is the one the recording's own
+    # metadata names rather than the placeholder the dict path falls back to.
+    assert "DeviceEcephys" in nwbfile.devices
+    assert "Device" not in nwbfile.devices
+
+
+def test_run_conversion_through_converter(tmp_path):
+    # Dict metadata has to survive validation to reach the writer, and a converter validates against its own
+    # merged schema rather than an interface's. The interface-level equivalent of this test was removed once
+    # the shared test mixins started writing dict metadata for every interface on real data.
+    interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    converter = ConverterPipe(data_interfaces=dict(Recording=interface))
+
+    metadata = interface.get_metadata(use_new_metadata_format=True)
+    nwbfile_path = tmp_path / "converter_conversion.nwb"
+    converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["name"] in nwbfile.acquisition
 
 
 class TestAssertions(TestCase):

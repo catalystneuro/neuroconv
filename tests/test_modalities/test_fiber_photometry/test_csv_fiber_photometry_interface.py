@@ -35,8 +35,8 @@ class TestCSVFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     expected_rate = SAMPLING_RATE
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_test(self, request, tmp_path_factory):
-        cls = request.cls
+    @classmethod
+    def setup_test(cls, tmp_path_factory):
         data_directory = tmp_path_factory.mktemp("csv_fiber_photometry")
         signal_path = data_directory / "Sample_Signal_Channel.csv"
         pd.DataFrame({"timestamps": TIMESTAMPS, "data": SIGNAL_DATA}).to_csv(signal_path, index=False)

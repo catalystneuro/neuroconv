@@ -86,6 +86,75 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     def get_metadata_schema(self) -> dict:
         """
+        Compile the metadata schema.
+
+        The registries are objects keyed by ``metadata_key``, and the entries stay permissive: an entry is
+        passed to a pynwb constructor, so it may legitimately carry any field that constructor takes. What is
+        pinned is the shape, that an entry is an object, which is also what catches an edit written against
+        the old format landing in a block that exists in both
+        (``metadata["Ecephys"]["ElectricalSeries"]["name"] = ...``).
+
+        Metadata in the old list-based format is validated against
+        ``_get_metadata_schema_for_old_list_format``, and both go when that format does.
+        """
+        from ...basedatainterface import BaseDataInterface
+
+        metadata_schema = BaseDataInterface.get_metadata_schema(self)
+        metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
+        metadata_schema["properties"]["Ecephys"]["required"] = []
+        metadata_schema["properties"]["Ecephys"]["properties"] = dict(
+            ElectrodeGroups=dict(
+                type="object",
+                additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeGroupEntry"},
+            ),
+            ElectricalSeries=dict(
+                type="object",
+                additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectricalSeriesEntry"},
+            ),
+            # The electrode table's column descriptions are still a list in both formats.
+            Electrodes=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/definitions/Electrodes"},
+            ),
+        )
+        metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
+            ElectrodeGroupEntry=dict(
+                type="object",
+                additionalProperties=True,
+                properties=dict(
+                    name=dict(type="string", pattern="^[^/]*$"),
+                    description=dict(type="string"),
+                    location=dict(type="string"),
+                    device_metadata_key=dict(
+                        type="string",
+                        description="Key of this group's device in metadata['Devices'].",
+                    ),
+                ),
+            ),
+            ElectricalSeriesEntry=dict(
+                type="object",
+                additionalProperties=True,
+                properties=dict(
+                    name=dict(type="string", pattern="^[^/]*$"),
+                    description=dict(type="string"),
+                ),
+            ),
+            Electrodes=dict(
+                type="object",
+                additionalProperties=False,
+                required=["name"],
+                properties=dict(
+                    name=dict(type="string", description="name of this electrodes column"),
+                    description=dict(type="string", description="description of this electrodes column"),
+                ),
+            ),
+        )
+        return metadata_schema
+
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        """
         Compile metadata schema for the RecordingExtractor.
 
         Returns
@@ -441,19 +510,24 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             add_recording_metadata_to_nwbfile,
             add_recording_to_nwbfile,
         )
-        from ...tools.spikeinterface.spikeinterface import _is_dict_based_metadata
 
         recording = self.recording_extractor
         if stub_test:
             recording = _stub_recording(recording=recording)
 
-        metadata = metadata or self.get_metadata()
+        metadata = metadata or self._get_metadata_for_writing()
 
-        # ``metadata_key`` selects the ElectricalSeries entry in the dict-based format and is
-        # mutually exclusive with ``es_key`` downstream. Pass it only when the metadata is actually
-        # dict-based; for the old list-based format it must stay None so the pipeline routes through
-        # ``es_key``.
-        metadata_key = self.metadata_key if _is_dict_based_metadata(metadata) else None
+        # ``metadata_key`` selects the ElectricalSeries entry in the dict-based format and is mutually
+        # exclusive with ``es_key`` downstream. The question is asked of this interface's own entry rather
+        # than of the dictionary's overall shape: a converter can hand every interface one dictionary that
+        # carries another interface's dict-based block (a video camera's ``Devices``, a NIDQ board's)
+        # alongside this one's list-based ``Ecephys``, and only the presence of *this* key says which
+        # format the caller means for *this* interface.
+        electrical_series_metadata = metadata.get("Ecephys", {}).get("ElectricalSeries", {})
+        entry_is_present = (
+            isinstance(electrical_series_metadata, dict) and self.metadata_key in electrical_series_metadata
+        )
+        metadata_key = self.metadata_key if entry_is_present else None
 
         if write_electrical_series:
             if (

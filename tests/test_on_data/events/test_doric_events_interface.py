@@ -5,6 +5,7 @@ import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import DoricEventsInterface
+from neuroconv.tools.events import _get_event_type_source_ids
 
 try:
     from ..setup_paths import OPHYS_DATA_PATH
@@ -71,7 +72,10 @@ class TestDoricEventsSingleLine:
     def test_rising_detection_is_onset_only(self):
         """detection='rising' reads point events (onset timestamps only, no duration column)."""
         interface = DoricEventsInterface(
-            file_path=self.FILE_PATH, detection_configuration={"Camera1": [{"detection": "rising"}]}
+            file_path=self.FILE_PATH,
+            detection_configuration={
+                "Camera1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
+            },
         )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
@@ -84,13 +88,21 @@ class TestDoricEventsSingleLine:
         """A signal yielding two event types derives an identifier per spec, handle plus its reading."""
         interface = DoricEventsInterface(
             file_path=self.FILE_PATH,
-            detection_configuration={"Camera1": [{"detection": "rising"}, {"detection": "falling"}]},
+            detection_configuration={
+                "Camera1": [
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"},
+                    {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"},
+                ]
+            },
         )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        # The derived identifiers are the addressing keys, and each CamelCases into its table's object
-        # name, so retrieving these two tables is what proves the derivation.
+        # The derived identifiers are the addressing keys; each CamelCases into its table's object name.
+        assert set(_get_event_type_source_ids(interface._detection_configuration)) == {
+            "Camera1_rising",
+            "Camera1_falling",
+        }
         rising_events = nwbfile.get_events_table("Camera1Rising")
         falling_events = nwbfile.get_events_table("Camera1Falling")
         assert np.allclose(rising_events["timestamp"][:], [0.002, 0.018, 0.035, 0.051, 0.068, 0.085])
@@ -208,7 +220,10 @@ class TestDoricEventsMultiLine:
     def test_selection_by_inclusion(self):
         """Naming one line derives only that line; the others are not written."""
         interface = DoricEventsInterface(
-            file_path=self.FILE_PATH, detection_configuration={"CAM1": [{"detection": "high_period"}]}
+            file_path=self.FILE_PATH,
+            detection_configuration={
+                "CAM1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}]
+            },
         )
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()

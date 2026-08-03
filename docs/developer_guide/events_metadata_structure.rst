@@ -151,7 +151,7 @@ block. It is **keyword-only** and defaults to ``None``.
 When ``None``, the interface derives a unique, source-derived snake_case key from the source (the
 tank or block name), so even two instances of the *same* interface in one converter get distinct
 keys with zero configuration. This is more robust than a hardcoded default (a fixed
-``"SpikeGLXNIDQ"`` would collide the moment two NIDQ interfaces share a converter). An explicit
+``"spikeglx_nidq"`` would collide the moment two NIDQ interfaces share a converter). An explicit
 value lets the caller pick a stable, readable name, or deliberately reuse a key. See
 :ref:`metadata_key_naming` for the cross-modality rule.
 

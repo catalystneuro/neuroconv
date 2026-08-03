@@ -111,16 +111,6 @@ class InternalVideoInterface(BaseDataInterface):
         # by ``device_metadata_key``. A nested ``device`` dict is still accepted for back-compat.
         image_series_metadata_schema["properties"]["device_metadata_key"] = {"type": "string"}
         image_series_metadata_schema["properties"]["device"] = device_metadata_schema
-        metadata_schema["properties"]["Devices"] = {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": device_metadata_schema,
-        }
-        metadata_schema["properties"]["DeviceModels"] = {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": device_model_metadata_schema,
-        }
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"]["required"].append("InternalVideos")
         metadata_schema["properties"]["Behavior"]["properties"]["InternalVideos"] = {

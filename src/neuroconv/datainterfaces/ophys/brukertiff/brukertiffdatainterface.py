@@ -43,17 +43,6 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         ] = "Folder containing Bruker .ome.tif files and the matching configuration .xml."
         return source_schema
 
-    def get_metadata_schema(self) -> dict:
-        """Return a schema compatible with the new dict-based Ophys metadata format.
-
-        The base imaging schema requires legacy ``Ophys.Device`` / ``Ophys.ImagingPlane`` /
-        ``Ophys.TwoPhotonSeries`` lists, which this interface does not produce. We bypass those
-        requirements and only validate ``NWBFile`` baseline metadata.
-        """
-        from ....basedatainterface import BaseDataInterface
-
-        return BaseDataInterface.get_metadata_schema(self)
-
     @classmethod
     def get_available_channels(cls, folder_path: DirectoryPath) -> list[str]:
         """Return the channel names available in the Bruker dataset, in acquisition order.
@@ -151,6 +140,38 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         """
         return self._full_imaging_extractor
 
+    def _read_system_identity(self) -> dict[str, str]:
+        """Read the acquisition system's identity from the ``SystemIDs`` element of the Bruker ``.xml``.
+
+        PrairieView writes two values there under the same ``SystemID`` name: a 32-hex-digit identifier
+        on the ``SystemIDs`` element itself, and a short number on its ``SystemID`` child alongside a
+        free-text site label. Both identify the microscope rather than the acquisition, and they do
+        distinguish rigs (our own fixtures carry 4886, 4842 and 4503).
+
+        Read from the XML tree here rather than from the extractor's parsed metadata, which collects
+        only the root attributes and the ``PVStateValue`` elements, so this element never reaches it.
+        Returns an empty dict for files written before the element existed.
+        """
+        # TODO: move this parsing into roiextractors' `_parse_bruker_xml_metadata`, which should expose
+        # `system_id`, `system_number` and `system_description`, and reduce this method to reading them.
+        system_ids_element = self._bruker_extractor._xml_root.find("SystemIDs")
+        if system_ids_element is None:
+            return {}
+
+        system_identity = {}
+        if "SystemID" in system_ids_element.attrib:
+            system_identity["system_id"] = system_ids_element.attrib["SystemID"]
+
+        system_id_element = system_ids_element.find("SystemID")
+        if system_id_element is not None:
+            if "SystemID" in system_id_element.attrib:
+                system_identity["system_number"] = system_id_element.attrib["SystemID"]
+            description = system_id_element.attrib.get("Description", "")
+            if description:
+                system_identity["system_description"] = description
+
+        return system_identity
+
     def get_metadata(self) -> DeepDict:
         """Return metadata in the new dict-based format only.
 
@@ -170,12 +191,30 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         # interfaces over the same folder (as ``BrukerTiffConverter`` builds for multi-channel or
         # disjoint volumetric data) then merge into a single ``Devices`` entry; suffixing it per
         # interface would register one device name under several keys, which the registry rejects.
-        device_metadata_key = "bruker_device"
+        #
+        # The key carries the system the XML names, so two folders acquired on two different Bruker
+        # systems are two entries rather than one that silently keeps whichever merged last. The short
+        # system number is what goes in the key, since a key is read by people; the machine-unique
+        # identifier is written as the device's serial number. Files that predate ``SystemIDs`` fall
+        # back to the bare key and carry no serial number.
+        system_identity = self._read_system_identity()
+        system_number = system_identity.get("system_number")
+        device_metadata_key = f"bruker_device_{system_number}" if system_number is not None else "bruker_device"
         device_name = "BrukerFluorescenceMicroscope"
-        device_description = f"Version {bruker_xml_metadata['version']}" if "version" in bruker_xml_metadata else None
         device_entry = {"name": device_name}
-        if device_description is not None:
-            device_entry["description"] = device_description
+
+        if "system_id" in system_identity:
+            device_entry["serial_number"] = system_identity["system_id"]
+
+        # The system description is free text a human typed at installation: a site, a building, a room.
+        description_parts = []
+        if "version" in bruker_xml_metadata:
+            description_parts.append(f"Version {bruker_xml_metadata['version']}")
+        if "system_description" in system_identity:
+            description_parts.append(system_identity["system_description"])
+        if description_parts:
+            device_entry["description"] = ". ".join(description_parts)
+
         metadata["Devices"] = {device_metadata_key: device_entry}
 
         name_suffix = self.channel_name if self.channel_name is not None else ""

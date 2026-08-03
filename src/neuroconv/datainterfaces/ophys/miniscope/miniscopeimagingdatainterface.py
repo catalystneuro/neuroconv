@@ -132,9 +132,9 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
 
         return metadata
 
-    def get_metadata_schema(self) -> dict:
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
-        Get the metadata schema for the Miniscope imaging data.
+        Get the old list-based metadata schema for the Miniscope imaging data.
 
         Returns
         -------
@@ -142,7 +142,7 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
             The schema dictionary containing metadata definitions and requirements
             for the Miniscope imaging interface.
         """
-        metadata_schema = super().get_metadata_schema()
+        metadata_schema = super()._get_metadata_schema_for_old_list_format()
         metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
         return metadata_schema
 
@@ -399,6 +399,30 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         return MiniscopeImagingExtractor._get_session_start_time(miniscope_folder_path=folder_path)
 
+    @property
+    def device_metadata_key(self) -> str:
+        """The ``metadata["Devices"]`` key this recording's Miniscope is registered under.
+
+        Keyed by the Miniscope rather than by the per-interface ``metadata_key``, because their
+        cardinalities differ: one Miniscope recorded over several sessions is one device but one series
+        per session, and registering one device name under several keys is rejected. Reading it off the
+        device is also what lets a converter's interfaces agree on the entry without being told.
+        """
+        return to_snake_case(self._read_device_name())
+
+    def _read_device_name(self) -> str:
+        """Return the ``deviceName`` of this recording's device folder, or the default."""
+        from roiextractors import MiniscopeImagingExtractor
+
+        device_metadata_path = self._device_folder_path / "metaData.json"
+        if not device_metadata_path.exists():
+            return "Miniscope"
+
+        miniscope_config = MiniscopeImagingExtractor._read_device_folder_metadata(
+            metadata_file_path=str(device_metadata_path)
+        )
+        return miniscope_config.get("deviceName", "Miniscope")
+
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """Get metadata with device information from Miniscope configuration.
 
@@ -438,11 +462,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
         if use_new_metadata_format:
-            # The device is keyed by the Miniscope it describes, not by the per-interface
-            # ``metadata_key``: their cardinalities differ, since one Miniscope recorded over several
-            # sessions is one device but one series per session. Keying it per interface would register
-            # one device name under several keys, which the registry rejects.
-            device_metadata_key = to_snake_case(device_name)
+            device_metadata_key = self.device_metadata_key
             # The whole device configuration reaches the Miniscope device, which the registry builds
             # from the 'type' field; nothing here is written by hand.
             if miniscope_config is not None:
