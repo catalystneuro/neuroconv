@@ -38,13 +38,18 @@ class TestIntanDigitalInterface:
 
     def test_available_signals_descriptor(self):
         """The inventory the validator checks a configuration against: its keys are the names the
-        configuration may use, and each says which digital word the line came off."""
+        configuration may use, and each says which digital word the line came off. Every Intan digital
+        signal is a ``"line"``, because the word arrives already demultiplexed into 0/1 traces."""
         available_signals = IntanDigitalInterface(file_path=self.FILE_PATH)._available_signals
 
-        assert list(available_signals) == ["DIGITAL-IN-01"]
-        assert available_signals["DIGITAL-IN-01"]["stream_name"] == "USB board digital input channel"
-        # Every Intan digital signal is a line: the word arrives already demultiplexed into 0/1 traces.
-        assert available_signals["DIGITAL-IN-01"]["kind"] == "line"
+        expected_available_signals = {
+            "DIGITAL-IN-01": {
+                "kind": "line",
+                "stream_name": "USB board digital input channel",
+                "channel_id": "DIGITAL-IN-01",
+            }
+        }
+        assert available_signals == expected_available_signals
 
     def test_run_conversion(self, tmp_path):
         """Generic end-to-end default: a conversion writes the line to nwbfile.events as an EventsTable
@@ -89,18 +94,50 @@ class TestIntanDigitalBothWords:
     # DIGITAL-IN-13/14/15 and DIGITAL-OUT-13/14/15 toggle. This is the shape the single-line fixture
     # cannot exercise.
     FILE_PATH = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
+    DIGITAL_IN = "USB board digital input channel"
+    DIGITAL_OUT = "USB board digital output channel"
 
     def test_both_words_are_covered_without_naming_a_stream(self):
         """The interface is not told which digital word to read: it reads whichever the file carries.
 
         The two words share the amplifier's sampling rate and timeline, and their header names cannot
         collide (DIGITAL-IN-* against DIGITAL-OUT-*), so one keyspace addresses both.
+
+        Asserted as the whole inventory rather than by count, because the exact set is what carries the
+        information. The input word's enabled lines are 01-06 and 13-15, skipping 07-12: the header names
+        only the lines that were enabled at acquisition, so the inventory is that list rather than a
+        contiguous range, and a count would hide it.
         """
         available_signals = IntanDigitalInterface(file_path=self.FILE_PATH)._available_signals
 
-        assert len(available_signals) == 25  # 9 input lines + 16 output lines
-        streams = {descriptor["stream_name"] for descriptor in available_signals.values()}
-        assert streams == {"USB board digital input channel", "USB board digital output channel"}
+        expected_available_signals = {
+            "DIGITAL-IN-01": {"kind": "line", "stream_name": self.DIGITAL_IN, "channel_id": "DIGITAL-IN-01"},
+            "DIGITAL-IN-02": {"kind": "line", "stream_name": self.DIGITAL_IN, "channel_id": "DIGITAL-IN-02"},
+            "DIGITAL-IN-03": {"kind": "line", "stream_name": self.DIGITAL_IN, "channel_id": "DIGITAL-IN-03"},
+            "DIGITAL-IN-04": {"kind": "line", "stream_name": self.DIGITAL_IN, "channel_id": "DIGITAL-IN-04"},
+            "DIGITAL-IN-05": {"kind": "line", "stream_name": self.DIGITAL_IN, "channel_id": "DIGITAL-IN-05"},
+            "DIGITAL-IN-06": {"kind": "line", "stream_name": self.DIGITAL_IN, "channel_id": "DIGITAL-IN-06"},
+            "DIGITAL-IN-13": {"kind": "line", "stream_name": self.DIGITAL_IN, "channel_id": "DIGITAL-IN-13"},
+            "DIGITAL-IN-14": {"kind": "line", "stream_name": self.DIGITAL_IN, "channel_id": "DIGITAL-IN-14"},
+            "DIGITAL-IN-15": {"kind": "line", "stream_name": self.DIGITAL_IN, "channel_id": "DIGITAL-IN-15"},
+            "DIGITAL-OUT-01": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-01"},
+            "DIGITAL-OUT-02": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-02"},
+            "DIGITAL-OUT-03": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-03"},
+            "DIGITAL-OUT-04": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-04"},
+            "DIGITAL-OUT-05": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-05"},
+            "DIGITAL-OUT-06": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-06"},
+            "DIGITAL-OUT-07": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-07"},
+            "DIGITAL-OUT-08": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-08"},
+            "DIGITAL-OUT-09": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-09"},
+            "DIGITAL-OUT-10": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-10"},
+            "DIGITAL-OUT-11": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-11"},
+            "DIGITAL-OUT-12": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-12"},
+            "DIGITAL-OUT-13": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-13"},
+            "DIGITAL-OUT-14": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-14"},
+            "DIGITAL-OUT-15": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-15"},
+            "DIGITAL-OUT-16": {"kind": "line", "stream_name": self.DIGITAL_OUT, "channel_id": "DIGITAL-OUT-16"},
+        }
+        assert available_signals == expected_available_signals
 
     def test_get_metadata(self):
         """get_metadata is configuration-derived: it lists every line regardless of which ones fired, so
