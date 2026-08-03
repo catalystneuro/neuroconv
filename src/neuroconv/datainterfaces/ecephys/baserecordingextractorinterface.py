@@ -88,14 +88,70 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         Compile the metadata schema.
 
-        The modality block of this schema has not been migrated to the dict-based format yet, so what it
-        describes is the old list-based one. It is returned by
-        ``_get_metadata_schema_for_old_list_format`` for validating that format, and until the dict shape
-        is declared here this method answers with the base schema, which dict-based metadata satisfies.
+        The registries are objects keyed by ``metadata_key``, and the entries stay permissive: an entry is
+        passed to a pynwb constructor, so it may legitimately carry any field that constructor takes. What is
+        pinned is the shape, that an entry is an object, which is also what catches an edit written against
+        the old format landing in a block that exists in both
+        (``metadata["Ecephys"]["ElectricalSeries"]["name"] = ...``).
+
+        Metadata in the old list-based format is validated against
+        ``_get_metadata_schema_for_old_list_format``, and both go when that format does.
         """
         from ...basedatainterface import BaseDataInterface
 
-        return BaseDataInterface.get_metadata_schema(self)
+        metadata_schema = BaseDataInterface.get_metadata_schema(self)
+        metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
+        metadata_schema["properties"]["Ecephys"]["required"] = []
+        metadata_schema["properties"]["Ecephys"]["properties"] = dict(
+            ElectrodeGroups=dict(
+                type="object",
+                additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeGroupEntry"},
+            ),
+            ElectricalSeries=dict(
+                type="object",
+                additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectricalSeriesEntry"},
+            ),
+            # The electrode table's column descriptions are still a list in both formats.
+            Electrodes=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/definitions/Electrodes"},
+            ),
+        )
+        metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
+            ElectrodeGroupEntry=dict(
+                type="object",
+                additionalProperties=True,
+                properties=dict(
+                    name=dict(type="string", pattern="^[^/]*$"),
+                    description=dict(type="string"),
+                    location=dict(type="string"),
+                    device_metadata_key=dict(
+                        type="string",
+                        description="Key of this group's device in metadata['Devices'].",
+                    ),
+                ),
+            ),
+            ElectricalSeriesEntry=dict(
+                type="object",
+                additionalProperties=True,
+                properties=dict(
+                    name=dict(type="string", pattern="^[^/]*$"),
+                    description=dict(type="string"),
+                ),
+            ),
+            Electrodes=dict(
+                type="object",
+                additionalProperties=False,
+                required=["name"],
+                properties=dict(
+                    name=dict(type="string", description="name of this electrodes column"),
+                    description=dict(type="string", description="description of this electrodes column"),
+                ),
+            ),
+        )
+        return metadata_schema
 
     def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
