@@ -168,8 +168,12 @@ def build_doric_events_interface(
     # Naming the GuPPy store id as the spec's event_name makes it the seeded event_type_source_id, so
     # the converter's select/rename/route blocks join on it exactly as they do for the other formats.
     # (The display name is overwritten with GuPPy's label there.)
+    # A Doric digital line is already two-valued, so it needs no bit selection -- 'midpoint' cuts
+    # between whatever its two levels are, which is the identity conditioning for a line.
     detection_configuration = {
-        signal_id: [{"detection": "high_period", "event_name": store_id}]
+        signal_id: [
+            {"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period", "event_name": store_id}
+        ]
         for store_id, signal_id in store_id_to_signal_id.items()
     }
     events_interface_class = DoricCSVEventsInterface if is_csv_export else DoricEventsInterface
