@@ -275,6 +275,10 @@ class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
             ),
             dict(name="ch", description="The channel label of the best channel, as defined by the user."),
             dict(name="sh", description="The shank label of the best channel."),
+            dict(
+                name="max_electrode",
+                description="Index into the electrodes table for the electrode with maximum spike amplitude for this unit.",
+            ),
         ]
 
     def check_units_table_propagation(self):
@@ -427,9 +431,36 @@ class TestKilosortSortingInterfaceVersion4(SortingExtractorInterfaceTestMixin):
                 )
             )
 
+    def check_opting_in_writes_a_self_consistent_file(self):
+        """`write_electrodes_table=True` makes the interface state the geometry and link the units to it."""
+        interface = self.data_interface_cls(**self.interface_kwargs, write_electrodes_table=True)
+        metadata = interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        # The table holds the sorted channels, so a unit's rows are the positions of its footprint.
+        electrodes = nwbfile.electrodes.to_dataframe()
+        assert len(electrodes) == 32
+        assert electrodes["rel_x"].tolist() == [0.0] * 16 + [20.0] * 16
+        assert nwbfile.units["electrodes"].get(0, index=True) == [0, 1, 2, 3, 4, 16, 17, 18, 19, 20]
+
+        # With electrodes to label it, the channel axis narrows to the footprint.
+        assert np.asarray(nwbfile.units["waveform_mean"][:]).shape == (6, 61, 10)
+        assert list(nwbfile.units["max_electrode"].data) == [16, 18, 23, 27, 29, 14]
+
+    def check_opting_in_alongside_real_electrodes_is_refused(self):
+        """The flag asks the interface to invent a table; supplied electrodes mean one already exists."""
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        interface = self.data_interface_cls(**self.interface_kwargs, write_electrodes_table=True)
+        with pytest.raises(ValueError, match="Drop `write_electrodes_table`"):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), unit_electrode_indices=[[0]] * 6)
+
     def run_custom_checks(self):
         self.check_templates_are_zeroed_outside_their_footprint()
         self.check_nothing_is_claimed_about_electrodes()
+        self.check_opting_in_writes_a_self_consistent_file()
+        self.check_opting_in_alongside_real_electrodes_is_refused()
         self.check_mapping_derived_from_the_templates_narrows_the_waveforms()
         self.check_a_recording_that_was_not_sorted_is_rejected()
 

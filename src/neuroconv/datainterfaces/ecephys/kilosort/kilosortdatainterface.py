@@ -38,6 +38,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         keep_good_only: bool = False,
         verbose: bool = False,
         gain_to_uV: float | None = None,
+        write_electrodes_table: bool = False,
     ):
         """
         Load and prepare sorting data for kilosort
@@ -53,6 +54,12 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
             Microvolts per unit of the data Kilosort was run on. Kilosort records no scaling of its own and
             the schema fixes `waveform_mean` to volts, so without this and without a registered recording
             the templates cannot be converted and no waveforms are written.
+        write_electrodes_table: bool, default: False
+            If True, write an electrodes table from the geometry in the sorter folder and link each unit to
+            the channels its template was fit on. A phy folder states no acquisition device, so this invents
+            a Device and an ElectrodeGroup, which is why it is opt-in. Leave it False when a recording
+            interface writes the electrodes table, and use
+            :py:class:`~neuroconv.converters.SortedRecordingConverter` to link the units to it.
         """
         # Handle deprecated positional arguments
         if args:
@@ -81,12 +88,19 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
             keep_good_only = positional_values.get("keep_good_only", keep_good_only)
             verbose = positional_values.get("verbose", verbose)
 
-        super().__init__(folder_path=folder_path, keep_good_only=keep_good_only, verbose=verbose, gain_to_uV=gain_to_uV)
+        super().__init__(
+            folder_path=folder_path,
+            keep_good_only=keep_good_only,
+            verbose=verbose,
+            gain_to_uV=gain_to_uV,
+            write_electrodes_table=write_electrodes_table,
+        )
 
     def _initialize_extractor(self, interface_kwargs: dict):
-        # ``gain_to_uV`` describes what the sorted data means rather than how to read the folder, so it
-        # belongs to the source data but is not an argument of the extractor.
-        extractor_kwargs = {key: value for key, value in interface_kwargs.items() if key != "gain_to_uV"}
+        # These describe what the sorted data means and how it should be written rather than how to read
+        # the folder, so they belong to the source data but are not arguments of the extractor.
+        not_extractor_arguments = {"gain_to_uV", "write_electrodes_table"}
+        extractor_kwargs = {key: value for key, value in interface_kwargs.items() if key not in not_extractor_arguments}
         return super()._initialize_extractor(interface_kwargs=extractor_kwargs)
 
     def get_metadata(self) -> DeepDict:
@@ -113,6 +127,10 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
             ),
             dict(name="ch", description="The channel label of the best channel, as defined by the user."),
             dict(name="sh", description="The shank label of the best channel."),
+            dict(
+                name="max_electrode",
+                description="Index into the electrodes table for the electrode with maximum spike amplitude for this unit.",
+            ),
         ]
         return metadata
 
@@ -137,6 +155,84 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         if cluster_ids is None:
             cluster_ids = self.sorting_extractor.unit_ids
         return np.asarray(cluster_ids, dtype=int)
+
+    def _get_peak_channels(self) -> np.ndarray:
+        """
+        The channel each unit's template is largest on, as an index into the channels Kilosort sorted.
+
+        Unwhitening is needed because the whitened template peaks elsewhere, but the gain is not: it is a
+        single number, so it cannot move an argmax, and this stays available for a folder with no gain.
+        """
+        folder_path = Path(self.source_data["folder_path"])
+        templates = np.load(folder_path / "templates.npy")
+        footprint_masks = np.abs(templates).sum(axis=1) != 0
+        templates = np.einsum("ij,klj->kli", np.load(folder_path / "whitening_mat_inv.npy"), templates)
+
+        peak_channels = []
+        for cluster_id in self._get_cluster_ids():
+            channels = np.flatnonzero(footprint_masks[cluster_id])
+            peak_to_peak = np.ptp(templates[cluster_id][:, channels], axis=0)
+            peak_channels.append(channels[np.argmax(peak_to_peak)])
+        return np.asarray(peak_channels)
+
+    def _generate_recording_with_channel_metadata(self):
+        """
+        Build a recording carrying the channel geometry stored in the sorter folder.
+
+        A phy folder records the geometry of the channels Kilosort sorted (`channel_map.npy`,
+        `channel_positions.npy` and, for Kilosort 4, `channel_shanks.npy`) but no acquisition device, so an
+        electrodes table can be written from the folder alone only by inventing the Device and the
+        ElectrodeGroup. That invention is why `write_electrodes_table` is opt-in.
+
+        Returns
+        -------
+        spikeinterface.core.NumpyRecording
+            A single-sample recording whose channels are the ones Kilosort sorted, in its own order, named
+            by their index in the recording it was run on.
+        """
+        from spikeinterface.core import NumpyRecording
+
+        folder_path = Path(self.source_data["folder_path"])
+        channel_map = np.load(folder_path / "channel_map.npy").reshape(-1)
+
+        recording = NumpyRecording(
+            traces_list=[np.empty(shape=(1, channel_map.size))],
+            sampling_frequency=self.sorting_extractor.get_sampling_frequency(),
+            channel_ids=[str(channel_index) for channel_index in channel_map],
+        )
+        recording.set_property(key="location", values=np.load(folder_path / "channel_positions.npy"))
+
+        channel_shanks_file_path = folder_path / "channel_shanks.npy"
+        if channel_shanks_file_path.is_file():
+            recording.set_channel_groups(groups=np.load(channel_shanks_file_path).reshape(-1).astype(int))
+
+        return recording
+
+    def _add_electrodes_table_to_nwbfile(self, nwbfile: NWBFile, metadata: DeepDict | None) -> list[list[int]]:
+        """
+        Write the folder's geometry as an electrodes table and return each unit's rows in it.
+
+        The dict-based writers are called directly rather than through ``add_recording_metadata_to_nwbfile``,
+        whose routing would send an old-list-format metadata dict to helpers that only speak that format.
+        This path is new, so it supports one format. Both writers read metadata and never write to it.
+
+        Because this table is written here, its rows are the sorted channels in Kilosort's own order, so a
+        unit's rows are the positions of its footprint and no mapping is needed.
+        """
+        from ....tools.spikeinterface.spikeinterface import (
+            _add_electrode_groups_to_nwbfile,
+            _add_electrodes_to_nwbfile,
+        )
+
+        recording = self._generate_recording_with_channel_metadata()
+        _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+        _add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
+        footprint_masks = self._get_footprint_masks()
+        return [
+            [int(channel) for channel in np.flatnonzero(footprint_masks[cluster_id])]
+            for cluster_id in self._get_cluster_ids()
+        ]
 
     def get_unit_ids_to_channel_ids(
         self,
@@ -359,11 +455,37 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         parent_container: Literal["units", "processing"] = "units",
         waveform_data_dict: dict | None = None,
     ):
+        if self.source_data["write_electrodes_table"]:
+            if unit_electrode_indices is not None:
+                raise ValueError(
+                    "This interface was constructed with `write_electrodes_table=True`, but electrodes were "
+                    "also supplied for its units, so they already exist and were written by something that "
+                    "knows the recording. Drop `write_electrodes_table` and keep the supplied electrodes, "
+                    "which are the real ones."
+                )
+            unit_electrode_indices = self._add_electrodes_table_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
         # The layout follows the linkage: with electrodes to label the channel axis the templates are
         # narrowed to each unit's footprint, and without them the axis has to be self-describing, so it
         # spans every sorted channel.
         if waveform_data_dict is None:
             waveform_data_dict = self._get_waveform_data(unit_electrode_indices=unit_electrode_indices)
+
+        # The peak channel is a different question from the footprint and is free to answer, but it can only
+        # be written as a row of an electrodes table, so it arrives with the linkage rather than on its own.
+        footprint_masks = self._get_footprint_masks()[self._get_cluster_ids()]
+        units_are_on_their_footprint = (
+            unit_electrode_indices is not None
+            and [len(electrodes) for electrodes in unit_electrode_indices] == footprint_masks.sum(axis=1).tolist()
+        )
+        if units_are_on_their_footprint:
+            max_electrodes = [
+                electrodes[int(np.flatnonzero(np.flatnonzero(mask) == peak_channel)[0])]
+                for electrodes, mask, peak_channel in zip(
+                    unit_electrode_indices, footprint_masks, self._get_peak_channels()
+                )
+            ]
+            self.sorting_extractor.set_property(key="max_electrode", values=np.asarray(max_electrodes))
 
         super().add_to_nwbfile(
             nwbfile=nwbfile,
