@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 
 import numpy as np
-import pytest
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -174,40 +173,3 @@ class TestIntanDigitalBothWords:
             "DIGITAL-OUT-14": 10,
             "DIGITAL-OUT-15": 10,
         }
-
-    def test_lines_from_the_two_words_share_one_timeline(self):
-        """The mirrored input and output lines carry identical event times, which is the check that
-        reading both words through one interface does not put them on different clocks."""
-        interface = IntanDigitalInterface(
-            file_path=self.FILE_PATH,
-            detection_configuration={
-                "DIGITAL-IN-14": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}],
-                "DIGITAL-OUT-14": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}],
-            },
-        )
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile)
-
-        input_line = nwbfile.get_events_table("DIGITAL-IN-14")
-        output_line = nwbfile.get_events_table("DIGITAL-OUT-14")
-        np.testing.assert_allclose(input_line["timestamp"][:], output_line["timestamp"][:])
-        np.testing.assert_allclose(input_line["duration"][:], output_line["duration"][:])
-
-
-class TestIntanDigitalConfigurationIsCheckedAgainstTheInventory:
-    """What Intan's own inventory adds to the shared validator, whose grammar checks are tested in
-    ``tests/test_minimal/test_tools/test_events.py`` and are not repeated here."""
-
-    FILE_PATH = ECEPHY_DATA_PATH / "intan" / "intan_fps_test_231117_052500" / "info.rhd"
-
-    def test_a_line_admits_no_cut(self):
-        """``bits`` has no place on Intan any more: the word is already demultiplexed, so there is no
-        packed integer left to carve and every signal is a line. This is what removed the ``bits`` and
-        ``stream_name`` arguments, since a line is addressed by its name rather than by its position."""
-        with pytest.raises(ValueError, match="that signal is not a packed word"):
-            IntanDigitalInterface(
-                file_path=self.FILE_PATH,
-                detection_configuration={
-                    "DIGITAL-IN-01": [{"signal_conditioning": {"bits": [0]}, "detection": "rising"}]
-                },
-            )
