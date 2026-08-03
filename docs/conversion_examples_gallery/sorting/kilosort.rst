@@ -30,3 +30,10 @@ Convert KiloSort data to NWB using
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+The templates in ``templates.npy`` are written as the ``waveform_mean`` column of the units table, but only if
+the interface is given ``gain_to_uV``, the microvolts per unit of the data Kilosort was run on. Kilosort records
+no scaling of its own and the NWB schema fixes that column to volts, so without a gain there is no honest way to
+write it and the conversion warns and writes the units without waveforms. Pass ``waveform_representation="none"``
+to ask for spike times only, or ``"sparse_with_electrodes_table"`` to also write the probe geometry from the
+sorter folder and link each unit to the electrodes its template was fit on.

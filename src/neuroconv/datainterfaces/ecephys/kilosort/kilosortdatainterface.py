@@ -38,7 +38,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         keep_good_only: bool = False,
         verbose: bool = False,
         gain_to_uV: float | None = None,
-        write_electrodes_table: bool = False,
+        waveform_representation: Literal["none", "dense", "sparse_with_electrodes_table"] = "dense",
     ):
         """
         Load and prepare sorting data for kilosort
@@ -52,14 +52,25 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         verbose: bool, default: True
         gain_to_uV: float, optional
             Microvolts per unit of the data Kilosort was run on. Kilosort records no scaling of its own and
-            the schema fixes `waveform_mean` to volts, so without this and without a registered recording
-            the templates cannot be converted and no waveforms are written.
-        write_electrodes_table: bool, default: False
-            If True, write an electrodes table from the geometry in the sorter folder and link each unit to
-            the channels its template was fit on. A phy folder states no acquisition device, so this invents
-            a Device and an ElectrodeGroup, which is why it is opt-in. Leave it False when a recording
-            interface writes the electrodes table, and use
-            :py:class:`~neuroconv.converters.SortedRecordingConverter` to link the units to it.
+            the schema fixes `waveform_mean` to volts, so without this the templates cannot be converted and
+            no waveforms are written.
+        waveform_representation: {"none", "dense", "sparse_with_electrodes_table"}, default: "dense"
+            How the templates in `templates.npy` are written as the `waveform_mean` column of the units
+            table, for a folder this interface converts on its own.
+
+            - "none": they are not written at all, and no gain is needed.
+            - "dense": the channel axis spans every channel Kilosort sorted, in `channel_map.npy` order and
+              the same for every unit, and is exactly zero on the channels a unit's template was not fit
+              on, so the footprint stays readable as the non-zero columns. Nothing states which electrodes
+              those channels are, because a phy folder cannot say.
+            - "sparse_with_electrodes_table": an electrodes table is written from the geometry in the folder
+              and each unit's waveform is narrowed to the electrodes its template was fit on. A phy folder
+              states no acquisition device, so this invents a Device and an ElectrodeGroup, which is why it
+              is not the default.
+
+            When the electrodes come from elsewhere instead, through
+            :py:class:`~neuroconv.converters.SortedRecordingConverter`, the layout follows those electrodes
+            and this argument only decides whether the waveforms are written at all.
         """
         # Handle deprecated positional arguments
         if args:
@@ -88,18 +99,25 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
             keep_good_only = positional_values.get("keep_good_only", keep_good_only)
             verbose = positional_values.get("verbose", verbose)
 
+        available_representations = ("none", "dense", "sparse_with_electrodes_table")
+        if waveform_representation not in available_representations:
+            raise ValueError(
+                f"`waveform_representation` must be one of {available_representations}, "
+                f"got {waveform_representation!r}."
+            )
+
         super().__init__(
             folder_path=folder_path,
             keep_good_only=keep_good_only,
             verbose=verbose,
             gain_to_uV=gain_to_uV,
-            write_electrodes_table=write_electrodes_table,
+            waveform_representation=waveform_representation,
         )
 
     def _initialize_extractor(self, interface_kwargs: dict):
         # These describe what the sorted data means and how it should be written rather than how to read
         # the folder, so they belong to the source data but are not arguments of the extractor.
-        not_extractor_arguments = {"gain_to_uV", "write_electrodes_table"}
+        not_extractor_arguments = {"gain_to_uV", "waveform_representation"}
         extractor_kwargs = {key: value for key, value in interface_kwargs.items() if key not in not_extractor_arguments}
         return super()._initialize_extractor(interface_kwargs=extractor_kwargs)
 
@@ -144,9 +162,18 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         peak_sample = ops.get("nt0min")
         return None if peak_sample is None else int(peak_sample)
 
-    def _get_footprint_masks(self) -> np.ndarray:
-        """The channels Kilosort fit each template on, as a (n_templates, n_channels) boolean mask."""
-        templates = np.load(Path(self.source_data["folder_path"]) / "templates.npy")
+    def _get_footprint_masks(self) -> np.ndarray | None:
+        """
+        The channels Kilosort fit each template on, as a (n_templates, n_channels) boolean mask.
+
+        None when the folder holds no `templates.npy`, which is everything this interface reads about the
+        channels a unit is on, so every caller has nothing to answer with in that case.
+        """
+        templates_file_path = Path(self.source_data["folder_path"]) / "templates.npy"
+        if not templates_file_path.is_file():
+            return None
+
+        templates = np.load(templates_file_path)
         return np.abs(templates).sum(axis=1) != 0
 
     def _get_cluster_ids(self) -> np.ndarray:
@@ -156,17 +183,23 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
             cluster_ids = self.sorting_extractor.unit_ids
         return np.asarray(cluster_ids, dtype=int)
 
-    def _get_peak_channels(self) -> np.ndarray:
+    def _get_peak_channels(self) -> np.ndarray | None:
         """
         The channel each unit's template is largest on, as an index into the channels Kilosort sorted.
 
         Unwhitening is needed because the whitened template peaks elsewhere, but the gain is not: it is a
         single number, so it cannot move an argmax, and this stays available for a folder with no gain.
+        None when the folder is missing either of the two files this reads.
         """
         folder_path = Path(self.source_data["folder_path"])
-        templates = np.load(folder_path / "templates.npy")
+        templates_file_path = folder_path / "templates.npy"
+        whitening_file_path = folder_path / "whitening_mat_inv.npy"
+        if not templates_file_path.is_file() or not whitening_file_path.is_file():
+            return None
+
+        templates = np.load(templates_file_path)
         footprint_masks = np.abs(templates).sum(axis=1) != 0
-        templates = np.einsum("ij,klj->kli", np.load(folder_path / "whitening_mat_inv.npy"), templates)
+        templates = np.einsum("ij,klj->kli", np.load(whitening_file_path), templates)
 
         peak_channels = []
         for cluster_id in self._get_cluster_ids():
@@ -182,7 +215,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         A phy folder records the geometry of the channels Kilosort sorted (`channel_map.npy`,
         `channel_positions.npy` and, for Kilosort 4, `channel_shanks.npy`) but no acquisition device, so an
         electrodes table can be written from the folder alone only by inventing the Device and the
-        ElectrodeGroup. That invention is why `write_electrodes_table` is opt-in.
+        ElectrodeGroup. That invention is why `"sparse_with_electrodes_table"` is not the default.
 
         Returns
         -------
@@ -217,18 +250,37 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         This path is new, so it supports one format. Both writers read metadata and never write to it.
 
         Because this table is written here, its rows are the sorted channels in Kilosort's own order, so a
-        unit's rows are the positions of its footprint and no mapping is needed.
+        unit's rows are the positions of its footprint and no mapping is needed. That is only true of a
+        table this interface starts, which is why an existing one is refused rather than appended to: the
+        rows would land after somebody else's and the positions would name their electrodes instead.
         """
         from ....tools.spikeinterface.spikeinterface import (
             _add_electrode_groups_to_nwbfile,
             _add_electrodes_to_nwbfile,
         )
 
+        if nwbfile.electrodes is not None:
+            raise ValueError(
+                "This interface was constructed with `waveform_representation="
+                "'sparse_with_electrodes_table'`, which invents an electrodes table from the sorter folder, "
+                "but the file already has one that something else wrote. Two probes would then describe the "
+                "same channels. Use `waveform_representation='dense'` and link the units to the real "
+                "electrodes with `SortedRecordingConverter`, passing the mapping from "
+                "`get_unit_ids_to_channel_ids()`."
+            )
+
         recording = self._generate_recording_with_channel_metadata()
         _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
         _add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
         footprint_masks = self._get_footprint_masks()
+        if footprint_masks is None:
+            raise ValueError(
+                "`waveform_representation='sparse_with_electrodes_table'` links each unit to the channels its "
+                f"template was fit on, but {self.source_data['folder_path']} holds no templates.npy to read "
+                "them from. Use `waveform_representation='dense'` or 'none'."
+            )
+
         return [
             [int(channel) for channel in np.flatnonzero(footprint_masks[cluster_id])]
             for cluster_id in self._get_cluster_ids()
@@ -455,37 +507,47 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         parent_container: Literal["units", "processing"] = "units",
         waveform_data_dict: dict | None = None,
     ):
-        if self.source_data["write_electrodes_table"]:
+        waveform_representation = self.source_data["waveform_representation"]
+
+        if waveform_representation == "sparse_with_electrodes_table":
             if unit_electrode_indices is not None:
                 raise ValueError(
-                    "This interface was constructed with `write_electrodes_table=True`, but electrodes were "
-                    "also supplied for its units, so they already exist and were written by something that "
-                    "knows the recording. Drop `write_electrodes_table` and keep the supplied electrodes, "
-                    "which are the real ones."
+                    "This interface was constructed with `waveform_representation="
+                    "'sparse_with_electrodes_table'`, which invents an electrodes table from the sorter "
+                    "folder, but electrodes were also supplied for its units, so real ones already exist. "
+                    "Use `waveform_representation='dense'` and keep the supplied electrodes, which the "
+                    "waveforms will follow."
                 )
             unit_electrode_indices = self._add_electrodes_table_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         # The layout follows the linkage: with electrodes to label the channel axis the templates are
         # narrowed to each unit's footprint, and without them the axis has to be self-describing, so it
         # spans every sorted channel.
-        if waveform_data_dict is None:
+        if waveform_data_dict is None and waveform_representation != "none":
             waveform_data_dict = self._get_waveform_data(unit_electrode_indices=unit_electrode_indices)
 
-        # The peak channel is a different question from the footprint and is free to answer, but it can only
-        # be written as a row of an electrodes table, so it arrives with the linkage rather than on its own.
-        footprint_masks = self._get_footprint_masks()[self._get_cluster_ids()]
-        units_are_on_their_footprint = (
-            unit_electrode_indices is not None
-            and [len(electrodes) for electrodes in unit_electrode_indices] == footprint_masks.sum(axis=1).tolist()
-        )
+        # The peak channel is a different question from the footprint, and it needs no gain, but it comes
+        # out of templates.npy like the waveforms do and it can only be written as a row of an electrodes
+        # table. So it needs both the templates and the linkage, and "none" declines to read the templates.
+        footprint_masks = None if waveform_representation == "none" else self._get_footprint_masks()
+        peak_channels = None if waveform_representation == "none" else self._get_peak_channels()
+        units_are_on_their_footprint = False
+        if unit_electrode_indices is not None and footprint_masks is not None and peak_channels is not None:
+            footprint_masks = footprint_masks[self._get_cluster_ids()]
+            units_are_on_their_footprint = [
+                len(electrodes) for electrodes in unit_electrode_indices
+            ] == footprint_masks.sum(axis=1).tolist()
+
         if units_are_on_their_footprint:
             max_electrodes = [
                 electrodes[int(np.flatnonzero(np.flatnonzero(mask) == peak_channel)[0])]
-                for electrodes, mask, peak_channel in zip(
-                    unit_electrode_indices, footprint_masks, self._get_peak_channels()
-                )
+                for electrodes, mask, peak_channel in zip(unit_electrode_indices, footprint_masks, peak_channels)
             ]
             self.sorting_extractor.set_property(key="max_electrode", values=np.asarray(max_electrodes))
+        elif "max_electrode" in self.sorting_extractor.get_property_keys():
+            # An earlier write on this same interface left one behind, and it indexes an electrodes table
+            # that this file has no reason to have.
+            self.sorting_extractor.delete_property(key="max_electrode")
 
         super().add_to_nwbfile(
             nwbfile=nwbfile,

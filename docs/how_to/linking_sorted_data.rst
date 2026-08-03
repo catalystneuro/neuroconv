@@ -183,6 +183,12 @@ that ``dat_path`` in ``params.py`` is not a reliable way to identify the origina
 The same mapping is what :py:class:`~neuroconv.converters.SortedSpikeGLXConverter` takes for the
 multi-probe case below, so derive it once per probe and pass it through in the same way.
 
+**How this combines with** ``waveform_representation``. Once the converter supplies the electrodes,
+they decide the layout, so the interface's ``"dense"`` default gives way to them and there is nothing
+to set. ``"none"`` still means what it says, and pairs with linking perfectly well: the units come
+out on their real electrodes with no waveforms. ``"sparse_with_electrodes_table"`` is refused here,
+because it asks the interface to invent a probe while you are handing it a real one.
+
 **If you do not link at all**, the Kilosort interface still writes the templates. The channel axis
 then spans every channel Kilosort sorted, in ``channel_map.npy`` order and the same for every unit,
 and is not connected to any electrode. That is a complete output rather than a degraded one, so there
