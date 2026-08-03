@@ -53,7 +53,9 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         gain_to_uV: float, optional
             Microvolts per unit of the data Kilosort was run on. Kilosort records no scaling of its own and
             the schema fixes `waveform_mean` to volts, so without this the templates cannot be converted and
-            no waveforms are written.
+            no waveforms are written, with a warning. It stays optional rather than being required by the
+            representations that write waveforms because the fixed unit is a schema limitation on its way
+            out (pynwb #2237), not something the format demands.
         waveform_representation: {"none", "dense", "sparse_with_electrodes_table"}, default: "dense"
             How the templates in `templates.npy` are written as the `waveform_mean` column of the units
             table, for a folder this interface converts on its own.
@@ -400,9 +402,13 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         gain_to_uV = self.source_data["gain_to_uV"]
         if gain_to_uV is None:
             warnings.warn(
-                "No gain is available to convert the Kilosort templates to volts, so no waveforms will be "
-                "written. Kilosort stores none itself: construct the interface with `gain_to_uV` to write "
-                "them.",
+                "No gain is available to convert the Kilosort templates, so no waveforms will be written. "
+                "Kilosort stores none itself, and the NWB schema fixes the unit of `waveform_mean` to volts, "
+                "so writing the templates in the units of whatever Kilosort was fed would label them volts "
+                "and be wrong by orders of magnitude with nothing in the file to reveal it. Construct the "
+                "interface with `gain_to_uV` to write them, or with `waveform_representation='none'` to say "
+                "spike times only and stop being asked. The fixed unit is being relaxed to a default "
+                "(pynwb #2237), after which the templates will be writable in their native units.",
                 UserWarning,
                 stacklevel=3,
             )
