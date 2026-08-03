@@ -7,9 +7,7 @@ from .behavior.lightningpose.lightningposedatainterface import (
 )
 from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
-from .behavior.miniscope.miniscopeheadorientationinterface import (
-    MiniscopeHeadOrientationInterface,
-)
+from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.vame.vamedatainterface import VameInterface
@@ -55,9 +53,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeRecordingInterface,
     NeuroScopeSortingInterface,
 )
-from .ecephys.openephys.openephybinarysanaloginterface import (
-    OpenEphysBinaryAnalogInterface,
-)
+from .ecephys.openephys.openephybinarysanaloginterface import OpenEphysBinaryAnalogInterface
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
@@ -100,9 +96,7 @@ from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
 from .ophys.femtonics.femtonicsdatainterface import FemtonicsImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
-from .ophys.inscopix.inscopixsegmentationdatainterface import (
-    InscopixSegmentationInterface,
-)
+from .ophys.inscopix.inscopixsegmentationdatainterface import InscopixSegmentationInterface
 from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
@@ -116,9 +110,7 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
-from .fiber_photometry.csv.csvfiberphotometrydatainterface import (
-    CSVFiberPhotometryInterface,
-)
+from .fiber_photometry.csv.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
 from .fiber_photometry.csv.multifilecsvfiberphotometrydatainterface import (
     MultiFileCSVFiberPhotometryInterface,
 )

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 import numpy as np
+import pytest
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -173,3 +174,22 @@ class TestIntanDigitalBothWords:
             "DIGITAL-OUT-14": 10,
             "DIGITAL-OUT-15": 10,
         }
+
+
+class TestIntanDigitalFileWithoutDigitalChannels:
+    """An Intan session recorded with its digital inputs and outputs switched off."""
+
+    # Amplifier-only RHD: the header declares neither digital word, so neo reports no digital stream.
+    # Ordinary data rather than a defect, since Intan's header names only the lines that were enabled
+    # at acquisition.
+    FILE_PATH = ECEPHY_DATA_PATH / "intan" / "test_tetrode_240502_162925" / "test_tetrode_240502_162925.rhd"
+
+    def test_a_file_with_no_digital_channels_is_refused_at_construction(self):
+        """The interface says what is wrong with the file rather than what is wrong with the arguments.
+
+        Without this, the default configuration derived from an empty inventory comes out empty and is
+        refused by the shared validator's empty-configuration guard, whose message tells the caller to
+        pass the ``None`` they just passed.
+        """
+        with pytest.raises(ValueError, match="carries no digital channels"):
+            IntanDigitalInterface(file_path=self.FILE_PATH)

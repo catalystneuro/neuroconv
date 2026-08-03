@@ -99,6 +99,17 @@ class IntanDigitalInterface(BaseEventsInterface):
         # per-line traces, which is settled structurally and is what lets the validator reject both a
         # 'bits' carve: there is no packed word left to carve.
         self._available_signals = self._get_available_signals(self._recording_extractors)
+        if not self._available_signals:
+            # Ordinary data rather than a defect: the header names only the lines that were enabled at
+            # acquisition, so a session recorded with the digital inputs and outputs off carries no
+            # digital word at all. Said here because the default configuration derived below would
+            # otherwise come out empty and be refused by the validator's empty-configuration guard,
+            # which tells the caller to pass the None they just passed.
+            raise ValueError(
+                f"'{file_path}' carries no digital channels. Intan's header declares only the lines that "
+                "were enabled at acquisition, so a session recorded with its digital inputs and outputs "
+                "disabled has none and there is nothing for this interface to convert."
+            )
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every line as a "high_period", the
             # lossless durative reading (onset at the rising edge, duration to the falling edge).
