@@ -31,6 +31,7 @@ from neuroconv.datainterfaces.fiber_photometry.csv.csvfiberphotometrydatainterfa
     CSVFiberPhotometryInterface,
 )
 from neuroconv.datainterfaces.fiber_photometry.guppy.npm_utils import (
+    npm_run_parameters,
     npm_source_files,
     npm_store_to_demux,
 )
@@ -82,8 +83,8 @@ class NPMConverterTestMixin:
             event_store_to_name=self.EVENT_STORE_TO_NAME,
             cross_correlation_pairs=(),
         )
-        # Which clock and unit a store was read on is a choice made when GuPPy ran; it records them here
-        # beside storesList.csv, indexed by the same file order the store names use.
+        # Which clock and unit a session was read on is a choice made when GuPPy ran; it records them
+        # here beside storesList.csv, one unit and one column for the whole session.
         (folder_path / ".npm_params.json").write_text(json.dumps(self.NPM_PARAMETERS), encoding="utf-8")
         return folder_path
 
@@ -135,8 +136,8 @@ class TestGuppyConverterNPMInterleaved(NPMConverterTestMixin):
     EVENT_STORE_TO_NAME = {"eventTrue": "cue_on", "eventFalse": "cue_off"}
     NPM_PARAMETERS = {
         "npm_split_events": [False, True],
-        "npm_time_units": ["seconds", "seconds"],
-        "npm_timestamp_column_names": [None, None],
+        "npm_time_unit": "seconds",
+        "npm_timestamp_column_name": None,
     }
 
     @staticmethod
@@ -169,8 +170,8 @@ class TestGuppyConverterNPMTwoClocks(NPMConverterTestMixin):
     EVENT_STORE_TO_NAME = {"event1": "trial_start", "event3": "trial_end"}
     NPM_PARAMETERS = {
         "npm_split_events": [False, True],
-        "npm_time_units": ["milliseconds", "milliseconds"],
-        "npm_timestamp_column_names": ["ComputerTimestamp", None],
+        "npm_time_unit": "milliseconds",
+        "npm_timestamp_column_name": "ComputerTimestamp",
     }
 
     @staticmethod
@@ -212,8 +213,8 @@ class TestGuppyConverterNPMHeaderless(NPMConverterTestMixin):
     EVENT_STORE_TO_NAME = {"event0": "ttl"}
     NPM_PARAMETERS = {
         "npm_split_events": [False, False],
-        "npm_time_units": ["milliseconds", "milliseconds"],
-        "npm_timestamp_column_names": [None, None],
+        "npm_time_unit": "milliseconds",
+        "npm_timestamp_column_name": None,
     }
 
     @staticmethod
@@ -233,6 +234,50 @@ class TestGuppyConverterNPMHeaderless(NPMConverterTestMixin):
         """The CSV events interface keys its lone type by file stem, so the seam maps it to `event0`."""
         assert converter._event_source_id_to_store_id == {"ttls": "event0"}
         assert converter._store_id_for("ttls") == "event0"
+
+
+class TestNPMRunParameters:
+    """Reading the session-wide settings GuPPy recorded beside ``storesList.csv``."""
+
+    @pytest.fixture
+    def guppy_output_folder(self, tmp_path):
+        return generate_mock_guppy_output_folder(
+            tmp_path / "session_output_1",
+            recording_site_to_stores={"roi01": {"signal": "file0_chod1", "control": "file0_chev1"}},
+            event_store_to_name={"event0": "ttl"},
+            cross_correlation_pairs=(),
+        )
+
+    def test_reads_the_session_wide_unit_and_column(self, guppy_output_folder):
+        (guppy_output_folder / ".npm_params.json").write_text(
+            json.dumps(
+                {
+                    "npm_split_events": [False, False],
+                    "npm_time_unit": "microseconds",
+                    "npm_timestamp_column_name": "SystemTimestamp",
+                }
+            ),
+            encoding="utf-8",
+        )
+        run_parameters = npm_run_parameters(guppy_output_folder)
+        assert run_parameters["time_unit"] == "microseconds"
+        assert run_parameters["timestamp_column_name"] == "SystemTimestamp"
+        assert run_parameters["number_of_channels"] == 2
+
+    def test_a_file_predating_the_session_wide_unit_is_refused(self, guppy_output_folder):
+        """The per-file unit could disagree with the one GuPPy applied, so such a file is unusable."""
+        (guppy_output_folder / ".npm_params.json").write_text(
+            json.dumps(
+                {
+                    "npm_split_events": [False, True],
+                    "npm_time_units": ["milliseconds", "seconds"],
+                    "npm_timestamp_column_names": ["ComputerTimestamp", None],
+                }
+            ),
+            encoding="utf-8",
+        )
+        with pytest.raises(AssertionError, match="records no 'npm_time_unit'"):
+            npm_run_parameters(guppy_output_folder)
 
 
 class TestNPMStoreDecoding:
@@ -280,8 +325,8 @@ class TestNPMStoreDecoding:
             json.dumps(
                 {
                     "npm_split_events": [False, True],
-                    "npm_time_units": ["seconds", "seconds"],
-                    "npm_timestamp_column_names": [None, None],
+                    "npm_time_unit": "seconds",
+                    "npm_timestamp_column_name": None,
                 }
             ),
             encoding="utf-8",

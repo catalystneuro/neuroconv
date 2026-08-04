@@ -69,8 +69,11 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
 
     Which clock a store was read on, what unit it was in, and -- for the header-less layout -- how
     many channels were interleaved are all choices made when GuPPy ran, and none leave a mark on the
-    raw file. GuPPy records the first two in a ``.npm_params.json`` beside ``storesList.csv``, keyed
-    by the same file index the store names use, and the channel count in ``GuPPyParamtersUsed.json``.
+    raw file. GuPPy records the first two in a ``.npm_params.json`` beside ``storesList.csv`` and the
+    channel count in ``GuPPyParamtersUsed.json``.
+
+    The clock and the unit are session-wide: GuPPy applies one unit to every stream it decomposes,
+    so there is nothing to key by file here.
     """
     import json
 
@@ -80,11 +83,18 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
         f"it used there, and neither can be recovered from the raw files."
     )
     npm_parameters = json.loads(npm_parameters_path.read_text(encoding="utf-8"))
+    # Older GuPPy versions recorded a unit per file, which could disagree with the one they actually
+    # applied, so a file predating the session-wide unit cannot be trusted to describe its own data.
+    assert "npm_time_unit" in npm_parameters, (
+        f"'{npm_parameters_path}' records no 'npm_time_unit' and was written by a GuPPy version whose "
+        f"recorded timestamp unit did not always match the one applied. Re-run Step 1 (Label Stores) "
+        f"in GuPPy for '{guppy_folder_path}' to record the unit this session's timestamps are in."
+    )
     guppy_parameters = json.loads((guppy_folder_path / "GuPPyParamtersUsed.json").read_text(encoding="utf-8"))
     number_of_channels = guppy_parameters.get("noChannels")
     return dict(
-        timestamp_column_names=npm_parameters["npm_timestamp_column_names"],
-        time_units=npm_parameters["npm_time_units"],
+        timestamp_column_name=npm_parameters["npm_timestamp_column_name"],
+        time_unit=npm_parameters["npm_time_unit"],
         # Only the header-less layout needs this: a file carrying a state column derives its own
         # channel count, so a run that never read a header-less file need not have recorded one.
         number_of_channels=None if number_of_channels is None else int(number_of_channels),
@@ -250,8 +260,7 @@ def build_npm_acquisition_interface(
         f"be written as one series."
     )
     first = demuxes[0]
-    file_index = npm_source_files(folder_path).index(first["file_path"])
-    time_unit = run_parameters["time_units"][file_index]
+    time_unit = run_parameters["time_unit"]
 
     if first["headerless"]:
         # No state column to select on, so reproduce GuPPy's blind stride. skip_rows carries the
@@ -272,7 +281,7 @@ def build_npm_acquisition_interface(
         f"excitation bits ({excitation_code:#05b}) are not a single wavelength. GuPPy treats such a "
         f"frame as its own channel, but a fiber photometry series is written per excitation."
     )
-    timestamps_column = run_parameters["timestamp_column_names"][file_index] or first["timestamps_column"]
+    timestamps_column = run_parameters["timestamp_column_name"] or first["timestamps_column"]
     return NPMFiberPhotometryInterface(
         file_path=first["file_path"],
         excitation_wavelength_in_nm=_NPM_EXCITATION_CODE_TO_WAVELENGTH[excitation_code],
@@ -325,8 +334,7 @@ def build_npm_events_interface(
     """
     run_parameters = npm_run_parameters(guppy_folder_path)
     event_file_path = _npm_event_file(folder_path)
-    file_index = sorted(folder_path.glob("*.csv")).index(event_file_path)
-    time_unit = run_parameters["time_units"][file_index]
+    time_unit = run_parameters["time_unit"]
 
     if event_store_ids == ["event0"]:
         # The unsplit store: every row of the file as one event type. NPMEventsInterface always
