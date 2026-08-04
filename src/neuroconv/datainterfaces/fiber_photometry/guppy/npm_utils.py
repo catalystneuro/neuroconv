@@ -72,8 +72,7 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
     raw file. GuPPy records the first two in a ``.npm_params.json`` beside ``storesList.csv`` and the
     channel count in ``GuPPyParamtersUsed.json``.
 
-    The clock and the unit are session-wide: GuPPy applies one unit to every stream it decomposes,
-    so there is nothing to key by file here.
+    The clock and the unit are session-wide: GuPPy applies one unit to every stream it decomposes.
     """
     import json
 
@@ -83,8 +82,6 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
         f"it used there, and neither can be recovered from the raw files."
     )
     npm_parameters = json.loads(npm_parameters_path.read_text(encoding="utf-8"))
-    # Older GuPPy versions recorded a unit per file, which could disagree with the one they actually
-    # applied, so a file predating the session-wide unit cannot be trusted to describe its own data.
     assert "npm_time_unit" in npm_parameters, (
         f"'{npm_parameters_path}' records no 'npm_time_unit' and was written by a GuPPy version whose "
         f"recorded timestamp unit did not always match the one applied. Re-run Step 1 (Label Stores) "
