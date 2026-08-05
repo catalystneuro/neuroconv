@@ -24,3 +24,7 @@ Multi-File CSV Fiber Photometry
 NPM Fiber Photometry
 --------------------
 .. autoclass:: neuroconv.datainterfaces.fiber_photometry.npm.npmfiberphotometrydatainterface.NPMFiberPhotometryInterface
+
+GuPPy Fiber Photometry
+----------------------
+.. autoclass:: neuroconv.datainterfaces.fiber_photometry.guppy.guppyconverter.GuppyConverter
