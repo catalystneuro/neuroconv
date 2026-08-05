@@ -1291,7 +1291,10 @@ def _add_electrodes_to_nwbfile(
 
     schema_properties = {"group", "group_name", "location"}
     properties_to_add = set(data_to_add)
-    electrode_table_previous_properties = set(nwbfile.electrodes.colnames) if nwbfile.electrodes else set()
+    # Kept ordered as well as a set: iterating the set would make the order in which columns are
+    # added to the table depend on string hashing, which varies between processes
+    electrode_table_previous_property_names = tuple(nwbfile.electrodes.colnames) if nwbfile.electrodes else tuple()
+    electrode_table_previous_properties = set(electrode_table_previous_property_names)
 
     # The schema properties are always added by rows because they are required
     properties_to_add_by_rows = schema_properties.union(electrode_table_previous_properties)
@@ -1309,7 +1312,9 @@ def _add_electrodes_to_nwbfile(
     channel_id_to_index = {channel_id: index for index, channel_id in enumerate(channel_ids)}
 
     # Properties that were added before require null values to add by rows if data is missing
-    properties_requiring_null_values = electrode_table_previous_properties.difference(properties_to_add)
+    properties_requiring_null_values = [
+        property for property in electrode_table_previous_property_names if property not in properties_to_add
+    ]
     nul_values_for_rows = dict()
     # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
     # See https://github.com/catalystneuro/neuroconv/issues/1629
@@ -1322,7 +1327,8 @@ def _add_electrodes_to_nwbfile(
             )
             nul_values_for_rows[property] = null_value
 
-    properties_with_data = properties_to_add_by_rows.intersection(data_to_add)
+    # Iterate `data_to_add` rather than the set so the row kwargs keep the recording's property order
+    properties_with_data = [property for property in data_to_add if property in properties_to_add_by_rows]
     for channel_id in channel_ids_to_add:
         channel_index = channel_id_to_index[channel_id]
         electrode_kwargs = nul_values_for_rows
@@ -1368,8 +1374,17 @@ def _add_electrodes_to_nwbfile(
     indices_for_null_values = [index for index in range(electrode_table_size) if index not in new_indices_set]
     extending_column = len(indices_for_null_values) > 0
 
-    # Add properties as columns (exclude channel_name and electrode_name as they were handled above)
-    for property in properties_to_add_by_columns - {"channel_name", "electrode_name"}:
+    # Add properties as columns (exclude channel_name and electrode_name as they were handled above).
+    # `data_to_add` is built in the order the recording reports its properties, so iterating it here keeps
+    # the electrodes table columns in that order. Iterating the set instead made the column order depend on
+    # string hashing, so the same recording produced a different column order on every run.
+    # See https://github.com/catalystneuro/neuroconv/issues/792
+    columns_to_add = [
+        property
+        for property in data_to_add
+        if property in properties_to_add_by_columns and property not in ("channel_name", "electrode_name")
+    ]
+    for property in columns_to_add:
         cols_args = data_to_add[property]
         data = cols_args["data"]
 
@@ -2611,7 +2626,9 @@ def _add_units_table_to_nwbfile(
 
     # Determine which properties already exist as columns and which are new.
     # Pre-existing columns must be provided per row via add_unit(); new properties are added as columns.
-    units_table_previous_columns = set(units_table.colnames)
+    # Kept ordered as well as a set, so the order in which columns are added does not depend on string hashing
+    units_table_previous_column_names = tuple(units_table.colnames)
+    units_table_previous_columns = set(units_table_previous_column_names)
     properties_to_add = set(data_to_add)
 
     # Determine which units need per-row insertion via add_unit().
@@ -2647,7 +2664,9 @@ def _add_units_table_to_nwbfile(
 
     # Add rows for pre-existing columns. Each row needs values for all existing columns;
     # properties not present in the new data get null values.
-    properties_requiring_null_values = units_table_previous_columns.difference(properties_to_add)
+    properties_requiring_null_values = [
+        property for property in units_table_previous_column_names if property not in properties_to_add
+    ]
     null_values_for_row = {}
     # Only compute null values when new rows will actually be added, to avoid querying for null values for already existing properties
     # See https://github.com/catalystneuro/neuroconv/issues/1629
@@ -2663,7 +2682,9 @@ def _add_units_table_to_nwbfile(
             )
             null_values_for_row[property] = null_value
 
-    properties_with_data = {property for property in units_table_previous_columns if "data" in data_to_add[property]}
+    properties_with_data = [
+        property for property in units_table_previous_column_names if "data" in data_to_add[property]
+    ]
 
     for row in rows_to_add:
         unit_kwargs = null_values_for_row
@@ -2676,6 +2697,12 @@ def _add_units_table_to_nwbfile(
     # For new tables this is everything; for existing tables this is only new properties.
     properties_with_extracted_data = {key for key, value in data_to_add.items() if "data" in value}
     properties_to_add_by_columns = properties_with_extracted_data - units_table_previous_columns
+    # Ordered by `data_to_add`, which follows the sorting's own property order, so the units table columns
+    # do not depend on string hashing. `unit_name` is excluded because it is handled separately below.
+    # See https://github.com/catalystneuro/neuroconv/issues/792
+    columns_to_add = [
+        property for property in data_to_add if property in properties_to_add_by_columns and property != "unit_name"
+    ]
 
     unit_table_size = len(units_table.id[:])
     previous_table_size = len(units_table.id[:]) - len(unit_name_array)
@@ -2704,7 +2731,7 @@ def _add_units_table_to_nwbfile(
     extending_column = len(indices_for_null_values) > 0
 
     # Add properties as columns
-    for property in properties_to_add_by_columns - {"unit_name"}:
+    for property in columns_to_add:
         cols_args = data_to_add[property]
         data = cols_args["data"]
 

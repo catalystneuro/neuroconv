@@ -601,6 +601,49 @@ class TestAddElectrodes(TestCase):
         actual_electrode_column_names = list(self.nwbfile.electrodes.colnames)
         self.assertCountEqual(actual_electrode_column_names, expected_electrode_column_names)
 
+    def _recording_with_properties(self, property_names):
+        """A fresh recording carrying the given custom properties, in the given order.
+
+        Built locally rather than by mutating the class-level ``base_recording``, so the extra
+        properties do not leak into the other tests in this class.
+        """
+        recording = generate_recording(num_channels=self.num_channels, durations=[3], set_probe=False)
+        recording.set_channel_groups([0] * self.num_channels)
+        for property_name in property_names:
+            recording.set_property(property_name, np.arange(self.num_channels))
+        return recording
+
+    def test_electrode_column_order_follows_recording_properties(self):
+        """Custom properties become columns in the order the recording reports them.
+
+        Before this was fixed the columns were iterated as a set, so the order depended on string
+        hashing and the same recording produced a different electrodes table on every run.
+        See https://github.com/catalystneuro/neuroconv/issues/792
+        """
+        # Deliberately not alphabetical and not sorted, so an accidental sort would not pass either
+        property_names = ["electrode_type", "chamber_type", "chamber_x", "acx_z", "acx_a", "beta_index"]
+        recording = self._recording_with_properties(property_names)
+
+        _add_electrodes_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
+
+        expected_electrode_column_names = ["location", "group", "group_name", "channel_name"] + property_names
+        self.assertEqual(list(self.nwbfile.electrodes.colnames), expected_electrode_column_names)
+
+    def test_electrode_column_order_is_stable_across_calls(self):
+        """Two NWBFiles built from the same recording get the same electrodes table column order."""
+        recording = self._recording_with_properties(["zeta_property", "alpha_property", "mu_property", "beta_property"])
+
+        _add_electrodes_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
+
+        other_nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id2", session_start_time=testing_session_time
+        )
+        device = other_nwbfile.create_device(name="extra_device")
+        other_nwbfile.create_electrode_group(name="0", description="description", location="location", device=device)
+        _add_electrodes_to_nwbfile(recording=recording, nwbfile=other_nwbfile)
+
+        self.assertEqual(list(self.nwbfile.electrodes.colnames), list(other_nwbfile.electrodes.colnames))
+
     def test_physical_unit_properties_excluded(self):
         """Test that SpikeInterface physical unit properties are excluded from electrodes table."""
         # Set the properties that should be excluded
@@ -1766,6 +1809,22 @@ class TestAddUnitsTable(TestCase):
         self.sorting_2 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["c", "d", "e", "f"])
 
         self.common_unit_row_kwargs = dict(spike_times=[1, 1, 1])
+
+    def test_units_column_order_follows_sorting_properties(self):
+        """Custom properties become columns in the order the sorting reports them.
+
+        The units table had the same set-iteration problem as the electrodes table.
+        See https://github.com/catalystneuro/neuroconv/issues/792
+        """
+        # Deliberately not alphabetical and not sorted, so an accidental sort would not pass either
+        property_names = ["zeta_property", "alpha_property", "mu_property", "beta_property", "epsilon_property"]
+        for property_name in property_names:
+            self.sorting_1.set_property(property_name, np.arange(self.num_units))
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        expected_units_column_names = ["unit_name"] + property_names + ["spike_times"]
+        self.assertEqual(list(self.nwbfile.units.colnames), expected_units_column_names)
 
     def test_integer_unit_names(self):
         """Ensure add units_table gets the right units name for integer units ids."""
