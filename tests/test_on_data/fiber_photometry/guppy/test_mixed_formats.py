@@ -56,7 +56,9 @@ class TestGuppyConverterMixedEvents:
         session_folder = tmp_path / "session"
         session_folder.mkdir()
         for path in TANK_FOLDER.iterdir():
-            (session_folder / path.name).symlink_to(path)
+            # Resolved, because a relative target is read relative to the link's own directory rather
+            # than to the working directory, and OPHYS_DATA_PATH is relative when CI is set.
+            (session_folder / path.name).symlink_to(path.resolve())
         pandas.DataFrame({"timestamps": IMPORTED_EVENT_ONSETS}).to_csv(
             session_folder / f"{IMPORTED_EVENT_STORE}.csv", index=False
         )
