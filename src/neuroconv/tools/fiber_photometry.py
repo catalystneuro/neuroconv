@@ -187,13 +187,13 @@ def add_commanded_voltage_series(
     return commanded_voltage_series
 
 
-def get_fiber_photometry_table(nwbfile: NWBFile):
-    """Return the ``FiberPhotometryTable`` in ``nwbfile``, or ``None`` if none is present.
+def _get_fiber_photometry_lab_metadata(nwbfile: NWBFile):
+    """Return the ``FiberPhotometry`` lab metadata container in ``nwbfile``, or ``None`` if none is present.
 
-    Walks ``nwbfile.lab_meta_data`` and returns the first ``FiberPhotometry`` container's table,
-    matching by the ``fiber_photometry_table`` attribute rather than a fixed lab_meta_data key.
+    Walks ``nwbfile.lab_meta_data`` and returns the first match, identified by the
+    ``fiber_photometry_table`` attribute rather than a fixed lab_meta_data key.
     """
-    fiber_photometry_lab_meta_data = next(
+    return next(
         (
             lab_meta_data
             for lab_meta_data in nwbfile.lab_meta_data.values()
@@ -201,6 +201,11 @@ def get_fiber_photometry_table(nwbfile: NWBFile):
         ),
         None,
     )
+
+
+def get_fiber_photometry_table(nwbfile: NWBFile):
+    """Return the ``FiberPhotometryTable`` in ``nwbfile``, or ``None`` if none is present."""
+    fiber_photometry_lab_meta_data = _get_fiber_photometry_lab_metadata(nwbfile)
     if fiber_photometry_lab_meta_data is None:
         return None
     return fiber_photometry_lab_meta_data.fiber_photometry_table

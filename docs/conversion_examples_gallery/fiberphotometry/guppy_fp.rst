@@ -19,9 +19,16 @@ Point the converter at three folders
 events, and ``guppy_folder_path`` is GuPPy's ``<session>_output_<N>`` folder. GuPPy writes a session's
 traces and events into one folder, so in practice the first two are usually the same path.
 
-``acquisition_format`` selects how the two raw folders are read — ``"tdt"``, ``"csv"``, ``"doric"``, or
-``"npm"``, matching the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`, :doc:`Doric <doric_fp>`, and
-:doc:`NPM <npm_fp>` interfaces.
+``acquisition_format`` selects how the two raw folders are read — ``"tdt"``, ``"csv"``, ``"doric"``,
+``"npm"``, or ``"nwb"``. The first four match the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`,
+:doc:`Doric <doric_fp>`, and :doc:`NPM <npm_fp>` interfaces.
+
+``"nwb"`` covers a session GuPPy processed out of an existing NWB file: both raw folders are the folder
+holding that one ``.nwb`` file, and the converter reads its response series and events into a new file
+alongside the GuPPy outputs. Only those cross over — anything else the source holds is not carried into
+the converted file. The source also already states the fiber photometry provenance chain, so unlike the
+other four formats you do not supply it; the converter reads devices, indicators, the
+``FiberPhotometryTable`` and each series' region from the source and returns them as editable metadata.
 
 .. code-block:: python
 
