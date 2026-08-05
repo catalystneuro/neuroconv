@@ -7,6 +7,7 @@ exactly one file.
 
 from pydantic import DirectoryPath
 
+from ._session_files import is_event_csv
 from ..csv.multifilecsvfiberphotometrydatainterface import (
     MultiFileCSVFiberPhotometryInterface,
 )
@@ -15,6 +16,26 @@ from ...events.csv_events.csveventsdatainterface import CSVEventsInterface
 ASSOCIATED_SUFFIXES = tuple(
     dict.fromkeys(MultiFileCSVFiberPhotometryInterface.associated_suffixes + CSVEventsInterface.associated_suffixes)
 )
+
+
+def discover_event_store_ids(*, folder_path: DirectoryPath) -> set[str]:
+    """Return the ``storesList.csv`` event ids GuPPy's CSV layout can supply from ``folder_path``.
+
+    An event CSV is told from an acquisition CSV by its header alone -- the same distinction GuPPy
+    draws -- so the folder is scanned rather than being asked for a store list. That is what lets a
+    session take its events from these files while its traces come from another format entirely.
+
+    Parameters
+    ----------
+    folder_path : DirectoryPath
+        Path to the folder to scan for ``<store>.csv`` event files.
+
+    Returns
+    -------
+    set of str
+        The stems of the folder's event CSVs, which are the ids GuPPy records.
+    """
+    return {path.stem for path in folder_path.glob("*.csv") if is_event_csv(path)}
 
 
 def build_csv_acquisition_interface(
@@ -87,6 +108,6 @@ def build_csv_events_interface(
         file_path=folder_path / f"{store_id}.csv",
         timestamps_column="timestamps",
         event_type_column=None,
-        metadata_key=store_id,
+        metadata_key=f"guppy_csv_events_{store_id}",
         verbose=verbose,
     )
