@@ -85,7 +85,7 @@ class TestGuppyConverterTDT:
 
     def test_one_events_interface_covers_the_whole_tank(self, converter):
         """Every epoc lives in one tank, so TDT needs a single events interface."""
-        assert set(converter.data_interface_objects) == EXPECTED_ACQUISITION_INTERFACE_NAMES | {"Events", "Guppy"}
+        assert set(converter.data_interface_objects) == EXPECTED_ACQUISITION_INTERFACE_NAMES | {"Events_tdt", "Guppy"}
 
     def test_session_start_time_taken_from_tdt(self, converter):
         """TDT is the only acquisition format carrying an absolute clock origin of its own."""
@@ -104,7 +104,7 @@ class TestGuppyConverterTDT:
 
     def test_epoc_names_translate_to_the_names_guppy_gave_them(self, converter):
         """Only the storesList.csv behavioral event stores propagate, under GuPPy's semantic names."""
-        events_interface = converter.data_interface_objects["Events"]
+        events_interface = converter.data_interface_objects["Events_tdt"]
         event_types = converter.get_metadata()["Events"][events_interface.metadata_key]["event_types"]
         epoc_name_to_event_name = {epoc_name: entry["event_name"] for epoc_name, entry in event_types.items()}
         assert epoc_name_to_event_name == EPOC_TO_EVENT_NAME

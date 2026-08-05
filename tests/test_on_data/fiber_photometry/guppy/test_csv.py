@@ -27,7 +27,7 @@ ROLE_TO_STORE_IDS = {
     "control": ["dms_control_channel", "nac_control_channel"],
 }
 EXPECTED_ACQUISITION_INTERFACE_NAMES = {"FiberPhotometry_signal", "FiberPhotometry_control"}
-EXPECTED_EVENTS_INTERFACE_NAMES = {"Events_poke_ttl", "Events_reward_ttl"}
+EXPECTED_EVENTS_INTERFACE_NAMES = {"Events_csv_poke_ttl", "Events_csv_reward_ttl"}
 
 
 class TestGuppyConverterCSV:

@@ -116,7 +116,7 @@ class NPMConverterTestMixin:
     def test_event_store_ids_map_to_the_names_guppy_gave_them(self, converter):
         """GuPPy's ``event<N>`` store ids are synthetic too, and must round-trip back to the source file."""
         for store_id in self.EVENT_STORE_TO_NAME:
-            assert store_id in converter._event_source_id_to_store_id.values()
+            assert store_id in converter._event_source_id_to_store_id["guppy_npm_events"].values()
 
 
 class TestGuppyConverterNPMInterleaved(NPMConverterTestMixin):
@@ -228,12 +228,12 @@ class TestGuppyConverterNPMHeaderless(NPMConverterTestMixin):
     def test_falls_back_to_the_generic_interfaces(self, converter):
         """Neither NPM interface can read this session, so both sides use the CSV ones."""
         assert isinstance(converter.data_interface_objects["FiberPhotometry_signal"], CSVFiberPhotometryInterface)
-        assert isinstance(converter.data_interface_objects["Events"], CSVEventsInterface)
+        assert isinstance(converter.data_interface_objects["Events_npm"], CSVEventsInterface)
 
     def test_event0_is_translated_back_to_its_store_id(self, converter):
         """The CSV events interface keys its lone type by file stem, so the seam maps it to `event0`."""
-        assert converter._event_source_id_to_store_id == {"ttls": "event0"}
-        assert converter._store_id_for("ttls") == "event0"
+        assert converter._event_source_id_to_store_id == {"guppy_npm_events": {"ttls": "event0"}}
+        assert converter._store_id_for("guppy_npm_events", "ttls") == "event0"
 
 
 class TestNPMRunParameters:
