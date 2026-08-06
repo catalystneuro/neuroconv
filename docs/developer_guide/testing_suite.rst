@@ -16,6 +16,9 @@ There are several categories of tests in the NeuroConv codebase:
 4. **Remote Transfer Services**: Tests for external cloud service integrations
 5. **Import Structure Tests**: Tests that verify the import structure of the package and ensure that top level packages can be imported with minimal installation.
 
+For details on how these test categories map to CI/CD workflows that run automatically on pull
+requests, daily schedules, and releases, see :ref:`ci_workflows`.
+
 Run all tests
 -------------
 To run all tests, first clone the repo and ``cd`` into it.
