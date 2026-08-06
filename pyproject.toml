@@ -231,7 +231,7 @@ plexon2 = [
 ]
 spike2 = [
     "neuroconv[ecephys_minimal]",
-    "sonpy>=1.7.1; python_version=='3.9' and platform_system != 'Darwin'",
+    "sonpy; platform_system=='Windows' or python_version>='3.14'",
 ]
 spikegadgets = [
     "neuroconv[ecephys_minimal]",
