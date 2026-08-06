@@ -145,8 +145,12 @@ npm_events = [
 tdt_events = [
     "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
 ]
+doric_events = [
+    "h5py>=3",  # Doric events live in the .doric HDF5 file; the CSV export variant needs only pandas.
+]
 events = [
     "neuroconv[csv_events]",
+    "neuroconv[doric_events]",
     "neuroconv[npm_events]",
     "neuroconv[tdt_events]",
 ]
@@ -386,6 +390,16 @@ guppy = [
     "neuroconv[fiber_photometry]",
     "ndx-guppy",
     "tables",
+    # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
+    # whatever it was recorded on.
+    "neuroconv[tdt_fp]",
+    "neuroconv[tdt_events]",
+    "neuroconv[csv_fp]",
+    "neuroconv[csv_events]",
+    "neuroconv[doric_fp]",
+    "neuroconv[doric_events]",
+    "neuroconv[npm_fp]",
+    "neuroconv[npm_events]",
 ]
 thor = [
     "neuroconv[ophys_minimal]",
