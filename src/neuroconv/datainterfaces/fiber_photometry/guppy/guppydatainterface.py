@@ -13,9 +13,16 @@ from pynwb.file import NWBFile
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools import get_package
+from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.utils import DeepDict, calculate_regular_series_rate
 from neuroconv.utils.json_schema import get_base_schema
+
+from .nwb_linking import (
+    resolve_acquisition_store_rows,
+    resolve_event_store_rows,
+    select_analyzed_rows,
+)
 
 
 def _column_parses_as_float(column: str) -> bool:
@@ -40,7 +47,7 @@ _EVENTS_TABLE_NAME = "events"
 _EVENTS_TABLE_DESCRIPTION = "GuPPy behavioral events (one row per event GuPPy aligned to)."
 
 
-class _GuppyInterface(BaseDataInterface):
+class GuppyInterface(BaseDataInterface):
     """
     Data Interface for converting GuPPy (Guided Photometry Analysis in Python) processed outputs.
 
@@ -57,13 +64,26 @@ class _GuppyInterface(BaseDataInterface):
     event a single structured identity referenced by every product.
 
     :meth:`add_to_nwbfile` takes **no linkage arguments** -- it writes only what the GuPPy output defines.
-    The registries carry two optional outward links that only a converter owning the acquisition and events
-    tables can compute: the recording sites' ``fiber_photometry_table_region`` into the acquisition
-    ``FiberPhotometryTable``, and the events' ``events`` DynamicTableRegion into the merged ``EventsTable``.
-    Such a converter therefore authors the registries itself, in full, before this interface runs (see
-    ``GuppyConverter``), and the interface reuses the tables it finds. Run standalone, the
-    interface builds the minimal link-free version instead and the file is valid without those two links.
-    The converter reaches the parsed identifiers it needs to build the registries through the
+    The registries carry two optional outward links: the recording sites'
+    ``fiber_photometry_table_region`` into the acquisition ``FiberPhotometryTable``, and the events'
+    ``events`` DynamicTableRegion into the ``EventsTable`` holding the occurrences GuPPy aligned to.
+    How much of that can be filled in depends on what the ``NWBFile`` already holds when this runs:
+
+    * **A converter authored the registries.** ``GuppyConverter`` owns the acquisition and events
+      interfaces for a session being converted from raw, so it builds both registries itself, in full,
+      before this interface runs; they are reused as they stand.
+    * **The NWBFile already holds the acquisition.** A session GuPPy processed out of an existing NWB
+      file is converted by handing that file here: GuPPy's ``storesList.csv`` ids were derived from its
+      contents, so they address its response series and events tables directly and the registries are
+      built linked into the tables already there. Nothing is copied or rewritten.
+    * **Neither.** The registries are built in their minimal link-free form -- one row per recording site
+      and per event, name only -- and the file is valid without those two links.
+
+    The link-free fallback is also what a partially addressable file gets: if some of GuPPy's stores are
+    not in the ``NWBFile`` (custom event CSVs, say), the affected registry is written without links and a
+    warning names the stores that did not resolve.
+
+    A converter reaches the parsed identifiers it needs to build the registries itself through the
     :attr:`recording_sites`, :attr:`event_names`, :attr:`recording_site_to_store_ids`, and
     :attr:`event_store_to_event_name` read-only views.
 
@@ -86,7 +106,7 @@ class _GuppyInterface(BaseDataInterface):
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
-        """Initialize the _GuppyInterface.
+        """Initialize the GuppyInterface.
 
         Parameters
         ----------
@@ -735,11 +755,14 @@ class _GuppyInterface(BaseDataInterface):
         self._add_guppy_parameters_to_nwbfile(ndx_guppy=ndx_guppy, nwbfile=nwbfile)
 
         # Registries: recording_site and event identity, referenced by every product. Reused as-is if a
-        # converter already authored them (with their fiber / events links); built minimal otherwise.
+        # converter already authored them (with their fiber / events links); otherwise linked into the
+        # tables the nwbfile already holds, or built minimal when it holds none.
         recording_sites_table = self._get_or_add_guppy_recording_sites_table(
-            ndx_guppy=ndx_guppy, processing_module=processing_module
+            ndx_guppy=ndx_guppy, nwbfile=nwbfile, processing_module=processing_module
         )
-        events_table = self._get_or_add_guppy_events_table(ndx_guppy=ndx_guppy, processing_module=processing_module)
+        events_table = self._get_or_add_guppy_events_table(
+            ndx_guppy=ndx_guppy, nwbfile=nwbfile, processing_module=processing_module
+        )
         # Valid-signal (artifact-free) intervals: one object, one row per interval, referencing its site.
         self._add_guppy_valid_signal_intervals_to_nwbfile(
             ndx_guppy=ndx_guppy,
@@ -1091,12 +1114,15 @@ class _GuppyInterface(BaseDataInterface):
             )
             processing_module.add(peak_auc)
 
-    def _get_or_add_guppy_recording_sites_table(self, *, ndx_guppy, processing_module):
-        """Reuse the GuppyRecordingSitesTable a converter authored, or build the minimal one.
+    def _get_or_add_guppy_recording_sites_table(self, *, ndx_guppy, nwbfile, processing_module):
+        """Reuse the GuppyRecordingSitesTable a converter authored, link into the acquisition, or build minimal.
 
-        A converter that owns the acquisition FiberPhotometryTable builds this registry itself, with the
-        ``fiber_photometry_table_region`` link populated, before this interface runs; that table is
-        reused as it stands. Standalone, the interface does not know the acquisition row layout, so it
+        Three cases, in order. A converter that owns the acquisition FiberPhotometryTable builds this
+        registry itself, with the ``fiber_photometry_table_region`` link populated, before this interface
+        runs; that table is reused as it stands. Failing that, an ``nwbfile`` that already holds the
+        acquisition answers for the link itself -- GuPPy's store ids address its response series, each of
+        which states the table rows its columns were recorded on -- so the registry is built linked into
+        the table already there. With neither, the interface does not know the acquisition row layout and
         builds the minimal version: one row per recording site, name only.
         """
         existing_table = processing_module.data_interfaces.get(_RECORDING_SITES_TABLE_NAME)
@@ -1111,14 +1137,55 @@ class _GuppyInterface(BaseDataInterface):
             )
             return existing_table
 
+        recording_site_to_rows = self._resolve_recording_site_rows(nwbfile=nwbfile)
+        is_linked = recording_site_to_rows is not None
+        table_kwargs = (
+            {"target_tables": {"fiber_photometry_table_region": get_fiber_photometry_table(nwbfile=nwbfile)}}
+            if is_linked
+            else {}
+        )
+
         recording_sites_table = ndx_guppy.GuppyRecordingSitesTable(
             name=_RECORDING_SITES_TABLE_NAME,
             description=_RECORDING_SITES_TABLE_DESCRIPTION,
+            **table_kwargs,
         )
         for recording_site in self._recording_sites:
-            recording_sites_table.add_row(recording_site=recording_site)
+            row_kwargs = {"fiber_photometry_table_region": recording_site_to_rows[recording_site]} if is_linked else {}
+            recording_sites_table.add_row(recording_site=recording_site, **row_kwargs)
         processing_module.add(recording_sites_table)
         return recording_sites_table
+
+    def _resolve_recording_site_rows(self, *, nwbfile) -> dict[str, list[int]] | None:
+        """Map each recording site to its FiberPhotometryTable rows, or ``None`` if the file cannot say.
+
+        Every store GuPPy listed must name a response series in the file, since a registry linking only
+        some of the sites would describe the acquisition as sparser than it is. A file holding no
+        FiberPhotometryTable at all is the ordinary standalone case and is not warned about; one that
+        holds a table GuPPy's stores do not address is a mismatch worth reporting.
+        """
+        if get_fiber_photometry_table(nwbfile=nwbfile) is None:
+            return None
+
+        store_ids = [store_id for stores in self._recording_site_to_store_ids.values() for store_id in stores.values()]
+        store_id_to_row = resolve_acquisition_store_rows(nwbfile=nwbfile, store_ids=store_ids)
+        unresolved = [store_id for store_id in store_ids if store_id not in store_id_to_row]
+        if unresolved:
+            warnings.warn(
+                f"GuPPy acquisition store(s) {unresolved} name no FiberPhotometryResponseSeries in the "
+                f"NWB file, so the '{_RECORDING_SITES_TABLE_NAME}' registry is written without links to "
+                f"the FiberPhotometryTable. A multi-channel series is addressed as "
+                f"'<series_name>_<column_index>'.",
+                UserWarning,
+                stacklevel=2,
+            )
+            return None
+
+        recording_site_to_rows: dict[str, list[int]] = {}
+        for recording_site in self._recording_sites:
+            stores = self._recording_site_to_store_ids[recording_site]
+            recording_site_to_rows[recording_site] = sorted({store_id_to_row[store_id] for store_id in stores.values()})
+        return recording_site_to_rows
 
     def _add_guppy_valid_signal_intervals_to_nwbfile(
         self,
@@ -1160,13 +1227,16 @@ class _GuppyInterface(BaseDataInterface):
         processing_module.add(valid_signal_intervals)
         return valid_signal_intervals
 
-    def _get_or_add_guppy_events_table(self, *, ndx_guppy, processing_module):
-        """Reuse the GuppyEventsTable a converter authored, or build the minimal one.
+    def _get_or_add_guppy_events_table(self, *, ndx_guppy, nwbfile, processing_module):
+        """Reuse the GuppyEventsTable a converter authored, link into the file's events, or build minimal.
 
-        A converter that merges every event type into one EventsTable builds this registry itself, with
-        the ``events`` ragged DynamicTableRegion into that table's occurrence rows populated, before this
-        interface runs; that table is reused as it stands. Standalone, the interface does not know how the
-        raw events were tabled, so it builds the minimal version: one row per event, name only.
+        Three cases, in order. A converter that merges every event type into one EventsTable builds this
+        registry itself, with the ``events`` ragged DynamicTableRegion into that table's occurrence rows
+        populated, before this interface runs; that table is reused as it stands. Failing that, an
+        ``nwbfile`` whose own EventsTable holds every store GuPPy listed answers for the link itself, and
+        the registry is built pointing at the occurrence rows already there. With neither, the interface
+        does not know how the raw events were tabled and builds the minimal version: one row per event,
+        name only.
         """
         existing_table = processing_module.data_interfaces.get(_EVENTS_TABLE_NAME)
         if existing_table is not None:
@@ -1179,14 +1249,58 @@ class _GuppyInterface(BaseDataInterface):
             )
             return existing_table
 
+        event_link = self._resolve_event_rows(nwbfile=nwbfile)
+        target_events_table, event_name_to_rows = event_link if event_link is not None else (None, None)
+        table_kwargs = {"target_tables": {"events": target_events_table}} if event_link is not None else {}
+
         events_table = ndx_guppy.GuppyEventsTable(
             name=_EVENTS_TABLE_NAME,
             description=_EVENTS_TABLE_DESCRIPTION,
+            **table_kwargs,
         )
         for event_name in self._event_names:
-            events_table.add_row(event_name=event_name)
+            row_kwargs = {"events": event_name_to_rows[event_name]} if event_link is not None else {}
+            events_table.add_row(event_name=event_name, **row_kwargs)
         processing_module.add(events_table)
         return events_table
+
+    def _resolve_event_rows(self, *, nwbfile) -> tuple[object, dict[str, list[int]]] | None:
+        """Find the file's own EventsTable rows for each GuPPy event, or ``None`` if it cannot say.
+
+        All of GuPPy's event stores must live in one of the file's EventsTable objects: the registry
+        references them through a single DynamicTableRegion, which has one target. Events GuPPy read
+        from somewhere the NWB file does not hold -- custom event CSVs, or a source that stored them as
+        ndx-events v0.2 objects -- therefore cannot be referenced, and the registry is written link-free.
+        """
+        if not self._event_store_to_event_name or not nwbfile.events:
+            return None
+
+        event_store_ids = list(self._event_store_to_event_name)
+        resolved = resolve_event_store_rows(nwbfile=nwbfile, event_store_ids=event_store_ids)
+        if resolved is None:
+            warnings.warn(
+                f"GuPPy event store(s) {event_store_ids} do not all resolve to rows of a single "
+                f"EventsTable in the NWB file (it holds {sorted(nwbfile.events)}), so the "
+                f"'{_EVENTS_TABLE_NAME}' registry is written without links to the events' occurrences. "
+                f"This is expected when GuPPy read some events from outside the file, such as custom "
+                f"event CSVs.",
+                UserWarning,
+                stacklevel=2,
+            )
+            return None
+
+        target_events_table, store_id_to_rows = resolved
+        timestamp_column = np.asarray(target_events_table["timestamp"][:], dtype="float64")
+        event_name_to_rows: dict[str, list[int]] = {}
+        for store_id, event_name in self._event_store_to_event_name.items():
+            candidate_rows = store_id_to_rows[store_id]
+            event_name_to_rows[event_name] = select_analyzed_rows(
+                event_name=event_name,
+                candidate_rows=candidate_rows,
+                candidate_timestamps=timestamp_column[candidate_rows],
+                analyzed_onsets=self._analyzed_event_onsets[event_name],
+            )
+        return target_events_table, event_name_to_rows
 
     def _add_guppy_transient_summary_table_to_nwbfile(
         self, *, ndx_guppy, processing_module, recording_sites_table, summary_metadata: dict

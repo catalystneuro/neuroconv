@@ -19,16 +19,12 @@ Point the converter at three folders
 events, and ``guppy_folder_path`` is GuPPy's ``<session>_output_<N>`` folder. GuPPy writes a session's
 traces and events into one folder, so in practice the first two are usually the same path.
 
-``acquisition_format`` selects how the two raw folders are read — ``"tdt"``, ``"csv"``, ``"doric"``,
-``"npm"``, or ``"nwb"``. The first four match the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`,
-:doc:`Doric <doric_fp>`, and :doc:`NPM <npm_fp>` interfaces.
+``acquisition_format`` selects how the two raw folders are read — ``"tdt"``, ``"csv"``, ``"doric"``, or
+``"npm"``, matching the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`, :doc:`Doric <doric_fp>`, and
+:doc:`NPM <npm_fp>` interfaces.
 
-``"nwb"`` covers a session GuPPy processed out of an existing NWB file: both raw folders are the folder
-holding that one ``.nwb`` file, and the converter reads its response series and events into a new file
-alongside the GuPPy outputs. Only those cross over — anything else the source holds is not carried into
-the converted file. The source also already states the fiber photometry provenance chain, so unlike the
-other four formats you do not supply it; the converter reads devices, indicators, the
-``FiberPhotometryTable`` and each series' region from the source and returns them as editable metadata.
+If your session is **already in NWB** — GuPPy reads NWB as an input format — you do not need the
+converter at all. See :ref:`guppy_existing_nwbfile` below.
 
 .. code-block:: python
 
@@ -163,3 +159,45 @@ same origin the raw streams use. A CSV session carries no absolute clock origin,
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+.. _guppy_existing_nwbfile:
+
+Adding GuPPy outputs to an existing NWB file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When GuPPy processed a session out of an NWB file, the acquisition is already converted — there is
+nothing for a converter to read in. Use
+:py:class:`~neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface.GuppyInterface`
+directly: hand it the file and it adds GuPPy's outputs to it.
+
+GuPPy derives its ``storesList.csv`` ids from that file's own contents, so the ids address it back:
+``<series_name>_<column_index>`` names a column of a ``FiberPhotometryResponseSeries``, and
+``<table_name>_<value>`` names the rows of an :py:class:`~pynwb.event.EventsTable` carrying that
+value. The interface uses them to point the two GuPPy registries at the tables already in the file —
+each recording site at the ``FiberPhotometryTable`` rows its fibers occupy, each event at its
+occurrence rows. Nothing is copied, and everything else the file holds is untouched.
+
+.. code-block:: python
+
+    from pynwb import read_nwb
+
+    from neuroconv.datainterfaces import GuppyInterface
+    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
+    interface = GuppyInterface(folder_path=guppy_folder)
+
+    nwbfile = read_nwb(path=source_nwbfile_path)
+    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+Writing to a *new* path exports the source with the GuPPy outputs added; the original file is left
+alone.
+
+If GuPPy read some events from outside the file — its custom event CSVs, for instance — those stores
+resolve to nothing, so the events registry is written without links and a warning names them. The
+recording-sites registry is resolved independently and keeps its links. To get a fully linked file in
+that case, convert from the raw acquisition with ``GuppyConverter`` instead, which merges every event
+source into one table.
+
+The same interface run against an NWB file that holds no fiber photometry at all writes the minimal
+link-free registries, which is what a standalone GuPPy conversion produces.

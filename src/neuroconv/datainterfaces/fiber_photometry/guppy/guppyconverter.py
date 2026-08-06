@@ -4,7 +4,7 @@ import numpy as np
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
-from . import csv_utils, doric_utils, npm_utils, nwb_utils, tdt_utils
+from . import csv_utils, doric_utils, npm_utils, tdt_utils
 from .csv_utils import build_csv_acquisition_interface, build_csv_events_interface
 from .doric_utils import build_doric_acquisition_interface, build_doric_events_interface
 from .guppydatainterface import (
@@ -12,14 +12,13 @@ from .guppydatainterface import (
     _EVENTS_TABLE_NAME,
     _RECORDING_SITES_TABLE_DESCRIPTION,
     _RECORDING_SITES_TABLE_NAME,
-    _GuppyInterface,
+    GuppyInterface,
 )
 from .npm_utils import (
     build_npm_acquisition_interface,
     build_npm_events_interface,
     npm_event_source_id_to_store_id,
 )
-from .nwb_utils import build_nwb_acquisition_interface, build_nwb_events_interface
 from .tdt_utils import build_tdt_acquisition_interface, build_tdt_events_interface
 from ....nwbconverter import ConverterPipe
 from ....tools import get_package
@@ -39,12 +38,10 @@ _MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 # The formats a GuPPy session can have been recorded in -- every format GuPPy itself supports. Each has
 # a ``<format>_utils`` module reading it; supporting another means writing that module, widening this,
 # and adding a branch to each of the two _build_*_interfaces methods below.
-AcquisitionFormat = Literal["tdt", "csv", "doric", "npm", "nwb"]
+AcquisitionFormat = Literal["tdt", "csv", "doric", "npm"]
 _ACQUISITION_SUFFIXES = tuple(
     dict.fromkeys(
-        suffix
-        for module in (tdt_utils, csv_utils, doric_utils, npm_utils, nwb_utils)
-        for suffix in module.ASSOCIATED_SUFFIXES
+        suffix for module in (tdt_utils, csv_utils, doric_utils, npm_utils) for suffix in module.ASSOCIATED_SUFFIXES
     )
 )
 
@@ -92,8 +89,8 @@ class GuppyConverter(ConverterPipe):
     """
 
     display_name = "GuPPy Fiber Photometry"
-    keywords = _GuppyInterface.keywords + ("events",)
-    associated_suffixes = tuple(dict.fromkeys(_GuppyInterface.associated_suffixes + _ACQUISITION_SUFFIXES))
+    keywords = GuppyInterface.keywords + ("events",)
+    associated_suffixes = tuple(dict.fromkeys(GuppyInterface.associated_suffixes + _ACQUISITION_SUFFIXES))
     info = "Converter that bundles a GuPPy session's raw acquisition with its GuPPy-derived processing outputs."
 
     @validate_call
@@ -114,9 +111,8 @@ class GuppyConverter(ConverterPipe):
             Path to the folder holding the raw acquisition traces -- for TDT, the tank folder
             containing the Tbk, Tdx, tev, tin and tsq files; for CSV, the folder holding one
             ``<store>.csv`` per channel; for Doric, the folder holding the single ``.doric`` or
-            DoricStudio ``.csv`` export; for NWB, the folder holding the single source ``.nwb`` file.
-            For NPM this must be the GuPPy session folder itself, since GuPPy's ``file<N>`` store
-            names index that folder's CSVs in sorted order.
+            DoricStudio ``.csv`` export. For NPM this must be the GuPPy session folder itself, since
+            GuPPy's ``file<N>`` store names index that folder's CSVs in sorted order.
         events_folder_path : DirectoryPath
             Path to the folder holding the raw discrete events. GuPPy writes a session's traces and
             events into one folder, so for TDT this is the same tank folder as
@@ -126,14 +122,11 @@ class GuppyConverter(ConverterPipe):
             Path to the GuPPy ``<session>_output_<N>`` folder containing ``storesList.csv``,
             the per-recording-site derived ``.hdf5`` files, and the ``GuPPyParamtersUsed.json``
             provenance file (discovered automatically by the GuPPy interface).
-        acquisition_format : {"tdt", "csv", "doric", "npm", "nwb"}
+        acquisition_format : {"tdt", "csv", "doric", "npm"}
             The format the session was recorded in, selecting which interfaces read the two raw
             folders. ``"doric"`` covers all three Doric layouts -- modern and legacy ``.doric`` HDF5 and
             DoricStudio ``.csv`` exports -- resolved from the one acquisition file in the folder, and
             ``"npm"`` covers both the state-column and header-less Neurophotometrics layouts.
-            ``"nwb"`` reads a session GuPPy processed out of an existing NWB file, writing its series
-            and events into the new file alongside the GuPPy outputs; only those cross over, so
-            anything else the source holds is not carried into the converted file.
         verbose : bool, optional
             Whether to print status messages, default = False.
 
@@ -148,7 +141,7 @@ class GuppyConverter(ConverterPipe):
         self.acquisition_format = acquisition_format
 
         # Guppy
-        guppy_interface = _GuppyInterface(folder_path=guppy_folder_path, verbose=verbose)
+        guppy_interface = GuppyInterface(folder_path=guppy_folder_path, verbose=verbose)
         self._event_store_to_event_name = guppy_interface.event_store_to_event_name
         data_interfaces: dict = {"Guppy": guppy_interface}
         self._series_specs = self._build_series_specs(guppy_interface=guppy_interface)
@@ -183,7 +176,7 @@ class GuppyConverter(ConverterPipe):
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
-    def _build_series_specs(self, *, guppy_interface: _GuppyInterface) -> list[dict]:
+    def _build_series_specs(self, *, guppy_interface: GuppyInterface) -> list[dict]:
         """Describe the acquisition series a GuPPy session calls for, one per role.
 
         A role is an excitation wavelength, and each gets one series column-stacking that role's store
@@ -271,10 +264,6 @@ class GuppyConverter(ConverterPipe):
                     metadata_key=metadata_key,
                     verbose=verbose,
                 )
-            elif acquisition_format == "nwb":
-                interface = build_nwb_acquisition_interface(
-                    folder_path=folder_path, store_ids=store_ids, metadata_key=metadata_key, verbose=verbose
-                )
             else:
                 raise NotImplementedError(
                     f"No acquisition interface is wired up for acquisition_format={acquisition_format!r}."
@@ -336,11 +325,6 @@ class GuppyConverter(ConverterPipe):
                 verbose=verbose,
             )
             return {"Events": interface}
-        if acquisition_format == "nwb":
-            interface = build_nwb_events_interface(
-                folder_path=folder_path, event_store_ids=event_store_ids, verbose=verbose
-            )
-            return {"Events": interface}
         raise NotImplementedError(f"No events interface is wired up for acquisition_format={acquisition_format!r}.")
 
     def _build_event_source_id_map(
@@ -377,8 +361,7 @@ class GuppyConverter(ConverterPipe):
         stores GuPPy listed.
 
         The ``FiberPhotometry`` chain itself (devices, indicators, table rows, per-series regions) is
-        the user's to supply, exactly as for a bare acquisition interface -- except for the ``"nwb"``
-        format, whose source file already states the chain and whose interfaces return it as defaults.
+        the user's to supply, exactly as for a bare acquisition interface.
         """
         metadata = super().get_metadata()
 
