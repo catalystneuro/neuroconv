@@ -161,7 +161,7 @@ class TestDANNCEConverterCameraCaptureMetadata:
         metadata = converter.get_metadata()
 
         assert len(metadata["DeviceModels"]) == 1
-        (device_model_metadata_key, device_model_metadata), = metadata["DeviceModels"].items()
+        ((device_model_metadata_key, device_model_metadata),) = metadata["DeviceModels"].items()
         assert device_model_metadata["name"] == "a2A1920-160ucBAS"
         assert device_model_metadata["manufacturer"] == "Basler"
 

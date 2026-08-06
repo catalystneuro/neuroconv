@@ -216,9 +216,7 @@ class DANNCEConverter(BaseDataInterface):
             # Not all DANNCE rigs write this file, so its absence is not an error.
             metadata_csv_file_path = camera_directory / "metadata.csv"
             if metadata_csv_file_path.exists():
-                self._camera_capture_metadata[camera_name] = self._load_camera_capture_metadata(
-                    metadata_csv_file_path
-                )
+                self._camera_capture_metadata[camera_name] = self._load_camera_capture_metadata(metadata_csv_file_path)
 
         self._dannce_interface = DANNCEInterface(
             file_path=file_path,
