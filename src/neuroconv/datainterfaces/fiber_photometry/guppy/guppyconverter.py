@@ -511,8 +511,8 @@ class GuppyConverter(ConverterPipe):
 
         # Events: each row links to the occurrence rows in the merged EventsTable that GuPPy actually
         # analyzed. A session whose storesList holds no event store writes no such table, and there is
-        # nothing for the converter to link -- the GuPPy interface then builds the link-free registry
-        # itself, exactly as it does when run standalone.
+        # nothing for the converter to link -- the GuPPy interface then builds the registry itself, with
+        # no rows and no link target.
         if not self._events_interface_names:
             return
         merged_events_table = nwbfile.events[_MERGED_EVENTS_TABLE_NAME]

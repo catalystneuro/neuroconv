@@ -137,7 +137,7 @@ class TestGuppyInterfaceBehavior:
     @pytest.fixture
     def nwbfile(self):
         """A plain NWBFile. ``GuppyInterface`` is standalone: it needs no acquisition or events tables
-        to write, since the two registry links are populated later by a converter that owns them."""
+        to write, since it writes its own events and the fiber link is populated later by a converter."""
         return mock_NWBFile()
 
     def add_to_nwbfile(self, interface, nwbfile, *, stub_test):
@@ -187,11 +187,11 @@ class TestGuppyInterfaceBehavior:
 
     # ------------------------------------------------------------------ standalone writing
 
-    def test_standalone_registries_carry_no_outward_links(self, interface, nwbfile):
-        """Run without a converter, the interface builds names-only registries.
+    def test_standalone_recording_sites_registry_carries_no_outward_link(self, interface, nwbfile):
+        """Run without a converter, the recording sites registry is names only.
 
-        The outward links (fiber rows, event occurrence rows) require a converter that owns those
-        tables and authors the registries itself.
+        The fiber link requires a converter that owns the FiberPhotometryTable, or an NWBFile already
+        holding it; the interface has no acquisition provenance of its own to write.
         """
         module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
 
@@ -200,10 +200,29 @@ class TestGuppyInterfaceBehavior:
         assert list(recording_sites_table["recording_site"].data) == RECORDING_SITES
         assert "fiber_photometry_table_region" not in recording_sites_table.colnames
 
+    def test_standalone_events_registry_links_to_guppys_own_events(self, interface, nwbfile):
+        """The events registry links even with nothing to link to: the onsets are GuPPy's own output.
+
+        The written table is chronological across every event, so the three events' shared onsets
+        interleave, and each registry row's region selects its own event's four occurrences.
+        """
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+
+        written_events = nwbfile.events["GuppyEvents"]
+        assert list(written_events["timestamp"].data) == [
+            onset for onset in MOCK_TRIAL_ONSETS for _ in sorted(EVENT_NAMES)
+        ]
+        assert list(written_events["event_type"].data) == sorted(EVENT_NAMES) * len(MOCK_TRIAL_ONSETS)
+
         events_table = module["events"]
         assert events_table.neurodata_type == "GuppyEventsTable"
-        assert sorted(events_table["event_name"].data) == sorted(EVENT_NAMES)
-        assert "events" not in events_table.colnames
+        registry_event_names = list(events_table["event_name"].data)
+        assert registry_event_names == sorted(EVENT_NAMES)
+        assert events_table["events"].target.table is written_events
+        for row_index, event_name in enumerate(registry_event_names):
+            linked = events_table["events"][row_index]
+            assert list(linked["event_type"]) == [event_name] * len(MOCK_TRIAL_ONSETS)
+            assert list(linked["timestamp"]) == MOCK_TRIAL_ONSETS
 
     def test_nothing_is_written_to_acquisition(self, interface, nwbfile):
         """GuPPy outputs are derived data; the raw acquisition belongs to a separate interface."""

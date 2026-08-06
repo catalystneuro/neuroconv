@@ -15,8 +15,8 @@ The two id spellings, which mirror how GuPPy reads an NWB file:
   or ``<table>`` when it has none.
 
 Only those two are addressable by row, which is what a ``DynamicTableRegion`` needs. Events held as
-ndx-events v0.2 objects, or spread over several tables, resolve to nothing here and the interface
-falls back to the link-free registry it builds when run standalone.
+ndx-events v0.2 objects, or spread over several tables, resolve to nothing here; the interface then
+writes GuPPy's own analyzed onsets as an ``EventsTable`` and references those instead.
 """
 
 import numpy as np

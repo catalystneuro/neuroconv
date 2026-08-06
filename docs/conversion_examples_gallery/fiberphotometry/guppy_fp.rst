@@ -188,7 +188,13 @@ the ``FiberPhotometryTable`` rows its fibers occupy, each event to its occurrenc
 Writing to a *new* path exports the source with the GuPPy outputs added; the original file is left
 alone.
 
-If GuPPy read some events from outside the file — its custom event CSVs, for instance — the events
-registry is written without links to their occurrences, and a warning names them. The recording sites
-are unaffected. To get a fully linked file, convert from the raw acquisition with ``GuppyConverter``,
-which merges every event source into one table.
+If GuPPy read some events from outside the file — its custom event CSVs, for instance — its store ids
+no longer address the file's events table. The onsets GuPPy analyzed are then written as an
+``EventsTable`` of their own in ``nwbfile.events``, which the events registry references instead, and
+a warning names the stores that did not resolve. The file's own events are left as they are, so it
+holds two tables covering overlapping events; convert from the raw acquisition with ``GuppyConverter``,
+which merges every event source into one table, to get a single one. The recording sites are
+unaffected.
+
+The name of that table is editable, at
+``metadata["FiberPhotometry"]["Guppy"][metadata_key]["Events"]["name"]``.
