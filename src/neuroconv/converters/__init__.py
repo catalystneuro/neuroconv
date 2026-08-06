@@ -6,6 +6,7 @@ or one photon and behavior videos of Miniscope), yet the objects behave just as 
 converters can still be combined into a parent converter for a dataset).
 """
 
+from ..datainterfaces.behavior.dannce.dannceconverter import DANNCEConverter
 from ..datainterfaces.behavior.lightningpose.lightningposeconverter import (
     LightningPoseConverter,
 )
@@ -29,6 +30,7 @@ from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConvert
 converter_list = [
     AxonIntracellularConverter,
     BrukerVoltageRecordingConverter,
+    DANNCEConverter,
     IntanConverter,
     LightningPoseConverter,
     OpenEphysBinaryConverter,
