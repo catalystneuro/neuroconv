@@ -12,7 +12,7 @@ Two rules keep this module an independent check on that replica.
   hard-coded literal. Nothing in this module may import from
   ``neuroconv.datainterfaces.fiber_photometry.guppy``.
 
-The subject is the public ``GuppyConverter``, not ``_GuppyInterface``.
+The subject is the public ``GuppyConverter``, not ``GuppyInterface``.
 
 The session's own parameters complement what the mock covers. GuPPy ran here with
 ``use_time_or_trials="Time (min)"`` (decimal ``bin_(0.0-1.0)`` labels), ``artifactsRemovalMethod="replace

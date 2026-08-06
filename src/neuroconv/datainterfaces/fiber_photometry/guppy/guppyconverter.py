@@ -12,7 +12,7 @@ from .guppydatainterface import (
     _EVENTS_TABLE_NAME,
     _RECORDING_SITES_TABLE_DESCRIPTION,
     _RECORDING_SITES_TABLE_NAME,
-    _GuppyInterface,
+    GuppyInterface,
 )
 from .npm_utils import (
     build_npm_acquisition_interface,
@@ -89,8 +89,8 @@ class GuppyConverter(ConverterPipe):
     """
 
     display_name = "GuPPy Fiber Photometry"
-    keywords = _GuppyInterface.keywords + ("events",)
-    associated_suffixes = tuple(dict.fromkeys(_GuppyInterface.associated_suffixes + _ACQUISITION_SUFFIXES))
+    keywords = GuppyInterface.keywords + ("events",)
+    associated_suffixes = tuple(dict.fromkeys(GuppyInterface.associated_suffixes + _ACQUISITION_SUFFIXES))
     info = "Converter that bundles a GuPPy session's raw acquisition with its GuPPy-derived processing outputs."
 
     @validate_call
@@ -141,7 +141,7 @@ class GuppyConverter(ConverterPipe):
         self.acquisition_format = acquisition_format
 
         # Guppy
-        guppy_interface = _GuppyInterface(folder_path=guppy_folder_path, verbose=verbose)
+        guppy_interface = GuppyInterface(folder_path=guppy_folder_path, verbose=verbose)
         self._event_store_to_event_name = guppy_interface.event_store_to_event_name
         data_interfaces: dict = {"Guppy": guppy_interface}
         self._series_specs = self._build_series_specs(guppy_interface=guppy_interface)
@@ -176,7 +176,7 @@ class GuppyConverter(ConverterPipe):
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
-    def _build_series_specs(self, *, guppy_interface: _GuppyInterface) -> list[dict]:
+    def _build_series_specs(self, *, guppy_interface: GuppyInterface) -> list[dict]:
         """Describe the acquisition series a GuPPy session calls for, one per role.
 
         A role is an excitation wavelength, and each gets one series column-stacking that role's store
@@ -511,8 +511,8 @@ class GuppyConverter(ConverterPipe):
 
         # Events: each row links to the occurrence rows in the merged EventsTable that GuPPy actually
         # analyzed. A session whose storesList holds no event store writes no such table, and there is
-        # nothing for the converter to link -- the GuPPy interface then builds the link-free registry
-        # itself, exactly as it does when run standalone.
+        # nothing for the converter to link -- the GuPPy interface then builds the registry itself, with
+        # no rows and no link target.
         if not self._events_interface_names:
             return
         merged_events_table = nwbfile.events[_MERGED_EVENTS_TABLE_NAME]

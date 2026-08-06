@@ -23,6 +23,9 @@ traces and events into one folder, so in practice the first two are usually the 
 ``"npm"``, matching the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`, :doc:`Doric <doric_fp>`, and
 :doc:`NPM <npm_fp>` interfaces.
 
+GuPPy also reads NWB as an input format. If your session is **already in NWB**, see
+:ref:`guppy_existing_nwbfile` below.
+
 .. code-block:: python
 
     >>> from datetime import datetime
@@ -156,3 +159,42 @@ same origin the raw streams use. A CSV session carries no absolute clock origin,
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+.. _guppy_existing_nwbfile:
+
+Adding GuPPy outputs to an existing NWB file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When GuPPy processed a session out of an NWB file, use
+:py:class:`~neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface.GuppyInterface`
+directly rather than the converter: hand it the file and it adds GuPPy's outputs to it.
+
+The two GuPPy registries are linked into the tables the file already holds — each recording site to
+the ``FiberPhotometryTable`` rows its fibers occupy, each event to its occurrence rows.
+
+.. code-block:: python
+
+    from pynwb import read_nwb
+
+    from neuroconv.datainterfaces import GuppyInterface
+    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
+    interface = GuppyInterface(folder_path=guppy_folder)
+
+    nwbfile = read_nwb(path=source_nwbfile_path)
+    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+Writing to a *new* path exports the source with the GuPPy outputs added; the original file is left
+alone.
+
+If GuPPy read some events from outside the file — its custom event CSVs, for instance — its store ids
+no longer address the file's events table. The onsets GuPPy analyzed are then written as an
+``EventsTable`` of their own in ``nwbfile.events``, which the events registry references instead, and
+a warning names the stores that did not resolve. The file's own events are left as they are, so it
+holds two tables covering overlapping events; convert from the raw acquisition with ``GuppyConverter``,
+which merges every event source into one table, to get a single one. The recording sites are
+unaffected.
+
+The name of that table is editable, at
+``metadata["FiberPhotometry"]["Guppy"][metadata_key]["Events"]["name"]``.
