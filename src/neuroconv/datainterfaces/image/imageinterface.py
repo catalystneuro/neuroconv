@@ -35,17 +35,14 @@ class SingleImageIterator(AbstractDataChunkIterator):
         with Image.open(self._file_path) as img:
             self.image_mode = img.mode
             self._image_shape = img.size[::-1]  # PIL uses (width, height) instead of (height, width)
-            self._max_shape = (None, None)
 
             self.number_of_bands = len(img.getbands())
             if self.number_of_bands > 1:
                 self._image_shape += (self.number_of_bands,)
-                self._max_shape += (self.number_of_bands,)
 
             # For LA mode, adjust shape to RGBA
             if self.image_mode == "LA":
                 self._image_shape = self._image_shape[:-1] + (4,)
-                self._max_shape = self._max_shape[:-1] + (4,)
 
             self._dtype = np.dtype(_PIL_MODE_TO_NUMPY_DTYPE.get(self.image_mode, np.uint8))
 
@@ -113,7 +110,10 @@ class SingleImageIterator(AbstractDataChunkIterator):
     @property
     def maxshape(self):
         """Property describing the maximum shape of the data array that is being iterated over"""
-        return self._max_shape
+        # A single image has a fixed shape, so the maximum shape is the image shape itself. Reporting concrete
+        # axes (rather than `None`) is also what allows the default chunking and compression estimators in
+        # `tools.nwb_helpers` to size a chunk for this dataset.
+        return self._image_shape
 
     def __len__(self):
         return self._image_shape[0]

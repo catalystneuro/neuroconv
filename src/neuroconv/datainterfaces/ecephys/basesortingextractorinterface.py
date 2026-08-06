@@ -26,6 +26,50 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     def get_metadata_schema(self) -> dict:
         """
+        Compile the metadata schema.
+
+        A sorting interface registers no devices or series of its own: what it reads from
+        ``metadata["Ecephys"]`` is the description of the columns it writes, on the units table and, when a
+        recording is attached, on the electrode table. Both are lists, so this block declares them and
+        nothing else.
+
+        Metadata in the old list-based format is validated against
+        ``_get_metadata_schema_for_old_list_format``, and both go when that format does.
+        """
+        from ...basedatainterface import BaseDataInterface
+
+        metadata_schema = BaseDataInterface.get_metadata_schema(self)
+        metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
+        metadata_schema["properties"]["Ecephys"]["required"] = []
+        metadata_schema["properties"]["Ecephys"]["properties"] = dict(
+            Electrodes=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/definitions/ColumnDescription"},
+            ),
+            UnitProperties=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/definitions/ColumnDescription"},
+            ),
+        )
+        metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
+            ColumnDescription=dict(
+                type="object",
+                additionalProperties=False,
+                required=["name"],
+                properties=dict(
+                    name=dict(type="string", description="name of this column"),
+                    description=dict(type="string", description="description of this column"),
+                ),
+            ),
+        )
+        return metadata_schema
+
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        """
         Compile metadata schema for the RecordingExtractor.
 
         Returns

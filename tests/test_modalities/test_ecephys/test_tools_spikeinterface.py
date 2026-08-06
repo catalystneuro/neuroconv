@@ -39,6 +39,7 @@ from neuroconv.tools.spikeinterface.spikeinterface import (
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
+from neuroconv.utils import DeepDict
 
 testing_session_time = datetime.now().astimezone()
 
@@ -70,6 +71,20 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+    def test_shifted_recording_uses_starting_time(self):
+        recording = generate_recording(
+            sampling_frequency=self.sampling_frequency,
+            num_channels=self.num_channels,
+            durations=self.durations,
+        )
+        recording.shift_times(2.0)
+
+        add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile, iterator_type=None)
+
+        electrical_series = self.nwbfile.acquisition["ElectricalSeriesRaw"]
+        assert electrical_series.starting_time == 2.0
+        assert electrical_series.rate == self.sampling_frequency
 
     def test_write_as_lfp(self):
         parent_container = "processing/LFP"
@@ -350,7 +365,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         # Test equality of data in Volts. Data in spikeextractors is in microvolts when scaled
         extracted_data = electrical_series.data[:]
         data_in_volts = extracted_data * channel_conversion_vector + offset_scalar
-        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e-6
+        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_in_uV=True) * 1e-6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_variable_offsets_assertion(self):
@@ -991,6 +1006,26 @@ class TestAddElectrodes(TestCase):
         assert np.array_equal(extracted_complete_property, expected_complete_property)
         assert np.array_equal(extracted_incomplete_property, expected_incomplete_property)
 
+    def test_missing_ragged_values(self):
+        """Channels added without a ragged property get an empty row for it.
+
+        Reading a sample value to work out a null does not work for a ragged column, whose rows
+        have no shape in common, so the empty row is used directly.
+        """
+        recording1 = generate_recording(num_channels=2, durations=[1.0])
+        recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
+        recording1.set_property(key="ragged_property", values=np.ones(shape=(2, 3)))
+        _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
+
+        recording2 = generate_recording(num_channels=2, durations=[1.0])
+        recording2 = recording2.rename_channels(new_channel_ids=["c", "d"])
+        _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
+
+        ragged_property = self.nwbfile.electrodes["ragged_property"]
+        assert list(ragged_property[0]) == [1.0, 1.0, 1.0]
+        assert list(ragged_property[2]) == []
+        assert list(ragged_property[3]) == []
+
     def test_missing_bool_values(self):
         recording1 = generate_recording(num_channels=2)
         recording1 = recording1.rename_channels(new_channel_ids=["a", "b"])
@@ -1035,7 +1070,10 @@ class TestAddElectrodes(TestCase):
         contact_ids = ["e0", "e1", "e2", "e3"]
         probe.set_contact_ids(contact_ids)
 
-        recording = recording.set_probe(probe, group_mode="by_probe")
+        # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where the call
+        # is always in place, returns None and the argument is deprecated. It is required on 0.104,
+        # which otherwise returns a new recording and leaves this one unchanged.
+        recording.set_probe(probe, group_mode="by_probe", in_place=True)
 
         # Add electrodes to nwbfile
         _add_electrodes_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
@@ -1070,7 +1108,8 @@ class TestAddElectrodes(TestCase):
         # Scenario 1: Add first recording with channel names ch0, ch1, ch2
         recording1 = generate_recording(num_channels=3)
         recording1 = recording1.rename_channels(new_channel_ids=["ch0", "ch1", "ch2"])
-        recording1 = recording1.set_probe(probe, group_mode="by_probe")
+        # `in_place=True` for the same reason as in test_electrode_name_column_added_with_probe above.
+        recording1.set_probe(probe, group_mode="by_probe", in_place=True)
 
         _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
 
@@ -1093,7 +1132,7 @@ class TestAddElectrodes(TestCase):
         # This creates new rows to store channel-specific properties
         recording2 = generate_recording(num_channels=3)
         recording2 = recording2.rename_channels(new_channel_ids=["AP0", "AP1", "AP2"])
-        recording2 = recording2.set_probe(probe, group_mode="by_probe")
+        recording2.set_probe(probe, group_mode="by_probe", in_place=True)
 
         _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
 
@@ -1115,7 +1154,7 @@ class TestAddElectrodes(TestCase):
 
         recording3 = generate_recording(num_channels=2)
         recording3 = recording3.rename_channels(new_channel_ids=["probe2_ch0", "probe2_ch1"])
-        recording3 = recording3.set_probe(probe2, group_mode="by_probe")
+        recording3.set_probe(probe2, group_mode="by_probe", in_place=True)
         # Manually set different group name to represent a second probe
         recording3.set_property(key="group_name", values=["ProbeB", "ProbeB"])
 
@@ -1155,6 +1194,18 @@ class TestAddTimeSeries:
         extracted_data = time_series.data[:]
         expected_data = recording.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+    def test_shifted_recording_uses_starting_time(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.shift_times(2.0)
+
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        time_series = nwbfile.acquisition["TimeSeries"]
+        assert time_series.starting_time == 2.0
+        assert time_series.rate == 1.0
 
     def test_metadata_key(self):
         """Test that metadata_key is used to look up metadata."""
@@ -1367,16 +1418,21 @@ class TestAddTimeSeries:
         recording.set_property("offset_to_physical_unit", offsets)
 
         # Create metadata with a different unit
-        metadata = {"TimeSeries": {"TimeSeries": {"unit": "custom_unit"}}}
+        metadata = {"TimeSeries": {"my_time_series": {"unit": "custom_unit"}}}
 
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
 
         add_recording_as_time_series_to_nwbfile(
-            recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_time_series",
+            iterator_type=None,
         )
 
-        # Verify the time series has the unit from metadata
+        # Verify the time series has the unit from metadata. The key addressed the entry; the name
+        # still comes from the default, which is what keeps the two independent.
         time_series = nwbfile.acquisition["TimeSeries"]
         assert time_series.unit == "custom_unit"
 
@@ -1400,13 +1456,17 @@ class TestAddTimeSeries:
         recording.set_property("offset_to_physical_unit", offsets)
 
         # Create metadata with custom unit, conversion, and offset
-        metadata = {"TimeSeries": {"TimeSeries": {"unit": "custom_unit", "conversion": 3.0, "offset": 1.5}}}
+        metadata = {"TimeSeries": {"my_time_series": {"unit": "custom_unit", "conversion": 3.0, "offset": 1.5}}}
 
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
 
         add_recording_as_time_series_to_nwbfile(
-            recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_time_series",
+            iterator_type=None,
         )
 
         # Verify the time series has the values from metadata
@@ -1414,6 +1474,68 @@ class TestAddTimeSeries:
         assert time_series.unit == "custom_unit"
         assert time_series.conversion == 3.0
         assert time_series.offset == 1.5
+
+
+class TestAddTimeSeriesMetadataKeyResolution:
+    """``metadata_key`` addresses an entry, so it is required exactly when there is one to address."""
+
+    @staticmethod
+    def _recording():
+        return generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+
+    def test_no_metadata_needs_no_key(self):
+        """The bare call stays legal: nothing is addressed, so the series is built from the recording."""
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_time_series_to_nwbfile(recording=self._recording(), nwbfile=nwbfile, iterator_type=None)
+
+        assert "TimeSeries" in nwbfile.acquisition
+
+    def test_metadata_without_a_time_series_block_needs_no_key(self):
+        """A converter passes the whole metadata dict; only a TimeSeries block makes a key meaningful."""
+        nwbfile = mock_NWBFile()
+        metadata = {"NWBFile": {"session_description": "no TimeSeries block here"}}
+
+        add_recording_as_time_series_to_nwbfile(
+            recording=self._recording(), nwbfile=nwbfile, metadata=metadata, iterator_type=None
+        )
+
+        assert "TimeSeries" in nwbfile.acquisition
+
+    def test_deep_dict_without_a_time_series_block_does_not_raise(self):
+        """``get_metadata`` returns a DeepDict, whose ``[]`` would vivify the block the guard tests for."""
+        nwbfile = mock_NWBFile()
+        metadata = DeepDict()
+        metadata["NWBFile"]["session_description"] = "no TimeSeries block here"
+
+        add_recording_as_time_series_to_nwbfile(
+            recording=self._recording(), nwbfile=nwbfile, metadata=metadata, iterator_type=None
+        )
+
+        assert "TimeSeries" in nwbfile.acquisition
+
+    def test_time_series_block_without_a_key_raises(self):
+        nwbfile = mock_NWBFile()
+        metadata = {"TimeSeries": {"my_time_series": {"unit": "custom_unit"}}}
+
+        with pytest.raises(ValueError, match="no `metadata_key` was provided"):
+            add_recording_as_time_series_to_nwbfile(
+                recording=self._recording(), nwbfile=nwbfile, metadata=metadata, iterator_type=None
+            )
+
+    def test_key_absent_from_the_block_raises(self):
+        """A stale key must fail loudly rather than write defaults over the caller's edits."""
+        nwbfile = mock_NWBFile()
+        metadata = {"TimeSeries": {"my_time_series": {"unit": "custom_unit"}}}
+
+        with pytest.raises(ValueError, match="does not contain key 'stale_key'"):
+            add_recording_as_time_series_to_nwbfile(
+                recording=self._recording(),
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="stale_key",
+                iterator_type=None,
+            )
 
 
 class TestAddSpatialSeries:
@@ -2070,6 +2192,93 @@ class TestAddUnitsTable(TestCase):
         assert units_table["electrodes"][2]["channel_name"].item() == "C"
         assert units_table["electrodes"][3]["channel_name"].values.tolist() == ["A", "B", "C"]
 
+    def test_add_units_without_electrodes_to_a_table_that_has_them(self):
+        """Units with no electrode indices can be appended to a table that already has the column.
+
+        This happens with multiple probes when the electrodes of the second one cannot be matched
+        (e.g. its group names are not in the electrodes table); those units get an empty region.
+        """
+        recording = generate_recording(num_channels=4, durations=[1.0])
+        recording = recording.rename_channels(new_channel_ids=["A", "B", "C", "D"])
+        add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
+
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_1,
+            nwbfile=self.nwbfile,
+            unit_electrode_indices=[[0], [1], [2], [3]],
+        )
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        units_table = self.nwbfile.units
+        unit_names = list(units_table["unit_name"].data)
+        self.assertListEqual(unit_names, ["a", "b", "c", "d", "e", "f"])
+
+        # Reads the stored electrode indices without building a DataFrame; indexing directly also
+        # raises on an empty region in memory until https://github.com/hdmf-dev/hdmf/pull/1549 is released.
+        electrodes_of_units = units_table["electrodes"]
+        assert list(electrodes_of_units.get(0, index=True)) == [0]
+        assert list(electrodes_of_units.get(4, index=True)) == []
+        assert list(electrodes_of_units.get(5, index=True)) == []
+
+    def test_add_units_without_waveforms_to_a_table_that_has_them(self):
+        """Units with no waveforms can be appended to a table that already has the columns.
+
+        `waveform_mean` is not ragged, so its rows all share one shape and the null for a unit
+        without waveforms has to be an array of that same shape rather than a scalar.
+        """
+        num_samples, num_channels = 10, 4
+        waveform_means = np.ones(shape=(self.num_units, num_samples, num_channels))
+
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_1,
+            nwbfile=self.nwbfile,
+            waveform_data_dict=dict(means=waveform_means, sds=waveform_means, sampling_rate=30_000.0),
+        )
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        units_table = self.nwbfile.units
+        for column in ["waveform_mean", "waveform_sd"]:
+            assert units_table[column][0].shape == (num_samples, num_channels)
+            assert units_table[column][4].shape == (num_samples, num_channels)
+            assert np.isnan(units_table[column][4]).all()
+
+    def test_add_units_with_waveforms_to_a_table_without_them(self):
+        """Waveforms added on a later call are extended over the units already in the table.
+
+        This is the mirror of the case above: the column does not exist yet, so it is created for
+        the whole table and the units written earlier are the ones needing a null.
+        """
+        num_samples, num_channels = 10, 4
+        waveform_means = np.ones(shape=(self.num_units, num_samples, num_channels))
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_2,
+            nwbfile=self.nwbfile,
+            waveform_data_dict=dict(means=waveform_means, sds=waveform_means, sampling_rate=30_000.0),
+        )
+
+        units_table = self.nwbfile.units
+        assert units_table["waveform_mean"][:].shape == (6, num_samples, num_channels)
+        assert np.isnan(units_table["waveform_mean"][0]).all()
+        assert (units_table["waveform_mean"][4] == 1.0).all()
+
+    def test_add_units_without_a_ragged_property_to_a_table_that_has_it(self):
+        """A ragged property missing from a later call gets an empty row, not a null value.
+
+        There is no shape to match for a ragged column, and an empty row is what the column
+        extending path already writes for units that lack the property.
+        """
+        self.sorting_1.set_property(key="ragged_property", values=np.ones(shape=(self.num_units, 2)))
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        units_table = self.nwbfile.units
+        assert list(units_table["ragged_property"][0]) == [1.0, 1.0]
+        assert list(units_table["ragged_property"][4]) == []
+        assert list(units_table["ragged_property"][5]) == []
+
 
 class TestWaveformParametersAdditionToUnitsTable:
     """Tests for waveform_data_dict parameter and related metadata propagation."""
@@ -2145,6 +2354,15 @@ class TestWriteSortingAnalyzer(TestCase):
         multi_segment_rec.annotate(is_filtered=True)
         single_segment_sort.delete_property("gt_unit_locations")
         multi_segment_sort.delete_property("gt_unit_locations")
+        # SpikeInterface 0.105 gives generated sortings a "main_channel_id" property holding channel *ids*.
+        # The recording is channel-sliced further down (to mimic bad channel removal) and reused with this
+        # same sorting, at which point those ids no longer exist and `create_sorting_analyzer` refuses the
+        # pair. This class tests NWB writing, not main channel estimation, so drop the property up front and
+        # let every analyzer here estimate from its own recording, as it already does on 0.104.
+        # TODO: drop the guard once spikeinterface>=0.105.0 is the minimum pin; 0.104 never sets the property.
+        for sorting in (single_segment_sort, multi_segment_sort):
+            if "main_channel_id" in sorting.get_property_keys():
+                sorting.delete_property("main_channel_id")
 
         cls.single_segment_analyzer = create_sorting_analyzer(single_segment_sort, single_segment_rec, sparse=False)
         cls.single_segment_analyzer_sparse = create_sorting_analyzer(
@@ -2435,9 +2653,6 @@ class TestWriteSortingAnalyzer(TestCase):
 def test_stub_recording_with_t_start():
     """Test that the _stub recording functionality does not fail when it has a start time. See issue #1355"""
     recording = generate_recording(durations=[1.0])
-    # TODO Remove the following line once Spikeinterface 0.102.4 or higher is released
-    # See https://github.com/SpikeInterface/spikeinterface/pull/3940
-    recording._recording_segments[0].t_start = 0.0
     recording.shift_times(2.0)
 
     _stub_recording(recording=recording)
@@ -2475,6 +2690,65 @@ class TestAddRecording:
         # per-``write_as`` defaults, not the placeholder factory.
         assert "ElectricalSeriesRaw" in nwbfile.acquisition
         assert len(nwbfile.electrodes) == recording.get_num_channels()
+
+    def test_physical_units_writes_single_series_with_heterogeneous_offset(self):
+        """`data_representation='physical_units'` folds each channel's gain and offset into float
+        data, so channels with heterogeneous offsets fit in one ElectricalSeries."""
+        recording = generate_recording(num_channels=5, durations=[0.1])
+        recording = recording.rename_channels(new_channel_ids=["a", "b", "c", "d", "e"])
+        recording.set_channel_gains(gains=[1.0, 1.0, 2.0, 2.0, 3.0])
+        recording.set_channel_offsets(offsets=[0.0, 0.0, 1.0, 1.0, 2.0])  # heterogeneous offsets
+
+        nwbfile = mock_NWBFile()
+        add_recording_to_nwbfile(
+            recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
+        )
+
+        electrical_series = nwbfile.acquisition["ElectricalSeriesRaw"]
+        # The heterogeneous offsets are folded into the data: one series, scalar offset 0, only the
+        # microvolt-to-volt conversion, and no per-channel channel_conversion.
+        assert electrical_series.offset == 0.0
+        assert electrical_series.conversion == 1e-6
+        assert electrical_series.channel_conversion is None
+
+        stored_data = electrical_series.data[:]
+        assert np.issubdtype(stored_data.dtype, np.floating)
+        assert stored_data.shape[1] == 5  # all five channels in a single series
+        expected_microvolts = recording.get_traces(segment_index=0, return_in_uV=True)
+        np.testing.assert_array_almost_equal(stored_data, expected_microvolts)
+
+    def test_physical_units_error_points_to_option_on_heterogeneous_offset(self):
+        """The default (`digital_counts`) still rejects heterogeneous offsets, and the error points
+        the user at the `physical_units` option."""
+        recording = generate_recording(num_channels=5, durations=[0.1])
+        recording.set_channel_gains(gains=[1, 1, 1, 1, 1])
+        recording.set_channel_offsets(offsets=[0, 0, 1, 1, 2])  # heterogeneous offsets
+
+        nwbfile = mock_NWBFile()
+        expected_error_msg = (
+            "A single ElectricalSeries can store only one scalar offset. To write these channels as one "
+            "series anyway, pass data_representation='physical_units' to add_recording_to_nwbfile (this "
+            "folds each channel's offset into the data and writes float physical values). Alternatively, "
+            "drop the channels that do not share the common offset with "
+            "recording.remove_channels(remove_channel_ids=[...]) and write them as their own series."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+    def test_physical_units_requires_scaleable_traces(self):
+        """`physical_units` needs gains and offsets on the recording; without them it errors clearly."""
+        traces = np.ones(shape=(10, 3), dtype="float32")
+        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)  # no gains/offsets
+
+        nwbfile = mock_NWBFile()
+        expected_error_msg = (
+            "data_representation='physical_units' requires the recording to have gains and offsets "
+            "to convert the samples to microvolts, but this recording has none."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            add_recording_to_nwbfile(
+                recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
+            )
 
     def test_full_metadata_specification(self):
         """User-supplied fields land on every created object and the cross-links resolve.
@@ -2643,8 +2917,10 @@ class TestAddRecording:
         electrodes_df = nwbfile.electrodes.to_dataframe()
         assert all(row_group is group for row_group in electrodes_df["group"])
 
-    def test_missing_required_electrode_group_field_raises(self):
-        """When an electrode group entry is missing schema-required fields, a clear error is raised."""
+    def test_missing_electrode_group_fields_are_defaulted(self):
+        """An electrode group entry that omits description/location is not rejected; the write path fills
+        those required NWB fields from the default template instead of raising, so an interface can
+        provide just a name and a device link."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
         nwbfile = mock_NWBFile()
 
@@ -2655,7 +2931,7 @@ class TestAddRecording:
                 "ElectrodeGroups": {
                     channel_groups[0]: {
                         "name": channel_groups[0],
-                        # description and location intentionally omitted
+                        # description and location intentionally omitted -> defaulted at write time
                         "device_metadata_key": "d",
                     },
                 },
@@ -2665,21 +2941,18 @@ class TestAddRecording:
             },
         }
 
-        expected_error = re.escape(
-            "Electrode group metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. "
-            "If missing, a placeholder can be used instead:\n"
-            "  description: 'no description'\n"
-            "  location: 'unknown'"
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
         )
-        with pytest.raises(ValueError, match=expected_error):
-            add_recording_to_nwbfile(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                metadata_key="series",
-                iterator_type=None,
-            )
+
+        group = nwbfile.electrode_groups[channel_groups[0]]
+        assert group.description == "no description"
+        assert group.location == "unknown"
+        assert group.device.name == "Device"
 
     def test_missing_metadata_key_raises(self):
         """An unknown metadata_key raises with the available keys listed."""

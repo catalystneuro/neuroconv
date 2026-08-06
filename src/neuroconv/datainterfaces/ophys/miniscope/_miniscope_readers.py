@@ -44,6 +44,30 @@ def _raise_if_miniscope_v3_format(folder_path: str) -> None:
         )
 
 
+def _raise_if_legacy_user_config_device_list(user_config: dict) -> None:
+    """Raise a ``NotImplementedError`` if a User Config declares its devices in the legacy list form.
+
+    The DAQ's own schema (``deviceConfigs/userConfigSchema.json`` in Miniscope-DAQ-QT-Software) allows
+    ``devices[miniscopes]`` and ``devices[cameras]`` in two shapes: the current one, an object keyed by
+    device name, and a legacy one, an array of devices each carrying its own ``deviceName``. neuroconv
+    reads the current form, and no file in the legacy form has ever reached us, so rather than write
+    discovery we cannot test against a real config, we say so and ask for one.
+    """
+    devices = user_config.get("devices", {})
+    legacy_device_kinds = [kind for kind in ("miniscopes", "cameras") if isinstance(devices.get(kind), list)]
+    if legacy_device_kinds:
+        raise NotImplementedError(
+            f"This User Config declares {' and '.join(f'devices[{kind}]' for kind in legacy_device_kinds)} "
+            "as a list of devices, which is the legacy form of the Miniscope DAQ config schema. "
+            "neuroconv supports the current form, an object keyed by device name, e.g. "
+            '\'"miniscopes": {"HPC_miniscope1": {...}}\' rather than '
+            '\'"miniscopes": [{"deviceName": "HPC_miniscope1", ...}]\'. '
+            "We have no recording in the legacy form to test against, so please open an issue at "
+            "https://github.com/catalystneuro/neuroconv/issues and attach this config file so we can "
+            "add support for it with proper test coverage."
+        )
+
+
 def _read_miniscope_config(folder_path: str) -> dict:
     """Read a Miniscope V4 ``metaData.json`` into a device metadata dict.
 
@@ -59,6 +83,70 @@ def _read_miniscope_config(folder_path: str) -> dict:
     miniscope_config.pop("deviceDirectory", None)
     miniscope_config.pop("deviceID", None)
     return miniscope_config
+
+
+def _config_to_miniscope_device_metadata(miniscope_config: dict) -> dict:
+    """Map a V4 device configuration onto a ``metadata["Devices"]`` entry of type ``Miniscope``.
+
+    ``miniscope_config`` is a config as returned by :func:`_read_miniscope_config` (a device folder's
+    ``metaData.json``) or an entry of ``devices[miniscopes]`` in the User Config, plus a ``name``.
+
+    Only the fields the ndx-miniscope schema declares can be set on the device. A setting the DAQ
+    recorded that the schema has no field for (``ewl``, the electrowetting lens position, is the one
+    every V4 file carries) is named in the description rather than dropped without trace.
+    """
+    # Fields of the ndx-miniscope ``Miniscope`` type, grouped by the dtype its schema declares. The DAQ
+    # writes several of them with a different type than the schema asks for (``gain: 3.5``, ``gain: 16``,
+    # ``frameRate: 50`` are all real values), so each is coerced here instead of being passed through.
+    text_fields = ("compression", "deviceType", "frameRate", "gain")
+    integer_fields = ("excitation", "framesPerFile", "led0", "msCamExposure")
+    # Identifiers rather than acquisition settings; they say nothing about the device itself.
+    # ``deviceName`` is the device's own name, which the caller passes as ``name``.
+    ignored_fields = ("deviceDirectory", "deviceID", "deviceName")
+
+    device_metadata = {"type": "Miniscope", "name": miniscope_config["name"]}
+
+    for field in text_fields:
+        if field in miniscope_config:
+            device_metadata[field] = str(miniscope_config[field])
+    for field in integer_fields:
+        if field in miniscope_config:
+            device_metadata[field] = int(miniscope_config[field])
+
+    mapped_fields = {"name", "ROI", *text_fields, *integer_fields, *ignored_fields}
+    unmapped_settings = {key: value for key, value in miniscope_config.items() if key not in mapped_fields}
+
+    region_of_interest = miniscope_config.get("ROI")
+    if region_of_interest is not None:
+        # The schema types ROI as the (height, width) of the saved frame, so where that frame sits on
+        # the sensor ('leftEdge', 'topEdge') has no field of its own either.
+        device_metadata["ROI"] = [region_of_interest["height"], region_of_interest["width"]]
+        offsets = {f"ROI.{key}": value for key, value in region_of_interest.items() if key not in ("height", "width")}
+        unmapped_settings.update(offsets)
+
+    if unmapped_settings:
+        settings = ", ".join(f"{key}: {value}" for key, value in sorted(unmapped_settings.items()))
+        device_metadata["description"] = (
+            "Settings recorded by the Miniscope DAQ software that the ndx-miniscope schema "
+            f"has no field for: {settings}."
+        )
+
+    return device_metadata
+
+
+def _config_to_miniscope_device_model_metadata(miniscope_config: dict) -> dict | None:
+    """Map a V4 device configuration onto a ``metadata["DeviceModels"]`` entry, or ``None``.
+
+    ``deviceType`` is the hardware design the DAQ was configured for (``Miniscope_V4_BNO``), which is a
+    model rather than a property of the individual scope, so it is written as the ``DeviceModel`` that
+    pynwb 4 asks for. The manufacturer NWB requires of a model is not something the DAQ records, and is
+    filled where the model is built.
+    """
+    device_type = miniscope_config.get("deviceType")
+    if device_type is None:
+        return None
+
+    return {"name": str(device_type)}
 
 
 def _get_recording_start_times(folder_path: str) -> list[datetime]:
@@ -105,6 +193,19 @@ def _get_fused_timestamps(folder_path: str, file_pattern: str) -> np.ndarray:
         timestamps.extend(timestamps_per_file)
 
     return np.array(timestamps)
+
+
+def _get_device_folder_timestamps(folder_path: str) -> np.ndarray:
+    """Read the ``timeStamps.csv`` of a single V4 device folder as seconds.
+
+    The values are passed through as the DAQ recorded them, offsets from the recording start marker.
+    The first frame is usually negative, because the camera free-runs and the frame in flight when
+    the marker lands was exposed before it. That is what the format says, so it is what is written.
+    """
+    timestamps_file_path = Path(folder_path) / "timeStamps.csv"
+    assert timestamps_file_path.is_file(), f"The timestamps file is missing from '{folder_path}'."
+
+    return pd.read_csv(timestamps_file_path)["Time Stamp (ms)"].to_numpy(dtype=float) / 1000.0
 
 
 def _get_starting_frames(folder_path: str, video_file_pattern: str) -> list[int]:

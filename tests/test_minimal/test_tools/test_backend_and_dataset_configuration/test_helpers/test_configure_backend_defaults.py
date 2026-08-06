@@ -7,8 +7,10 @@ import numcodecs
 import numpy as np
 import pytest
 from hdmf.common import DynamicTable, VectorData
-from hdmf.data_utils import DataChunkIterator
+from hdmf.data_utils import DataChunkIterator, DataIO
 from numpy.testing import assert_array_equal
+from pynwb.base import Images
+from pynwb.image import GrayscaleImage
 from pynwb.ophys import PlaneSegmentation
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
@@ -117,6 +119,56 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
             assert written_data.compressor == numcodecs.GZip(level=1)
 
         assert_array_equal(integer_array, written_data[:])
+
+
+def test_pynwb_data_io_is_shadowed_on_nwbdata():
+    """Expiry canary for the `_NWBData__data` re-sync in `configure_backend`.
+
+    `NWBData` shadows the `_Data__data` attribute that `Data.set_data_io` writes to, so the DataIO never
+    reaches `.data`. The fix is https://github.com/NeurodataWithoutBorders/pynwb/pull/2233; when this
+    assertion starts failing that has shipped and the workaround can go.
+    """
+    from hdmf.backends.hdf5.h5_utils import H5DataIO
+
+    image = GrayscaleImage(name="TestImage", data=np.zeros(shape=(4, 4), dtype="uint8"))
+    image.set_data_io(data_io_class=H5DataIO, data_io_kwargs=dict(compression="gzip"))
+
+    assert not isinstance(image.data, DataIO)
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_simple_image(tmpdir: Path, backend: Literal["hdf5", "zarr"]):
+    array = np.zeros(shape=(64, 64), dtype="uint8")
+
+    nwbfile = mock_NWBFile()
+    image = GrayscaleImage(name="TestImage", data=array)
+    nwbfile.add_acquisition(Images(name="TestImages", images=[image]))
+
+    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+    dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestImages/TestImage/data"]
+    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+    # `Image.data` reads a different name-mangled attribute than the one `set_data_io` writes to, so without the
+    # re-sync in `configure_backend` the wrapping below would be silently dropped and nothing would compress.
+    assert isinstance(image.data, DataIO)
+
+    nwbfile_path = str(tmpdir / "test_configure_defaults_image.nwb")
+    NWB_IO = BACKEND_NWB_IO[backend]
+    with NWB_IO(path=nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    with NWB_IO(path=nwbfile_path, mode="r") as io:
+        written_nwbfile = io.read()
+        written_data = written_nwbfile.acquisition["TestImages"].images["TestImage"].data
+
+        assert written_data.chunks == dataset_configuration.chunk_shape
+
+        if backend == "hdf5":
+            assert written_data.compression == "gzip"
+        elif backend == "zarr":
+            assert written_data.compressor == numcodecs.GZip(level=1)
+
+        assert_array_equal(array, written_data[:])
 
 
 @pytest.mark.parametrize(

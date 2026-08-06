@@ -109,3 +109,17 @@ class TestEDFAnalogInterface:
             assert len(time_series.data.shape) == 2  # [time, channels]
             assert time_series.data.shape[1] == len(interface.channel_ids)
             assert time_series.data.shape[0] > 0  # Should have time points
+
+
+def test_metadata_key_does_not_rename_series():
+    """The key addresses the entry; the TimeSeries name lives inside it and is unaffected."""
+    file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
+
+    default_interface = EDFAnalogInterface(file_path=file_path, channels_to_include=["TRIG"])
+    assert default_interface.metadata_key == "edf_analog"
+    assert default_interface.get_metadata()["TimeSeries"]["edf_analog"]["name"] == "TimeSeriesAnalogEDF"
+
+    custom_interface = EDFAnalogInterface(file_path=file_path, channels_to_include=["TRIG"], metadata_key="my_analog")
+    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
+    assert set(time_series_metadata) == {"my_analog"}
+    assert time_series_metadata["my_analog"]["name"] == "TimeSeriesAnalogEDF"

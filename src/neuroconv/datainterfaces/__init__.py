@@ -38,6 +38,7 @@ from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.intan.intananaloginterface import IntanAnalogInterface
+from .ecephys.intan.intandigitalinterface import IntanDigitalInterface
 from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
@@ -83,9 +84,11 @@ from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
 from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
+from .icephys.brukervoltagerecording.brukervoltagerecordinginterface import BrukerVoltageRecordingInterface
 
 # Ophys
 from .ophys.brukertiff.brukertiffdatainterface import (
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
 )
@@ -113,6 +116,9 @@ from .fiber_photometry.csv.multifilecsvfiberphotometrydatainterface import (
     MultiFileCSVFiberPhotometryInterface,
 )
 from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
+from .fiber_photometry.npm.npmfiberphotometrydatainterface import (
+    NPMFiberPhotometryInterface,
+)
 from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
@@ -145,6 +151,7 @@ interface_list = [
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
     IntanAnalogInterface,
+    IntanDigitalInterface,
     IntanStimInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
@@ -181,6 +188,7 @@ interface_list = [
     # Icephys
     AbfInterface,
     AxonIntracellularInterface,
+    BrukerVoltageRecordingInterface,
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
@@ -195,6 +203,7 @@ interface_list = [
     InscopixImagingInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
@@ -203,6 +212,7 @@ interface_list = [
     MultiFileCSVFiberPhotometryInterface,
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
+    NPMFiberPhotometryInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
@@ -256,6 +266,7 @@ interfaces_by_category = dict(
     fiber_photometry={
         "DoricFiberPhotometry": DoricFiberPhotometryInterface,
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+        "NPMFiberPhotometry": NPMFiberPhotometryInterface,
         "CSVFiberPhotometry": CSVFiberPhotometryInterface,
         "MultiFileCSVFiberPhotometry": MultiFileCSVFiberPhotometryInterface,
     },
@@ -264,9 +275,14 @@ interfaces_by_category = dict(
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
+        IntanDigital=IntanDigitalInterface,
         IntanStim=IntanStimInterface,
     ),
-    icephys=dict(Abf=AbfInterface, AxonIntracellular=AxonIntracellularInterface),
+    icephys=dict(
+        Abf=AbfInterface,
+        AxonIntracellular=AxonIntracellularInterface,
+        BrukerVoltageRecording=BrukerVoltageRecordingInterface,
+    ),
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,

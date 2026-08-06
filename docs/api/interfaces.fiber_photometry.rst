@@ -20,3 +20,11 @@ CSV Fiber Photometry
 Multi-File CSV Fiber Photometry
 -------------------------------
 .. automodule:: neuroconv.datainterfaces.fiber_photometry.csv.multifilecsvfiberphotometrydatainterface
+
+NPM Fiber Photometry
+--------------------
+.. autoclass:: neuroconv.datainterfaces.fiber_photometry.npm.npmfiberphotometrydatainterface.NPMFiberPhotometryInterface
+
+GuPPy Fiber Photometry
+----------------------
+.. autoclass:: neuroconv.datainterfaces.fiber_photometry.guppy.guppyconverter.GuppyConverter
