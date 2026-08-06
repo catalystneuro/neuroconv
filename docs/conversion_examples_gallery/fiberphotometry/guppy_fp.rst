@@ -23,8 +23,8 @@ traces and events into one folder, so in practice the first two are usually the 
 ``"npm"``, matching the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`, :doc:`Doric <doric_fp>`, and
 :doc:`NPM <npm_fp>` interfaces.
 
-If your session is **already in NWB** — GuPPy reads NWB as an input format — you do not need the
-converter at all. See :ref:`guppy_existing_nwbfile` below.
+GuPPy also reads NWB as an input format. If your session is **already in NWB**, see
+:ref:`guppy_existing_nwbfile` below.
 
 .. code-block:: python
 
@@ -165,17 +165,12 @@ same origin the raw streams use. A CSV session carries no absolute clock origin,
 Adding GuPPy outputs to an existing NWB file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When GuPPy processed a session out of an NWB file, the acquisition is already converted — there is
-nothing for a converter to read in. Use
+When GuPPy processed a session out of an NWB file, use
 :py:class:`~neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface.GuppyInterface`
-directly: hand it the file and it adds GuPPy's outputs to it.
+directly rather than the converter: hand it the file and it adds GuPPy's outputs to it.
 
-GuPPy derives its ``storesList.csv`` ids from that file's own contents, so the ids address it back:
-``<series_name>_<column_index>`` names a column of a ``FiberPhotometryResponseSeries``, and
-``<table_name>_<value>`` names the rows of an :py:class:`~pynwb.event.EventsTable` carrying that
-value. The interface uses them to point the two GuPPy registries at the tables already in the file —
-each recording site at the ``FiberPhotometryTable`` rows its fibers occupy, each event at its
-occurrence rows. Nothing is copied, and everything else the file holds is untouched.
+The two GuPPy registries are linked into the tables the file already holds — each recording site to
+the ``FiberPhotometryTable`` rows its fibers occupy, each event to its occurrence rows.
 
 .. code-block:: python
 
@@ -193,11 +188,7 @@ occurrence rows. Nothing is copied, and everything else the file holds is untouc
 Writing to a *new* path exports the source with the GuPPy outputs added; the original file is left
 alone.
 
-If GuPPy read some events from outside the file — its custom event CSVs, for instance — those stores
-resolve to nothing, so the events registry is written without links and a warning names them. The
-recording-sites registry is resolved independently and keeps its links. To get a fully linked file in
-that case, convert from the raw acquisition with ``GuppyConverter`` instead, which merges every event
-source into one table.
-
-The same interface run against an NWB file that holds no fiber photometry at all writes the minimal
-link-free registries, which is what a standalone GuPPy conversion produces.
+If GuPPy read some events from outside the file — its custom event CSVs, for instance — the events
+registry is written without links to their occurrences, and a warning names them. The recording sites
+are unaffected. To get a fully linked file, convert from the raw acquisition with ``GuppyConverter``,
+which merges every event source into one table.
