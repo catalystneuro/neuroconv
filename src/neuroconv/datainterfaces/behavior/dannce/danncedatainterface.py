@@ -9,6 +9,7 @@ from pynwb.image import ImageSeries
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
+from ....tools.nwb_helpers import _add_device_model_to_nwbfile
 from ....utils import DeepDict, calculate_regular_series_rate, get_base_schema
 
 
@@ -236,11 +237,11 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         from packaging import version as version_parse
 
         ndx_pose_version = version("ndx-pose")
-        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.3.0"):
+        if version_parse.parse(ndx_pose_version) < version_parse.parse("0.4.0"):
             raise ImportError(
-                "DANNCE interface requires ndx-pose version 0.3.0 or later. "
-                f"Found version {ndx_pose_version}. Please upgrade: "
-                "pip install 'ndx-pose>=0.3.0'"
+                "DANNCE interface requires ndx-pose version 0.4.0 or later (for CalibratedCamera and "
+                f"MultiCameraPoseEstimation). Found version {ndx_pose_version}. Please upgrade: "
+                "pip install 'ndx-pose>=0.4.0'"
             )
 
         file_path = Path(file_path)
@@ -563,11 +564,27 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             device_name = device_metadata["name"]
 
             if device_name not in nwbfile.devices:
+                # A shared DeviceModel (make/model, e.g. "Basler acA1920-160uc") is resolved and
+                # created on demand -- idempotent on name, so multiple cameras of the same hardware
+                # model (the common case for a multi-camera rig) reuse one DeviceModel instead of
+                # each duplicating manufacturer/model text.
+                device_model_metadata_key = device_metadata.get("device_model_metadata_key")
+                device_model = (
+                    _add_device_model_to_nwbfile(
+                        nwbfile=nwbfile, metadata=default_metadata, metadata_key=device_model_metadata_key
+                    )
+                    if device_model_metadata_key is not None
+                    else None
+                )
+                serial_number = device_metadata.get("serial_number")
+
                 calibration = camera_calibrations.get(camera_name)
                 if calibration is not None:
                     camera = CalibratedCamera(
                         name=device_name,
                         description=device_metadata.get("description", "Camera used for pose estimation."),
+                        serial_number=serial_number,
+                        model=device_model,
                         intrinsic_matrix=calibration["intrinsic_matrix"],
                         rotation_matrix=calibration.get("rotation_matrix"),
                         translation_vector=calibration.get("translation_vector"),
@@ -578,6 +595,8 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                     camera = nwbfile.create_device(
                         name=device_name,
                         description=device_metadata.get("description", "Camera used for pose estimation."),
+                        serial_number=serial_number,
+                        model=device_model,
                     )
             else:
                 camera = nwbfile.devices[device_name]

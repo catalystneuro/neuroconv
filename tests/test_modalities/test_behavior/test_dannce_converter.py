@@ -34,6 +34,18 @@ def _write_frametimes(file_path, n_frames: int, fps: float = 40.0):
     np.save(str(file_path), np.stack([frame_numbers, seconds], axis=0))
 
 
+def _write_metadata_csv(file_path, *, camera_make: str, camera_model: str, serial_number: str, frame_rate: str):
+    """Write a campy-style headerless two-column 'metadata.csv' (a small subset of the real fields)."""
+    import csv
+
+    with open(file_path, "w", newline="") as csv_file:
+        writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+        writer.writerow(["cameraMake", camera_make])
+        writer.writerow(["cameraModel", camera_model])
+        writer.writerow(["cameraSerialNo", serial_number])
+        writer.writerow(["frameRate", frame_rate])
+
+
 @pytest.fixture
 def dannce_converter_dir(tmp_path):
     """Build a synthetic DANNCE + campy-style videos folder: one prediction .mat file and two
@@ -119,6 +131,92 @@ class TestDANNCEConverterDiscovery:
                 file_path=dannce_converter_dir["file_path"],
                 videos_folder_path=dannce_converter_dir["videos_folder_path"],
             )
+
+
+@pytest.fixture
+def dannce_converter_dir_with_camera_metadata(dannce_converter_dir):
+    """Same as ``dannce_converter_dir``, plus a campy-style 'metadata.csv' per camera. Both cameras
+    share the same make/model (the common case for a multi-camera rig) but have distinct serial
+    numbers, so a shared DeviceModel can be verified alongside per-camera serial numbers."""
+    serial_numbers = {"Camera1": "40054255", "Camera2": "40068500"}
+    for camera_name in dannce_converter_dir["camera_names"]:
+        camera_dir = dannce_converter_dir["videos_folder_path"] / camera_name
+        _write_metadata_csv(
+            camera_dir / "metadata.csv",
+            camera_make="basler",
+            camera_model="a2A1920-160ucBAS",
+            serial_number=serial_numbers[camera_name],
+            frame_rate="40",
+        )
+    dannce_converter_dir["serial_numbers"] = serial_numbers
+    return dannce_converter_dir
+
+
+class TestDANNCEConverterCameraCaptureMetadata:
+    def test_get_metadata(self, dannce_converter_dir_with_camera_metadata):
+        converter = DANNCEConverter(
+            file_path=dannce_converter_dir_with_camera_metadata["file_path"],
+            videos_folder_path=dannce_converter_dir_with_camera_metadata["videos_folder_path"],
+        )
+        metadata = converter.get_metadata()
+
+        assert len(metadata["DeviceModels"]) == 1
+        (device_model_metadata_key, device_model_metadata), = metadata["DeviceModels"].items()
+        assert device_model_metadata["name"] == "a2A1920-160ucBAS"
+        assert device_model_metadata["manufacturer"] == "Basler"
+
+        for camera_name, serial_number in dannce_converter_dir_with_camera_metadata["serial_numbers"].items():
+            device_metadata = metadata["Devices"][camera_name]
+            assert device_metadata["serial_number"] == serial_number
+            assert device_metadata["device_model_metadata_key"] == device_model_metadata_key
+
+            video_description = metadata["Behavior"]["ExternalVideos"][f"video_{camera_name}"]["description"]
+            assert "40 fps" in video_description
+
+    def test_no_metadata_csv_omits_capture_metadata(self, dannce_converter_dir):
+        # dannce_converter_dir (without the _with_camera_metadata fixture) has no metadata.csv files.
+        converter = DANNCEConverter(
+            file_path=dannce_converter_dir["file_path"],
+            videos_folder_path=dannce_converter_dir["videos_folder_path"],
+        )
+        metadata = converter.get_metadata()
+
+        assert "DeviceModels" not in metadata or len(metadata["DeviceModels"]) == 0
+        for camera_name in dannce_converter_dir["camera_names"]:
+            device_metadata = metadata["Devices"][camera_name]
+            assert "serial_number" not in device_metadata
+            assert "device_model_metadata_key" not in device_metadata
+
+    def test_run_conversion_roundtrip(self, tmp_path, dannce_converter_dir_with_camera_metadata):
+        converter = DANNCEConverter(
+            file_path=dannce_converter_dir_with_camera_metadata["file_path"],
+            videos_folder_path=dannce_converter_dir_with_camera_metadata["videos_folder_path"],
+            metadata_key="PoseEstimationDANNCE",
+        )
+        metadata = converter.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now(timezone.utc)
+        metadata["Subject"] = dict(subject_id="mouse1", species="Mus musculus", sex="U")
+
+        nwbfile_path = tmp_path / "test_dannce_converter_camera_metadata.nwb"
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata)
+
+        from pynwb import NWBHDF5IO
+
+        with NWBHDF5IO(path=str(nwbfile_path), mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+
+            assert len(nwbfile.device_models) == 1
+            (device_model,) = nwbfile.device_models.values()
+            assert device_model.name == "a2A1920-160ucBAS"
+            assert device_model.manufacturer == "Basler"
+
+            for camera_name, serial_number in dannce_converter_dir_with_camera_metadata["serial_numbers"].items():
+                camera = nwbfile.devices[camera_name]
+                assert camera.serial_number == serial_number
+                assert camera.model is device_model
+
+                video = nwbfile.acquisition[f"Video{camera_name}"]
+                assert "40 fps" in video.description
 
 
 class TestDANNCEConverterConversion:

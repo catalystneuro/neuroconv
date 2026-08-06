@@ -1,3 +1,4 @@
+import csv
 import re
 from copy import deepcopy
 from pathlib import Path
@@ -102,6 +103,17 @@ class DANNCEConverter(BaseDataInterface):
         return np.asarray(frametimes[1], dtype="float64")
 
     @staticmethod
+    def _load_camera_capture_metadata(metadata_csv_file_path: Path) -> dict[str, str]:
+        """Parse a campy/pCamPI-style per-camera ``metadata.csv`` file into a dict.
+
+        The file is a headerless two-column CSV (``"key","value"`` per row, e.g.
+        ``"cameraModel","a2A1920-160ucBAS"``) recording the capture software's acquisition settings
+        for that camera. All values come back as strings (the file has no type information).
+        """
+        with open(metadata_csv_file_path, newline="") as csv_file:
+            return {row[0]: row[1] for row in csv.reader(csv_file) if len(row) == 2}
+
+    @staticmethod
     def _split_timestamps_by_segment(
         timestamps: np.ndarray, video_paths: list[Path], camera_name: str
     ) -> list[np.ndarray]:
@@ -185,6 +197,7 @@ class DANNCEConverter(BaseDataInterface):
 
         camera_video_paths: dict[str, list[Path]] = {}
         camera_frametimes: dict[str, np.ndarray] = {}
+        self._camera_capture_metadata: dict[str, dict[str, str]] = {}
         for camera_name, camera_directory in camera_directories.items():
             camera_video_paths[camera_name] = self._discover_video_file_paths(camera_directory)
 
@@ -197,6 +210,15 @@ class DANNCEConverter(BaseDataInterface):
                     "estimation."
                 )
             camera_frametimes[camera_name] = self._load_frametimes(frametimes_file_path)
+
+            # Optional: a campy/pCamPI-style 'metadata.csv' recording the capture software's
+            # acquisition settings for this camera (model, serial number, nominal frame rate, ...).
+            # Not all DANNCE rigs write this file, so its absence is not an error.
+            metadata_csv_file_path = camera_directory / "metadata.csv"
+            if metadata_csv_file_path.exists():
+                self._camera_capture_metadata[camera_name] = self._load_camera_capture_metadata(
+                    metadata_csv_file_path
+                )
 
         self._dannce_interface = DANNCEInterface(
             file_path=file_path,
@@ -245,11 +267,39 @@ class DANNCEConverter(BaseDataInterface):
             # one Device (e.g. a calibrated one) instead of each creating their own -- see the matching
             # `create_camera_devices` call in `add_to_nwbfile`.
             video_metadata["Devices"].pop(f"{video_interface.metadata_key}_camera", None)
+
+            video_description = f"Source video recorded by camera '{camera_name}'."
+            nominal_frame_rate = self._camera_capture_metadata.get(camera_name, {}).get("frameRate")
+            if nominal_frame_rate:
+                video_description += f" Recorded at a nominal {nominal_frame_rate} fps."
+
             video_metadata["Behavior"]["ExternalVideos"][video_interface.metadata_key].update(
-                description=f"Source video recorded by camera '{camera_name}'.",
+                description=video_description,
                 device_metadata_key=camera_name,
             )
             metadata = dict_deep_update(metadata, video_metadata)
+
+        # Enrich each camera's Device entry with capture-software metadata (from that camera's
+        # 'metadata.csv', if present): serial number directly on the Device, and make/model via a
+        # shared DeviceModel (reused across cameras of the same hardware model instead of duplicating
+        # manufacturer/model text on every camera).
+        for camera_name, capture_metadata in self._camera_capture_metadata.items():
+            device_metadata = metadata["Devices"][camera_name]
+
+            serial_number = capture_metadata.get("cameraSerialNo")
+            if serial_number:
+                device_metadata["serial_number"] = serial_number
+
+            model_name = capture_metadata.get("cameraModel")
+            manufacturer = capture_metadata.get("cameraMake")
+            if model_name and manufacturer:
+                device_model_metadata_key = f"CameraModel_{model_name}"
+                metadata["DeviceModels"][device_model_metadata_key] = dict(
+                    name=model_name,
+                    manufacturer=manufacturer.title(),
+                )
+                device_metadata["device_model_metadata_key"] = device_model_metadata_key
+
         return metadata
 
     def get_conversion_options_schema(self) -> dict:
