@@ -114,6 +114,27 @@ class TestDANNCEConverter(TestCase):
             for pose_estimation_series in pe.pose_estimation_series.values():
                 assert pose_estimation_series.data.shape[0] == 100  # stub_test truncates DANNCE to 100 frames
 
+    def test_camera_capture_metadata_from_metadata_csv(self):
+        """Each camera's real 'metadata.csv' (campy-style) should enrich its Device with serial_number
+        and a shared DeviceModel (make/model), and its video description with the nominal frame rate."""
+        expected_serial_numbers = {"Camera1": "40054255", "Camera2": "40068500"}
+
+        metadata = self.converter.get_metadata()
+
+        device_model_metadata_key = "CameraModel_a2A1920-160ucBAS"
+        assert metadata["DeviceModels"][device_model_metadata_key] == dict(
+            name="a2A1920-160ucBAS",
+            manufacturer="Basler",
+        )
+
+        for camera_name, serial_number in expected_serial_numbers.items():
+            device_metadata = metadata["Devices"][camera_name]
+            assert device_metadata["serial_number"] == serial_number
+            assert device_metadata["device_model_metadata_key"] == device_model_metadata_key
+
+            video_description = metadata["Behavior"]["ExternalVideos"][f"video_{camera_name}"]["description"]
+            assert "50 fps" in video_description
+
     def test_dannce_timestamps_from_camera1_frametimes(self):
         """The DANNCE pose estimation timestamps must come from indexing Camera1's frametimes
         (its 'videos_folder_path' reference camera) by the prediction file's sampleID field."""
