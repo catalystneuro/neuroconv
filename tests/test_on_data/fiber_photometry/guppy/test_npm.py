@@ -228,7 +228,7 @@ class TestGuppyConverterNPMHeaderless(NPMConverterTestMixin):
     def test_falls_back_to_the_generic_interfaces(self, converter):
         """Neither NPM interface can read this session, so both sides use the CSV ones."""
         assert isinstance(converter.data_interface_objects["FiberPhotometry_signal"], CSVFiberPhotometryInterface)
-        assert isinstance(converter.data_interface_objects["Events_npm"], CSVEventsInterface)
+        assert isinstance(converter.data_interface_objects["Events"], CSVEventsInterface)
 
     def test_event0_is_translated_back_to_its_store_id(self, converter):
         """The CSV events interface keys its lone type by file stem, so the seam maps it to `event0`."""

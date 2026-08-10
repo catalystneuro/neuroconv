@@ -90,4 +90,4 @@ def build_tdt_events_interface(*, folder_path: DirectoryPath, verbose: bool) -> 
     TDTEventsInterface
         Reading every epoc in the tank.
     """
-    return TDTEventsInterface(folder_path=folder_path, metadata_key="guppy_tdt_events", verbose=verbose)
+    return TDTEventsInterface(folder_path=folder_path, verbose=verbose)

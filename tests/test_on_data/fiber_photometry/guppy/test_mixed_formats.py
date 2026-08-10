@@ -2,9 +2,9 @@
 
 GuPPy's custom-event import writes the events it imported back out as one-column ``timestamps`` CSVs,
 which then sit in the session folder beside whatever the rig recorded. Such a session's
-``storesList.csv`` lists stores from two sources at once, and ``events_formats`` is what lets the
-converter read both: each format is asked what it carries and every listed store is routed to the one
-that has it.
+``storesList.csv`` lists stores from two sources at once, and the converter reads both without being
+told to: the events folder is scanned for those CSVs, and a store with one of its own is read from it
+while everything else falls to the acquisition format.
 
 The fixture is that shape exactly -- the Photo_249 tank supplying the traces and its three epocs, plus
 one imported-event CSV -- assembled by symlinking the tank into a temporary folder so the custom CSV
@@ -42,7 +42,7 @@ IMPORTED_EVENT_ONSETS = [1.125, 1.5, 2.0, 2.625]
 NUM_MOCK_TRIALS = len(IMPORTED_EVENT_ONSETS)
 
 EXPECTED_ACQUISITION_INTERFACE_NAMES = {"FiberPhotometry_signal", "FiberPhotometry_control"}
-EXPECTED_EVENTS_INTERFACE_NAMES = {"Events_tdt", f"Events_csv_{IMPORTED_EVENT_STORE}"}
+EXPECTED_EVENTS_INTERFACE_NAMES = {"Events", f"Events_{IMPORTED_EVENT_STORE}"}
 
 
 class TestGuppyConverterMixedEvents:
@@ -94,7 +94,6 @@ class TestGuppyConverterMixedEvents:
             events_folder_path=session_folder,
             guppy_folder_path=guppy_output_folder,
             acquisition_format="tdt",
-            events_formats={"tdt", "csv"},
         )
 
     @pytest.fixture
@@ -165,25 +164,33 @@ class TestGuppyConverterMixedEvents:
             )
             assert len(events_table) > len(referenced_rows)
 
-    def test_an_undeclared_events_format_names_the_stores_it_left_behind(self, session_folder, guppy_output_folder):
-        """Defaulting to the acquisition format leaves the imported store with no source, which is an error."""
-        with pytest.raises(AssertionError, match=IMPORTED_EVENT_STORE):
-            GuppyConverter(
-                fiber_photometry_folder_path=session_folder,
-                events_folder_path=session_folder,
-                guppy_folder_path=guppy_output_folder,
-                acquisition_format="tdt",
-            )
-
-    def test_a_store_two_formats_both_carry_is_rejected(self, session_folder, guppy_output_folder):
+    def test_a_store_both_sides_carry_is_rejected(self, session_folder, guppy_output_folder):
         """A tank epoc that also has a CSV would be written twice, so the ambiguity is refused up front."""
         pandas.DataFrame({"timestamps": [1.0, 2.0]}).to_csv(session_folder / "PrtR.csv", index=False)
 
-        with pytest.raises(AssertionError, match="carried by more than one"):
+        with pytest.raises(AssertionError, match="PrtR"):
             GuppyConverter(
                 fiber_photometry_folder_path=session_folder,
                 events_folder_path=session_folder,
                 guppy_folder_path=guppy_output_folder,
                 acquisition_format="tdt",
-                events_formats={"tdt", "csv"},
             )
+
+    def test_a_session_whose_every_event_was_imported_reads_none_from_the_tank(self, session_folder, tmp_path):
+        """With nothing left for the acquisition format, only the imported stores' interfaces are built."""
+        guppy_output_folder = generate_mock_guppy_output_folder(
+            tmp_path / "imported_only_output",
+            event_store_to_name={IMPORTED_EVENT_STORE: IMPORTED_EVENT_NAME},
+            event_onsets={IMPORTED_EVENT_NAME: list(IMPORTED_EVENT_ONSETS)},
+        )
+        converter = GuppyConverter(
+            fiber_photometry_folder_path=session_folder,
+            events_folder_path=session_folder,
+            guppy_folder_path=guppy_output_folder,
+            acquisition_format="tdt",
+        )
+
+        assert converter._event_store_ownership == {"csv": [IMPORTED_EVENT_STORE]}
+        assert set(converter.data_interface_objects) == (
+            EXPECTED_ACQUISITION_INTERFACE_NAMES | {f"Events_{IMPORTED_EVENT_STORE}", "Guppy"}
+        )

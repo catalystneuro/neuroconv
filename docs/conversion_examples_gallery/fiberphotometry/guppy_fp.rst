@@ -21,23 +21,12 @@ traces and events into one folder, so in practice the first two are usually the 
 
 ``acquisition_format`` selects how the raw traces are read — ``"tdt"``, ``"csv"``, ``"doric"``, or
 ``"npm"``, matching the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`, :doc:`Doric <doric_fp>`, and
-:doc:`NPM <npm_fp>` interfaces. By default the events are read the same way.
-
-A session's events need not come from the acquisition system, though. GuPPy's custom-event import
-writes the events it imported back out as one-column ``timestamps`` CSVs, which then sit in the session
-folder beside whatever the rig recorded, so ``storesList.csv`` ends up listing stores from two sources
-at once. ``events_formats`` is the complete set of formats to read events from, and every store GuPPy
-listed is routed to whichever of them carries it:
-
-.. code-block:: python
-
-    converter = GuppyConverter(
-        fiber_photometry_folder_path=session_folder,
-        events_folder_path=session_folder,
-        guppy_folder_path=guppy_folder,
-        acquisition_format="tdt",
-        events_formats={"tdt", "csv"},  # epocs from the tank, imported events from their CSVs
-    )
+:doc:`NPM <npm_fp>` interfaces. The events are read the same way, except for the ones that did not come
+from the acquisition system: GuPPy's custom-event import writes the events it imported back out as
+one-column ``timestamps`` CSVs, which then sit in the session folder beside whatever the rig recorded.
+``events_folder_path`` is scanned for those files, so a session whose ``storesList.csv`` lists stores
+from two sources at once — the tank's epocs and an imported ``licks.csv``, say — needs nothing extra
+declared.
 
 .. code-block:: python
 

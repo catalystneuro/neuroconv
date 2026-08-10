@@ -23,7 +23,8 @@ def discover_event_store_ids(*, folder_path: DirectoryPath) -> set[str]:
 
     An event CSV is told from an acquisition CSV by its header alone -- the same distinction GuPPy
     draws -- so the folder is scanned rather than being asked for a store list. That is what lets a
-    session take its events from these files while its traces come from another format entirely.
+    session take its events from these files while its traces come from another format entirely: the
+    files GuPPy's custom-event import left behind are found without being declared.
 
     Parameters
     ----------
@@ -108,6 +109,6 @@ def build_csv_events_interface(
         file_path=folder_path / f"{store_id}.csv",
         timestamps_column="timestamps",
         event_type_column=None,
-        metadata_key=f"guppy_csv_events_{store_id}",
+        metadata_key=store_id,
         verbose=verbose,
     )
