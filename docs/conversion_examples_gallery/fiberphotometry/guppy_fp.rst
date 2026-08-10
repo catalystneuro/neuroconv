@@ -169,8 +169,8 @@ When GuPPy processed a session out of an NWB file, use
 :py:class:`~neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface.GuppyInterface`
 directly rather than the converter: hand it the file and it adds GuPPy's outputs to it.
 
-The two GuPPy registries are linked into the tables the file already holds — each recording site to
-the ``FiberPhotometryTable`` rows its fibers occupy, each event to its occurrence rows.
+Each recording site is linked to the rows its fibers occupy in the file's own
+``FiberPhotometryTable``.
 
 .. code-block:: python
 
@@ -188,13 +188,7 @@ the ``FiberPhotometryTable`` rows its fibers occupy, each event to its occurrenc
 Writing to a *new* path exports the source with the GuPPy outputs added; the original file is left
 alone.
 
-If GuPPy read some events from outside the file — its custom event CSVs, for instance — its store ids
-no longer address the file's events table. The onsets GuPPy analyzed are then written as an
-``EventsTable`` of their own in ``nwbfile.events``, which the events registry references instead, and
-a warning names the stores that did not resolve. The file's own events are left as they are, so it
-holds two tables covering overlapping events; convert from the raw acquisition with ``GuppyConverter``,
-which merges every event source into one table, to get a single one. The recording sites are
-unaffected.
-
-The name of that table is editable, at
+The events registry references an ``EventsTable`` of the onsets GuPPy analyzed, written into
+``nwbfile.events`` — the same table whether the interface runs here or inside ``GuppyConverter``.
+Events the file already holds are left as they are. The name of GuPPy's table is editable, at
 ``metadata["FiberPhotometry"]["Guppy"][metadata_key]["Events"]["name"]``.

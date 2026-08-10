@@ -67,8 +67,11 @@ SAMPLING_RATE = 25.0
 NUM_SAMPLES = 3750  # 150 s at 25 Hz
 SESSION_START_TIME = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
-MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
-# What the raw event CSVs carry, which is what the acquisition side writes into the merged table.
+# Each raw event type is written as its own EventsTable, named after the label GuPPy gave the store.
+EVENT_NAME_TO_RAW_TABLE_NAME = {"nose_poke": "NosePoke", "reward_delivery": "RewardDelivery"}
+# The table the GuPPy interface writes its own analyzed onsets into, which the registry references.
+GUPPY_EVENTS_TABLE_NAME = "GuppyEvents"
+# What the raw event CSVs carry, which is what the acquisition side writes.
 RAW_EVENT_ONSETS = {
     "nose_poke": [20.0, 58.0, 100.0, 128.0],
     "reward_delivery": [3.0, 15.0, 35.0, 36.0, 55.0, 75.0, 95.0, 125.0],
@@ -274,32 +277,36 @@ class TestGuppyReferenceSession:
         flat_row_indices = list(recording_sites_table["fiber_photometry_table_region"].target.data[:])
         assert flat_row_indices == [row for rows in RECORDING_SITE_TO_TABLE_ROWS.values() for row in rows]
 
-    def test_events_merge_into_one_table_with_registry_back_references(self, nwbfile, module):
-        """Every event type lands in one EventsTable, and each registry row references its own rows."""
-        assert set(nwbfile.events) == {MERGED_EVENTS_TABLE_NAME}
-        events_dataframe = nwbfile.events[MERGED_EVENTS_TABLE_NAME].to_dataframe()
-        assert "event_type" in nwbfile.get_events_table(MERGED_EVENTS_TABLE_NAME).colnames
-        for event_name, onsets in RAW_EVENT_ONSETS.items():
-            matching = events_dataframe[events_dataframe.event_type == event_name]
-            np.testing.assert_array_equal(np.sort(matching.timestamp.to_numpy()), onsets)
-        # The merged table is globally time-sorted, not grouped by contributing interface.
-        timestamps = events_dataframe.timestamp.to_numpy()
-        np.testing.assert_array_equal(timestamps, np.sort(timestamps))
+    def test_raw_events_are_written_one_table_per_event_type(self, nwbfile):
+        """Each raw event type keeps its own EventsTable, exactly as its events interface writes it."""
+        assert set(nwbfile.events) == set(EVENT_NAME_TO_RAW_TABLE_NAME.values()) | {GUPPY_EVENTS_TABLE_NAME}
+        for event_name, table_name in EVENT_NAME_TO_RAW_TABLE_NAME.items():
+            events_table = nwbfile.get_events_table(table_name)
+            # A table holding a single event type records no discriminator; the table is the identity.
+            assert "event_type" not in events_table.colnames
+            np.testing.assert_array_equal(
+                np.sort(events_table.to_dataframe().timestamp.to_numpy()), RAW_EVENT_ONSETS[event_name]
+            )
 
-    def test_registry_references_only_the_onsets_guppy_analyzed(self, module):
+    def test_registry_references_only_the_onsets_guppy_analyzed(self, nwbfile, module):
         """Each registry row points at the occurrences GuPPy built trials from, not every occurrence.
 
         GuPPy discards an onset it cannot build a trial around: reward at 3.0 s is earlier than
         abs(baselineCorrectionStart) = 5 s, and reward at 36.0 s is within timeInterval = 2 s of 35.0 s.
-        Both stay in the acquisition table and neither is claimed here.
+        Both stay in the raw events table and neither is claimed here.
         """
         events_table = module["events"]
+        assert events_table["events"].target.table.name == GUPPY_EVENTS_TABLE_NAME
         for row, event_name in enumerate(EVENT_NAMES):
             referenced = events_table["events"][row]
             assert set(referenced["event_type"]) == {event_name}
             np.testing.assert_array_equal(
                 np.sort(referenced["timestamp"].to_numpy()), ANALYZED_EVENT_ONSETS[event_name]
             )
+
+        # The GuPPy table is globally time-sorted across the two events, not grouped by event.
+        guppy_events_timestamps = nwbfile.get_events_table(GUPPY_EVENTS_TABLE_NAME).to_dataframe().timestamp.to_numpy()
+        np.testing.assert_array_equal(guppy_events_timestamps, np.sort(guppy_events_timestamps))
 
         discarded = set(RAW_EVENT_ONSETS["reward_delivery"]) - set(ANALYZED_EVENT_ONSETS["reward_delivery"])
         assert discarded == {3.0, 36.0}

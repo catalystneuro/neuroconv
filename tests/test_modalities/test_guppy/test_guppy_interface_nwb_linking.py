@@ -1,16 +1,16 @@
 """Tests for ``GuppyInterface`` writing into an NWBFile that already holds the acquisition.
 
 This is how a session GuPPy processed out of an existing NWB file is converted: the file already has
-the response series and the events, so the interface adds only GuPPy's own products and points the
-two registries at the tables that are already there. Nothing is read in and nothing is copied.
+the response series, so the interface adds only GuPPy's own products and points the recording sites
+registry at the ``FiberPhotometryTable`` that is already there. Nothing is read in and nothing is
+copied. The events registry references GuPPy's own analyzed onsets, written as an ``EventsTable``
+alongside whatever events the file already holds.
 
 The source can be synthesized in-process, so this needs no data on disk: it is built from the mock
 fiber photometry and events interfaces, and the GuPPy output folder is generated to match the store
 ids GuPPy would have derived from it. What is asserted here is the linking specifically -- how a
-GuPPy store id resolves to a ``FiberPhotometryTable`` row or a set of ``EventsTable`` rows, and what
-the registries become when it cannot: the recording sites lose their links, and GuPPy's own analyzed
-onsets are written as an ``EventsTable`` for the events registry to reference. The products are
-covered in
+GuPPy store id resolves to a ``FiberPhotometryTable`` row, what the recording sites registry becomes
+when it cannot, and the events table GuPPy's onsets are written into. The products are covered in
 ``test_guppy_interface.py`` and against genuine GuPPy output in
 ``tests/test_on_data/fiber_photometry/guppy/test_reference_session.py``.
 """
@@ -27,7 +27,6 @@ from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import GuppyInterface
 from neuroconv.datainterfaces.fiber_photometry.guppy.nwb_linking import (
     resolve_acquisition_store_rows,
-    resolve_event_store_rows,
 )
 from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
 from neuroconv.tools.testing.mock_guppy import generate_mock_guppy_output_folder
@@ -215,11 +214,10 @@ class TestGuppyInterfaceLinksIntoExistingTables:
                 converted.acquisition[series_name].data[:], source_nwbfile.acquisition[series_name].data[:]
             )
 
-    def test_nothing_is_duplicated(self, converted_nwbfile_path):
-        """The source's own series and events table are the only ones; GuPPy added no copies."""
+    def test_the_acquisition_is_not_duplicated(self, converted_nwbfile_path):
+        """The source's own series are the only ones; GuPPy added no copies."""
         converted = read_nwb(path=str(converted_nwbfile_path))
         assert set(converted.acquisition) == {SIGNAL_SERIES_NAME, CONTROL_SERIES_NAME}
-        assert set(converted.events) == {SOURCE_EVENTS_TABLE_NAME}
         # guppy_parameters is GuPPy's own provenance; fiber_photometry is the source's, referenced not restated.
         assert set(converted.lab_meta_data) == {"fiber_photometry", "guppy_parameters"}
 
@@ -235,13 +233,18 @@ class TestGuppyInterfaceLinksIntoExistingTables:
             assert set(linked["location"]) == {recording_site.upper()}
             assert sorted(linked["excitation_wavelength_in_nm"]) == [405.0, 465.0]
 
-    def test_events_registry_links_to_the_source_table(self, converted_nwbfile_path, source_session):
-        """Each event's row points at that event's occurrence rows in the source's own EventsTable."""
+    def test_events_registry_links_to_guppys_own_events(self, converted_nwbfile_path, source_session):
+        """Each event's row points at that event's onsets in GuPPy's own table, added beside the source's.
+
+        The source's own events table is left exactly as it was: GuPPy's onsets are a processing
+        output and are written as a table of their own, whatever the file already holds.
+        """
         _, event_name_to_onsets = source_session
         converted = read_nwb(path=str(converted_nwbfile_path))
         events_table = converted.processing["guppy"]["events"]
 
-        assert events_table["events"].target.table.name == SOURCE_EVENTS_TABLE_NAME
+        assert set(converted.events) == {SOURCE_EVENTS_TABLE_NAME, "GuppyEvents"}
+        assert events_table["events"].target.table.name == "GuppyEvents"
         registry_event_names = list(events_table["event_name"].data)
         assert set(registry_event_names) == set(EVENT_NAMES)
         for row_index, event_name in enumerate(registry_event_names):
@@ -262,21 +265,18 @@ class TestGuppyInterfaceLinksIntoExistingTables:
             assert [recording_site_names[int(row)] for row in linked_rows] == [recording_site]
 
 
-class TestFallbackWhenTheFileCannotAnswer:
-    """What the registries become when the file does not hold what GuPPy's store ids address."""
+class TestGuppysOwnEventsTable:
+    """The EventsTable GuPPy's analyzed onsets are written into, and the registry's region over it."""
 
-    def test_bare_nwbfile_writes_guppys_own_events(self, interface, source_session, recwarn):
+    def test_bare_nwbfile_writes_guppys_own_events(self, interface, source_session):
         """The standalone case: the recording sites go link-free, but the events are written and linked.
 
         The onsets come from the GuPPy output rather than the file, so there is always something to
-        reference. Nothing is reported, since a file holding no events is not a mismatch.
+        reference.
         """
         _, event_name_to_onsets = source_session
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-
-        linking_warnings = [warning for warning in recwarn if "do not all resolve" in str(warning.message)]
-        assert not linking_warnings, [str(warning.message) for warning in linking_warnings]
 
         guppy_module = nwbfile.processing["guppy"]
         assert list(guppy_module["recording_sites"]["recording_site"].data) == list(RECORDING_SITES)
@@ -294,43 +294,6 @@ class TestFallbackWhenTheFileCannotAnswer:
             linked = events_registry["events"][row_index]
             assert set(linked["event_type"]) == {event_name}
             np.testing.assert_allclose(linked["timestamp"], sorted(event_name_to_onsets[event_name]))
-
-    def test_unresolvable_event_store_warns_and_writes_guppys_own_events(self, source_session, tmp_path_factory):
-        """An event store the file does not hold -- a custom GuPPy event CSV -- sends every event to a
-        fresh table, leaving the source's own events untouched."""
-        source_nwbfile_path, event_name_to_onsets = source_session
-        mixed_guppy_folder = generate_mock_guppy_output_folder(
-            tmp_path_factory.mktemp("mixed_guppy") / "session_output_1",
-            recording_site_to_stores=RECORDING_SITE_TO_STORES,
-            # port_entry came from a CSV sidecar, so the NWB file holds no store by that name.
-            event_store_to_name={
-                "csv_port_entry": "port_entry",
-                f"{SOURCE_EVENTS_TABLE_NAME}_reward": "reward",
-                f"{SOURCE_EVENTS_TABLE_NAME}_lever_press": "lever_press",
-            },
-            event_onsets=event_name_to_onsets,
-            sampling_rate=SAMPLING_RATE,
-        )
-        interface = GuppyInterface(folder_path=str(mixed_guppy_folder))
-        nwbfile = read_nwb(path=str(source_nwbfile_path))
-        source_events_length = len(nwbfile.events[SOURCE_EVENTS_TABLE_NAME])
-
-        with pytest.warns(UserWarning, match="written as a fresh EventsTable 'GuppyEvents'"):
-            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-
-        # The source's events table is left exactly as it was; GuPPy's onsets went alongside it.
-        assert set(nwbfile.events) == {SOURCE_EVENTS_TABLE_NAME, "GuppyEvents"}
-        assert len(nwbfile.events[SOURCE_EVENTS_TABLE_NAME]) == source_events_length
-
-        guppy_module = nwbfile.processing["guppy"]
-        events_registry = guppy_module["events"]
-        assert events_registry["events"].target.table is nwbfile.events["GuppyEvents"]
-        for row_index, event_name in enumerate(events_registry["event_name"].data):
-            linked = events_registry["events"][row_index]
-            assert set(linked["event_type"]) == {event_name}
-            np.testing.assert_allclose(linked["timestamp"], sorted(event_name_to_onsets[event_name]))
-        # The recording sites are unaffected -- the two registries resolve independently.
-        assert "fiber_photometry_table_region" in guppy_module["recording_sites"].colnames
 
     def test_guppys_own_events_round_trip(self, interface, source_session, tmp_path):
         """The fresh table and the registry's region into it survive a write and read back."""
@@ -357,8 +320,7 @@ class TestFallbackWhenTheFileCannotAnswer:
         nwbfile.add_events_table(occupant)
 
         with pytest.raises(AssertionError, match="already holds an events table named 'GuppyEvents'"):
-            with pytest.warns(UserWarning, match="do not all resolve to rows of a single"):
-                interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
     def test_events_table_name_is_editable(self, interface, source_session):
         """A collision is resolved through the metadata, which names the table the onsets go into."""
@@ -370,6 +332,10 @@ class TestFallbackWhenTheFileCannotAnswer:
 
         assert set(nwbfile.events) == {"GuppyOnsets"}
         assert nwbfile.processing["guppy"]["events"]["events"].target.table is nwbfile.events["GuppyOnsets"]
+
+
+class TestRecordingSitesFallback:
+    """What the recording sites registry becomes when the file cannot answer for GuPPy's stores."""
 
     def test_unresolvable_acquisition_store_warns_and_falls_back(self, source_session, tmp_path_factory):
         """A store naming no series in the file leaves the recording sites unlinked, loudly."""
@@ -394,26 +360,9 @@ class TestFallbackWhenTheFileCannotAnswer:
         # The events are unaffected -- the two registries resolve independently.
         assert "events" in guppy_module["events"].colnames
 
-    def test_clock_mismatch_fails_loudly(self, source_session, tmp_path_factory):
-        """GuPPy onsets that do not line up with the file's occurrences are an error, not a silent link."""
-        source_nwbfile_path, event_name_to_onsets = source_session
-        shifted_onsets = {name: onsets + 7.5 for name, onsets in event_name_to_onsets.items()}
-        shifted_guppy_folder = generate_mock_guppy_output_folder(
-            tmp_path_factory.mktemp("shifted_guppy") / "session_output_1",
-            recording_site_to_stores=RECORDING_SITE_TO_STORES,
-            event_store_to_name=EVENT_STORE_TO_NAME,
-            event_onsets=shifted_onsets,
-            sampling_rate=SAMPLING_RATE,
-        )
-        interface = GuppyInterface(folder_path=str(shifted_guppy_folder))
-        nwbfile = read_nwb(path=str(source_nwbfile_path))
-
-        with pytest.raises(AssertionError, match="matches 0 of its occurrences"):
-            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-
 
 class TestStoreIdResolution:
-    """The two id spellings, resolved against files built directly rather than through GuPPy."""
+    """The acquisition id spellings, resolved against files built directly rather than through GuPPy."""
 
     def test_multi_channel_series_resolves_per_column(self, source_session):
         source_nwbfile_path, _ = source_session
@@ -432,51 +381,3 @@ class TestStoreIdResolution:
         source_nwbfile_path, _ = source_session
         nwbfile = read_nwb(path=str(source_nwbfile_path))
         assert resolve_acquisition_store_rows(nwbfile=nwbfile, store_ids=["NoSuchSeries_0"]) == {}
-
-    def test_table_with_a_value_column_splits_on_it(self):
-        nwbfile = mock_NWBFile()
-        table = EventsTable(name="BehavioralEvents", description="Merged events.")
-        table.add_column(name="event_type", description="Which event each row is.")
-        for timestamp, event_type in ((0.5, "reward"), (1.0, "port_entry"), (1.5, "reward")):
-            table.add_row(timestamp=timestamp, event_type=event_type)
-        nwbfile.add_events_table(table)
-
-        resolved = resolve_event_store_rows(
-            nwbfile=nwbfile, event_store_ids=["BehavioralEvents_reward", "BehavioralEvents_port_entry"]
-        )
-        assert resolved is not None
-        target_table, store_rows = resolved
-        assert target_table.name == "BehavioralEvents"
-        assert store_rows == {"BehavioralEvents_reward": [0, 2], "BehavioralEvents_port_entry": [1]}
-
-    def test_table_without_a_value_column_is_one_store(self):
-        nwbfile = mock_NWBFile()
-        table = EventsTable(name="PortEntries", description="Port entries.")
-        for timestamp in (0.5, 1.5, 2.5):
-            table.add_row(timestamp=timestamp)
-        nwbfile.add_events_table(table)
-
-        resolved = resolve_event_store_rows(nwbfile=nwbfile, event_store_ids=["PortEntries"])
-        assert resolved is not None
-        assert resolved[1] == {"PortEntries": [0, 1, 2]}
-
-    def test_stores_spanning_two_tables_cannot_be_referenced(self):
-        """One DynamicTableRegion has one target, so events in two tables resolve to nothing."""
-        nwbfile = mock_NWBFile()
-        for table_name, timestamp in (("PortEntries", 0.5), ("Rewards", 1.5)):
-            table = EventsTable(name=table_name, description=f"{table_name}.")
-            table.add_row(timestamp=timestamp)
-            nwbfile.add_events_table(table)
-
-        assert resolve_event_store_rows(nwbfile=nwbfile, event_store_ids=["PortEntries", "Rewards"]) is None
-
-    def test_table_with_several_value_columns_contributes_nothing(self):
-        """GuPPy cannot split such a table into stores either, so it is not guessed at."""
-        nwbfile = mock_NWBFile()
-        table = EventsTable(name="BehavioralEvents", description="Merged events.")
-        table.add_column(name="event_type", description="Which event each row is.")
-        table.add_column(name="strobe", description="The raw strobe code.")
-        table.add_row(timestamp=0.5, event_type="reward", strobe=1)
-        nwbfile.add_events_table(table)
-
-        assert resolve_event_store_rows(nwbfile=nwbfile, event_store_ids=["BehavioralEvents_reward"]) is None
