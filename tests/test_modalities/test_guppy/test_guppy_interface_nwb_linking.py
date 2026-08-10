@@ -17,6 +17,10 @@ when it cannot, and the events table GuPPy's onsets are written into. The produc
 
 from datetime import datetime, timezone
 
+# Registers the ndx-guppy types before the first read. The interface imports the extension lazily,
+# which here lands after a file has already been read, and pynwb then resolves the written GuPPy
+# types back to their base classes.
+import ndx_guppy  # noqa: F401
 import numpy as np
 import pytest
 from pynwb import read_nwb
@@ -42,6 +46,10 @@ SIGNAL_SERIES_NAME = "FiberPhotometryResponseSeriesSignal"
 CONTROL_SERIES_NAME = "FiberPhotometryResponseSeriesControl"
 SOURCE_EVENTS_TABLE_NAME = "BehavioralEvents"
 EVENT_NAMES = ("port_entry", "reward", "lever_press")
+
+# A series written with no fiber photometry provenance, which NWB permits: it carries no
+# fiber_photometry_table_region, so the file states no acquisition row for it.
+UNLINKED_SERIES_NAME = "FiberPhotometryResponseSeriesUnlinked"
 
 # The store ids GuPPy derives from that layout.
 RECORDING_SITE_TO_STORES = {
@@ -112,6 +120,17 @@ def _fiber_photometry_source_metadata():
     }
 
 
+def _add_unlinked_response_series(nwbfile):
+    """Add a response series carrying no ``fiber_photometry_table_region``, which is what supplying no
+    ``FiberPhotometryTable`` metadata writes."""
+    interface = MockFiberPhotometryInterface(
+        stream_names=["unlinked"], num_samples=NUM_SAMPLES, sampling_rate=SAMPLING_RATE
+    )
+    metadata = interface.get_metadata()
+    metadata["FiberPhotometry"][interface.metadata_key]["name"] = UNLINKED_SERIES_NAME
+    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+
 @pytest.fixture(scope="module")
 def source_session(tmp_path_factory):
     """Write the source NWB file and return its path plus the event onsets it holds."""
@@ -179,52 +198,54 @@ def guppy_folder(tmp_path_factory, source_session):
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
+def source_nwbfile(source_session):
+    """The source read back, for the tests that only read it."""
+    source_nwbfile_path, _ = source_session
+    return read_nwb(path=str(source_nwbfile_path))
+
+
+@pytest.fixture(scope="module")
 def interface(guppy_folder):
     return GuppyInterface(folder_path=str(guppy_folder))
 
 
-@pytest.fixture
-def converted_nwbfile_path(interface, source_session, tmp_path):
-    """The source, exported with GuPPy's outputs added to it."""
+@pytest.fixture(scope="module")
+def converted_nwbfile(interface, source_session, tmp_path_factory):
+    """The source, exported with GuPPy's outputs added to it, read back."""
     source_nwbfile_path, _ = source_session
+    # Read separately from the ``source_nwbfile`` fixture, since this one is written into.
     nwbfile = read_nwb(path=str(source_nwbfile_path))
     interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-    nwbfile_path = tmp_path / "converted.nwb"
+    nwbfile_path = tmp_path_factory.mktemp("nwb_converted") / "converted.nwb"
     configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
-    return nwbfile_path
+    return read_nwb(path=str(nwbfile_path))
 
 
 class TestGuppyInterfaceLinksIntoExistingTables:
-    def test_export_carries_the_whole_source_across(self, converted_nwbfile_path, source_session):
+    def test_export_carries_the_whole_source_across(self, converted_nwbfile, source_nwbfile):
         """Everything the source held survives, including what GuPPy has no concept of."""
-        source_nwbfile_path, _ = source_session
-        source_nwbfile = read_nwb(path=str(source_nwbfile_path))
-        converted = read_nwb(path=str(converted_nwbfile_path))
-
-        assert converted.session_description == "The source session, written before GuPPy ran."
-        assert converted.session_start_time == source_nwbfile.session_start_time
-        assert converted.subject.subject_id == "subject1"
-        np.testing.assert_allclose(converted.trials["start_time"][:], UNRELATED_TRIAL_START_TIMES)
-        assert list(converted.trials["condition"][:]) == ["go", "go", "go"]
+        assert converted_nwbfile.session_description == "The source session, written before GuPPy ran."
+        assert converted_nwbfile.session_start_time == source_nwbfile.session_start_time
+        assert converted_nwbfile.subject.subject_id == "subject1"
+        np.testing.assert_allclose(converted_nwbfile.trials["start_time"][:], UNRELATED_TRIAL_START_TIMES)
+        assert list(converted_nwbfile.trials["condition"][:]) == ["go", "go", "go"]
 
         for series_name in (SIGNAL_SERIES_NAME, CONTROL_SERIES_NAME):
             np.testing.assert_array_equal(
-                converted.acquisition[series_name].data[:], source_nwbfile.acquisition[series_name].data[:]
+                converted_nwbfile.acquisition[series_name].data[:], source_nwbfile.acquisition[series_name].data[:]
             )
 
-    def test_the_acquisition_is_not_duplicated(self, converted_nwbfile_path):
+    def test_the_acquisition_is_not_duplicated(self, converted_nwbfile):
         """The source's own series are the only ones; GuPPy added no copies."""
-        converted = read_nwb(path=str(converted_nwbfile_path))
-        assert set(converted.acquisition) == {SIGNAL_SERIES_NAME, CONTROL_SERIES_NAME}
+        assert set(converted_nwbfile.acquisition) == {SIGNAL_SERIES_NAME, CONTROL_SERIES_NAME}
         # guppy_parameters is GuPPy's own provenance; fiber_photometry is the source's, referenced not restated.
-        assert set(converted.lab_meta_data) == {"fiber_photometry", "guppy_parameters"}
+        assert set(converted_nwbfile.lab_meta_data) == {"fiber_photometry", "guppy_parameters"}
 
-    def test_recording_sites_registry_links_to_the_source_table(self, converted_nwbfile_path):
+    def test_recording_sites_registry_links_to_the_source_table(self, converted_nwbfile):
         """Each site's row points at the FiberPhotometryTable rows its two stores were recorded on."""
-        converted = read_nwb(path=str(converted_nwbfile_path))
-        recording_sites_table = converted.processing["guppy"]["recording_sites"]
+        recording_sites_table = converted_nwbfile.processing["guppy"]["recording_sites"]
 
         assert list(recording_sites_table["recording_site"].data) == list(RECORDING_SITES)
         assert recording_sites_table["fiber_photometry_table_region"].target.table.name == "fiber_photometry_table"
@@ -233,17 +254,16 @@ class TestGuppyInterfaceLinksIntoExistingTables:
             assert set(linked["location"]) == {recording_site.upper()}
             assert sorted(linked["excitation_wavelength_in_nm"]) == [405.0, 465.0]
 
-    def test_events_registry_links_to_guppys_own_events(self, converted_nwbfile_path, source_session):
+    def test_events_registry_links_to_guppys_own_events(self, converted_nwbfile, source_session):
         """Each event's row points at that event's onsets in GuPPy's own table, added beside the source's.
 
         The source's own events table is left exactly as it was: GuPPy's onsets are a processing
         output and are written as a table of their own, whatever the file already holds.
         """
         _, event_name_to_onsets = source_session
-        converted = read_nwb(path=str(converted_nwbfile_path))
-        events_table = converted.processing["guppy"]["events"]
+        events_table = converted_nwbfile.processing["guppy"]["events"]
 
-        assert set(converted.events) == {SOURCE_EVENTS_TABLE_NAME, "GuppyEvents"}
+        assert set(converted_nwbfile.events) == {SOURCE_EVENTS_TABLE_NAME, "GuppyEvents"}
         assert events_table["events"].target.table.name == "GuppyEvents"
         registry_event_names = list(events_table["event_name"].data)
         assert set(registry_event_names) == set(EVENT_NAMES)
@@ -252,10 +272,9 @@ class TestGuppyInterfaceLinksIntoExistingTables:
             assert set(linked["event_type"]) == {event_name}
             np.testing.assert_allclose(sorted(linked["timestamp"]), sorted(event_name_to_onsets[event_name]))
 
-    def test_products_still_reference_the_registries(self, converted_nwbfile_path):
+    def test_products_still_reference_the_registries(self, converted_nwbfile):
         """Linking the registries outward does not disturb the products' references into them."""
-        converted = read_nwb(path=str(converted_nwbfile_path))
-        guppy_module = converted.processing["guppy"]
+        guppy_module = converted_nwbfile.processing["guppy"]
         recording_site_names = list(guppy_module["recording_sites"]["recording_site"].data)
 
         for recording_site in RECORDING_SITES:
@@ -360,16 +379,38 @@ class TestRecordingSitesFallback:
         # The events are unaffected -- the two registries resolve independently.
         assert "events" in guppy_module["events"].colnames
 
+    def test_store_naming_an_unlinked_series_warns_about_the_missing_region(self, source_session, tmp_path_factory):
+        """A store whose series carries no table region is reported as that, not as naming no series.
+
+        GuPPy lists a store per response series column, reading only the name and the shape, so a series
+        the file states no acquisition row for reaches storesList.csv like any other.
+        """
+        source_nwbfile_path, event_name_to_onsets = source_session
+        unlinked_stores = {site: dict(stores) for site, stores in RECORDING_SITE_TO_STORES.items()}
+        unlinked_stores["dls"]["signal"] = UNLINKED_SERIES_NAME
+        unlinked_guppy_folder = generate_mock_guppy_output_folder(
+            tmp_path_factory.mktemp("unlinked_guppy") / "session_output_1",
+            recording_site_to_stores=unlinked_stores,
+            event_store_to_name=EVENT_STORE_TO_NAME,
+            event_onsets=event_name_to_onsets,
+            sampling_rate=SAMPLING_RATE,
+        )
+        interface = GuppyInterface(folder_path=str(unlinked_guppy_folder))
+        nwbfile = read_nwb(path=str(source_nwbfile_path))
+        _add_unlinked_response_series(nwbfile)
+
+        with pytest.warns(UserWarning, match="carries no 'fiber_photometry_table_region'"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        assert "fiber_photometry_table_region" not in nwbfile.processing["guppy"]["recording_sites"].colnames
+
 
 class TestStoreIdResolution:
     """The acquisition id spellings, resolved against files built directly rather than through GuPPy."""
 
-    def test_multi_channel_series_resolves_per_column(self, source_session):
-        source_nwbfile_path, _ = source_session
-        nwbfile = read_nwb(path=str(source_nwbfile_path))
-
+    def test_multi_channel_series_resolves_per_column(self, source_nwbfile):
         store_ids = [store_id for stores in RECORDING_SITE_TO_STORES.values() for store_id in stores.values()]
-        resolved = resolve_acquisition_store_rows(nwbfile=nwbfile, store_ids=store_ids)
+        resolved = resolve_acquisition_store_rows(nwbfile=source_nwbfile, store_ids=store_ids)
         assert resolved == {
             f"{SIGNAL_SERIES_NAME}_0": 0,
             f"{CONTROL_SERIES_NAME}_0": 1,
@@ -377,7 +418,14 @@ class TestStoreIdResolution:
             f"{CONTROL_SERIES_NAME}_1": 3,
         }
 
-    def test_unknown_store_is_simply_absent(self, source_session):
-        source_nwbfile_path, _ = source_session
-        nwbfile = read_nwb(path=str(source_nwbfile_path))
-        assert resolve_acquisition_store_rows(nwbfile=nwbfile, store_ids=["NoSuchSeries_0"]) == {}
+    def test_unknown_store_is_simply_absent(self, source_nwbfile):
+        assert resolve_acquisition_store_rows(nwbfile=source_nwbfile, store_ids=["NoSuchSeries_0"]) == {}
+
+    def test_series_without_a_table_region_resolves_to_no_row(self):
+        """A store can name a series the file states no row for, which is not the same as naming none."""
+        nwbfile = mock_NWBFile()
+        _add_unlinked_response_series(nwbfile)
+
+        assert resolve_acquisition_store_rows(nwbfile=nwbfile, store_ids=[UNLINKED_SERIES_NAME]) == {
+            UNLINKED_SERIES_NAME: None
+        }

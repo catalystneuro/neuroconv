@@ -27,4 +27,6 @@ NPM Fiber Photometry
 
 GuPPy Fiber Photometry
 ----------------------
+.. autoclass:: neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface.GuppyInterface
+
 .. autoclass:: neuroconv.datainterfaces.fiber_photometry.guppy.guppyconverter.GuppyConverter

@@ -41,7 +41,7 @@ def _parse_acquisition_store_id(store_id: str, series_by_name: dict) -> tuple[st
     return series_name, int(suffix)
 
 
-def resolve_acquisition_store_rows(*, nwbfile, store_ids: list[str]) -> dict[str, int]:
+def resolve_acquisition_store_rows(*, nwbfile, store_ids: list[str]) -> dict[str, int | None]:
     """Map each acquisition store to the ``FiberPhotometryTable`` row its fiber occupies.
 
     A series states which table rows its columns were recorded on, so the row belonging to a store is
@@ -58,17 +58,19 @@ def resolve_acquisition_store_rows(*, nwbfile, store_ids: list[str]) -> dict[str
     Returns
     -------
     dict
-        ``store_id -> FiberPhotometryTable row index``, holding only the stores the file answers for.
+        ``store_id -> FiberPhotometryTable row index``, holding one entry per store that names a
+        series in the file. The row is ``None`` where that series carries no
+        ``fiber_photometry_table_region``, which NWB leaves optional, so it states no row.
     """
     series_by_name = _series_by_name(nwbfile)
-    store_id_to_row: dict[str, int] = {}
+    store_id_to_row: dict[str, int | None] = {}
     for store_id in store_ids:
         parsed = _parse_acquisition_store_id(store_id, series_by_name)
         if parsed is None:
             continue
         series_name, column_index = parsed
         region = series_by_name[series_name].fiber_photometry_table_region
-        if region is None:
-            continue
-        store_id_to_row[store_id] = int(region.data[0 if column_index is None else column_index])
+        store_id_to_row[store_id] = (
+            None if region is None else int(region.data[0 if column_index is None else column_index])
+        )
     return store_id_to_row

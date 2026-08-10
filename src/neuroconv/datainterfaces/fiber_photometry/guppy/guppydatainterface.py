@@ -1173,26 +1173,38 @@ class GuppyInterface(BaseDataInterface):
     def _resolve_recording_site_rows(self, *, nwbfile) -> dict[str, list[int]] | None:
         """Map each recording site to its FiberPhotometryTable rows, or ``None`` if the file cannot say.
 
-        Every store GuPPy listed must name a response series in the file, since a registry linking only
-        some of the sites would describe the acquisition as sparser than it is. A file holding no
-        FiberPhotometryTable at all is the ordinary standalone case and is not warned about; one that
-        holds a table GuPPy's stores do not address is a mismatch worth reporting.
+        Every store GuPPy listed must resolve to a row -- naming a response series that states which
+        table rows its columns were recorded on -- since a registry linking only some of the sites would
+        describe the acquisition as sparser than it is. A file holding no FiberPhotometryTable at all is
+        the ordinary standalone case and is not warned about; one that holds a table GuPPy's stores do
+        not address is a mismatch worth reporting, under whichever of the two causes applies.
         """
         if get_fiber_photometry_table(nwbfile=nwbfile) is None:
             return None
 
         store_ids = [store_id for stores in self._recording_site_to_store_ids.values() for store_id in stores.values()]
         store_id_to_row = resolve_acquisition_store_rows(nwbfile=nwbfile, store_ids=store_ids)
-        unresolved = [store_id for store_id in store_ids if store_id not in store_id_to_row]
-        if unresolved:
+        stores_naming_no_series = [store_id for store_id in store_ids if store_id not in store_id_to_row]
+        stores_without_region = [store_id for store_id, row in store_id_to_row.items() if row is None]
+        if stores_naming_no_series:
             warnings.warn(
-                f"GuPPy acquisition store(s) {unresolved} name no FiberPhotometryResponseSeries in the "
-                f"NWB file, so the '{_RECORDING_SITES_TABLE_NAME}' registry is written without links to "
-                f"the FiberPhotometryTable. A multi-channel series is addressed as "
+                f"GuPPy acquisition store(s) {stores_naming_no_series} name no FiberPhotometryResponseSeries "
+                f"in the NWB file, so the '{_RECORDING_SITES_TABLE_NAME}' registry is written without links "
+                f"to the FiberPhotometryTable. A multi-channel series is addressed as "
                 f"'<series_name>_<column_index>'.",
                 UserWarning,
                 stacklevel=2,
             )
+        if stores_without_region:
+            warnings.warn(
+                f"GuPPy acquisition store(s) {stores_without_region} name a FiberPhotometryResponseSeries "
+                f"that carries no 'fiber_photometry_table_region', so the file states no "
+                f"FiberPhotometryTable row for them and the '{_RECORDING_SITES_TABLE_NAME}' registry is "
+                f"written without links to the table.",
+                UserWarning,
+                stacklevel=2,
+            )
+        if stores_naming_no_series or stores_without_region:
             return None
 
         recording_site_to_rows: dict[str, list[int]] = {}
