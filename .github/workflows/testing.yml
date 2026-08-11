@@ -49,7 +49,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v9.0.0
         with:
           version: "latest"
           # No cross-run cache: the isolated-extras steps below are here to prove each group installs from
@@ -199,10 +199,10 @@ jobs:
         run: pytest -vv -rsx -n logical --dist loadscope ${{ (matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest') && '--cov=neuroconv --cov-report xml:./codecov.xml' || '' }}
       - name: Upload full coverage to Codecov
         if: ${{ matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest' }}
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./codecov.xml
+          files: ./codecov.xml
           flags: unittests
           name: codecov-umbrella
           codecov_yml_path: ./codecov.yml

@@ -25,6 +25,7 @@ from .utils import (
     get_json_schema_from_method_signature,
     load_dict_from_file,
 )
+from .utils._metadata_translation import _translate_old_metadata
 from .utils.dict import DeepDict
 from .utils.json_schema import (
     _metadata_uses_old_list_format,
@@ -139,6 +140,12 @@ class BaseDataInterface(ABC):
 
     def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
+        # Old-shaped metadata is converted before it is checked, so validation only ever sees one shape.
+        # The conversion is thrown away afterwards: the schema accepts any key under a keyed block, so
+        # validation needs the right shape but not the right label, and what the writers receive is the
+        # caller's own dictionary, converted again there with the label in hand.
+        metadata = _translate_old_metadata(metadata)
+
         if _metadata_uses_old_list_format(metadata):
             metdata_schema = self._get_metadata_schema_for_old_list_format()
         else:
