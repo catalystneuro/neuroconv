@@ -127,7 +127,7 @@
 * Added `BaseFiberPhotometryInterface`, a base class for fiber photometry interfaces. [PR #1778](https://github.com/catalystneuro/neuroconv/pull/1778)
 * Added support for device models via top-level `metadata["DeviceModels"]` and `metadata["Devices"]` registries. [PR #1780](https://github.com/catalystneuro/neuroconv/pull/1780)
 * Added `DoricFiberPhotometryInterface` for converting fiber photometry data from Doric Neuroscience Studio `.doric` HDF5 files. [PR #1727](https://github.com/catalystneuro/neuroconv/pull/1727)
-* Added `MockFiberPhotometryInterface`, a synthetic acquisition fiber photometry interface for testing and demos. [PR #1788](https://github.com/catalystneuro/neuroconv/pull/1788)
+* Added `MockFiberPhotometryInterface`, a synthetic acquisition fiber photometry interface for testing and demos. It is constructed from `excitation_wavelengths_in_nm` and `num_fibers`, one source stream per wavelength carrying one column per fiber, which is the organization ndx-fiber-photometry recommends: one series per excitation/emission wavelength. [PR #1788](https://github.com/catalystneuro/neuroconv/pull/1788) [PR #1889](https://github.com/catalystneuro/neuroconv/pull/1889)
 * Adapted `DoricFiberPhotometryInterface` to use `BaseFiberPhotometryInterface`. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
 * Added `DoricFiberPhotometryInterface` support for Doric CSV format. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
 * Added `DoricFiberPhotometryInterface` support for the legacy "EPConsole" `.doric` HDF5 layout (``Traces/<console>/<stream>/<stream>``), auto-detected alongside the newer `DataAcquisition`-based layout. [PR #1779](https://github.com/catalystneuro/neuroconv/pull/1779)
