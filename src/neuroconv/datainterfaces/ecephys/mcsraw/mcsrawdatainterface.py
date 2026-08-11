@@ -29,8 +29,13 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def __init__(
-        self, file_path: FilePath, *args, verbose: bool = False, es_key: str = "ElectricalSeries"
-    ):  # TODO: change to * (keyword only) on or after August 2026
+        self,
+        file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
+    ):
         """
         Load and prepare data for MCSRaw.
 
@@ -41,6 +46,9 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool, default: True
             Allows verbose.
         es_key: str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"mcs_raw_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -69,4 +77,7 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
             verbose = positional_values.get("verbose", verbose)
             es_key = positional_values.get("es_key", es_key)
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+
+        if metadata_key is None:
+            self.metadata_key = "mcs_raw_recording"

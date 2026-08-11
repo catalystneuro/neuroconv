@@ -31,9 +31,10 @@ from .utils import (
 )
 from .utils.dict import DeepDict
 from .utils.json_schema import (
+    _metadata_uses_old_list_format,
     _NWBConversionOptionsEncoder,
-    _NWBMetaDataEncoder,
     _NWBSourceDataEncoder,
+    validate_metadata,
 )
 
 
@@ -136,9 +137,15 @@ class NWBConverter:
         fill_defaults(metadata_schema, default_values)
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         """
         Auto-fill as much of the metadata as possible. Must comply with metadata schema.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: False
+            Ask each interface for the dict-based format. Interfaces that emit only that format ignore the
+            argument, so a converter mixing the two kinds returns one consistently dict-based dictionary.
 
         Returns
         -------
@@ -147,25 +154,58 @@ class NWBConverter:
         """
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
-            interface_metadata = interface.get_metadata()
+            interface_metadata = self._get_interface_metadata(
+                interface=interface, use_new_metadata_format=use_new_metadata_format
+            )
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
+    @staticmethod
+    def _get_interface_metadata(interface, *, use_new_metadata_format: bool) -> DeepDict:
+        """Ask an interface for a format it understands: only some of them take the argument."""
+        if not use_new_metadata_format:
+            return interface.get_metadata()
+
+        takes_the_argument = "use_new_metadata_format" in inspect.signature(interface.get_metadata).parameters
+        if takes_the_argument:
+            return interface.get_metadata(use_new_metadata_format=True)
+        return interface.get_metadata()
+
+    def _get_metadata_for_writing(self) -> DeepDict:
+        """
+        Return the metadata used when the caller passes none.
+
+        Transitional, and the converter twin of ``BaseDataInterface._get_metadata_for_writing``: converters
+        that override ``get_metadata`` without the argument (``MiniscopeConverter``, for one) are asked
+        plainly.
+
+        Remove this method, and the signature check in ``_get_interface_metadata``, when the old
+        list-based format is removed: every ``get_metadata`` returns the dict format by then and the
+        callers go back to ``metadata or self.get_metadata()``.
+        """
+        return self._get_interface_metadata(interface=self, use_new_metadata_format=True)
+
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        """Merge the schemas the interfaces use for the old list-based format (see ``BaseDataInterface``)."""
+        metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
+        for data_interface in self.data_interface_objects.values():
+            interface_schema = unroot_schema(data_interface._get_metadata_schema_for_old_list_format())
+            metadata_schema = dict_deep_update(metadata_schema, interface_schema)
+        return metadata_schema
+
     def validate_metadata(self, metadata: dict[str, dict], append_mode: bool = False):
         """Validate metadata against Converter metadata_schema."""
-        encoder = _NWBMetaDataEncoder()
+        if _metadata_uses_old_list_format(metadata):
+            metadata_schema = self._get_metadata_schema_for_old_list_format()
+        else:
+            metadata_schema = self.get_metadata_schema()
 
-        # We do this to ensure that python objects are in string format for the JSON schema
-        encoded_metadta = encoder.encode(metadata)
-        decoded_metadata = json.loads(encoded_metadta)
-
-        metadata_schema = self.get_metadata_schema()
         if append_mode:
             # Eliminate required from NWBFile
             nwbfile_schema = metadata_schema["properties"]["NWBFile"]
             nwbfile_schema.pop("required", None)
 
-        validate(instance=decoded_metadata, schema=metadata_schema)
+        validate_metadata(metadata=metadata, schema=metadata_schema)
         if self.verbose:
             print("Metadata is valid!")
 
@@ -245,7 +285,7 @@ class NWBConverter:
             By default, None.
         """
 
-        metadata = metadata or self.get_metadata()
+        metadata = metadata or self._get_metadata_for_writing()
 
         conversion_options = conversion_options or dict()
         for interface_name, data_interface in self.data_interface_objects.items():
@@ -313,7 +353,7 @@ class NWBConverter:
             )
 
         if metadata is None:
-            metadata = self.get_metadata()
+            metadata = self._get_metadata_for_writing()
 
         self.validate_metadata(metadata=metadata, append_mode=append_on_disk_nwbfile)
         self.validate_conversion_options(conversion_options=conversion_options)

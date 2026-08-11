@@ -46,6 +46,7 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
         is_filtered: Optional[bool] = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -66,6 +67,9 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
             If True, will print out additional information.
         es_key : str, default: "ElectricalSeries"
             The key of this ElectricalSeries in the metadata dictionary.
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"white_matter_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -110,4 +114,8 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
             is_filtered=is_filtered,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
         )
+
+        if metadata_key is None:
+            self.metadata_key = "white_matter_recording"

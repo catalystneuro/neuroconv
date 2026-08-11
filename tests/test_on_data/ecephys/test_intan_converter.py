@@ -85,6 +85,23 @@ class TestIntanConverter:
         assert list(nwbfile.devices.keys()) == ["Intan"]
 
 
+class TestMetadataKeyRouting:
+    """The routing table's key reaches the recording interface as ``metadata_key``, not only as ``es_key``."""
+
+    def test_amplifier_interface_gets_both_keys(self):
+        file_path = ECEPHY_DATA_PATH / "intan" / "intan_rhd_test_1.rhd"
+        converter = IntanConverter(file_path=file_path)
+
+        recording_interface = converter.data_interface_objects["Recording"]
+        # ``es_key`` keys the old list-based metadata and keeps the name it had before the dict format;
+        # ``metadata_key`` keys the dict-based one.
+        assert recording_interface.es_key == "intan_amplifier"
+        assert recording_interface.metadata_key == "intan_amplifier"
+
+        metadata = recording_interface.get_metadata(use_new_metadata_format=True)
+        assert list(metadata["Ecephys"]["ElectricalSeries"]) == ["intan_amplifier"]
+
+
 class TestStreamDiscoveryAndRouting:
     """`get_streams` enumerates header streams; `__init__` routes the present ones to sub-interfaces."""
 
@@ -93,18 +110,42 @@ class TestStreamDiscoveryAndRouting:
         assert "RHS2000 amplifier channel" in streams
         assert "USB board ADC input channel" in streams
         assert "Stim channel" in streams
-        # Digital streams are present in the header but unrouted.
+        # Digital streams are present in the header and route to IntanDigitalInterface.
         assert "USB board digital input channel" in streams
 
     @pytest.mark.parametrize(
         "file_path, expected_interface_names",
         [
-            # RHS traditional: digital streams present in the header are skipped (no IntanDigitalInterface yet).
-            (RHS_TRADITIONAL, {"Recording", "AnalogADCInput", "AnalogADCOutput", "Stim"}),
-            # Only fixture exercising the auxiliary stream.
-            (RHD_FILE_PER_SIGNAL, {"Recording", "AnalogAuxiliary", "AnalogADCInput"}),
+            # RHS traditional: both digital words are present and share the one "Digital" interface,
+            # which addresses their lines by the header's own names and so covers each of them.
+            (
+                RHS_TRADITIONAL,
+                {
+                    "Recording",
+                    "AnalogADCInput",
+                    "AnalogADCOutput",
+                    "Stim",
+                    "Digital",
+                },
+            ),
+            # Only fixture exercising the auxiliary stream (digital input present, no digital output),
+            # so the same "Digital" interface here covers one word rather than two.
+            (
+                RHD_FILE_PER_SIGNAL,
+                {"Recording", "AnalogAuxiliary", "AnalogADCInput", "Digital"},
+            ),
             # Only fixture exercising the DC Amplifier stream.
-            (RHS_FILE_PER_SIGNAL, {"Recording", "AnalogADCInput", "AnalogADCOutput", "AnalogDC", "Stim"}),
+            (
+                RHS_FILE_PER_SIGNAL,
+                {
+                    "Recording",
+                    "AnalogADCInput",
+                    "AnalogADCOutput",
+                    "AnalogDC",
+                    "Stim",
+                    "Digital",
+                },
+            ),
         ],
         ids=["rhs_traditional", "rhd_file_per_signal", "rhs_file_per_signal"],
     )

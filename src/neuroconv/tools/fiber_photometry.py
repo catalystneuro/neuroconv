@@ -4,10 +4,7 @@ from typing import Literal
 from pynwb import NWBFile
 
 from neuroconv.tools import get_package
-from neuroconv.tools.nwb_helpers import (
-    _add_device_model_to_nwbfile,
-    _add_device_to_nwbfile,
-)
+from neuroconv.tools.nwb_helpers import _add_device_to_nwbfile
 
 #: FiberPhotometryTable row reference fields (``<field>_metadata_key``) mapping to the ndx row column.
 _ROW_DEVICE_KEY_FIELDS = {
@@ -103,7 +100,7 @@ def add_ophys_device(
     """Add an optical physiology device instance to an NWBFile object.
 
     ``device_metadata["model"]`` is the *name* of an already-added device model; the caller resolves any
-    ``model_metadata_key`` reference to that name before calling this function.
+    ``device_model_metadata_key`` reference to that name before calling this function.
     """
     valid_device_types = [
         "ExcitationSource",
@@ -141,36 +138,73 @@ def add_ophys_device(
 
 
 def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
-    """Add all fiber photometry device models and instances to an NWBFile via the shared registry.
+    """Add the devices a ``FiberPhotometryTable`` row references to an NWBFile.
 
     Device models and instances live in the top-level ``metadata["DeviceModels"]`` /
     ``metadata["Devices"]`` registry (added in #1780) and are written with the shared
-    :func:`~neuroconv.tools.nwb_helpers._add_device_model_to_nwbfile` /
-    :func:`~neuroconv.tools.nwb_helpers._add_device_to_nwbfile` helpers, idempotently by name. Each
-    device links its model with ``device_model_metadata_key``, resolved on demand by the canonical
-    helper. Optical fibers are the one special case: each carries a nested ``fiber_insertion`` dict,
-    built here into an ``ndx_ophys_devices.FiberInsertion`` and passed through the helper's pre-resolved
-    (transitional) form.
+    :func:`~neuroconv.tools.nwb_helpers._add_device_to_nwbfile` helper, idempotently by name. That
+    registry is shared across a whole converter rather than owned by fiber photometry, so only the
+    devices reachable from a table row are written here: creating every entry would have this
+    interface write other interfaces' devices on their behalf, and an entry naming no ``type``
+    (because its own interface builds the object in Python) would come out a plain ``Device`` that
+    the owning interface then silently reuses. A referenced device's ``device_model_metadata_key``
+    is resolved on demand by the canonical helper, so its model needs no separate pass, and an
+    optical fiber's nested ``fiber_insertion`` dict is built into an
+    ``ndx_ophys_devices.FiberInsertion`` by the same helper.
     """
-    for device_model_metadata_key in metadata.get("DeviceModels", {}):
-        _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_model_metadata_key)
+    table_metadata = metadata["FiberPhotometry"]["FiberPhotometryTable"]
 
-    for device_metadata_key, device_metadata in metadata.get("Devices", {}).items():
-        if "fiber_insertion" not in device_metadata:
-            _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key)
-            continue
-        # Optical fiber: build the nested FiberInsertion and, if one is given, resolve the model, then use
-        # the helper's transitional form (a pre-resolved entry dict) since the canonical form cannot build
-        # sub-objects. The model is optional, mirroring the canonical helper's ``.get`` treatment.
-        ndx_ophys_devices = get_package("ndx_ophys_devices")
-        resolved = {key: value for key, value in device_metadata.items() if key != "device_model_metadata_key"}
-        resolved["fiber_insertion"] = ndx_ophys_devices.FiberInsertion(**device_metadata["fiber_insertion"])
-        device_model_metadata_key = device_metadata.get("device_model_metadata_key")
-        if device_model_metadata_key is not None:
-            resolved["model"] = _add_device_model_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, metadata_key=device_model_metadata_key
-            )
-        _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=resolved)
+    # One device type at a time, each collected across every row. Rows share hardware (two channels
+    # commonly read one fiber), so a key repeats; the helper is idempotent on name and ignores it.
+    rows_metadata = table_metadata["rows"].values()
+
+    optical_fiber_metadata_keys = [
+        row_metadata["optical_fiber_metadata_key"]
+        for row_metadata in rows_metadata
+        if "optical_fiber_metadata_key" in row_metadata
+    ]
+    for metadata_key in optical_fiber_metadata_keys:
+        _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+
+    excitation_source_metadata_keys = [
+        row_metadata["excitation_source_metadata_key"]
+        for row_metadata in rows_metadata
+        if "excitation_source_metadata_key" in row_metadata
+    ]
+    for metadata_key in excitation_source_metadata_keys:
+        _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+
+    photodetector_metadata_keys = [
+        row_metadata["photodetector_metadata_key"]
+        for row_metadata in rows_metadata
+        if "photodetector_metadata_key" in row_metadata
+    ]
+    for metadata_key in photodetector_metadata_keys:
+        _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+
+    dichroic_mirror_metadata_keys = [
+        row_metadata["dichroic_mirror_metadata_key"]
+        for row_metadata in rows_metadata
+        if "dichroic_mirror_metadata_key" in row_metadata
+    ]
+    for metadata_key in dichroic_mirror_metadata_keys:
+        _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+
+    excitation_filter_metadata_keys = [
+        row_metadata["excitation_filter_metadata_key"]
+        for row_metadata in rows_metadata
+        if "excitation_filter_metadata_key" in row_metadata
+    ]
+    for metadata_key in excitation_filter_metadata_keys:
+        _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+
+    emission_filter_metadata_keys = [
+        row_metadata["emission_filter_metadata_key"]
+        for row_metadata in rows_metadata
+        if "emission_filter_metadata_key" in row_metadata
+    ]
+    for metadata_key in emission_filter_metadata_keys:
+        _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
 
 
 def add_commanded_voltage_series(

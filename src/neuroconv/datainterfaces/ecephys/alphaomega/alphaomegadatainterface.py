@@ -43,8 +43,13 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         return extractor_instance
 
     def __init__(
-        self, folder_path: DirectoryPath, *args, verbose: bool = False, es_key: str = "ElectricalSeries"
-    ):  # TODO: change to * (keyword only) on or after August 2026
+        self,
+        folder_path: DirectoryPath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
+    ):
         """
         Load and prepare data for AlphaOmega.
 
@@ -56,6 +61,9 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
             Allows verbose.
             Default is False.
         es_key: str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"alpha_omega_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -84,10 +92,13 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
             verbose = positional_values.get("verbose", verbose)
             es_key = positional_values.get("es_key", es_key)
 
-        super().__init__(folder_path=folder_path, verbose=verbose, es_key=es_key)
+        super().__init__(folder_path=folder_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+        if metadata_key is None:
+            self.metadata_key = "alpha_omega_recording"
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         annotation = self.recording_extractor.neo_reader.raw_annotations
         metadata["NWBFile"].update(session_start_time=annotation["blocks"][0]["rec_datetime"])
         return metadata

@@ -385,12 +385,19 @@ class BaseEventsInterface(BaseDataInterface):
                     "no duration column. Duration presence must be consistent across the types sharing a table."
                 )
 
+        # A table that gets no rows at all is a real result, a line that was recorded and never fired, and
+        # it is written rather than dropped. hdmf infers a column added at runtime from its data, though,
+        # and an empty Python list carries no dtype, so those columns get a typed empty instead. (The
+        # predefined timestamp and duration columns declare theirs in the schema, which is why a table
+        # holding a single event type has always written empty without this.)
+        stays_empty = n_existing == 0 and not rows
+
         # A fresh merged table needs the discriminator column before its MeaningsTable and rows.
         if is_merge and "event_type" not in table.colnames:
             table.add_column(
                 name="event_type",
                 description="The event type of each event.",
-                data=[""] * n_existing,
+                data=np.array([], dtype=str) if stays_empty else [""] * n_existing,
             )
 
         # Ensure each value column this interface writes exists (backfilling already-present rows), and
@@ -401,10 +408,11 @@ class BaseEventsInterface(BaseDataInterface):
             categories = column_spec.get("column_categories")
             if column_name not in table.colnames:
                 fill = "" if categories is not None else np.nan
+                empty = np.array([], dtype=str if categories is not None else float)
                 table.add_column(
                     name=column_name,
                     description=column_spec.get("description", ""),
-                    data=[fill] * n_existing,
+                    data=empty if stays_empty else [fill] * n_existing,
                 )
             # Only a meaning the user actually wrote earns a row: a column whose meanings are all empty
             # gets no MeaningsTable rather than a table of empty strings, and a partly annotated column

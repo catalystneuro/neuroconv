@@ -1,13 +1,20 @@
 """Interface for discrete events (digital IO) from Doric Neuroscience Studio CSV exports."""
 
-import numpy as np
 from pydantic import FilePath, validate_call
 
 from neuroconv.utils import DeepDict
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
-from ....tools.events import validate_event_specs
-from ....tools.signal_processing import discretize_trace
+from ....tools.events import (
+    _get_event_type_source_ids,
+    _resolve_detection_plan,
+    _validate_detection_configuration,
+)
+from ....tools.signal_processing import (
+    _condition_signal,
+    _detect_events,
+    _frames_to_seconds,
+)
 
 
 class DoricCSVEventsInterface(BaseEventsInterface):
@@ -16,11 +23,13 @@ class DoricCSVEventsInterface(BaseEventsInterface):
     A DoricStudio CSV export stores its channels under a grouped two-row header: the first row names
     each channel's group (e.g. ``Analog In. | Ch.1``, ``Digital I/O | Ch.1``) and the second row names
     each column (e.g. ``Time(s)``, ``DI/O-1``). The digital IO lines (the columns whose group is
-    ``Digital I/O``) are sampled ``0``/``1`` traces on the shared ``Time(s)`` clock. This interface
-    edge-detects each digital line and writes one ``pynwb.event.EventsTable`` per line into
-    ``nwbfile.events``. How each line's transitions become events is set per line by ``event_specs``;
-    by default every line is read as a ``high_period`` (each rising edge is an event onset, its duration
-    the span to the next falling edge). A line that never toggles is skipped.
+    ``Digital I/O``) are sampled ``0``/``1`` traces on the shared ``Time(s)`` clock. Each such column is
+    a *signal*, and the events derived from it are set by ``detection_configuration``: one entry per
+    signal holding a list of detection specs, since a signal can yield more than one event type. Each
+    event type is written as its own ``pynwb.event.EventsTable`` into ``nwbfile.events``. By default
+    every line is read as a ``high_period`` (each rising edge is an event onset, its duration the span to
+    the next falling edge). A line that never toggles still yields its event type, written as a zero-row
+    table, since the type existed in the recording and nothing fired.
 
     This reads the DoricStudio CSV export only; the ``.doric`` HDF5 layouts are handled by
     :class:`.DoricEventsInterface`. The CSV export carries no session start time, so the user must
@@ -37,7 +46,7 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         self,
         file_path: FilePath,
         *,
-        event_specs: dict | None = None,
+        detection_configuration: dict | None = None,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -47,14 +56,21 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         ----------
         file_path : FilePath
             Path to the DoricStudio CSV export.
-        event_specs : dict, optional
-            Per digital line, how its transitions become events, keyed by the line's column name
-            (e.g. ``{"DI/O-1": {"detect": "high_period"}}``). ``detect`` is one of ``"rising"`` /
-            ``"falling"`` (a point event at each edge) or ``"high_period"`` / ``"low_period"`` (a
-            durative event, onset at one edge and duration to the next opposite edge), default
-            ``"high_period"`` (lossless for an active-high line; use ``"low_period"`` for an
-            active-low line). If None (default), every digital line in the file is read as a
-            ``high_period``. When given, only the named lines are read (selection by inclusion).
+        detection_configuration : dict, optional
+            Which digital lines to read and how, keyed by the line's ``signal_source_id`` (its column
+            name, e.g. ``{"DI/O-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection":
+            "high_period"}]}``). Each value is a **list** of
+            detection specs, one per event type derived from that line, since a line can yield more than
+            one. A spec's ``detection`` is one of ``"rising"`` / ``"falling"`` (a point event at each
+            edge) or ``"high_period"`` / ``"low_period"`` (a durative event, onset at one edge and
+            duration to the next opposite edge), and it is required. ``signal_conditioning`` is required
+            too and says how the signal becomes a line: a DoricStudio digital column is already
+            ``0``/``1``, so it takes ``{"binarize": "midpoint"}``, whose cut falls strictly between the
+            two levels whatever they are. An optional
+            ``event_name`` replaces the derived identifier and pins it against later edits. If None
+            (default), every digital line in the file is read as a ``high_period``, lossless for an
+            active-high line; use ``"low_period"`` for an active-low one. When given, only the named
+            lines are read.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
             If None (default), ``"doric_events"`` is used.
@@ -63,25 +79,31 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         """
         super().__init__(
             file_path=file_path,
+            detection_configuration=detection_configuration,
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "doric_events"
         self._time_column, digital_columns = self._discover_columns(self.source_data["file_path"])
-        # available_event_lines: source_id (the column name, e.g. "DI/O-1") -> its (group, name) column
-        # handle. Every digital line is an event line: whether it fired is a property of this recording,
-        # not of intent, so a line that never toggles is still a (possibly empty) event type.
-        self._available_event_lines = {str(column[1]): column for column in digital_columns}
-        # Validate user-passed specs eagerly (fail-fast at construction); the None default is trusted.
-        if event_specs is not None:
-            validate_event_specs(event_specs, self._available_event_lines)
-        else:
-            # Default selection: read every discovered event line.
-            event_specs = {source_id: {} for source_id in self._available_event_lines}
-        # Resolve every entry to a complete spec here, so self._event_specs is the finished, ready-to-read
-        # plan: one entry per selected line, each carrying its detect. The default reading is "high_period",
-        # the lossless durative one (onset at the rising edge, duration to the falling edge, for an
-        # active-high line); a user entry's own "detect" overrides it (it comes last in the merge).
-        self._event_specs = {source_id: {"detect": "high_period", **entry} for source_id, entry in event_specs.items()}
+        # available_signals: signal_source_id (the column name, e.g. "DI/O-1") -> its {kind, column}
+        # descriptor. The header group "Digital I/O" makes every discovered signal a digital line, settled
+        # structurally with no data read, which is what lets the validator reject a bit carve on one.
+        # Whether a line fired is a property of this recording, not of intent, so a line that never
+        # toggles is still a (possibly empty) event type.
+        self._available_signals = {str(column[1]): {"kind": "line", "column": column} for column in digital_columns}
+        if detection_configuration is None:
+            # The default, used only when the caller passes none: read every discovered line as a
+            # "high_period", the lossless durative reading (onset at the rising edge, duration to the
+            # falling edge, for an active-high line). The "midpoint" cut is what a line takes: it falls
+            # strictly between the two levels whatever they are, so it needs no knowledge of the file.
+            detection_configuration = {
+                signal_source_id: [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "high_period"}]
+                for signal_source_id in self._available_signals
+            }
+        # One construction-time check, on the default as well as on a caller-supplied configuration: the
+        # default is machine-built but its inputs are not, so it too can resolve two event types to the
+        # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
+        _validate_detection_configuration(detection_configuration, self._available_signals)
+        self._detection_configuration = detection_configuration
 
     @staticmethod
     def _read_doric_csv(file_path):
@@ -135,8 +157,10 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         # Identity-in-header: each digital column name is its own event type. The column name is kept as
         # the event_type_source_id, but the human-facing event_name drops the "/" (an NWB object name
         # cannot contain a slash), so "DI/O-1" seeds a table named "DIO-1". Only lines that carry at
-        # least one event appear (a constant line is skipped), matching _get_events_data_dict.
-        for event_type_source_id in self._get_events_data_dict():
+        # least one event appear. Derived from the configuration rather than from the events or the plan,
+        # so metadata costs no data read and does not depend on a plan existing: whether a line happened
+        # to fire does not change which event types the configuration asked for.
+        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id.replace("/", "")
             }
@@ -146,32 +170,38 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         """Build the internal event representation by edge-detecting each digital line, cached.
 
         Each selected digital line becomes one :class:`_EventsData` keyed by its ``event_type_source_id``
-        (the column name): its trace is edge-detected per the line's ``detect`` (via
-        :func:`discretize_trace`) into onset frames and, for a durative reading, per-event durations. The
-        onset timestamps are read from the shared ``Time(s)`` column; durations (in frames) are scaled to
-        seconds by the file's sampling period. A line with no event (constant, or never opening) is
-        skipped, so the empty state never reaches the writer.
+        (the column name): its trace is read per the line's ``detection`` into onset frames and, for a
+        durative reading, offset frames. Both are then indexed into the shared ``Time(s)`` column, so a
+        duration is the elapsed clock time between the two edges rather than a frame count times an
+        assumed sampling period. A line that never toggles keeps its entry with empty timestamps, which
+        the writer renders as a zero-row table.
         """
         if self._events_data_dict is not None:
             return self._events_data_dict
 
         dataframe = self._read_doric_csv(self.source_data["file_path"])
         time = dataframe[self._time_column].to_numpy(dtype="float64")
-        frame_period = float(np.median(np.diff(time)))  # regular DoricStudio clock; duration frames -> seconds
+
+        # Built here rather than held on the interface: the configuration is the source of truth, and the
+        # plan is pure and cheap to rebuild. Grouped by signal, so a column is extracted once however
+        # many event types it yields.
+        detection_plan = _resolve_detection_plan(self._detection_configuration)
 
         events_data_dict = {}
-        for event_type_source_id, entry in self._event_specs.items():
-            column = self._available_event_lines[event_type_source_id]
+        for signal_source_id, detection_specs in detection_plan.items():
+            column = self._available_signals[signal_source_id]["column"]
             data = dataframe[column].to_numpy(dtype="float64")
-            # A digital line is a densely sampled 0/1 trace; threshold=0.5 discretizes it strictly.
-            onset_frames, duration_frames = discretize_trace(data, entry["detect"], threshold=0.5)
-            if onset_frames.size == 0:
-                continue  # a line with no matching edge has no event; skip it entirely
-            onsets = time[onset_frames]
-            durations = None if duration_frames is None else duration_frames * frame_period
-            events_data_dict[event_type_source_id] = _EventsData(
-                event_type_source_id=event_type_source_id, timestamps=onsets, durations=durations
-            )
+            for event_type_source_id, spec in detection_specs:
+                # A DoricStudio digital column is already 0/1, so its cut is the derived midpoint,
+                # which lands between the two levels and hands detection back the same line.
+                conditioned = _condition_signal(data, spec["signal_conditioning"])
+                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)
+                events_data_dict[event_type_source_id] = _EventsData(
+                    event_type_source_id=event_type_source_id,
+                    timestamps=onsets,
+                    durations=durations,
+                )
 
         self._events_data_dict = events_data_dict
         return self._events_data_dict

@@ -145,8 +145,12 @@ npm_events = [
 tdt_events = [
     "tdt",  # raw TDT tank reader; listed directly to avoid pulling in spikeinterface/neo via neuroconv[tdt]
 ]
+doric_events = [
+    "h5py>=3",  # Doric events live in the .doric HDF5 file; the CSV export variant needs only pandas.
+]
 events = [
     "neuroconv[csv_events]",
+    "neuroconv[doric_events]",
     "neuroconv[npm_events]",
     "neuroconv[tdt_events]",
 ]
@@ -235,7 +239,6 @@ spikegadgets = [
 spikeglx = [
     "neuroconv[ecephys_minimal]",
     "probeinterface>=0.3.1",  # For ADC multiplexing properties (adc_group, adc_sample_order)
-    "ndx-events==0.2.2",  # For adding events from the nidq recording
 ]
 tdt = [
     "neuroconv[ecephys_minimal]",
@@ -296,7 +299,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.8.0",
+    "roiextractors>=0.9.0",
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
@@ -377,6 +380,9 @@ tdt_fp = [
     "neuroconv[fiber_photometry]",
     "tdt",
 ]
+npm_fp = [
+    "neuroconv[fiber_photometry]",
+]
 csv_fp = [
     "neuroconv[fiber_photometry]",
 ]
@@ -384,6 +390,16 @@ guppy = [
     "neuroconv[fiber_photometry]",
     "ndx-guppy",
     "tables",
+    # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
+    # whatever it was recorded on.
+    "neuroconv[tdt_fp]",
+    "neuroconv[tdt_events]",
+    "neuroconv[csv_fp]",
+    "neuroconv[csv_events]",
+    "neuroconv[doric_fp]",
+    "neuroconv[doric_events]",
+    "neuroconv[npm_fp]",
+    "neuroconv[npm_events]",
 ]
 thor = [
     "neuroconv[ophys_minimal]",
@@ -410,6 +426,7 @@ ophys = [
     "neuroconv[sima]",
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
+    "neuroconv[npm_fp]",
     "neuroconv[csv_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
@@ -441,7 +458,16 @@ filterwarnings = [
     "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
     "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
     "error:Importing classes at __init__ has been deprecated in favor of only importing function-size wrappers and will be removed in 0.105.0.*:UserWarning:spikeinterface.extractors",  # TODO: remove when spikeinterface>=0.105.0
+    # `num_samples` is a computed property on pynwb's `TimeSeries` (it returns `len(data)`), so the signed int it
+    # hands hdmf for an unsigned spec is not something a caller can influence.
+    "ignore:Spec .*num_samples.*is being converted:hdmf.build.warnings.DtypeConversionWarning",
+    # `PYTHONWARNDEFAULTENCODING` (set below) enables `EncodingWarning` process wide, so every dependency that opens
+    # a text file without `encoding=` reports one. Only our own calls are actionable, so ignore the category by
+    # default and re-raise it as an error for the code we own. Later filters take precedence, so the two `error`
+    # entries must stay after the `ignore`.
+    "ignore::EncodingWarning",
     "error::EncodingWarning:neuroconv",  # Require explicit encoding= in all open() calls per PEP 597
+    "error::EncodingWarning:tests",
 ]
 
 [tool.pytest_env]
