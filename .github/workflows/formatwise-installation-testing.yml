@@ -1,7 +1,25 @@
 name: Formatwise gallery tests
 on:
   workflow_dispatch:
+    inputs:
+      python-versions:
+        description: 'List of Python versions to use in matrix, as JSON string. Defaults to all of them.'
+        required: false
+        type: string
+      os-versions:
+        description: 'List of OS versions to use in matrix, as JSON string. Defaults to all of them.'
+        required: false
+        type: string
   workflow_call:
+    inputs:
+      python-versions:
+        description: 'List of Python versions to use in matrix, as JSON string. Defaults to all of them.'
+        required: false
+        type: string
+      os-versions:
+        description: 'List of OS versions to use in matrix, as JSON string. Defaults to all of them.'
+        required: false
+        type: string
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
@@ -28,13 +46,15 @@ jobs:
 
   run:
     needs: load_python_and_os_versions
-    name: OS ${{ matrix.os }} Python ${{ matrix.python-version }}
+    name: ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ${{ fromJson(needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS) }}
-        os: ${{ fromJson(needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS) }}
+        # The caller may narrow the matrix, as `deploy-tests.yml` does for a draft pull request. The
+        # daily passes nothing and gets every leg.
+        python-version: ${{ fromJson(inputs.python-versions || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS) }}
+        os: ${{ fromJson(inputs.os-versions || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS) }}
     steps:
       - uses: actions/checkout@v6
       - name: Setup Python ${{ matrix.python-version }}
