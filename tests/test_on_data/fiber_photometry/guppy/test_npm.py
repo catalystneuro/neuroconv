@@ -115,8 +115,9 @@ class NPMConverterTestMixin:
 
     def test_event_store_ids_map_to_the_names_guppy_gave_them(self, converter):
         """GuPPy's ``event<N>`` store ids are synthetic too, and must round-trip back to the source file."""
+        (events_spec,) = converter._events_specs
         for store_id in self.EVENT_STORE_TO_NAME:
-            assert store_id in converter._event_source_id_to_store_id["guppy_npm_events"].values()
+            assert store_id in events_spec["source_id_to_store_id"].values()
 
 
 class TestGuppyConverterNPMInterleaved(NPMConverterTestMixin):
@@ -232,8 +233,9 @@ class TestGuppyConverterNPMHeaderless(NPMConverterTestMixin):
 
     def test_event0_is_translated_back_to_its_store_id(self, converter):
         """The CSV events interface keys its lone type by file stem, so the seam maps it to `event0`."""
-        assert converter._event_source_id_to_store_id == {"guppy_npm_events": {"ttls": "event0"}}
-        assert converter._store_id_for("guppy_npm_events", "ttls") == "event0"
+        (events_spec,) = converter._events_specs
+        assert events_spec["source_id_to_store_id"] == {"ttls": "event0"}
+        assert converter._store_id_for(events_spec, "ttls") == "event0"
 
 
 class TestNPMRunParameters:
