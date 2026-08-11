@@ -11,6 +11,9 @@ from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
+from ...datainterfaces.ecephys.basemnecontinuousdatainterface import (
+    BaseMNEContinuousDataInterface,
+)
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
@@ -961,6 +964,69 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata
+
+
+class MockMNEContinuousDataInterface(BaseMNEContinuousDataInterface):
+    """A mock MNE-backed continuous interface built from a synthetic ``mne.io.RawArray``.
+
+    Exercises the ``BaseMNEContinuousDataInterface`` write path (Raw -> ElectricalSeries + a
+    minimal electrodes table) with no data on disk. Unlike a reader-based fixture this is not
+    circular: it validates the base's handling of an ``mne.io.BaseRaw``, not a file parser.
+    """
+
+    def __init__(
+        self,
+        *,
+        num_channels: int = 4,
+        sampling_frequency: float = 1000.0,
+        duration: float = 1.0,
+        ch_types: str | list[str] = "eeg",
+        seed: int = 0,
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
+    ):
+        """
+        Parameters
+        ----------
+        num_channels : int, default: 4
+            Number of channels to generate.
+        sampling_frequency : float, default: 1000.0
+            Sampling frequency in Hz.
+        duration : float, default: 1.0
+            Duration of the data in seconds.
+        ch_types : str or list of str, default: "eeg"
+            The MNE channel type(s) passed to ``mne.create_info``.
+        seed : int, default: 0
+            Seed for the synthetic data.
+        verbose : bool, default: False
+            Control verbosity.
+        es_key : str, default: "ElectricalSeries"
+            The key of this ElectricalSeries in the metadata dictionary.
+        metadata_key : str, optional
+            Key of this interface's ElectricalSeries in the metadata. Defaults to ``es_key``.
+        """
+        self.num_channels = num_channels
+        self.sampling_frequency = sampling_frequency
+        self.duration = duration
+        self.ch_types = ch_types
+        self.seed = seed
+        super().__init__(verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+
+    def _read_raw(self):
+        import mne
+
+        rng = np.random.default_rng(self.seed)
+        channel_names = [f"CH{index}" for index in range(self.num_channels)]
+        info = mne.create_info(ch_names=channel_names, sfreq=self.sampling_frequency, ch_types=self.ch_types)
+        number_of_samples = int(self.duration * self.sampling_frequency)
+        data = rng.standard_normal(size=(self.num_channels, number_of_samples)) * 1e-5  # ~10 uV, in volts
+        return mne.io.RawArray(data=data, info=info, verbose=False)
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         return metadata
 
 
