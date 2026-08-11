@@ -54,6 +54,17 @@ EXPECTED_ACQUISITION_INTERFACE_NAMES = {"FiberPhotometry_signal", "FiberPhotomet
 EXPECTED_EVENTS_INTERFACE_NAMES = {"Events", f"Events_{IMPORTED_EVENT_STORE}"}
 
 
+def build_session_metadata(converter):
+    """The converter's own metadata, completed with the fiber photometry chain a caller must supply."""
+    metadata = converter.get_metadata()
+    metadata = dict_deep_update(metadata, build_device_metadata(RECORDING_SITES))
+    metadata["FiberPhotometry"] = dict_deep_update(
+        metadata["FiberPhotometry"], build_fiber_photometry_metadata(RECORDING_SITES)
+    )
+    metadata["FiberPhotometry"] = dict_deep_update(metadata["FiberPhotometry"], build_series_metadata(RECORDING_SITES))
+    return metadata
+
+
 class TestGuppyConverterMixedEvents:
     @pytest.fixture
     def session_folder(self, tmp_path):
@@ -107,15 +118,7 @@ class TestGuppyConverterMixedEvents:
 
     @pytest.fixture
     def metadata(self, converter):
-        metadata = converter.get_metadata()
-        metadata = dict_deep_update(metadata, build_device_metadata(RECORDING_SITES))
-        metadata["FiberPhotometry"] = dict_deep_update(
-            metadata["FiberPhotometry"], build_fiber_photometry_metadata(RECORDING_SITES)
-        )
-        metadata["FiberPhotometry"] = dict_deep_update(
-            metadata["FiberPhotometry"], build_series_metadata(RECORDING_SITES)
-        )
-        return metadata
+        return build_session_metadata(converter)
 
     def test_each_store_is_routed_to_the_format_that_carries_it(self, converter):
         """The tank claims its epocs and the CSV claims the imported store, by discovery rather than declaration."""
@@ -156,17 +159,27 @@ class TestGuppyConverterMixedEvents:
                 np.sort(imported_table.to_dataframe().timestamp.to_numpy()), IMPORTED_EVENT_ONSETS
             )
 
-    def test_a_store_both_sides_carry_is_rejected(self, session_folder, guppy_output_folder):
-        """A tank epoc that also has a CSV would be written twice, so the ambiguity is refused up front."""
+    def test_a_store_both_sides_carry_is_read_from_its_csv(self, session_folder, guppy_output_folder, tmp_path):
+        """A tank epoc that also has a CSV is read from the CSV, since GuPPy's import is what wrote it."""
         pandas.DataFrame({"timestamps": [1.0, 2.0]}).to_csv(session_folder / "PrtR.csv", index=False)
+        converter = GuppyConverter(
+            fiber_photometry_folder_path=session_folder,
+            events_folder_path=session_folder,
+            guppy_folder_path=guppy_output_folder,
+            acquisition_format="tdt",
+        )
+        assert converter._event_store_ownership == {"tdt": ["LNRW", "LNnR"], "csv": ["PrtR", IMPORTED_EVENT_STORE]}
 
-        with pytest.raises(AssertionError, match="PrtR"):
-            GuppyConverter(
-                fiber_photometry_folder_path=session_folder,
-                events_folder_path=session_folder,
-                guppy_folder_path=guppy_output_folder,
-                acquisition_format="tdt",
-            )
+        # Reading past a source that carries the store under the same name is said out loud.
+        with pytest.warns(UserWarning, match="PrtR"):
+            metadata = build_session_metadata(converter)
+
+        nwbfile_path = tmp_path / "displaced_store.nwb"
+        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
+
+        with NWBHDF5IO(str(nwbfile_path), "r") as io:
+            port_entries = io.read().get_events_table(EVENT_NAME_TO_RAW_TABLE_NAME["port_entries"])
+            np.testing.assert_allclose(port_entries.to_dataframe().timestamp.to_numpy(), [1.0, 2.0])
 
     def test_a_session_whose_every_event_was_imported_reads_none_from_the_tank(self, session_folder, tmp_path):
         """With nothing left for the acquisition format, only the imported stores' interfaces are built."""

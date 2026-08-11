@@ -1,3 +1,4 @@
+import warnings
 from typing import Literal
 
 from pydantic import DirectoryPath, validate_call
@@ -30,7 +31,7 @@ _STORE_ROLES = ("signal", "control")
 
 # The formats a GuPPy session can have been recorded in -- every format GuPPy itself supports. Each has
 # a ``<format>_utils`` module reading it; supporting another means writing that module, widening this,
-# and adding a branch to each of the three _build_* / _discover_* methods below.
+# and adding a branch to each of the two _build_*_interfaces methods below.
 AcquisitionFormat = Literal["tdt", "csv", "doric", "npm"]
 _ACQUISITION_SUFFIXES = tuple(
     dict.fromkeys(
@@ -170,7 +171,7 @@ class GuppyConverter(ConverterPipe):
             acquisition_format=acquisition_format,
             folder_path=events_folder_path,
         )
-        events_interfaces = self._build_events_interfaces(
+        events_interfaces, self._events_metadata_key_to_store_ids = self._build_events_interfaces(
             event_store_ownership=self._event_store_ownership,
             folder_path=events_folder_path,
             guppy_folder_path=guppy_folder_path,
@@ -280,33 +281,6 @@ class GuppyConverter(ConverterPipe):
             interfaces[f"FiberPhotometry_{metadata_key}"] = interface
         return interfaces
 
-    def _discover_event_store_ids(self, *, events_format: str, folder_path: DirectoryPath) -> set[str]:
-        """Return the ``storesList.csv`` event ids ``events_format`` carries in ``folder_path``.
-
-        Each format answers for itself, by the same conventions GuPPy uses to decide which of a
-        session folder's files its own readers should look at.
-
-        Returns
-        -------
-        set of str
-            The ids that format could supply, before intersecting with what GuPPy listed. Ids the
-            session does not use are harmless; a format that carries none of them supplies nothing.
-
-        Raises
-        ------
-        NotImplementedError
-            If ``events_format`` names a format no branch can enumerate.
-        """
-        if events_format == "tdt":
-            return tdt_utils.discover_event_store_ids(folder_path=folder_path)
-        if events_format == "csv":
-            return csv_utils.discover_event_store_ids(folder_path=folder_path)
-        if events_format == "doric":
-            return doric_utils.discover_event_store_ids(folder_path=folder_path)
-        if events_format == "npm":
-            return npm_utils.discover_event_store_ids(folder_path=folder_path)
-        raise NotImplementedError(f"No event store discovery is wired up for events_format={events_format!r}.")
-
     def _build_event_store_ownership(
         self,
         *,
@@ -323,9 +297,9 @@ class GuppyConverter(ConverterPipe):
         acquisition format -- which is where the session's events came from when the import was never
         used.
 
-        A store both sides carry would have its occurrences written twice, from two sources that
-        disagree about them, so whenever the two split a session between them the acquisition format
-        is asked what it holds and an overlap is refused.
+        Having a CSV is what decides the split, so a store the acquisition source also carries is
+        still read from its CSV: GuPPy's import is what wrote that file, making it the copy GuPPy
+        analyzed. :meth:`get_metadata` warns when it drops the acquisition source's copy.
 
         The acquisition format comes first in the result, which is the order the events interfaces
         are built and registered in.
@@ -345,19 +319,6 @@ class GuppyConverter(ConverterPipe):
         imported_store_ids = [store_id for store_id in event_store_ids if store_id in imported]
         acquisition_store_ids = [store_id for store_id in event_store_ids if store_id not in imported]
 
-        if imported_store_ids and acquisition_store_ids:
-            carried_by_both = sorted(
-                set(imported_store_ids)
-                & self._discover_event_store_ids(events_format=acquisition_format, folder_path=folder_path)
-            )
-            assert not carried_by_both, (
-                f"Behavioral event store(s) {carried_by_both} have an imported-event CSV in "
-                f"'{folder_path}' and are also carried by the session's {acquisition_format} "
-                f"acquisition source, so each store's occurrences would be written twice, from two "
-                f"sources that disagree about them. Remove or rename the CSV of whichever store "
-                f"GuPPy did not import."
-            )
-
         ownership: dict[str, list[str]] = {}
         if acquisition_store_ids:
             ownership[acquisition_format] = acquisition_store_ids
@@ -372,7 +333,7 @@ class GuppyConverter(ConverterPipe):
         folder_path: DirectoryPath,
         guppy_folder_path: DirectoryPath,
         verbose: bool,
-    ) -> dict:
+    ) -> tuple[dict, dict[str, list[str]]]:
         """Build the interfaces reading the behavioral event stores GuPPy listed.
 
         Each format builds a single interface over the stores it was found to supply; how many a
@@ -390,8 +351,12 @@ class GuppyConverter(ConverterPipe):
 
         Returns
         -------
-        dict
+        interfaces : dict
             ``interface_name -> BaseEventsInterface``, empty for a session with no event stores.
+        events_metadata_key_to_store_ids : dict
+            The stores each of those interfaces was built to supply, which is what
+            :meth:`get_metadata` selects its seeded event types down to. An interface reading a whole
+            source seeds more than this -- every epoc in a tank, say -- and the surplus is dropped.
 
         Raises
         ------
@@ -399,20 +364,23 @@ class GuppyConverter(ConverterPipe):
             If a format no branch builds interfaces for owns a store.
         """
         interfaces: dict = {}
+        events_metadata_key_to_store_ids: dict[str, list[str]] = {}
         for events_format, store_ids in event_store_ownership.items():
-            if events_format == "tdt":
-                interfaces["Events"] = build_tdt_events_interface(folder_path=folder_path, verbose=verbose)
-            elif events_format == "csv":
+            if events_format == "csv":
                 for store_id in store_ids:
-                    interfaces[f"Events_{store_id}"] = build_csv_events_interface(
-                        folder_path=folder_path, store_id=store_id, verbose=verbose
-                    )
+                    interface = build_csv_events_interface(folder_path=folder_path, store_id=store_id, verbose=verbose)
+                    interfaces[f"Events_{store_id}"] = interface
+                    events_metadata_key_to_store_ids[interface.metadata_key] = [store_id]
+                continue
+
+            if events_format == "tdt":
+                interface = build_tdt_events_interface(folder_path=folder_path, verbose=verbose)
             elif events_format == "doric":
-                interfaces["Events"] = build_doric_events_interface(
+                interface = build_doric_events_interface(
                     folder_path=folder_path, event_store_ids=store_ids, verbose=verbose
                 )
             elif events_format == "npm":
-                interfaces["Events"] = build_npm_events_interface(
+                interface = build_npm_events_interface(
                     folder_path=folder_path,
                     guppy_folder_path=guppy_folder_path,
                     event_store_ids=store_ids,
@@ -420,7 +388,9 @@ class GuppyConverter(ConverterPipe):
                 )
             else:
                 raise NotImplementedError(f"No events interface is wired up for events_format={events_format!r}.")
-        return interfaces
+            interfaces["Events"] = interface
+            events_metadata_key_to_store_ids[interface.metadata_key] = store_ids
+        return interfaces, events_metadata_key_to_store_ids
 
     def _build_event_source_id_map(
         self,
@@ -474,18 +444,25 @@ class GuppyConverter(ConverterPipe):
             fiber_photometry_metadata[series_spec["metadata_key"]]["name"] = series_spec["series_name"]
 
         # Select: each events interface seeds one event type per store it found, and its write is driven
-        # by that dict rather than by the source, so dropping the stores GuPPy did not list is what keeps
-        # them out of the NWB file. A format may split its stores over several interfaces, so the stores
-        # GuPPy listed are only guaranteed to be covered by the interfaces taken together.
+        # by that dict rather than by the source, so cutting it down to the stores that interface was
+        # built to supply is what keeps everything else out of the NWB file. An interface reading a whole
+        # source seeds more than it owns -- every epoc in a tank, whether GuPPy listed it or not, and
+        # including one whose imported CSV is what GuPPy analyzed.
         covered_stores: set[str] = set()
         for events_metadata_key, seeded_event_types in self._iter_event_type_blocks(metadata):
+            owned_stores = self._events_metadata_key_to_store_ids[events_metadata_key]
             kept = {
                 source_id: entry
                 for source_id, entry in seeded_event_types.items()
-                if self._store_id_for(events_metadata_key, source_id) in self._event_store_to_event_name
+                if self._store_id_for(events_metadata_key, source_id) in owned_stores
             }
             metadata["Events"][events_metadata_key]["event_types"] = kept
             covered_stores.update(self._store_id_for(events_metadata_key, source_id) for source_id in kept)
+            self._warn_about_displaced_stores(
+                events_metadata_key=events_metadata_key,
+                seeded_event_types=seeded_event_types,
+                owned_stores=owned_stores,
+            )
         missing_stores = [store for store in self._event_store_to_event_name if store not in covered_stores]
         assert not missing_stores, (
             f"GuPPy's storesList.csv lists behavioral event store(s) {missing_stores} that the raw events "
@@ -505,6 +482,38 @@ class GuppyConverter(ConverterPipe):
                 )
 
         return metadata
+
+    def _warn_about_displaced_stores(
+        self, *, events_metadata_key: str, seeded_event_types: dict, owned_stores: list[str]
+    ) -> None:
+        """Warn about a store this interface carries that another events format was given instead.
+
+        The only way a session gets one is GuPPy's custom-event import writing a store's events back
+        out as a CSV while the acquisition source still carries that store. The CSV wins -- the import
+        is what wrote it, making it the copy GuPPy analyzed -- but silently reading past a source that
+        holds the store under the same name would hide a stray file left in the session folder.
+
+        A store the interface seeded that GuPPy did not list at all is not this: it is every session
+        with more epocs in the tank than GuPPy was pointed at, and it is dropped without comment.
+        """
+        displaced = sorted(
+            {
+                store
+                for source_id in seeded_event_types
+                if (store := self._store_id_for(events_metadata_key, source_id)) not in owned_stores
+                and store in self._event_store_to_event_name
+            }
+        )
+        if not displaced:
+            return
+        warnings.warn(
+            f"Behavioral event store(s) {displaced} are carried by the session's {self.acquisition_format} "
+            f"acquisition source and also have an imported-event CSV of their own, which is what GuPPy's "
+            f"custom-event import writes. Each is read from its CSV; the {self.acquisition_format} copy is "
+            f"not written. Remove the CSV if the acquisition source is the one to read.",
+            UserWarning,
+            stacklevel=3,
+        )
 
     def _store_id_for(self, events_metadata_key: str, event_type_source_id: str) -> str:
         """Return the ``storesList.csv`` id an interface's seeded event type corresponds to.

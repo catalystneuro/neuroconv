@@ -290,35 +290,6 @@ def build_npm_acquisition_interface(
     )
 
 
-def discover_event_store_ids(*, folder_path: DirectoryPath) -> set[str]:
-    """Return the ``storesList.csv`` event ids the session's NPM event file can supply.
-
-    GuPPy prefixes ``event`` to each label it split the file on, and calls the whole file ``event0``
-    when it split nothing, so the file's distinct labels give one spelling and the unsplit store the
-    other. Both are returned: which one a run produced is recorded in ``storesList.csv``, not in the
-    file, and :func:`build_npm_events_interface` is what rejects a session holding both.
-
-    Parameters
-    ----------
-    folder_path : DirectoryPath
-        Path to the GuPPy session folder, holding the two-column event CSV alongside the traces.
-
-    Returns
-    -------
-    set of str
-        The ids the event file's rows could be recorded under.
-
-    Raises
-    ------
-    AssertionError
-        If the session does not hold exactly one NPM event file.
-    """
-    import pandas
-
-    labels = pandas.read_csv(_npm_event_file(folder_path), header=None, usecols=[1]).iloc[:, 0].unique()
-    return {"event0"} | {f"event{label}" for label in labels}
-
-
 def build_npm_events_interface(
     *,
     folder_path: DirectoryPath,

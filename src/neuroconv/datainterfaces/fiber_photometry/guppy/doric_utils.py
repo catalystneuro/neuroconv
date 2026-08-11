@@ -35,37 +35,6 @@ def resolve_doric_file(folder_path: DirectoryPath):
     return candidates[0]
 
 
-def discover_event_store_ids(*, folder_path: DirectoryPath) -> set[str]:
-    """Return the ``storesList.csv`` event ids the folder's Doric acquisition file can supply.
-
-    Every event store is a digital line of that one file, so the lines it carries are the stores it
-    can supply. GuPPy names a line by its dataset key, optionally keeping the ``DigitalIO`` group it
-    sits in, and both spellings are returned for the HDF5 layouts because which one a session's
-    ``storesList.csv`` used is not recoverable from the file.
-
-    Parameters
-    ----------
-    folder_path : DirectoryPath
-        Path to the folder holding the single ``.doric`` or DoricStudio ``.csv`` export.
-
-    Returns
-    -------
-    set of str
-        The ids the file's digital lines could be recorded under.
-
-    Raises
-    ------
-    AssertionError
-        If the folder does not hold exactly one acquisition file.
-    """
-    file_path = resolve_doric_file(folder_path)
-    if file_path.suffix.lower() == ".csv":
-        _, digital_columns = DoricCSVEventsInterface._discover_columns(file_path)
-        return {str(column[1]) for column in digital_columns}
-    signal_ids = DoricEventsInterface._get_available_signals(file_path)
-    return set(signal_ids) | {f"DigitalIO/{signal_id}" for signal_id in signal_ids}
-
-
 def doric_store_id_to_stream_name(file_path) -> dict[str, str]:
     """Map each GuPPy Doric store id to the stream name the Doric interface knows it by.
 

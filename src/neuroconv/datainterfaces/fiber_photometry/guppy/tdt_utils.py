@@ -4,7 +4,6 @@ GuPPy's store ids are the tank's stream and epoc names verbatim, so neither buil
 anything.
 """
 
-import numpy as np
 from pydantic import DirectoryPath
 
 from ..tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
@@ -13,26 +12,6 @@ from ...events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 ASSOCIATED_SUFFIXES = tuple(
     dict.fromkeys(TDTFiberPhotometryInterface.associated_suffixes + TDTEventsInterface.associated_suffixes)
 )
-
-
-def discover_event_store_ids(*, folder_path: DirectoryPath) -> set[str]:
-    """Return the ``storesList.csv`` event ids a TDT tank can supply.
-
-    An epoc name is already the id GuPPy records, so the tank's epocs are the ids directly. An epoc
-    carrying no occurrences is left out, matching the epocs ``TDTEventsInterface`` seeds.
-
-    Parameters
-    ----------
-    folder_path : DirectoryPath
-        Path to the TDT tank folder.
-
-    Returns
-    -------
-    set of str
-        The tank's non-empty epoc names.
-    """
-    epocs = TDTEventsInterface(folder_path=folder_path).load(evtype=["epocs"]).epocs
-    return {epoc_name for epoc_name in epocs.keys() if np.asarray(epocs[epoc_name].data).size > 0}
 
 
 def build_tdt_acquisition_interface(
