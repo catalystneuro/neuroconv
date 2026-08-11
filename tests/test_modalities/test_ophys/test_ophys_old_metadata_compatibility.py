@@ -127,3 +127,20 @@ class TestOldMetadataCompatibilitySegmentation:
         plane_segmentation = image_segmentation.plane_segmentations["PlaneSegmentation"]
         assert plane_segmentation.description == "The ROIs I described"
         assert plane_segmentation.imaging_plane.name == "ImagingPlane"
+
+    def test_an_extractor_with_no_traces_still_converts(self):
+        # The old defaults declare six trace roles on every segmentation, so translated metadata asks for
+        # traces from extractors that have none (`InscopixSegmentationInterface` among them). The dict
+        # writer rejects a request it cannot satisfy, which is right for metadata someone wrote and wrong
+        # for boilerplate, so the translated block is dropped and the conversion writes nothing for it,
+        # which is what the old writer did.
+        interface = MockSegmentationInterface(
+            has_raw_signal=False, has_dff_signal=False, has_deconvolved_signal=False, has_neuropil_signal=False
+        )
+        metadata = interface.get_metadata(use_new_metadata_format=False)
+        metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1).astimezone())
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert "Fluorescence" not in nwbfile.processing["ophys"].data_interfaces
+        assert "ImageSegmentation" in nwbfile.processing["ophys"].data_interfaces
