@@ -1,4 +1,4 @@
-# v0.9.4 (Upcoming)
+# v0.10.0 (Upcoming)
 
 ## Removals, Deprecations and Changes
 * Old list-based metadata is now converted to the dict-based format where it enters the library, so every conversion takes the dict write path. Scripts passing the old shape keep working and keep the values they stated, but files change where the two paths disagree: a device nothing links to is dropped, df/F traces join the `Fluorescence` container, `ROICentroids` is gone, and ROI masks keep the extractor's native format. [PR #1874](https://github.com/catalystneuro/neuroconv/pull/1874)
