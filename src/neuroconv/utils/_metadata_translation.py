@@ -43,22 +43,54 @@ def _is_old_style_entry(value) -> bool:
     return isinstance(value, dict) and len(value) > 0 and not any(isinstance(item, dict) for item in value.values())
 
 
-def _register_device(devices: dict, device_metadata: dict) -> str:
-    """Add a device to the registry under a key, and return the key it went under.
+def _register_entry(entries: dict, entry_metadata: dict) -> str:
+    """Add an entry to a keyed block under a key, and return the key it went under.
 
-    Devices are matched by ``name``, which is the only identity the old format had: an electrode group
-    named its device by name, and the writer looked that name up. An entry already registered under
-    another key wins, so a dictionary carrying both shapes for one physical device (which converters
-    produce today) ends up with one entry rather than two that collide on name.
+    Entries are matched by ``name``, which is the only identity the old format had: an electrode group
+    named its device by name, a photon series named its imaging plane, and the writer looked those names
+    up. An entry already registered under another key wins, so a dictionary carrying both shapes for one
+    physical thing (which converters produce today) ends up with one entry rather than two that collide
+    on name.
     """
-    name = device_metadata["name"]
-    for key, registered in devices.items():
+    name = entry_metadata["name"]
+    for key, registered in entries.items():
         if registered.get("name") == name:
-            devices[key] = {**registered, **device_metadata}
+            entries[key] = {**registered, **entry_metadata}
             return key
 
-    devices[name] = dict(device_metadata)
+    entries[name] = dict(entry_metadata)
     return name
+
+
+def _entries_already_in_the_dict_format(block) -> dict:
+    """Copy the entries a block already holds in the dict format, so translation adds to them.
+
+    One old-format key makes the whole block old, but it does not make the rest of the block stop
+    existing: a converter hands one dictionary to interfaces that disagree about the format, and after
+    the switch an old-format edit lands on dict-format metadata. Building the block out of the old keys
+    alone would drop whatever was already there, silently in most cases.
+    """
+    if not isinstance(block, dict):
+        return {}
+
+    return {key: dict(entry) for key, entry in block.items() if isinstance(entry, dict)}
+
+
+def _keys_by_name(entries: dict) -> dict:
+    """Map each entry's ``name`` to the key it lives under, which is how the old format's links resolve."""
+    return {entry["name"]: key for key, entry in entries.items() if "name" in entry}
+
+
+def _role_keyed_entries_already_in_the_dict_format(block) -> dict:
+    """As ``_entries_already_in_the_dict_format``, for the blocks whose entries are keyed by role.
+
+    ``RoiResponses`` and ``SegmentationImages`` hold one dictionary per role, and those are rewritten in
+    place when names collide, so they are copied too rather than shared with the caller's dictionary.
+    """
+    return {
+        key: _entries_already_in_the_dict_format(entry)
+        for key, entry in _entries_already_in_the_dict_format(block).items()
+    }
 
 
 def _ecephys_block_is_old(ecephys_metadata: dict) -> bool:
@@ -87,17 +119,17 @@ def _translate_ecephys_block(
     translated = {}
 
     for device_metadata in ecephys_metadata.get("Device", []):
-        _register_device(devices, device_metadata)
+        _register_entry(devices, device_metadata)
 
-    electrode_groups = {}
+    electrode_groups = _entries_already_in_the_dict_format(ecephys_metadata.get("ElectrodeGroups"))
     for group_metadata in ecephys_metadata.get("ElectrodeGroup", []):
         entry = dict(group_metadata)
         device_name = entry.pop("device", None)
         if device_name is not None:
             # A group naming a device the metadata does not describe is legal in the old format, where
             # the writer generated one, so the name becomes an entry rather than a failure.
-            entry["device_metadata_key"] = _register_device(devices, {"name": device_name})
-        electrode_groups[entry["name"]] = entry
+            entry["device_metadata_key"] = _register_entry(devices, {"name": device_name})
+        _register_entry(electrode_groups, entry)
     if electrode_groups:
         translated["ElectrodeGroups"] = electrode_groups
 
@@ -162,21 +194,20 @@ def _translate_ophys_block(
     translated = {}
 
     for device_metadata in ophys_metadata.get("Device", []):
-        _register_device(devices, device_metadata)
+        _register_entry(devices, device_metadata)
 
-    imaging_planes = {}
-    imaging_plane_keys_by_name = {}
+    imaging_planes = _entries_already_in_the_dict_format(ophys_metadata.get("ImagingPlanes"))
+    imaging_plane_keys_by_name = _keys_by_name(imaging_planes)
     for plane_metadata in ophys_metadata.get("ImagingPlane", []):
         entry = dict(plane_metadata)
         device_name = entry.pop("device", None)
         if device_name is not None:
-            entry["device_metadata_key"] = _register_device(devices, {"name": device_name})
-        imaging_planes[entry["name"]] = entry
-        imaging_plane_keys_by_name[entry["name"]] = entry["name"]
+            entry["device_metadata_key"] = _register_entry(devices, {"name": device_name})
+        imaging_plane_keys_by_name[entry["name"]] = _register_entry(imaging_planes, entry)
     if imaging_planes:
         translated["ImagingPlanes"] = imaging_planes
 
-    microscopy_series = {}
+    microscopy_series = _entries_already_in_the_dict_format(ophys_metadata.get("MicroscopySeries"))
     for series_type in ("TwoPhotonSeries", "OnePhotonSeries"):
         for index, series_metadata in enumerate(ophys_metadata.get(series_type, [])):
             entry = dict(series_metadata)
@@ -184,12 +215,15 @@ def _translate_ophys_block(
             if plane_name is not None:
                 entry["imaging_plane_metadata_key"] = imaging_plane_keys_by_name.get(plane_name, plane_name)
             addressed = metadata_key is not None and series_type == photon_series_type and index == photon_series_index
-            microscopy_series[metadata_key if addressed else entry["name"]] = entry
+            if addressed:
+                microscopy_series[metadata_key] = entry
+            else:
+                _register_entry(microscopy_series, entry)
     if microscopy_series:
         translated["MicroscopySeries"] = microscopy_series
 
-    plane_segmentations = {}
-    plane_segmentation_keys_by_name = {}
+    plane_segmentations = _entries_already_in_the_dict_format(ophys_metadata.get("PlaneSegmentations"))
+    plane_segmentation_keys_by_name = _keys_by_name(plane_segmentations)
     image_segmentation = ophys_metadata.get("ImageSegmentation", {})
     for segmentation_metadata in image_segmentation.get("plane_segmentations", []):
         entry = dict(segmentation_metadata)
@@ -197,8 +231,11 @@ def _translate_ophys_block(
         if plane_name is not None:
             entry["imaging_plane_metadata_key"] = imaging_plane_keys_by_name.get(plane_name, plane_name)
         addressed = metadata_key is not None and entry["name"] == plane_segmentation_name
-        key = metadata_key if addressed else entry["name"]
-        plane_segmentations[key] = entry
+        if addressed:
+            key = metadata_key
+            plane_segmentations[key] = entry
+        else:
+            key = _register_entry(plane_segmentations, entry)
         plane_segmentation_keys_by_name[entry["name"]] = key
     if plane_segmentations:
         translated["PlaneSegmentations"] = plane_segmentations
@@ -206,7 +243,7 @@ def _translate_ophys_block(
     # ``Fluorescence`` and ``DfOverF`` were two containers holding traces for the same plane
     # segmentations, distinguished by which roles they carried. The dict format has one block per plane
     # segmentation with the role as the key, so the two merge.
-    roi_responses = {}
+    roi_responses = _role_keyed_entries_already_in_the_dict_format(ophys_metadata.get("RoiResponses"))
     for container in ("Fluorescence", "DfOverF"):
         container_metadata = ophys_metadata.get(container, {})
         if not isinstance(container_metadata, dict):
@@ -294,7 +331,7 @@ def _translate_old_metadata(
     devices = {}
     if isinstance(registry, list):
         for device_metadata in registry:
-            _register_device(devices, device_metadata)
+            _register_entry(devices, device_metadata)
     elif isinstance(registry, dict):
         devices = {key: dict(entry) for key, entry in registry.items()}
 
