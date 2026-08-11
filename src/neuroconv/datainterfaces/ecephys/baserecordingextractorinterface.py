@@ -241,6 +241,23 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         "Gets the channel ids of the data."
         return self.recording_extractor.get_channel_ids()
 
+    def remove_channels(self, channel_ids: list):
+        """
+        Drop the given channels from the recording held by this interface.
+
+        Parameters
+        ----------
+        channel_ids : list
+            The ids of the channels to drop, as returned by the ``channel_ids`` property.
+
+        Returns
+        -------
+        BaseRecordingExtractorInterface
+            This interface, so the call can be chained.
+        """
+        self.recording_extractor = self.recording_extractor.remove_channels(remove_channel_ids=channel_ids)
+        return self
+
     def get_original_timestamps(self) -> np.ndarray | list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
@@ -535,13 +552,23 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 and recording.has_scaleable_traces()
                 and len(set(recording.get_channel_offsets())) > 1
             ):
+                from ...tools.spikeinterface.spikeinterface import (
+                    _describe_offset_groups,
+                )
+
                 raise ValueError(
                     "The channels of this recording have heterogeneous offsets, which a single NWB "
-                    "ElectricalSeries cannot represent. To write them as one series, pass "
-                    "data_representation='physical_units' as a conversion option to add_to_nwbfile() "
-                    "or run_conversion() (this folds each channel's offset into the data and writes "
-                    "float physical values). Alternatively, drop or separate the channels that do not "
-                    "share the common offset."
+                    "ElectricalSeries cannot represent.\n"
+                    "Multiple offsets were found per channel IDs:\n"
+                    f"{_describe_offset_groups(recording=recording)}\n"
+                    "\n"
+                    "If these channels are all the same kind of signal and the offsets come from "
+                    "per-channel scaling, pass data_representation='physical_units' as a conversion "
+                    "option to add_to_nwbfile() or run_conversion() to write them as one series (this "
+                    "folds each channel's offset into the data and writes float physical values). If the "
+                    "channels carrying the odd offsets are not electrode channels, drop them with "
+                    "interface.remove_channels(channel_ids=[...]) and write them as TimeSeries instead. "
+                    "See https://neuroconv.readthedocs.io/en/main/how_to/handle_heterogeneous_offsets.html"
                 )
             add_recording_to_nwbfile(
                 recording=recording,

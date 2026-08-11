@@ -12,6 +12,8 @@ Converting EDF Electrode Channels
 
 The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordingInterface` is designed specifically for electrode recording channels that will be stored as an ElectricalSeries in the NWB file.
 Other auxiliary signal channels should be excluded using the ``channels_to_skip`` parameter.
+EDF files that give each channel its own offset need one more decision, described in
+:doc:`../../how_to/handle_heterogeneous_offsets`.
 
 .. code-block:: python
 
@@ -111,7 +113,7 @@ Remember to group auxiliary channels by their unit types:
     # Create electrode interface (skip all auxiliary channels)
     recording_interface = EDFRecordingInterface(
         file_path=file_path,
-        channels_to_skip=all_auxiliary_channels,
+        channels_to_skip=all_non_electrical_channels,
 
     )
 

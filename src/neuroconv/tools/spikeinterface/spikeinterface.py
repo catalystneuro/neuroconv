@@ -1556,10 +1556,14 @@ def _recording_traces_to_hdmf_iterator(
     return traces_as_iterator
 
 
-def _report_variable_offset(recording: BaseRecording) -> None:
+def _describe_offset_groups(recording: BaseRecording) -> str:
     """
-    Helper function to report variable offsets per channel IDs.
-    Groups the different available offsets per channel IDs and raises a ValueError.
+    Render which channel IDs carry each distinct offset, one line per offset.
+
+    Which channels carry the odd offsets is what tells the user which fix applies: offsets spread
+    over channels of the same kind are a per-channel scaling artifact of the exporter, while offsets
+    that isolate a handful of channels usually mean those channels are not electrode channels at all.
+    Both offset errors show this map for that reason.
     """
     channel_offsets = recording.get_channel_offsets()
     channel_ids = recording.get_channel_ids()
@@ -1573,18 +1577,27 @@ def _report_variable_offset(recording: BaseRecording) -> None:
             offset_to_channel_ids[offset] = []
         offset_to_channel_ids[offset].append(channel_id)
 
+    return "\n".join(f"  Offset {offset}: Channel IDs {ids}" for offset, ids in offset_to_channel_ids.items())
+
+
+def _report_variable_offset(recording: BaseRecording) -> None:
+    """
+    Helper function to report variable offsets per channel IDs.
+    Groups the different available offsets per channel IDs and raises a ValueError.
+    """
     # Create a user-friendly message
     message_lines = ["Recording extractors with heterogeneous offsets are not supported."]
     message_lines.append("Multiple offsets were found per channel IDs:")
-    for offset, ids in offset_to_channel_ids.items():
-        message_lines.append(f"  Offset {offset}: Channel IDs {ids}")
+    message_lines.append(_describe_offset_groups(recording=recording))
     message_lines.append("")
     message_lines.append(
-        "A single ElectricalSeries can store only one scalar offset. To write these channels as one "
-        "series anyway, pass data_representation='physical_units' to add_recording_to_nwbfile (this "
-        "folds each channel's offset into the data and writes float physical values). Alternatively, "
-        "drop the channels that do not share the common offset with "
-        "recording.remove_channels(remove_channel_ids=[...]) and write them as their own series."
+        "A single ElectricalSeries can store only one scalar offset. If these channels are all the same "
+        "kind of signal and the offsets come from per-channel scaling, pass "
+        "data_representation='physical_units' to add_recording_to_nwbfile to write them as one series "
+        "(this folds each channel's offset into the data and writes float physical values). If the "
+        "channels carrying the odd offsets are not electrode channels, drop them with "
+        "recording.remove_channels(remove_channel_ids=[...]) and write them as TimeSeries instead. "
+        "See https://neuroconv.readthedocs.io/en/main/how_to/handle_heterogeneous_offsets.html"
     )
     message = "\n".join(message_lines)
 
@@ -1746,11 +1759,13 @@ def _add_time_series_segment_to_nwbfile(
         else:
             warning_msg = (
                 "The recording extractor has heterogeneous units or is lacking scaling factors. "
-                "The time series will be saved with unit 'n.a.' and the conversion factors will not be set. "
+                "The time series will be saved with unit 'n.a.' and the conversion factors will not be set, "
+                "so the physical values will not be recoverable from the file. "
                 "To fix this issue, either: "
                 "1) Set the unit in the metadata['TimeSeries'][metadata_key]['unit'] field, or "
                 "2) Set the `physical_unit`, `gain_to_physical_unit`, and `offset_to_physical_unit` properties "
-                "on the recording object with consistent units across all channels. "
+                "on the recording object with consistent units across all channels, or "
+                "3) Group the channels by unit and write each group as its own TimeSeries. "
                 f"Channel units: {units if units is not None else 'None'}, "
                 f"gain available: {gain_to_unit is not None}, "
                 f"offset available: {offset_to_unit is not None}"

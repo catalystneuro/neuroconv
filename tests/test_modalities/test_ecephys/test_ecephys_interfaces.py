@@ -247,16 +247,26 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         interface = MockRecordingInterface(num_channels=5, durations=[0.100])
         interface.recording_extractor.set_channel_offsets(offsets=[0, 0, 1, 1, 2])  # heterogeneous
 
-        expected_error_msg = (
-            "The channels of this recording have heterogeneous offsets, which a single NWB "
-            "ElectricalSeries cannot represent. To write them as one series, pass "
-            "data_representation='physical_units' as a conversion option to add_to_nwbfile() "
-            "or run_conversion() (this folds each channel's offset into the data and writes "
-            "float physical values). Alternatively, drop or separate the channels that do not "
-            "share the common offset."
-        )
-        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+        with pytest.raises(ValueError) as error_info:
             interface.add_to_nwbfile(nwbfile=mock_NWBFile())
+
+        error_message = str(error_info.value)
+        # The map of offsets to channels is what tells the user which of the two fixes is theirs, so the
+        # interface error carries it as well and does not only name the options.
+        assert "Channel IDs ['0', '1']" in error_message
+        assert "Channel IDs ['4']" in error_message
+        assert "data_representation='physical_units' as a conversion option to add_to_nwbfile()" in error_message
+        assert "interface.remove_channels(channel_ids=[...])" in error_message
+
+    def test_remove_channels(self):
+        """`remove_channels` is the drop the offset error points at: it replaces the held recording with
+        the reduced one, so everything downstream of the interface sees only the channels that are left."""
+        interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+
+        returned_interface = interface.remove_channels(channel_ids=["1", "3"])
+
+        assert returned_interface is interface  # returns self so the call can be chained
+        assert list(interface.channel_ids) == ["0", "2", "4"]
 
     def test_stub(self, setup_interface):
         interface = self.interface

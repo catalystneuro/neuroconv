@@ -18,4 +18,5 @@ This section contains practical guides for using NeuroConv effectively.
    adding_multiple_sorting_interfaces
    selecting_rois_for_conversion
    add_behavioral_and_sensor_data
+   handle_heterogeneous_offsets
    repacking_nwb_files
