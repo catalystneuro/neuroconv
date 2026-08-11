@@ -296,6 +296,18 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             assert table["optical_fiber"][0].name == "optical_fiber"
             assert read_nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100, 2)
 
+    def test_only_devices_referenced_by_the_table_are_added(self, full_metadata):
+        # Regression test for (#1881).
+        full_metadata["Devices"]["camera"] = dict(name="Camera1", description="Another interface's camera.")
+        full_metadata["DeviceModels"]["camera_model"] = dict(name="camera_model", manufacturer="Basler")
+
+        nwbfile = MockFiberPhotometryInterface().create_nwbfile(metadata=full_metadata)
+
+        assert "Camera1" not in nwbfile.devices
+        assert "camera_model" not in nwbfile.device_models
+        assert "optical_fiber" in nwbfile.devices
+        assert "optical_fiber_model" in nwbfile.device_models
+
     def test_minimally_annotated_metadata_round_trips(self, tmp_path):
         # The minimally annotated path: the default metadata describes only the response series, so the file
         # must contain exactly that and nothing fabricated — no table region, no devices, no lab metadata.
