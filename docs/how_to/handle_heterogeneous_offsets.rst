@@ -64,8 +64,7 @@ data and stores float physical values, so the series needs only a single scalar 
 Be aware of what this costs. The data is stored as floats rather than the original integers, which
 roughly doubles the size on disk, and because the per-channel gains and offsets are folded into the
 values and are no longer written to the file, the original digital counts cannot be recovered from
-the NWB file afterwards. If the faithful integer representation matters for your use case, that is
-a real trade-off rather than a formality.
+the NWB file afterwards.
 
 The odd channels are not electrode channels
 -------------------------------------------
