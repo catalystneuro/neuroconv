@@ -163,9 +163,7 @@ class TestFiberPhotometryTableAnnotation:
             ),
         )
         fiber_photometry_metadata = metadata["FiberPhotometry"]
-        fiber_photometry_metadata["FiberPhotometryIndicators"] = dict(
-            indicator=dict(name="indicator", label="GCaMP6s")
-        )
+        fiber_photometry_metadata["FiberPhotometryIndicators"] = dict(indicator=dict(name="indicator", label="GCaMP6s"))
         fiber_photometry_metadata["FiberPhotometryTable"] = dict(
             name="fiber_photometry_table",
             description="d",
