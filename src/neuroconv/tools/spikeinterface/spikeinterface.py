@@ -143,11 +143,6 @@ def _add_electrode_groups_to_nwbfile(
     default_group_template = placeholders["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]
     default_device_metadata = placeholders["Devices"]["default_metadata_key"]
 
-    # Entries without a ``device_metadata_key`` fall back to the placeholder device, exposed through the
-    # registry under its default key so every device is added by the canonical path. It is only added
-    # when actually referenced, so a user device sharing the placeholder's name stays legal.
-    devices_metadata = {"Devices": dict(metadata.get("Devices", {}))}
-
     electrode_groups_metadata = metadata.get("Ecephys", {}).get("ElectrodeGroups", {})
     channel_group_names = set(_get_group_name(recording=recording).tolist())
 
@@ -176,13 +171,17 @@ def _add_electrode_groups_to_nwbfile(
         if group_kwargs["name"] in nwbfile.electrode_groups:
             continue
 
+        # A group naming no device gets the placeholder, built here and handed over directly. Writing it
+        # into a copy of ``metadata["Devices"]`` so a keyed lookup resolves is what the metadata
+        # principles call out as pre-filling defaults, and the copy dropped ``DeviceModels`` on the way,
+        # so a device linking to a model could never resolve it.
         device_metadata_key = group_kwargs.pop("device_metadata_key", None)
         if device_metadata_key is None:
-            device_metadata_key = "default_metadata_key"
-            devices_metadata["Devices"].setdefault(device_metadata_key, default_device_metadata)
-        group_kwargs["device"] = _add_device_to_nwbfile(
-            nwbfile=nwbfile, metadata=devices_metadata, metadata_key=device_metadata_key
-        )
+            group_kwargs["device"] = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=default_device_metadata)
+        else:
+            group_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key
+            )
 
         nwbfile.create_electrode_group(**group_kwargs)
 
