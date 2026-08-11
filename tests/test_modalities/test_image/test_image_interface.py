@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from PIL import Image
+from pynwb import read_nwb
 from pynwb.image import GrayscaleImage, RGBAImage, RGBImage
 
 from neuroconv.datainterfaces.image.imageinterface import ImageInterface
@@ -30,6 +31,9 @@ MODE_CONFIGS = {
     "I;16B": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
     "I;16N": {"channels": 1, "dtype": np.uint16, "max_val": 65535},
 }
+
+# Modes whose raw layout Pillow cannot infer from the array dtype alone
+RAW_ONLY_MODES = ("1", "I;16", "I;16L", "I;16B", "I;16N")
 
 
 def generate_random_images(
@@ -85,7 +89,12 @@ def generate_random_images(
         elif mode == "P":
             palette = rng.integers(0, 256, (256, 3), dtype=np.uint8)
 
-        image = Image.fromarray(array, mode=mode)
+        if mode in RAW_ONLY_MODES:
+            # Pillow 13 drops `mode=` on `fromarray` for modes it cannot infer from the array dtype, so these
+            # have to name the raw layout explicitly. This produces the same bytes `fromarray` did.
+            image = Image.frombuffer(mode, (width, height), array.tobytes(), "raw", mode, 0, 1)
+        else:
+            image = Image.fromarray(array, mode=mode)
         if mode == "P":
             image.putpalette(palette.flatten())
         filename = output_dir_path / f"image{i}_{format}_{mode}.{format_ext}"
@@ -109,17 +118,16 @@ class TestRGBImageInterface(DataInterfaceTestMixin):
 
     def check_read_nwb(self, nwbfile_path):
         """Test adding RGB images to NWBFile."""
-        from pynwb import NWBHDF5IO
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            # Check images were added correctly
-            assert "Images" in nwbfile.acquisition
-            images_container = nwbfile.acquisition["Images"]
-            assert len(images_container.images) == 5
-            for image in images_container.images.values():
-                assert isinstance(image, RGBImage)
-                assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
+        nwbfile = read_nwb(nwbfile_path)
+        # Check images were added correctly
+        assert "Images" in nwbfile.acquisition
+        images_container = nwbfile.acquisition["Images"]
+        assert len(images_container.images) == 5
+        for image in images_container.images.values():
+            assert isinstance(image, RGBImage)
+            assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
+        nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("format", ["PNG", "JPEG", "TIFF"])
@@ -139,17 +147,16 @@ class TestGrayscaleImageInterface(DataInterfaceTestMixin):
 
     def check_read_nwb(self, nwbfile_path):
         """Test adding grayscale images to NWBFile."""
-        from pynwb import NWBHDF5IO
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            # Check images were added correctly
-            assert "Images" in nwbfile.acquisition
-            images_container = nwbfile.acquisition["Images"]
-            assert len(images_container.images) == 5
-            for image in images_container.images.values():
-                assert isinstance(image, GrayscaleImage)
-                assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
+        nwbfile = read_nwb(nwbfile_path)
+        # Check images were added correctly
+        assert "Images" in nwbfile.acquisition
+        images_container = nwbfile.acquisition["Images"]
+        assert len(images_container.images) == 5
+        for image in images_container.images.values():
+            assert isinstance(image, GrayscaleImage)
+            assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
+        nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("format", ["PNG", "TIFF"])  # JPEG doesn't support RGBA
@@ -169,17 +176,16 @@ class TestRGBAImageInterface(DataInterfaceTestMixin):
 
     def check_read_nwb(self, nwbfile_path):
         """Test adding RGBA images to NWBFile."""
-        from pynwb import NWBHDF5IO
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            # Check images were added correctly
-            assert "Images" in nwbfile.acquisition
-            images_container = nwbfile.acquisition["Images"]
-            assert len(images_container.images) == 5
-            for image in images_container.images.values():
-                assert isinstance(image, RGBAImage)
-                assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
+        nwbfile = read_nwb(nwbfile_path)
+        # Check images were added correctly
+        assert "Images" in nwbfile.acquisition
+        images_container = nwbfile.acquisition["Images"]
+        assert len(images_container.images) == 5
+        for image in images_container.images.values():
+            assert isinstance(image, RGBAImage)
+            assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
+        nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("format", ["PNG", "TIFF"])  # JPEG doesn't support LA
@@ -199,22 +205,21 @@ class TestLAtoRGBAImageInterface(DataInterfaceTestMixin):
 
     def check_read_nwb(self, nwbfile_path):
         """Test adding LA images to NWBFile and verifying they are converted to RGBA."""
-        from pynwb import NWBHDF5IO
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            # Check images were added correctly
-            assert "Images" in nwbfile.acquisition
-            images_container = nwbfile.acquisition["Images"]
-            assert len(images_container.images) == 5
-            for image in images_container.images.values():
-                assert isinstance(image, RGBAImage)
-                assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
-                # Verify the data shape is correct for RGBA (height, width, 4)
-                assert image.data.shape[-1] == 4
-                # Verify R, G, B channels are equal (since they come from L channel)
-                assert np.all(image.data[..., 0] == image.data[..., 1])
-                assert np.all(image.data[..., 1] == image.data[..., 2])
+        nwbfile = read_nwb(nwbfile_path)
+        # Check images were added correctly
+        assert "Images" in nwbfile.acquisition
+        images_container = nwbfile.acquisition["Images"]
+        assert len(images_container.images) == 5
+        for image in images_container.images.values():
+            assert isinstance(image, RGBAImage)
+            assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
+            # Verify the data shape is correct for RGBA (height, width, 4)
+            assert image.data.shape[-1] == 4
+            # Verify R, G, B channels are equal (since they come from L channel)
+            assert np.all(image.data[..., 0] == image.data[..., 1])
+            assert np.all(image.data[..., 1] == image.data[..., 2])
+        nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("format", ["PNG", "TIFF"])  # JPEG doesn't support 16-bit
@@ -234,17 +239,44 @@ class TestI16GrayscaleImageInterface(DataInterfaceTestMixin):
 
     def check_read_nwb(self, nwbfile_path):
         """Test adding 16-bit grayscale images to NWBFile."""
-        from pynwb import NWBHDF5IO
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            # Check images were added correctly
-            assert "Images" in nwbfile.acquisition
-            images_container = nwbfile.acquisition["Images"]
-            assert len(images_container.images) == 5
-            for image in images_container.images.values():
-                assert isinstance(image, GrayscaleImage)
-                assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
+        nwbfile = read_nwb(nwbfile_path)
+        # Check images were added correctly
+        assert "Images" in nwbfile.acquisition
+        images_container = nwbfile.acquisition["Images"]
+        assert len(images_container.images) == 5
+        for image in images_container.images.values():
+            assert isinstance(image, GrayscaleImage)
+            assert image.data.dtype == MODE_CONFIGS[self.mode]["dtype"]
+        nwbfile.read_io.close()
+
+
+def test_images_are_chunked_and_compressed(tmp_path):
+    """Images written through the interface should pick up the default chunking and gzip compression.
+
+    The interface hands its data to pynwb as a `SingleImageIterator`, so this also covers that the iterator
+    reports a concrete `maxshape` for the chunk estimator to work from.
+    """
+    import h5py
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
+    generate_random_images(num_images=2, mode="RGB", output_dir_path=tmp_path, format="PNG")
+    interface = ImageInterface(folder_path=tmp_path)
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile)
+
+    nwbfile_path = tmp_path / "images.nwb"
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+    with h5py.File(nwbfile_path, "r") as file:
+        written_images = file["acquisition/Images"]
+        assert len(written_images) == 2
+        for written_image in written_images.values():
+            assert written_image.compression == "gzip"
+            assert written_image.chunks == (256, 256, 3)
 
 
 class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):
@@ -280,29 +312,28 @@ class TestMixedModeAndFormatImageInterface(DataInterfaceTestMixin):
 
     def check_read_nwb(self, nwbfile_path):
         """Test adding mixed images to NWBFile."""
-        from pynwb import NWBHDF5IO
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            # Check images were added correctly
-            assert "Images" in nwbfile.acquisition
-            images_container = nwbfile.acquisition["Images"]
-            assert len(images_container.images) == 10
+        nwbfile = read_nwb(nwbfile_path)
+        # Check images were added correctly
+        assert "Images" in nwbfile.acquisition
+        images_container = nwbfile.acquisition["Images"]
+        assert len(images_container.images) == 10
 
-            # Count instances of each image type
-            num_image_types = {
-                RGBImage: 0,
-                GrayscaleImage: 0,
-                RGBAImage: 0,  # This will include both RGBA and converted LA images
-            }
+        # Count instances of each image type
+        num_image_types = {
+            RGBImage: 0,
+            GrayscaleImage: 0,
+            RGBAImage: 0,  # This will include both RGBA and converted LA images
+        }
 
-            for image in images_container.images.values():
-                num_image_types[type(image)] += 1
+        for image in images_container.images.values():
+            num_image_types[type(image)] += 1
 
-            # Verify we have the expected number of each type
-            assert num_image_types[RGBImage] == 2  # RGB images
-            assert num_image_types[GrayscaleImage] == 4  # 2 L images + 2 I;16 images
-            assert num_image_types[RGBAImage] == 4  # 2 RGBA + 2 LA converted to RGBA
+        # Verify we have the expected number of each type
+        assert num_image_types[RGBImage] == 2  # RGB images
+        assert num_image_types[GrayscaleImage] == 4  # 2 L images + 2 I;16 images
+        assert num_image_types[RGBAImage] == 4  # 2 RGBA + 2 LA converted to RGBA
+        nwbfile.read_io.close()
 
 
 class TestImagesContainerMetadataKey(DataInterfaceTestMixin):
@@ -335,16 +366,15 @@ class TestImagesContainerMetadataKey(DataInterfaceTestMixin):
 
     def check_read_nwb(self, nwbfile_path):
         """Test adding images with custom metadata key to NWBFile."""
-        from pynwb import NWBHDF5IO
 
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            # Check images were added correctly - custom key should be used as container name
-            assert "CustomImagesKey" in nwbfile.acquisition
-            images_container = nwbfile.acquisition["CustomImagesKey"]
-            assert len(images_container.images) == 3
-            for image in images_container.images.values():
-                assert isinstance(image, RGBImage)
+        nwbfile = read_nwb(nwbfile_path)
+        # Check images were added correctly - custom key should be used as container name
+        assert "CustomImagesKey" in nwbfile.acquisition
+        images_container = nwbfile.acquisition["CustomImagesKey"]
+        assert len(images_container.images) == 3
+        for image in images_container.images.values():
+            assert isinstance(image, RGBImage)
+        nwbfile.read_io.close()
 
     def test_two_interfaces_different_metadata_keys(self, tmp_path):
         """Test that metadata_key controls metadata and container separation."""

@@ -39,7 +39,8 @@ The ophys metadata system is built on several core principles:
 
 5. **Provenance-First get_metadata()**
    The ``get_metadata()`` method returns only values extracted from the source data, not defaults.
-   Defaults are applied at NWB object creation time.
+   Defaults are applied at NWB object creation time. This is not specific to ophys; see
+   :ref:`metadata_principles` for the rule and its rationale.
 
 
 Metadata Structure Overview
@@ -189,19 +190,16 @@ All imaging and segmentation interfaces accept a ``metadata_key`` parameter. Thi
             self.metadata_key = metadata_key
             ...
 
-The argument name ``metadata_key`` is the same across all interfaces ensuring a common API.
-When ``None`` (the default), the interface automatically generates a unique key from the
-parameters that make the interface unique (e.g. stream name, channel name). When the user
-passes an explicit value, they take responsibility for uniqueness and can use it to
-intentionally share or customize metadata keys.
+The argument name ``metadata_key`` is the same across all interfaces, ensuring a common API. When
+``None`` (the default), the interface derives a key from the parameters that make it unique; an explicit
+value lets the user share or customize keys. Multi-stream and multi-channel interfaces (like
+``ScanImageImagingInterface``) cannot use a fixed default because the key must include runtime parameters
+such as ``channel_name`` and ``plane_index``, which is why the default is ``None`` and resolved in
+``__init__`` rather than a signature literal.
 
-The default is ``None`` rather than a hardcoded string (e.g. ``"caiman_segmentation"``) for
-consistency across interfaces. Multi-stream and multi-channel interfaces (like
-``ScanImageImagingInterface``) cannot have a fixed default because the key must include
-runtime parameters such as ``channel_name`` and ``plane_index``. Using ``None`` as the sentinel
-and resolving the default in ``__init__`` lets every interface share the same pattern:
-simple interfaces pick a static string, and parametric interfaces build the key from their
-constructor arguments.
+See :ref:`metadata_key_naming` for the general rule (a ``metadata_key`` is a snake_case namespace handle,
+distinct from the object ``name``, defaulting to a constant unless the format inherently yields several
+instances).
 
 Key Propagation
 ~~~~~~~~~~~~~~~

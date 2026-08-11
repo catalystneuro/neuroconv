@@ -37,6 +37,7 @@ from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.intan.intananaloginterface import IntanAnalogInterface
+from .ecephys.intan.intandigitalinterface import IntanDigitalInterface
 from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
@@ -82,9 +83,11 @@ from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
 from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
+from .icephys.brukervoltagerecording.brukervoltagerecordinginterface import BrukerVoltageRecordingInterface
 
 # Ophys
 from .ophys.brukertiff.brukertiffdatainterface import (
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
 )
@@ -107,7 +110,15 @@ from .ophys.scanimage.scanimageimaginginterfaces import (
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
-from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
+from .fiber_photometry.csv.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
+from .fiber_photometry.csv.multifilecsvfiberphotometrydatainterface import (
+    MultiFileCSVFiberPhotometryInterface,
+)
+from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
+from .fiber_photometry.npm.npmfiberphotometrydatainterface import (
+    NPMFiberPhotometryInterface,
+)
+from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
 
@@ -120,6 +131,9 @@ from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 # Events
 from .events.csv_events.csveventsdatainterface import CSVEventsInterface
+from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
+from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
+from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
@@ -136,6 +150,7 @@ interface_list = [
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
     IntanAnalogInterface,
+    IntanDigitalInterface,
     IntanStimInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
@@ -172,6 +187,7 @@ interface_list = [
     # Icephys
     AbfInterface,
     AxonIntracellularInterface,
+    BrukerVoltageRecordingInterface,
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
@@ -186,11 +202,16 @@ interface_list = [
     InscopixImagingInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
+    CSVFiberPhotometryInterface,
+    MultiFileCSVFiberPhotometryInterface,
+    DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
+    NPMFiberPhotometryInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
@@ -213,6 +234,9 @@ interface_list = [
     ImageInterface,
     # Events
     CSVEventsInterface,
+    DoricCSVEventsInterface,
+    DoricEventsInterface,
+    NPMEventsInterface,
     TDTEventsInterface,
 ]
 
@@ -237,15 +261,26 @@ interfaces_by_category = dict(
         for interface in interface_list
         if "Segmentation" in interface.__name__
     },
-    fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
+    fiber_photometry={
+        "DoricFiberPhotometry": DoricFiberPhotometryInterface,
+        "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+        "NPMFiberPhotometry": NPMFiberPhotometryInterface,
+        "CSVFiberPhotometry": CSVFiberPhotometryInterface,
+        "MultiFileCSVFiberPhotometry": MultiFileCSVFiberPhotometryInterface,
+    },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
+        IntanDigital=IntanDigitalInterface,
         IntanStim=IntanStimInterface,
     ),
-    icephys=dict(Abf=AbfInterface, AxonIntracellular=AxonIntracellularInterface),
+    icephys=dict(
+        Abf=AbfInterface,
+        AxonIntracellular=AxonIntracellularInterface,
+        BrukerVoltageRecording=BrukerVoltageRecordingInterface,
+    ),
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
@@ -264,6 +299,9 @@ interfaces_by_category = dict(
     ),
     events=dict(
         CSVEvents=CSVEventsInterface,
+        DoricCSVEvents=DoricCSVEventsInterface,
+        DoricEvents=DoricEventsInterface,
+        NPMEvents=NPMEventsInterface,
         TDTEvents=TDTEventsInterface,
     ),
 )

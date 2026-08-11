@@ -4,7 +4,8 @@ Axon Binary Format (ABF) data conversion
 Convert intracellular electrophysiology recorded in Axon Binary Format (ABF) to NWB using
 :py:class:`~neuroconv.datainterfaces.icephys.axon.axonintracellularinterface.AxonIntracellularInterface`.
 One interface instance corresponds to one channel: one electrode's recording in one ABF file. You tell it
-which recorded channel is the response and how it was clamped (the arguments are explained below).
+which recorded channel is the response and how it was clamped (the arguments are explained below). Combine
+several channels in a converter for a dual-patch or multi-file recording (see below).
 
 Install NeuroConv with the additional dependencies necessary for reading Axon Binary Format (ABF) data.
 
@@ -73,7 +74,62 @@ A channel or command whose stored name is blank falls back to ``ch{index}`` / ``
 always addressable by a non-empty name.
 
 The interface writes one continuous ``PatchClampSeries`` per electrode and records each sweep through the NWB
-``IntracellularRecordings`` table.
+``IntracellularRecordings`` table. It stops there: the upper icephys hierarchy tables and the per-sweep time
+intervals are written only once the full set of channels and files is known. If this interface is your whole
+conversion, wrap it in the converter below with that one interface, which finalizes those tables for you.
+
+Combining channels and files with the converter
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A single ``AxonIntracellularInterface`` writes one channel's per-sweep recordings rows but not the upper icephys
+hierarchy tables, because those can only be built once the full set of channels and files is known.
+:py:class:`~neuroconv.datainterfaces.icephys.axon.axonintracellularconverter.AxonIntracellularConverter`
+combines several interfaces and builds that hierarchy over them: the ``SimultaneousRecordings`` (channels
+recorded together) and ``SequentialRecordings`` (one per run, carrying the stimulus type) tables, and the
+two optional grouping levels above them. You give it one interface per channel: a single cell is the
+one-interface case; pass one per electrode for a **dual-patch** recording (the channels of each sweep grouped
+into one simultaneous recording), or one per file for a **multi-file** experiment (each run becomes its own
+sequential recording, the runs placed on a single timeline from each file's header start time, which requires
+ABF version 2).
+
+The converter also writes a ``sweeps`` table of NWB ``TimeIntervals``, one row per sweep holding its start and
+stop time (channels recorded together contribute one row, not one each). The sweeps are already described by the
+index ranges on the intracellular recordings table, but written as intervals they are read by any tool that
+knows NWB intervals and nothing about icephys, pynapple for instance, which surfaces them as an ``IntervalSet``.
+
+You build the two upper grouping levels by labeling each interface through its ``repetition`` and ``condition``
+arguments. Runs sharing a ``repetition`` label are grouped into one ``Repetitions`` entry (repeated trials of the
+same protocol), and repetitions sharing a ``condition`` label are grouped into one ``ExperimentalConditions``
+entry (the experimental condition, for example a drug wash-in versus control). Both are optional: pass neither and
+the converter stops at the sequential level; pass ``condition`` alone and each run becomes its own repetition
+before being grouped by condition.
+
+The example below combines two channels recorded in one file.
+
+.. code-block:: python
+
+    >>> from neuroconv.datainterfaces import AxonIntracellularInterface
+    >>> from neuroconv.converters import AxonIntracellularConverter
+    >>>
+    >>> # One interface per channel; here two electrodes recorded in the same file.
+    >>> current_clamp = AxonIntracellularInterface(
+    ...     file_path=f"{ECEPHY_DATA_PATH}/axon/File_axon_6.abf",
+    ...     response_channel_name="_Ipatch",
+    ...     mode="current_clamp",
+    ... )
+    >>> voltage_clamp = AxonIntracellularInterface(
+    ...     file_path=f"{ECEPHY_DATA_PATH}/axon/File_axon_6.abf",
+    ...     response_channel_name="IN1",
+    ...     mode="voltage_clamp",
+    ... )
+    >>> converter = AxonIntracellularConverter(data_interfaces=[current_clamp, voltage_clamp])
+    >>>
+    >>> # The converter groups the two channels of each sweep into the icephys tables.
+    >>> metadata = converter.get_metadata()
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 Legacy AbfInterface
 ~~~~~~~~~~~~~~~~~~~~
