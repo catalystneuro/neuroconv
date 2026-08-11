@@ -388,7 +388,7 @@ csv_fp = [
 ]
 guppy = [
     "neuroconv[fiber_photometry]",
-    "ndx-guppy>=0.1.0,<0.2",  # Pre-1.0 extension whose neurodata types we read directly, so 0.2 may break us
+    "ndx-guppy>=0.1.0",
     "tables",
     # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
     # whatever it was recorded on.
