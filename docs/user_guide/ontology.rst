@@ -15,6 +15,10 @@ Two kinds of value are annotated automatically by a conversion:
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) for human subjects, or to
   any ontology you specify in metadata.
 
+Brain-region annotation covers every ``location`` field NeuroConv knows about: the electrodes table
+``location`` column and ``ElectrodeGroup.location`` (ecephys), ``ImagingPlane.location`` (ophys), and
+the ``FiberPhotometryTable`` ``location`` column (fiber photometry).
+
 The recognized terms live in curated `LinkML <https://linkml.io/>`_ TermSet files shipped with
 NeuroConv (one per vocabulary, the same format used by
 `HDMF's TermSet <https://hdmf.readthedocs.io/en/stable/tutorials/plot_term_set.html>`_), so the
@@ -94,7 +98,8 @@ Brain regions
 -------------
 
 Anatomical locations are stored in NWB as free-text strings: the ``location`` column of the
-electrodes table (ecephys), ``ElectrodeGroup.location``, and ``ImagingPlane.location`` (ophys). For
+electrodes table (ecephys), ``ElectrodeGroup.location``, ``ImagingPlane.location`` (ophys), and the
+``FiberPhotometryTable`` ``location`` column (fiber photometry). For
 a **mouse** or **human** subject, NeuroConv can attach an Allen-atlas reference to each of these, so
 downstream tools can resolve the exact structure instead of guessing from an acronym. This runs at
 write time, once the electrodes table and imaging planes have been populated.

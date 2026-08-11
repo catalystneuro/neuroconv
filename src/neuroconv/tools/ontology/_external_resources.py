@@ -2,8 +2,9 @@
 
 HERD (HDMF External Resources Data) lets an NWB file carry machine-readable links from its
 metadata values to entities in external ontologies. NeuroConv uses it to annotate values it
-can recognize -- ``Subject.species`` -> NCBITaxon, and (for mice) anatomical ``location``
-fields -> Allen Mouse Brain Atlas -- so downstream tools (e.g. the DANDI archive) can resolve
+can recognize -- ``Subject.species`` -> NCBITaxon, and anatomical ``location`` fields (the
+electrodes table, electrode groups, imaging planes, and the ``FiberPhotometryTable``) -> the
+Allen Mouse or Human Brain Atlas -- so downstream tools (e.g. the DANDI archive) can resolve
 the term without guessing.
 
 The reference is stored in-file under ``/general/external_resources``, which requires
@@ -135,14 +136,15 @@ def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
     """Collect ``(container, attribute, relative_path, location string)`` tuples to annotate.
 
     Covers the electrodes table ``location`` column (ecephys), each ``ElectrodeGroup.location``,
-    and each ``ImagingPlane.location`` (ophys). Duplicate location strings within the electrodes
-    column are collapsed to one reference per column.
+    each ``ImagingPlane.location`` (ophys), and the ``FiberPhotometryTable`` ``location`` column
+    (fiber photometry), if present. Duplicate location strings within a table column are collapsed
+    to one reference per column.
 
     ``container`` is the object HERD records the reference against (the ``location`` column, a
-    ``VectorData``, for the electrodes table; the group / plane itself otherwise). ``attribute``
-    and ``relative_path`` are how that value is addressed for :meth:`HERD.add_ref` /
-    :meth:`HERD.get_key` -- ``None`` / ``""`` for the standalone column, and ``"location"`` for the
-    scalar attribute of a group or plane.
+    ``VectorData``, for a table; the group / plane itself otherwise). ``attribute`` and
+    ``relative_path`` are how that value is addressed for :meth:`HERD.add_ref` / :meth:`HERD.get_key`
+    -- ``None`` / ``""`` for a standalone column, and ``"location"`` for the scalar attribute of a
+    group or plane.
     """
     sites = []
 
@@ -157,6 +159,16 @@ def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
 
     for imaging_plane in nwbfile.imaging_planes.values():
         sites.append((imaging_plane, "location", "location", imaging_plane.location))
+
+    # Lazy import: avoids a circular import at module load time (fiber_photometry.py imports from
+    # tools.nwb_helpers, which imports from tools.ontology).
+    from ..fiber_photometry import get_fiber_photometry_table
+
+    fiber_photometry_table = get_fiber_photometry_table(nwbfile)
+    if fiber_photometry_table is not None and "location" in fiber_photometry_table.colnames:
+        location_column = fiber_photometry_table["location"]
+        for location in dict.fromkeys(location_column.data):  # unique, order-preserving
+            sites.append((location_column, None, "", location))
 
     return sites
 
@@ -184,9 +196,10 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     """
     Annotate anatomical ``location`` fields with brain-region ontology entities via HERD.
 
-    Resolves each ``location`` string on the electrodes table, electrode groups, and imaging planes
-    to one or more ontology terms and attaches machine-readable references (stored in-file under
-    ``/general/external_resources``). Each location is resolved by:
+    Resolves each ``location`` string on the electrodes table, electrode groups, imaging planes, and
+    the ``FiberPhotometryTable`` (if present) to one or more ontology terms and attaches
+    machine-readable references (stored in-file under ``/general/external_resources``). Each
+    location is resolved by:
 
     1. the ``metadata["BrainRegions"]`` mapping, if it provides an entry (this takes precedence and
        is ontology-agnostic, so it applies to any species and may map one area to several terms,

@@ -125,6 +125,88 @@ class TestElectrodeGroupAndImagingPlaneAnnotation:
         assert dataframe["entity_id"].tolist() == ["MBA:382"]
 
 
+class TestFiberPhotometryTableAnnotation:
+    def _mouse_fiber_photometry_metadata(self, locations):
+        """A minimal, valid fiber photometry metadata chain with one row per location."""
+        from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
+
+        interface = MockFiberPhotometryInterface()
+        metadata = interface.get_metadata()
+        metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
+        metadata["DeviceModels"] = dict(
+            optical_fiber_model=dict(
+                type="OpticalFiberModel", name="optical_fiber_model", manufacturer="m", numerical_aperture=0.48
+            ),
+            excitation_source_model=dict(
+                type="ExcitationSourceModel",
+                name="excitation_source_model",
+                manufacturer="m",
+                source_type="LED",
+                excitation_mode="one-photon",
+            ),
+            photodetector_model=dict(
+                type="PhotodetectorModel", name="photodetector_model", manufacturer="m", detector_type="photodiode"
+            ),
+        )
+        metadata["Devices"] = dict(
+            optical_fiber=dict(
+                type="OpticalFiber",
+                name="optical_fiber",
+                device_model_metadata_key="optical_fiber_model",
+                fiber_insertion=dict(depth_in_mm=1.0),
+            ),
+            excitation_source=dict(
+                type="ExcitationSource", name="excitation_source", device_model_metadata_key="excitation_source_model"
+            ),
+            photodetector=dict(
+                type="Photodetector", name="photodetector", device_model_metadata_key="photodetector_model"
+            ),
+        )
+        fiber_photometry_metadata = metadata["FiberPhotometry"]
+        fiber_photometry_metadata["FiberPhotometryIndicators"] = dict(
+            indicator=dict(name="indicator", label="GCaMP6s")
+        )
+        fiber_photometry_metadata["FiberPhotometryTable"] = dict(
+            name="fiber_photometry_table",
+            description="d",
+            rows={
+                f"row{index}": dict(
+                    location=location,
+                    excitation_wavelength_in_nm=470.0,
+                    emission_wavelength_in_nm=525.0,
+                    indicator_metadata_key="indicator",
+                    optical_fiber_metadata_key="optical_fiber",
+                    excitation_source_metadata_key="excitation_source",
+                    photodetector_metadata_key="photodetector",
+                )
+                for index, location in enumerate(locations)
+            },
+        )
+        series_metadata = fiber_photometry_metadata[interface.metadata_key]
+        series_metadata["fiber_photometry_table_region"] = [f"row{index}" for index in range(len(locations))]
+        series_metadata["fiber_photometry_table_region_description"] = "d"
+        return interface, metadata
+
+    def test_fiber_photometry_table_location_is_annotated(self):
+        interface, metadata = self._mouse_fiber_photometry_metadata(["CA1", "VISp"])
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        dataframe = nwbfile.external_resources.to_dataframe()
+        by_key = dict(zip(dataframe["key"], dataframe["entity_id"]))
+        assert by_key["CA1"] == "MBA:382"
+        assert by_key["VISp"] == "MBA:385"
+
+    def test_reference_points_at_fiber_photometry_table_location_column(self):
+        from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
+
+        interface, metadata = self._mouse_fiber_photometry_metadata(["CA1"])
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        objects = nwbfile.external_resources.objects.to_dataframe()
+        location_column = get_fiber_photometry_table(nwbfile)["location"]
+        assert location_column.object_id in objects["object_id"].tolist()
+
+
 class TestMetadataMapping:
     def test_metadata_mapping_annotates_unrecognized_location(self):
         nwbfile = _make_nwbfile()
