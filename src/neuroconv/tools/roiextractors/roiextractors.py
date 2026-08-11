@@ -51,6 +51,10 @@ from ...utils import (
     calculate_regular_series_rate,
     dict_deep_update,
 )
+from ...utils._metadata_translation import (
+    _ophys_block_is_old,
+    _translate_old_metadata,
+)
 from ...utils.str_utils import human_readable_size
 
 
@@ -1076,6 +1080,22 @@ def add_imaging_to_nwbfile(
     if metadata is None:
         metadata = _get_ophys_metadata_placeholders()
 
+    # Old-shaped metadata is converted here, the last public function before the private writers, so
+    # everything below sees one format. The old format addresses a series by position in
+    # ``Ophys[photon_series_type]`` and the new one by key, so the entry this call writes is named here
+    # and handed to the translator; when the caller gave no key, the series' own name becomes it.
+    ophys_metadata = metadata.get("Ophys", {})
+    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
+        series_list = ophys_metadata.get(photon_series_type, [])
+        if metadata_key is None and photon_series_index < len(series_list):
+            metadata_key = series_list[photon_series_index].get("name")
+        metadata = _translate_old_metadata(
+            metadata,
+            metadata_key=metadata_key,
+            photon_series_type=photon_series_type,
+            photon_series_index=photon_series_index,
+        )
+
     if _is_dict_based_metadata(metadata):
         metadata_key = metadata_key or "default_metadata_key"
         nwbfile = _add_photon_series_to_nwbfile(
@@ -1402,6 +1422,26 @@ def add_segmentation_to_nwbfile(
 
     if metadata is None:
         metadata = _get_ophys_metadata_placeholders()
+
+    # As in ``add_imaging_to_nwbfile``: the old format addresses a plane segmentation by name and the new
+    # one by key, so the entry this call writes is named here. Traces and summary images are keyed by the
+    # same handle, which is why the translator needs to know which name it is.
+    ophys_metadata = metadata.get("Ophys", {})
+    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
+        segmentation_list = ophys_metadata.get("ImageSegmentation", {}).get("plane_segmentations", [])
+        addressed_name = plane_segmentation_name
+        if addressed_name is None and segmentation_list:
+            addressed_name = segmentation_list[0].get("name")
+        if metadata_key is None:
+            metadata_key = addressed_name
+        metadata = _translate_old_metadata(metadata, metadata_key=metadata_key, plane_segmentation_name=addressed_name)
+        # The old format's defaults declare six trace roles on every segmentation, so a translated block
+        # asks for traces from extractors that expose none, `InscopixSegmentationInterface` among them.
+        # That is boilerplate rather than a request, and the old writer answered it by writing nothing, so
+        # the block goes here rather than letting the writer reject metadata the caller never wrote.
+        traces = segmentation_extractor.get_traces_dict().values()
+        if not any(trace is not None and trace.size != 0 for trace in traces):
+            metadata["Ophys"] = {key: value for key, value in metadata["Ophys"].items() if key != "RoiResponses"}
 
     if _is_dict_based_metadata(metadata):
         metadata_key = metadata_key or "default_metadata_key"

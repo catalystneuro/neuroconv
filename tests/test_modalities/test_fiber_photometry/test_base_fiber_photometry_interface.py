@@ -14,19 +14,16 @@ from neuroconv.tools.testing.data_interface_mixins import (
 )
 from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
 
-# The ``full_metadata`` fixture describes two fibers at one excitation wavelength, so the interfaces
-# it is written against need two of them rather than the single-fiber default.
-NUM_FIBERS = 2
-
 
 @pytest.fixture
 def full_metadata():
-    """A complete, hand-built fiber photometry metadata chain for the default mock interface.
+    """A complete, hand-built fiber photometry metadata chain for two fibers at one excitation wavelength.
 
     Test data (not a public API): device models, devices, an indicator, a two-row ``FiberPhotometryTable``,
-    and the response-series region — the full provenance a user would supply to write everything.
+    and the response-series region — the full provenance a user would supply to write everything. Every
+    interface written against it needs ``num_fibers=2`` to match those two rows.
     """
-    interface = MockFiberPhotometryInterface(num_fibers=NUM_FIBERS)
+    interface = MockFiberPhotometryInterface(num_fibers=2)
     metadata = interface.get_metadata()
     metadata["DeviceModels"] = dict(
         optical_fiber_model=dict(
@@ -110,7 +107,7 @@ def full_metadata():
 
 class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     data_interface_cls = MockFiberPhotometryInterface
-    interface_kwargs = dict(num_fibers=NUM_FIBERS)
+    interface_kwargs = dict(num_fibers=2)
     conversion_options = dict(stub_test=True, stub_samples=3)
 
     # Hand-supplied, not read back from the interface: one seeded standard-normal draw, two fibers wide.
@@ -207,7 +204,7 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         # The fully annotated path: a complete provenance chain is supplied, and every piece of it must
         # survive a write/read cycle — device models, devices (with model links and fiber insertion), the
         # indicator, both table rows in full, the region, and the response series.
-        interface = MockFiberPhotometryInterface(num_fibers=NUM_FIBERS)
+        interface = MockFiberPhotometryInterface(num_fibers=2)
 
         nwbfile_path = tmp_path / "fully_annotated.nwb"
         nwbfile = interface.create_nwbfile(metadata=full_metadata)
@@ -280,7 +277,7 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         full_metadata["Devices"]["optical_fiber_dls"].pop("device_model_metadata_key")
         full_metadata["DeviceModels"].pop("optical_fiber_model")
 
-        interface = MockFiberPhotometryInterface(num_fibers=NUM_FIBERS)
+        interface = MockFiberPhotometryInterface(num_fibers=2)
         nwbfile_path = tmp_path / "model_less_fiber.nwb"
         nwbfile = interface.create_nwbfile(metadata=full_metadata)
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
@@ -309,7 +306,7 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         full_metadata["Devices"]["camera"] = dict(name="Camera1", description="Another interface's camera.")
         full_metadata["DeviceModels"]["camera_model"] = dict(name="camera_model", manufacturer="Basler")
 
-        nwbfile = MockFiberPhotometryInterface(num_fibers=NUM_FIBERS).create_nwbfile(metadata=full_metadata)
+        nwbfile = MockFiberPhotometryInterface(num_fibers=2).create_nwbfile(metadata=full_metadata)
 
         assert "Camera1" not in nwbfile.devices
         assert "camera_model" not in nwbfile.device_models

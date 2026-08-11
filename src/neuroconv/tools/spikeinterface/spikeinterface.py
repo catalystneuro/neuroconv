@@ -33,6 +33,10 @@ from ...utils import (
     DeepDict,
     calculate_regular_series_rate,
 )
+from ...utils._metadata_translation import (
+    _ecephys_block_is_old,
+    _translate_old_metadata,
+)
 from ...utils.str_utils import human_readable_size
 
 
@@ -295,6 +299,19 @@ def add_recording_to_nwbfile(
             f"Argument parent_container ({parent_container}) should be one of "
             "'acquisition', 'processing/LFP', or 'processing/FilteredEphys'!"
         )
+
+    # Old-shaped metadata is converted here, the last public function before the private writers, so
+    # everything below sees one format. This is also the only place that holds both names for the same
+    # thing: ``es_key`` is where the entry lives in the old format and ``metadata_key`` where it goes in
+    # the new one, so a caller who passed only the old name keeps it as the label.
+    ecephys_metadata = (metadata or {}).get("Ecephys", {})
+    if isinstance(ecephys_metadata, dict) and _ecephys_block_is_old(ecephys_metadata):
+        if metadata_key is None:
+            metadata_key = es_key
+        metadata = _translate_old_metadata(metadata, es_key=es_key, metadata_key=metadata_key)
+        if metadata_key is None:
+            translated_series = metadata.get("Ecephys", {}).get("ElectricalSeries", {})
+            metadata_key = next(iter(translated_series)) if len(translated_series) == 1 else None
 
     # Ask whether this metadata carries dict-based *ElectricalSeries* entries rather than whether it looks
     # dict-based anywhere: a converter hands every interface one dictionary, and another interface's
@@ -2040,6 +2057,13 @@ def add_recording_metadata_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     """
+    # Old-shaped metadata is converted here as well, since this is public and reachable without going
+    # through ``add_recording_to_nwbfile``. Nothing about the electrode groups needs the series names, so
+    # no keys are passed.
+    ecephys_metadata = (metadata or {}).get("Ecephys", {})
+    if isinstance(ecephys_metadata, dict) and _ecephys_block_is_old(ecephys_metadata):
+        metadata = _translate_old_metadata(metadata)
+
     # Decide on the block this function actually writes, the electrode groups, rather than on the
     # dictionary's overall shape: in a converter another interface's dict-based ``Devices`` (a NIDQ
     # board's, a camera's) can sit beside this recording's list-based ``Ecephys``, and routing on that
