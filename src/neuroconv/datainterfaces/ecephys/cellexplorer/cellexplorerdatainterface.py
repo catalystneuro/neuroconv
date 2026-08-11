@@ -131,7 +131,12 @@ def add_channel_metadata_to_recorder_from_session_file(
             x_coords = channel_coordinates["x"]
             y_coords = channel_coordinates["y"]
             locations = np.array((x_coords, y_coords)).T.astype("float32")
-            recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
+            # Set the `location` property directly rather than through `set_channel_locations`. CellExplorer
+            # describes coordinates, not a probe, and on SpikeInterface 0.105 that method attaches a dummy probe
+            # as a side effect, which rewrites the `group` property the block below sets to the electrode group
+            # labels. On 0.104 the method only set this same property (it refused to run when a probe was
+            # attached, "destroys the probe description"), so this keeps the behavior it always had.
+            recording_extractor.set_property(key="location", ids=channel_ids, values=locations)
 
         if "electrodeGroups" in extracellular_data:
             electrode_groups_data = extracellular_data["electrodeGroups"]
@@ -316,8 +321,13 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def __init__(
-        self, folder_path: DirectoryPath, *args, verbose: bool = False, es_key: str = "ElectricalSeries"
-    ):  # TODO: change to * (keyword only) on or after August 2026
+        self,
+        folder_path: DirectoryPath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
+    ):
         """
 
         Parameters
@@ -326,6 +336,9 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
             Folder containing the .session.mat file.
         verbose: bool, default=True
         es_key: str, default="ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"cell_explorer_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -359,6 +372,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         # No super here, we need to do everything by hand
         self.verbose = verbose
         self.es_key = es_key
+        self.metadata_key = metadata_key if metadata_key is not None else "cell_explorer_recording"
         self.source_data = dict(folder_path=folder_path)
         self._number_of_segments = 1  # CellExplorer is mono segment
 
@@ -432,8 +446,13 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     binary_file_extension = "lfp"
 
     def __init__(
-        self, folder_path: DirectoryPath, *args, verbose: bool = False, es_key: str = "ElectricalSeriesLFP"
-    ):  # TODO: change to * (keyword only) on or after August 2026
+        self,
+        folder_path: DirectoryPath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        verbose: bool = False,
+        es_key: str = "ElectricalSeriesLFP",
+        metadata_key: str | None = None,
+    ):
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
@@ -461,7 +480,20 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
             verbose = positional_values.get("verbose", verbose)
             es_key = positional_values.get("es_key", es_key)
 
-        super().__init__(folder_path, verbose=verbose, es_key=es_key)
+        super().__init__(folder_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+
+        if metadata_key is None:
+            self.metadata_key = "cell_explorer_lfp"
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
+
+        if use_new_metadata_format:
+            # The base emits the NWB-conventional "ElectricalSeries" name. This interface writes LFP data,
+            # so it states its own name here, matching the old list-based format.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeriesLFP"
+
+        return metadata
 
     def add_to_nwbfile(
         self,
@@ -470,7 +502,8 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         starting_time: float | None = None,
-        write_as: Literal["raw", "lfp", "processed"] = "lfp",
+        parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "processing/LFP",
+        write_as: Literal["raw", "lfp", "processed"] | None = None,
         write_electrical_series: bool = True,
         compression: str | None = "gzip",
         compression_opts: int | None = None,
@@ -516,12 +549,24 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
             iterator_type = positional_values.get("iterator_type", iterator_type)
             iterator_options = positional_values.get("iterator_options", iterator_options)
 
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of CellExplorerLFPInterface.add_to_nwbfile() is deprecated and will be "
+                "removed on or after December 2026. Use 'parent_container' instead "
+                "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
+                write_as
+            ]
+
         super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
             starting_time=starting_time,
-            write_as=write_as,
+            parent_container=parent_container,
             write_electrical_series=write_electrical_series,
             compression=compression,
             compression_opts=compression_opts,

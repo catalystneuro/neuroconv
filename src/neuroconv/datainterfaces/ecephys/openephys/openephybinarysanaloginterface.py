@@ -33,6 +33,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         stream_name: str | None = None,
         block_index: int | None = None,
         verbose: bool = False,
+        metadata_key: str = "open_ephys_analog",
         time_series_name: str = "TimeSeriesOpenEphysAnalog",
     ):
         """
@@ -49,9 +50,11 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             The index of the block to extract from the data.
         verbose : bool, default: False
             Controls verbosity.
+        metadata_key : str, default: "open_ephys_analog"
+            Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry;
+            the written object's name is ``time_series_name``.
         time_series_name : str, default: "TimeSeriesOpenEphysAnalog"
-            The name of the TimeSeries object in the NWBFile and also
-            the key of the associated metadata
+            The name of the TimeSeries object in the NWBFile.
         """
         # Handle deprecated positional arguments
         if args:
@@ -59,6 +62,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
                 "stream_name",
                 "block_index",
                 "verbose",
+                "metadata_key",
                 "time_series_name",
             ]
             num_positional_args_before_args = 1  # folder_path
@@ -82,6 +86,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             stream_name = positional_values.get("stream_name", stream_name)
             block_index = positional_values.get("block_index", block_index)
             verbose = positional_values.get("verbose", verbose)
+            metadata_key = positional_values.get("metadata_key", metadata_key)
             time_series_name = positional_values.get("time_series_name", time_series_name)
 
         from spikeinterface.extractors.extractor_classes import (
@@ -90,6 +95,7 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
 
         self.folder_path = folder_path
         self._xml_root = _read_settings_xml(folder_path)
+        self.metadata_key = metadata_key
         self.time_series_name = time_series_name
 
         available_streams = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)[0]
@@ -143,6 +149,13 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         session_start_time = _get_session_start_time(element=self._xml_root)
         if session_start_time is not None:
             metadata["NWBFile"].update(session_start_time=session_start_time)
+
+        description = (
+            f"ADC data acquired with OpenEphys system. \n Channels are {self.get_channel_names()} in that order."
+        )
+        metadata["TimeSeries"] = {
+            self.metadata_key: dict(name=self.time_series_name, description=description),
+        }
 
         return metadata
 
@@ -228,11 +241,6 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         if stub_test:
             recording = _stub_recording(recording=recording)
 
-        description = (
-            f"ADC data acquired with OpenEphys system. \n Channels are {self.get_channel_names()} in that order."
-        )
-        metadata["TimeSeries"][self.time_series_name] = dict(name=self.time_series_name, description=description)
-
         add_recording_as_time_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
@@ -240,5 +248,5 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            metadata_key=self.time_series_name,
+            metadata_key=self.metadata_key,
         )

@@ -6,6 +6,7 @@ from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
+from ._metadata_schema import _get_ophys_registry_entry_definitions, _keyed_registry
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     DeepDict,
@@ -32,6 +33,33 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return self.segmentation_extractor.get_roi_ids()
 
     def get_metadata_schema(self) -> dict:
+        """
+        Compile the metadata schema.
+
+        The registries are objects keyed by ``metadata_key``, and the entries stay permissive: an entry is
+        passed to a pynwb constructor, so it may legitimately carry any field that constructor takes. What is
+        pinned is the shape, that an entry is an object, and the cross-reference fields
+        (``device_metadata_key``, ``imaging_plane_metadata_key``) that no hdmf class knows about. Traces and
+        summary images are keyed twice, by plane segmentation and then by trace or image name.
+
+        Metadata in the old list-based format is validated against
+        ``_get_metadata_schema_for_old_list_format``, and both go when that format does.
+        """
+        from ...basedatainterface import BaseDataInterface
+
+        metadata_schema = BaseDataInterface.get_metadata_schema(self)
+        metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
+        metadata_schema["properties"]["Ophys"]["required"] = []
+        metadata_schema["properties"]["Ophys"]["properties"] = dict(
+            ImagingPlanes=_keyed_registry("#/properties/Ophys/definitions/ImagingPlaneEntry"),
+            PlaneSegmentations=_keyed_registry("#/properties/Ophys/definitions/PlaneSegmentationEntry"),
+            RoiResponses=_keyed_registry("#/properties/Ophys/definitions/RoiResponsesEntry"),
+            SegmentationImages=_keyed_registry("#/properties/Ophys/definitions/SegmentationImagesEntry"),
+        )
+        metadata_schema["properties"]["Ophys"]["definitions"] = _get_ophys_registry_entry_definitions()
+        return metadata_schema
+
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
         Generate the metadata schema for Ophys data, updating required fields and properties.
 
@@ -161,7 +189,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         stub_test: bool = False,
         include_background_segmentation: bool = False,
         include_roi_centroids: bool = True,
-        include_roi_acceptance: bool = True,
+        include_roi_acceptance: bool | None = None,
         mask_type: Literal["image", "pixel", "voxel"] = "image",
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
@@ -185,10 +213,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             Whether to include the ROI centroids on the PlaneSegmentation table.
             If there are a very large number of ROIs (such as in whole-brain recordings),
             you may wish to disable this for faster write speeds.
-        include_roi_acceptance : bool, default: True
-            Whether to include if the detected ROI was 'accepted' or 'rejected'.
-            If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
-            faster write speeds.
+        include_roi_acceptance : bool, optional
+            Deprecated and ignored. ROI acceptance is now written automatically as a
+            column on the PlaneSegmentation table whenever the segmentation extractor
+            exposes acceptance/rejection through its property system.
         mask_type : str, default: 'image'
             There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
 
@@ -266,6 +294,16 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             stub_samples = positional_values.get("stub_samples", stub_samples)
             roi_ids_to_add = positional_values.get("roi_ids_to_add", roi_ids_to_add)
 
+        if include_roi_acceptance is not None:
+            warnings.warn(
+                "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
+                "written automatically as a column on the PlaneSegmentation table whenever the "
+                "segmentation extractor exposes acceptance/rejection through its property system. "
+                "This parameter will be removed on or after November 2026.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         segmentation_extractor = self.segmentation_extractor
 
         if roi_ids_to_add is not None:
@@ -275,7 +313,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             stub_samples = min([stub_samples, segmentation_extractor.get_num_samples()])
             segmentation_extractor = segmentation_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
 
-        metadata = metadata or self.get_metadata()
+        metadata = metadata or self._get_metadata_for_writing()
 
         add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
@@ -283,7 +321,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             metadata=metadata,
             include_background_segmentation=include_background_segmentation,
             include_roi_centroids=include_roi_centroids,
-            include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,

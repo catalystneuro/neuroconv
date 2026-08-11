@@ -11,8 +11,10 @@ from ....utils import get_json_schema_from_method_signature
 def _test_sonpy_installation() -> None:
     get_package(
         package_name="sonpy",
-        excluded_python_versions=["3.10", "3.11"],
-        excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.9", "3.10", "3.11", "3.12"])),
+        excluded_platforms_and_python_versions=dict(
+            linux=["3.10", "3.11", "3.12", "3.13"],
+            darwin=["3.10", "3.11", "3.12", "3.13"],
+        ),
     )
 
 
@@ -64,8 +66,13 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
 
     @validate_call
     def __init__(
-        self, file_path: FilePath, *args, verbose: bool = False, es_key: str = "ElectricalSeries"
-    ):  # TODO: change to * (keyword only) on or after August 2026
+        self,
+        file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        verbose: bool = False,
+        es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
+    ):
         """
         Initialize reading of Spike2 file.
 
@@ -75,6 +82,9 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
             Path to .smr or .smrx file.
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"spike2_recording"``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -106,7 +116,12 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         _test_sonpy_installation()
 
         stream_id = "1" if Path(file_path).suffix == ".smr" else None
-        super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose, es_key=es_key)
+        super().__init__(
+            file_path=file_path, stream_id=stream_id, verbose=verbose, es_key=es_key, metadata_key=metadata_key
+        )
+
+        if metadata_key is None:
+            self.metadata_key = "spike2_recording"
 
         # Subset raw channel properties
         signal_channels = self.recording_extractor.neo_reader.header["signal_channels"]

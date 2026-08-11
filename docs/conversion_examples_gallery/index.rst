@@ -58,7 +58,8 @@ Intracellular electrophysiology
 .. toctree::
     :maxdepth: 1
 
-    Axon Binary File (ABF) <recording/abf>
+    Axon Binary Format (ABF) <recording/abf>
+    Bruker VoltageRecording <recording/brukervoltagerecording>
 
 Optical physiology
 ------------------
@@ -99,7 +100,11 @@ Fiber Photometry
 .. toctree::
     :maxdepth: 1
 
+    Doric Fiber Photometry <fiberphotometry/doric_fp>
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    NPM Fiber Photometry <fiberphotometry/npm_fp>
+    CSV Fiber Photometry <fiberphotometry/csv_fp>
+    GuPPy Fiber Photometry <fiberphotometry/guppy_fp>
 
 Behavior
 --------
@@ -113,8 +118,21 @@ Behavior
     LightningPose <behavior/lightningpose>
     Neuralynx NVT <behavior/neuralynx_nvt>
     SLEAP <behavior/sleap>
+    VAME <behavior/vame>
     Videos <behavior/video>
     MedPC <behavior/medpc>
+
+
+Events
+------
+
+.. toctree::
+    :maxdepth: 1
+
+    CSV Events <events/csv_events>
+    Doric Events <events/doric_events>
+    NPM Events <events/npm_events>
+    TDT Events <events/tdt_events>
 
 
 Image

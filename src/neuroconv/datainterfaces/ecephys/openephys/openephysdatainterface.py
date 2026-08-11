@@ -64,6 +64,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         block_index: int | None = None,
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
     ):
         """
         General interface for OpenEphys data. It works for both the legacy and the binary format.
@@ -83,6 +84,9 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
             The index of the block to extract from the data.
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"open_ephys_recording"``.
         """
         super().__new__(cls)
 
@@ -94,6 +98,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
                 block_index=block_index,
                 verbose=verbose,
                 es_key=es_key,
+                metadata_key=metadata_key,
             )
 
         elif any(folder_path.rglob("*.dat")):
@@ -103,6 +108,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
                 block_index=block_index,
                 verbose=verbose,
                 es_key=es_key,
+                metadata_key=metadata_key,
             )
 
         else:

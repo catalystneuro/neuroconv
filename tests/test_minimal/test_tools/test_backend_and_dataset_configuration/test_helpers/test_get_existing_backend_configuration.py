@@ -124,6 +124,9 @@ intervals/trials/start_time/data
   buffer shape : (10,)
   expected RAM usage : 80 B
 
+  chunk shape : (10,)
+  disk space usage per chunk : 80 B
+
   compression options : {'compression_opts': None}
 
 
@@ -135,6 +138,9 @@ intervals/trials/stop_time/data
 
   buffer shape : (10,)
   expected RAM usage : 80 B
+
+  chunk shape : (10,)
+  disk space usage per chunk : 80 B
 
   compression options : {'compression_opts': None}
 

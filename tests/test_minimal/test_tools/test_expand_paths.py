@@ -413,7 +413,7 @@ def test_expand_paths_ibl(tmpdir):
 
     # build expected output from file
     expected_file_path = Path(__file__).parent / "expand_paths_ibl_expected.json"
-    with open(expected_file_path, "r") as f:
+    with open(expected_file_path, "r", encoding="utf-8") as f:
         expected = json.load(f)
     for entry in expected:
         for source_data in entry["source_data"].values():  # update paths with base_directory

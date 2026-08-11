@@ -1,4 +1,5 @@
 from .checks import calculate_regular_series_rate
+from .units import get_conversion_from_unit
 from .dict import (
     DeepDict,
     append_replace_dict_in_list,
@@ -16,7 +17,7 @@ from .json_schema import (
     unroot_schema,
     get_json_schema_from_method_signature,
 )
-from .str_utils import to_camel_case
+from .str_utils import to_camel_case, to_snake_case
 from .types import (
     ArrayType,
     IntType,
