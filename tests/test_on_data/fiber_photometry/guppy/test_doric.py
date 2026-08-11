@@ -40,7 +40,6 @@ from ._metadata import (
 from ...setup_paths import OPHYS_DATA_PATH
 
 DORIC_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric"
-MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 # Only the modern layout carries its own clock origin, so the metadata fixture supplies one for every
 # layout; the test that reads the file's own value goes to ``converter.get_metadata()`` directly.
 FALLBACK_SESSION_START_TIME = "2024-01-01T00:00:00+00:00"
@@ -154,7 +153,7 @@ class TestGuppyConverterDoricModernHDF5(DoricConverterTestMixin):
         "roi03": {"signal": "CAM1EXC1/ROI03", "control": "CAM1EXC2/ROI03"},
     }
     EVENT_STORE_TO_NAME = {"DigitalIO/Camera1": "camera_frames", "DigitalIO/DigitalCh1": "port_entries"}
-    EXPECTED_EVENT_NAME_TO_COUNT = {"camera_frames": 6, "port_entries": 0}
+    EXPECTED_EVENT_TABLE_TO_COUNT = {"CameraFrames": 6, "PortEntries": 0}
     DIGITAL_IO_GROUP = "DataAcquisition/BBC300/Signals/Series0001/DigitalIO"
 
     @staticmethod
@@ -178,7 +177,7 @@ class TestGuppyConverterDoricModernHDF5(DoricConverterTestMixin):
         assert str(session_start_time).startswith("2024-06-24 13:58:38")
 
     def test_a_line_that_never_toggles_still_earns_an_event_type(self, converter, metadata, tmp_path):
-        """``DigitalCh1`` is high throughout, contributing zero occurrences but keeping its registry row.
+        """``DigitalCh1`` is high throughout, contributing zero occurrences but keeping its own table.
 
         The Doric events interfaces keep an event type with no occurrences; the TDT and CSV ones drop it.
         """
@@ -187,11 +186,11 @@ class TestGuppyConverterDoricModernHDF5(DoricConverterTestMixin):
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
-            events_dataframe = nwbfile.events[MERGED_EVENTS_TABLE_NAME].to_dataframe()
             counts = {
-                name: int((events_dataframe.event_type == name).sum()) for name in self.EVENT_STORE_TO_NAME.values()
+                table_name: len(nwbfile.get_events_table(table_name))
+                for table_name in self.EXPECTED_EVENT_TABLE_TO_COUNT
             }
-            assert counts == self.EXPECTED_EVENT_NAME_TO_COUNT
+            assert counts == self.EXPECTED_EVENT_TABLE_TO_COUNT
 
             registry = nwbfile.processing["guppy"]["events"]
             registry_names = {str(registry["event_name"][row]) for row in range(len(registry.id))}

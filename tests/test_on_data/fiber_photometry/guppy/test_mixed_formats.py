@@ -40,6 +40,15 @@ IMPORTED_EVENT_NAME = "licks"
 # mock GuPPy timebase (1.0 s of lights-on delay, then 200 Hz for 400 samples).
 IMPORTED_EVENT_ONSETS = [1.125, 1.5, 2.0, 2.625]
 NUM_MOCK_TRIALS = len(IMPORTED_EVENT_ONSETS)
+# Each raw event type is written as its own EventsTable, named after the label GuPPy gave the store.
+EVENT_NAME_TO_RAW_TABLE_NAME = {
+    "rewarded_nose_pokes": "RewardedNosePokes",
+    "unrewarded_nose_pokes": "UnrewardedNosePokes",
+    "port_entries": "PortEntries",
+    IMPORTED_EVENT_NAME: "Licks",
+}
+# The table the GuPPy interface writes its own analyzed onsets into, which the registry references.
+GUPPY_EVENTS_TABLE_NAME = "GuppyEvents"
 
 EXPECTED_ACQUISITION_INTERFACE_NAMES = {"FiberPhotometry_signal", "FiberPhotometry_control"}
 EXPECTED_EVENTS_INTERFACE_NAMES = {"Events", f"Events_{IMPORTED_EVENT_STORE}"}
@@ -131,38 +140,21 @@ class TestGuppyConverterMixedEvents:
                 store_to_event_name[source_id] = entry["event_name"]
         assert store_to_event_name == {**EPOC_TO_EVENT_NAME, IMPORTED_EVENT_STORE: IMPORTED_EVENT_NAME}
 
-    def test_imported_events_land_in_the_merged_table_beside_the_tank_events(self, converter, metadata, tmp_path):
-        """Both sources write into the one BehavioralEvents table, with the CSV's timestamps verbatim."""
+    def test_the_imported_events_get_their_own_table_beside_the_tank_events(self, converter, metadata, tmp_path):
+        """Each store keeps its own EventsTable, the imported one carrying the CSV's timestamps verbatim."""
         nwbfile_path = tmp_path / "mixed_events.nwb"
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
 
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             nwbfile = io.read()
-            events_table = nwbfile.events["BehavioralEvents"]
-            event_types = list(events_table["event_type"][:])
-            timestamps = np.asarray(events_table["timestamp"][:], dtype=np.float64)
+            assert set(nwbfile.events) == set(EVENT_NAME_TO_RAW_TABLE_NAME.values()) | {GUPPY_EVENTS_TABLE_NAME}
 
-            assert set(event_types) == {*EPOC_TO_EVENT_NAME.values(), IMPORTED_EVENT_NAME}
-            imported_rows = [index for index, name in enumerate(event_types) if name == IMPORTED_EVENT_NAME]
-            np.testing.assert_allclose(timestamps[imported_rows], IMPORTED_EVENT_ONSETS)
-
-    def test_guppy_events_registry_links_the_imported_event(self, converter, metadata, tmp_path):
-        """The imported event's registry row points at its own occurrences in the merged table."""
-        nwbfile_path = tmp_path / "mixed_events_registry.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
-
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            nwbfile = io.read()
-            guppy_events_table = nwbfile.processing["guppy"].data_interfaces["events"]
-            event_names = list(guppy_events_table["event_name"][:])
-            referenced_rows = guppy_events_table["events"][event_names.index(IMPORTED_EVENT_NAME)]
-
-            events_table = nwbfile.events["BehavioralEvents"]
-            assert list(referenced_rows["event_type"]) == [IMPORTED_EVENT_NAME] * NUM_MOCK_TRIALS
+            imported_table = nwbfile.get_events_table(EVENT_NAME_TO_RAW_TABLE_NAME[IMPORTED_EVENT_NAME])
+            # A table holding a single event type records no discriminator; the table is the identity.
+            assert "event_type" not in imported_table.colnames
             np.testing.assert_allclose(
-                np.asarray(referenced_rows["timestamp"], dtype=np.float64), IMPORTED_EVENT_ONSETS
+                np.sort(imported_table.to_dataframe().timestamp.to_numpy()), IMPORTED_EVENT_ONSETS
             )
-            assert len(events_table) > len(referenced_rows)
 
     def test_a_store_both_sides_carry_is_rejected(self, session_folder, guppy_output_folder):
         """A tank epoc that also has a CSV would be written twice, so the ambiguity is refused up front."""
