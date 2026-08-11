@@ -13,6 +13,9 @@ on:
       CHANGELOG_UPDATED:
         description: "Whether or the CHANGELOG.md file was updated."
         value: ${{ jobs.build.outputs.CHANGELOG_UPDATED }}
+      PYPROJECT_CHANGED:
+        description: "Whether pyproject.toml was changed, which can move an installation extra out from under a gallery page."
+        value: ${{ jobs.build.outputs.PYPROJECT_CHANGED }}
 
 jobs:
   build:
@@ -22,6 +25,7 @@ jobs:
       SOURCE_CHANGED: ${{ steps.assess-changes.outputs.SOURCE_CHANGED }}
       CONVERSION_GALLERY_CHANGED: ${{ steps.assess-changes.outputs.CONVERSION_GALLERY_CHANGED }}
       CHANGELOG_UPDATED: ${{ steps.assess-changes.outputs.CHANGELOG_UPDATED }}
+      PYPROJECT_CHANGED: ${{ steps.assess-changes.outputs.PYPROJECT_CHANGED }}
 
     name: Test changed-files
     steps:
@@ -39,6 +43,7 @@ jobs:
           echo "SOURCE_CHANGED=false" >> $GITHUB_OUTPUT
           echo "CONVERSION_GALLERY_CHANGED=false" >> $GITHUB_OUTPUT
           echo "CHANGELOG_UPDATED=false" >> $GITHUB_OUTPUT
+          echo "PYPROJECT_CHANGED=false" >> $GITHUB_OUTPUT
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo $file
             if [[ $file == "src/"* || $file == "tests/"* || $file == "pyproject.toml"   || $file == "setup.py" || $file == ".github/"* ]]
@@ -61,5 +66,12 @@ jobs:
               echo "CHANGELOG_UPDATED=true" >> $GITHUB_OUTPUT
             else
               echo "Changelog not updated"
+            fi
+            if [[ $file == "pyproject.toml" ]]
+            then
+              echo "pyproject changed"
+              echo "PYPROJECT_CHANGED=true" >> $GITHUB_OUTPUT
+            else
+              echo "pyproject not changed"
             fi
           done

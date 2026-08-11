@@ -97,16 +97,30 @@ jobs:
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
 
+  # A gallery page names the extra it needs, and `pyproject.toml` declares that extra, so either side
+  # changing can leave a page installing nothing. That is silent until the page imports something, so it
+  # is checked here rather than waiting for the daily.
+  run-formatwise-installation-tests:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' || needs.assess-file-changes.outputs.PYPROJECT_CHANGED == 'true' }}
+    uses: ./.github/workflows/formatwise-installation-testing.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+
+
   check-final-status:
     name: All tests passing
     if: always()
     needs:
       - run-tests
       - run-doctests-only
+      - run-formatwise-installation-tests
     runs-on: ubuntu-latest
     steps:
       - name: Decide whether all jobs succeeded or at least one failed
         uses: re-actors/alls-green@release/v1
         with:
-          allowed-skips: run-tests, run-doctests-only
+          allowed-skips: run-tests, run-doctests-only, run-formatwise-installation-tests
           jobs: ${{ toJSON(needs) }}
