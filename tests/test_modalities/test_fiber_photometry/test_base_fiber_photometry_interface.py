@@ -14,6 +14,10 @@ from neuroconv.tools.testing.data_interface_mixins import (
 )
 from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
 
+# The ``full_metadata`` fixture describes two fibers at one excitation wavelength, so the interfaces
+# it is written against need two single-fiber source stores rather than the single-store default.
+TWO_FIBER_STREAMS = ("store_0", "store_1")
+
 
 @pytest.fixture
 def full_metadata():
@@ -22,7 +26,7 @@ def full_metadata():
     Test data (not a public API): device models, devices, an indicator, a two-row ``FiberPhotometryTable``,
     and the response-series region — the full provenance a user would supply to write everything.
     """
-    interface = MockFiberPhotometryInterface()
+    interface = MockFiberPhotometryInterface(stream_names=TWO_FIBER_STREAMS)
     metadata = interface.get_metadata()
     metadata["DeviceModels"] = dict(
         optical_fiber_model=dict(
@@ -46,20 +50,21 @@ def full_metadata():
         ),
     )
     metadata["Devices"] = dict(
-        optical_fiber=dict(
+        optical_fiber_dms=dict(
             type="OpticalFiber",
-            name="optical_fiber",
+            name="optical_fiber_dms",
             device_model_metadata_key="optical_fiber_model",
             fiber_insertion=dict(depth_in_mm=4.0, insertion_position_ap_in_mm=3.0),
         ),
-        excitation_source_calcium_signal=dict(
-            type="ExcitationSource",
-            name="excitation_source_calcium_signal",
-            device_model_metadata_key="excitation_source_model",
+        optical_fiber_dls=dict(
+            type="OpticalFiber",
+            name="optical_fiber_dls",
+            device_model_metadata_key="optical_fiber_model",
+            fiber_insertion=dict(depth_in_mm=4.2, insertion_position_ap_in_mm=0.5),
         ),
-        excitation_source_isosbestic_control=dict(
+        excitation_source=dict(
             type="ExcitationSource",
-            name="excitation_source_isosbestic_control",
+            name="excitation_source",
             device_model_metadata_key="excitation_source_model",
         ),
         photodetector=dict(
@@ -72,42 +77,40 @@ def full_metadata():
     fiber_photometry_metadata["FiberPhotometryIndicators"] = dict(indicator=dict(name="indicator", label="GCaMP6s"))
     fiber_photometry_metadata["FiberPhotometryTable"] = dict(
         name="fiber_photometry_table",
-        description="Each row describes a single fiber photometry channel.",
+        description="Each row describes a single fiber photometry trace.",
         rows=dict(
-            calcium_signal=dict(
-                location="VTA",
-                excitation_wavelength_in_nm=470.0,
+            dms=dict(
+                location="DMS",
+                excitation_wavelength_in_nm=465.0,
                 emission_wavelength_in_nm=525.0,
                 indicator_metadata_key="indicator",
-                optical_fiber_metadata_key="optical_fiber",
-                excitation_source_metadata_key="excitation_source_calcium_signal",
+                optical_fiber_metadata_key="optical_fiber_dms",
+                excitation_source_metadata_key="excitation_source",
                 photodetector_metadata_key="photodetector",
             ),
-            isosbestic_control=dict(
-                location="VTA",
-                excitation_wavelength_in_nm=405.0,
+            dls=dict(
+                location="DLS",
+                excitation_wavelength_in_nm=465.0,
                 emission_wavelength_in_nm=525.0,
                 indicator_metadata_key="indicator",
-                optical_fiber_metadata_key="optical_fiber",
-                excitation_source_metadata_key="excitation_source_isosbestic_control",
+                optical_fiber_metadata_key="optical_fiber_dls",
+                excitation_source_metadata_key="excitation_source",
                 photodetector_metadata_key="photodetector",
             ),
         ),
     )
     series_metadata = fiber_photometry_metadata[interface.metadata_key]
-    series_metadata["description"] = (
-        "Multi-fiber photometry recording of GCaMP6s calcium signal and isosbestic control."
-    )
-    series_metadata["fiber_photometry_table_region"] = ["calcium_signal", "isosbestic_control"]
+    series_metadata["description"] = "GCaMP6s recorded at 465 nm from two fibers, in DMS and DLS."
+    series_metadata["fiber_photometry_table_region"] = ["dms", "dls"]
     series_metadata["fiber_photometry_table_region_description"] = (
-        "The calcium-dependent signal and isosbestic control channels recorded from the optical fiber."
+        "The DMS and DLS fibers recorded at the 465 nm excitation wavelength."
     )
     return metadata
 
 
 class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     data_interface_cls = MockFiberPhotometryInterface
-    interface_kwargs = dict()
+    interface_kwargs = dict(stream_names=TWO_FIBER_STREAMS)
     conversion_options = dict(stub_test=True, stub_samples=3)
 
     # Hand-supplied, not read back from the interface: the mock's two seeded standard-normal traces.
@@ -160,10 +163,10 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         for index, stream_name in enumerate(interface.stream_names):
             assert_array_equal(data[:, index], interface._get_stream_data(stream_name=stream_name))
 
-    def test_multi_channel_stream_contributes_one_column_per_channel(self):
-        # A single stream can itself be multi-channel (one acquisition store holding several fibers),
+    def test_multi_fiber_stream_contributes_one_column_per_fiber(self):
+        # A single stream can itself be multi-fiber (one acquisition store holding several fibers),
         # in which case _get_stream_data returns 2-D and skips the np.newaxis promotion entirely.
-        interface = MockFiberPhotometryInterface(stream_names="fibers", channels_per_stream=4)
+        interface = MockFiberPhotometryInterface(stream_names="fibers", fibers_per_stream=4)
         stream_data = interface._get_stream_data(stream_name="fibers")
         assert stream_data.ndim == 2
 
@@ -171,25 +174,24 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         assert data.shape == (100, 4)
         assert_array_equal(data, stream_data)
 
-    def test_mixed_channel_counts_stack_by_total_channels(self):
-        # The realistic multi-fiber layout: a 3-fiber store at one wavelength plus a 1-channel
-        # isosbestic control. Columns total the per-stream channel counts, not the stream count, and
-        # the promoted 1-D stream stacks alongside the 2-D one.
-        interface = MockFiberPhotometryInterface(stream_names=["signal", "control"], channels_per_stream=[3, 1])
+    def test_mixed_fiber_counts_stack_by_total_fibers(self):
+        # A 3-fiber store stacked with a single-fiber one: columns total the per-stream fiber counts,
+        # not the stream count, and the promoted 1-D stream stacks alongside the 2-D one.
+        interface = MockFiberPhotometryInterface(stream_names=["fiber_array", "lone_fiber"], fibers_per_stream=[3, 1])
         data = interface._read_response_data()
 
         assert data.shape == (100, 4)
-        assert_array_equal(data[:, :3], interface._get_stream_data(stream_name="signal"))
-        assert_array_equal(data[:, 3], interface._get_stream_data(stream_name="control"))
+        assert_array_equal(data[:, :3], interface._get_stream_data(stream_name="fiber_array"))
+        assert_array_equal(data[:, 3], interface._get_stream_data(stream_name="lone_fiber"))
 
-    def test_channels_per_stream_length_mismatch_errors(self):
-        expected_error = "channels_per_stream has 3 entries but there are 2 stream(s)"
+    def test_fibers_per_stream_length_mismatch_errors(self):
+        expected_error = "fibers_per_stream has 3 entries but there are 2 stream(s)"
         with pytest.raises(ValueError, match=re.escape(expected_error)):
-            MockFiberPhotometryInterface(stream_names=["a", "b"], channels_per_stream=[1, 2, 3])
+            MockFiberPhotometryInterface(stream_names=["a", "b"], fibers_per_stream=[1, 2, 3])
 
-    def test_single_stream_collapses_to_one_channel(self):
+    def test_single_stream_collapses_to_one_column(self):
         # A lone column is written as a 1-D series rather than an (N, 1) one.
-        interface = MockFiberPhotometryInterface(stream_names="signal")
+        interface = MockFiberPhotometryInterface(stream_names="store_0")
         nwbfile = interface.create_nwbfile()
 
         assert nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100,)
@@ -198,7 +200,7 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         # The fully annotated path: a complete provenance chain is supplied, and every piece of it must
         # survive a write/read cycle — device models, devices (with model links and fiber insertion), the
         # indicator, both table rows in full, the region, and the response series.
-        interface = MockFiberPhotometryInterface()
+        interface = MockFiberPhotometryInterface(stream_names=TWO_FIBER_STREAMS)
 
         nwbfile_path = tmp_path / "fully_annotated.nwb"
         nwbfile = interface.create_nwbfile(metadata=full_metadata)
@@ -218,18 +220,19 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             assert excitation_source_model.excitation_mode == "one-photon"
             assert read_nwbfile.device_models["photodetector_model"].detector_type == "photodiode"
 
-            # Devices, their model links, and the optical fiber's insertion.
+            # Devices, their model links, and the optical fibers' insertions.
             assert set(read_nwbfile.devices) == {
-                "optical_fiber",
-                "excitation_source_calcium_signal",
-                "excitation_source_isosbestic_control",
+                "optical_fiber_dms",
+                "optical_fiber_dls",
+                "excitation_source",
                 "photodetector",
             }
-            optical_fiber = read_nwbfile.devices["optical_fiber"]
+            optical_fiber = read_nwbfile.devices["optical_fiber_dms"]
             assert optical_fiber.model.name == "optical_fiber_model"
             assert optical_fiber.fiber_insertion.depth_in_mm == 4.0
             assert optical_fiber.fiber_insertion.insertion_position_ap_in_mm == 3.0
-            assert read_nwbfile.devices["excitation_source_calcium_signal"].model.name == "excitation_source_model"
+            assert read_nwbfile.devices["optical_fiber_dls"].fiber_insertion.depth_in_mm == 4.2
+            assert read_nwbfile.devices["excitation_source"].model.name == "excitation_source_model"
             assert read_nwbfile.devices["photodetector"].model.name == "photodetector_model"
 
             fiber_photometry = read_nwbfile.lab_meta_data["fiber_photometry"]
@@ -241,22 +244,19 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             # Table: both rows in full, including the per-row device and indicator references.
             table = fiber_photometry.fiber_photometry_table
             assert len(table) == 2
-            assert list(table["location"][:]) == ["VTA", "VTA"]
-            assert_array_equal(table["excitation_wavelength_in_nm"][:], np.array([470.0, 405.0]))
+            assert list(table["location"][:]) == ["DMS", "DLS"]
+            assert_array_equal(table["excitation_wavelength_in_nm"][:], np.array([465.0, 465.0]))
             assert_array_equal(table["emission_wavelength_in_nm"][:], np.array([525.0, 525.0]))
-            assert table["optical_fiber"][0].name == "optical_fiber"
-            assert table["excitation_source"][0].name == "excitation_source_calcium_signal"
-            assert table["excitation_source"][1].name == "excitation_source_isosbestic_control"
+            assert table["optical_fiber"][0].name == "optical_fiber_dms"
+            assert table["optical_fiber"][1].name == "optical_fiber_dls"
+            assert table["excitation_source"][0].name == "excitation_source"
             assert table["photodetector"][0].name == "photodetector"
             assert table["indicator"][0].label == "GCaMP6s"
 
-            # Response series, referencing both the calcium-signal (row 0) and isosbestic-control (row 1) rows.
+            # Response series, referencing the DMS (row 0) and DLS (row 1) fibers.
             response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
             assert response_series.name == "FiberPhotometryResponseSeries"
-            assert (
-                response_series.description
-                == "Multi-fiber photometry recording of GCaMP6s calcium signal and isosbestic control."
-            )
+            assert response_series.description == "GCaMP6s recorded at 465 nm from two fibers, in DMS and DLS."
             assert response_series.unit == "a.u."
             assert response_series.data[:].shape == (100, 2)
             assert response_series.rate == pytest.approx(100.0)
@@ -269,10 +269,11 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         # the fiber's model must still write the fiber, its fiber_insertion, and the rest of the chain.
         # This exercises the optical-fiber branch of add_fiber_photometry_devices with no model to resolve,
         # which previously raised ``KeyError: 'device_model_metadata_key'`` before writing anything.
-        full_metadata["Devices"]["optical_fiber"].pop("device_model_metadata_key")
+        full_metadata["Devices"]["optical_fiber_dms"].pop("device_model_metadata_key")
+        full_metadata["Devices"]["optical_fiber_dls"].pop("device_model_metadata_key")
         full_metadata["DeviceModels"].pop("optical_fiber_model")
 
-        interface = MockFiberPhotometryInterface()
+        interface = MockFiberPhotometryInterface(stream_names=TWO_FIBER_STREAMS)
         nwbfile_path = tmp_path / "model_less_fiber.nwb"
         nwbfile = interface.create_nwbfile(metadata=full_metadata)
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
@@ -281,19 +282,19 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             read_nwbfile = io.read()
 
             # The fiber is written with no model, but everything else about it survives.
-            optical_fiber = read_nwbfile.devices["optical_fiber"]
+            optical_fiber = read_nwbfile.devices["optical_fiber_dms"]
             assert optical_fiber.model is None
             assert optical_fiber.fiber_insertion.depth_in_mm == 4.0
             assert optical_fiber.fiber_insertion.insertion_position_ap_in_mm == 3.0
 
-            # Only the fiber's model was dropped; the other two devices keep theirs.
+            # Only the fibers' model was dropped; the other two devices keep theirs.
             assert "optical_fiber_model" not in read_nwbfile.device_models
-            assert read_nwbfile.devices["excitation_source_calcium_signal"].model.name == "excitation_source_model"
+            assert read_nwbfile.devices["excitation_source"].model.name == "excitation_source_model"
             assert read_nwbfile.devices["photodetector"].model.name == "photodetector_model"
 
             # The row still references the fiber, and the response series still round-trips.
             table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
-            assert table["optical_fiber"][0].name == "optical_fiber"
+            assert table["optical_fiber"][0].name == "optical_fiber_dms"
             assert read_nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100, 2)
 
     def test_only_devices_referenced_by_the_table_are_added(self, full_metadata):
@@ -301,11 +302,11 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         full_metadata["Devices"]["camera"] = dict(name="Camera1", description="Another interface's camera.")
         full_metadata["DeviceModels"]["camera_model"] = dict(name="camera_model", manufacturer="Basler")
 
-        nwbfile = MockFiberPhotometryInterface().create_nwbfile(metadata=full_metadata)
+        nwbfile = MockFiberPhotometryInterface(stream_names=TWO_FIBER_STREAMS).create_nwbfile(metadata=full_metadata)
 
         assert "Camera1" not in nwbfile.devices
         assert "camera_model" not in nwbfile.device_models
-        assert "optical_fiber" in nwbfile.devices
+        assert "optical_fiber_dms" in nwbfile.devices
         assert "optical_fiber_model" in nwbfile.device_models
 
     def test_minimally_annotated_metadata_round_trips(self, tmp_path):
@@ -326,7 +327,7 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             # Nothing fabricated: no description was supplied, so it is written empty.
             assert response_series.description == ""
             assert response_series.unit == "a.u."
-            assert response_series.data[:].shape == (100, 2)
+            assert response_series.data[:].shape == (100,)
             assert response_series.rate == pytest.approx(100.0)
             assert response_series.starting_time == 0.0
 

@@ -710,8 +710,8 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
     def __init__(
         self,
         *,
-        stream_names: str | list[str] = ("signal", "control"),
-        channels_per_stream: int | list[int] = 1,
+        stream_names: str | list[str] = "store_0",
+        fibers_per_stream: int | list[int] = 1,
         num_samples: int = 100,
         sampling_rate: float = 100.0,
         seed: int = 0,
@@ -722,13 +722,18 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
 
         Parameters
         ----------
-        stream_names : str or list of str, default: ("signal", "control")
-            One name per source stream; the streams are column-stacked into the response series.
-        channels_per_stream : int or list of int, default: 1
-            How many channels each stream carries. An ``int`` applies to every stream; a list gives a
-            count per stream, so a multi-fiber store can be mixed with a single-channel one. A stream
-            with one channel reads as a 1-D array, one with several as ``(num_samples, channels)``,
-            which is the shape a real multi-fiber acquisition store returns.
+        stream_names : str or list of str, default: "store_0"
+            One name per source stream; the streams are column-stacked into the response series. A
+            stream is a source slot, an acquisition store rather than a fiber, and it carries as many
+            fibers as ``fibers_per_stream`` says. The default is a single store at a single excitation
+            wavelength. ndx-fiber-photometry recommends one series per excitation/emission wavelength
+            with one column per fiber, so extra fibers are extra streams (or a wider one) here, while a
+            second wavelength is a second interface writing its own series into the same table.
+        fibers_per_stream : int or list of int, default: 1
+            How many fibers each stream carries, one column per fiber. An ``int`` applies to every
+            stream; a list gives a count per stream, so a multi-fiber store can be mixed with a
+            single-fiber one. A stream with one fiber reads as a 1-D array, one with several as
+            ``(num_samples, fibers)``, which is the shape a real multi-fiber acquisition store returns.
         num_samples : int, default: 100
             Number of samples in the synthetic response series.
         sampling_rate : float, default: 100.0
@@ -741,27 +746,27 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
             Whether to print status messages.
         """
         stream_name_list = [stream_names] if isinstance(stream_names, str) else list(stream_names)
-        if isinstance(channels_per_stream, int):
-            channels_per_stream = [channels_per_stream] * len(stream_name_list)
-        elif len(channels_per_stream) != len(stream_name_list):
+        if isinstance(fibers_per_stream, int):
+            fibers_per_stream = [fibers_per_stream] * len(stream_name_list)
+        elif len(fibers_per_stream) != len(stream_name_list):
             raise ValueError(
-                f"channels_per_stream has {len(channels_per_stream)} entries but there are "
+                f"fibers_per_stream has {len(fibers_per_stream)} entries but there are "
                 f"{len(stream_name_list)} stream(s); they must match one-to-one."
             )
-        self._channels_per_stream = [int(count) for count in channels_per_stream]
+        self._fibers_per_stream = [int(count) for count in fibers_per_stream]
         self._num_samples = int(num_samples)
         self._sampling_rate = float(sampling_rate)
         self._seed = int(seed)
         super().__init__(stream_names=stream_name_list, metadata_key=metadata_key, verbose=verbose)
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
-        # Deterministic per-stream synthetic trace (a distinct seed per stream so channels differ).
+        # Deterministic per-stream synthetic trace (a distinct seed per stream so the traces differ).
         index = self.stream_names.index(stream_name)
         rng = np.random.default_rng(self._seed + index)
-        num_channels = self._channels_per_stream[index]
-        # Drawing a 1-D array for a single channel (rather than slicing an (N, 1) one) keeps the
-        # default draw identical to the single-channel case.
-        size = self._num_samples if num_channels == 1 else (self._num_samples, num_channels)
+        num_fibers = self._fibers_per_stream[index]
+        # Drawing a 1-D array for a single fiber (rather than slicing an (N, 1) one) keeps the
+        # default draw identical to the single-fiber case.
+        size = self._num_samples if num_fibers == 1 else (self._num_samples, num_fibers)
         return rng.standard_normal(size).astype("float64")
 
     def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
