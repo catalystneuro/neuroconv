@@ -35,10 +35,17 @@ class TestNoOps:
         assert add_brain_region_external_resources(nwbfile) == 0
         assert nwbfile.external_resources is None
 
-    def test_species_without_atlas_is_skipped(self):
-        # Rat has no offline atlas (only mouse and human are supported).
+    def test_species_without_dedicated_atlas_and_no_matching_terms_is_skipped(self):
+        # Rat has no dedicated Allen atlas; the mouse-specific acronyms "CA1"/"VISp" are not in
+        # the species-agnostic UBERON fallback vocabulary either, so nothing is annotated.
         nwbfile = _make_nwbfile(species="Rattus norvegicus")
         _add_electrodes(nwbfile, ["CA1", "VISp"])
+        assert add_brain_region_external_resources(nwbfile) == 0
+        assert nwbfile.external_resources is None
+
+    def test_unrecognized_species_is_skipped(self):
+        nwbfile = _make_nwbfile(species="Octodon degus")  # valid binomial, not in SPECIES_TERMS
+        _add_electrodes(nwbfile, ["V1"])
         assert add_brain_region_external_resources(nwbfile) == 0
         assert nwbfile.external_resources is None
 
@@ -91,6 +98,32 @@ class TestHumanAtlasAnnotation:
         assert by_key == {"CA1": "HBA:12892", "cerebral cortex": "HBA:4008"}
         uris = dict(zip(dataframe["key"], dataframe["entity_uri"]))
         assert uris["CA1"] == "https://purl.brain-bican.org/ontology/hbao/HBA_12892"
+
+
+class TestUberonFallbackAnnotation:
+    def test_rat_locations_are_annotated_with_uberon(self):
+        # Rat has no dedicated Allen atlas; common region names still resolve via the
+        # species-agnostic UBERON fallback vocabulary.
+        nwbfile = _make_nwbfile(species="Rattus norvegicus")
+        _add_electrodes(nwbfile, ["V1", "hippocampus", "unknown"])
+
+        assert add_brain_region_external_resources(nwbfile) == 2
+        dataframe = nwbfile.external_resources.to_dataframe()
+        by_key = dict(zip(dataframe["key"], dataframe["entity_id"]))
+        assert by_key == {"V1": "UBERON:0002436", "hippocampus": "UBERON:0002421"}
+        uris = dict(zip(dataframe["key"], dataframe["entity_uri"]))
+        assert uris["V1"] == "http://purl.obolibrary.org/obo/UBERON_0002436"
+
+    def test_common_species_name_resolves_to_uberon_fallback(self):
+        nwbfile = _make_nwbfile(species="rat")
+        _add_electrodes(nwbfile, ["V1"])
+        assert add_brain_region_external_resources(nwbfile) == 1
+
+    def test_non_mouse_non_human_species_use_the_same_uberon_vocabulary(self):
+        # Any other recognized species (not just rat) falls back to the same vocabulary.
+        nwbfile = _make_nwbfile(species="Macaca mulatta")
+        _add_electrodes(nwbfile, ["V1"])
+        assert add_brain_region_external_resources(nwbfile) == 1
 
 
 class TestElectrodeGroupAndImagingPlaneAnnotation:
@@ -260,9 +293,9 @@ class TestMetadataMapping:
         assert dataframe["key"].tolist() == ["CA1", "CA1"]
         assert sorted(dataframe["entity_id"].tolist()) == ["MBA:382", "UBERON:0003881"]
 
-    def test_metadata_mapping_applies_to_species_without_an_atlas(self):
-        # The explicit metadata mapping is ontology-agnostic and is not gated on species; a rat
-        # subject has no offline atlas, so only the metadata-defined region is annotated.
+    def test_metadata_mapping_applies_regardless_of_species(self):
+        # The explicit metadata mapping is ontology-agnostic and is not gated on species; "CA1" is
+        # not in the rat's UBERON fallback vocabulary, so only the metadata-defined region resolves.
         nwbfile = _make_nwbfile(species="Rattus norvegicus")
         _add_electrodes(nwbfile, ["my region", "CA1"])
         metadata = {

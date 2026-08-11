@@ -11,8 +11,10 @@ Two kinds of value are annotated automatically by a conversion:
 
 - the subject's **species**, mapped to `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_;
 - anatomical **brain regions** (``location`` fields), mapped to the
-  `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA) for mouse subjects and the
-  `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) for human subjects, or to
+  `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA) for mouse subjects, the
+  `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) for human subjects, a
+  species-agnostic `UBERON <https://bioregistry.io/registry/uberon>`_ vocabulary of common region
+  names for every other recognized species (e.g. rat, which has no dedicated Allen atlas), or to
   any ontology you specify in metadata.
 
 Brain-region annotation covers every ``location`` field NeuroConv knows about: the electrodes table
@@ -99,10 +101,10 @@ Brain regions
 
 Anatomical locations are stored in NWB as free-text strings: the ``location`` column of the
 electrodes table (ecephys), ``ElectrodeGroup.location``, ``ImagingPlane.location`` (ophys), and the
-``FiberPhotometryTable`` ``location`` column (fiber photometry). For
-a **mouse** or **human** subject, NeuroConv can attach an Allen-atlas reference to each of these, so
-downstream tools can resolve the exact structure instead of guessing from an acronym. This runs at
-write time, once the electrodes table and imaging planes have been populated.
+``FiberPhotometryTable`` ``location`` column (fiber photometry). For any subject whose species is
+recognized, NeuroConv can attach an ontology reference to each of these, so downstream tools can
+resolve the exact structure instead of guessing from an acronym. This runs at write time, once the
+electrodes table and imaging planes have been populated.
 
 How locations are resolved
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -115,15 +117,19 @@ Each distinct ``location`` string is resolved in two steps:
    term to a region. This is how you annotate a region the offline lookup does not recognize, or
    override one it does.
 2. **Offline lookup (per species).** Otherwise NeuroConv consults the curated atlas for the
-   subject's species -- the Allen Mouse Brain Atlas for *Mus musculus* and the Allen Human Brain
-   Atlas for *Homo sapiens* -- matching an exact Allen acronym (case-sensitive, e.g. ``"CA1"``,
-   ``"VISp"``), a canonical structure name (case-insensitive, e.g. ``"caudoputamen"``), or a common
-   informal name or abbreviation (e.g. ``"hippocampus"``, ``"V1"``).
+   subject's species -- the Allen Mouse Brain Atlas for *Mus musculus*, the Allen Human Brain
+   Atlas for *Homo sapiens*, and a small species-agnostic UBERON vocabulary of common region names
+   (:py:data:`~neuroconv.tools.ontology.UBERON_TERMS`) for every other recognized species -- matching
+   an exact atlas acronym (case-sensitive, e.g. ``"CA1"``, ``"VISp"``), a canonical structure name
+   (case-insensitive, e.g. ``"caudoputamen"``), or a common informal name or abbreviation (e.g.
+   ``"hippocampus"``, ``"V1"``).
 
 Locations that resolve to neither (including the ``"unknown"`` placeholder) are left unannotated.
 The lookup is species-specific because the same acronym denotes different structures across atlases
-(e.g. ``"MB"`` is the mouse midbrain but the human mammillary body); a subject whose species has no
-supported atlas is annotated only through the metadata mapping.
+(e.g. ``"MB"`` is the mouse midbrain but the human mammillary body); a subject whose species is not
+recognized at all is annotated only through the metadata mapping. The UBERON fallback is
+intentionally small and generic -- lab-specific channel labels (e.g. a custom EEG grid's own
+naming) still belong in the metadata mapping.
 
 Automatic annotation
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -222,6 +228,7 @@ The resolution and annotation functions are available in :py:mod:`neuroconv.tool
     term.entity_uri    # 'https://purl.brain-bican.org/ontology/mbao/MBA_672'
 
     get_brain_region_term("CA1", species="Homo sapiens").curie  # 'HBA:12892'
+    get_brain_region_term("hippocampus", species="Rattus norvegicus").curie  # 'UBERON:0002421'
 
-    # Annotate an already-populated in-memory NWBFile (no-op unless the subject has a supported atlas):
+    # Annotate an already-populated in-memory NWBFile (no-op unless the subject's species is recognized):
     number_added = add_brain_region_external_resources(nwbfile, metadata=metadata)

@@ -1,4 +1,4 @@
-"""Lightweight, offline recognition of brain regions as Allen brain-atlas terms.
+"""Lightweight, offline recognition of brain regions as ontology terms.
 
 NWB stores an anatomical location as a free-text string (e.g. the ``location`` column of the
 electrodes table, ``ElectrodeGroup.location``, or ``ImagingPlane.location``). The Allen brain
@@ -11,8 +11,14 @@ The lookup is species-specific because the same acronym denotes different struct
 (e.g. ``MB`` is the mouse midbrain but the human mammillary body). The terms live in the curated
 TermSet files ``term_sets/mouse_brain_atlas.yaml`` and ``term_sets/human_brain_atlas.yaml``
 (identifiers taken from the Allen structure graphs, registered in the Bioregistry under the ``MBA``
-https://bioregistry.io/registry/mba and ``HBA`` https://bioregistry.io/registry/hba prefixes). This
-module adds the offline resolution of a free-text location string to one of those terms.
+https://bioregistry.io/registry/mba and ``HBA`` https://bioregistry.io/registry/hba prefixes).
+
+Any other recognized species (no dedicated Allen atlas -- e.g. rat) falls back to a small,
+species-agnostic vocabulary of common region names backed by
+`UBERON <https://bioregistry.io/registry/uberon>`_ (``term_sets/uberon_common_regions.yaml``),
+cross-species anatomy ontology's closest equivalent to the Allen atlases' curated common-name
+aliases. This module adds the offline resolution of a free-text location string to one of these
+terms.
 """
 
 from dataclasses import dataclass
@@ -23,6 +29,7 @@ from ._term_sets import load_term_set
 __all__ = [
     "HBA_TERMS",
     "MBA_TERMS",
+    "UBERON_TERMS",
     "SUPPORTED_ATLAS_SPECIES",
     "BrainRegionTerm",
     "get_brain_region_term",
@@ -68,6 +75,15 @@ _HBA_ALIAS_TO_ACRONYM: dict[str, str] = {
     "locus coeruleus": "LC",
 }
 
+# Species-agnostic fallback (any recognized species without a dedicated Allen atlas, e.g. rat).
+_UBERON_ALIAS_TO_ACRONYM: dict[str, str] = {
+    "v1": "V1",
+    "v2": "V2",
+    "m1": "M1",
+    "m2": "M2",
+    "s1": "S1",
+}
+
 
 @dataclass(frozen=True)
 class _BrainAtlas:
@@ -103,41 +119,53 @@ def _build_atlas(term_set_file: str, alias_to_acronym: dict) -> _BrainAtlas:
 
 _MBA_ATLAS = _build_atlas("mouse_brain_atlas.yaml", _MBA_ALIAS_TO_ACRONYM)
 _HBA_ATLAS = _build_atlas("human_brain_atlas.yaml", _HBA_ALIAS_TO_ACRONYM)
+_UBERON_ATLAS = _build_atlas("uberon_common_regions.yaml", _UBERON_ALIAS_TO_ACRONYM)
 
-# Canonical species binomial -> its brain atlas.
+# Canonical species binomial -> its dedicated Allen brain atlas. Any other recognized species
+# (e.g. rat) falls back to the species-agnostic _UBERON_ATLAS -- see _atlas_for_species.
 _SPECIES_TO_ATLAS: dict[str, _BrainAtlas] = {
     "Mus musculus": _MBA_ATLAS,
     "Homo sapiens": _HBA_ATLAS,
 }
 
-#: Canonical species names for which an offline brain-atlas lookup is available.
+#: Canonical species names with a dedicated (non-fallback) Allen brain atlas. Every other
+#: recognized species still resolves brain regions, via the UBERON fallback vocabulary.
 SUPPORTED_ATLAS_SPECIES: frozenset = frozenset(_SPECIES_TO_ATLAS)
 
 #: Acronym -> :class:`BrainRegionTerm` for the Allen Mouse Brain Atlas.
 MBA_TERMS: dict[str, BrainRegionTerm] = _MBA_ATLAS.terms
 #: Acronym -> :class:`BrainRegionTerm` for the Allen Human Brain Atlas.
 HBA_TERMS: dict[str, BrainRegionTerm] = _HBA_ATLAS.terms
+#: Acronym -> :class:`BrainRegionTerm` for the species-agnostic UBERON fallback vocabulary.
+UBERON_TERMS: dict[str, BrainRegionTerm] = _UBERON_ATLAS.terms
 
 
 def _atlas_for_species(species: str | None) -> _BrainAtlas | None:
-    """Return the brain atlas for a species value (resolving common names), or ``None``."""
+    """Return the brain atlas for a species value (resolving common names), or ``None``.
+
+    A species with a dedicated Allen atlas (mouse, human) uses it; any other recognized species
+    falls back to the species-agnostic UBERON vocabulary; an unrecognized species returns ``None``.
+    """
     species_term = get_species_term(species)
-    canonical_name = species_term.canonical_name if species_term is not None else species
-    return _SPECIES_TO_ATLAS.get(canonical_name)
+    if species_term is None:
+        return None
+    return _SPECIES_TO_ATLAS.get(species_term.canonical_name, _UBERON_ATLAS)
 
 
 def get_brain_region_term(location: str, species: str = "Mus musculus") -> BrainRegionTerm | None:
     """
-    Resolve a free-text location string to an Allen brain-atlas term for a species.
+    Resolve a free-text location string to a brain-region ontology term for a species.
 
-    The lookup is high-precision: it matches an exact Allen acronym (case-sensitive, e.g.
+    The lookup is high-precision: it matches an exact atlas acronym (case-sensitive, e.g.
     ``"CA1"``), a canonical structure name (case-insensitive, e.g. ``"caudoputamen"``), or a small
     set of common informal names and abbreviations (e.g. ``"hippocampus"``, ``"V1"``). Anything it
     does not recognize returns ``None``.
 
     The atlas is chosen from ``species``: ``"Mus musculus"`` (default) uses the Allen Mouse Brain
-    Atlas and ``"Homo sapiens"`` the Allen Human Brain Atlas. Common names (e.g. ``"mouse"``,
-    ``"human"``) are accepted. A species without a supported atlas returns ``None``.
+    Atlas and ``"Homo sapiens"`` the Allen Human Brain Atlas. Any other recognized species (e.g.
+    ``"Rattus norvegicus"``) falls back to a small, species-agnostic vocabulary of common region
+    names backed by UBERON. Common names (e.g. ``"mouse"``, ``"human"``, ``"rat"``) are accepted.
+    An unrecognized species returns ``None``.
 
     Parameters
     ----------

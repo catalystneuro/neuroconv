@@ -3,9 +3,9 @@
 HERD (HDMF External Resources Data) lets an NWB file carry machine-readable links from its
 metadata values to entities in external ontologies. NeuroConv uses it to annotate values it
 can recognize -- ``Subject.species`` -> NCBITaxon, and anatomical ``location`` fields (the
-electrodes table, electrode groups, imaging planes, and the ``FiberPhotometryTable``) -> the
-Allen Mouse or Human Brain Atlas -- so downstream tools (e.g. the DANDI archive) can resolve
-the term without guessing.
+electrodes table, electrode groups, imaging planes, and the ``FiberPhotometryTable``) -> the Allen
+Mouse or Human Brain Atlas (or a species-agnostic UBERON vocabulary for any other recognized
+species) -- so downstream tools (e.g. the DANDI archive) can resolve the term without guessing.
 
 The reference is stored in-file under ``/general/external_resources``, which requires
 ``pynwb >= 4.0.0`` (guaranteed by NeuroConv's dependency pin).
@@ -13,7 +13,7 @@ The reference is stored in-file under ``/general/external_resources``, which req
 
 from pynwb import NWBFile, get_type_map
 
-from ._brain_regions import SUPPORTED_ATLAS_SPECIES, get_brain_region_term
+from ._brain_regions import get_brain_region_term
 from ._species import get_species_term
 
 __all__ = [
@@ -85,14 +85,17 @@ def add_species_external_resource(nwbfile: NWBFile) -> bool:
 
 
 def _subject_atlas_species(nwbfile: NWBFile) -> str | None:
-    """Canonical species name if the subject has a supported brain atlas (mouse/human), else ``None``."""
+    """Canonical species name if the subject is recognized, else ``None``.
+
+    Every recognized species resolves brain regions: mouse and human against their dedicated
+    Allen atlas, any other recognized species (e.g. rat) against the UBERON fallback vocabulary
+    (see :func:`neuroconv.tools.ontology.get_brain_region_term`).
+    """
     subject = getattr(nwbfile, "subject", None)
     if subject is None:
         return None
     species_term = get_species_term(getattr(subject, "species", None))
-    if species_term is None or species_term.canonical_name not in SUPPORTED_ATLAS_SPECIES:
-        return None
-    return species_term.canonical_name
+    return species_term.canonical_name if species_term is not None else None
 
 
 def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
@@ -204,11 +207,12 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     1. the ``metadata["BrainRegions"]`` mapping, if it provides an entry (this takes precedence and
        is ontology-agnostic, so it applies to any species and may map one area to several terms,
        e.g. both MBA and UBERON); then
-    2. the offline Allen brain-atlas lookup for the subject's species -- the Allen Mouse Brain Atlas
-       for *Mus musculus* and the Allen Human Brain Atlas for *Homo sapiens*.
+    2. the offline brain-atlas lookup for the subject's species -- the Allen Mouse Brain Atlas for
+       *Mus musculus*, the Allen Human Brain Atlas for *Homo sapiens*, and a species-agnostic
+       UBERON-backed vocabulary of common region names for every other recognized species.
 
     Locations resolving to neither are left untouched. This is a no-op (returns ``0``) when the
-    subject's species has no supported atlas and no metadata mapping is provided.
+    subject's species is not recognized and no metadata mapping is provided.
 
     Parameters
     ----------

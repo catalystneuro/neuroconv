@@ -3,6 +3,7 @@
 from ._brain_regions import (
     HBA_TERMS,
     MBA_TERMS,
+    UBERON_TERMS,
     BrainRegionTerm,
     get_brain_region_term,
 )
@@ -22,6 +23,7 @@ from ._species import (
 __all__ = [
     "HBA_TERMS",
     "MBA_TERMS",
+    "UBERON_TERMS",
     "SPECIES_TERMS",
     "BrainRegionTerm",
     "OntologyAnnotationMixin",
