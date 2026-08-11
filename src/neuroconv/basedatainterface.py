@@ -186,9 +186,10 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
         # Annotate the assembled file with ontology references (in-file HERD). Runs after data is
-        # added so the electrodes table and imaging planes exist. Both hooks are overridable
+        # added so the electrodes table and imaging planes exist. All hooks are overridable
         # (see OntologyAnnotationMixin).
         self.add_species_external_resource(nwbfile, metadata=metadata)
+        self.add_strain_external_resource(nwbfile, metadata=metadata)
         self.add_brain_region_external_resources(nwbfile, metadata=metadata)
 
         return nwbfile
@@ -308,6 +309,7 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
             self.add_species_external_resource(nwbfile, metadata=metadata)
+            self.add_strain_external_resource(nwbfile, metadata=metadata)
             self.add_brain_region_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)

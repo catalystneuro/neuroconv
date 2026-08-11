@@ -377,16 +377,20 @@ class TestOverridableHook:
 
     def _mouse_metadata(self, interface):
         metadata = interface.get_metadata()
-        metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
+        metadata["Subject"] = dict(
+            subject_id="m1", species="Mus musculus", strain="C57BL/6J", sex="M", age="P30D"
+        )
         return metadata
 
-    def test_default_hooks_annotate_species_and_brain_region_through_create_nwbfile(self):
+    def test_default_hooks_annotate_species_strain_and_brain_region_through_create_nwbfile(self):
         interface = self._mouse_recording_interface(["CA1", "VISp"])
         nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
 
         entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
-        # Species (NCBITaxon) and brain-region (MBA) references are both attached by the mixin.
+        # Species (NCBITaxon), strain (RRID), and brain-region (MBA) references are all attached
+        # by the mixin.
         assert "NCBITaxon:10090" in entity_ids
+        assert "RRID:IMSR_JAX:000664" in entity_ids
         assert {"MBA:382", "MBA:385"}.issubset(entity_ids)
 
     def test_subclass_can_override_brain_region_hook(self):
@@ -421,6 +425,24 @@ class TestOverridableHook:
         # No species reference was added, but the brain-region references still are.
         entity_ids = nwbfile.external_resources.to_dataframe()["entity_id"].tolist()
         assert not any(entity_id.startswith("NCBITaxon:") for entity_id in entity_ids)
+        assert {"MBA:382", "MBA:385"}.issubset(set(entity_ids))
+
+    def test_subclass_can_override_strain_hook(self):
+        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+        class NoStrainInterface(MockRecordingInterface):
+            def add_strain_external_resource(self, nwbfile, metadata=None):
+                # Override to disable strain annotation entirely.
+                return False
+
+        interface = NoStrainInterface(num_channels=2, durations=(0.1,))
+        interface.recording_extractor.set_property("brain_area", ["CA1", "VISp"])
+        nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
+
+        # No strain reference was added, but species and brain-region references still are.
+        entity_ids = nwbfile.external_resources.to_dataframe()["entity_id"].tolist()
+        assert not any(entity_id.startswith("RRID:") for entity_id in entity_ids)
+        assert "NCBITaxon:10090" in entity_ids
         assert {"MBA:382", "MBA:385"}.issubset(set(entity_ids))
 
 

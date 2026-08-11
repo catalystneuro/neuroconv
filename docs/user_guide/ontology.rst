@@ -7,9 +7,11 @@ means instead of guessing from free text. References are stored **in-file** unde
 ``/general/external_resources`` using HDMF's HERD (External Resources Data), so they travel with the
 file.
 
-Two kinds of value are annotated automatically by a conversion:
+Three kinds of value are annotated automatically by a conversion:
 
 - the subject's **species**, mapped to `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_;
+- the subject's **strain**, mapped to `RRID <https://bioregistry.io/registry/rrid>`_ (Research
+  Resource Identifiers) for common laboratory rodent strains;
 - anatomical **brain regions** (``location`` fields), mapped to the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA) for mouse subjects, the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) for human subjects, a
@@ -26,7 +28,7 @@ NeuroConv (one per vocabulary, the same format used by
 `HDMF's TermSet <https://hdmf.readthedocs.io/en/stable/tutorials/plot_term_set.html>`_), so the
 mappings are transparent and editable.
 
-Both annotations are applied at write time by the overridable
+All three annotations are applied at write time by the overridable
 :py:class:`~neuroconv.tools.ontology.OntologyAnnotationMixin`, which ``BaseDataInterface`` and
 ``NWBConverter`` inherit (see `Customizing the annotation`_ below). In-file HERD storage requires
 ``pynwb >= 4.0.0``, which is NeuroConv's minimum supported version.
@@ -95,6 +97,54 @@ When the species resolves to a recognized term, NeuroConv attaches a reference m
 The call is a no-op (returns ``False``) when there is no subject or the species is not recognized,
 and it is idempotent: an existing ``external_resources`` HERD is extended in place rather than
 replaced, and a species that is already annotated is not added twice.
+
+Strain
+------
+
+NWB stores a subject's laboratory strain in :py:attr:`Subject.strain <pynwb.file.Subject.strain>`
+as free text (e.g. ``"C57BL/6J"``, ``"Long-Evans"``). NeuroConv standardizes it the same way it
+standardizes species, backed by a small, curated, offline table of common laboratory rodent
+strains (:py:data:`~neuroconv.tools.ontology.STRAIN_TERMS`):
+
+.. code-block:: python
+
+    from neuroconv.tools.ontology import validate_strain, get_strain_term, add_strain_external_resource
+
+    validate_strain("black 6")
+    # UserWarning: Subject strain 'black 6' is an informal spelling. Consider using 'C57BL/6J'
+    # (RRID:IMSR_JAX:000664) for interoperability. See https://bioregistry.io/RRID:IMSR_JAX:000664
+
+    term = get_strain_term("long evans")
+    term.canonical_name  # 'Long-Evans'
+    term.rrid             # 'RRID:RGD_2308852'
+
+    # nwbfile.subject.strain == "Long-Evans"
+    added = add_strain_external_resource(nwbfile)  # returns True
+
+The call is a no-op (returns ``False``) when there is no subject, the subject has no strain set,
+or the strain resolves through neither the metadata mapping below nor the curated table, and it is
+idempotent in the same way species annotation is.
+
+Only a small curated set of common lab lines is included in :py:data:`~neuroconv.tools.ontology.STRAIN_TERMS`.
+For a strain outside that table (an in-house line, a less common vendor strain), or to override a
+curated result, map it under ``metadata["Strain"]`` -- the same ontology-agnostic pattern
+``metadata["BrainRegions"]`` uses for brain regions. Each key is the exact strain string as it
+appears on ``Subject.strain``, mapped to a term ``{"id": ..., "uri": ...}`` (or a list of terms, to
+attach more than one ontology reference):
+
+.. code-block:: python
+
+    metadata["Strain"] = {
+        "my in-house line": {
+            "id": "RRID:IMSR_JAX:000664",
+            "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664",
+        },
+    }
+
+    interface.run_conversion(nwbfile_path="out.nwb", metadata=metadata)
+
+The metadata mapping takes precedence over the curated table, so it can also override a strain the
+table would otherwise resolve differently.
 
 Brain regions
 -------------
@@ -189,11 +239,12 @@ string the mouse lookup would otherwise resolve differently.
 Customizing the annotation
 --------------------------
 
-Both annotations are overridable methods provided by
+All three annotations are overridable methods provided by
 :py:class:`~neuroconv.tools.ontology.OntologyAnnotationMixin`, which ``BaseDataInterface`` and
 ``NWBConverter`` inherit:
 
 - ``add_species_external_resource(nwbfile, metadata=None)`` — the subject species;
+- ``add_strain_external_resource(nwbfile, metadata=None)`` — the subject strain;
 - ``add_brain_region_external_resources(nwbfile, metadata=None)`` — anatomical locations.
 
 Each runs at write time, once the interface/converter data has been added to the file. Override one
