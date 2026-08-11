@@ -221,7 +221,7 @@ class TestGuppyConverterDoricLegacyHDF5(DoricConverterTestMixin):
 
         The GuPPy events registry is still written, with no rows.
         """
-        assert converter._events_interface_names == []
+        assert converter._events_specs == []
         assert not any(name.startswith("Events") for name in converter.data_interface_objects)
 
         nwbfile_path = tmp_path / "doric_no_events.nwb"
