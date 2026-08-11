@@ -63,8 +63,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ``"_405R"`` gives ``"fiber_photometry_405r"``), so multiple interfaces over different streams
             already get distinct keys. Pass an explicit value to override.
         stream_indices : list of int, optional
-            Column indices selecting which channels of the (column-stacked) stream data to keep.
-            ``None`` (default) keeps all channels.
+            Column indices selecting which columns of the (column-stacked) stream data to keep.
+            ``None`` (default) keeps all columns.
         verbose : bool, default: False
             Whether to print status messages.
         **source_data
@@ -90,7 +90,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         """Return time-major data for a single atomic source stream.
 
-        Shaped ``(num_samples,)`` or ``(num_samples, num_channels)``.
+        Shaped ``(num_samples,)`` or ``(num_samples, num_columns)``.
         """
         raise NotImplementedError
 
