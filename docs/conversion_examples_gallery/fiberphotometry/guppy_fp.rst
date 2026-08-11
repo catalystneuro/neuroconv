@@ -23,6 +23,9 @@ traces and events into one folder, so in practice the first two are usually the 
 ``"npm"``, matching the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`, :doc:`Doric <doric_fp>`, and
 :doc:`NPM <npm_fp>` interfaces.
 
+GuPPy also reads NWB as an input format. If your session is **already in NWB**, see
+:ref:`guppy_existing_nwbfile` below.
+
 .. code-block:: python
 
     >>> from datetime import datetime
@@ -156,3 +159,36 @@ same origin the raw streams use. A CSV session carries no absolute clock origin,
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+.. _guppy_existing_nwbfile:
+
+Adding GuPPy outputs to an existing NWB file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When GuPPy processed a session out of an NWB file, use
+:py:class:`~neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface.GuppyInterface`
+directly rather than the converter: hand it the file and it adds GuPPy's outputs to it.
+
+Each recording site is linked to the rows its fibers occupy in the file's own
+``FiberPhotometryTable``.
+
+.. code-block:: python
+
+    from pynwb import read_nwb
+
+    from neuroconv.datainterfaces import GuppyInterface
+    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
+    interface = GuppyInterface(folder_path=guppy_folder)
+
+    nwbfile = read_nwb(path=source_nwbfile_path)
+    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+Writing to a *new* path exports the source with the GuPPy outputs added; the original file is left
+alone.
+
+The events registry references an ``EventsTable`` of the onsets GuPPy analyzed, written into
+``nwbfile.events`` — the same table whether the interface runs here or inside ``GuppyConverter``.
+Events the file already holds are left as they are. The name of GuPPy's table is editable, at
+``metadata["FiberPhotometry"]["Guppy"][metadata_key]["Events"]["name"]``.
