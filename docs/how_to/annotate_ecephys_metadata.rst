@@ -17,13 +17,6 @@ download. Everything after the constructor is the same for any recording interfa
 ``IntanRecordingInterface``, ``SpikeGLXRecordingInterface`` or any other, with the arguments its
 format needs, and annotate the metadata exactly as shown.
 
-Ask for the dict-based format
------------------------------
-
-``get_metadata()`` still returns the older list-based format by default, so pass
-``use_new_metadata_format=True`` to get the shape described here. That default flips in an upcoming
-release, at which point the argument is what you pass to get the *old* shape instead.
-
 What the interface gives you, and what you add
 ----------------------------------------------
 
@@ -161,9 +154,34 @@ The manufacturer belongs on a device model
 ------------------------------------------
 
 ``Device.manufacturer`` is deprecated in pynwb: a manufacturer describes a product rather than the
-individual unit, so it belongs on a ``DeviceModel`` that the device links to. Declare models in the
-top-level ``metadata["DeviceModels"]`` registry and point at one with ``device_model_metadata_key``,
-the same way an electrode group points at its device.
+individual unit, so it belongs on a ``DeviceModel`` that the device links to. Models live in their own
+top-level registry, and a device points at one with ``device_model_metadata_key``, the same way an
+electrode group points at its device:
+
+.. code-block:: python
+
+    metadata["DeviceModels"] = {
+        "utah_array_model": {
+            "name": "UtahArray96",
+            "manufacturer": "Blackrock Neurotech",
+            "description": "96-channel Utah array",
+        },
+    }
+
+    metadata["Devices"] = {
+        "utah_array": {
+            "name": "UtahArrayM1",
+            "description": "Implanted in primary motor cortex",
+            "device_model_metadata_key": "utah_array_model",
+        },
+    }
+
+    nwbfile = interface.create_nwbfile(metadata=metadata)
+    nwbfile.devices["UtahArrayM1"].model.manufacturer  # -> 'Blackrock Neurotech'
+
+The split is one model, many devices. Two probes of the same part number are two ``Devices`` entries
+naming one ``DeviceModels`` entry, so what is true of the product is stated once and what is true of
+the individual unit, the serial number or where it was implanted, stays on the device.
 
 Where to go next
 ----------------

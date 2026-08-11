@@ -7,17 +7,24 @@ This document describes the dict-based metadata structure used by the extracellu
 (ecephys) pipeline in NeuroConv. It is intended for developers who are contributing new recording
 interfaces or modifying existing ones.
 
-The shape described here is the target the pipeline tool functions in
-``tools/spikeinterface/spikeinterface.py`` will read once the dict-based ecephys pipeline lands.
-Recording interfaces will be migrated in subsequent PRs. Until then, ecephys conversions continue
-to use the existing list-based metadata format.
+For user-facing instructions on annotating ecephys metadata, see :ref:`annotate_ecephys_metadata`.
+
+This is what the pipeline tool functions in ``tools/spikeinterface/spikeinterface.py`` read, and every
+recording interface emits it. NeuroConv writes this format for itself: a conversion that passes no
+metadata takes this path, and one that passes the older list-based format has it converted at the
+boundary before anything downstream sees it.
+
+``get_metadata()`` is the one place that still hands out the old shape by default. Pass
+``use_new_metadata_format=True`` to get the structure described here. That default flips in an
+upcoming release, at which point the argument is what you pass to get the old shape instead, and the
+old format is accepted for one further release after that.
 
 
 Design Principles
 -----------------
 
-The ecephys metadata system follows the same core principles as the ophys system
-(see :ref:`ophys_metadata_structure`):
+The ecephys metadata system follows the same core principles as every modality
+(see :ref:`metadata_principles`), specialized to extracellular electrophysiology:
 
 1. **Dictionary-Based Organization**
    Metadata is organized using dictionaries with meaningful keys. Dictionaries allow direct access
@@ -27,9 +34,12 @@ The ecephys metadata system follows the same core principles as the ophys system
 
        metadata["Ecephys"]["ElectrodeGroups"]["visual_cortex"]["location"] = "V1 binocular zone"
 
-2. **Consistent metadata_key Across Interfaces**
-   Every ecephys interface uses a single ``metadata_key`` parameter that propagates to its
-   components (Device, ElectrodeGroup, ElectricalSeries). This matches the ophys convention.
+2. **metadata_key Addresses the ElectricalSeries Entry**
+   An ecephys recording interface takes a single ``metadata_key``, and it addresses one thing: the
+   interface's entry under ``metadata["Ecephys"]["ElectricalSeries"]``. The device and electrode group
+   registries are keyed independently of it: ``IntanRecordingInterface`` emits its device under
+   ``"intan_device"`` and one electrode group entry per headstage port, keyed by group name. See
+   :ref:`metadata_key_naming` for the naming and default rules, which are the same in every modality.
 
 3. **Explicit References**
    Components reference each other using explicit ``_metadata_key`` fields where the relationship
@@ -43,9 +53,12 @@ The ecephys metadata system follows the same core principles as the ophys system
    ecephys, ophys, and other modalities. A single probe can be referenced by multiple electrode
    groups, or the same ``Devices`` entry can be reused by an ophys interface in a mixed recording.
 
-5. **Provenance-First get_metadata()**
-   The ``get_metadata()`` method returns only values extracted from the source data, not defaults.
-   Defaults are applied at NWB object creation time.
+5. **get_metadata() Reports Only What the Source Carries**
+   Every recording interface emits the ``ElectricalSeries`` entry, since it always writes one. A device
+   and electrode groups appear only where the source identifies them: ``IntanRecordingInterface`` reads
+   its device and one group per headstage port out of the file header, while
+   ``BlackrockRecordingInterface`` emits neither and leaves both to the user. Required NWB fields the
+   source does not carry are filled where the object is built, not in ``get_metadata()``.
 
 
 Metadata Structure Overview
@@ -138,14 +151,19 @@ The metadata_key Parameter
 --------------------------
 
 Ecephys recording interfaces accept a ``metadata_key`` parameter that selects the ElectricalSeries
-entry to write. The same key is the primary lookup for the device and electrode group chain.
-When ``None`` (the default), the interface generates a unique key from parameters that make the
-interface unique (e.g. stream name). Explicit values let the caller deliberately share keys across
-interfaces.
+entry to write, and only that entry; the device and electrode groups are reached from the recording's
+channel groups and the ``device_metadata_key`` links, not from this key.
+When ``None`` (the default), a migrated interface resolves its own constant in ``__init__``
+(``"blackrock_recording"``, ``"intan_recording"``; SpikeGLX derives one per stream, since a session
+produces several at once), and the base class otherwise falls back to ``es_key``, which is how an
+interface that names its own series (``"ElectricalSeriesLFP"``) keys its entry without stating the same
+string twice. :ref:`metadata_key_naming` gives the rules those defaults follow. Explicit
+values let the caller deliberately share keys across interfaces.
 
-``add_recording_to_nwbfile`` takes the same ``metadata_key`` argument and is the pipeline-level
-entry point. Passing ``metadata_key`` to this function opts the call into the dict-based path
-regardless of other signals.
+``add_recording_to_nwbfile`` takes the same ``metadata_key`` argument and is the pipeline-level entry
+point. It is required rather than optional there: passing metadata whose ``Ecephys.ElectricalSeries``
+holds keyed entries without saying which one to write raises, naming the entry it needs. The write
+path itself is chosen per block from the shape of the metadata, not from this argument.
 
 Key Propagation
 ~~~~~~~~~~~~~~~
@@ -160,15 +178,16 @@ For a recording interface with ``metadata_key="visual_cortex_probe"``:
 - ``metadata["Devices"][device_metadata_key]`` - Resolved via ``device_metadata_key`` inside each
   matched ``ElectrodeGroups`` entry.
 
-In the simplest case, the interface's ``metadata_key`` and the group name are the same value,
-which is what ``get_metadata()`` produces by default. The indirection through ``device_metadata_key``
-lets multiple electrode groups share a single Device entry.
+Only the first of the three is reached through ``metadata_key``. An interface that knows its groups
+keys them by group name (Intan), so the group key and the interface's key are different strings, and
+an interface that does not emits no group entry at all. The indirection through
+``device_metadata_key`` lets multiple electrode groups share a single Device entry.
 
 
 .. _no_electrode_group_metadata_key:
 
 No electrode_group_metadata_key on ElectricalSeries
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Unlike ophys ``MicroscopySeries`` (which carries ``imaging_plane_metadata_key``), an
 ``ElectricalSeries`` entry does **not** carry an ``electrode_group_metadata_key`` field. The reason
@@ -273,6 +292,12 @@ The rules are:
 4. For shared resources (two electrode groups from the same probe), both group entries reference
    the same ``device_metadata_key``. The Device is created by whichever group is written first
    and reused thereafter.
+
+5. ``description`` and ``location`` are required by the NWB ``ElectrodeGroup`` but are rarely in the
+   source, so a group entry that omits either has it filled at creation time from
+   ``_get_ecephys_metadata_placeholders``, the modality's placeholder factory
+   (see :ref:`metadata_principles`). An entry may therefore carry nothing but a ``name`` and a
+   ``device_metadata_key``, which is what an interface that knows its probe but not its anatomy emits.
 
 .. code-block:: python
 
