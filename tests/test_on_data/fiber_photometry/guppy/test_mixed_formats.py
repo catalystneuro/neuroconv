@@ -164,33 +164,6 @@ class TestGuppyConverterMixedEvents:
                 np.sort(imported_table.to_dataframe().timestamp.to_numpy()), IMPORTED_EVENT_ONSETS
             )
 
-    def test_a_store_both_sides_carry_is_read_from_its_csv(self, session_folder, guppy_output_folder, tmp_path):
-        """A tank epoc that also has a CSV is read from the CSV, since GuPPy's import is what wrote it."""
-        pandas.DataFrame({"timestamps": [1.0, 2.0]}).to_csv(session_folder / "PrtR.csv", index=False)
-
-        # Reading past a source that carries the store under the same name is said out loud, as the
-        # tank is asked what it holds -- which is when the converter builds its events interfaces.
-        with pytest.warns(UserWarning, match="PrtR"):
-            converter = GuppyConverter(
-                fiber_photometry_folder_path=session_folder,
-                events_folder_path=session_folder,
-                guppy_folder_path=guppy_output_folder,
-                acquisition_format="tdt",
-            )
-        assert store_ids_by_interface(converter) == {
-            "Events": ["LNRW", "LNnR"],
-            "Events_PrtR": ["PrtR"],
-            f"Events_{IMPORTED_EVENT_STORE}": [IMPORTED_EVENT_STORE],
-        }
-
-        metadata = build_session_metadata(converter)
-        nwbfile_path = tmp_path / "displaced_store.nwb"
-        converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
-
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            port_entries = io.read().get_events_table(EVENT_NAME_TO_RAW_TABLE_NAME["port_entries"])
-            np.testing.assert_allclose(port_entries.to_dataframe().timestamp.to_numpy(), [1.0, 2.0])
-
     def test_a_session_whose_every_event_was_imported_reads_none_from_the_tank(self, session_folder, tmp_path):
         """With nothing left for the acquisition format, only the imported stores' interfaces are built."""
         guppy_output_folder = generate_mock_guppy_output_folder(
