@@ -713,7 +713,7 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         stream_names: str | list[str] = "store_0",
         fibers_per_stream: int | list[int] = 1,
         num_samples: int = 100,
-        sampling_rate: float = 100.0,
+        sampling_frequency: float = 100.0,
         seed: int = 0,
         metadata_key: str | None = None,
         verbose: bool = False,
@@ -736,8 +736,8 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
             ``(num_samples, fibers)``, which is the shape a real multi-fiber acquisition store returns.
         num_samples : int, default: 100
             Number of samples in the synthetic response series.
-        sampling_rate : float, default: 100.0
-            Sampling rate (Hz) of the synthetic response series.
+        sampling_frequency : float, default: 100.0
+            Sampling frequency (Hz) of the synthetic response series.
         seed : int, default: 0
             Seed for the synthetic data.
         metadata_key : str, optional
@@ -755,7 +755,7 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
             )
         self._fibers_per_stream = [int(count) for count in fibers_per_stream]
         self._num_samples = int(num_samples)
-        self._sampling_rate = float(sampling_rate)
+        self._sampling_frequency = float(sampling_frequency)
         self._seed = int(seed)
         super().__init__(stream_names=stream_name_list, metadata_key=metadata_key, verbose=verbose)
 
@@ -770,7 +770,7 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         return rng.standard_normal(size).astype("float64")
 
     def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
-        return np.arange(self._num_samples, dtype="float64") / self._sampling_rate
+        return np.arange(self._num_samples, dtype="float64") / self._sampling_frequency
 
     def get_metadata(self) -> DeepDict:
         """Return the base metadata with a fixed session start time; no fiber photometry provenance."""

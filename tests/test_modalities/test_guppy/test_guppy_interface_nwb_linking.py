@@ -124,7 +124,7 @@ def _add_unlinked_response_series(nwbfile):
     """Add a response series carrying no ``fiber_photometry_table_region``, which is what supplying no
     ``FiberPhotometryTable`` metadata writes."""
     interface = MockFiberPhotometryInterface(
-        stream_names=["unlinked"], num_samples=NUM_SAMPLES, sampling_rate=SAMPLING_RATE
+        stream_names=["unlinked"], num_samples=NUM_SAMPLES, sampling_frequency=SAMPLING_RATE
     )
     metadata = interface.get_metadata()
     metadata["FiberPhotometry"][interface.metadata_key]["name"] = UNLINKED_SERIES_NAME
@@ -140,13 +140,13 @@ def source_session(tmp_path_factory):
             "signal": MockFiberPhotometryInterface(
                 stream_names=[f"{site}_signal" for site in RECORDING_SITES],
                 num_samples=NUM_SAMPLES,
-                sampling_rate=SAMPLING_RATE,
+                sampling_frequency=SAMPLING_RATE,
                 metadata_key="signal",
             ),
             "control": MockFiberPhotometryInterface(
                 stream_names=[f"{site}_control" for site in RECORDING_SITES],
                 num_samples=NUM_SAMPLES,
-                sampling_rate=SAMPLING_RATE,
+                sampling_frequency=SAMPLING_RATE,
                 metadata_key="control",
             ),
             "events": events_interface,
