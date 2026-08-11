@@ -12,7 +12,7 @@ you run without adding any metadata writes just those traces, as a single
 
     from neuroconv.tools.testing import MockFiberPhotometryInterface
 
-    interface = MockFiberPhotometryInterface(stream_names=("store_0", "store_1"))
+    interface = MockFiberPhotometryInterface(num_fibers=2)
     nwbfile = interface.create_nwbfile()
 
 .. admonition:: Resulting structure
@@ -130,17 +130,15 @@ How to Annotate a Single Fiber at a Single Wavelength
 -----------------------------------------------------
 
 The simplest case is one fiber at one excitation wavelength: one trace, one table row, and one series
-pointing at it. We build it
-in four steps, the row, the indicator it read, the hardware that recorded it, and that hardware's models,
-then write the file. Each step below shows the **whole script so far** with the new lines highlighted, so
-the last block is the complete, runnable script.
+pointing at it. We build it in four steps, the row, the indicator it read, the hardware that recorded
+it, and that hardware's models, then write the file. Each step below shows the **whole script so far**
+with the new lines highlighted, so the last block is the complete, runnable script.
 
 **Create the row and point the series at it.** Start from the interface, passing an explicit
 ``metadata_key`` to name the response-series entry (the key under ``metadata["FiberPhotometry"]`` where
 this series' metadata lives). A table row then describes one trace, one fiber at one excitation
-wavelength: fill in the
-values it holds itself, its location and wavelengths, and point the series at the row through
-``fiber_photometry_table_region``:
+wavelength: fill in the values it holds itself, its location and wavelengths, and point the series at
+the row through ``fiber_photometry_table_region``:
 
 .. code-block:: python
    :emphasize-lines: 15-19, 22
@@ -149,7 +147,7 @@ values it holds itself, its location and wavelengths, and point the series at th
 
     metadata_key = "calcium_signal"
     interface = MockFiberPhotometryInterface(
-        stream_names="signal", metadata_key=metadata_key
+        excitation_wavelengths_in_nm=465.0, metadata_key=metadata_key
     )
     metadata = interface.get_metadata()
     fiber_photometry = metadata["FiberPhotometry"]
@@ -203,7 +201,7 @@ GCaMP6s here, a genetically encoded calcium indicator. Define it, then set the r
 
     metadata_key = "calcium_signal"
     interface = MockFiberPhotometryInterface(
-        stream_names="signal", metadata_key=metadata_key
+        excitation_wavelengths_in_nm=465.0, metadata_key=metadata_key
     )
     metadata = interface.get_metadata()
     fiber_photometry = metadata["FiberPhotometry"]
@@ -246,7 +244,7 @@ GCaMP6s here, a genetically encoded calcium indicator. Define it, then set the r
            └── indicator          → gcamp  ·  "GCaMP6s"
 
 That completes *what* the trace measured. Now we describe *how* it was measured: the hardware that read
-the indicator, so a downstream analyst can trace each trace back to the exact fiber, light source, and
+the indicator, so a downstream analyst can follow each trace back to the exact fiber, light source, and
 detector it came from.
 
 **Add the devices and point the row at them.** A device is the specific physical unit used in this
@@ -265,7 +263,7 @@ then set the row's reference keys to point at them:
 
     metadata_key = "calcium_signal"
     interface = MockFiberPhotometryInterface(
-        stream_names="signal", metadata_key=metadata_key
+        excitation_wavelengths_in_nm=465.0, metadata_key=metadata_key
     )
     metadata = interface.get_metadata()
     fiber_photometry = metadata["FiberPhotometry"]
@@ -355,7 +353,7 @@ ndx-ophys-devices class. Define the models, point each device at its model with
 
     metadata_key = "calcium_signal"
     interface = MockFiberPhotometryInterface(
-        stream_names="signal", metadata_key=metadata_key
+        excitation_wavelengths_in_nm=465.0, metadata_key=metadata_key
     )
     metadata = interface.get_metadata()
     fiber_photometry = metadata["FiberPhotometry"]
@@ -474,7 +472,7 @@ interface writes one series, so this is two interfaces, each with its own ``meta
 a converter:
 
 .. code-block:: python
-   :emphasize-lines: 5-12, 80-86
+   :emphasize-lines: 5-16, 84-90
 
     from neuroconv import ConverterPipe
     from neuroconv.tools.testing import MockFiberPhotometryInterface
@@ -484,8 +482,12 @@ a converter:
     control_key = "gcamp_vta_405"
     converter = ConverterPipe(
         data_interfaces={
-            "signal": MockFiberPhotometryInterface(stream_names="signal", metadata_key=signal_key),
-            "control": MockFiberPhotometryInterface(stream_names="control", metadata_key=control_key),
+            "signal": MockFiberPhotometryInterface(
+                excitation_wavelengths_in_nm=465.0, metadata_key=signal_key
+            ),
+            "control": MockFiberPhotometryInterface(
+                excitation_wavelengths_in_nm=405.0, metadata_key=control_key
+            ),
         }
     )
     metadata = converter.get_metadata()
@@ -612,7 +614,7 @@ one interface is enough, and its region lists both rows.
 
     metadata_key = "gcamp_striatum"
     interface = MockFiberPhotometryInterface(
-        stream_names=("dms", "dls"), metadata_key=metadata_key
+        excitation_wavelengths_in_nm=465.0, num_fibers=2, metadata_key=metadata_key
     )
     metadata = interface.get_metadata()
 
@@ -689,13 +691,14 @@ one interface is enough, and its region lists both rows.
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
 
-Two fibers, so two rows. This time ``shared_row_metadata`` holds the wavelengths, indicator, excitation source, and
-detector, and each row adds only its ``location`` and its ``optical_fiber_metadata_key`` (highlighted).
-That is the mirror image of the signal/isosbestic case: there the wavelength differed and the fiber was
-shared; here the fiber differs and the wavelength is shared, so the very field that moved into
-``shared_row_metadata`` is the one that was per-row before. The ``fiber_photometry_table_region`` list
-``["dms_465", "dls_465"]`` maps column 0 (the DMS fiber) to ``dms_465`` and column 1 (the DLS fiber) to
-``dls_465``.
+Two fibers, so two rows. This time ``shared_row_metadata`` holds the wavelengths, indicator, excitation
+source, and detector, and each row adds only its ``location`` and its ``optical_fiber_metadata_key``
+(highlighted). At the level of the rows that is the mirror image of the signal/isosbestic case: there
+the wavelength differed and the fiber was shared, here the fiber differs and the wavelength is shared,
+so the very field that moved into ``shared_row_metadata`` is the one that was per-row before. The
+series are what break the symmetry, one here against two there. The
+``fiber_photometry_table_region`` list ``["dms_465", "dls_465"]`` maps column 0 (the DMS fiber) to
+``dms_465`` and column 1 (the DLS fiber) to ``dls_465``.
 
 .. admonition:: Resulting structure
    :class: tip
@@ -708,4 +711,4 @@ shared; here the fiber differs and the wavelength is shared, so the very field t
 
 Real setups usually combine both axes, and the two combine cleanly: N fibers each recorded at a signal
 and an isosbestic wavelength give 2N rows, one per (fiber, wavelength) trace, written as two series of
-N columns each. One interface per wavelength, N streams each, one shared table.
+N columns each. One interface per wavelength, ``num_fibers=N`` on each, one shared table.

@@ -15,8 +15,8 @@ from neuroconv.tools.testing.data_interface_mixins import (
 from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
 
 # The ``full_metadata`` fixture describes two fibers at one excitation wavelength, so the interfaces
-# it is written against need two single-fiber source stores rather than the single-store default.
-TWO_FIBER_STREAMS = ("store_0", "store_1")
+# it is written against need two of them rather than the single-fiber default.
+NUM_FIBERS = 2
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def full_metadata():
     Test data (not a public API): device models, devices, an indicator, a two-row ``FiberPhotometryTable``,
     and the response-series region — the full provenance a user would supply to write everything.
     """
-    interface = MockFiberPhotometryInterface(stream_names=TWO_FIBER_STREAMS)
+    interface = MockFiberPhotometryInterface(num_fibers=NUM_FIBERS)
     metadata = interface.get_metadata()
     metadata["DeviceModels"] = dict(
         optical_fiber_model=dict(
@@ -110,15 +110,15 @@ def full_metadata():
 
 class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     data_interface_cls = MockFiberPhotometryInterface
-    interface_kwargs = dict(stream_names=TWO_FIBER_STREAMS)
+    interface_kwargs = dict(num_fibers=NUM_FIBERS)
     conversion_options = dict(stub_test=True, stub_samples=3)
 
-    # Hand-supplied, not read back from the interface: the mock's two seeded standard-normal traces.
+    # Hand-supplied, not read back from the interface: one seeded standard-normal draw, two fibers wide.
     expected_response_series_data = np.array(
         [
-            [0.1257302210933933, 0.345584192064786],
-            [-0.1321048632913019, 0.8216181435011584],
-            [0.6404226504432821, 0.33043707618338714],
+            [0.1257302210933933, -0.1321048632913019],
+            [0.6404226504432821, 0.10490011715303971],
+            [-0.535669373161111, 0.36159505490948474],
         ]
     )
     expected_rate = 100.0
@@ -153,45 +153,52 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         assert interface.metadata_key == "my_series"
         assert "my_series" in interface.get_metadata()["FiberPhotometry"]
 
-    def test_channel_order_follows_stream_names(self):
-        # Which channel a stream lands on is positional: np.concatenate(axis=1) preserves stream_names
-        # order, and nothing downstream re-derives it, so the table region has to line up by position.
-        interface = MockFiberPhotometryInterface(stream_names=["first", "second", "third"])
+    def test_column_order_is_wavelength_major(self):
+        # Which column a trace lands on is positional: np.concatenate(axis=1) preserves the wavelength
+        # order and each wavelength contributes its fibers in a block, so the table region has to list
+        # its rows in that same order. Nothing downstream re-derives it.
+        interface = MockFiberPhotometryInterface(excitation_wavelengths_in_nm=[470.0, 560.0, 415.0])
         data = interface._read_response_data()
 
+        assert interface.stream_names == ["470nm", "560nm", "415nm"]
         assert data.shape == (100, 3)
         for index, stream_name in enumerate(interface.stream_names):
             assert_array_equal(data[:, index], interface._get_stream_data(stream_name=stream_name))
 
-    def test_multi_fiber_stream_contributes_one_column_per_fiber(self):
-        # A single stream can itself be multi-fiber (one acquisition store holding several fibers),
-        # in which case _get_stream_data returns 2-D and skips the np.newaxis promotion entirely.
-        interface = MockFiberPhotometryInterface(stream_names="fibers", fibers_per_stream=4)
-        stream_data = interface._get_stream_data(stream_name="fibers")
+    def test_multi_fiber_series_contributes_one_column_per_fiber(self):
+        # Several fibers at one wavelength is the layout ndx-fiber-photometry recommends. That reads as
+        # one 2-D source array, which skips the np.newaxis promotion in _read_response_data entirely.
+        interface = MockFiberPhotometryInterface(num_fibers=4)
+        stream_data = interface._get_stream_data(stream_name="470nm")
         assert stream_data.ndim == 2
 
         data = interface._read_response_data()
         assert data.shape == (100, 4)
         assert_array_equal(data, stream_data)
 
-    def test_mixed_fiber_counts_stack_by_total_fibers(self):
-        # A 3-fiber store stacked with a single-fiber one: columns total the per-stream fiber counts,
-        # not the stream count, and the promoted 1-D stream stacks alongside the 2-D one.
-        interface = MockFiberPhotometryInterface(stream_names=["fiber_array", "lone_fiber"], fibers_per_stream=[3, 1])
+    def test_wavelengths_and_fibers_multiply_into_blocks(self):
+        # Aggregating over the wavelength axis, which is legal only on a rig where the excitations share
+        # a clock. Columns total wavelengths x fibers, laid out one contiguous fiber block per
+        # wavelength rather than interleaved.
+        interface = MockFiberPhotometryInterface(excitation_wavelengths_in_nm=[470.0, 415.0], num_fibers=3)
         data = interface._read_response_data()
 
-        assert data.shape == (100, 4)
-        assert_array_equal(data[:, :3], interface._get_stream_data(stream_name="fiber_array"))
-        assert_array_equal(data[:, 3], interface._get_stream_data(stream_name="lone_fiber"))
+        assert data.shape == (100, 6)
+        assert_array_equal(data[:, :3], interface._get_stream_data(stream_name="470nm"))
+        assert_array_equal(data[:, 3:], interface._get_stream_data(stream_name="415nm"))
 
-    def test_fibers_per_stream_length_mismatch_errors(self):
-        expected_error = "fibers_per_stream has 3 entries but there are 2 stream(s)"
+    def test_empty_wavelengths_errors(self):
+        expected_error = "excitation_wavelengths_in_nm must name at least one excitation wavelength."
         with pytest.raises(ValueError, match=re.escape(expected_error)):
-            MockFiberPhotometryInterface(stream_names=["a", "b"], fibers_per_stream=[1, 2, 3])
+            MockFiberPhotometryInterface(excitation_wavelengths_in_nm=[])
 
-    def test_single_stream_collapses_to_one_column(self):
+    def test_zero_fibers_errors(self):
+        with pytest.raises(ValueError, match=re.escape("num_fibers must be at least 1, got 0.")):
+            MockFiberPhotometryInterface(num_fibers=0)
+
+    def test_single_fiber_collapses_to_one_column(self):
         # A lone column is written as a 1-D series rather than an (N, 1) one.
-        interface = MockFiberPhotometryInterface(stream_names="store_0")
+        interface = MockFiberPhotometryInterface()
         nwbfile = interface.create_nwbfile()
 
         assert nwbfile.acquisition["FiberPhotometryResponseSeries"].data[:].shape == (100,)
@@ -200,7 +207,7 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         # The fully annotated path: a complete provenance chain is supplied, and every piece of it must
         # survive a write/read cycle — device models, devices (with model links and fiber insertion), the
         # indicator, both table rows in full, the region, and the response series.
-        interface = MockFiberPhotometryInterface(stream_names=TWO_FIBER_STREAMS)
+        interface = MockFiberPhotometryInterface(num_fibers=NUM_FIBERS)
 
         nwbfile_path = tmp_path / "fully_annotated.nwb"
         nwbfile = interface.create_nwbfile(metadata=full_metadata)
@@ -273,7 +280,7 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         full_metadata["Devices"]["optical_fiber_dls"].pop("device_model_metadata_key")
         full_metadata["DeviceModels"].pop("optical_fiber_model")
 
-        interface = MockFiberPhotometryInterface(stream_names=TWO_FIBER_STREAMS)
+        interface = MockFiberPhotometryInterface(num_fibers=NUM_FIBERS)
         nwbfile_path = tmp_path / "model_less_fiber.nwb"
         nwbfile = interface.create_nwbfile(metadata=full_metadata)
         with NWBHDF5IO(nwbfile_path, mode="w") as io:
@@ -302,7 +309,7 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         full_metadata["Devices"]["camera"] = dict(name="Camera1", description="Another interface's camera.")
         full_metadata["DeviceModels"]["camera_model"] = dict(name="camera_model", manufacturer="Basler")
 
-        nwbfile = MockFiberPhotometryInterface(stream_names=TWO_FIBER_STREAMS).create_nwbfile(metadata=full_metadata)
+        nwbfile = MockFiberPhotometryInterface(num_fibers=NUM_FIBERS).create_nwbfile(metadata=full_metadata)
 
         assert "Camera1" not in nwbfile.devices
         assert "camera_model" not in nwbfile.device_models

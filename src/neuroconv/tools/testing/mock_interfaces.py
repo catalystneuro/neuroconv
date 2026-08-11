@@ -710,8 +710,8 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
     def __init__(
         self,
         *,
-        stream_names: str | list[str] = "store_0",
-        fibers_per_stream: int | list[int] = 1,
+        excitation_wavelengths_in_nm: float | list[float] = 470.0,
+        num_fibers: int = 1,
         num_samples: int = 100,
         sampling_frequency: float = 100.0,
         seed: int = 0,
@@ -722,18 +722,19 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
 
         Parameters
         ----------
-        stream_names : str or list of str, default: "store_0"
-            One name per source stream; the streams are column-stacked into the response series. A
-            stream is a source slot, an acquisition store rather than a fiber, and it carries as many
-            fibers as ``fibers_per_stream`` says. The default is a single store at a single excitation
-            wavelength. ndx-fiber-photometry recommends one series per excitation/emission wavelength
-            with one column per fiber, so extra fibers are extra streams (or a wider one) here, while a
-            second wavelength is a second interface writing its own series into the same table.
-        fibers_per_stream : int or list of int, default: 1
-            How many fibers each stream carries, one column per fiber. An ``int`` applies to every
-            stream; a list gives a count per stream, so a multi-fiber store can be mixed with a
-            single-fiber one. A stream with one fiber reads as a 1-D array, one with several as
-            ``(num_samples, fibers)``, which is the shape a real multi-fiber acquisition store returns.
+        excitation_wavelengths_in_nm : float or list of float, default: 470.0
+            The excitation wavelength(s) this interface's series carries, one source stream each.
+            ndx-fiber-photometry recommends one series per excitation/emission wavelength, so the
+            default is a single wavelength and a second one is a second interface writing its own
+            series into the same table. Passing a list aggregates over the wavelength axis instead,
+            which asserts that they share a clock: true of a frequency-multiplexed (lock-in) rig where
+            every LED is on at once, false of a time-multiplexed one where they alternate.
+        num_fibers : int, default: 1
+            How many fibers the series carries, one column per fiber. Columns are wavelength-major,
+            so two wavelengths and two fibers give ``[w0f0, w0f1, w1f0, w1f1]``, and
+            ``fiber_photometry_table_region`` has to list its row keys in that order. A single fiber
+            reads as a 1-D array, several as ``(num_samples, num_fibers)``, which is the shape a real
+            multi-fiber acquisition store returns.
         num_samples : int, default: 100
             Number of samples in the synthetic response series.
         sampling_frequency : float, default: 100.0
@@ -741,32 +742,32 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         seed : int, default: 0
             Seed for the synthetic data.
         metadata_key : str, optional
-            Override the response-series metadata key (default derived from ``stream_names``).
+            Override the response-series metadata key (default derived from the wavelengths).
         verbose : bool, default: False
             Whether to print status messages.
         """
-        stream_name_list = [stream_names] if isinstance(stream_names, str) else list(stream_names)
-        if isinstance(fibers_per_stream, int):
-            fibers_per_stream = [fibers_per_stream] * len(stream_name_list)
-        elif len(fibers_per_stream) != len(stream_name_list):
-            raise ValueError(
-                f"fibers_per_stream has {len(fibers_per_stream)} entries but there are "
-                f"{len(stream_name_list)} stream(s); they must match one-to-one."
-            )
-        self._fibers_per_stream = [int(count) for count in fibers_per_stream]
+        if isinstance(excitation_wavelengths_in_nm, (int, float)):
+            excitation_wavelengths_in_nm = [excitation_wavelengths_in_nm]
+        self._excitation_wavelengths_in_nm = [float(wavelength) for wavelength in excitation_wavelengths_in_nm]
+        if not self._excitation_wavelengths_in_nm:
+            raise ValueError("excitation_wavelengths_in_nm must name at least one excitation wavelength.")
+        if int(num_fibers) < 1:
+            raise ValueError(f"num_fibers must be at least 1, got {num_fibers}.")
+        self._num_fibers = int(num_fibers)
         self._num_samples = int(num_samples)
         self._sampling_frequency = float(sampling_frequency)
         self._seed = int(seed)
-        super().__init__(stream_names=stream_name_list, metadata_key=metadata_key, verbose=verbose)
+        # One source stream per wavelength, named after it so the derived metadata_key is readable.
+        stream_names = [f"{wavelength:g}nm" for wavelength in self._excitation_wavelengths_in_nm]
+        super().__init__(stream_names=stream_names, metadata_key=metadata_key, verbose=verbose)
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
-        # Deterministic per-stream synthetic trace (a distinct seed per stream so the traces differ).
+        # Deterministic per-wavelength synthetic trace (a distinct seed each, so the traces differ).
         index = self.stream_names.index(stream_name)
         rng = np.random.default_rng(self._seed + index)
-        num_fibers = self._fibers_per_stream[index]
         # Drawing a 1-D array for a single fiber (rather than slicing an (N, 1) one) keeps the
         # default draw identical to the single-fiber case.
-        size = self._num_samples if num_fibers == 1 else (self._num_samples, num_fibers)
+        size = self._num_samples if self._num_fibers == 1 else (self._num_samples, self._num_fibers)
         return rng.standard_normal(size).astype("float64")
 
     def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
