@@ -468,12 +468,12 @@ The near-universal GCaMP setup records one fiber at two excitation wavelengths, 
 signal (465 nm) and an isosbestic control (405 nm). That is two traces, so the table gets **two rows**,
 one per trace, differing in their excitation wavelength and excitation source.
 
-The two traces do **not** go into one series. `ndx-fiber-photometry
-<https://github.com/catalystneuro/ndx-fiber-photometry>`_ recommends one series per excitation and
-emission wavelength, with one column per fiber, so each wavelength gets its own
-``FiberPhotometryResponseSeries``. Both series point into the same table, each at its own row. One
-interface writes one series, so this is two interfaces, each with its own ``metadata_key``, combined in
-a converter:
+The two traces do **not** go into one series. ndx-fiber-photometry `recommends
+<https://github.com/catalystneuro/ndx-fiber-photometry#recommended-organization-of-response-series>`_
+one series per excitation and emission wavelength, with one column per fiber, so each wavelength gets
+its own ``FiberPhotometryResponseSeries``. Both series point into the same table, each at its own row.
+One interface writes one series, so this is two interfaces, each with its own ``metadata_key``,
+combined in a converter:
 
 .. code-block:: python
    :emphasize-lines: 5-16, 84-90
