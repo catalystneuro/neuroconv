@@ -213,7 +213,11 @@ class TestSpeciesExternalResource:
         nwbfile = _make_nwbfile(species="Mus musculus")
         herd = HERD(type_map=get_type_map())
         herd.add_ref(
-            container=nwbfile.subject, attribute="subject_id", key="s1", entity_id="EXAMPLE:1", entity_uri="https://example.org/1"
+            container=nwbfile.subject,
+            attribute="subject_id",
+            key="s1",
+            entity_id="EXAMPLE:1",
+            entity_uri="https://example.org/1",
         )
         nwbfile.external_resources = herd
 
@@ -386,7 +390,11 @@ class TestBrainRegionExternalResources:
         # vocabulary, so only the metadata-defined region resolves.
         nwbfile = _make_nwbfile(species="Rattus norvegicus")
         _add_electrodes(nwbfile, ["my region", "CA1"])
-        metadata = {"BrainRegions": {"my region": {"id": "UBERON:0002436", "uri": "http://purl.obolibrary.org/obo/UBERON_0002436"}}}
+        metadata = {
+            "BrainRegions": {
+                "my region": {"id": "UBERON:0002436", "uri": "http://purl.obolibrary.org/obo/UBERON_0002436"}
+            }
+        }
 
         assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
         dataframe = nwbfile.external_resources.to_dataframe()
@@ -418,7 +426,11 @@ class TestBrainRegionExternalResources:
         _add_electrodes(nwbfile, ["CA1"])
         herd = HERD(type_map=get_type_map())
         herd.add_ref(
-            container=nwbfile.subject, attribute="subject_id", key="s1", entity_id="EXAMPLE:1", entity_uri="https://example.org/1"
+            container=nwbfile.subject,
+            attribute="subject_id",
+            key="s1",
+            entity_id="EXAMPLE:1",
+            entity_uri="https://example.org/1",
         )
         nwbfile.external_resources = herd
 
