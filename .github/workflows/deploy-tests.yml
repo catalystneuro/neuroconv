@@ -49,8 +49,8 @@ jobs:
         run: echo "CHANGELOG.md has been updated."
       - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'false' }}
         run: |
-          echo "CHANGELOG.md has not been updated."
-          0
+          echo "::error::This pull request changes source files but does not update CHANGELOG.md. Add an entry under the upcoming version's section, or say in the pull request why the change needs none."
+          exit 1
 
   run-tests:
     needs: [assess-file-changes, load_python_and_os_versions]

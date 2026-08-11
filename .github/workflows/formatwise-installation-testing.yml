@@ -107,14 +107,16 @@ jobs:
 
           # Loop through each format
           for format in "${FORMATS[@]}"; do
-            # Split type and name, and trim any whitespace/carriage returns
-            IFS=':' read -r type name <<< "$format"
+            # Split type, name and the installation extra, and trim any whitespace/carriage returns.
+            # The extra is stated by the collection script rather than assumed to equal the page name.
+            IFS=':' read -r type name extra <<< "$format"
             # Remove any trailing whitespace or carriage returns (Windows compatibility)
             type=$(echo "$type" | tr -d '\r\n' | xargs)
             name=$(echo "$name" | tr -d '\r\n' | xargs)
+            extra=$(echo "$extra" | tr -d '\r\n' | xargs)
 
             echo "===================================================="
-            echo "Testing $type:$name"
+            echo "Testing $type:$name (installing neuroconv[$extra])"
             echo "===================================================="
 
             # Create fresh virtual environment with uv (much faster)
@@ -127,8 +129,13 @@ jobs:
               source clean_env_$name/bin/activate
             fi
 
-            # Install dependencies with uv (much faster than pip)
-            uv pip install --quiet ".[$name]"
+            # Install dependencies with uv (much faster than pip). An empty extra means the page converts
+            # on a base install, which the gallery's extras_by_gallery_entry.json states explicitly.
+            if [ -n "$extra" ]; then
+              uv pip install --quiet ".[$extra]"
+            else
+              uv pip install --quiet "."
+            fi
             uv pip install --group test
 
             # Check if the gallery file exists before running pytest
