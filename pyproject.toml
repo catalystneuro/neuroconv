@@ -160,6 +160,7 @@ events = [
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
     "spikeinterface>=0.104.7",
     "neo>=0.14.5",
+    "natsort>=7.1.1",
 ]
 alphaomega = [
     "neuroconv[ecephys_minimal]",
@@ -546,6 +547,7 @@ docs = [
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
     "spikeinterface>=0.104.7",  # Needed for the API documentation
+    "natsort>=7.1.1",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
 ]
 
