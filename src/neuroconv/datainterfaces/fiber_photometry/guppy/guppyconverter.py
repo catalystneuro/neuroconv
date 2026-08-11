@@ -1,6 +1,5 @@
 from typing import Literal
 
-import numpy as np
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
@@ -8,11 +7,9 @@ from . import csv_utils, doric_utils, npm_utils, tdt_utils
 from .csv_utils import build_csv_acquisition_interface, build_csv_events_interface
 from .doric_utils import build_doric_acquisition_interface, build_doric_events_interface
 from .guppydatainterface import (
-    _EVENTS_TABLE_DESCRIPTION,
-    _EVENTS_TABLE_NAME,
     _RECORDING_SITES_TABLE_DESCRIPTION,
     _RECORDING_SITES_TABLE_NAME,
-    _GuppyInterface,
+    GuppyInterface,
 )
 from .npm_utils import (
     build_npm_acquisition_interface,
@@ -30,10 +27,6 @@ from ....tools.nwb_helpers import get_module
 # one series per role, column-stacking that role's store from every recording site. See
 # https://github.com/catalystneuro/ndx-fiber-photometry/issues/55.
 _STORE_ROLES = ("signal", "control")
-# The single merged EventsTable every behavioral event type is written into (one DynamicTableRegion
-# from the GuppyEventsTable then references its occurrence rows).
-_MERGED_EVENTS_TABLE_KEY = "guppy_behavioral_events"
-_MERGED_EVENTS_TABLE_NAME = "BehavioralEvents"
 
 # The formats a GuPPy session can have been recorded in -- every format GuPPy itself supports. Each has
 # a ``<format>_utils`` module reading it; supporting another means writing that module, widening this,
@@ -51,9 +44,8 @@ class GuppyConverter(ConverterPipe):
 
     Combines the three parts of a GuPPy session: the raw acquisition (added to ``nwbfile.acquisition``
     via the ``ndx-fiber-photometry`` extension), the raw discrete events (added to ``nwbfile.events`` as
-    ``pynwb.event.EventsTable`` objects), and the private GuPPy interface (derived traces, transient
-    tables, and cross-correlations added to a ``guppy`` ProcessingModule). GuPPy outputs have no
-    standalone public interface -- this converter is their entry point.
+    ``pynwb.event.EventsTable`` objects), and the GuPPy interface (derived traces, transient tables, and
+    cross-correlations added to a ``guppy`` ProcessingModule).
 
     Everything the converter does with a GuPPy session is independent of how the session was recorded:
     ``storesList.csv`` names the acquisition stores as opaque ids, and the converter groups them, links
@@ -78,10 +70,12 @@ class GuppyConverter(ConverterPipe):
     stacked stores' rows in column order, which is how the converter recovers the row belonging to each
     GuPPy recording site.
 
-    That cross-interface knowledge makes the converter the author of the two GuPPy registries
-    (``GuppyRecordingSitesTable``, ``GuppyEventsTable``): it is the only side that can link each recording
-    site to its acquisition fiber rows and each event to its occurrence rows in the merged
-    ``EventsTable``, so it builds both registries complete and the GuPPy interface reuses them.
+    That cross-interface knowledge makes the converter the author of the ``GuppyRecordingSitesTable``
+    registry: it is the only side that can link each recording site to its acquisition fiber rows, so it
+    builds that registry complete and the GuPPy interface reuses it. The events registry belongs to the
+    GuPPy interface, which references its own analyzed onsets; the raw events are written as they are,
+    each type its own ``EventsTable``, exactly as adding those events interfaces directly would write
+    them.
 
     GuPPy and the acquisition share a single origin (recording start = ``session_start_time``): GuPPy
     emits timestamps in seconds since recording start, the same clock the raw streams use, so both
@@ -89,8 +83,8 @@ class GuppyConverter(ConverterPipe):
     """
 
     display_name = "GuPPy Fiber Photometry"
-    keywords = _GuppyInterface.keywords + ("events",)
-    associated_suffixes = tuple(dict.fromkeys(_GuppyInterface.associated_suffixes + _ACQUISITION_SUFFIXES))
+    keywords = GuppyInterface.keywords + ("events",)
+    associated_suffixes = tuple(dict.fromkeys(GuppyInterface.associated_suffixes + _ACQUISITION_SUFFIXES))
     info = "Converter that bundles a GuPPy session's raw acquisition with its GuPPy-derived processing outputs."
 
     @validate_call
@@ -141,7 +135,7 @@ class GuppyConverter(ConverterPipe):
         self.acquisition_format = acquisition_format
 
         # Guppy
-        guppy_interface = _GuppyInterface(folder_path=guppy_folder_path, verbose=verbose)
+        guppy_interface = GuppyInterface(folder_path=guppy_folder_path, verbose=verbose)
         self._event_store_to_event_name = guppy_interface.event_store_to_event_name
         data_interfaces: dict = {"Guppy": guppy_interface}
         self._series_specs = self._build_series_specs(guppy_interface=guppy_interface)
@@ -176,7 +170,7 @@ class GuppyConverter(ConverterPipe):
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
-    def _build_series_specs(self, *, guppy_interface: _GuppyInterface) -> list[dict]:
+    def _build_series_specs(self, *, guppy_interface: GuppyInterface) -> list[dict]:
         """Describe the acquisition series a GuPPy session calls for, one per role.
 
         A role is an excitation wavelength, and each gets one series column-stacking that role's store
@@ -402,17 +396,6 @@ class GuppyConverter(ConverterPipe):
                     f"Onset times of the '{event_name}' behavioral events (from acquisition store '{store}')."
                 )
 
-        # Route: send every surviving type into one merged EventsTable (shared table_metadata_key + a
-        # declared EventTables entry naming it), so a single DynamicTableRegion from the GuppyEventsTable
-        # can reference each type's occurrence rows. The EventTables entry is what makes the first
-        # interface write a merged table carrying the event_type discriminator column.
-        for _, event_types in self._iter_event_type_blocks(metadata):
-            for entry in event_types.values():
-                entry["table_metadata_key"] = _MERGED_EVENTS_TABLE_KEY
-        metadata["Events"].setdefault("EventTables", {})[_MERGED_EVENTS_TABLE_KEY] = dict(
-            table_name=_MERGED_EVENTS_TABLE_NAME,
-            description="All behavioral events GuPPy aligned to, merged into one table with an event_type discriminator.",
-        )
         return metadata
 
     def _store_id_for(self, event_type_source_id: str) -> str:
@@ -427,8 +410,8 @@ class GuppyConverter(ConverterPipe):
     def _iter_event_type_blocks(self, metadata: dict):
         """Yield ``(metadata_key, event_types)`` for each events interface, in registration order.
 
-        Shared by the select/rename/route blocks above so each stays a separate, single-purpose pass
-        over however many events interfaces the acquisition format needed.
+        Shared by the select and rename blocks above so each stays a separate, single-purpose pass over
+        however many events interfaces the acquisition format needed.
         """
         for interface_name in self._events_interface_names:
             events_metadata_key = self.data_interface_objects[interface_name].metadata_key
@@ -448,12 +431,11 @@ class GuppyConverter(ConverterPipe):
     ) -> None:
         """Add the raw acquisition and GuPPy-derived data to the provided NWBFile.
 
-        The GuPPy registries carry links that only this converter can compute (it owns the acquisition
-        ``FiberPhotometryTable`` and forced the merged ``EventsTable``), so it authors them itself. Each
-        step below therefore depends on the one above it, and the sequence is spelled out by name rather
-        than looped over ``data_interface_objects``: the acquisition interfaces build the shared
-        ``FiberPhotometryTable``, the events interfaces write the merged ``EventsTable``, the registries link
-        into both, and the GuPPy interface reuses them for the products that reference their rows.
+        The recording sites registry carries a link only this converter can compute, since it owns the
+        acquisition ``FiberPhotometryTable``, so it authors that registry itself. The sequence is
+        therefore spelled out by name rather than looped over ``data_interface_objects``: the
+        acquisition interfaces build the shared ``FiberPhotometryTable``, the registry links into it,
+        and the GuPPy interface reuses it for the products that reference its rows.
         """
         if metadata is None:
             metadata = self.get_metadata()
@@ -467,19 +449,18 @@ class GuppyConverter(ConverterPipe):
             self.data_interface_objects[interface_name].add_to_nwbfile(
                 nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, {})
             )
-        self._build_guppy_registries(nwbfile=nwbfile, metadata=metadata)
+        self._build_recording_sites_registry(nwbfile=nwbfile, metadata=metadata)
         self.data_interface_objects["Guppy"].add_to_nwbfile(
             nwbfile=nwbfile, metadata=metadata, **conversion_options.get("Guppy", {})
         )
 
-    def _build_guppy_registries(self, *, nwbfile: NWBFile, metadata: dict) -> None:
-        """Author the two GuPPy registries, with their outward links, before the GuPPy interface runs.
+    def _build_recording_sites_registry(self, *, nwbfile: NWBFile, metadata: dict) -> None:
+        """Author the GuppyRecordingSitesTable, with its fiber link, before the GuPPy interface runs.
 
-        Only the converter can wire these links -- it built the acquisition ``FiberPhotometryTable`` and
-        forced every event type into one merged ``EventsTable`` -- so it is the sole author of both
-        registries, constructing them with ``target_tables`` and filling each row's ragged
-        ``DynamicTableRegion`` here. Rows are built in the GuPPy interface's canonical recording-site /
-        event order, which is what its products' registry references point at.
+        Only the converter can wire this link, since it built the acquisition ``FiberPhotometryTable``,
+        so it is the registry's sole author, constructing it with ``target_tables`` and filling each
+        row's ragged ``DynamicTableRegion`` here. Rows are built in the GuPPy interface's canonical
+        recording-site order, which is what its products' registry references point at.
         """
         ndx_guppy = get_package(package_name="ndx_guppy", installation_instructions="pip install ndx-guppy")
         guppy_interface = self.data_interface_objects["Guppy"]
@@ -508,60 +489,6 @@ class GuppyConverter(ConverterPipe):
                 fiber_photometry_table_region=recording_site_to_rows[recording_site],
             )
         processing_module.add(recording_sites_table)
-
-        # Events: each row links to the occurrence rows in the merged EventsTable that GuPPy actually
-        # analyzed. A session whose storesList holds no event store writes no such table, and there is
-        # nothing for the converter to link -- the GuPPy interface then builds the link-free registry
-        # itself, exactly as it does when run standalone.
-        if not self._events_interface_names:
-            return
-        merged_events_table = nwbfile.events[_MERGED_EVENTS_TABLE_NAME]
-        event_type_column = list(merged_events_table["event_type"][:])
-        timestamp_column = np.asarray(merged_events_table["timestamp"][:], dtype=np.float64)
-        analyzed_event_onsets = guppy_interface.analyzed_event_onsets
-        events_table = ndx_guppy.GuppyEventsTable(
-            name=_EVENTS_TABLE_NAME,
-            description=_EVENTS_TABLE_DESCRIPTION,
-            target_tables={"events": merged_events_table},
-        )
-        for event_name in guppy_interface.event_names:
-            candidate_rows = [index for index, event_type in enumerate(event_type_column) if event_type == event_name]
-            events_table.add_row(
-                event_name=event_name,
-                events=self._select_analyzed_rows(
-                    event_name=event_name,
-                    candidate_rows=candidate_rows,
-                    candidate_timestamps=timestamp_column[candidate_rows],
-                    analyzed_onsets=analyzed_event_onsets[event_name],
-                ),
-            )
-        processing_module.add(events_table)
-
-    @staticmethod
-    def _select_analyzed_rows(
-        *,
-        event_name: str,
-        candidate_rows: list[int],
-        candidate_timestamps: np.ndarray,
-        analyzed_onsets: np.ndarray,
-    ) -> list[int]:
-        """Pick the merged-table rows whose timestamps are the ones GuPPy kept for this event.
-
-        GuPPy drops onsets it cannot build a trial around, so the acquisition table legitimately holds
-        occurrences that no GuPPy product covers. Matching is by timestamp rather than exact identity
-        because GuPPy applies its own time correction on the way to writing them.
-        """
-        analyzed_rows = []
-        for onset in analyzed_onsets:
-            matches = np.flatnonzero(np.isclose(candidate_timestamps, onset, rtol=0.0, atol=1e-6))
-            assert matches.size == 1, (
-                f"GuPPy analyzed an onset of {onset} s for event '{event_name}', which matches "
-                f"{matches.size} occurrences in the '{_MERGED_EVENTS_TABLE_NAME}' table. Every GuPPy "
-                f"onset must correspond to exactly one acquisition occurrence; none means the two "
-                f"disagree about the event's time base, several means the occurrences are ambiguous."
-            )
-            analyzed_rows.append(candidate_rows[int(matches[0])])
-        return analyzed_rows
 
     def _derive_recording_site_to_table_rows(self, metadata: dict) -> dict[str, list[int]]:
         """Map each GuPPy recording site to the acquisition ``FiberPhotometryTable`` row indices of its stores.
