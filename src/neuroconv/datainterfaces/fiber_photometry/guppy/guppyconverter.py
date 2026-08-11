@@ -297,9 +297,8 @@ class GuppyConverter(ConverterPipe):
         acquisition format -- which is where the session's events came from when the import was never
         used.
 
-        Having a CSV is what decides the split, so a store the acquisition source also carries is
-        still read from its CSV: GuPPy's import is what wrote that file, making it the copy GuPPy
-        analyzed. :meth:`get_metadata` warns when it drops the acquisition source's copy.
+        A store the acquisition format carries as well goes to its CSV like any other, and
+        :meth:`get_metadata` warns that the acquisition format's copy is not written.
 
         The acquisition format comes first in the result, which is the order the events interfaces
         are built and registered in.
@@ -355,8 +354,7 @@ class GuppyConverter(ConverterPipe):
             ``interface_name -> BaseEventsInterface``, empty for a session with no event stores.
         events_metadata_key_to_store_ids : dict
             The stores each of those interfaces was built to supply, which is what
-            :meth:`get_metadata` selects its seeded event types down to. An interface reading a whole
-            source seeds more than this -- every epoc in a tank, say -- and the surplus is dropped.
+            :meth:`get_metadata` selects its seeded event types down to.
 
         Raises
         ------
@@ -408,9 +406,8 @@ class GuppyConverter(ConverterPipe):
         NPM is the exception -- see :func:`~.npm_utils.npm_event_source_id_to_store_id` for what it
         calls a store instead and why.
 
-        The translations are kept per events interface rather than in one flat mapping, since a
-        session drawing its events from several formats can have two of them seed the same id for
-        different stores.
+        The translations are kept per events interface, since a session drawing its events from
+        several formats can have two of them seed the same id for different stores.
 
         Returns
         -------
@@ -446,8 +443,7 @@ class GuppyConverter(ConverterPipe):
         # Select: each events interface seeds one event type per store it found, and its write is driven
         # by that dict rather than by the source, so cutting it down to the stores that interface was
         # built to supply is what keeps everything else out of the NWB file. An interface reading a whole
-        # source seeds more than it owns -- every epoc in a tank, whether GuPPy listed it or not, and
-        # including one whose imported CSV is what GuPPy analyzed.
+        # source seeds more than it owns -- every epoc in a tank, listed or not.
         covered_stores: set[str] = set()
         for events_metadata_key, seeded_event_types in self._iter_event_type_blocks(metadata):
             owned_stores = self._events_metadata_key_to_store_ids[events_metadata_key]
@@ -486,16 +482,8 @@ class GuppyConverter(ConverterPipe):
     def _warn_about_displaced_stores(
         self, *, events_metadata_key: str, seeded_event_types: dict, owned_stores: list[str]
     ) -> None:
-        """Warn about a store this interface carries that another events format was given instead.
-
-        The only way a session gets one is GuPPy's custom-event import writing a store's events back
-        out as a CSV while the acquisition source still carries that store. The CSV wins -- the import
-        is what wrote it, making it the copy GuPPy analyzed -- but silently reading past a source that
-        holds the store under the same name would hide a stray file left in the session folder.
-
-        A store the interface seeded that GuPPy did not list at all is not this: it is every session
-        with more epocs in the tank than GuPPy was pointed at, and it is dropped without comment.
-        """
+        """Warn that a store this interface carries is being read from its imported-event CSV instead."""
+        # Only the stores GuPPy listed: a source routinely holds more, and those go without comment.
         displaced = sorted(
             {
                 store
