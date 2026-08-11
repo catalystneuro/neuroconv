@@ -384,8 +384,8 @@ class TestSuite2pSegmentationInterfaceChan1Plane0(SegmentationExtractorInterface
     )
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
         plane_suffix = "Chan1Plane0"
         cls.imaging_plane_names = "ImagingPlane" + plane_suffix
         cls.plane_segmentation_names = "PlaneSegmentation" + plane_suffix
@@ -460,8 +460,8 @@ class TestSuite2pSegmentationInterfaceChan2Plane0(SegmentationExtractorInterface
     )
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
 
         plane_suffix = "Chan2Plane0"
         cls.imaging_plane_names = "ImagingPlane" + plane_suffix
@@ -607,15 +607,17 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
             "name": "NVista3",
             "description": "Inscopix Microscope (Serial: 11132301, Software: 1.5.2)",
         }
-        assert metadata["Devices"] == {metadata_key: expected_device}
+        assert metadata["Devices"] == {"inscopix_11132301": expected_device}
 
         expected_plane_segmentation = {
             "description": "Inscopix cell segmentation using cnmfe with traces in dF over noise",
+            "imaging_plane_metadata_key": metadata_key,
         }
         assert metadata["Ophys"]["PlaneSegmentations"][metadata_key] == expected_plane_segmentation
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {"device_metadata_key": "inscopix_11132301"}
 
         assert metadata["Subject"]["subject_id"] == "FV4581"
-        assert metadata["Subject"]["species"] == "Unknown species"
+        assert "species" not in metadata["Subject"]  # the file does not state it, so it is not reported
         assert metadata["Subject"]["strain"] == "CaMKIICre"
         assert metadata["Subject"]["sex"] == "M"
 
@@ -648,7 +650,7 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
         assert "Subject" in metadata
         subject = metadata["Subject"]
         assert subject["subject_id"] == "FV4581"
-        assert subject["species"] == "Unknown species"
+        assert "species" not in subject  # the file does not state it, so it is not reported
         assert "strain" in subject
         assert subject["strain"] == "CaMKIICre"
         assert subject["sex"] == "M"
@@ -714,13 +716,16 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         """Check the new dict-based metadata format on a fixture without rich device metadata."""
         metadata_key = "inscopix_segmentation"
 
-        # No device name/serial/software in this fixture, so no Devices entry
-        assert "Devices" not in metadata
+        # The fixture records no device name, serial or software, so the entry carries only the generic
+        # name the file is written with, under the generic microscope key.
+        assert metadata["Devices"] == {"inscopix_microscope": {"name": "Microscope"}}
 
         expected_plane_segmentation = {
             "description": "Inscopix cell segmentation using cnmfe with traces in dF over noise",
+            "imaging_plane_metadata_key": metadata_key,
         }
         assert metadata["Ophys"]["PlaneSegmentations"][metadata_key] == expected_plane_segmentation
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {"device_metadata_key": "inscopix_microscope"}
 
         # No subject info in this fixture
         assert "Subject" not in metadata

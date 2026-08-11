@@ -15,7 +15,7 @@ class TDTLoadMixin:
     path to the TDT tank folder.
     """
 
-    def load(self, t1: float = 0.0, t2: float = 0.0, evtype: list[str] = ["all"]):
+    def load(self, t1: float = 0.0, t2: float = 0.0, evtype: list[str] = ["all"], store: str | list[str] | None = None):
         """
         Load the TDT data from the folder path.
 
@@ -28,6 +28,9 @@ class TDTLoadMixin:
         evtype : list[str], optional
             List of strings, specifies what type of data stores to retrieve from the tank.
             Can contain 'all' (default), 'epocs', 'snips', 'streams', or 'scalars'. Ex. ['epocs', 'snips']
+        store : str or list[str], optional
+            Name(s) of specific data store(s) to retrieve. When provided, only these stores are read,
+            which is faster and avoids reading unrelated (possibly malformed) stores in the tank.
 
         Returns
         -------
@@ -42,8 +45,11 @@ class TDTLoadMixin:
                 f"evtype must be a list containing some combination of 'all', 'epocs', 'snips', 'streams', or 'scalars', "
                 f"but got {evtype_string}."
             )
+        read_block_kwargs = dict(t1=t1, t2=t2, evtype=evtype)
+        if store is not None:
+            read_block_kwargs["store"] = store
         with open(os.devnull, "w", encoding="utf-8") as f, redirect_stdout(f):
-            tdt_photometry = tdt.read_block(str(folder_path), t1=t1, t2=t2, evtype=evtype)
+            tdt_photometry = tdt.read_block(str(folder_path), **read_block_kwargs)
         return tdt_photometry
 
     def get_events(self) -> dict[str, dict[str, np.ndarray]]:

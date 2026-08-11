@@ -11,7 +11,7 @@ from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile, get_manager
-from pynwb.base import DynamicTable, TimeSeriesReferenceVectorData
+from pynwb.base import DynamicTable, Image, TimeSeriesReferenceVectorData
 from pynwb.file import NWBContainer
 
 from ._configuration_models import DATASET_IO_CONFIGURATIONS
@@ -183,6 +183,36 @@ def get_default_dataset_io_configurations(
                 )
 
                 yield dataset_io_configuration
+        elif isinstance(neurodata_object, Image):
+            # The pixel-data image types (GrayscaleImage, RGBImage, RGBAImage) inherit from NWBData rather than
+            # NWBContainer, so the branch above does not reach them. Their `data` can be large (z-stacks of
+            # 256x256 and up) and benefits from the same default chunking and compression as everything else.
+            # `Image` rather than its parent `BaseImage` is used here so that `ExternalImage`, whose data is a
+            # single path string, stays out.
+            dataset_name = "data"
+            candidate_dataset = neurodata_object.data
+
+            # Skip if already written to file
+            # noinspection PyTypeChecker
+            if _is_dataset_written_to_file(
+                candidate_dataset=candidate_dataset, backend=backend, existing_file_path=existing_file_path
+            ):
+                continue
+
+            # Skip over datasets that are already wrapped in DataIO
+            if isinstance(candidate_dataset, DataIO):
+                continue
+
+            # Skip datasets with any zero-length axes
+            full_shape = get_data_shape(data=candidate_dataset)
+            if any(axis_length == 0 for axis_length in full_shape):
+                continue
+
+            dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_defaults(
+                neurodata_object=neurodata_object, dataset_name=dataset_name, builder=builder
+            )
+
+            yield dataset_io_configuration
 
 
 def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[DatasetIOConfiguration, None, None]:

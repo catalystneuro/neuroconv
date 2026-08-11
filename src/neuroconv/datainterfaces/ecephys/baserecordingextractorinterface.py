@@ -1,3 +1,4 @@
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -85,6 +86,75 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     def get_metadata_schema(self) -> dict:
         """
+        Compile the metadata schema.
+
+        The registries are objects keyed by ``metadata_key``, and the entries stay permissive: an entry is
+        passed to a pynwb constructor, so it may legitimately carry any field that constructor takes. What is
+        pinned is the shape, that an entry is an object, which is also what catches an edit written against
+        the old format landing in a block that exists in both
+        (``metadata["Ecephys"]["ElectricalSeries"]["name"] = ...``).
+
+        Metadata in the old list-based format is validated against
+        ``_get_metadata_schema_for_old_list_format``, and both go when that format does.
+        """
+        from ...basedatainterface import BaseDataInterface
+
+        metadata_schema = BaseDataInterface.get_metadata_schema(self)
+        metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
+        metadata_schema["properties"]["Ecephys"]["required"] = []
+        metadata_schema["properties"]["Ecephys"]["properties"] = dict(
+            ElectrodeGroups=dict(
+                type="object",
+                additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeGroupEntry"},
+            ),
+            ElectricalSeries=dict(
+                type="object",
+                additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectricalSeriesEntry"},
+            ),
+            # The electrode table's column descriptions are still a list in both formats.
+            Electrodes=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/definitions/Electrodes"},
+            ),
+        )
+        metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
+            ElectrodeGroupEntry=dict(
+                type="object",
+                additionalProperties=True,
+                properties=dict(
+                    name=dict(type="string", pattern="^[^/]*$"),
+                    description=dict(type="string"),
+                    location=dict(type="string"),
+                    device_metadata_key=dict(
+                        type="string",
+                        description="Key of this group's device in metadata['Devices'].",
+                    ),
+                ),
+            ),
+            ElectricalSeriesEntry=dict(
+                type="object",
+                additionalProperties=True,
+                properties=dict(
+                    name=dict(type="string", pattern="^[^/]*$"),
+                    description=dict(type="string"),
+                ),
+            ),
+            Electrodes=dict(
+                type="object",
+                additionalProperties=False,
+                required=["name"],
+                properties=dict(
+                    name=dict(type="string", description="name of this electrodes column"),
+                    description=dict(type="string", description="description of this electrodes column"),
+                ),
+            ),
+        )
+        return metadata_schema
+
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        """
         Compile metadata schema for the RecordingExtractor.
 
         Returns
@@ -137,14 +207,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             # also marks the metadata as dict-based, so the pipeline dispatches to the new path). The
             # default device and electrode groups are left to the pipeline, which creates a default
             # device and synthesizes one group per channel-group from the recording's ``group`` properties.
-            metadata["Ecephys"] = dict()
-            if self.es_key is not None:
-                metadata["Ecephys"]["ElectricalSeries"] = {
-                    self.metadata_key: dict(
-                        name=self.metadata_key,
-                        description=f"Acquisition traces for the {self.metadata_key}.",
-                    )
-                }
+            # The name is the NWB-conventional default, independent of ``es_key`` (legacy, to be removed) and
+            # of ``metadata_key`` (the dict key). No description: a generic one carries no information, so it
+            # is left to the interfaces, which can say something the source actually supports, and otherwise
+            # to the write pipeline.
+            metadata["Ecephys"] = {"ElectricalSeries": {self.metadata_key: dict(name="ElectricalSeries")}}
 
             return metadata
 
@@ -303,12 +370,18 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             The resulting groups determine how electrode groups and electrodes are organized
             in the NWB file, with each group corresponding to one ElectrodeGroup.
         """
-        # Set the probe to the recording extractor
-        self.recording_extractor._set_probes(
-            probe,
-            in_place=True,
-            group_mode=group_mode,
-        )
+        from probeinterface import ProbeGroup
+
+        # Set the probe to the recording extractor. SpikeInterface 0.105 removed the private
+        # `_set_probes`, which took either a Probe or a ProbeGroup; the public entry points are split
+        # by type, so dispatch here.
+        # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where these calls
+        # are always in place and the argument is deprecated. It is required on 0.104, which otherwise
+        # returns a new recording and leaves this one unchanged.
+        if isinstance(probe, ProbeGroup):
+            self.recording_extractor.set_probegroup(probe, group_mode=group_mode, in_place=True)
+        else:
+            self.recording_extractor.set_probe(probe, group_mode=group_mode, in_place=True)
 
         # Spike interface sets the "group" property
         # But neuroconv allows "group_name" property to override spike interface "group" value
@@ -344,7 +417,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         metadata: dict | None = None,
         *,
         stub_test: bool = False,
-        write_as: Literal["raw", "lfp", "processed"] = "raw",
+        parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "acquisition",
+        write_as: Literal["raw", "lfp", "processed"] | None = None,
+        data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
         write_electrical_series: bool = True,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
@@ -365,11 +440,23 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_as : {'raw', 'processed', 'lfp'}, default='raw'
-            Specifies how to save the trace data in the NWB file. Options are:
-            - 'raw': Save the data in the acquisition group.
-            - 'processed': Save the data as FilteredEphys in a processing module.
-            - 'lfp': Save the data as LFP in a processing module.
+        parent_container : {'acquisition', 'processing/LFP', 'processing/FilteredEphys'}, default: 'acquisition'
+            Which NWB container to write the trace data to. Options are:
+            - 'acquisition': raw acquired data, in the acquisition group.
+            - 'processing/LFP': an ``LFP`` container in the ecephys processing module.
+            - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
+        write_as : {'raw', 'processed', 'lfp'}, optional
+            Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
+            'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+        data_representation : {'digital_counts', 'physical_units'}, default='digital_counts'
+            How the trace values are materialized in the stored data array.
+            - 'digital_counts': store the raw integer samples and carry the per-channel gain in
+              ``channel_conversion`` (or a scalar ``conversion`` when homogeneous) and the offset in
+              the scalar ``offset``. Faithful and compact, but requires a common offset across channels.
+            - 'physical_units': apply each channel's gain and offset and store float physical values,
+              so the scalar ``offset`` is 0 and no ``channel_conversion`` is needed. This is the only
+              representation that can hold channels with heterogeneous per-channel offsets (and gains)
+              in a single series, at the cost of float storage and no lossless integer round-trip.
 
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
@@ -406,31 +493,62 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
             explicitly, regardless of whether the sampling rate is uniform.
         """
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of BaseRecordingExtractorInterface.add_to_nwbfile() is deprecated and "
+                "will be removed on or after December 2026. Use 'parent_container' instead "
+                "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
+                write_as
+            ]
+
         from ...tools.spikeinterface import (
             _stub_recording,
             add_recording_metadata_to_nwbfile,
             add_recording_to_nwbfile,
         )
-        from ...tools.spikeinterface.spikeinterface import _is_dict_based_metadata
 
         recording = self.recording_extractor
         if stub_test:
             recording = _stub_recording(recording=recording)
 
-        metadata = metadata or self.get_metadata()
+        metadata = metadata or self._get_metadata_for_writing()
 
-        # ``metadata_key`` selects the ElectricalSeries entry in the dict-based format and is
-        # mutually exclusive with ``es_key`` downstream. Pass it only when the metadata is actually
-        # dict-based; for the old list-based format it must stay None so the pipeline routes through
-        # ``es_key``.
-        metadata_key = self.metadata_key if _is_dict_based_metadata(metadata) else None
+        # ``metadata_key`` selects the ElectricalSeries entry in the dict-based format and is mutually
+        # exclusive with ``es_key`` downstream. The question is asked of this interface's own entry rather
+        # than of the dictionary's overall shape: a converter can hand every interface one dictionary that
+        # carries another interface's dict-based block (a video camera's ``Devices``, a NIDQ board's)
+        # alongside this one's list-based ``Ecephys``, and only the presence of *this* key says which
+        # format the caller means for *this* interface.
+        electrical_series_metadata = metadata.get("Ecephys", {}).get("ElectricalSeries", {})
+        entry_is_present = (
+            isinstance(electrical_series_metadata, dict) and self.metadata_key in electrical_series_metadata
+        )
+        metadata_key = self.metadata_key if entry_is_present else None
 
         if write_electrical_series:
+            if (
+                data_representation != "physical_units"
+                and recording.has_scaleable_traces()
+                and len(set(recording.get_channel_offsets())) > 1
+            ):
+                raise ValueError(
+                    "The channels of this recording have heterogeneous offsets, which a single NWB "
+                    "ElectricalSeries cannot represent. To write them as one series, pass "
+                    "data_representation='physical_units' as a conversion option to add_to_nwbfile() "
+                    "or run_conversion() (this folds each channel's offset into the data and writes "
+                    "float physical values). Alternatively, drop or separate the channels that do not "
+                    "share the common offset."
+                )
             add_recording_to_nwbfile(
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
-                write_as=write_as,
+                parent_container=parent_container,
+                data_representation=data_representation,
                 es_key=self.es_key,
                 iterator_type=iterator_type,
                 iterator_options=iterator_options,

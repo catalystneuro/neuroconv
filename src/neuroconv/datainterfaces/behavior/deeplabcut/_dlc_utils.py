@@ -254,14 +254,22 @@ def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
 
 def _add_pose_estimation_to_nwbfile(
     nwbfile,
+    *,
     df_animal,
     timestamps,
-    exclude_nans=False,
-    pose_estimation_metadata_key: str = "PoseEstimationDeepLabCut",
+    metadata_key: str,
     metadata: dict | None = None,
+    exclude_nans: bool = False,
+    use_new_metadata_format: bool = False,
 ):
     """
     Adds pose estimation data to an nwbfile using ndx-pose v0.2.0+
+
+    When ``use_new_metadata_format`` is True the container/skeleton/device are read from the
+    dict-based shape (top-level ``metadata["Pose"]`` registries + top-level ``Devices``, linked by
+    ``device_metadata_key``/``skeleton_metadata_key``); otherwise from the legacy
+    ``metadata["PoseEstimation"]`` block. Only this metadata resolution differs between the two
+    formats; everything downstream is shared.
 
     Parameters
     ----------
@@ -284,13 +292,13 @@ def _add_pose_estimation_to_nwbfile(
     # Create default metadata structure
     default_metadata = dict()
     animal = ""  # Default empty animal name
-    skeleton_default_name = f"Skeleton{pose_estimation_metadata_key}_{animal.capitalize()}"
+    skeleton_default_name = f"Skeleton{metadata_key}_{animal.capitalize()}"
     # Set up default container structure
-    camera_default_name = f"Camera{pose_estimation_metadata_key}"
+    camera_default_name = f"Camera{metadata_key}"
     default_metadata["PoseEstimation"] = {
         "PoseEstimationContainers": {
-            pose_estimation_metadata_key: {
-                "name": pose_estimation_metadata_key,
+            metadata_key: {
+                "name": metadata_key,
                 "description": "2D keypoint coordinates estimated using DeepLabCut.",
                 "source_software": "DeepLabCut",
                 "scorer": "DeepLabCut",
@@ -319,13 +327,18 @@ def _add_pose_estimation_to_nwbfile(
     if metadata:
         default_metadata.deep_update(metadata)
 
-    # Access the updated metadata structure directly
-    pose_estimation_metadata = default_metadata["PoseEstimation"]
-    container_metadata = pose_estimation_metadata["PoseEstimationContainers"][pose_estimation_metadata_key]
-
-    # Get skeleton information
-    skeleton_metadata_key = container_metadata["skeleton"]
-    skeleton_metadata = pose_estimation_metadata["Skeletons"][skeleton_metadata_key]
+    # Resolve the container / skeleton / device. This is the only part that differs between the
+    # legacy and dict-based formats (the default_metadata built above is only used by the legacy path).
+    if use_new_metadata_format:
+        pose_metadata = metadata["Pose"]
+        container_metadata = pose_metadata["PoseEstimations"][metadata_key]
+        skeleton_metadata = pose_metadata["Skeletons"][container_metadata["skeleton_metadata_key"]]
+        device_metadata = metadata["Devices"][container_metadata["device_metadata_key"]]
+    else:
+        pose_estimation_metadata = default_metadata["PoseEstimation"]
+        container_metadata = pose_estimation_metadata["PoseEstimationContainers"][metadata_key]
+        skeleton_metadata = pose_estimation_metadata["Skeletons"][container_metadata["skeleton"]]
+        device_metadata = pose_estimation_metadata["Devices"][container_metadata["devices"][0]]
 
     # If the skeleton name is identical to the subject id then link the skeleton to the subject
     skeleton_subject = skeleton_metadata["subject"]
@@ -391,9 +404,7 @@ def _add_pose_estimation_to_nwbfile(
         series = PoseEstimationSeries(**pose_estimation_series_kwargs)
         pose_estimation_series.append(series)
 
-    # Get device information
-    device_metadata_key = container_metadata["devices"][0]
-    device_metadata = pose_estimation_metadata["Devices"][device_metadata_key]
+    # Get device information (device_metadata was resolved above per format)
     device_name = device_metadata["name"]
 
     # Create or get the device
@@ -409,7 +420,7 @@ def _add_pose_estimation_to_nwbfile(
     pose_estimation_container = PoseEstimation(
         name=container_metadata["name"],
         pose_estimation_series=pose_estimation_series,
-        description=container_metadata["description"],
+        description=container_metadata.get("description", "2D keypoint coordinates estimated using DeepLabCut."),
         original_videos=container_metadata.get("original_videos", None),
         labeled_videos=container_metadata.get("labeled_videos", None),
         dimensions=container_metadata.get("dimensions", None),

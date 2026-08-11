@@ -7,7 +7,7 @@ import numpy as np
 import psutil
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
-from pynwb.device import Device
+from pynwb.device import Device, DeviceModel
 from pynwb.image import ImageSeries
 from tqdm import tqdm
 
@@ -101,15 +101,16 @@ class InternalVideoInterface(BaseDataInterface):
             if key in image_series_metadata_schema["required"]:
                 image_series_metadata_schema["required"].remove(key)
         device_metadata_schema = get_schema_from_hdmf_class(Device)
+        # A device entry may name its model, the same way the video entry names its device.
+        device_metadata_schema["properties"]["device_model_metadata_key"] = {"type": "string"}
+        device_model_metadata_schema = get_schema_from_hdmf_class(DeviceModel)
+        # 'manufacturer' is required by NWB but is rarely recorded by an acquisition file, so it is
+        # filled when the model is built rather than demanded of whoever writes the metadata.
+        device_model_metadata_schema["required"].remove("manufacturer")
         # The camera Device lives at top-level metadata["Devices"], referenced from the video entry
         # by ``device_metadata_key``. A nested ``device`` dict is still accepted for back-compat.
         image_series_metadata_schema["properties"]["device_metadata_key"] = {"type": "string"}
         image_series_metadata_schema["properties"]["device"] = device_metadata_schema
-        metadata_schema["properties"]["Devices"] = {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": device_metadata_schema,
-        }
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"]["required"].append("InternalVideos")
         metadata_schema["properties"]["Behavior"]["properties"]["InternalVideos"] = {
@@ -376,17 +377,23 @@ class InternalVideoInterface(BaseDataInterface):
         # device_metadata_key; fall back to a (deprecated) nested "device" dict for back-compat.
         device_metadata_key = image_series_kwargs.pop("device_metadata_key", None)
         legacy_device_kwargs = image_series_kwargs.pop("device", None)
-        device_metadata = None
         if device_metadata_key is not None:
             # Strict resolution against the top-level Devices registry: a missing/typo'd key raises.
             # (metadata is a DeepDict that auto-creates missing keys, so membership is checked explicitly.)
-            devices_metadata = deepcopy(metadata).get("Devices") or deepcopy(self.get_metadata()["Devices"])
+            metadata_copy = deepcopy(metadata)
+            devices_metadata = metadata_copy.get("Devices") or deepcopy(self.get_metadata()["Devices"])
             if device_metadata_key not in devices_metadata:
                 raise KeyError(
                     f"device_metadata_key '{device_metadata_key}' was not found in metadata['Devices'] "
                     f"(available keys: {list(devices_metadata)})."
                 )
-            device_metadata = devices_metadata[device_metadata_key]
+            # The whole metadata goes to the helper, since a device entry may name its model by
+            # 'device_model_metadata_key'. Only the registry is swapped, for the caller who passed
+            # none and gets this interface's default camera.
+            metadata_copy["Devices"] = devices_metadata
+            image_series_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata_copy, metadata_key=device_metadata_key
+            )
         elif legacy_device_kwargs is not None:
             warnings.warn(
                 "Passing the camera device nested under the video metadata entry is deprecated and will be "
@@ -395,10 +402,11 @@ class InternalVideoInterface(BaseDataInterface):
                 FutureWarning,
                 stacklevel=2,
             )
-            device_metadata = legacy_device_kwargs
-
-        if device_metadata is not None:
-            image_series_kwargs["device"] = _add_device_to_nwbfile(nwbfile=nwbfile, device_metadata=device_metadata)
+            # The deprecated nested form has no registry key, so it keeps the transitional call until
+            # the December 2026 removal.
+            image_series_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, device_metadata=legacy_device_kwargs
+            )
 
         # The 70 size is an estimation of the total size of the video file in memory
         uncompressed_estimate = file_path.stat().st_size * 70
