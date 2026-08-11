@@ -172,6 +172,10 @@ the row's data is stored under it. In ``fiber_photometry[metadata_key]["fiber_ph
 region at that key. Using the same variable for both guarantees the link lands on exactly the row we just
 named.
 
+The 465 appears twice, and only because the source here is synthetic: the mock has to be told which
+excitation drove the trace it is inventing, and the row then records that as provenance. With a real
+interface the wavelength is a fact about the recording, so it is stated once, in the row.
+
 .. admonition:: The file so far
    :class: note
 
