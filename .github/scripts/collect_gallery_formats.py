@@ -16,11 +16,11 @@ def collect_gallery_formats() -> list[str]:
     Read the gallery's format table and check it against the pages on disk.
 
     `docs/conversion_examples_gallery/extras_by_gallery_entry.json` is the source of truth for which page
-    is tested and
-    which extra it needs. The two names are independent: the workflow installs `.[<extra>]` and separately
-    runs `<category>/<page>.rst`, and an extra that does not exist installs nothing without erroring, so a
-    page whose name is merely assumed to match an extra fails much later with an import error that reads
-    like a missing dependency. Stating the pairing keeps it a decision rather than a coincidence.
+    is tested and which extra it needs. The two names are independent: the workflow installs `.[<extra>]`
+    and separately runs `<category>/<page>.rst`, and an extra that does not exist installs nothing without
+    erroring, so a page whose name is merely assumed to match an extra fails much later with an import
+    error that reads like a missing dependency. Stating the pairing keeps it a decision rather than a
+    coincidence.
 
     The directory is still walked, but only to hold the table to it: a page nobody registers would
     otherwise be silently untested, which is a quieter failure than being tested wrongly.
@@ -41,7 +41,7 @@ def collect_gallery_formats() -> list[str]:
     table = json.loads(table_path.read_text(encoding="utf-8"))
 
     pages_on_disk = {
-        f"{rst_file.parent.name}/{rst_file.stem}"
+        f"{rst_file.parent.name}/{rst_file.name}"
         for rst_file in gallery_path.glob("*/*.rst")
         if rst_file.stem != "index"
     }
@@ -60,8 +60,8 @@ def collect_gallery_formats() -> list[str]:
     for page, entry in sorted(table.items()):
         if "skip" in entry:
             continue
-        category, page_name = page.split("/", 1)
-        formats.append(f"{category}:{page_name}:{entry['extra'] or ''}")
+        category, file_name = page.split("/", 1)
+        formats.append(f"{category}:{Path(file_name).stem}:{entry['extra'] or ''}")
 
     return formats
 
