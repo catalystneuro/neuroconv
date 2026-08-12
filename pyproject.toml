@@ -383,6 +383,9 @@ tdt_fp = [
 npm_fp = [
     "neuroconv[fiber_photometry]",
 ]
+pyphotometry_fp = [
+    "neuroconv[fiber_photometry]",
+]
 csv_fp = [
     "neuroconv[fiber_photometry]",
 ]
