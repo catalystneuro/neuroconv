@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 import yaml
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
 
@@ -83,14 +83,13 @@ def test_published_fiber_photometry_template_converts_once_filled(tmp_path):
     nwbfile_path = tmp_path / "published_template.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-    with NWBHDF5IO(nwbfile_path, mode="r") as io:
-        read_nwbfile = io.read()
+    read_nwbfile = read_nwb(nwbfile_path)
 
-        # The blank emission filter wrote nothing, rather than a device named after an absent key.
-        assert "emission_filter" not in read_nwbfile.devices
-        assert "excitation_filter" in read_nwbfile.devices
+    # The blank emission filter wrote nothing, rather than a device named after an absent key.
+    assert "emission_filter" not in read_nwbfile.devices
+    assert "excitation_filter" in read_nwbfile.devices
 
-        table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
-        assert list(table["location"][:]) == ["DMS", "DLS"]
-        assert [fiber.name for fiber in table["optical_fiber"][:]] == ["optical_fiber_0", "optical_fiber_1"]
-        assert read_nwbfile.acquisition["FiberPhotometryResponseSeries"].data.shape == (100, 2)
+    table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+    assert list(table["location"][:]) == ["DMS", "DLS"]
+    assert [fiber.name for fiber in table["optical_fiber"][:]] == ["optical_fiber_0", "optical_fiber_1"]
+    assert read_nwbfile.acquisition["FiberPhotometryResponseSeries"].data.shape == (100, 2)

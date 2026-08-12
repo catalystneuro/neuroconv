@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, read_nwb
 
 from neuroconv.tools.testing.data_interface_mixins import (
     FiberPhotometryInterfaceTestMixin,
@@ -388,39 +388,36 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         device_models_metadata["photodetector_model"].update(manufacturer="Doric Lenses", detector_type="photodiode")
 
         nwbfile_path = tmp_path / "filled_template.nwb"
-        nwbfile = interface.create_nwbfile(metadata=metadata)
-        with NWBHDF5IO(nwbfile_path, mode="w") as io:
-            io.write(nwbfile)
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_nwbfile = io.read()
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+        read_nwbfile = read_nwb(nwbfile_path)
 
-            assert set(read_nwbfile.devices) == {
-                "optical_fiber_0",
-                "excitation_source",
-                "photodetector",
-                "dichroic_mirror",
-                "excitation_filter",
-                "emission_filter",
-            }
-            assert set(read_nwbfile.device_models) == {
-                "optical_fiber_model",
-                "excitation_source_model",
-                "photodetector_model",
-            }
-            assert read_nwbfile.devices["optical_fiber_0"].model.numerical_aperture == 0.48
+        assert set(read_nwbfile.devices) == {
+            "optical_fiber_0",
+            "excitation_source",
+            "photodetector",
+            "dichroic_mirror",
+            "excitation_filter",
+            "emission_filter",
+        }
+        assert set(read_nwbfile.device_models) == {
+            "optical_fiber_model",
+            "excitation_source_model",
+            "photodetector_model",
+        }
+        assert read_nwbfile.devices["optical_fiber_0"].model.numerical_aperture == 0.48
 
-            table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
-            assert len(table) == 1
-            assert table["location"][0] == "VTA"
-            assert table["notes"][0] == "Recorded on the second day."
-            assert table["indicator"][0].label == "GCaMP6s"
-            assert table["optical_fiber"][0].name == "optical_fiber_0"
-            assert table["dichroic_mirror"][0].name == "dichroic_mirror"
-            assert table["excitation_filter"][0].name == "excitation_filter"
+        table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+        assert len(table) == 1
+        assert table["location"][0] == "VTA"
+        assert table["notes"][0] == "Recorded on the second day."
+        assert table["indicator"][0].label == "GCaMP6s"
+        assert table["optical_fiber"][0].name == "optical_fiber_0"
+        assert table["dichroic_mirror"][0].name == "dichroic_mirror"
+        assert table["excitation_filter"][0].name == "excitation_filter"
 
-            response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
-            assert response_series.description == "GCaMP6s at 465 nm in VTA."
-            assert response_series.fiber_photometry_table_region.data[:] == [0]
+        response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
+        assert response_series.description == "GCaMP6s at 465 nm in VTA."
+        assert response_series.fiber_photometry_table_region.data[:] == [0]
 
     def test_minimally_annotated_metadata_round_trips(self, tmp_path):
         # The minimally annotated path: the default metadata describes only the response series, so the file
