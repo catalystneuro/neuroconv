@@ -270,3 +270,42 @@ def test_stub_test_reads_only_the_stub(lazy_interface_and_source):
     assert electrical_series.data.shape == (100, source.shape[0])
     np.testing.assert_allclose(electrical_series.data, source[:, :100].T)
     assert interface.raw.preload is False
+
+
+# ---------------------------------------------------------------------------------------------
+# Sampling rate faithfulness
+# ---------------------------------------------------------------------------------------------
+
+
+def test_mixed_native_sampling_rates_are_refused():
+    """MNE upsamples slower channels to the fastest, so writing that Raw would store invented samples.
+
+    The source's own rates survive only on the reader's private extras, so the guard reads those. The
+    shape here is what `read_raw_edf` produces for channels at 256, 256 and 32 samples per record,
+    where the trailing 57 is the EDF+ annotation signal that `sel` drops.
+    """
+    interface = MockMNEElectricalSeriesInterface(num_channels=3, ch_types=["eeg", "eeg", "eeg"])
+    interface.raw._raw_extras = [{"n_samps": [256, 256, 32, 57], "sel": [0, 1, 2]}]
+
+    with pytest.raises(ValueError, match="different sampling rates") as excinfo:
+        interface._validate_homogeneous_sampling_rate()
+
+    # Both native rates are named, scaled off the sfreq MNE settled on, and so is the way out.
+    assert "125 Hz" in str(excinfo.value)
+    assert "1000 Hz" in str(excinfo.value)
+    assert "exclude" in str(excinfo.value)
+
+
+def test_homogeneous_native_sampling_rates_pass():
+    """A single-rate source is the case with nothing to check, and it must not trip the guard."""
+    interface = MockMNEElectricalSeriesInterface(num_channels=2)
+    interface.raw._raw_extras = [{"n_samps": [256, 256, 57], "sel": [0, 1]}]
+
+    interface._validate_homogeneous_sampling_rate()
+
+
+def test_readers_without_a_samples_per_record_vector_are_left_alone():
+    """A RawArray exposes no native-rate information; the guard skips rather than guessing."""
+    interface = MockMNEElectricalSeriesInterface(num_channels=2)
+
+    interface._validate_homogeneous_sampling_rate()

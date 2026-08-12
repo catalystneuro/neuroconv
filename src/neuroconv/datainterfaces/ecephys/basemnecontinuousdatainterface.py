@@ -82,9 +82,58 @@ class BaseMNEContinuousDataInterface(BaseDataInterface):
                 f"(available types: {', '.join(sorted(available_channel_types))})."
             )
 
+        self._validate_homogeneous_sampling_rate()
+
     def _read_raw(self) -> "mne.io.BaseRaw":  # noqa: F821
-        """Return the ``mne.io.BaseRaw`` for this interface. Implemented by subclasses."""
+        """
+        Return the ``mne.io.BaseRaw`` for this interface. Implemented by subclasses.
+
+        The returned ``Raw`` must hold channels that shared one sampling rate *in the source*. MNE's
+        data model has a single ``sfreq`` per ``Raw``, so a reader handed a source with per-channel
+        rates resamples the slower channels up to the fastest one, and what comes back is partly
+        interpolated. Sampling rate is therefore a scoping axis alongside ``channel_type``: a format
+        that stores channels at several rates is covered by several interfaces, one per rate, the way
+        a multi-stream acquisition system is. The readers for such formats (``read_raw_edf``,
+        ``read_raw_bdf``, ``read_raw_gdf``) take an ``exclude`` argument for exactly this purpose.
+        """
         raise NotImplementedError("Subclasses must implement `_read_raw` to return an mne.io.BaseRaw object.")
+
+    def _validate_homogeneous_sampling_rate(self) -> None:
+        """
+        Refuse a ``Raw`` whose channels did not share one sampling rate in the source.
+
+        MNE reports one ``sfreq`` for the whole ``Raw`` and gives every channel the same number of
+        samples, so a resampled channel is indistinguishable from a natively fast one through the
+        public API. The source's own per-channel rates do survive on the reader's private extras, as
+        the samples-per-record vector, which is what this reads. Readers that expose no such vector
+        are the single-rate formats, where there is nothing to check.
+        """
+        for raw_extra in getattr(self.raw, "_raw_extras", None) or []:
+            if not isinstance(raw_extra, dict) or "n_samps" not in raw_extra:
+                continue
+
+            samples_per_record = [int(value) for value in raw_extra["n_samps"]]
+            # ``sel`` indexes the data channels, dropping trailing bookkeeping channels such as the
+            # EDF+ annotation signal, whose sample count is unrelated to any channel's rate.
+            selection = raw_extra.get("sel")
+            if selection is not None:
+                samples_per_record = [samples_per_record[int(index)] for index in selection]
+
+            distinct = sorted(set(samples_per_record))
+            if len(distinct) == 1:
+                continue
+
+            # ``sfreq`` is the rate of the channels with the most samples per record, so the rest
+            # scale off it without needing the record length.
+            sampling_frequency = float(self.raw.info["sfreq"])
+            native_rates = ", ".join(f"{sampling_frequency * value / distinct[-1]:g} Hz" for value in distinct)
+            raise ValueError(
+                f"This source stores channels at different sampling rates ({native_rates}), which MNE "
+                f"resolves by resampling the slower ones up to {sampling_frequency:g} Hz. Those "
+                "interpolated samples were never recorded, so they are not written. Read one rate at a "
+                "time instead, passing `exclude` to the MNE reader so the channels that remain share a "
+                "rate, and compose one interface per rate."
+            )
 
     def get_channel_types(self) -> set[str]:
         """
