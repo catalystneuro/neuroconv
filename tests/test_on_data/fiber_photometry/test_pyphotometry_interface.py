@@ -36,7 +36,7 @@ def get_fixture_file_path(directory_name: str):
 
 
 def test_available_streams_are_named_after_the_analog_lines():
-    file_path = get_fixture_file_path("legacy_one_colour_time_division")
+    file_path = get_fixture_file_path("one_colour_time_division")
 
     assert PyPhotometryFiberPhotometryInterface.get_available_streams(file_path=file_path) == [
         "analog_1",
@@ -46,7 +46,7 @@ def test_available_streams_are_named_after_the_analog_lines():
 
 def test_color_multiplexed_lines_are_named_by_line_and_color():
     """The fork's two analog lines each carry two colors, so a line alone does not name a signal."""
-    file_path = get_fixture_file_path("four_colour_fork")
+    file_path = get_fixture_file_path("four_colour_time_division")
 
     assert PyPhotometryFiberPhotometryInterface.get_available_streams(file_path=file_path) == [
         "analog_1",
@@ -58,14 +58,14 @@ def test_color_multiplexed_lines_are_named_by_line_and_color():
 
 def test_asking_for_a_signal_the_file_does_not_have_is_refused():
     """Which signals exist depends on the acquisition mode, so this is a mistake worth naming."""
-    file_path = get_fixture_file_path("legacy_one_colour_time_division")
+    file_path = get_fixture_file_path("one_colour_time_division")
 
     with pytest.raises(ValueError, match="'analog_3' is not a signal of"):
         PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_3")
 
 
 def test_session_start_time_comes_from_the_header():
-    file_path = get_fixture_file_path("legacy_one_colour_time_division")
+    file_path = get_fixture_file_path("one_colour_time_division")
     interface = PyPhotometryFiberPhotometryInterface(file_path=file_path)
 
     metadata = interface.get_metadata()
@@ -84,7 +84,7 @@ def test_each_signal_is_written_with_the_start_time_it_was_sampled_at(stream_nam
     and nothing else. Writing both at zero, which is what the vendor reader implies, would place two
     measurements taken 3.8 ms apart at the same instant.
     """
-    file_path = get_fixture_file_path("legacy_one_colour_time_division")
+    file_path = get_fixture_file_path("one_colour_time_division")
     interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name=stream_name)
     metadata = interface.get_metadata()
 
@@ -101,7 +101,7 @@ def test_each_signal_is_written_with_the_start_time_it_was_sampled_at(stream_nam
 
 def test_the_written_signal_matches_the_file():
     """The values written are the file's own, scaled by the header's volts per division."""
-    file_path = get_fixture_file_path("legacy_two_colour_continuous")
+    file_path = get_fixture_file_path("two_colour_continuous")
     interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
     expected = interface.recording.analog_signals[0].data_in_volts
 
@@ -121,7 +121,7 @@ def test_continuous_recordings_say_why_their_signals_share_a_timebase(tmp_path):
     document states the resulting offset. So the series carry the header's timebase and say so, rather
     than carrying a start time that would read as measured.
     """
-    file_path = get_fixture_file_path("legacy_two_colour_continuous")
+    file_path = get_fixture_file_path("two_colour_continuous")
     interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2")
 
     nwbfile_path = tmp_path / "continuous.nwb"
@@ -136,7 +136,7 @@ def test_continuous_recordings_say_why_their_signals_share_a_timebase(tmp_path):
 
 def test_pulsed_recordings_carry_no_such_note():
     """A pulsed file's stagger is exact, so it is in the start time and needs no explanation."""
-    file_path = get_fixture_file_path("legacy_one_colour_time_division")
+    file_path = get_fixture_file_path("one_colour_time_division")
     interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2")
 
     assert "description" not in interface.get_metadata()["FiberPhotometry"][interface.metadata_key]

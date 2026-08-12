@@ -34,25 +34,25 @@ FIXTURE_EXPECTATIONS = {
         signal_rate=130.0,
         starting_times=[0.0, 1 / 260],
     ),
-    "legacy_one_colour_time_division": dict(
+    "one_colour_time_division": dict(
         mode="1 colour time div.",
         signal_count=2,
         signal_rate=130.0,
         starting_times=[0.0, 1 / 260],
     ),
-    "legacy_two_colour_continuous": dict(
+    "two_colour_continuous": dict(
         mode="2 colour continuous",
         signal_count=2,
         signal_rate=1000.0,
         starting_times=[0.0, 0.0],
     ),
-    "legacy_indicator_named_pulsed": dict(
+    "indicator_named_modes": dict(
         mode="GCaMP/RFP_dif",
         signal_count=2,
         signal_rate=130.0,
         starting_times=[0.0, 1 / 260],
     ),
-    "four_colour_fork": dict(
+    "four_colour_time_division": dict(
         mode="4 colour time div.",
         signal_count=4,
         signal_rate=32.5,
@@ -97,7 +97,9 @@ def test_every_header_generation_reads(directory_name):
         assert np.all(np.isfinite(signal.data_in_volts))
 
 
-@pytest.mark.parametrize("directory_name", [name for name in FIXTURE_EXPECTATIONS if name != "four_colour_fork"])
+@pytest.mark.parametrize(
+    "directory_name", [name for name in FIXTURE_EXPECTATIONS if name != "four_colour_time_division"]
+)
 def test_signals_match_the_upstream_de_interleave(directory_name):
     """Every ordinary recording must decode to exactly what pyPhotometry's own reader returns.
 
@@ -126,7 +128,7 @@ def test_the_fork_decodes_to_four_smooth_traces():
     the documented way it yields traces that alternate every sample, which is what a negative lag-one
     autocorrelation measures; read as four color-multiplexed signals it yields fluorescence.
     """
-    file_path = get_fixture_file_path("four_colour_fork")
+    file_path = get_fixture_file_path("four_colour_time_division")
 
     recording = read_ppd(file_path)
 
