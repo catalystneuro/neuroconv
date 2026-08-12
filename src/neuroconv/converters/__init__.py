@@ -25,6 +25,7 @@ from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
     BrukerTiffSinglePlaneConverter,
 )
 from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConverter
+from ..datainterfaces.ophys.suite2p.suite2pconverter import Suite2pConverter
 
 converter_list = [
     AxonIntracellularConverter,
@@ -37,6 +38,7 @@ converter_list = [
     BrukerTiffMultiPlaneConverter,
     BrukerTiffSinglePlaneConverter,
     MiniscopeConverter,
+    Suite2pConverter,
     SortedRecordingConverter,
     SortedSpikeGLXConverter,
     GuppyConverter,
