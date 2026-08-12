@@ -2919,6 +2919,77 @@ class TestAddRecording:
         electrodes_df = nwbfile.electrodes.to_dataframe()
         assert all(row_group is group for row_group in electrodes_df["group"])
 
+    def test_device_model_is_written_and_linked(self):
+        """A device reached from an electrode group can name its model with ``device_model_metadata_key``.
+        The model is resolved against ``metadata["DeviceModels"]``, so the whole metadata has to reach the
+        device writer, not just the ``Devices`` registry."""
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        channel_groups = sorted({str(group) for group in recording.get_channel_groups()})
+        metadata = {
+            "DeviceModels": {
+                "utah_array_model": {"name": "UtahArray96", "manufacturer": "Blackrock Neurotech"},
+            },
+            "Devices": {
+                "utah_array": {"name": "UtahArrayM1", "device_model_metadata_key": "utah_array_model"},
+            },
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    "m1": {
+                        "name": channel_groups[0],
+                        "description": "a group",
+                        "location": "M1",
+                        "device_metadata_key": "utah_array",
+                    },
+                },
+                "ElectricalSeries": {"series": {"name": "ElectricalSeries", "description": "acq"}},
+            },
+        }
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
+        )
+
+        device = nwbfile.devices["UtahArrayM1"]
+        assert nwbfile.electrode_groups[channel_groups[0]].device is device
+        assert device.model is nwbfile.device_models["UtahArray96"]
+        assert device.model.manufacturer == "Blackrock Neurotech"
+
+    def test_caller_metadata_is_not_mutated(self):
+        """The write path reads the caller's metadata and never writes back into it, so the same dictionary
+        can be reused across calls. Nothing else pins this on the ecephys path, which now hands its
+        ``metadata`` straight down to the device writer rather than a private copy."""
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        channel_groups = sorted({str(group) for group in recording.get_channel_groups()})
+        metadata = {
+            "DeviceModels": {"probe_model": {"name": "ProbeModel", "manufacturer": "ACME"}},
+            "Devices": {"probe": {"name": "Probe", "device_model_metadata_key": "probe_model"}},
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    "shank": {"name": channel_groups[0], "device_metadata_key": "probe"},
+                },
+                "ElectricalSeries": {"series": {"name": "ElectricalSeries", "description": "acq"}},
+            },
+        }
+        metadata_before = deepcopy(metadata)
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
+        )
+
+        assert metadata == metadata_before
+
     def test_missing_electrode_group_fields_are_defaulted(self):
         """An electrode group entry that omits description/location is not rejected; the write path fills
         those required NWB fields from the default template instead of raising, so an interface can
