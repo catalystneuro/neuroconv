@@ -11,7 +11,9 @@ import json
 
 import numpy as np
 import pytest
+from pynwb import NWBHDF5IO
 
+from neuroconv.datainterfaces import PyPhotometryFiberPhotometryInterface
 from neuroconv.datainterfaces.fiber_photometry.pyphotometry._ppd import read_ppd
 
 VOLTS_PER_DIVISION = 0.00010122
@@ -218,3 +220,49 @@ def test_color_multiplexed_lines_split_and_halve_their_rate(tmp_path):
     )
     np.testing.assert_allclose(recording.analog_signals[0].data_in_volts, np.array([10, 11]) * VOLTS_PER_DIVISION)
     np.testing.assert_allclose(recording.analog_signals[3].data_in_volts, np.array([40, 41]) * VOLTS_PER_DIVISION)
+
+
+def test_paired_file_writes_the_difference_as_the_response_and_both_raws_beside_it(tmp_path):
+    """A version 1.1 pulsed recording measured twice per sample, and the file keeps all of it.
+
+    The response series carries the difference, which is what the board itself wrote before 1.1 and what
+    every analysis expects. The LED-on and LED-off measurements go in as plain ``TimeSeries``: they are
+    measurements, so leaving them out would destroy data, but the baseline was taken with the excitation
+    off and so has no honest ``FiberPhotometryTable`` row to point at.
+    """
+    header = {
+        "mode": "2EX_2EM_pulsed",
+        "sampling_rate": 130,
+        "volts_per_division": [VOLTS_PER_DIVISION, VOLTS_PER_DIVISION],
+        "n_analog_signals": 2,
+        "n_digital_signals": 2,
+        "version": "1.1",
+        "date_time": "2025-11-18T10:00:00",
+    }
+    file_path = tmp_path / "paired_write.ppd"
+    write_ppd_file(file_path, header, [1000, 100, 2000, 200, 1010, 110, 2010, 210])
+
+    interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
+    nwbfile_path = tmp_path / "paired.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=interface.get_metadata(), overwrite=True)
+
+    with NWBHDF5IO(nwbfile_path, "r") as io:
+        acquisition = io.read().acquisition
+        assert set(acquisition) == {
+            "FiberPhotometryResponseSeries",
+            "FiberPhotometryResponseSeriesRawLEDOn",
+            "FiberPhotometryResponseSeriesRawBaseline",
+        }
+        assert acquisition["FiberPhotometryResponseSeries"].data[:] == pytest.approx(
+            np.array([900, 900]) * VOLTS_PER_DIVISION
+        )
+        assert acquisition["FiberPhotometryResponseSeriesRawLEDOn"].data[:] == pytest.approx(
+            np.array([1000, 1010]) * VOLTS_PER_DIVISION
+        )
+        assert acquisition["FiberPhotometryResponseSeriesRawBaseline"].data[:] == pytest.approx(
+            np.array([100, 110]) * VOLTS_PER_DIVISION
+        )
+        # The raws share the response series' timing, since they are the same measurement occasion.
+        for name in acquisition:
+            assert acquisition[name].rate == 130.0
+            assert acquisition[name].starting_time == pytest.approx(0.0)
