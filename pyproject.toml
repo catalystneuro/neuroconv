@@ -430,6 +430,7 @@ ophys = [
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
     "neuroconv[npm_fp]",
+    "neuroconv[pyphotometry_fp]",
     "neuroconv[csv_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
