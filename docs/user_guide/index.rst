@@ -27,6 +27,6 @@ and synchronize data across multiple sources.
   backend_configuration
   linking_sorted_data
   yaml
-  bids
+  converting_a_dataset
   docker_demo
   aws_demo
