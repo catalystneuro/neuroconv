@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "_ext"))
 
 project = "NeuroConv"
 copyright = "2022, CatalystNeuro"
@@ -20,6 +21,8 @@ extensions = [
     "sphinx_search.extension",  # Allows for auto search function the documentation
     "sphinx.ext.viewcode",  # Shows source code in the documentation
     "sphinx.ext.extlinks",  # Allows to use shorter external links defined in the extlinks variable.
+    "sphinx_design",  # Provides the tab-set/tab-item directives the metadata templates are shown in.
+    "metadata_template",  # Local, in docs/_ext. Renders get_metadata_template() as YAML and JSON.
 ]
 
 templates_path = ["_templates"]

@@ -718,8 +718,8 @@ and an isosbestic wavelength give 2N rows, one per (fiber, wavelength) trace, wr
 N columns each. One interface per wavelength, ``num_fibers=N`` on each, one shared table.
 
 
-How to Discover What to Annotate, With a Template
--------------------------------------------------
+How to Annotate from a Template
+-------------------------------
 
 The sections above build the chain by hand, one block at a time, so that each piece and each link
 between them is visible. Once you know the shape, you do not have to type it again.
@@ -736,26 +736,8 @@ interface writes, with every cross-reference resolved and every field only you c
     )
     metadata = interface.get_metadata_template()
 
-.. admonition:: What comes back
-   :class: tip
-
-   .. code-block:: text
-
-       Devices
-       ├── optical_fiber_0      fiber_insertion: ap/ml/dv/depth = None    model: None
-       ├── excitation_source                                             model: None
-       ├── photodetector                                                 model: None
-       ├── dichroic_mirror      ─┐
-       ├── excitation_filter     ├─ optional hardware
-       └── emission_filter      ─┘
-
-       DeviceModels             optical_fiber / excitation_source / photodetector, all blank
-
-       FiberPhotometry
-       ├── FiberPhotometryIndicators · indicator        label = None
-       ├── FiberPhotometryTable · row "trace_0"         location, excitation, emission = None
-       │                                                fiber/source/detector/indicator ──▶ wired
-       └── calcium_signal                               region ──▶ ["trace_0"]
+What comes back is printed in full, in both YAML and JSON, at
+:ref:`fiber_photometry_metadata_template`.
 
 This is a discovery aid, and it answers the question the earlier sections answer in prose: what does
 this file need from me? **The blanks are the checklist.** What comes back ``None`` is exactly what the

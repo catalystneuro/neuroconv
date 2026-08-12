@@ -160,6 +160,24 @@ The complete fiber photometry metadata structure (one interface with ``metadata_
     }
 
 
+.. _fiber_photometry_metadata_template:
+
+The Structure as YAML and JSON
+------------------------------
+
+The same structure, with the blanks an interface cannot fill left as ``null``, as
+``get_metadata_template()`` returns it. Both formats are shown because ``load_dict_from_file`` accepts
+``.yaml``, ``.yml`` and ``.json`` alike, so a conversion specification's ``metadata`` block may be
+written in either and merged onto ``get_metadata()`` (see :doc:`/user_guide/yaml`).
+
+This block is generated when the documentation builds, from a two-fiber interface, so it is what the
+method returns rather than a transcription of it. Two rows are shown because the table scales with the
+recording: one row per trace, named in the order the series' columns are written, and
+``fiber_photometry_table_region`` has to list them in that same order.
+
+.. metadata-template:: MockFiberPhotometryInterface(num_fibers=2, metadata_key="gcamp_dms")
+   :exclude: NWBFile
+
 The metadata_key Parameter
 --------------------------
 
