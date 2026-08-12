@@ -1,0 +1,1027 @@
+{
+  "description": "Published specifications for commercial fiber photometry hardware, keyed to the device model classes of the ndx-ophys-devices extension. Every entry carries the vendor page the values were read from. These are a copy-from reference, not values to infer from a recording file: no fiber photometry format stores the fiber, excitation source or photodetector specs, so the part has to be identified by the person who ran the rig. Product lines change; treat source_url as the authority and re-verify against the live page.",
+  "device_models": [
+    {
+      "part": "200/240-0.22",
+      "source_url": "https://neuro.doriclenses.com/products/mono-fiber-optic-cannulas",
+      "notes": "Glass fiber.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "200/240-0.22",
+        "numerical_aperture": 0.22,
+        "core_diameter_in_um": 200.0
+      }
+    },
+    {
+      "part": "200/245-0.37",
+      "source_url": "https://neuro.doriclenses.com/products/mono-fiber-optic-cannulas",
+      "notes": "Glass fiber.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "200/245-0.37",
+        "numerical_aperture": 0.37,
+        "core_diameter_in_um": 200.0
+      }
+    },
+    {
+      "part": "400/470-0.37",
+      "source_url": "https://neuro.doriclenses.com/products/mono-fiber-optic-cannulas",
+      "notes": "Glass fiber.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "400/470-0.37",
+        "numerical_aperture": 0.37,
+        "core_diameter_in_um": 400.0
+      }
+    },
+    {
+      "part": "200/230-0.48",
+      "source_url": "https://neuro.doriclenses.com/products/mono-fiber-optic-cannulas",
+      "notes": "Polymer fiber.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "200/230-0.48",
+        "numerical_aperture": 0.48,
+        "core_diameter_in_um": 200.0
+      }
+    },
+    {
+      "part": "400/430-0.48",
+      "source_url": "https://neuro.doriclenses.com/products/mono-fiber-optic-cannulas",
+      "notes": "Polymer fiber.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "400/430-0.48",
+        "numerical_aperture": 0.48,
+        "core_diameter_in_um": 400.0
+      }
+    },
+    {
+      "part": "200/250-0.66",
+      "source_url": "https://neuro.doriclenses.com/products/mono-fiber-optic-cannulas",
+      "notes": "Borosilicate fiber.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "200/250-0.66",
+        "numerical_aperture": 0.66,
+        "core_diameter_in_um": 200.0
+      }
+    },
+    {
+      "part": "400/430-0.66",
+      "source_url": "https://neuro.doriclenses.com/products/mono-fiber-optic-cannulas",
+      "notes": "Borosilicate fiber.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "400/430-0.66",
+        "numerical_aperture": 0.66,
+        "core_diameter_in_um": 400.0
+      }
+    },
+    {
+      "part": "CFMC12L20",
+      "source_url": "https://www.thorlabs.com/thorproduct.cfm?partnumber=CFMC12L20",
+      "notes": "Implantable cannula, 20 mm.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "CFMC12L20",
+        "numerical_aperture": 0.39,
+        "core_diameter_in_um": 200.0,
+        "ferrule_diameter_in_mm": 2.5
+      }
+    },
+    {
+      "part": "CFMC22L05",
+      "source_url": "https://www.thorlabs.com/thorproduct.cfm?partnumber=CFMC22L05",
+      "notes": "Implantable cannula, 5 mm.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "CFMC22L05",
+        "numerical_aperture": 0.22,
+        "core_diameter_in_um": 200.0,
+        "ferrule_diameter_in_mm": 2.5
+      }
+    },
+    {
+      "part": "CFMLC52L20",
+      "source_url": "https://www.thorlabs.com/thorproduct.cfm?partnumber=CFMLC52L20",
+      "notes": "Implantable cannula, 20 mm.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "CFMLC52L20",
+        "numerical_aperture": 0.5,
+        "core_diameter_in_um": 200.0,
+        "ferrule_diameter_in_mm": 1.25
+      }
+    },
+    {
+      "part": "CFMC54L20",
+      "source_url": "https://www.thorlabs.com/thorproduct.cfm?partnumber=CFMC54L20",
+      "notes": "Implantable cannula, 20 mm.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "CFMC54L20",
+        "numerical_aperture": 0.5,
+        "core_diameter_in_um": 400.0,
+        "ferrule_diameter_in_mm": 2.5
+      }
+    },
+    {
+      "part": "FT200UMT",
+      "source_url": "https://www.thorlabs.com/thorproduct.cfm?partnumber=FT200UMT",
+      "notes": "Bare multimode fiber, no ferrule.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "FT200UMT",
+        "numerical_aperture": 0.39,
+        "core_diameter_in_um": 200.0
+      }
+    },
+    {
+      "part": "FP200URT",
+      "source_url": "https://www.thorlabs.com/thorproduct.cfm?partnumber=FP200URT",
+      "notes": "Bare multimode fiber, no ferrule.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "FP200URT",
+        "numerical_aperture": 0.5,
+        "core_diameter_in_um": 200.0
+      }
+    },
+    {
+      "part": "R-FOC-BF200C-39NA",
+      "source_url": "https://www.rwdstco.com/product-item/fiber-optic-cannulae-with-ceramic-ferrule/",
+      "notes": "Black series.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "RWD Life Science",
+        "model_number": "R-FOC-BF200C-39NA",
+        "numerical_aperture": 0.39,
+        "core_diameter_in_um": 200.0,
+        "ferrule_diameter_in_mm": 2.5
+      }
+    },
+    {
+      "part": "R-FOC-BF400C-39NA",
+      "source_url": "https://www.rwdstco.com/product-item/fiber-optic-cannulae-with-ceramic-ferrule/",
+      "notes": "Black series.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "RWD Life Science",
+        "model_number": "R-FOC-BF400C-39NA",
+        "numerical_aperture": 0.39,
+        "core_diameter_in_um": 400.0,
+        "ferrule_diameter_in_mm": 2.5
+      }
+    },
+    {
+      "part": "R-FOC-L200C-22NA",
+      "source_url": "https://www.rwdstco.com/product-item/fiber-optic-cannulae-with-ceramic-ferrule/",
+      "notes": "White series.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "RWD Life Science",
+        "model_number": "R-FOC-L200C-22NA",
+        "numerical_aperture": 0.22,
+        "core_diameter_in_um": 200.0,
+        "ferrule_diameter_in_mm": 1.25
+      }
+    },
+    {
+      "part": "R-FOC-F400C-50NA",
+      "source_url": "https://www.rwdstco.com/product-item/fiber-optic-cannulae-with-ceramic-ferrule/",
+      "notes": "White series.",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "RWD Life Science",
+        "model_number": "R-FOC-F400C-50NA",
+        "numerical_aperture": 0.5,
+        "core_diameter_in_um": 400.0,
+        "ferrule_diameter_in_mm": 2.5
+      }
+    },
+    {
+      "part": "LxFX-KIT-2C",
+      "source_url": "https://www.tdt.com/docs/fiber-photometry-user-guide/optical-connections/",
+      "notes": "Two-channel kit. The core diameter is chosen at ordering (200, 400 or 600 um).",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Tucker-Davis Technologies",
+        "model_number": "LxFX-KIT-2C",
+        "numerical_aperture": 0.5
+      }
+    },
+    {
+      "part": "LxFX-KIT-3C",
+      "source_url": "https://www.tdt.com/docs/fiber-photometry-user-guide/optical-connections/",
+      "notes": "Three-channel kit. The core diameter is chosen at ordering (200, 400 or 600 um).",
+      "model": {
+        "type": "OpticalFiberModel",
+        "manufacturer": "Tucker-Davis Technologies",
+        "model_number": "LxFX-KIT-3C",
+        "numerical_aperture": 0.5
+      }
+    },
+    {
+      "part": "CLED_405",
+      "source_url": "https://neuro.doriclenses.com/products/connectorized-led-1",
+      "notes": "Isosbestic control. The range is the nominal center plus the published 12 nm bandwidth.",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "CLED_405",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "wavelength_range_in_nm": [
+          399.0,
+          411.0
+        ]
+      }
+    },
+    {
+      "part": "CLED_470",
+      "source_url": "https://neuro.doriclenses.com/products/connectorized-led-1",
+      "notes": "The '465 nm' of a Doric 405/465 system: no CLED_465 exists, and this is the nearest part.",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "CLED_470",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "wavelength_range_in_nm": [
+          457.0,
+          484.0
+        ]
+      }
+    },
+    {
+      "part": "CLED_560",
+      "source_url": "https://neuro.doriclenses.com/products/connectorized-led-1",
+      "notes": "Red-shifted indicators. The published 100 nm bandwidth makes this range approximate.",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "CLED_560",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "wavelength_range_in_nm": [
+          510.0,
+          610.0
+        ]
+      }
+    },
+    {
+      "part": "Lx405",
+      "source_url": "https://www.tdt.com/product/lux-leds-and-sensors/",
+      "notes": "Isosbestic control.",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Tucker-Davis Technologies",
+        "model_number": "Lx405",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "description": "Lux LED, 405 nm nominal center wavelength; bandwidth not published."
+      }
+    },
+    {
+      "part": "Lx415",
+      "source_url": "https://www.tdt.com/product/lux-leds-and-sensors/",
+      "notes": "",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Tucker-Davis Technologies",
+        "model_number": "Lx415",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "description": "Lux LED, 415 nm nominal center wavelength; bandwidth not published."
+      }
+    },
+    {
+      "part": "Lx465",
+      "source_url": "https://www.tdt.com/product/lux-leds-and-sensors/",
+      "notes": "",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Tucker-Davis Technologies",
+        "model_number": "Lx465",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "description": "Lux LED, 465 nm nominal center wavelength; bandwidth not published."
+      }
+    },
+    {
+      "part": "Lx560",
+      "source_url": "https://www.tdt.com/product/lux-leds-and-sensors/",
+      "notes": "",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Tucker-Davis Technologies",
+        "model_number": "Lx560",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "description": "Lux LED, 560 nm nominal center wavelength; bandwidth not published."
+      }
+    },
+    {
+      "part": "FP3002 415 nm",
+      "source_url": "https://www.mbfbioscience.com/products/fp3002/",
+      "notes": "Isosbestic control. The range is the published optical passband, not a certified bandwidth.",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Neurophotometrics",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "wavelength_range_in_nm": [
+          400.0,
+          425.0
+        ],
+        "description": "FP3002 onboard 415 nm excitation source."
+      }
+    },
+    {
+      "part": "FP3002 470 nm",
+      "source_url": "https://www.mbfbioscience.com/products/fp3002/",
+      "notes": "Green indicators such as GCaMP and dLight. The range is the optical passband.",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Neurophotometrics",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "wavelength_range_in_nm": [
+          445.0,
+          486.0
+        ],
+        "description": "FP3002 onboard 470 nm excitation source."
+      }
+    },
+    {
+      "part": "FP3002 560 nm",
+      "source_url": "https://www.mbfbioscience.com/products/fp3002/",
+      "notes": "Red-shifted indicators such as RCaMP. The range is the optical passband.",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Neurophotometrics",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "wavelength_range_in_nm": [
+          535.0,
+          569.0
+        ],
+        "description": "FP3002 onboard 560 nm excitation source."
+      }
+    },
+    {
+      "part": "Fluorescence Detector",
+      "source_url": "https://neuro.doriclenses.com/products/doric-fluorescence-detector",
+      "notes": "No stock keeping unit is printed, so the key names the product. The gain is switchable, so set it from the setting you recorded with.",
+      "model": {
+        "type": "PhotodetectorModel",
+        "manufacturer": "Doric Lenses",
+        "detector_type": "photodiode",
+        "description": "Silicon photodiode, 1 x 1 mm active area; switchable transimpedance gain of 1x, 10x or 100x, from 2.0e9 to 2.0e11 V/A; responsivity 0.38 A/W at 550 nm and 0.60 A/W at 960 nm; noise-equivalent power below 12 fW/sqrt(Hz)."
+      }
+    },
+    {
+      "part": "2151",
+      "source_url": "https://www.newport.com/p/2151",
+      "notes": "Resold with Doric systems. The manual gives the range from 300 nm where the product page gives 320.",
+      "model": {
+        "type": "PhotodetectorModel",
+        "manufacturer": "Newport",
+        "model_number": "2151",
+        "detector_type": "photodiode",
+        "wavelength_range_in_nm": [
+          320.0,
+          1050.0
+        ],
+        "gain": 100000000000.0,
+        "gain_unit": "V/W",
+        "description": "Femtowatt photoreceiver, silicon PIN photodiode of 1.0 mm diameter; the gain is the maximum conversion gain; peak responsivity 0.5 A/W; -3 dB bandwidth from DC to 750 Hz."
+      }
+    },
+    {
+      "part": "PS1",
+      "source_url": "https://www.tdt.com/product/lux-leds-and-sensors/",
+      "notes": "The datasheet prints the gain with no unit, so no gain unit is shipped.",
+      "model": {
+        "type": "PhotodetectorModel",
+        "manufacturer": "Tucker-Davis Technologies",
+        "model_number": "PS1",
+        "detector_type": "photodiode",
+        "wavelength_range_in_nm": [
+          320.0,
+          1100.0
+        ],
+        "gain": 10000000000.0,
+        "description": "Lux photosensor, transimpedance photodiode; bandwidth from DC to 700 Hz; sensitivity 240 fW at 375 nm."
+      }
+    },
+    {
+      "part": "PS2",
+      "source_url": "https://www.tdt.com/product/lux-leds-and-sensors/",
+      "notes": "Published as the PS1, with roughly twice the signal-to-noise ratio.",
+      "model": {
+        "type": "PhotodetectorModel",
+        "manufacturer": "Tucker-Davis Technologies",
+        "model_number": "PS2",
+        "detector_type": "photodiode",
+        "wavelength_range_in_nm": [
+          320.0,
+          1100.0
+        ],
+        "gain": 10000000000.0,
+        "description": "Lux photosensor, transimpedance photodiode; bandwidth from DC to 700 Hz; roughly twice the signal-to-noise ratio of the PS1."
+      }
+    },
+    {
+      "part": "FP3002 camera",
+      "source_url": "https://www.mbfbioscience.com/products/fp3002/",
+      "notes": "The sensor's own make, model and gain are unpublished, so the manufacturer names the system vendor.",
+      "model": {
+        "type": "PhotodetectorModel",
+        "manufacturer": "Neurophotometrics",
+        "detector_type": "sCMOS",
+        "description": "FP3002 onboard sCMOS camera; frame rate 16 to 200 Hz, up to 8 regions of interest."
+      }
+    },
+    {
+      "part": "FMC4 excitation 400-410 nm",
+      "source_url": "https://neuro.doriclenses.com/products/fmc4-gcamp",
+      "notes": "Isosbestic band. The FMC4 offers four selectable isosbestic passbands; this is one of them.",
+      "model": {
+        "type": "BandOpticalFilterModel",
+        "manufacturer": "Doric Lenses",
+        "filter_type": "Bandpass",
+        "center_wavelength_in_nm": 405.0,
+        "bandwidth_in_nm": 10.0,
+        "description": "Bandpass filter of the FMC4 four-port GCaMP fluorescence mini-cube; published passband 400 to 410 nm."
+      }
+    },
+    {
+      "part": "FMC4 excitation 410-420 nm",
+      "source_url": "https://neuro.doriclenses.com/products/fmc4-gcamp",
+      "notes": "Isosbestic band. The FMC4 offers four selectable isosbestic passbands; this is one of them.",
+      "model": {
+        "type": "BandOpticalFilterModel",
+        "manufacturer": "Doric Lenses",
+        "filter_type": "Bandpass",
+        "center_wavelength_in_nm": 415.0,
+        "bandwidth_in_nm": 10.0,
+        "description": "Bandpass filter of the FMC4 four-port GCaMP fluorescence mini-cube; published passband 410 to 420 nm."
+      }
+    },
+    {
+      "part": "FMC4 excitation 421-433 nm",
+      "source_url": "https://neuro.doriclenses.com/products/fmc4-gcamp",
+      "notes": "Isosbestic band. The FMC4 offers four selectable isosbestic passbands; this is one of them.",
+      "model": {
+        "type": "BandOpticalFilterModel",
+        "manufacturer": "Doric Lenses",
+        "filter_type": "Bandpass",
+        "center_wavelength_in_nm": 427.0,
+        "bandwidth_in_nm": 12.0,
+        "description": "Bandpass filter of the FMC4 four-port GCaMP fluorescence mini-cube; published passband 421 to 433 nm."
+      }
+    },
+    {
+      "part": "FMC4 excitation 433-445 nm",
+      "source_url": "https://neuro.doriclenses.com/products/fmc4-gcamp",
+      "notes": "Isosbestic band. The FMC4 offers four selectable isosbestic passbands; this is one of them.",
+      "model": {
+        "type": "BandOpticalFilterModel",
+        "manufacturer": "Doric Lenses",
+        "filter_type": "Bandpass",
+        "center_wavelength_in_nm": 439.0,
+        "bandwidth_in_nm": 12.0,
+        "description": "Bandpass filter of the FMC4 four-port GCaMP fluorescence mini-cube; published passband 433 to 445 nm."
+      }
+    },
+    {
+      "part": "FMC4 excitation 460-490 nm",
+      "source_url": "https://neuro.doriclenses.com/products/fmc4-gcamp",
+      "notes": "Functional excitation, the channel a 405/465 system calls its 465 nm one.",
+      "model": {
+        "type": "BandOpticalFilterModel",
+        "manufacturer": "Doric Lenses",
+        "filter_type": "Bandpass",
+        "center_wavelength_in_nm": 475.0,
+        "bandwidth_in_nm": 30.0,
+        "description": "Bandpass filter of the FMC4 four-port GCaMP fluorescence mini-cube; published passband 460 to 490 nm."
+      }
+    },
+    {
+      "part": "FMC4 emission 500-550 nm",
+      "source_url": "https://neuro.doriclenses.com/products/fmc4-gcamp",
+      "notes": "GCaMP emission. Out-of-band rejection is optical density 5.",
+      "model": {
+        "type": "BandOpticalFilterModel",
+        "manufacturer": "Doric Lenses",
+        "filter_type": "Bandpass",
+        "center_wavelength_in_nm": 525.0,
+        "bandwidth_in_nm": 50.0,
+        "description": "Bandpass filter of the FMC4 four-port GCaMP fluorescence mini-cube; published passband 500 to 550 nm."
+      }
+    },
+    {
+      "part": "FMC5 excitation 460-490 nm",
+      "source_url": "https://neuro.doriclenses.com/products/fmc5",
+      "notes": "Green excitation.",
+      "model": {
+        "type": "BandOpticalFilterModel",
+        "manufacturer": "Doric Lenses",
+        "filter_type": "Bandpass",
+        "center_wavelength_in_nm": 475.0,
+        "bandwidth_in_nm": 30.0,
+        "description": "Bandpass filter of the FMC5 five-port two-fluorophore fluorescence mini-cube; published passband 460 to 490 nm."
+      }
+    },
+    {
+      "part": "FMC5 emission 500-550 nm",
+      "source_url": "https://neuro.doriclenses.com/products/fmc5",
+      "notes": "Green emission.",
+      "model": {
+        "type": "BandOpticalFilterModel",
+        "manufacturer": "Doric Lenses",
+        "filter_type": "Bandpass",
+        "center_wavelength_in_nm": 525.0,
+        "bandwidth_in_nm": 50.0,
+        "description": "Bandpass filter of the FMC5 five-port two-fluorophore fluorescence mini-cube; published passband 500 to 550 nm."
+      }
+    },
+    {
+      "part": "FMC5 excitation 540-570 nm",
+      "source_url": "https://neuro.doriclenses.com/products/fmc5",
+      "notes": "Red excitation, the channel a system calls its 560 nm one.",
+      "model": {
+        "type": "BandOpticalFilterModel",
+        "manufacturer": "Doric Lenses",
+        "filter_type": "Bandpass",
+        "center_wavelength_in_nm": 555.0,
+        "bandwidth_in_nm": 30.0,
+        "description": "Bandpass filter of the FMC5 five-port two-fluorophore fluorescence mini-cube; published passband 540 to 570 nm."
+      }
+    },
+    {
+      "part": "FMC5 emission 580-680 nm",
+      "source_url": "https://neuro.doriclenses.com/products/fmc5",
+      "notes": "Red emission.",
+      "model": {
+        "type": "BandOpticalFilterModel",
+        "manufacturer": "Doric Lenses",
+        "filter_type": "Bandpass",
+        "center_wavelength_in_nm": 630.0,
+        "bandwidth_in_nm": 100.0,
+        "description": "Bandpass filter of the FMC5 five-port two-fluorophore fluorescence mini-cube; published passband 580 to 680 nm."
+      }
+    },
+    {
+      "part": "DMLP425",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=3313",
+      "notes": "Isosbestic-band splitter.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "DMLP425",
+        "description": "Ø1\" longpass dichroic mirror, 425 nm cut-on.",
+        "cut_on_wavelength_in_nm": 425.0,
+        "reflection_band_in_nm": [
+          380.0,
+          410.0
+        ],
+        "transmission_band_in_nm": [
+          440.0,
+          800.0
+        ]
+      }
+    },
+    {
+      "part": "DMLP490",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=3313",
+      "notes": "",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "DMLP490",
+        "description": "Longpass dichroic mirror, 490 nm cut-on.",
+        "cut_on_wavelength_in_nm": 490.0,
+        "reflection_band_in_nm": [
+          380.0,
+          475.0
+        ],
+        "transmission_band_in_nm": [
+          505.0,
+          800.0
+        ]
+      }
+    },
+    {
+      "part": "DMLP505",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=3313",
+      "notes": "The usual GCaMP-band splitter of this family.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "DMLP505",
+        "description": "Ø1\" longpass dichroic mirror, 505 nm cut-on.",
+        "cut_on_wavelength_in_nm": 505.0,
+        "reflection_band_in_nm": [
+          380.0,
+          490.0
+        ],
+        "transmission_band_in_nm": [
+          520.0,
+          800.0
+        ]
+      }
+    },
+    {
+      "part": "DMLP550",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=3313",
+      "notes": "",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "DMLP550",
+        "description": "Longpass dichroic mirror, 550 nm cut-on.",
+        "cut_on_wavelength_in_nm": 550.0,
+        "reflection_band_in_nm": [
+          380.0,
+          533.0
+        ],
+        "transmission_band_in_nm": [
+          565.0,
+          800.0
+        ]
+      }
+    },
+    {
+      "part": "DMLP567",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=3313",
+      "notes": "Sits at the red-shifted indicator edge (RCaMP, jRGECO).",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "DMLP567",
+        "description": "Ø1\" longpass dichroic mirror, 567 nm cut-on.",
+        "cut_on_wavelength_in_nm": 567.0,
+        "reflection_band_in_nm": [
+          380.0,
+          550.0
+        ],
+        "transmission_band_in_nm": [
+          584.0,
+          800.0
+        ]
+      }
+    },
+    {
+      "part": "DMLP605",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=3313",
+      "notes": "Separates red emission from 560 to 590 nm excitation.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "DMLP605",
+        "description": "Ø1\" longpass dichroic mirror, 605 nm cut-on.",
+        "cut_on_wavelength_in_nm": 605.0,
+        "reflection_band_in_nm": [
+          470.0,
+          590.0
+        ],
+        "transmission_band_in_nm": [
+          620.0,
+          800.0
+        ]
+      }
+    },
+    {
+      "part": "DMSP490",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=9240",
+      "notes": "Shortpass counterpart of the DMLP490; Thorlabs calls this figure the cutoff wavelength.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "DMSP490",
+        "description": "Shortpass dichroic mirror, 490 nm cutoff.",
+        "cut_off_wavelength_in_nm": 490.0,
+        "transmission_band_in_nm": [
+          380.0,
+          475.0
+        ],
+        "reflection_band_in_nm": [
+          505.0,
+          800.0
+        ]
+      }
+    },
+    {
+      "part": "DMSP505",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=9240",
+      "notes": "Shortpass counterpart of the DMLP505.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "DMSP505",
+        "description": "Shortpass dichroic mirror, 505 nm cutoff.",
+        "cut_off_wavelength_in_nm": 505.0,
+        "transmission_band_in_nm": [
+          390.0,
+          490.0
+        ],
+        "reflection_band_in_nm": [
+          520.0,
+          800.0
+        ]
+      }
+    },
+    {
+      "part": "DMSP567",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=9240",
+      "notes": "Shortpass counterpart of the DMLP567.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Thorlabs",
+        "model_number": "DMSP567",
+        "description": "Shortpass dichroic mirror, 567 nm cutoff.",
+        "cut_off_wavelength_in_nm": 567.0,
+        "transmission_band_in_nm": [
+          390.0,
+          550.0
+        ],
+        "reflection_band_in_nm": [
+          584.0,
+          800.0
+        ]
+      }
+    },
+    {
+      "part": "FF409-Di03-25x36",
+      "source_url": "https://www.idex-hs.com/docs/default-source/catalogs/semrock-catalog.pdf",
+      "notes": "Edge at the 405 to 415 nm isosbestic excitation.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Semrock",
+        "model_number": "FF409-Di03-25x36",
+        "description": "BrightLine single-edge general purpose dichroic beamsplitter, nominal edge wavelength 409 nm.",
+        "cut_on_wavelength_in_nm": 409.0,
+        "reflection_band_in_nm": [
+          327.0,
+          404.0
+        ],
+        "transmission_band_in_nm": [
+          415.0,
+          950.0
+        ]
+      }
+    },
+    {
+      "part": "FF470-Di01-25x36",
+      "source_url": "https://www.idex-hs.com/docs/default-source/catalogs/semrock-catalog.pdf",
+      "notes": "Edge at the 465 to 470 nm GCaMP excitation line.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Semrock",
+        "model_number": "FF470-Di01-25x36",
+        "description": "BrightLine single-edge general purpose dichroic beamsplitter, nominal edge wavelength 470 nm.",
+        "cut_on_wavelength_in_nm": 470.0,
+        "reflection_band_in_nm": [
+          350.0,
+          462.5
+        ],
+        "transmission_band_in_nm": [
+          477.0,
+          950.0
+        ]
+      }
+    },
+    {
+      "part": "FF495-Di03-25x36",
+      "source_url": "https://www.idex-hs.com/store/product-detail/ff495_di03_25x36/fl-007145",
+      "notes": "The classic GCaMP-band epifluorescence dichroic. Discontinued, so it describes existing rigs rather than new ones.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Semrock",
+        "model_number": "FF495-Di03-25x36",
+        "description": "495 nm edge BrightLine single-edge standard epifluorescence dichroic beamsplitter.",
+        "cut_on_wavelength_in_nm": 495.0,
+        "reflection_band_in_nm": [
+          350.0,
+          488.0
+        ],
+        "transmission_band_in_nm": [
+          502.0,
+          950.0
+        ]
+      }
+    },
+    {
+      "part": "FF495-Di04-25x36",
+      "source_url": "https://www.idex-hs.com/store/product-detail/ff495_di04_25x36/fl-439557",
+      "notes": "Current replacement for the FF495-Di03 at the same edge.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Semrock",
+        "model_number": "FF495-Di04-25x36",
+        "description": "495 nm BrightLine 2.0 single-edge standard epifluorescence dichroic beamsplitter.",
+        "cut_on_wavelength_in_nm": 495.0,
+        "reflection_band_in_nm": [
+          350.0,
+          488.0
+        ],
+        "transmission_band_in_nm": [
+          502.0,
+          950.0
+        ]
+      }
+    },
+    {
+      "part": "FF506-Di03-25x36",
+      "source_url": "https://www.idex-hs.com/docs/default-source/catalogs/semrock-catalog.pdf",
+      "notes": "Green-emission edge for a wider 470 nm excitation band.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Semrock",
+        "model_number": "FF506-Di03-25x36",
+        "description": "BrightLine single-edge general purpose dichroic beamsplitter, nominal edge wavelength 506 nm.",
+        "cut_on_wavelength_in_nm": 506.0,
+        "reflection_band_in_nm": [
+          350.0,
+          500.0
+        ],
+        "transmission_band_in_nm": [
+          513.0,
+          950.0
+        ]
+      }
+    },
+    {
+      "part": "FF562-Di03-25x36",
+      "source_url": "https://www.idex-hs.com/docs/default-source/catalogs/semrock-catalog.pdf",
+      "notes": "Edge just above the 560 nm excitation used for red-shifted indicators.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Semrock",
+        "model_number": "FF562-Di03-25x36",
+        "description": "BrightLine single-edge general purpose dichroic beamsplitter, nominal edge wavelength 562 nm.",
+        "cut_on_wavelength_in_nm": 562.0,
+        "reflection_band_in_nm": [
+          350.0,
+          555.0
+        ],
+        "transmission_band_in_nm": [
+          569.0,
+          950.0
+        ]
+      }
+    },
+    {
+      "part": "FF580-FDi01-25x36",
+      "source_url": "https://www.idex-hs.com/docs/default-source/catalogs/semrock-catalog.pdf",
+      "notes": "Image-splitting dichroic, in the band a two-colour rig uses to split green from red.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Semrock",
+        "model_number": "FF580-FDi01-25x36",
+        "description": "BrightLine image-splitting dichroic beamsplitter, nominal edge wavelength 580 nm.",
+        "cut_on_wavelength_in_nm": 580.0,
+        "reflection_band_in_nm": [
+          350.0,
+          570.0
+        ],
+        "transmission_band_in_nm": [
+          590.8,
+          950.0
+        ]
+      }
+    },
+    {
+      "part": "FF593-Di03-25x36",
+      "source_url": "https://www.idex-hs.com/docs/default-source/catalogs/semrock-catalog.pdf",
+      "notes": "Red-channel edge for jRGECO and RCaMP emission.",
+      "model": {
+        "type": "DichroicMirrorModel",
+        "manufacturer": "Semrock",
+        "model_number": "FF593-Di03-25x36",
+        "description": "BrightLine single-edge general purpose dichroic beamsplitter, nominal edge wavelength 593 nm.",
+        "cut_on_wavelength_in_nm": 593.0,
+        "reflection_band_in_nm": [
+          350.0,
+          585.0
+        ],
+        "transmission_band_in_nm": [
+          601.0,
+          950.0
+        ]
+      }
+    },
+    {
+      "part": "FELH0500",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6082",
+      "notes": "Specified at normal incidence.",
+      "model": {
+        "type": "EdgeOpticalFilterModel",
+        "manufacturer": "Thorlabs",
+        "filter_type": "Longpass",
+        "cut_wavelength_in_nm": 500.0,
+        "model_number": "FELH0500",
+        "description": "Ø25.0 mm longpass filter, 500 nm cut-on. Transmission above 90 percent from 508 to 2150 nm; optical density above 5 from 200 to 492 nm."
+      }
+    },
+    {
+      "part": "FELH0550",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6082",
+      "notes": "Specified at normal incidence.",
+      "model": {
+        "type": "EdgeOpticalFilterModel",
+        "manufacturer": "Thorlabs",
+        "filter_type": "Longpass",
+        "cut_wavelength_in_nm": 550.0,
+        "model_number": "FELH0550",
+        "description": "Ø25.0 mm longpass filter, 550 nm cut-on. Transmission above 90 percent from 559 to 2150 nm; optical density above 5 from 200 to 542 nm."
+      }
+    },
+    {
+      "part": "FELH0600",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6082",
+      "notes": "Emission filter for red-shifted indicators. Specified at normal incidence.",
+      "model": {
+        "type": "EdgeOpticalFilterModel",
+        "manufacturer": "Thorlabs",
+        "filter_type": "Longpass",
+        "cut_wavelength_in_nm": 600.0,
+        "model_number": "FELH0600",
+        "description": "Ø25.0 mm longpass filter, 600 nm cut-on. Transmission above 90 percent from 609 to 2150 nm; optical density above 5 from 200 to 591 nm."
+      }
+    },
+    {
+      "part": "FESH0500",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6082",
+      "notes": "Often used to clean up excitation. Specified at normal incidence.",
+      "model": {
+        "type": "EdgeOpticalFilterModel",
+        "manufacturer": "Thorlabs",
+        "filter_type": "Shortpass",
+        "cut_wavelength_in_nm": 500.0,
+        "model_number": "FESH0500",
+        "description": "Ø25.0 mm shortpass filter, 500 nm cut-off. Transmission above 90 percent from 400 to 494 nm; optical density above 5 from 506 to 1200 nm."
+      }
+    },
+    {
+      "part": "FESH0550",
+      "source_url": "https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6082",
+      "notes": "Specified at normal incidence.",
+      "model": {
+        "type": "EdgeOpticalFilterModel",
+        "manufacturer": "Thorlabs",
+        "filter_type": "Shortpass",
+        "cut_wavelength_in_nm": 550.0,
+        "model_number": "FESH0550",
+        "description": "Ø25.0 mm shortpass filter, 550 nm cut-off. Transmission above 90 percent from 400 to 543 nm; optical density above 5 from 557 to 1200 nm."
+      }
+    },
+    {
+      "part": "BLP01-488R-25",
+      "source_url": "https://www.idex-hs.com/store/product-detail/blp01_488r_25/fl-008552",
+      "notes": "The published edge is 500 nm, not the 488 in the part number, which names the laser line it is built for. Discontinued.",
+      "model": {
+        "type": "EdgeOpticalFilterModel",
+        "manufacturer": "Semrock",
+        "filter_type": "Longpass",
+        "cut_wavelength_in_nm": 500.0,
+        "model_number": "BLP01-488R-25",
+        "description": "EdgeBasic long-pass edge filter for 488 nm excitation. Edge wavelength 500 nm, transition width 12.3 nm; blocking optical density above 6 from 388.8 to 491 nm."
+      }
+    }
+  ],
+  "not_representable": [
+    {
+      "type": "OpticalFiberModel",
+      "manufacturer": "Neurophotometrics",
+      "part": "FP3002 patch cord, 8-branch bundle",
+      "published": "numerical aperture 0.37 to 0.4, core diameter 200 um",
+      "reason": "The vendor publishes the numerical aperture as a range rather than a value, and OpticalFiberModel requires a single number. Pick the value that matches the cord you have, or state the range in the description.",
+      "source_url": "https://www.mbfbioscience.com/products/fp3002/"
+    },
+    {
+      "type": "OpticalFiberModel",
+      "manufacturer": "Neurophotometrics",
+      "part": "FP3002 patch cord, 4-branch bundle",
+      "published": "numerical aperture 0.37 to 0.4, core diameter 400 um",
+      "reason": "The vendor publishes the numerical aperture as a range rather than a value, and OpticalFiberModel requires a single number.",
+      "source_url": "https://www.mbfbioscience.com/products/fp3002/"
+    }
+  ]
+}

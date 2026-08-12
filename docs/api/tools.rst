@@ -14,4 +14,5 @@ Tools
     tools.signal_processing
     tools.data_transfers
     tools.nwb_helpers
+    tools.fiber_photometry_hardware_catalogue
     tools.aws
