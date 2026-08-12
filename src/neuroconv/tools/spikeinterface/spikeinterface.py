@@ -118,7 +118,7 @@ def _get_ecephys_metadata_placeholders():
     return metadata
 
 
-def _get_probe_device_metadata(probe) -> tuple[dict, dict] | None:
+def _get_probe_device_metadata(probe) -> dict | None:
     """
     The device fields and the model entry a probe determines.
 
@@ -137,10 +137,12 @@ def _get_probe_device_metadata(probe) -> tuple[dict, dict] | None:
 
     Returns
     -------
-    tuple[dict, dict] | None
-        The fields to merge into the caller's ``Devices`` entry, alongside the ``name`` it chose, and
-        the ``DeviceModels`` entry keyed by ``device_model_metadata_key``. Both are freshly built, so
-        the caller's metadata is never touched. ``None`` when the probe names no model.
+    dict | None
+        ``{"device": ..., "device_models": ...}``, or ``None`` when the probe names no model. ``device``
+        holds the fields to merge into the caller's ``Devices`` entry alongside the ``name`` it chose,
+        and ``device_models`` is the ``DeviceModels`` registry keyed by ``device_model_metadata_key``.
+        Both are freshly built, so the caller's metadata is never touched. The keys are lowercase
+        because this is a return value and not a metadata fragment.
     """
     model_number = probe.model_name
     if not model_number:
@@ -161,41 +163,7 @@ def _get_probe_device_metadata(probe) -> tuple[dict, dict] | None:
     if probe.serial_number not in (None, "", "0"):
         device_fields["serial_number"] = probe.serial_number
 
-    return device_fields, {device_model_metadata_key: device_model}
-
-
-def _get_probe_metadata_for_the_write_path(recording: BaseRecording) -> dict | None:
-    """
-    A local registry fragment for the probe attached to ``recording``, or ``None``.
-
-    This is what a bare ``add_recording_to_nwbfile`` relies on, so the identity reaches the file even
-    when the caller passed no metadata at all. The registry is thrown away once the device is written,
-    so ``"probe"`` is an internal handle and deduplication happens on the device name.
-
-    Only single-probe recordings are handled. With several probes a group would have to be traced back
-    to the probe its contacts sit on, which the channel ``group`` property does not answer: a
-    four-shank probe wired ``by_shank`` reports four groups for one probe.
-    """
-    if not recording.has_probe():
-        return None
-
-    probes = recording.get_probegroup().probes
-    if len(probes) != 1:
-        return None
-
-    probe = probes[0]
-    probe_metadata = _get_probe_device_metadata(probe=probe)
-    if probe_metadata is None:
-        return None
-
-    device_fields, device_models = probe_metadata
-
-    # The name has to be unique per physical probe, since devices are reused by name. The reader's own
-    # label comes first where there is one, then the serial number, and the model number last, which
-    # collides only between two unnamed probes of one model in a single file.
-    device_name = probe.name or f"Probe{device_fields.get('serial_number') or probe.model_name}"
-
-    return {"Devices": {"probe": dict(name=device_name, **device_fields)}, "DeviceModels": device_models}
+    return {"device": device_fields, "device_models": {device_model_metadata_key: device_model}}
 
 
 def _add_electrode_groups_to_nwbfile(
@@ -222,7 +190,24 @@ def _add_electrode_groups_to_nwbfile(
     default_group_template = placeholders["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]
     default_device_metadata = placeholders["Devices"]["default_metadata_key"]
 
-    probe_metadata = _get_probe_metadata_for_the_write_path(recording=recording)
+    # A group naming no device falls to the attached probe before it falls to the placeholder, so a
+    # caller who passed no metadata at all still gets the probe's identity. Only a single-probe recording
+    # is handled: with several probes a group would have to be traced back to the probe its contacts sit
+    # on, which the channel ``group`` property does not answer, since a four-shank probe wired
+    # ``by_shank`` reports four groups for one probe.
+    probes = recording.get_probegroup().probes if recording.has_probe() else []
+    probe_metadata = _get_probe_device_metadata(probe=probes[0]) if len(probes) == 1 else None
+    if probe_metadata is not None:
+        # The name has to be unique per physical probe, since devices are reused by name. The reader's
+        # own label comes first where there is one, then the serial number, and the model number last,
+        # which collides only between two unnamed probes of one model in a single file.
+        probe_device = probe_metadata["device"]
+        probe_device_name = probes[0].name or f"Probe{probe_device.get('serial_number') or probes[0].model_name}"
+        # Thrown away once the device is written, so ``"probe"`` is an internal handle.
+        probe_metadata = {
+            "Devices": {"probe": dict(name=probe_device_name, **probe_device)},
+            "DeviceModels": probe_metadata["device_models"],
+        }
 
     electrode_groups_metadata = metadata.get("Ecephys", {}).get("ElectrodeGroups", {})
     channel_group_names = set(_get_group_name(recording=recording).tolist())

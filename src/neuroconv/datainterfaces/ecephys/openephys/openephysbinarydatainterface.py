@@ -255,9 +255,8 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
                 probe_metadata = _get_probe_device_metadata(probe=probe)
                 if probe_metadata is not None:
-                    device_fields, device_models = probe_metadata
-                    device.update(device_fields)
-                    metadata["DeviceModels"] = device_models
+                    device.update(probe_metadata["device"])
+                    metadata["DeviceModels"] = probe_metadata["device_models"]
                 elif serial_number:
                     device["serial_number"] = serial_number
 
