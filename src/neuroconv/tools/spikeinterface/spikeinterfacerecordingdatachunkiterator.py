@@ -122,8 +122,6 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         )
 
     def _get_dtype(self):
-        # This must report the dtype of the traces the iterator yields, not the recording's own, or
-        # the dataset is allocated as the source dtype and every scaled chunk is cast back into it.
         # spikeinterface casts to float32 when it has gains and offsets to apply, and returns the
         # traces untouched when it has none, so only the first case departs from the source dtype.
         if self.return_in_uV and self.recording.has_scaleable_traces():
