@@ -34,8 +34,7 @@ Convert pyPhotometry data to NWB using
 
     >>> from neuroconv.datainterfaces import PyPhotometryFiberPhotometryInterface
 
-    >>> folder_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "pyphotometry" / "one_colour_time_division"
-    >>> file_path = next(folder_path.glob("*.ppd"))
+    >>> file_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "pyphotometry" / "mode_named_in_prose" / "one_colour_time_division.ppd"
 
     >>> # Which signals a file holds depends on the acquisition mode it was recorded in.
     >>> PyPhotometryFiberPhotometryInterface.get_available_streams(file_path=file_path)

@@ -2,16 +2,17 @@
 
 The format's layout is decided by its ``mode`` string, and the vocabulary changed twice: version 0.1
 names the indicators, 0.2 and 0.3 describe the acquisition in prose, and 1.0 onward uses symbolic names.
-A sixth generation predates the JSON header entirely. Each directory below is one of those generations,
-so between them they exercise every branch of the mode table against a real recording.
+A sixth generation predates the JSON header entirely. The recordings below are grouped by which of those
+vocabularies their header speaks, so between them they exercise every branch of the mode table against a
+real recording.
 
 Two branches cannot be covered here and are unit tested against files assembled in
 ``tests/test_modalities/test_fiber_photometry/test_pyphotometry_ppd.py`` instead: the paired
 LED-on/baseline storage of version 1.1, for which no public recording exists anywhere, and the refusals.
 
-TODO: these recordings are not on gin yet, so this module skips unless a local copy is present. Stub
-them and publish them under ``fiber_photometry_datasets/pyphotometry``, then delete the skip so CI
-covers this. Tracked in ``ongoing_work/fiber_photometry/pyphotometry_interface_plan``.
+TODO: these recordings are not on gin yet, so this module skips unless a local copy is present. Publish
+them under ``fiber_photometry_datasets/pyphotometry``, then delete the skip so CI covers this. Tracked in
+``ongoing_work/fiber_photometry/pyphotometry_interface_plan``.
 """
 
 import json
@@ -25,40 +26,40 @@ from ..setup_paths import OPHYS_DATA_PATH
 
 PYPHOTOMETRY_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "pyphotometry"
 
-# What each fixture directory holds, read off the file's own header. `starting_times` is what the
+# What each recording holds, read off the file's own header. `starting_times` is what the
 # reader must reconstruct: the signals are sampled one after another, so they do not all start at zero.
 FIXTURE_EXPECTATIONS = {
-    "two_excitation_two_emission_pulsed": dict(
+    "mode_named_symbolically/two_excitation_two_emission_pulsed.ppd": dict(
         mode="2EX_2EM_pulsed",
         signal_count=2,
         signal_rate=130.0,
         starting_times=[0.0, 1 / 260],
     ),
-    "one_colour_time_division": dict(
+    "mode_named_in_prose/one_colour_time_division.ppd": dict(
         mode="1 colour time div.",
         signal_count=2,
         signal_rate=130.0,
         starting_times=[0.0, 1 / 260],
     ),
-    "two_colour_continuous": dict(
+    "mode_named_in_prose/two_colour_continuous.ppd": dict(
         mode="2 colour continuous",
         signal_count=2,
         signal_rate=1000.0,
         starting_times=[0.0, 0.0],
     ),
-    "indicator_named_modes": dict(
+    "mode_named_by_indicators/gcamp_rfp_dif.ppd": dict(
         mode="GCaMP/RFP_dif",
         signal_count=2,
         signal_rate=130.0,
         starting_times=[0.0, 1 / 260],
     ),
-    "four_colour_time_division": dict(
+    "mode_named_in_prose/four_colour_time_division.ppd": dict(
         mode="4 colour time div.",
         signal_count=4,
         signal_rate=32.5,
         starting_times=[0.0, 1 / 130, 2 / 130, 3 / 130],
     ),
-    "pre_json_header": dict(
+    "header_predates_json/two_signals_200hz.ppd": dict(
         mode=None,
         signal_count=2,
         signal_rate=200.0,
@@ -67,20 +68,19 @@ FIXTURE_EXPECTATIONS = {
 }
 
 
-def get_fixture_file_path(directory_name: str):
-    """Return the one recording in a fixture directory, or skip when it is not on this machine."""
-    directory = PYPHOTOMETRY_PATH / directory_name
-    file_paths = sorted(directory.glob("*.ppd")) if directory.exists() else []
-    if not file_paths:
-        pytest.skip(f"No pyPhotometry fixture in {directory}; the corpus is not published yet.")
-    return file_paths[0]
+def get_recording_path(relative_path: str):
+    """Return a recording by name, or skip when this machine does not have the corpus."""
+    file_path = PYPHOTOMETRY_PATH / relative_path
+    if not file_path.exists():
+        pytest.skip(f"{file_path} is not present; the recordings are not published yet.")
+    return file_path
 
 
-@pytest.mark.parametrize("directory_name", list(FIXTURE_EXPECTATIONS))
-def test_every_header_generation_reads(directory_name):
+@pytest.mark.parametrize("recording_path", list(FIXTURE_EXPECTATIONS))
+def test_every_header_generation_reads(recording_path):
     """Each generation's mode string resolves to a layout, and the signals come out with their timing."""
-    expectations = FIXTURE_EXPECTATIONS[directory_name]
-    file_path = get_fixture_file_path(directory_name)
+    expectations = FIXTURE_EXPECTATIONS[recording_path]
+    file_path = get_recording_path(recording_path)
 
     recording = read_ppd(file_path)
 
@@ -98,15 +98,16 @@ def test_every_header_generation_reads(directory_name):
 
 
 @pytest.mark.parametrize(
-    "directory_name", [name for name in FIXTURE_EXPECTATIONS if name != "four_colour_time_division"]
+    "recording_path",
+    [name for name in FIXTURE_EXPECTATIONS if name != "mode_named_in_prose/four_colour_time_division.ppd"],
 )
-def test_signals_match_the_upstream_de_interleave(directory_name):
+def test_signals_match_the_upstream_de_interleave(recording_path):
     """Every ordinary recording must decode to exactly what pyPhotometry's own reader returns.
 
     Upstream takes ``analog[signal_index::signal_count] * volts_per_division``. Agreeing with it on the
     modes it reads correctly is what makes the disagreement on the fork a claim rather than a bug.
     """
-    file_path = get_fixture_file_path(directory_name)
+    file_path = get_recording_path(recording_path)
     raw = file_path.read_bytes()
     header_length = int.from_bytes(raw[:2], "little")
     words = np.frombuffer(raw[2 + header_length :], dtype="<u2")
@@ -128,7 +129,7 @@ def test_the_fork_decodes_to_four_smooth_traces():
     the documented way it yields traces that alternate every sample, which is what a negative lag-one
     autocorrelation measures; read as four color-multiplexed signals it yields fluorescence.
     """
-    file_path = get_fixture_file_path("four_colour_time_division")
+    file_path = get_recording_path("mode_named_in_prose/four_colour_time_division.ppd")
 
     recording = read_ppd(file_path)
 
@@ -148,7 +149,7 @@ def test_the_fork_decodes_to_four_smooth_traces():
 
 def test_the_pre_json_header_carries_the_same_scale_as_the_json_one():
     """The fixed layout packs volts per division as a scaled integer rather than a float."""
-    file_path = get_fixture_file_path("pre_json_header")
+    file_path = get_recording_path("header_predates_json/two_signals_200hz.ppd")
 
     recording = read_ppd(file_path)
 
