@@ -49,6 +49,11 @@ the writer accepts them at all. A filter is a ``BandOpticalFilter`` or an ``Edge
 plain one, and its wavelengths belong to its model rather than to the filter itself. Rows also accept
 ``coordinates`` and ``notes``, left out here for brevity.
 
+For the same chain filled in with real values, built one block at a time and explained as it goes, see
+:ref:`annotate_fiber_photometry_metadata`. That how-to also covers the layouts this block does not
+show: one fiber recorded at a signal and an isosbestic wavelength, and several fibers in different
+locations.
+
 .. tab-set::
 
     .. tab-item:: YAML
