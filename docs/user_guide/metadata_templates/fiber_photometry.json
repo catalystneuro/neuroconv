@@ -1,0 +1,122 @@
+{
+    "DeviceModels": {
+        "optical_fiber_model": {
+            "type": "OpticalFiberModel",
+            "name": "optical_fiber_model",
+            "manufacturer": null,
+            "numerical_aperture": null
+        },
+        "excitation_source_model": {
+            "type": "ExcitationSourceModel",
+            "name": "excitation_source_model",
+            "manufacturer": null,
+            "source_type": null,
+            "excitation_mode": null
+        },
+        "photodetector_model": {
+            "type": "PhotodetectorModel",
+            "name": "photodetector_model",
+            "manufacturer": null,
+            "detector_type": null
+        }
+    },
+    "Devices": {
+        "optical_fiber_0": {
+            "type": "OpticalFiber",
+            "name": "optical_fiber_0",
+            "device_model_metadata_key": "optical_fiber_model",
+            "fiber_insertion": {
+                "insertion_position_ap_in_mm": null,
+                "insertion_position_ml_in_mm": null,
+                "insertion_position_dv_in_mm": null,
+                "depth_in_mm": null
+            }
+        },
+        "optical_fiber_1": {
+            "type": "OpticalFiber",
+            "name": "optical_fiber_1",
+            "device_model_metadata_key": "optical_fiber_model",
+            "fiber_insertion": {
+                "insertion_position_ap_in_mm": null,
+                "insertion_position_ml_in_mm": null,
+                "insertion_position_dv_in_mm": null,
+                "depth_in_mm": null
+            }
+        },
+        "excitation_source": {
+            "type": "ExcitationSource",
+            "name": "excitation_source",
+            "device_model_metadata_key": "excitation_source_model"
+        },
+        "photodetector": {
+            "type": "Photodetector",
+            "name": "photodetector",
+            "device_model_metadata_key": "photodetector_model"
+        },
+        "dichroic_mirror": {
+            "type": "DichroicMirror",
+            "name": "dichroic_mirror",
+            "device_model_metadata_key": null
+        },
+        "excitation_filter": {
+            "type": "BandOpticalFilter",
+            "name": "excitation_filter",
+            "device_model_metadata_key": null
+        },
+        "emission_filter": {
+            "type": "BandOpticalFilter",
+            "name": "emission_filter",
+            "device_model_metadata_key": null
+        }
+    },
+    "FiberPhotometry": {
+        "FiberPhotometryIndicators": {
+            "indicator": {
+                "name": "indicator",
+                "label": null
+            }
+        },
+        "FiberPhotometryTable": {
+            "name": "fiber_photometry_table",
+            "description": "Each row describes one trace: the fiber, hardware and indicator that produced it.",
+            "rows": {
+                "trace_0": {
+                    "location": null,
+                    "excitation_wavelength_in_nm": null,
+                    "emission_wavelength_in_nm": null,
+                    "indicator_metadata_key": "indicator",
+                    "optical_fiber_metadata_key": "optical_fiber_0",
+                    "excitation_source_metadata_key": "excitation_source",
+                    "photodetector_metadata_key": "photodetector",
+                    "dichroic_mirror_metadata_key": "dichroic_mirror",
+                    "excitation_filter_metadata_key": "excitation_filter",
+                    "emission_filter_metadata_key": "emission_filter",
+                    "coordinates": null,
+                    "notes": null
+                },
+                "trace_1": {
+                    "location": null,
+                    "excitation_wavelength_in_nm": null,
+                    "emission_wavelength_in_nm": null,
+                    "indicator_metadata_key": "indicator",
+                    "optical_fiber_metadata_key": "optical_fiber_1",
+                    "excitation_source_metadata_key": "excitation_source",
+                    "photodetector_metadata_key": "photodetector",
+                    "dichroic_mirror_metadata_key": "dichroic_mirror",
+                    "excitation_filter_metadata_key": "excitation_filter",
+                    "emission_filter_metadata_key": "emission_filter",
+                    "coordinates": null,
+                    "notes": null
+                }
+            }
+        },
+        "calcium_signal": {
+            "name": "FiberPhotometryResponseSeries",
+            "description": null,
+            "fiber_photometry_table_region": [
+                "trace_0",
+                "trace_1"
+            ]
+        }
+    }
+}
