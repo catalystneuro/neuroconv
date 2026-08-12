@@ -263,8 +263,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
             probe_metadata = _get_probe_device_metadata(probe=probe)
             if probe_metadata is not None:
-                device.update(probe_metadata["device"])
-                metadata["DeviceModels"] = probe_metadata["device_models"]
+                device_model = probe_metadata["device_model"]
+                # Every caller has to key a model the same way, or two entries for one model collide.
+                device_model_metadata_key = f"{device_model.get('manufacturer')}_{device_model['model_number']}"
+                device = {**probe_metadata["device"], **device}
+                device["device_model_metadata_key"] = device_model_metadata_key
+                metadata["DeviceModels"] = {device_model_metadata_key: device_model}
             elif serial_number:
                 device["serial_number"] = serial_number
 

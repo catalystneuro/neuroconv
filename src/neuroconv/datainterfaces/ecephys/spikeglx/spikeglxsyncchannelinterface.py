@@ -219,9 +219,6 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # The sync trace goes in as a plain ``TimeSeries``, which has no device link, so no device is
-        # claimed here.
-
         # TimeSeries metadata for sync channel
         if "TimeSeries" not in metadata:
             metadata["TimeSeries"] = {}

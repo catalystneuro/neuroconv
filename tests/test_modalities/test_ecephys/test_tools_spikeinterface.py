@@ -1743,16 +1743,16 @@ def _recording_with_probe(**probe_fields):
     return recording
 
 
-def test_two_probes_of_one_model_share_a_model_key_and_keep_their_own_serials():
+def test_two_probes_of_one_model_report_one_model_and_keep_their_own_serials():
     """Two units of one product are two devices and one ``DeviceModel``, which is what rules out keying
-    the device on the model number. The model key is what dedups them, so it has to match while the
-    device fields do not."""
+    the device on the model number. Every caller keys the model off these fields, so they have to match
+    while the device fields do not."""
     first, second = (
         _get_probe_device_metadata(probe=_probe_naming(model_name="NP1000", manufacturer="imec", serial_number=serial))
         for serial in ("18194809281", "22327214192")
     )
 
-    assert first["device_models"] == second["device_models"]
+    assert first["device_model"] == second["device_model"]
     assert first["device"]["serial_number"] == "18194809281"
     assert second["device"]["serial_number"] == "22327214192"
 

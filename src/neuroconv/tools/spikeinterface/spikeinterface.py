@@ -120,15 +120,16 @@ def _get_ecephys_metadata_placeholders():
 
 def _get_probe_device_metadata(probe) -> dict | None:
     """
-    The device fields and the model entry a probe determines.
+    What a probe says about itself, as a ``Device`` entry and a ``DeviceModel`` entry.
 
     Returns ``None`` unless the probe names a model, which is the only case where there is anything to
     write: a ``DeviceModel`` needs a ``model_number`` to be reconstructable, and a ``Device`` carrying
     neither a model nor a serial number says no more than the placeholder does.
 
-    Naming is deliberately not here. The probe answers what the hardware is, and the caller answers what
-    to call it and where to file it, because there is no uniform label to derive: ``probe.name`` is
-    ``None`` for SpikeGLX, whose ``Imec0`` comes from the filename, and rig-scoped for Open Ephys.
+    Only fields the probe states are present, so a caller can merge its own on top without overwriting
+    anything it did not mean to. Addressing is not here: which registry key each entry is filed under is
+    the caller's, since the ``Devices`` key has to differ per interface and the caller is the one that
+    knows its own ``metadata_key``.
 
     Parameters
     ----------
@@ -138,51 +139,49 @@ def _get_probe_device_metadata(probe) -> dict | None:
     Returns
     -------
     dict | None
-        ``{"device": ..., "device_models": ...}``, or ``None`` when the probe names no model. ``device``
-        holds the fields to merge into the caller's ``Devices`` entry alongside the ``name`` it chose,
-        and ``device_models`` is the ``DeviceModels`` registry keyed by ``device_model_metadata_key``.
-        Both are freshly built, so the caller's metadata is never touched. The keys are lowercase
-        because this is a return value and not a metadata fragment.
+        ``{"device": ..., "device_model": ...}``, or ``None`` when the probe names no model. Both are
+        entries rather than registries, freshly built, so the caller's metadata is never touched. The
+        outer keys are lowercase because this is a return value and not a metadata fragment.
 
     Examples
     --------
-    A Neuropixels probe read from SpikeGLX, which reports a part number and the unit's serial number::
+    A Neuropixels probe read from SpikeGLX, which reports a part number and the unit's serial number but
+    no name of its own, since ``Imec0`` comes from the filename::
 
         {
-            "device": {
-                "device_model_metadata_key": "imec_PRB_1_4_0480_1",
-                "serial_number": "18194809281",
-            },
-            "device_models": {
-                "imec_PRB_1_4_0480_1": {
-                    "name": "PRB_1_4_0480_1",
-                    "model_number": "PRB_1_4_0480_1",
-                    "manufacturer": "imec",
-                    "description": "Neuropixels 1.0 probe",
-                }
+            "device": {"serial_number": "18194809281"},
+            "device_model": {
+                "name": "PRB_1_4_0480_1",
+                "model_number": "PRB_1_4_0480_1",
+                "manufacturer": "imec",
+                "description": "Neuropixels 1.0 probe",
             },
         }
 
     A Cambridge Neurotech probe the user attached themselves with
     ``recording.set_probe(get_probe("cambridgeneurotech", "ASSY-156-E-1"))``. The catalogue names the
-    product but not the individual unit, so there is no ``serial_number`` and no description::
+    product but not the individual unit, so the device entry is empty::
 
         {
-            "device": {"device_model_metadata_key": "cambridgeneurotech_ASSY-156-E-1"},
-            "device_models": {
-                "cambridgeneurotech_ASSY-156-E-1": {
-                    "name": "ASSY-156-E-1",
-                    "model_number": "ASSY-156-E-1",
-                    "manufacturer": "cambridgeneurotech",
-                }
+            "device": {},
+            "device_model": {
+                "name": "ASSY-156-E-1",
+                "model_number": "ASSY-156-E-1",
+                "manufacturer": "cambridgeneurotech",
             },
+        }
+
+    An Open Ephys probe, which the Neuropix-PXI plugin names in ``settings.xml``::
+
+        {
+            "device": {"name": "ProbeA", "serial_number": "21144110211"},
+            "device_model": {"name": "NP1110", "model_number": "NP1110", "manufacturer": "imec"},
         }
     """
     model_number = probe.model_name
     if not model_number:
         return None
 
-    device_model_metadata_key = f"{probe.manufacturer}_{model_number}"
     # ``model_number`` holds probeinterface's ``model_name`` verbatim, since that string is the
     # ``get_probe`` lookup key.
     device_model = dict(name=model_number, model_number=model_number)
@@ -191,13 +190,15 @@ def _get_probe_device_metadata(probe) -> dict | None:
     if probe.annotations.get("description"):
         device_model["description"] = probe.annotations["description"]
 
-    device_fields = dict(device_model_metadata_key=device_model_metadata_key)
+    device = dict()
+    if probe.name:
+        device["name"] = probe.name
     # ``"0"`` is what a reader writes when it could not read a serial off the probe, so it names no unit
     # and the field is left out rather than stating it.
     if probe.serial_number not in (None, "", "0"):
-        device_fields["serial_number"] = probe.serial_number
+        device["serial_number"] = probe.serial_number
 
-    return {"device": device_fields, "device_models": {device_model_metadata_key: device_model}}
+    return {"device": device, "device_model": device_model}
 
 
 def _add_electrode_groups_to_nwbfile(
@@ -232,15 +233,26 @@ def _add_electrode_groups_to_nwbfile(
     probes = recording.get_probegroup().probes if recording.has_probe() else []
     probe_metadata = _get_probe_device_metadata(probe=probes[0]) if len(probes) == 1 else None
     if probe_metadata is not None:
+        probe_device = probe_metadata["device"]
+        device_model = probe_metadata["device_model"]
         # The name has to be unique per physical probe, since devices are reused by name. The reader's
         # own label comes first where there is one, then the serial number, and the model number last,
         # which collides only between two unnamed probes of one model in a single file.
-        probe_device = probe_metadata["device"]
-        probe_device_name = probes[0].name or f"Probe{probe_device.get('serial_number') or probes[0].model_name}"
+        probe_device_name = probe_device.get("name") or (
+            f"Probe{probe_device.get('serial_number') or device_model['model_number']}"
+        )
+        # Every caller has to key a model the same way, or two entries for one model collide on name.
+        device_model_metadata_key = f"{device_model.get('manufacturer')}_{device_model['model_number']}"
         # Thrown away once the device is written, so ``"probe"`` is an internal handle.
         probe_metadata = {
-            "Devices": {"probe": dict(name=probe_device_name, **probe_device)},
-            "DeviceModels": probe_metadata["device_models"],
+            "Devices": {
+                "probe": {
+                    **probe_device,
+                    "name": probe_device_name,
+                    "device_model_metadata_key": device_model_metadata_key,
+                }
+            },
+            "DeviceModels": {device_model_metadata_key: device_model},
         }
 
     electrode_groups_metadata = metadata.get("Ecephys", {}).get("ElectrodeGroups", {})
