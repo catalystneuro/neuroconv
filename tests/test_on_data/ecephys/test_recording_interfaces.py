@@ -286,10 +286,6 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
-@pytest.mark.skipif(
-    platform == "darwin",
-    reason="Interface unsupported for OSX.",
-)
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
@@ -301,50 +297,79 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
-
-    def check_run_conversion_with_backend(self, nwbfile_path: str, backend="hdf5"):
-        metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            metadata=metadata,
-            backend=backend,
-            **self.conversion_options,
-        )
-
-    def test_all_conversion_checks(self, setup_interface, tmp_path):
-        # Create a unique test name and file path
-        nwbfile_path = str(tmp_path / f"{self.__class__.__name__}.nwb")
-        self.nwbfile_path = nwbfile_path
-
-        # Now run the checks using the setup objects
-        metadata = self.interface.get_metadata()
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
 
-        self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
-        self.check_read_nwb(nwbfile_path=nwbfile_path)
+    def test_get_stream_names(self):
+        stream_names = EDFRecordingInterface.get_stream_names(file_path=self.interface_kwargs["file_path"])
 
-    # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
-    def test_metadata_schema_valid(self):
-        pass
+        assert stream_names == ["stream ((256.0,) Hz)"]
 
-    def test_no_metadata_mutation(self):
-        pass
 
-    def test_interface_alignment(self):
-        pass
+class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin):
+    """This file sampled part of its signals at 100 Hz and the rest at 1 Hz, so it holds two streams."""
 
-    def test_conversion_options_schema_valid(self):
-        pass
+    data_interface_cls = EDFRecordingInterface
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "edf" / "heterogeneous_offsets" / "same_unit_offsets_multirate.edf"),
+        stream_name="stream ((1.0,) Hz)",
+    )
+    # The channels of this stream carry a per-channel offset, which a single ElectricalSeries can
+    # hold only in physical units.
+    conversion_options = dict(data_representation="physical_units")
+    save_directory = OUTPUT_PATH
 
-    def test_metadata(self):
-        pass
+    def test_get_stream_names(self):
+        stream_names = EDFRecordingInterface.get_stream_names(file_path=self.interface_kwargs["file_path"])
 
-    def test_conversion_options_schema_valid(self):
-        pass
+        assert stream_names == ["stream ((100.0,) Hz)", "stream ((1.0,) Hz)"]
+
+    def test_stream_name_is_required_for_a_multi_stream_file(self):
+        with pytest.raises(ValueError, match="several streams"):
+            EDFRecordingInterface(file_path=self.interface_kwargs["file_path"])
+
+    def test_stream_name_selects_the_channels_of_its_stream(self, setup_interface):
+        assert list(self.interface.channel_ids) == ["Resp oro-nasal", "EMG submental", "Temp rectal", "Event marker"]
+        assert self.interface.recording_extractor.get_sampling_frequency() == 1.0
+
+    def test_channels_to_skip_applies_within_the_selected_stream(self):
+        interface = EDFRecordingInterface(
+            file_path=self.interface_kwargs["file_path"],
+            stream_name="stream ((100.0,) Hz)",
+            channels_to_skip=["EOG horizontal"],
+        )
+
+        assert list(interface.channel_ids) == ["EEG Fpz-Cz", "EEG Pz-Oz"]
+
+    def test_get_available_channel_ids_spans_every_stream(self):
+        """The channel names come from the header, so a file with several streams still answers."""
+        channel_ids = EDFRecordingInterface.get_available_channel_ids(file_path=self.interface_kwargs["file_path"])
+
+        assert channel_ids == [
+            "EEG Fpz-Cz",
+            "EEG Pz-Oz",
+            "EOG horizontal",
+            "Resp oro-nasal",
+            "EMG submental",
+            "Temp rectal",
+            "Event marker",
+        ]
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """The traces were written in physical units, so they are read back and compared as such."""
+        from spikeinterface.core.testing import check_recordings_equal
+        from spikeinterface.extractors.extractor_classes import NwbRecordingExtractor
+
+        recording = self.interface.recording_extractor
+        channel_name = recording.get_property("channel_name")
+        if channel_name is None:
+            channel_name = recording.get_channel_ids()
+        recording = recording.rename_channels(new_channel_ids=channel_name.astype("str", copy=False))
+
+        nwb_recording = NwbRecordingExtractor(
+            file_path=nwbfile_path, electrical_series_path="acquisition/ElectricalSeries", use_pynwb=True
+        )
+
+        check_recordings_equal(RX1=recording, RX2=nwb_recording, return_in_uV=True)
 
 
 class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
