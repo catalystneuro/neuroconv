@@ -2898,6 +2898,36 @@ class TestAddImaging:
         assert not isinstance(series.data, ImagingExtractorDataChunkIterator)
         assert series.data.shape == (num_samples, num_columns, num_rows)
 
+    def test_non_iterative_write_of_volumetric_data(self):
+        """`get_series` is 4D for a volumetric extractor, so the planar three-axis transpose does not
+        apply to it and used to raise `ValueError: axes don't match array`. Nothing here is
+        format-specific: it broke `iterator_type=None` for every volumetric extractor."""
+        nwbfile = mock_NWBFile()
+        num_samples = 10
+        num_rows = 5
+        num_columns = 4
+        num_planes = 3
+        imaging = generate_dummy_imaging_extractor(
+            num_samples=num_samples, num_rows=num_rows, num_columns=num_columns, num_planes=num_planes
+        )
+
+        metadata = get_full_ophys_metadata()
+        series_key = "my_series"
+
+        add_imaging_to_nwbfile(
+            imaging=imaging,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=series_key,
+            iterator_type=None,
+        )
+
+        series_name = metadata["Ophys"]["MicroscopySeries"][series_key]["name"]
+        series = nwbfile.acquisition[series_name]
+        assert not isinstance(series.data, ImagingExtractorDataChunkIterator)
+        # The planes axis stays last, which is the layout the v2 iterator advertises.
+        assert series.data.shape == (num_samples, num_columns, num_rows, num_planes)
+
     def test_metadata_not_mutated(self):
         """Dict-based metadata is not mutated by add_imaging_to_nwbfile."""
         nwbfile = mock_NWBFile()
