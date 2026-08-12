@@ -109,7 +109,9 @@ def get_default_dataset_io_configurations(
 
     known_dataset_fields = ("data", "timestamps")
     builder = _get_nwbfile_builder(nwbfile=nwbfile)
-    for neurodata_object in nwbfile.objects.values():
+    # `nwbfile.objects` is built on its first read and never invalidated, so it does not hold anything added
+    # to the file afterwards. `all_children` recomputes the walk.
+    for neurodata_object in nwbfile.all_children():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
 
@@ -240,7 +242,7 @@ def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[Datase
     DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
 
     known_dataset_fields = ("data", "timestamps")
-    for neurodata_object in nwbfile.objects.values():
+    for neurodata_object in nwbfile.all_children():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
 

@@ -41,6 +41,10 @@ def configure_backend(
 
     builder = _get_nwbfile_builder(nwbfile=nwbfile)
 
+    # `nwbfile.objects` is built on its first read and never invalidated, so it does not hold anything added
+    # to the file afterwards. `all_children` recomputes the walk.
+    neurodata_objects_by_id = {child.object_id: child for child in nwbfile.all_children()}
+
     # Set all DataIO based on the configuration
     data_io_class = backend_configuration.data_io_class
     for dataset_configuration in backend_configuration.dataset_configurations.values():
@@ -50,7 +54,7 @@ def configure_backend(
 
         # TODO: update buffer shape in iterator, if present
 
-        neurodata_object = nwbfile.objects[object_id]
+        neurodata_object = neurodata_objects_by_id[object_id]
         is_dataset_linked = isinstance(neurodata_object.fields.get(dataset_name), TimeSeries)
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
         dtype_is_compound = has_compound_dtype(builder=builder, location_in_file=location_in_file)
