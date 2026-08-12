@@ -367,6 +367,76 @@ class TestScanImageImagingInterfacesAssertions:
             ScanImageImagingInterface(file_path=file_path, plane_index=20, interleave_slice_samples=True)
 
 
+class TestScanImageImagingInterfaceDiscovery:
+    """The two static methods that answer what a file holds before an interface is built.
+
+    Both delegate to roiextractors, which renamed the methods they called, so both raised
+    ``AttributeError`` for every file until this was fixed and nothing in the suite called either one.
+    """
+
+    planar_two_channel_file_path = str(
+        OPHYS_DATA_PATH
+        / "imaging_datasets"
+        / "ScanImage"
+        / "planar_two_channels_single_file"
+        / "planar_two_ch_single_files_00001_00001.tif"
+    )
+    volumetric_file_path = str(
+        OPHYS_DATA_PATH
+        / "imaging_datasets"
+        / "ScanImage"
+        / "volumetric_single_channel_single_file"
+        / "vol_one_ch_single_files_00002_00001.tif"
+    )
+
+    def test_get_available_channels(self):
+        channel_names = ScanImageImagingInterface.get_available_channels(file_path=self.planar_two_channel_file_path)
+
+        assert channel_names == ["Channel 1", "Channel 2"]
+        # The names are what the interface accepts back, which is the point of asking.
+        ScanImageImagingInterface(file_path=self.planar_two_channel_file_path, channel_name=channel_names[0])
+
+    def test_get_available_planes_of_a_volumetric_file(self):
+        """The extractor reports a count; the interface documents a list of plane names."""
+        plane_names = ScanImageImagingInterface.get_available_planes(file_path=self.volumetric_file_path)
+
+        assert plane_names == ["0", "1", "2", "3", "4", "5", "6", "7", "8"]
+
+    def test_get_available_planes_of_a_planar_file(self):
+        plane_names = ScanImageImagingInterface.get_available_planes(file_path=self.planar_two_channel_file_path)
+
+        assert plane_names == ["0"]
+
+
+def test_single_channel_file_opened_without_naming_its_channel_takes_the_plain_names():
+    """Opening a single-channel file without ``channel_name`` is documented, and used to raise
+    ``AttributeError`` from the list-based metadata. The objects keep the plain names, since naming
+    them after the channel the extractor resolved would rename them for everyone who never asked for a
+    channel; the dict-based format has always done this and the two branches now agree."""
+    file_path = str(
+        OPHYS_DATA_PATH
+        / "imaging_datasets"
+        / "ScanImage"
+        / "volumetric_single_channel_single_file"
+        / "vol_one_ch_single_files_00002_00001.tif"
+    )
+    interface = ScanImageImagingInterface(file_path=file_path)
+
+    metadata = interface.get_metadata()
+
+    imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+    assert imaging_plane_metadata["name"] == "ImagingPlane"
+    assert [channel["name"] for channel in imaging_plane_metadata["optical_channel"]] == ["OpticalChannel"]
+    photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
+    assert photon_series_metadata["name"] == "TwoPhotonSeries"
+    # The description used to interpolate the attribute directly and would now read "for None".
+    assert photon_series_metadata["description"] == "Imaging data acquired using ScanImage"
+
+    new_format_metadata = interface.get_metadata(use_new_metadata_format=True)
+    assert [entry["name"] for entry in new_format_metadata["Ophys"]["ImagingPlanes"].values()] == ["ImagingPlane"]
+    assert [entry["name"] for entry in new_format_metadata["Ophys"]["MicroscopySeries"].values()] == ["TwoPhotonSeries"]
+
+
 def test_two_channels_of_one_acquisition_share_one_device_entry():
     """A device is per instrument while an interface is per channel, so the two interfaces of one
     multi-channel acquisition derive the same registry key and merge into a single entry. Keyed by
