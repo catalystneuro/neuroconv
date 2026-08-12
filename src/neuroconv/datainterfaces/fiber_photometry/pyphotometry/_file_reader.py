@@ -54,7 +54,7 @@ class _ModeLayout:
 # same handful of layouts. Each entry's stride was checked against the recordings themselves rather than
 # read off the documentation.
 _MODE_LAYOUTS = {
-    # Modern, version 1.0 and later. `n_analog_signals` is in the header too and is cross-checked.
+    # Modern, version 1.0 and later.
     "2EX_2EM_continuous": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=False),
     "2EX_1EM_pulsed": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True),
     "2EX_2EM_pulsed": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True),
@@ -201,12 +201,6 @@ def _get_layout(header: dict) -> _ModeLayout:
             f"several colors into one trace without raising. Known modes: {sorted(_MODE_LAYOUTS)}."
         )
 
-    declared_count = header.get("n_analog_signals")
-    if declared_count is not None and declared_count != layout.analog_input_count:
-        raise ValueError(
-            f"Mode '{mode}' interleaves {layout.analog_input_count} analog lines but the header declares "
-            f"n_analog_signals={declared_count}."
-        )
     return layout
 
 

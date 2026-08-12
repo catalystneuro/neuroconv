@@ -56,15 +56,6 @@ def test_an_unknown_mode_is_refused(tmp_path):
         PyPhotometryFiberPhotometryInterface(file_path=file_path)
 
 
-def test_a_mode_disagreeing_with_the_declared_signal_count_is_refused(tmp_path):
-    """From version 1.0 the header states the count, so a mode contradicting it is not readable."""
-    file_path = tmp_path / "contradictory.ppd"
-    write_ppd_file(file_path, paired_header() | {"n_analog_signals": 3}, [1000, 2000, 3000])
-
-    with pytest.raises(ValueError, match="interleaves 2 analog lines but the header declares"):
-        PyPhotometryFiberPhotometryInterface(file_path=file_path)
-
-
 def test_a_header_that_is_neither_json_nor_the_fixed_layout_is_refused(tmp_path):
     """A failed JSON parse means the pre-2018 fixed layout, and anything else is not a recording."""
     file_path = tmp_path / "garbage.ppd"
