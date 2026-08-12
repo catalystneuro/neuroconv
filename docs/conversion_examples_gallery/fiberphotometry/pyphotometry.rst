@@ -33,7 +33,7 @@ Convert pyPhotometry Fiber Photometry data to NWB using
     ['analog_1', 'analog_2']
 
     >>> # One interface reads one signal.
-    >>> interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1", metadata_key="signal", verbose=False)
+    >>> interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1", metadata_key="signal")
     >>> metadata = interface.get_metadata()
     >>> # The recording start time is in the file's header, so it does not have to be supplied.
     >>> metadata["NWBFile"]["session_start_time"]
@@ -52,7 +52,7 @@ signal of a 130 Hz recording starts 1/260 of a second after the first:
 
 .. code-block:: python
 
-    >>> control = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2", metadata_key="control", verbose=False)
+    >>> control = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2", metadata_key="control")
     >>> float(round(control.get_timestamps()[0], 6))
     0.003846
 
@@ -65,30 +65,28 @@ interface per signal to a :py:class:`~neuroconv.nwbconverter.ConverterPipe`:
 .. code-block:: python
 
     >>> from neuroconv import ConverterPipe
-
-    >>> signal = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1", metadata_key="signal", verbose=False)
-    >>> isosbestic = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2", metadata_key="isosbestic", verbose=False)
+    >>> signal_metadata_key = "signal"
+    >>> isosbestic_metadata_key = "isosbestic"
+    >>> signal = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1", metadata_key=signal_metadata_key)
+    >>> isosbestic = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2", metadata_key=isosbestic_metadata_key)
 
     >>> converter = ConverterPipe(data_interfaces=dict(signal=signal, isosbestic=isosbestic))
     >>> metadata = converter.get_metadata()
 
     >>> # Every interface names its series ``FiberPhotometryResponseSeries`` by default, so give each
     >>> # one a name of its own before writing them into the same file.
-    >>> metadata["FiberPhotometry"]["signal"]["name"] = "FiberPhotometryResponseSeriesSignal"
-    >>> metadata["FiberPhotometry"]["isosbestic"]["name"] = "FiberPhotometryResponseSeriesIsosbestic"
+    >>> metadata["FiberPhotometry"][signal_metadata_key]["name"] = "FiberPhotometryResponseSeriesSignal"
+    >>> metadata["FiberPhotometry"][isosbestic_metadata_key]["name"] = "FiberPhotometryResponseSeriesIsosbestic"
 
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
     >>> converter.run_conversion(nwbfile_path=f"{path_to_save_nwbfile}", metadata=metadata, overwrite=True)
 
 Recordings made with header version 1.1 or later store an LED-on value and the LED-off baseline it is
-corrected against. The response series carries their difference, which is what earlier firmware computed
-on the board, and both measurements are written beside it as response series of their own. The LED-on
-trace references the same ``FiberPhotometryTable`` row as the difference; the baseline references none,
-since a row states an excitation source and wavelength and neither applies to a measurement taken in the
-dark. Such a recording also warns on read: no file of that version was available when this interface was
-written, so that path is untested.
+corrected against. The response series carries their difference and both measurements are written beside
+it, and reading such a file warns that the conversion is untested, since no recording of that version
+was available when the interface was written.
 
-The full metadata format (device models, devices, indicators, the ``FiberPhotometryTable``, and the
-per-interface response series) is shared across the fiber photometry interfaces and documented at
-:ref:`fiber_photometry_metadata_structure`.
+How to fill in the metadata a conversion needs, the device models, devices, indicators and the
+``FiberPhotometryTable``, is shared across the fiber photometry interfaces and covered in
+:ref:`annotate_fiber_photometry_metadata`.
