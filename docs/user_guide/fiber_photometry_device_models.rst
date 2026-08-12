@@ -226,6 +226,8 @@ Excitation sources
 
 Every source here is a one-photon light-emitting diode, so ``source_type`` and ``excitation_mode`` are filled with those values and left out of the table. Tucker-Davis Technologies publishes only a nominal center wavelength for the Lux sources, with no bandwidth, so those rows carry the center in their description and no range at all. Neurophotometrics publishes no model number for the FP3002's onboard sources, so those parts are looked up by their product name instead.
 
+Doric renumbered its connectorized light-emitting diodes in a 2025 Generation-2 redesign, prefixing the codes with ``CLED_G2_`` and moving the blue channel from 465 to 470 nm. Both generations are listed, because a rig built before the change carries ``CLED_465`` and the bare code ``CLED_470`` has never been a Doric ordering code at all.
+
 .. list-table::
    :widths: 10 14 7 45 7
    :header-rows: 1
@@ -236,17 +238,22 @@ Every source here is a one-photon light-emitting diode, so ``source_type`` and `
      - Notes
      - Source
    * - Doric Lenses
-     - ``CLED_405``
+     - ``CLED_G2_405``
      - 399 to 411
      - Isosbestic control. The range is the nominal center plus the published 12 nm bandwidth.
      - `page <https://neuro.doriclenses.com/products/connectorized-led-1>`__
    * - Doric Lenses
-     - ``CLED_470``
+     - ``CLED_465``
+     - 452.5 to 477.5
+     - The '465 nm' of a Doric 405/465 system. Retired in the 2025 Generation-2 redesign, which moved the blue channel to 470 nm.
+     - `page <https://doriclenses.com/downloads/UserManual/UserManual_LED_Light_Source_V2.1.1.pdf>`__
+   * - Doric Lenses
+     - ``CLED_G2_470``
      - 457 to 484
-     - The '465 nm' of a Doric 405/465 system: no CLED_465 exists, and this is the nearest part.
+     - Generation-2 blue channel. It replaced the discontinued CLED_465, so a 405/465 system built before 2025 carries that part instead.
      - `page <https://neuro.doriclenses.com/products/connectorized-led-1>`__
    * - Doric Lenses
-     - ``CLED_560``
+     - ``CLED_G2_560``
      - 510 to 610
      - Red-shifted indicators. The published 100 nm bandwidth makes this range approximate.
      - `page <https://neuro.doriclenses.com/products/connectorized-led-1>`__

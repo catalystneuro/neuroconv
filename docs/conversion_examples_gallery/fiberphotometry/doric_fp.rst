@@ -127,7 +127,7 @@ returned:
     >>> doric = "Doric Lenses"
     >>> device_models = metadata["DeviceModels"]
     >>> device_models["optical_fiber_model"] = get_reference_optical_fiber_model(manufacturer=doric, part="400/430-0.48")
-    >>> device_models["excitation_source_model"] = get_reference_excitation_source_model(manufacturer=doric, part="CLED_470")
+    >>> device_models["excitation_source_model"] = get_reference_excitation_source_model(manufacturer=doric, part="CLED_G2_470")
     >>> metadata["DeviceModels"]["optical_fiber_model"]["numerical_aperture"]
     0.48
     >>> device_models["emission_filter_model"] = get_reference_band_optical_filter_model(manufacturer=doric, part="FMC4 emission 500-550 nm")
@@ -137,7 +137,8 @@ returned:
     525.0
 
 The Doric ordering code is a fragment of the full one, covering the fiber rather than the ferrule, and
-CLED_470 is the part behind what a 405/465 system calls its 465 nm channel. The filter bands come from
+the blue light-emitting diode was renumbered in Doric's 2025 Generation-2 redesign, so a rig built
+before then carries ``CLED_465`` rather than ``CLED_G2_470``. The filter bands come from
 the fluorescence mini-cube, whose bands are chosen when it is ordered, so the cube's own ordering code
 is what says which ones yours has. Check all three against your own hardware before writing them.
 

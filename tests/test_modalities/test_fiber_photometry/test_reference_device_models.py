@@ -137,7 +137,7 @@ def test_get_accepts_a_part_with_no_model_number():
 
 
 def test_get_names_the_model_after_its_class_by_default():
-    doric = dict(manufacturer="Doric Lenses", part="CLED_470")
+    doric = dict(manufacturer="Doric Lenses", part="CLED_G2_470")
 
     assert get_reference_excitation_source_model(**doric)["name"] == "ExcitationSourceModel"
     assert get_reference_excitation_source_model(**doric, name="signal_source")["name"] == "signal_source"

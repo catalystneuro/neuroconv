@@ -45,7 +45,11 @@ TABLE_SPECIFICATIONS = {
         "Technologies publishes only a nominal center wavelength for the Lux sources, with no bandwidth, "
         "so those rows carry the center in their description and no range at all. Neurophotometrics "
         "publishes no model number for the FP3002's onboard sources, so those parts are looked up by "
-        "their product name instead.",
+        "their product name instead.\n\n"
+        "Doric renumbered its connectorized light-emitting diodes in a 2025 Generation-2 redesign, "
+        "prefixing the codes with ``CLED_G2_`` and moving the blue channel from 465 to 470 nm. Both "
+        "generations are listed, because a rig built before the change carries ``CLED_465`` and the "
+        "bare code ``CLED_470`` has never been a Doric ordering code at all.",
         [
             ("Wavelength range (nm)", "wavelength_range_in_nm"),
         ],

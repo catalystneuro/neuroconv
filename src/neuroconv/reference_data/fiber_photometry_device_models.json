@@ -236,13 +236,13 @@
       }
     },
     {
-      "part": "CLED_405",
+      "part": "CLED_G2_405",
       "source_url": "https://neuro.doriclenses.com/products/connectorized-led-1",
       "notes": "Isosbestic control. The range is the nominal center plus the published 12 nm bandwidth.",
       "model": {
         "type": "ExcitationSourceModel",
         "manufacturer": "Doric Lenses",
-        "model_number": "CLED_405",
+        "model_number": "CLED_G2_405",
         "source_type": "LED",
         "excitation_mode": "one-photon",
         "wavelength_range_in_nm": [
@@ -252,13 +252,29 @@
       }
     },
     {
-      "part": "CLED_470",
-      "source_url": "https://neuro.doriclenses.com/products/connectorized-led-1",
-      "notes": "The '465 nm' of a Doric 405/465 system: no CLED_465 exists, and this is the nearest part.",
+      "part": "CLED_465",
+      "source_url": "https://doriclenses.com/downloads/UserManual/UserManual_LED_Light_Source_V2.1.1.pdf",
+      "notes": "The '465 nm' of a Doric 405/465 system. Retired in the 2025 Generation-2 redesign, which moved the blue channel to 470 nm.",
       "model": {
         "type": "ExcitationSourceModel",
         "manufacturer": "Doric Lenses",
-        "model_number": "CLED_470",
+        "model_number": "CLED_465",
+        "source_type": "LED",
+        "excitation_mode": "one-photon",
+        "wavelength_range_in_nm": [
+          452.5,
+          477.5
+        ]
+      }
+    },
+    {
+      "part": "CLED_G2_470",
+      "source_url": "https://neuro.doriclenses.com/products/connectorized-led-1",
+      "notes": "Generation-2 blue channel. It replaced the discontinued CLED_465, so a 405/465 system built before 2025 carries that part instead.",
+      "model": {
+        "type": "ExcitationSourceModel",
+        "manufacturer": "Doric Lenses",
+        "model_number": "CLED_G2_470",
         "source_type": "LED",
         "excitation_mode": "one-photon",
         "wavelength_range_in_nm": [
@@ -268,13 +284,13 @@
       }
     },
     {
-      "part": "CLED_560",
+      "part": "CLED_G2_560",
       "source_url": "https://neuro.doriclenses.com/products/connectorized-led-1",
       "notes": "Red-shifted indicators. The published 100 nm bandwidth makes this range approximate.",
       "model": {
         "type": "ExcitationSourceModel",
         "manufacturer": "Doric Lenses",
-        "model_number": "CLED_560",
+        "model_number": "CLED_G2_560",
         "source_type": "LED",
         "excitation_mode": "one-photon",
         "wavelength_range_in_nm": [
