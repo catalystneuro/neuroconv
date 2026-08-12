@@ -424,6 +424,15 @@ def add_recording_to_nwbfile(
             "'acquisition', 'processing/LFP', or 'processing/FilteredEphys'!"
         )
 
+    # Checked before anything is added to the file, so a recording that cannot be written in this
+    # representation does not leave behind the devices, groups and electrodes of a series that
+    # never arrives.
+    if data_representation == "physical_units" and not recording.has_scaleable_traces():
+        raise ValueError(
+            "data_representation='physical_units' requires the recording to have gains and offsets "
+            "to convert the samples to microvolts, but this recording has none."
+        )
+
     # Old-shaped metadata is converted here, the last public function before the private writers, so
     # everything below sees one format. This is also the only place that holds both names for the same
     # thing: ``es_key`` is where the entry lives in the old format and ``metadata_key`` where it goes in
@@ -669,11 +678,6 @@ def _add_recording_segment_to_nwbfile(
     eseries_kwargs["electrodes"] = electrode_table_region
 
     if data_representation == "physical_units":
-        if not recording.has_scaleable_traces():
-            raise ValueError(
-                "data_representation='physical_units' requires the recording to have gains and offsets "
-                "to convert the samples to microvolts, but this recording has none."
-            )
         # The traces are written already in microvolts (each channel's gain and offset folded in), so
         # only the microvolt-to-volt factor remains and the shared offset is zero. This is the only
         # representation that can hold heterogeneous per-channel gains and offsets in a single series.
@@ -1081,20 +1085,36 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
     # If for any reason the group names are empty, fill them with the default
     group_names[group_names == ""] = default_group_name
 
-    # Validate group names against groups
+    # Validate group names against groups. The two disagree when the channels were re-grouped after
+    # ``group_name`` was set, which is easy to do without noticing: several interfaces set a name of their
+    # own at construction, so a later ``set_channel_groups`` leaves a stale one behind. Say so, since the
+    # counts on their own do not point at the property to fix.
+    remedy = (
+        "This happens when the channels are re-grouped after 'group_name' is set. Set 'group_name' to match "
+        "the new grouping, or delete the property to name the groups after 'group' instead."
+    )
     if groups is not None:
         unique_groups = set(groups)
         unique_names = set(group_names)
 
         if len(unique_names) != len(unique_groups):
-            raise ValueError("The number of group names must match the number of groups")
+            # The values are numpy scalars, so they are formatted rather than repr'd to keep
+            # ``np.str_('A')`` out of a message a user reads.
+            listed_names = ", ".join(sorted(f"'{name}'" for name in unique_names))
+            raise ValueError(
+                f"The recording's 'group_name' property does not match its 'group' property: "
+                f"{len(unique_names)} names ({listed_names}) against {len(unique_groups)} groups. {remedy}"
+            )
 
         # Check consistency of group name to group number mapping
         group_to_name_map = {}
         for group, name in zip(groups, group_names):
             if group in group_to_name_map:
                 if group_to_name_map[group] != name:
-                    raise ValueError("Inconsistent mapping between group numbers and group names")
+                    raise ValueError(
+                        f"The recording's 'group_name' property does not match its 'group' property: group "
+                        f"'{group}' is named both '{group_to_name_map[group]}' and '{name}'. {remedy}"
+                    )
             else:
                 group_to_name_map[group] = name
 

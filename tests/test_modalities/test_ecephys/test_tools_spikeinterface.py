@@ -12,7 +12,7 @@ import psutil
 import pynwb.ecephys
 import pytest
 from hdmf.testing import TestCase
-from pynwb import NWBFile
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core.generate import (
     generate_ground_truth_recording,
@@ -1764,8 +1764,12 @@ class TestAddElectrodeGroups:
         recording.set_property(key="group_name", values=["A", "A", "A", "A"])
 
         nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="The number of group names must match the number of groups"):
+        # The message names the two properties and the remedy, because the counts on their own do not point
+        # at the one that went stale when the channels were re-grouped.
+        expected_message = re.escape("1 names ('A') against 4 groups")
+        with pytest.raises(ValueError, match=expected_message) as error:
             _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
+        assert "delete the property" in str(error.value)
 
     def test_inconsistent_group_name_mapping(self):
         recording = generate_recording(num_channels=3)
@@ -1776,7 +1780,7 @@ class TestAddElectrodeGroups:
         )
 
         nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="Inconsistent mapping between group numbers and group names"):
+        with pytest.raises(ValueError, match=re.escape("group '0' is named both 'A' and 'B'")):
             _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
 
     # A group naming no device falls to the attached probe before it falls to the placeholder. This is
@@ -2829,7 +2833,9 @@ class TestAddRecording:
             add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
 
     def test_physical_units_requires_scaleable_traces(self):
-        """`physical_units` needs gains and offsets on the recording; without them it errors clearly."""
+        """`physical_units` needs gains and offsets on the recording; without them it errors clearly,
+        and it does so before anything is written, so a caller that catches the error is not left
+        with the devices, groups and electrodes of a series that never arrives."""
         traces = np.ones(shape=(10, 3), dtype="float32")
         recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)  # no gains/offsets
 
@@ -2839,9 +2845,48 @@ class TestAddRecording:
             "to convert the samples to microvolts, but this recording has none."
         )
         with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
-            add_recording_to_nwbfile(
-                recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
-            )
+            add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, data_representation="physical_units")
+
+        assert len(nwbfile.devices) == 0
+        assert len(nwbfile.electrode_groups) == 0
+        assert nwbfile.electrodes is None
+
+    def test_physical_units_stores_float_values_through_the_default_iterator(self, tmp_path):
+        """`physical_units` on the default (`v2`) iterator writes the physical values themselves.
+
+        The dataset used to be allocated as the recording's own integer dtype while the iterator
+        yielded scaled floats, so every value was cast back on write and truncated toward zero.
+        """
+        traces = np.array([[100, -3], [7, 2000]], dtype="int16")
+        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)
+        recording.set_channel_gains(gains=[0.195, 0.195])  # fractional, so a cast to int is visible
+        recording.set_channel_offsets(offsets=[0.0, 0.0])
+
+        nwbfile = mock_NWBFile()
+        add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, data_representation="physical_units")
+
+        nwbfile_path = tmp_path / "physical_units.nwb"
+        with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
+            io.write(nwbfile)
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            stored_data = io.read().acquisition["ElectricalSeriesRaw"].data
+            assert stored_data.dtype == np.dtype("float32")
+            np.testing.assert_array_equal(stored_data[:], traces * np.float32(0.195))
+
+    def test_scaled_chunk_shape_is_sized_on_the_dtype_written(self):
+        """The chunk budget is in bytes, so sizing it on the recording's int16 while writing float32
+        would put four times the requested megabytes in every chunk."""
+        traces = np.ones(shape=(20_000, 4), dtype="int16")
+        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)
+        recording.set_channel_gains(gains=[0.195] * 4)
+        recording.set_channel_offsets(offsets=[0.0] * 4)
+
+        chunk_mb = 0.01
+        iterator = SpikeInterfaceRecordingDataChunkIterator(recording=recording, return_in_uV=True, chunk_mb=chunk_mb)
+
+        chunk_bytes = np.prod(iterator.chunk_shape) * iterator._get_dtype().itemsize
+        assert chunk_bytes <= chunk_mb * 1e6
 
     def test_full_metadata_specification(self):
         """User-supplied fields land on every created object and the cross-links resolve.
