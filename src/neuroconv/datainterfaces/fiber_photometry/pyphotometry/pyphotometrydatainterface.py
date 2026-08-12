@@ -6,7 +6,7 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
-from ._ppd_file_reader import PPDRecording, read_ppd
+from ._file_reader import PPDRecording, read_ppd
 from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 from ....tools import get_package
 from ....utils import DeepDict, dict_deep_update
