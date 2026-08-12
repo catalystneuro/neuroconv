@@ -161,6 +161,22 @@ jobs:
           python -m pytest tests/test_modalities/test_behavior -vv -rsx -n logical --dist loadscope
           deactivate
 
+      - name: Test MNE machinery
+        shell: bash
+        run: |
+          # Create mne environment
+          uv venv env_mne
+          # Activate mne environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_mne/Scripts/activate
+          else
+            source env_mne/bin/activate
+          fi
+          uv pip install ".[mne]"
+          uv pip install --group test
+          python -m pytest tests/test_modalities/test_mne -vv -rsx -n logical --dist loadscope
+          deactivate
+
       - name: Test events machinery
         shell: bash
         run: |
