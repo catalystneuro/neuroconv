@@ -262,8 +262,8 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
             "sample and the LED-off baseline beside it, and the trace written is their difference. That "
             "layout is read from pyPhotometry's own reader rather than from a recording: no file of that "
             "version was available when this was written, so there was nothing to test against and the "
-            "traces are unverified. If you have such a file, please open an issue at "
-            "https://github.com/catalystneuro/neuroconv/issues and it can be checked.",
+            "traces are unverified. If you have such a recording, please open an issue at "
+            "https://github.com/catalystneuro/neuroconv/issues so we can check this path and add a test.",
             UserWarning,
             stacklevel=3,
         )
