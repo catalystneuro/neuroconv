@@ -302,6 +302,15 @@ def add_recording_to_nwbfile(
             "'acquisition', 'processing/LFP', or 'processing/FilteredEphys'!"
         )
 
+    # Checked before anything is added to the file, so a recording that cannot be written in this
+    # representation does not leave behind the devices, groups and electrodes of a series that
+    # never arrives.
+    if data_representation == "physical_units" and not recording.has_scaleable_traces():
+        raise ValueError(
+            "data_representation='physical_units' requires the recording to have gains and offsets "
+            "to convert the samples to microvolts, but this recording has none."
+        )
+
     # Old-shaped metadata is converted here, the last public function before the private writers, so
     # everything below sees one format. This is also the only place that holds both names for the same
     # thing: ``es_key`` is where the entry lives in the old format and ``metadata_key`` where it goes in
@@ -547,11 +556,6 @@ def _add_recording_segment_to_nwbfile(
     eseries_kwargs["electrodes"] = electrode_table_region
 
     if data_representation == "physical_units":
-        if not recording.has_scaleable_traces():
-            raise ValueError(
-                "data_representation='physical_units' requires the recording to have gains and offsets "
-                "to convert the samples to microvolts, but this recording has none."
-            )
         # The traces are written already in microvolts (each channel's gain and offset folded in), so
         # only the microvolt-to-volt factor remains and the shared offset is zero. This is the only
         # representation that can hold heterogeneous per-channel gains and offsets in a single series.
