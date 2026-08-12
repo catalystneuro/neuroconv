@@ -419,7 +419,6 @@ thor = [
     "neuroconv[ophys_tiff]",
 ]
 tiff = [
-    # This floors tifffile at the shared 2023.3.21 rather than the 2018.10.18 it asked for alone.
     "neuroconv[ophys_tiff]",
 ]
 ophys = [
