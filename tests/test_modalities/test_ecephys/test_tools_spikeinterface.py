@@ -2738,7 +2738,9 @@ class TestAddRecording:
             add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
 
     def test_physical_units_requires_scaleable_traces(self):
-        """`physical_units` needs gains and offsets on the recording; without them it errors clearly."""
+        """`physical_units` needs gains and offsets on the recording; without them it errors clearly,
+        and it does so before anything is written, so a caller that catches the error is not left
+        with the devices, groups and electrodes of a series that never arrives."""
         traces = np.ones(shape=(10, 3), dtype="float32")
         recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)  # no gains/offsets
 
@@ -2748,18 +2750,6 @@ class TestAddRecording:
             "to convert the samples to microvolts, but this recording has none."
         )
         with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
-            add_recording_to_nwbfile(
-                recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
-            )
-
-    def test_physical_units_requires_scaleable_traces_before_touching_the_file(self):
-        """The representation is rejected before anything is written, so a caller that catches the
-        error is not left with the electrodes and groups of a series that never arrives."""
-        traces = np.ones(shape=(10, 3), dtype="float32")
-        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)  # no gains/offsets
-
-        nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError):
             add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, data_representation="physical_units")
 
         assert len(nwbfile.devices) == 0
