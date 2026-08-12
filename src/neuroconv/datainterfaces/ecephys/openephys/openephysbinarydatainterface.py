@@ -214,7 +214,10 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         from ._openephys_utils import _get_session_start_time
-        from ....tools.spikeinterface.spikeinterface import _get_group_name
+        from ....tools.spikeinterface.spikeinterface import (
+            _get_group_name,
+            _get_probe_device_metadata,
+        )
 
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
@@ -244,28 +247,19 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
                     f"neuropixels_{serial_number}" if serial_number else f"{self.metadata_key}_probe_{probe_index}"
                 )
 
+                # The probe answers what the hardware is, this interface answers what to call it.
                 # ``probe.name`` is the label the Neuropix-PXI plugin gives the probe in the signal
                 # chain, so every Record Node recording it agrees on the name.
                 probe_name = probe.name or f"Probe{probe_index}"
                 device = dict(name=f"Neuropixels{probe_name}")
-                if serial_number:
-                    device["serial_number"] = serial_number
 
-                # No model number means no model. A manufacturer on its own would have to go on
-                # ``Device.manufacturer``, which pynwb 4.0 deprecates, or into a model named after its
-                # maker, which states nothing.
-                model_number = probe.model_name
-                if model_number:
-                    device_model_metadata_key = f"{probe.manufacturer}_{model_number}"
-                    device["device_model_metadata_key"] = device_model_metadata_key
-                    # ``model_number`` holds probeinterface's ``model_name`` verbatim, since that string
-                    # is the ``get_probe`` lookup key.
-                    device_model = dict(name=model_number, model_number=model_number)
-                    if probe.manufacturer:
-                        device_model["manufacturer"] = probe.manufacturer
-                    if probe.annotations.get("description"):
-                        device_model["description"] = probe.annotations["description"]
-                    metadata["DeviceModels"] = {device_model_metadata_key: device_model}
+                probe_metadata = _get_probe_device_metadata(probe=probe)
+                if probe_metadata is not None:
+                    device_fields, device_models = probe_metadata
+                    device.update(device_fields)
+                    metadata["DeviceModels"] = device_models
+                elif serial_number:
+                    device["serial_number"] = serial_number
 
                 metadata["Devices"] = {device_metadata_key: device}
 
