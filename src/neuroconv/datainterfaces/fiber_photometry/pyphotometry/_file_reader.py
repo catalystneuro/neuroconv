@@ -13,6 +13,7 @@ documented way returns interleaved colours that look like a trace and are not.
 """
 
 import json
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,16 @@ import numpy as np
 
 #: The header stores the LED-off baseline beside the LED-on sample from this version onward.
 _PAIRED_SAMPLE_VERSION = (1, 1)
+
+#: Said once per file, because this is the one layout here that no recording has ever confirmed.
+_UNVERIFIED_PAIRED_LAYOUT_WARNING = (
+    "This recording states header version 1.1 or later, where a strobed mode stores an LED-on sample and "
+    "the LED-off baseline beside it. No recording of that version exists in any public deposit, so this "
+    "reader's handling of it comes from pyPhotometry's own reader source rather than from a file, and "
+    "its output has never been checked against a recording a board wrote. Treat the traces as unverified. "
+    "If you have such a recording, https://github.com/catalystneuro/neuroconv/issues/1907 is where it is "
+    "wanted."
+)
 
 #: What the analog value is multiplied by when the pre-JSON header packs it as an integer.
 _LEGACY_VOLTS_PER_DIVISION_SCALE = 1e9
@@ -251,6 +262,8 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
     sampling_rate = float(header["sampling_rate"])
     signals_per_cycle = layout.analog_input_count * layout.colors_per_input
     has_paired_samples = layout.pulsed and _parse_version(header) >= _PAIRED_SAMPLE_VERSION
+    if has_paired_samples:
+        warnings.warn(_UNVERIFIED_PAIRED_LAYOUT_WARNING, stacklevel=3)
     words_per_cycle = signals_per_cycle * (2 if has_paired_samples else 1)
 
     # In the pulsed modes the timer ticks once per analog line per sample, so a signal's slot in the

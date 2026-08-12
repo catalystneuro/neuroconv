@@ -1,10 +1,12 @@
 """Tests for :class:`.PyPhotometryFiberPhotometryInterface` on files built here rather than recorded.
 
-These cover what no available recording can. Header version 1.1 stores an LED-on sample beside the
-LED-off baseline it is corrected against, and no public file of that version exists anywhere. And a file
-whose header is malformed, or whose mode nothing recognizes, has to be constructed: the interface refuses
-those rather than reading them with a default layout, because the format's own fallback rule turns a
-laboratory fork's recording into interleaved colours without raising.
+These cover what no recording can. A file whose header is malformed, or whose mode nothing recognizes,
+has to be constructed: the interface refuses those rather than reading them with a default layout,
+because the format's own fallback rule turns a laboratory fork's recording into interleaved colours
+without raising. And header version 1.1, which stores an LED-on sample beside the LED-off baseline it is
+corrected against, exists in no public deposit at all, so what is asserted about it here is the warning
+the interface raises, not the traces it produces. Certifying values for a layout nobody has seen is what
+that warning exists to avoid.
 
 Everything a real recording does cover is asserted against the recordings themselves in
 ``tests/test_on_data/fiber_photometry/test_pyphotometry_interface.py``.
@@ -38,39 +40,6 @@ def paired_header(version="1.1") -> dict:
         "n_digital_signals": 2,
         "version": version,
     }
-
-
-def test_paired_file_writes_the_difference_and_both_measurements(tmp_path):
-    """A version 1.1 recording measured twice per sample, and the conversion keeps all of it.
-
-    The response series carries the difference, which is what the board itself wrote before 1.1 and what
-    every analysis expects. The LED-on and LED-off measurements are written beside it rather than
-    discarded into that subtraction.
-    """
-    file_path = tmp_path / "paired.ppd"
-    # One cycle is four words: signal 1's LED-on and baseline, then signal 2's.
-    write_ppd_file(file_path, paired_header(), [1000, 100, 2000, 200, 1010, 110, 2010, 210])
-    interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
-
-    nwbfile = interface.create_nwbfile(metadata=interface.get_metadata())
-
-    acquisition = nwbfile.acquisition
-    assert set(acquisition) == {
-        "FiberPhotometryResponseSeries",
-        "FiberPhotometryResponseSeriesRawLEDOn",
-        "FiberPhotometryResponseSeriesRawBaseline",
-    }
-    assert acquisition["FiberPhotometryResponseSeries"].data == pytest.approx(np.array([900, 900]) * VOLTS_PER_DIVISION)
-    assert acquisition["FiberPhotometryResponseSeriesRawLEDOn"].data == pytest.approx(
-        np.array([1000, 1010]) * VOLTS_PER_DIVISION
-    )
-    assert acquisition["FiberPhotometryResponseSeriesRawBaseline"].data == pytest.approx(
-        np.array([100, 110]) * VOLTS_PER_DIVISION
-    )
-    # The three are the same measurement occasion, so they share a timebase.
-    for series in acquisition.values():
-        assert series.rate == 130.0
-        assert series.starting_time == pytest.approx(0.0)
 
 
 def test_a_recording_without_a_pair_writes_one_series(tmp_path):
@@ -119,70 +88,16 @@ def test_a_header_that_is_neither_json_nor_the_fixed_layout_is_refused(tmp_path)
         PyPhotometryFiberPhotometryInterface(file_path=file_path)
 
 
-def full_metadata(interface) -> dict:
-    """The provenance chain a user supplies to write a table: devices, an indicator, and one row."""
-    metadata = interface.get_metadata()
-    metadata["DeviceModels"] = dict(
-        optical_fiber_model=dict(type="OpticalFiberModel", name="optical_fiber_model", numerical_aperture=0.48),
-        excitation_source_model=dict(
-            type="ExcitationSourceModel",
-            name="excitation_source_model",
-            source_type="LED",
-            excitation_mode="one-photon",
-        ),
-        photodetector_model=dict(type="PhotodetectorModel", name="photodetector_model", detector_type="photodiode"),
-    )
-    metadata["Devices"] = dict(
-        optical_fiber=dict(
-            type="OpticalFiber",
-            name="optical_fiber",
-            device_model_metadata_key="optical_fiber_model",
-            fiber_insertion=dict(depth_in_mm=4.0, insertion_position_ap_in_mm=3.0),
-        ),
-        excitation_source=dict(
-            type="ExcitationSource", name="excitation_source", device_model_metadata_key="excitation_source_model"
-        ),
-        photodetector=dict(type="Photodetector", name="photodetector", device_model_metadata_key="photodetector_model"),
-    )
-    fiber_photometry_metadata = metadata["FiberPhotometry"]
-    fiber_photometry_metadata["FiberPhotometryIndicators"] = dict(indicator=dict(name="indicator", label="GCaMP6s"))
-    fiber_photometry_metadata["FiberPhotometryTable"] = dict(
-        name="fiber_photometry_table",
-        description="Each row describes a single fiber photometry trace.",
-        rows=dict(
-            site=dict(
-                location="DMS",
-                excitation_wavelength_in_nm=470.0,
-                emission_wavelength_in_nm=520.0,
-                indicator_metadata_key="indicator",
-                optical_fiber_metadata_key="optical_fiber",
-                excitation_source_metadata_key="excitation_source",
-                photodetector_metadata_key="photodetector",
-            )
-        ),
-    )
-    series_metadata = fiber_photometry_metadata[interface.metadata_key]
-    series_metadata["fiber_photometry_table_region"] = ["site"]
-    series_metadata["fiber_photometry_table_region_description"] = "The DMS fiber at 470 nm."
-    return metadata
+def test_a_version_1_1_recording_warns_that_its_layout_is_unverified(tmp_path):
+    """Version 1.1 stores an LED-on sample and an LED-off baseline, and no recording of it exists.
 
-
-def test_the_led_on_trace_takes_the_channel_row_and_the_baseline_takes_none(tmp_path):
-    """The table can describe one of the two raw measurements and not the other.
-
-    Every field of the row is true of the LED-on trace, so it references the same row the difference
-    does. The dark measurement was taken with no excitation, and a row has to state an excitation source
-    and wavelength, so nothing in the table describes it and it is written unlinked.
+    The interface reads that layout from pyPhotometry's own reader source rather than from a file, so it
+    says so instead of presenting the traces as it does every other generation's. This asserts the
+    warning, not the traces: certifying values for a layout nobody has seen is what the warning exists to
+    avoid.
     """
-    file_path = tmp_path / "paired_linked.ppd"
+    file_path = tmp_path / "version_1_1.ppd"
     write_ppd_file(file_path, paired_header(), [1000, 100, 2000, 200, 1010, 110, 2010, 210])
-    interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
 
-    nwbfile = interface.create_nwbfile(metadata=full_metadata(interface))
-
-    acquisition = nwbfile.acquisition
-    difference_region = acquisition["FiberPhotometryResponseSeries"].fiber_photometry_table_region
-    led_on_region = acquisition["FiberPhotometryResponseSeriesRawLEDOn"].fiber_photometry_table_region
-    assert list(led_on_region.data) == list(difference_region.data) == [0]
-    assert led_on_region.table is difference_region.table
-    assert acquisition["FiberPhotometryResponseSeriesRawBaseline"].fiber_photometry_table_region is None
+    with pytest.warns(UserWarning, match="never been checked against a recording"):
+        PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
