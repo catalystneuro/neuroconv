@@ -12,7 +12,7 @@ import psutil
 import pynwb.ecephys
 import pytest
 from hdmf.testing import TestCase
-from pynwb import NWBFile
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core.generate import (
     generate_ground_truth_recording,
@@ -2751,6 +2751,79 @@ class TestAddRecording:
             add_recording_to_nwbfile(
                 recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
             )
+
+    def test_physical_units_requires_scaleable_traces_before_touching_the_file(self):
+        """The representation is rejected before anything is written, so a caller that catches the
+        error is not left with the electrodes and groups of a series that never arrives."""
+        traces = np.ones(shape=(10, 3), dtype="float32")
+        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)  # no gains/offsets
+
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError):
+            add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, data_representation="physical_units")
+
+        assert len(nwbfile.devices) == 0
+        assert len(nwbfile.electrode_groups) == 0
+        assert nwbfile.electrodes is None
+
+    def test_physical_units_stores_float_values_through_the_default_iterator(self, tmp_path):
+        """`physical_units` on the default (`v2`) iterator writes the physical values themselves.
+
+        The dataset used to be allocated as the recording's own integer dtype while the iterator
+        yielded scaled floats, so every value was cast back on write and truncated toward zero.
+        """
+        traces = np.array([[100, -3], [7, 2000]], dtype="int16")
+        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)
+        recording.set_channel_gains(gains=[0.195, 0.195])  # fractional, so a cast to int is visible
+        recording.set_channel_offsets(offsets=[0.0, 0.0])
+
+        nwbfile = mock_NWBFile()
+        add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, data_representation="physical_units")
+
+        nwbfile_path = tmp_path / "physical_units.nwb"
+        with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
+            io.write(nwbfile)
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            stored_data = io.read().acquisition["ElectricalSeriesRaw"].data
+            assert stored_data.dtype == np.dtype("float32")
+            np.testing.assert_array_equal(stored_data[:], traces * np.float32(0.195))
+
+    def test_iterator_dtype_matches_the_traces_it_yields(self):
+        """The dataset is allocated from `_get_dtype`, so it has to agree with what `_get_data`
+        returns: float32 once spikeinterface applies the gains, and the recording's own dtype when
+        there are none to apply or none were asked for."""
+        integer_traces = np.ones(shape=(10, 3), dtype="int16")
+        scaleable_recording = NumpyRecording(traces_list=[integer_traces], sampling_frequency=1000.0)
+        scaleable_recording.set_channel_gains(gains=[0.195] * 3)
+        scaleable_recording.set_channel_offsets(offsets=[0.0] * 3)
+
+        float_traces = np.ones(shape=(10, 3), dtype="float64")
+        unscaleable_recording = NumpyRecording(traces_list=[float_traces], sampling_frequency=1000.0)  # no gains
+
+        cases = [
+            (scaleable_recording, True, np.dtype("float32")),
+            (scaleable_recording, False, np.dtype("int16")),
+            (unscaleable_recording, True, np.dtype("float64")),  # nothing to apply, the traces pass through
+        ]
+        for recording, return_in_uV, expected_dtype in cases:
+            iterator = SpikeInterfaceRecordingDataChunkIterator(recording=recording, return_in_uV=return_in_uV)
+            assert iterator._get_dtype() == expected_dtype
+            assert iterator[:, :].dtype == expected_dtype
+
+    def test_scaled_chunk_shape_is_sized_on_the_dtype_written(self):
+        """The chunk budget is in bytes, so sizing it on the recording's int16 while writing float32
+        would put four times the requested megabytes in every chunk."""
+        traces = np.ones(shape=(20_000, 4), dtype="int16")
+        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)
+        recording.set_channel_gains(gains=[0.195] * 4)
+        recording.set_channel_offsets(offsets=[0.0] * 4)
+
+        chunk_mb = 0.01
+        iterator = SpikeInterfaceRecordingDataChunkIterator(recording=recording, return_in_uV=True, chunk_mb=chunk_mb)
+
+        chunk_bytes = np.prod(iterator.chunk_shape) * iterator._get_dtype().itemsize
+        assert chunk_bytes <= chunk_mb * 1e6
 
     def test_full_metadata_specification(self):
         """User-supplied fields land on every created object and the cross-links resolve.
