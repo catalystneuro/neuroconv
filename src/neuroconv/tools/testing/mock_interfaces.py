@@ -984,8 +984,7 @@ class MockMNEContinuousDataInterface(BaseMNEContinuousDataInterface):
         ch_types: str | list[str] = "eeg",
         seed: int = 0,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
-        metadata_key: str | None = None,
+        metadata_key: str = "ElectricalSeries",
     ):
         """
         Parameters
@@ -1002,17 +1001,15 @@ class MockMNEContinuousDataInterface(BaseMNEContinuousDataInterface):
             Seed for the synthetic data.
         verbose : bool, default: False
             Control verbosity.
-        es_key : str, default: "ElectricalSeries"
-            The key of this ElectricalSeries in the metadata dictionary.
-        metadata_key : str, optional
-            Key of this interface's ElectricalSeries in the metadata. Defaults to ``es_key``.
+        metadata_key : str, default: "ElectricalSeries"
+            Key of this interface's ElectricalSeries in ``metadata["Ecephys"]["ElectricalSeries"]``.
         """
         self.num_channels = num_channels
         self.sampling_frequency = sampling_frequency
         self.duration = duration
         self.ch_types = ch_types
         self.seed = seed
-        super().__init__(verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+        super().__init__(verbose=verbose, metadata_key=metadata_key)
 
     def _read_raw(self):
         import mne
