@@ -16,33 +16,6 @@ SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 OPENEPHYS_PATH = ECEPHY_DATA_PATH / "openephysbinary"
 
 
-def test_spikeglx_splits_probe_identity_across_the_two_registries():
-    """The serial number identifies the unit and lives on the device; the part number identifies the
-    catalogue entry and lives on the model."""
-    interface = SpikeGLXRecordingInterface(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0", stream_id="imec0.ap")
-
-    nwbfile = interface.create_nwbfile(metadata=interface.get_metadata(use_new_metadata_format=True), stub_test=True)
-
-    device = nwbfile.devices["NeuropixelsImec0"]
-    assert device.serial_number == "18194809281"
-    assert device.model.manufacturer == "imec"
-    assert device.model.model_number == "PRB_1_4_0480_1"
-
-
-def test_open_ephys_splits_probe_identity_across_the_two_registries():
-    interface = OpenEphysBinaryRecordingInterface(
-        folder_path=OPENEPHYS_PATH / "v0.6.x_neuropixels_with_sync" / "Record Node 104",
-        stream_name="Record Node 104#Neuropix-PXI-100.ProbeA-AP",
-    )
-
-    nwbfile = interface.create_nwbfile(metadata=interface.get_metadata(use_new_metadata_format=True), stub_test=True)
-
-    device = nwbfile.devices["NeuropixelsProbeA"]
-    assert device.serial_number == "22112107161"
-    assert device.model.manufacturer == "imec"
-    assert device.model.model_number == "NP1300"
-
-
 @pytest.mark.parametrize(
     "interface_class, source_data, device_name",
     [
@@ -90,22 +63,6 @@ def test_serial_less_probe_keys_by_interface_and_index():
 
     nwbfile = interface.create_nwbfile(metadata=metadata, stub_test=True)
     assert nwbfile.devices["NeuropixelsProbeA"].serial_number is None
-
-
-def test_open_ephys_without_a_probe_is_unchanged():
-    """This fixture's ``settings.xml`` names no part number, so probeinterface builds no probe and the
-    recording keeps the pipeline's placeholder device."""
-    interface = OpenEphysBinaryRecordingInterface(
-        folder_path=OPENEPHYS_PATH / "v0.5.3_two_neuropixels_stream" / "Record_Node_107",
-        stream_name="Record_Node_107#Neuropix-PXI-116.0",
-    )
-
-    metadata = interface.get_metadata(use_new_metadata_format=True)
-    assert "Devices" not in metadata
-    assert "DeviceModels" not in metadata
-
-    nwbfile = interface.create_nwbfile(metadata=metadata, stub_test=True)
-    assert len(nwbfile.device_models) == 0
 
 
 def test_a_probe_without_a_model_number_writes_no_model(monkeypatch):

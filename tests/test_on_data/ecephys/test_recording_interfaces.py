@@ -819,6 +819,49 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 10, 52, 24)
 
 
+class TestOpenEphysBinaryRecordingInterfaceNeuropixelsProbe(RecordingExtractorInterfaceTestMixin):
+    """The only Open Ephys fixture here whose `settings.xml` names a probe part number.
+
+    The v0.5.3 ones carry a serial number and no part number, so probeinterface cannot build a
+    catalogue probe from them and spikeinterface attaches none."""
+
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync" / "Record Node 104"),
+        stream_name="Record Node 104#Neuropix-PXI-100.ProbeA-AP",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_devices = {
+            "neuropixels_22112107161": dict(
+                name="NeuropixelsProbeA",
+                serial_number="22112107161",
+                device_model_metadata_key="imec_NP1300",
+            )
+        }
+        expected_device_models = {
+            "imec_NP1300": dict(
+                name="NP1300",
+                model_number="NP1300",
+                manufacturer="imec",
+                description="Optopix phase1",
+            )
+        }
+        expected_ecephys_metadata = {
+            "ElectricalSeries": {"open_ephys_recording": dict(name="ElectricalSeries")},
+            "ElectrodeGroups": {"0": dict(name="0", device_metadata_key="neuropixels_22112107161")},
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
+        assert metadata["Ecephys"] == expected_ecephys_metadata
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 8, 30, 23, 41, 36)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 8, 30, 23, 41, 36)
+
+
 class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtractorInterfaceTestMixin):
     """Test that non-neural channels are not written as ElectricalSeries"""
 
