@@ -86,9 +86,12 @@ class PPDAnalogSignal:
     data_in_volts : numpy.ndarray
         The signal, scaled by the header's volts per division. On a paired file this is the LED-on
         sample minus its baseline, which is what the acquisition system used to compute on the board.
-    timestamps_in_seconds : numpy.ndarray
-        When each sample was taken, reconstructed from the mode and the sampling rate rather than
-        assumed shared across signals.
+    starting_time_in_seconds : float
+        When this signal's first sample was taken. Signals are sampled one after another rather than at
+        once, so this is what distinguishes them in time; the samples themselves are perfectly regular.
+    rate_in_hz : float
+        The signal's own sampling rate, which is the header's rate divided by however many colors its
+        analog line multiplexes.
     raw_led_on_in_volts : numpy.ndarray or None
         The LED-on measurement, on a paired file only.
     raw_baseline_in_volts : numpy.ndarray or None
@@ -99,7 +102,8 @@ class PPDAnalogSignal:
     analog_input: int
     color_index: int
     data_in_volts: np.ndarray
-    timestamps_in_seconds: np.ndarray
+    starting_time_in_seconds: float
+    rate_in_hz: float
     raw_led_on_in_volts: np.ndarray | None = None
     raw_baseline_in_volts: np.ndarray | None = None
 
@@ -110,7 +114,8 @@ class PPDDigitalSignal:
 
     digital_input: int
     data: np.ndarray
-    timestamps_in_seconds: np.ndarray
+    starting_time_in_seconds: float
+    rate_in_hz: float
 
 
 @dataclass
@@ -181,8 +186,10 @@ def _get_layout(header: dict) -> _ModeLayout:
     if mode is None and "mode_code" in header:
         # The pre-JSON header packs the mode as a code whose meaning is not published. Every file of this
         # generation held so far interleaves two analog lines, which is also what the format's default
-        # would give, so it is read that way and stated here rather than being silently assumed.
-        return _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True)
+        # would give, so it is read that way and stated here rather than being silently assumed. Whether
+        # its LEDs were strobed is not recoverable from the code, so no stagger is claimed for it: an
+        # invented offset would be worse than a missing one.
+        return _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=False)
 
     layout = _MODE_LAYOUTS.get(mode)
     if layout is None:
@@ -219,16 +226,18 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
     Returns
     -------
     PPDRecording
-        The header, one entry per analog signal with its own timestamps, and one per digital line.
+        The header, one entry per analog signal with its own rate and starting time, and one per digital
+        line.
 
     Notes
     -----
-    Timestamps are reconstructed rather than shared. In the pulsed modes the sampling timer runs at
-    ``sampling_rate * analog_input_count`` and the interrupt advances one line per tick, so consecutive
-    signals are staggered by exactly one tick and the upstream reader's single shared time vector is
-    wrong by that much. In the continuous modes the two analog-to-digital conversions are also
-    sequential rather than simultaneous, but by an amount the format does not record and the firmware
-    only implies, so those signals are left on the timebase the header states.
+    Every signal is regular, so each carries a rate and a starting time rather than an array of
+    timestamps, and what separates two signals is a start time alone. In the pulsed modes the sampling
+    timer runs at ``sampling_rate * analog_input_count`` and the interrupt advances one line per tick, so
+    signal *i* starts exactly *i* ticks in, where the upstream reader reports every signal as starting at
+    zero. In the continuous modes the conversions are also sequential rather than simultaneous, but by an
+    amount the format does not record and the firmware only implies, so those signals start at zero here
+    until the figure can be sourced rather than derived.
     """
     raw = Path(file_path).read_bytes()
     header, payload = _read_header(raw)
@@ -243,14 +252,17 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
     has_paired_samples = layout.pulsed and _parse_version(header) >= _PAIRED_SAMPLE_VERSION
     words_per_cycle = signals_per_cycle * (2 if has_paired_samples else 1)
 
-    # In the pulsed modes the timer ticks once per analog line per sample, so a word's index in the file
-    # is its time. In the continuous modes the header's rate applies to each line directly.
-    timer_frequency = sampling_rate * layout.analog_input_count if layout.pulsed else sampling_rate
+    # In the pulsed modes the timer ticks once per analog line per sample, so a signal's slot in the
+    # cycle is how far into the recording it starts. A line that multiplexes colors visits each of them
+    # once per cycle, so its own rate is the header's divided by that count.
+    timer_frequency = sampling_rate * layout.analog_input_count
+    signal_rate = sampling_rate / layout.colors_per_input
 
     analog_signals = []
     for color_index in range(layout.colors_per_input):
         for analog_input in range(layout.analog_input_count):
-            offset = (color_index * layout.analog_input_count + analog_input) * (2 if has_paired_samples else 1)
+            slot = color_index * layout.analog_input_count + analog_input
+            offset = slot * (2 if has_paired_samples else 1)
             word_indices = np.arange(offset, len(words), words_per_cycle)
             scale = _volts_per_division(header, analog_input)
 
@@ -267,34 +279,31 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
                 led_on = baseline = None
                 data = analog_words[word_indices] * scale
 
-            timestamps = (
-                word_indices / timer_frequency if layout.pulsed else np.arange(len(word_indices)) / sampling_rate
-            )
-
             analog_signals.append(
                 PPDAnalogSignal(
                     analog_input=analog_input,
                     color_index=color_index,
                     data_in_volts=data,
-                    timestamps_in_seconds=timestamps,
+                    starting_time_in_seconds=slot / timer_frequency if layout.pulsed else 0.0,
+                    rate_in_hz=signal_rate,
                     raw_led_on_in_volts=led_on,
                     raw_baseline_in_volts=baseline,
                 )
             )
 
     # A digital line rides in the low bit of the words of the analog line it shares a slot with, so it
-    # inherits that line's timestamps. Headers before 1.0 do not count the lines; both are present.
+    # starts when that line does. Headers before 1.0 do not count the lines; both are present.
     digital_count = int(header.get("n_digital_signals", 2))
     digital_signals = []
     for digital_input in range(min(digital_count, layout.analog_input_count)):
         offset = digital_input * (2 if has_paired_samples else 1)
         word_indices = np.arange(offset, len(words), words_per_cycle)
-        timestamps = word_indices / timer_frequency if layout.pulsed else np.arange(len(word_indices)) / sampling_rate
         digital_signals.append(
             PPDDigitalSignal(
                 digital_input=digital_input,
                 data=digital_bits[word_indices],
-                timestamps_in_seconds=timestamps,
+                starting_time_in_seconds=digital_input / timer_frequency if layout.pulsed else 0.0,
+                rate_in_hz=signal_rate,
             )
         )
 
