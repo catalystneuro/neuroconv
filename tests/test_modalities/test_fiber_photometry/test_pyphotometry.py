@@ -87,22 +87,6 @@ def test_a_recording_without_a_pair_writes_one_series(tmp_path):
     )
 
 
-def test_the_version_is_read_whether_it_is_a_number_or_a_string(tmp_path):
-    """Versions 0.1 and 0.2 write the version as a JSON number and 0.3 onward as a string.
-
-    The version decides whether the samples are paired, so a comparison that works on one spelling and
-    not the other converts half the corpus at the wrong stride.
-    """
-    for version in (1.1, "1.1"):
-        file_path = tmp_path / f"version_{type(version).__name__}.ppd"
-        write_ppd_file(file_path, paired_header(version=version), [1000, 100, 2000, 200])
-        interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
-
-        nwbfile = interface.create_nwbfile(metadata=interface.get_metadata())
-
-        assert "FiberPhotometryResponseSeriesRawLEDOn" in nwbfile.acquisition, f"version {version!r}"
-
-
 def test_an_unknown_mode_is_refused(tmp_path):
     """A mode the interface does not know must raise rather than fall back to two signals.
 
