@@ -1,18 +1,28 @@
-"""On-data tests for :class:`.PyPhotometryFiberPhotometryInterface`.
+"""On-data tests for the pyPhotometry fiber photometry interface.
 
 A ``.ppd`` file holds every signal the board recorded interleaved word by word, and nothing in it says
 how to separate them except the header's ``mode`` field, whose spelling changed across four header
-generations. The recordings under ``fiber_photometry_datasets/pyphotometry`` are one per generation, so
-converting each of them exercises every branch of that mapping against a file rather than against an
-assumption.
+generations. The recordings under ``fiber_photometry_datasets/pyphotometry`` are one per generation, and
+this module is organized to match, one round-trip class per recording and signal:
 
-What the conversions assert, beyond reading at all, is timing. The board samples its analog inputs one
+- ``mode_named_symbolically`` -- the current vocabulary, ``2EX_2EM_pulsed``, header version 1.0, the only
+  generation whose header states its signal counts.
+- ``mode_named_in_prose`` -- versions 0.2 and 0.3, where the mode describes the acquisition in words:
+  ``1 colour time div.``, ``2 colour time div.``, ``2 colour continuous``, and the four-colour fork whose
+  analog lines each multiplex two colours.
+- ``mode_named_by_indicators`` -- version 0.1, where the mode names the fluorophores.
+- ``header_predates_json`` -- the fixed-layout header, whose mode is an unpublished byte code.
+
+What the round trips assert beyond reading at all is timing. The board samples its analog inputs one
 after another, so each signal is written with the start time its slot implies, where the vendor's reader
-reports every signal as starting at zero.
+reports every signal as starting at zero. Classes come in pairs where that matters, one per signal, so
+the second one's ``expected_starting_time`` is the claim.
 
-The paired LED-on and baseline path, which arrived with header version 1.1, and the refusals are covered
-in ``tests/test_modalities/test_fiber_photometry/test_pyphotometry.py``, since no version 1.1 recording
-exists anywhere and a malformed header has to be built rather than found.
+Each expected trace is the leading samples of that signal, read off the file by hand rather than through
+the interface, with ``stub_samples`` keeping them short. Construction errors, which the mixin cannot
+express, live in a dedicated plain class. The version 1.1 paired path and the refusals for malformed
+headers are in ``tests/test_modalities/test_fiber_photometry/test_pyphotometry.py``, since no recording
+of that version exists and a broken header has to be built.
 """
 
 from datetime import datetime
@@ -21,133 +31,225 @@ import numpy as np
 import pytest
 
 from neuroconv.datainterfaces import PyPhotometryFiberPhotometryInterface
+from neuroconv.tools.testing.data_interface_mixins import (
+    FiberPhotometryInterfaceTestMixin,
+)
 
-from ..setup_paths import OPHYS_DATA_PATH
+try:
+    from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
+except ImportError:
+    from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
 PYPHOTOMETRY_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "pyphotometry"
 
-# One recording per header generation, with what its own header says it holds. `starting_times` is the
-# claim worth testing: the signals were sampled one after another, so they do not all start at zero.
-RECORDINGS = {
-    "mode_named_symbolically/two_excitation_two_emission_pulsed.ppd": dict(
-        streams=["analog_1", "analog_2"],
-        rate=130.0,
-        starting_times=[0.0, 1 / 260],
-    ),
-    "mode_named_in_prose/one_colour_time_division.ppd": dict(
-        streams=["analog_1", "analog_2"],
-        rate=130.0,
-        starting_times=[0.0, 1 / 260],
-    ),
-    "mode_named_in_prose/two_colour_time_division.ppd": dict(
-        streams=["analog_1", "analog_2"],
-        rate=130.0,
-        starting_times=[0.0, 1 / 260],
-    ),
-    "mode_named_in_prose/two_colour_continuous.ppd": dict(
-        streams=["analog_1", "analog_2"],
-        rate=1000.0,
-        starting_times=[0.0, 0.0],
-    ),
-    "mode_named_by_indicators/gcamp_rfp_dif.ppd": dict(
-        streams=["analog_1", "analog_2"],
-        rate=130.0,
-        starting_times=[0.0, 1 / 260],
-    ),
-    "mode_named_in_prose/four_colour_time_division.ppd": dict(
-        streams=["analog_1", "analog_2", "analog_1_color_2", "analog_2_color_2"],
-        rate=32.5,
-        starting_times=[0.0, 1 / 130, 2 / 130, 3 / 130],
-    ),
-    "header_predates_json/two_signals_200hz.ppd": dict(
-        streams=["analog_1", "analog_2"],
-        rate=200.0,
-        starting_times=[0.0, 0.0],
-    ),
-}
+SYMBOLIC_PULSED_FILE = PYPHOTOMETRY_PATH / "mode_named_symbolically" / "two_excitation_two_emission_pulsed.ppd"
+ONE_COLOUR_TIME_DIVISION_FILE = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
+TWO_COLOUR_TIME_DIVISION_FILE = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_time_division.ppd"
+TWO_COLOUR_CONTINUOUS_FILE = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_continuous.ppd"
+FOUR_COLOUR_TIME_DIVISION_FILE = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "four_colour_time_division.ppd"
+INDICATOR_NAMED_FILE = PYPHOTOMETRY_PATH / "mode_named_by_indicators" / "gcamp_rfp_dif.ppd"
+PRE_JSON_HEADER_FILE = PYPHOTOMETRY_PATH / "header_predates_json" / "two_signals_200hz.ppd"
 
-ONE_COLOUR_TIME_DIVISION = "mode_named_in_prose/one_colour_time_division.ppd"
-TWO_COLOUR_CONTINUOUS = "mode_named_in_prose/two_colour_continuous.ppd"
+STUB = dict(stub_test=True, stub_samples=5)
 
 
-@pytest.mark.parametrize("relative_path", list(RECORDINGS))
-def test_every_header_generation_converts_with_its_own_timing(relative_path):
-    """Each generation's mode resolves to a layout, and each signal keeps the time it was sampled at."""
-    expectations = RECORDINGS[relative_path]
-    file_path = PYPHOTOMETRY_PATH / relative_path
+class TestPyPhotometrySymbolicMode(FiberPhotometryInterfaceTestMixin):
+    """Round-trip the first analog input of a ``2EX_2EM_pulsed`` recording, header version 1.0."""
 
-    assert PyPhotometryFiberPhotometryInterface.get_available_streams(file_path=file_path) == expectations["streams"]
+    data_interface_cls = PyPhotometryFiberPhotometryInterface
+    interface_kwargs = dict(file_path=SYMBOLIC_PULSED_FILE, stream_name="analog_1")
+    conversion_options = STUB
+    save_directory = OUTPUT_PATH
 
-    for stream_index, stream_name in enumerate(expectations["streams"]):
-        interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name=stream_name)
-        nwbfile = interface.create_nwbfile(metadata=interface.get_metadata())
+    expected_response_series_data = np.array([0.91067634, 0.91067634, 0.91067634, 0.91057512, 0.91057512])
+    expected_rate = 130.0
+    expected_starting_time = 0.0
 
-        series = nwbfile.acquisition["FiberPhotometryResponseSeries"]
-        assert series.rate == expectations["rate"]
-        assert series.starting_time == pytest.approx(expectations["starting_times"][stream_index])
-        assert series.data.size > 0
-        assert np.all(np.isfinite(series.data))
+    def test_get_available_streams(self):
+        """The header states two analog signals, so the file offers two."""
+        assert self.data_interface_cls.get_available_streams(file_path=SYMBOLIC_PULSED_FILE) == [
+            "analog_1",
+            "analog_2",
+        ]
 
 
-def test_written_values_are_the_file_own_samples():
-    """The values written are the file's words, de-interleaved and scaled by its volts per division.
+class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMixin):
+    """Round-trip the first analog input of a ``1 colour time div.`` recording, header version 0.3."""
 
-    That is what pyPhotometry's own reader returns for this file, so agreeing with it here is what makes
-    the timing a correction to that reader rather than a different reading of the format.
+    data_interface_cls = PyPhotometryFiberPhotometryInterface
+    interface_kwargs = dict(file_path=ONE_COLOUR_TIME_DIVISION_FILE, stream_name="analog_1")
+    conversion_options = STUB
+    save_directory = OUTPUT_PATH
+
+    expected_response_series_data = np.array([0.77757204, 0.77706594, 0.77979888, 0.7788879, 0.78020376])
+    expected_rate = 130.0
+    expected_starting_time = 0.0
+
+    def test_session_start_time_comes_from_the_header(self, setup_interface):
+        """Unlike most fiber photometry formats, a ``.ppd`` records when the session started."""
+        assert self.interface.get_metadata()["NWBFile"]["session_start_time"] == datetime(2021, 6, 8, 16, 52, 48)
+
+    def test_strobed_recordings_carry_no_timing_note(self, setup_interface):
+        """The stagger of a strobed recording is exact, so it is in the start time and needs no prose."""
+        metadata = self.interface.get_metadata()
+        assert "description" not in metadata["FiberPhotometry"][self.interface.metadata_key]
+
+
+class TestPyPhotometryOneColourTimeDivisionControl(FiberPhotometryInterfaceTestMixin):
+    """The second analog input of that recording, which is where the format's timing claim shows.
+
+    The sampling timer runs at the header's rate times the number of analog inputs and the interrupt
+    advances one input per tick, so this signal starts one tick of 260 Hz after the first. Every existing
+    reader reports both as starting at zero.
     """
-    file_path = PYPHOTOMETRY_PATH / ONE_COLOUR_TIME_DIVISION
-    raw = file_path.read_bytes()
-    header_length = int.from_bytes(raw[:2], "little")
-    analog_words = (np.frombuffer(raw[2 + header_length :], dtype="<u2") >> 1).astype(np.float64)
 
-    for stream_index, stream_name in enumerate(["analog_1", "analog_2"]):
-        interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name=stream_name)
-        nwbfile = interface.create_nwbfile(metadata=interface.get_metadata())
+    data_interface_cls = PyPhotometryFiberPhotometryInterface
+    interface_kwargs = dict(file_path=ONE_COLOUR_TIME_DIVISION_FILE, stream_name="analog_2")
+    conversion_options = STUB
+    save_directory = OUTPUT_PATH
 
-        expected = analog_words[stream_index::2] * 0.00010122
-        np.testing.assert_array_equal(nwbfile.acquisition["FiberPhotometryResponseSeries"].data, expected)
+    expected_response_series_data = np.array([0.74882556, 0.74892678, 0.7495341, 0.74791458, 0.7485219])
+    expected_rate = 130.0
+    expected_starting_time = 1 / 260
 
 
-def test_session_start_time_comes_from_the_header():
-    interface = PyPhotometryFiberPhotometryInterface(file_path=PYPHOTOMETRY_PATH / ONE_COLOUR_TIME_DIVISION)
+class TestPyPhotometryTwoColourTimeDivision(FiberPhotometryInterfaceTestMixin):
+    """Round-trip a ``2 colour time div.`` recording, header version 0.2.
 
-    metadata = interface.get_metadata()
+    Version 0.2 differs from 0.3 only in carrying ``LED_current``, so this recording is here for its mode
+    string rather than for its version.
+    """
 
-    assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 6, 8, 16, 52, 48)
+    data_interface_cls = PyPhotometryFiberPhotometryInterface
+    interface_kwargs = dict(file_path=TWO_COLOUR_TIME_DIVISION_FILE, stream_name="analog_1")
+    conversion_options = STUB
+    save_directory = OUTPUT_PATH
+
+    expected_response_series_data = np.array(
+        [2.5123816199999998, 2.51359626, 2.51724018, 2.5045876799999998, 2.52381948]
+    )
+    expected_rate = 130.0
+    expected_starting_time = 0.0
 
 
-def test_asking_for_a_signal_the_file_does_not_have_is_refused():
-    """Which signals exist depends on the acquisition mode, so this is a mistake worth naming."""
-    with pytest.raises(ValueError, match="'analog_3' is not a signal of"):
-        PyPhotometryFiberPhotometryInterface(
-            file_path=PYPHOTOMETRY_PATH / ONE_COLOUR_TIME_DIVISION, stream_name="analog_3"
-        )
+class TestPyPhotometryTwoColourContinuous(FiberPhotometryInterfaceTestMixin):
+    """Round-trip the second input of a ``2 colour continuous`` recording, at the board's 1 kHz ceiling.
 
-
-def test_continuous_recordings_say_why_their_signals_share_a_timebase():
-    """The lag between a continuous file's signals is real but its size is not knowable from the file.
-
-    The board reads its inputs one after the other there too, but neither the oversampling constants nor
-    the interrupt overhead is recorded anywhere, and no upstream document states the resulting offset. So
-    the series carry the header's timebase and say so, rather than a start time that would read as
+    Continuous acquisition is the one case where a signal keeps the header's timebase. The board reads
+    its inputs sequentially there too, but by an amount the file does not record and no pyPhotometry
+    document states, so the series says so in prose instead of carrying a start time that would read as
     measured.
     """
-    interface = PyPhotometryFiberPhotometryInterface(
-        file_path=PYPHOTOMETRY_PATH / TWO_COLOUR_CONTINUOUS, stream_name="analog_2"
+
+    data_interface_cls = PyPhotometryFiberPhotometryInterface
+    interface_kwargs = dict(file_path=TWO_COLOUR_CONTINUOUS_FILE, stream_name="analog_2")
+    conversion_options = STUB
+    save_directory = OUTPUT_PATH
+
+    expected_response_series_data = np.array([0.32704182, 0.32694059999999997, 0.32683938, 0.32704182, 0.32714304])
+    expected_rate = 1000.0
+    expected_starting_time = 0.0
+
+    def test_the_series_says_why_it_shares_the_headers_timebase(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        description = metadata["FiberPhotometry"][self.interface.metadata_key]["description"]
+        assert "sequentially" in description
+        assert "213 microseconds" in description
+
+
+class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):
+    """Round-trip a ``GCaMP/RFP_dif`` recording, header version 0.1, where the mode names fluorophores.
+
+    This generation writes its version as a JSON number rather than a string and carries neither
+    ``LED_current`` nor a signal count, so the mode is the only thing that gives the layout.
+    """
+
+    data_interface_cls = PyPhotometryFiberPhotometryInterface
+    interface_kwargs = dict(file_path=INDICATOR_NAMED_FILE, stream_name="analog_1")
+    conversion_options = STUB
+    save_directory = OUTPUT_PATH
+
+    expected_response_series_data = np.array(
+        [0.9060699462890625, 0.9060699462890625, 0.9060699462890625, 0.90596923828125, 0.90596923828125]
     )
-
-    nwbfile = interface.create_nwbfile(metadata=interface.get_metadata())
-
-    series = nwbfile.acquisition["FiberPhotometryResponseSeries"]
-    assert series.starting_time == 0.0
-    assert "213 microseconds" in series.description
-    assert "sequentially" in series.description
+    expected_rate = 130.0
+    expected_starting_time = 0.0
 
 
-def test_strobed_recordings_carry_no_such_note():
-    """A strobed file's stagger is exact, so it is in the start time and needs no explanation."""
-    interface = PyPhotometryFiberPhotometryInterface(
-        file_path=PYPHOTOMETRY_PATH / ONE_COLOUR_TIME_DIVISION, stream_name="analog_2"
+class TestPyPhotometryFourColourFork(FiberPhotometryInterfaceTestMixin):
+    """Round-trip the first signal of the four-colour fork, whose layout its header does not state.
+
+    Each analog input time-multiplexes two colours, so the file holds four signals at half the rate the
+    header advertises. Nothing but the mode string distinguishes it from an ordinary two-signal
+    recording, and reading it by the rule documented for this header generation returns two traces of
+    interleaved colours.
+    """
+
+    data_interface_cls = PyPhotometryFiberPhotometryInterface
+    interface_kwargs = dict(file_path=FOUR_COLOUR_TIME_DIVISION_FILE, stream_name="analog_1")
+    conversion_options = STUB
+    save_directory = OUTPUT_PATH
+
+    expected_response_series_data = np.array(
+        [0.17166911999999998, 0.10132121999999999, 0.18766188, 0.09929682, 0.18745944]
     )
+    expected_rate = 32.5
+    expected_starting_time = 0.0
 
-    assert "description" not in interface.get_metadata()["FiberPhotometry"][interface.metadata_key]
+    def test_get_available_streams(self):
+        """A multiplexed line is named by its input and its colour, since the input alone is ambiguous."""
+        assert self.data_interface_cls.get_available_streams(file_path=FOUR_COLOUR_TIME_DIVISION_FILE) == [
+            "analog_1",
+            "analog_2",
+            "analog_1_color_2",
+            "analog_2_color_2",
+        ]
+
+
+class TestPyPhotometryFourColourForkLastSlot(FiberPhotometryInterfaceTestMixin):
+    """The fork's last slot, three ticks into the cycle and at half the header's rate."""
+
+    data_interface_cls = PyPhotometryFiberPhotometryInterface
+    interface_kwargs = dict(file_path=FOUR_COLOUR_TIME_DIVISION_FILE, stream_name="analog_2_color_2")
+    conversion_options = STUB
+    save_directory = OUTPUT_PATH
+
+    expected_response_series_data = np.array(
+        [0.2864526, 0.23857554, 0.26296956, 0.24424385999999998, 0.24879875999999998]
+    )
+    expected_rate = 32.5
+    expected_starting_time = 3 / 130
+
+
+class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
+    """Round-trip a recording older than the JSON header, whose 42 bytes are a fixed layout.
+
+    A failed JSON parse is what identifies the generation. Its mode is a one-byte code whose meaning was
+    never published, so no stagger is claimed for its signals.
+    """
+
+    data_interface_cls = PyPhotometryFiberPhotometryInterface
+    interface_kwargs = dict(file_path=PRE_JSON_HEADER_FILE, stream_name="analog_1")
+    conversion_options = STUB
+    save_directory = OUTPUT_PATH
+
+    expected_response_series_data = np.array(
+        [0.906069876, 0.906069876, 0.906069876, 0.9059691679999999, 0.9059691679999999]
+    )
+    expected_rate = 200.0
+    expected_starting_time = 0.0
+
+
+class TestPyPhotometryConstruction:
+    """Errors raised before a conversion, which the round-trip mixin cannot express."""
+
+    def test_asking_for_a_signal_the_file_does_not_have_is_refused(self):
+        """Which signals exist depends on the acquisition mode, so this is a mistake worth naming."""
+        with pytest.raises(ValueError, match="'analog_3' is not a signal of"):
+            PyPhotometryFiberPhotometryInterface(file_path=ONE_COLOUR_TIME_DIVISION_FILE, stream_name="analog_3")
+
+    def test_the_first_signal_is_read_when_none_is_named(self):
+        """A file holding one signal needs no argument; one holding several is only unambiguous with it."""
+        interface = PyPhotometryFiberPhotometryInterface(file_path=ONE_COLOUR_TIME_DIVISION_FILE)
+
+        assert interface.stream_names == ["analog_1"]
