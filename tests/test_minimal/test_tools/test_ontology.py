@@ -8,16 +8,20 @@ from pynwb import NWBFile
 from pynwb.file import Subject
 
 from neuroconv.tools.ontology import (
+    ANATOMY_TERMS,
     HBA_TERMS,
     MBA_TERMS,
     SPECIES_TERMS,
     STRAIN_TERMS,
+    AnatomyTerm,
     BrainRegionTerm,
     SpeciesTerm,
     StrainTerm,
+    add_anatomy_external_resources,
     add_brain_region_external_resources,
     add_species_external_resource,
     add_strain_external_resource,
+    get_anatomy_term,
     get_brain_region_term,
     get_species_suggestion,
     get_species_term,
@@ -44,6 +48,20 @@ def _add_electrodes(nwbfile: NWBFile, locations) -> None:
     group = nwbfile.create_electrode_group(name="group0", description="d", location="unknown", device=device)
     for index, location in enumerate(locations):
         nwbfile.add_electrode(location=location, group=group, id=index)
+
+
+def _add_skeleton(nwbfile: NWBFile, node_names, name="skeleton0"):
+    import ndx_pose
+
+    skeleton = ndx_pose.Skeleton(name=name, nodes=list(node_names), edges=None)
+    behavior_module = nwbfile.processing.get("behavior") or nwbfile.create_processing_module(
+        name="behavior", description="d"
+    )
+    if "Skeletons" not in behavior_module.data_interfaces:
+        behavior_module.add(ndx_pose.Skeletons(skeletons=[skeleton]))
+    else:
+        behavior_module["Skeletons"].add_skeletons(skeleton)
+    return skeleton
 
 
 def _optical_channel():
@@ -238,6 +256,48 @@ class TestBrainRegionTerms:
     def test_unrecognized_species_returns_none(self):
         assert get_brain_region_term("CA1", species=None) is None
         assert get_brain_region_term("CA1", species="not a species") is None
+
+
+# ---------------------------------------------------------------------------
+# General-anatomy term resolution
+# ---------------------------------------------------------------------------
+
+
+class TestAnatomyTerms:
+    def test_table_entries_are_self_consistent(self):
+        for canonical_name, term in ANATOMY_TERMS.items():
+            assert isinstance(term, AnatomyTerm)
+            assert term.name == canonical_name
+            assert term.curie.startswith("UBERON:")
+
+    def test_exact_canonical_name_resolves(self):
+        term = get_anatomy_term("Trapezius muscle")
+        assert term.name == "Trapezius muscle"
+        assert term.curie == "UBERON:0002380"
+        assert term.entity_uri == "http://purl.obolibrary.org/obo/UBERON_0002380"
+
+    def test_case_insensitive_match(self):
+        assert get_anatomy_term("snout").name == "Snout"
+        assert get_anatomy_term("SNOUT").name == "Snout"
+
+    @pytest.mark.parametrize(
+        "alias, expected_canonical",
+        [
+            ("nose", "Snout"),
+            ("forepaw", "Hand"),
+            ("hindpaw", "Foot"),
+            ("carpus", "Wrist"),
+            ("trapezius", "Trapezius muscle"),
+        ],
+    )
+    def test_informal_alias_resolves(self, alias, expected_canonical):
+        assert get_anatomy_term(alias).name == expected_canonical
+
+    @pytest.mark.parametrize("name", ["EarL", "ear_l", "not a structure", "", None, 42])
+    def test_unrecognized_returns_none(self, name):
+        # Lab-specific keypoint names with laterality markers are not recognized -- high precision
+        # over guessing.
+        assert get_anatomy_term(name) is None
 
 
 # ---------------------------------------------------------------------------
@@ -601,6 +661,120 @@ class TestBrainRegionExternalResources:
 
 
 # ---------------------------------------------------------------------------
+# General-anatomy HERD annotation
+# ---------------------------------------------------------------------------
+
+
+class TestAnatomyExternalResources:
+    def test_noop_when_no_skeleton(self):
+        nwbfile = _make_nwbfile()
+        assert add_anatomy_external_resources(nwbfile) == 0
+        assert nwbfile.external_resources is None
+
+    def test_noop_when_nothing_recognized(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["EarL", "EarR"])
+        assert add_anatomy_external_resources(nwbfile) == 0
+        assert nwbfile.external_resources is None
+
+    def test_skeleton_nodes_are_annotated(self):
+        nwbfile = _make_nwbfile()
+        skeleton = _add_skeleton(nwbfile, ["Snout", "Snout", "EarL", "Shoulder"])  # duplicates collapse
+
+        assert add_anatomy_external_resources(nwbfile) == 2
+        dataframe = nwbfile.external_resources.to_dataframe()
+        by_key = dict(zip(dataframe["key"], dataframe["entity_id"]))
+        assert by_key == {"Snout": "UBERON:0006333", "Shoulder": "UBERON:0001467"}
+
+        # HERD records the reference against the Skeleton itself (nodes is a plain array
+        # attribute, not a separate VectorData column); both keys share that one object row.
+        objects = nwbfile.external_resources.objects.to_dataframe()
+        assert objects["object_id"].tolist() == [skeleton.object_id]
+        assert objects["relative_path"].tolist() == ["nodes"]
+
+    def test_multiple_skeletons_are_all_annotated(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout"], name="skeleton_rat1")
+        _add_skeleton(nwbfile, ["Tail"], name="skeleton_rat2")
+
+        assert add_anatomy_external_resources(nwbfile) == 2
+        dataframe = nwbfile.external_resources.to_dataframe()
+        assert sorted(dataframe["key"].tolist()) == ["Snout", "Tail"]
+
+    def test_metadata_mapping_annotates_unrecognized_and_takes_precedence(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["EarL", "Snout"])
+        metadata = {
+            "Anatomy": {
+                "EarL": {"id": "UBERON:0001691", "uri": "http://purl.obolibrary.org/obo/UBERON_0001691"},
+                # Overrides the offline result with an explicit term.
+                "Snout": {"id": "UBERON:9999999", "uri": "https://example.org/9999999"},
+            }
+        }
+
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 2
+        dataframe = nwbfile.external_resources.to_dataframe()
+        assert dict(zip(dataframe["key"], dataframe["entity_id"])) == {
+            "EarL": "UBERON:0001691",
+            "Snout": "UBERON:9999999",
+        }
+
+    def test_maps_one_node_to_multiple_ontology_terms(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout"])
+        metadata = {
+            "Anatomy": {
+                "Snout": [
+                    {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"},
+                    {"id": "EXAMPLE:1", "uri": "https://example.org/1"},
+                ]
+            }
+        }
+
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 2
+        dataframe = nwbfile.external_resources.to_dataframe()
+        assert sorted(dataframe["entity_id"].tolist()) == ["EXAMPLE:1", "UBERON:0006333"]
+
+    @pytest.mark.parametrize(
+        "bad_value",
+        ["UBERON:0006333", {"id": "UBERON:0006333"}, {"uri": "https://example.org/1"}, {"id": "", "uri": ""}],
+    )
+    def test_malformed_metadata_term_raises(self, bad_value):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout"])
+        metadata = {"Anatomy": {"Snout": bad_value}}
+        with pytest.raises((TypeError, ValueError)):
+            add_anatomy_external_resources(nwbfile, metadata=metadata)
+
+    def test_idempotent(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout", "Tail"])
+        assert add_anatomy_external_resources(nwbfile) == 2
+        assert add_anatomy_external_resources(nwbfile) == 0
+        assert len(nwbfile.external_resources.entities[:]) == 2
+
+    def test_extends_existing_herd_in_place(self):
+        from hdmf.common import HERD
+        from pynwb import get_type_map
+
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout"])
+        herd = HERD(type_map=get_type_map())
+        herd.add_ref(
+            container=nwbfile.subject,
+            attribute="subject_id",
+            key="s1",
+            entity_id="EXAMPLE:1",
+            entity_uri="https://example.org/1",
+        )
+        nwbfile.external_resources = herd
+
+        assert add_anatomy_external_resources(nwbfile) == 1
+        assert nwbfile.external_resources is herd  # extended in place, not replaced
+        assert len(herd.entities[:]) == 2
+
+
+# ---------------------------------------------------------------------------
 # OntologyAnnotationMixin (overridable hooks) and write/read round trip
 # ---------------------------------------------------------------------------
 
@@ -691,3 +865,31 @@ class TestOntologyAnnotationMixin:
         assert not any(entity_id.startswith("RRID:") for entity_id in entity_ids)
         assert "NCBITaxon:10090" in entity_ids
         assert {"MBA:382", "MBA:385"}.issubset(set(entity_ids))
+
+    def test_default_hooks_annotate_anatomy_through_create_nwbfile(self):
+        from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
+
+        interface = MockPoseEstimationInterface(num_nodes=3)  # nodes: head, neck, left_shoulder
+        metadata = interface.get_metadata()
+        metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
+        assert "NCBITaxon:10090" in entity_ids
+        assert {"UBERON:0000033", "UBERON:0000974"}.issubset(entity_ids)  # head, neck
+
+    def test_subclass_can_override_anatomy_hook(self):
+        from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
+
+        class NoAnatomyInterface(MockPoseEstimationInterface):
+            def add_anatomy_external_resources(self, nwbfile, metadata=None):
+                return 0  # disable anatomy annotation entirely
+
+        interface = NoAnatomyInterface(num_nodes=3)
+        metadata = interface.get_metadata()
+        metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        entity_ids = nwbfile.external_resources.to_dataframe()["entity_id"].tolist()
+        assert not any(entity_id.startswith("UBERON:") for entity_id in entity_ids)
+        assert "NCBITaxon:10090" in entity_ids  # species annotation is unaffected

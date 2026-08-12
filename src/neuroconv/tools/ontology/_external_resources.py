@@ -2,11 +2,12 @@
 
 HERD (HDMF External Resources Data) lets an NWB file carry machine-readable links from its
 metadata values to entities in external ontologies. NeuroConv uses it to annotate values it
-can recognize -- ``Subject.species`` -> NCBITaxon, ``Subject.strain`` -> RRID, and anatomical
+can recognize -- ``Subject.species`` -> NCBITaxon, ``Subject.strain`` -> RRID, anatomical
 ``location`` fields (the electrodes table, electrode groups, imaging planes, and the
 ``FiberPhotometryTable``) -> the Allen Mouse or Human Brain Atlas (or a species-agnostic UBERON
-vocabulary for any other recognized species) -- so downstream tools (e.g. the DANDI archive) can
-resolve the term without guessing.
+vocabulary for any other recognized species), and ``ndx-pose`` ``Skeleton`` node names -> a
+species-agnostic UBERON vocabulary of skeleton parts and muscles -- so downstream tools (e.g. the
+DANDI archive) can resolve the term without guessing.
 
 The reference is stored in-file under ``/general/external_resources``, which requires
 ``pynwb >= 4.0.0`` (guaranteed by NeuroConv's dependency pin).
@@ -14,12 +15,14 @@ The reference is stored in-file under ``/general/external_resources``, which req
 
 from pynwb import NWBFile, get_type_map
 
+from ._anatomy import get_anatomy_term
 from ._brain_regions import get_brain_region_term
 from ._species import get_species_term
 from ._strain import get_strain_term
 
 __all__ = [
     "OntologyAnnotationMixin",
+    "add_anatomy_external_resources",
     "add_brain_region_external_resources",
     "add_species_external_resource",
     "add_strain_external_resource",
@@ -388,6 +391,123 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     return number_added
 
 
+def _anatomy_mapping_from_metadata(metadata: dict | None) -> dict:
+    """Parse ``metadata["Anatomy"]`` into ``{structure name: [(entity_id, entity_uri), ...]}``.
+
+    Same ontology-agnostic shape as ``metadata["BrainRegions"]``/``metadata["Strain"]``: each
+    structure name maps to one or more ontology terms, each a ``dict`` with an ``id`` and a
+    resolvable ``uri``. This is how you annotate a structure the curated
+    :data:`~neuroconv.tools.ontology.ANATOMY_TERMS` table does not recognize (e.g. a lab-specific
+    keypoint name with a laterality marker like ``"EarL"``), or override one it does.
+    """
+    return _id_uri_mapping_from_metadata(metadata, metadata_key="Anatomy", item_label="anatomical structure")
+
+
+def _anatomy_annotation_sites(nwbfile: NWBFile) -> list:
+    """Collect ``(container, attribute, relative_path, node name)`` tuples to annotate.
+
+    Covers every ``ndx-pose`` ``Skeleton.nodes`` entry in ``nwbfile.processing["behavior"]["Skeletons"]``
+    (the container path NeuroConv's own pose-estimation interfaces write to), if present. Unlike
+    the brain-region sites, ``nodes`` is a plain array attribute of the ``Skeleton`` itself (not a
+    separate ``VectorData`` column), so the ``Skeleton`` is the HERD container and ``"nodes"`` is
+    both the attribute and the relative path.
+    """
+    sites = []
+    behavior_module = nwbfile.processing.get("behavior")
+    if behavior_module is None:
+        return sites
+    skeletons_container = behavior_module.data_interfaces.get("Skeletons")
+    if skeletons_container is None:
+        return sites
+    for skeleton in skeletons_container.skeletons.values():
+        for node_name in dict.fromkeys(skeleton.nodes):  # unique, order-preserving
+            sites.append((skeleton, "nodes", "nodes", node_name))
+    return sites
+
+
+def add_anatomy_external_resources(nwbfile: NWBFile, metadata: dict | None = None) -> int:
+    """
+    Annotate ``ndx-pose`` ``Skeleton`` node names with general-anatomy ontology entities via HERD.
+
+    Resolves each distinct node name in every ``Skeleton.nodes`` array (pose-estimation keypoints,
+    e.g. ``"Snout"``, ``"Shoulder"``) to one or more ontology terms and attaches machine-readable
+    references (stored in-file under ``/general/external_resources``). Each name is resolved by:
+
+    1. the ``metadata["Anatomy"]`` mapping, if it provides an entry (this takes precedence and is
+       ontology-agnostic, so it may map one structure to several terms); then
+    2. the curated :data:`~neuroconv.tools.ontology.ANATOMY_TERMS` offline lookup of skeleton parts
+       and muscles, backed by UBERON.
+
+    Names resolving to neither are left untouched. This is a no-op (returns ``0``) when the file
+    has no ``Skeleton`` and no metadata mapping is provided.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The file whose skeleton node names should be annotated. Modified in place.
+    metadata : dict, optional
+        Conversion metadata. ``metadata["Anatomy"]`` maps a node name to a term
+        ``{"id": ..., "uri": ...}`` or a list of such terms.
+
+    Returns
+    -------
+    int
+        The number of external-resource references added.
+    """
+    custom_mapping = _anatomy_mapping_from_metadata(metadata)
+    sites = _anatomy_annotation_sites(nwbfile)
+    if not custom_mapping and not sites:
+        return 0
+
+    from hdmf.common import HERD
+
+    herd = nwbfile.external_resources
+    is_new_herd = herd is None
+    if is_new_herd:
+        herd = HERD(type_map=get_type_map())
+
+    already_annotated = _existing_external_resource_refs(herd)
+    number_added = 0
+    for container, attribute, relative_path, node_name in sites:
+        if not isinstance(node_name, str) or node_name.strip() == "":
+            continue
+
+        entities = custom_mapping.get(node_name)
+        if entities is None:
+            term = get_anatomy_term(node_name)
+            entities = [(term.curie, term.entity_uri)] if term is not None else None
+        if not entities:
+            continue
+
+        # All terms for a given node name share one HERD key; reuse the key object across the
+        # name's entities so a single object<->key link carries every ontology reference.
+        key = None
+        for entity_id, entity_uri in entities:
+            if (container.object_id, node_name, entity_id) in already_annotated:
+                continue
+            if key is None:
+                key = _find_existing_key(herd, container, relative_path, node_name)
+            if key is None:
+                herd.add_ref(
+                    container=container,
+                    attribute=attribute,
+                    key=node_name,
+                    entity_id=entity_id,
+                    entity_uri=entity_uri,
+                )
+                key = herd.get_key(node_name, container=container, relative_path=relative_path)
+            else:
+                herd.add_ref(
+                    container=container, attribute=attribute, key=key, entity_id=entity_id, entity_uri=entity_uri
+                )
+            already_annotated.add((container.object_id, node_name, entity_id))
+            number_added += 1
+
+    if number_added > 0 and is_new_herd:
+        nwbfile.external_resources = herd
+    return number_added
+
+
 class OntologyAnnotationMixin:
     """Mixin adding overridable hooks that annotate a written file with ontology references (HERD).
 
@@ -460,3 +580,24 @@ class OntologyAnnotationMixin:
             The number of external-resource references added.
         """
         return add_brain_region_external_resources(nwbfile, metadata=metadata)
+
+    def add_anatomy_external_resources(self, nwbfile: NWBFile, metadata: dict | None = None) -> int:
+        """
+        Attach general-anatomy ontology references to ``nwbfile`` (HERD). Override to customize.
+
+        The default implementation delegates to
+        :func:`neuroconv.tools.ontology.add_anatomy_external_resources`.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The populated file to annotate, modified in place.
+        metadata : dict, optional
+            Conversion metadata (see the delegated function for the ``"Anatomy"`` mapping).
+
+        Returns
+        -------
+        int
+            The number of external-resource references added.
+        """
+        return add_anatomy_external_resources(nwbfile, metadata=metadata)
