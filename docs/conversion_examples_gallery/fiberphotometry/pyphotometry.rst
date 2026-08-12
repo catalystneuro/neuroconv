@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading pyPhoto
 
 .. code-block:: bash
 
-    pip install "neuroconv[pyphotometry_fp]"
+    pip install "neuroconv[pyphotometry]"
 
 pyPhotometry is an open acquisition system, also sold as hardware by Open Ephys, whose ``.ppd`` file
 holds every signal the board recorded interleaved word by word. Which signals a file holds is decided by

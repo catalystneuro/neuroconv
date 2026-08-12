@@ -383,7 +383,7 @@ tdt_fp = [
 npm_fp = [
     "neuroconv[fiber_photometry]",
 ]
-pyphotometry_fp = [
+pyphotometry = [
     "neuroconv[fiber_photometry]",
 ]
 csv_fp = [
@@ -430,7 +430,7 @@ ophys = [
     "neuroconv[suite2p]",
     "neuroconv[tdt_fp]",
     "neuroconv[npm_fp]",
-    "neuroconv[pyphotometry_fp]",
+    "neuroconv[pyphotometry]",
     "neuroconv[csv_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
