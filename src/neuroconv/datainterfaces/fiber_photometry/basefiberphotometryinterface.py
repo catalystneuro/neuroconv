@@ -390,7 +390,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         response_series = FiberPhotometryResponseSeries(
             name=series_metadata["name"],
-            description=series_metadata.get("description", ""),
+            # ``or ""`` rather than a ``get`` default: the template hands back ``description=None`` for
+            # a series the user did not describe, and an unfilled optional field writes as absent.
+            description=series_metadata.get("description") or "",
             data=data,
             unit="a.u.",
             fiber_photometry_table_region=table_region,

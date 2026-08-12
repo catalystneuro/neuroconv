@@ -156,12 +156,14 @@ def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
 
     # One device type at a time, each collected across every row. Rows share hardware (two channels
     # commonly read one fiber), so a key repeats; the helper is idempotent on name and ignores it.
+    # A key set to ``None`` counts as absent: that is what ``get_metadata_template`` returns for an
+    # optional link the user did not fill, and an unfilled link writes no device.
     rows_metadata = table_metadata["rows"].values()
 
     optical_fiber_metadata_keys = [
         row_metadata["optical_fiber_metadata_key"]
         for row_metadata in rows_metadata
-        if "optical_fiber_metadata_key" in row_metadata
+        if row_metadata.get("optical_fiber_metadata_key") is not None
     ]
     for metadata_key in optical_fiber_metadata_keys:
         _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
@@ -169,7 +171,7 @@ def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
     excitation_source_metadata_keys = [
         row_metadata["excitation_source_metadata_key"]
         for row_metadata in rows_metadata
-        if "excitation_source_metadata_key" in row_metadata
+        if row_metadata.get("excitation_source_metadata_key") is not None
     ]
     for metadata_key in excitation_source_metadata_keys:
         _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
@@ -177,7 +179,7 @@ def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
     photodetector_metadata_keys = [
         row_metadata["photodetector_metadata_key"]
         for row_metadata in rows_metadata
-        if "photodetector_metadata_key" in row_metadata
+        if row_metadata.get("photodetector_metadata_key") is not None
     ]
     for metadata_key in photodetector_metadata_keys:
         _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
@@ -185,7 +187,7 @@ def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
     dichroic_mirror_metadata_keys = [
         row_metadata["dichroic_mirror_metadata_key"]
         for row_metadata in rows_metadata
-        if "dichroic_mirror_metadata_key" in row_metadata
+        if row_metadata.get("dichroic_mirror_metadata_key") is not None
     ]
     for metadata_key in dichroic_mirror_metadata_keys:
         _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
@@ -193,7 +195,7 @@ def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
     excitation_filter_metadata_keys = [
         row_metadata["excitation_filter_metadata_key"]
         for row_metadata in rows_metadata
-        if "excitation_filter_metadata_key" in row_metadata
+        if row_metadata.get("excitation_filter_metadata_key") is not None
     ]
     for metadata_key in excitation_filter_metadata_keys:
         _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
@@ -201,7 +203,7 @@ def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
     emission_filter_metadata_keys = [
         row_metadata["emission_filter_metadata_key"]
         for row_metadata in rows_metadata
-        if "emission_filter_metadata_key" in row_metadata
+        if row_metadata.get("emission_filter_metadata_key") is not None
     ]
     for metadata_key in emission_filter_metadata_keys:
         _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
@@ -333,14 +335,16 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
     for row_metadata in table_metadata["rows"].values():
         row_data = {}
         for key_field, ndx_field in _ROW_DEVICE_KEY_FIELDS.items():
-            if key_field in row_metadata:
+            if row_metadata.get(key_field) is not None:
                 row_data[ndx_field] = nwbfile.devices[instance_key_to_name[row_metadata[key_field]]]
         row_data["location"] = row_metadata["location"]
         row_data["excitation_wavelength_in_nm"] = row_metadata["excitation_wavelength_in_nm"]
         row_data["emission_wavelength_in_nm"] = row_metadata["emission_wavelength_in_nm"]
         row_data["indicator"] = key_to_indicator[row_metadata["indicator_metadata_key"]]
-        if "coordinates" in row_metadata:
+        if row_metadata.get("coordinates") is not None:
             row_data["coordinates"] = row_metadata["coordinates"]
+        if row_metadata.get("notes") is not None:
+            row_data["notes"] = row_metadata["notes"]
         if "commanded_voltage_series_metadata_key" in row_metadata:
             commanded_voltage_name = commanded_voltage_key_to_name[
                 row_metadata["commanded_voltage_series_metadata_key"]
