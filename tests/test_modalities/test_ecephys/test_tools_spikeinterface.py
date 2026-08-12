@@ -1746,6 +1746,93 @@ class TestAddElectrodeGroups:
             _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
 
 
+class TestAddElectrodeGroupsProbeTier:
+    """A group naming no device falls to the attached probe before it falls to the placeholder.
+
+    This is what a bare ``add_recording_to_nwbfile`` relies on: the identity is read off the probe, so a
+    caller who passes no metadata still gets it. The tier only fires when the probe names a model, since
+    a ``DeviceModel`` without a ``model_number`` reconstructs nothing and a ``Device`` carrying neither a
+    model nor a serial number says no more than the placeholder."""
+
+    @staticmethod
+    def _recording_with_probe(**probe_fields):
+        from probeinterface import generate_linear_probe
+
+        recording = generate_recording(num_channels=4, durations=[1.0])
+        probe = generate_linear_probe(num_elec=4)
+        probe.set_device_channel_indices(np.arange(4))
+        for field, value in probe_fields.items():
+            setattr(probe, field, value)
+        # TODO: drop ``in_place=True`` once spikeinterface>=0.105.0 is the minimum pin, where the call is
+        # always in place and the argument is deprecated.
+        recording.set_probe(probe, in_place=True)
+        return recording
+
+    def test_a_probe_naming_a_model_becomes_the_group_device(self):
+        recording = self._recording_with_probe(model_name="NP1000", manufacturer="imec", serial_number="18194809281")
+        nwbfile = mock_NWBFile()
+
+        _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
+
+        device = nwbfile.devices["Probe18194809281"]
+        assert device.serial_number == "18194809281"
+        assert device.model is nwbfile.device_models["NP1000"]
+        assert device.model.manufacturer == "imec"
+        assert device.model.model_number == "NP1000"
+        assert all(group.device is device for group in nwbfile.electrode_groups.values())
+
+    def test_a_probe_naming_no_model_falls_to_the_placeholder(self):
+        """Biocam and Maxwell attach probes carrying a manufacturer and no part number. A manufacturer
+        alone earns no model, so these keep the placeholder they write today."""
+        recording = self._recording_with_probe(manufacturer="3Brain")
+        nwbfile = mock_NWBFile()
+
+        _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
+
+        assert set(nwbfile.devices) == {"PlaceholderElectrodeDevice"}
+        assert len(nwbfile.device_models) == 0
+
+    def test_a_serial_number_of_zero_names_no_unit(self):
+        """``"0"`` is what a reader writes when it could not read a serial off the probe."""
+        recording = self._recording_with_probe(model_name="NP2014", manufacturer="imec", serial_number="0")
+        nwbfile = mock_NWBFile()
+
+        _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
+
+        device = nwbfile.devices["ProbeNP2014"]
+        assert device.serial_number is None
+        assert device.model.model_number == "NP2014"
+
+    def test_the_readers_own_label_names_the_device(self):
+        """Open Ephys names its probes in ``settings.xml``, so the file says ``ProbeA`` rather than a
+        serial number nobody reads."""
+        recording = self._recording_with_probe(
+            name="ProbeA", model_name="NP1110", manufacturer="imec", serial_number="21144110211"
+        )
+        nwbfile = mock_NWBFile()
+
+        _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
+
+        assert set(nwbfile.devices) == {"ProbeA"}
+        assert nwbfile.devices["ProbeA"].serial_number == "21144110211"
+
+    def test_a_group_naming_its_own_device_ignores_the_probe(self):
+        """Precedence is per entity: a caller who described their own device gets that device, and no
+        probe-derived one is created alongside it."""
+        recording = self._recording_with_probe(model_name="NP1000", manufacturer="imec", serial_number="123")
+        nwbfile = mock_NWBFile()
+        group_name = str(recording.get_channel_groups()[0])
+        metadata = {
+            "Devices": {"my_device": {"name": "MyLabProbe"}},
+            "Ecephys": {"ElectrodeGroups": {"g": {"name": group_name, "device_metadata_key": "my_device"}}},
+        }
+
+        _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording, metadata=metadata)
+
+        assert set(nwbfile.devices) == {"MyLabProbe"}
+        assert len(nwbfile.device_models) == 0
+
+
 class TestAddUnitsTable(TestCase):
     @classmethod
     def setUpClass(cls):
