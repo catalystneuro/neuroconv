@@ -87,6 +87,38 @@ class TestOldMetadataCompatibilityEcephys:
         assert nwbfile.electrode_groups["s1"].description == "Shank 1"
         assert "ElectricalSeriesRaw" in nwbfile.acquisition
 
+    def test_an_old_edit_beside_dict_metadata_leaves_the_dict_entries_alone(self, interface, tmp_path):
+        """One old-format key does not cost the caller the rest of the block.
+
+        After the switch this is how a script that was not updated meets the new format: `get_metadata()`
+        hands back the dict shape and the script still writes `Ecephys["Device"]`. The guard on the moved
+        keys warns and performs the write, on the promise that translation converts it, so what the block
+        already held has to survive that conversion. The groups are stated here because the mock reads
+        none from its source; `IntanRecordingInterface`, `SpikeGLXRecordingInterface` and
+        `NeuralynxRecordingInterface` emit exactly this block, and it is what their users would lose.
+        """
+        metadata = interface.get_metadata(use_new_metadata_format=True)
+        metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1, 12, 30, 0).astimezone())
+        metadata["Devices"] = dict(probe=dict(name="Neuropixels", description="A probe read from the header"))
+        metadata["Ecephys"]["ElectrodeGroups"] = {
+            "s1": dict(name="s1", description="Shank 1", location="CA1", device_metadata_key="probe"),
+            "s2": dict(name="s2", description="Shank 2", location="CA3", device_metadata_key="probe"),
+        }
+        metadata["Ecephys"]["Device"] = [dict(name="MyAcquisitionSystem", description="A system I described")]
+
+        nwbfile_path = tmp_path / "old_edit_on_dict_metadata_ecephys.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        nwbfile = read_nwb(nwbfile_path)
+        assert nwbfile.electrode_groups["s1"].description == "Shank 1"
+        assert nwbfile.electrode_groups["s1"].location == "CA1"
+        assert nwbfile.electrode_groups["s2"].location == "CA3"
+        assert nwbfile.electrode_groups["s1"].device.name == "Neuropixels"
+        assert nwbfile.devices["Neuropixels"].description == "A probe read from the header"
+        # The stated device reaches the registry but no group links to it, so nothing writes it. That is
+        # the registry's own rule rather than anything translation does.
+        assert "MyAcquisitionSystem" not in nwbfile.devices
+
     def test_run_conversion_through_a_converter(self, interface, tmp_path):
         """A converter merges its interfaces' metadata, so it is where the shape is easiest to lose."""
         converter = ConverterPipe(data_interfaces=dict(Recording=interface))

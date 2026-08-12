@@ -95,6 +95,36 @@ class TestOldMetadataCompatibilityImaging:
         assert "ImagingPlaneGreen" in nwbfile.imaging_planes
         assert "TwoPhotonSeriesGreen" in nwbfile.acquisition
 
+    def test_an_old_edit_beside_dict_metadata_leaves_the_dict_entries_alone(self, interface, tmp_path):
+        """One old-format key does not cost the caller the rest of the block.
+
+        Two ways in. After the switch a script that was not updated writes `Ophys["Device"]` onto dict
+        metadata. Today a converter gets there on its own: `BrukerTiffImagingInterface` emits only the
+        dict format, so pairing it with any dual-mode ophys interface puts both shapes in one `Ophys`
+        block, and the block the dict-only interface described has to survive translating the other one.
+        """
+        metadata = interface.get_metadata(use_new_metadata_format=True)
+        metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1, 12, 30, 0).astimezone())
+        metadata["Devices"] = dict(scope=dict(name="MyMicroscope", description="A microscope I described"))
+        metadata["Ophys"]["ImagingPlanes"] = dict(
+            plane=dict(name="ImagingPlaneGreen", indicator="GCaMP6f", location="CA1", device_metadata_key="scope")
+        )
+        metadata["Ophys"]["MicroscopySeries"]["mock_imaging"].update(imaging_plane_metadata_key="plane")
+        metadata["Ophys"]["Device"] = [dict(name="AnotherMicroscope", description="A second one")]
+
+        nwbfile_path = tmp_path / "old_edit_on_dict_metadata_imaging.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        nwbfile = read_nwb(nwbfile_path)
+        assert nwbfile.devices["MyMicroscope"].description == "A microscope I described"
+        imaging_plane = nwbfile.imaging_planes["ImagingPlaneGreen"]
+        assert imaging_plane.indicator == "GCaMP6f"
+        assert imaging_plane.location == "CA1"
+        assert imaging_plane.device.name == "MyMicroscope"
+        # The interface's own series entry, which is what disappears when the block is rebuilt from the
+        # old keys alone: the writer then falls back to the placeholder template.
+        assert nwbfile.acquisition["MicroscopySeries"].imaging_plane.name == "ImagingPlaneGreen"
+
 
 class TestOldMetadataCompatibilitySegmentation:
     """The segmentation writers read plane segmentations from a list in the old format."""
@@ -127,3 +157,20 @@ class TestOldMetadataCompatibilitySegmentation:
         plane_segmentation = image_segmentation.plane_segmentations["PlaneSegmentation"]
         assert plane_segmentation.description == "The ROIs I described"
         assert plane_segmentation.imaging_plane.name == "ImagingPlane"
+
+    def test_an_extractor_with_no_traces_still_converts(self):
+        # The old defaults declare six trace roles on every segmentation, so translated metadata asks for
+        # traces from extractors that have none (`InscopixSegmentationInterface` among them). The dict
+        # writer rejects a request it cannot satisfy, which is right for metadata someone wrote and wrong
+        # for boilerplate, so the translated block is dropped and the conversion writes nothing for it,
+        # which is what the old writer did.
+        interface = MockSegmentationInterface(
+            has_raw_signal=False, has_dff_signal=False, has_deconvolved_signal=False, has_neuropil_signal=False
+        )
+        metadata = interface.get_metadata(use_new_metadata_format=False)
+        metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1).astimezone())
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert "Fluorescence" not in nwbfile.processing["ophys"].data_interfaces
+        assert "ImageSegmentation" in nwbfile.processing["ophys"].data_interfaces

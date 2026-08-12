@@ -1,4 +1,5 @@
 import re
+import sys
 import warnings
 from platform import python_version as get_python_version
 
@@ -248,14 +249,32 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         expected_error_msg = (
             "The channels of this recording have heterogeneous offsets, which a single NWB "
-            "ElectricalSeries cannot represent. To write them as one series, pass "
-            "data_representation='physical_units' as a conversion option to add_to_nwbfile() "
-            "or run_conversion() (this folds each channel's offset into the data and writes "
-            "float physical values). Alternatively, drop or separate the channels that do not "
-            "share the common offset."
+            "ElectricalSeries cannot represent.\n"
+            "Multiple offsets were found per channel IDs:\n"
+            "  Offset 0: Channel IDs ['0', '1']\n"
+            "  Offset 1: Channel IDs ['2', '3']\n"
+            "  Offset 2: Channel IDs ['4']\n"
+            "\n"
+            "If these channels are all the same kind of signal and the offsets come from "
+            "per-channel scaling, pass data_representation='physical_units' as a conversion "
+            "option to add_to_nwbfile() or run_conversion() to write them as one series (this "
+            "folds each channel's offset into the data and writes float physical values). If the "
+            "channels carrying the odd offsets are not electrode channels, drop them with "
+            "interface.remove_channels(channel_ids=[...]) and write them as TimeSeries instead. "
+            "See https://neuroconv.readthedocs.io/en/main/how_to/handle_heterogeneous_offsets.html"
         )
         with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile())
+
+    def test_remove_channels(self):
+        """`remove_channels` is the drop the offset error points at: it replaces the held recording with
+        the reduced one, so everything downstream of the interface sees only the channels that are left."""
+        interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+
+        returned_interface = interface.remove_channels(channel_ids=["1", "3"])
+
+        assert returned_interface is interface  # returns self so the call can be chained
+        assert list(interface.channel_ids) == ["0", "2", "4"]
 
     def test_stub(self, setup_interface):
         interface = self.interface
@@ -595,19 +614,17 @@ def test_run_conversion_through_converter(tmp_path):
 
 
 class TestAssertions(TestCase):
-    @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
-    def test_spike2_import_assertions_3_10(self):
+    @pytest.mark.skipif(
+        sys.platform == "win32" or python_version >= Version("3.14"),
+        reason="sonpy is installable on Windows for all supported versions, and on other platforms from 3.14",
+    )
+    def test_spike2_import_assertions(self):
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
-            exc_msg="\nThe package 'sonpy' is not available for Python version 3.10!",
-        ):
-            Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
-
-    @pytest.mark.skipif(python_version.minor != 11, reason="Only testing with Python 3.11!")
-    def test_spike2_import_assertions_3_11(self):
-        with self.assertRaisesWith(
-            exc_type=ModuleNotFoundError,
-            exc_msg="\nThe package 'sonpy' is not available for Python version 3.11!",
+            exc_msg=(
+                f"\nThe package 'sonpy' is not available on the {sys.platform} platform for "
+                f"Python version 3.{python_version.minor}!"
+            ),
         ):
             Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
