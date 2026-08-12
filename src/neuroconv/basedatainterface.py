@@ -198,6 +198,7 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
         self.add_species_external_resource(nwbfile, metadata=metadata)
         self.add_strain_external_resource(nwbfile, metadata=metadata)
         self.add_brain_region_external_resources(nwbfile, metadata=metadata)
+        self.add_anatomy_external_resources(nwbfile, metadata=metadata)
 
         return nwbfile
 
@@ -318,6 +319,7 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
             self.add_species_external_resource(nwbfile, metadata=metadata)
             self.add_strain_external_resource(nwbfile, metadata=metadata)
             self.add_brain_region_external_resources(nwbfile, metadata=metadata)
+            self.add_anatomy_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
 

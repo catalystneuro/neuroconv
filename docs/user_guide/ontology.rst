@@ -7,7 +7,7 @@ means instead of guessing from free text. References are stored **in-file** unde
 ``/general/external_resources`` using HDMF's HERD (External Resources Data), so they travel with the
 file.
 
-Three kinds of value are annotated automatically by a conversion:
+Four kinds of value are annotated automatically by a conversion:
 
 - the subject's **species**, mapped to `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_;
 - the subject's **strain**, mapped to `RRID <https://bioregistry.io/registry/rrid>`_ (Research
@@ -17,7 +17,11 @@ Three kinds of value are annotated automatically by a conversion:
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) for human subjects, a
   species-agnostic `UBERON <https://bioregistry.io/registry/uberon>`_ vocabulary of common region
   names for every other recognized species (e.g. rat, which has no dedicated Allen atlas), or to
-  any ontology you specify in metadata.
+  any ontology you specify in metadata;
+- **general anatomy** -- skeleton parts and muscles named as ``ndx-pose`` ``Skeleton`` nodes
+  (pose-estimation keypoints, e.g. ``"Snout"``, ``"Shoulder"``) -- mapped to a species-agnostic
+  UBERON vocabulary. This is independent of brain-region annotation: it targets pose-estimation
+  keypoints, not ``location`` fields, and does not vary per species or atlas.
 
 Brain-region annotation covers every ``location`` field NeuroConv knows about: the electrodes table
 ``location`` column and ``ElectrodeGroup.location`` (ecephys), ``ImagingPlane.location`` (ophys), and
@@ -28,7 +32,7 @@ NeuroConv (one per vocabulary, the same format used by
 `HDMF's TermSet <https://hdmf.readthedocs.io/en/stable/tutorials/plot_term_set.html>`_), so the
 mappings are transparent and editable.
 
-All three annotations are applied at write time by the overridable
+All four annotations are applied at write time by the overridable
 :py:class:`~neuroconv.tools.ontology.OntologyAnnotationMixin`, which ``BaseDataInterface`` and
 ``NWBConverter`` inherit (see `Customizing the annotation`_ below). In-file HERD storage requires
 ``pynwb >= 4.0.0``, which is NeuroConv's minimum supported version.
@@ -236,16 +240,49 @@ it to a list of terms:
 The metadata mapping takes precedence over the offline lookup, so you can also use it to override a
 string the mouse lookup would otherwise resolve differently.
 
+General anatomy
+----------------
+
+``ndx-pose`` stores a pose-estimation skeleton's body-part names as free text in
+``Skeleton.nodes`` (e.g. ``"Snout"``, ``"Shoulder"``, ``"Tail"``). NeuroConv can attach a UBERON
+reference to each recognized node name, so downstream tools can resolve the exact anatomical
+structure a keypoint tracks. This is independent of brain-region annotation above: it never looks
+at ``location`` fields, and the vocabulary (:py:data:`~neuroconv.tools.ontology.ANATOMY_TERMS`,
+~28 curated skeleton parts and muscles) is species-agnostic -- there is no per-species atlas
+selection.
+
+.. code-block:: python
+
+    from neuroconv.tools.ontology import get_anatomy_term, add_anatomy_external_resources
+
+    term = get_anatomy_term("trapezius muscle")
+    term.curie        # 'UBERON:0002380'
+    term.entity_uri   # 'http://purl.obolibrary.org/obo/UBERON_0002380'
+
+    # skeleton.nodes == ["Snout", "Shoulder", "EarL"] on an nwbfile.processing["behavior"]["Skeletons"] entry
+    number_added = add_anatomy_external_resources(nwbfile)  # annotates "Snout" and "Shoulder"; "EarL" is left alone
+
+Like brain regions, an unrecognized node name (e.g. a lab-specific keypoint with a laterality
+marker such as ``"EarL"``) can be mapped explicitly under ``metadata["Anatomy"]``, using the same
+``{"id": ..., "uri": ...}`` (or list-of-terms) shape and the same override-takes-precedence rule:
+
+.. code-block:: python
+
+    metadata["Anatomy"] = {
+        "EarL": {"id": "UBERON:0001691", "uri": "http://purl.obolibrary.org/obo/UBERON_0001691"},
+    }
+
 Customizing the annotation
 --------------------------
 
-All three annotations are overridable methods provided by
+All four annotations are overridable methods provided by
 :py:class:`~neuroconv.tools.ontology.OntologyAnnotationMixin`, which ``BaseDataInterface`` and
 ``NWBConverter`` inherit:
 
 - ``add_species_external_resource(nwbfile, metadata=None)`` — the subject species;
 - ``add_strain_external_resource(nwbfile, metadata=None)`` — the subject strain;
-- ``add_brain_region_external_resources(nwbfile, metadata=None)`` — anatomical locations.
+- ``add_brain_region_external_resources(nwbfile, metadata=None)`` — anatomical locations;
+- ``add_anatomy_external_resources(nwbfile, metadata=None)`` — pose-estimation skeleton nodes.
 
 Each runs at write time, once the interface/converter data has been added to the file. Override one
 in your interface or converter subclass to change or disable that annotation — for example to use a
