@@ -876,6 +876,98 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 10, 52, 24)
 
 
+class TestOpenEphysBinaryRecordingInterfaceNeuropixelsProbe(RecordingExtractorInterfaceTestMixin):
+    """A probe whose `settings.xml` names both a part number and a serial number.
+
+    The v0.5.3 fixtures carry a serial number and no part number, so probeinterface cannot build a
+    catalogue probe from them and spikeinterface attaches none at all."""
+
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync" / "Record Node 104"),
+        stream_name="Record Node 104#Neuropix-PXI-100.ProbeA-AP",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_devices = {
+            "neuropixels_22112107161": dict(
+                name="NeuropixelsProbeA",
+                serial_number="22112107161",
+                device_model_metadata_key="imec_NP1300",
+            )
+        }
+        expected_device_models = {
+            "imec_NP1300": dict(
+                name="NP1300",
+                model_number="NP1300",
+                manufacturer="imec",
+                description="Optopix phase1",
+            )
+        }
+        expected_ecephys_metadata = {
+            "ElectricalSeries": {"open_ephys_recording": dict(name="ElectricalSeries")},
+            "ElectrodeGroups": {"0": dict(name="0", device_metadata_key="neuropixels_22112107161")},
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
+        assert metadata["Ecephys"] == expected_ecephys_metadata
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 8, 30, 23, 41, 36)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 8, 30, 23, 41, 36)
+
+
+class TestOpenEphysBinaryRecordingInterfaceProbeWithoutSerialNumber(RecordingExtractorInterfaceTestMixin):
+    """A probe whose `settings.xml` reports `probe_serial_number="0"`, which names no unit.
+
+    The device key then falls back to the interface-scoped shape, since a key built from the model
+    number would merge two probes of the same model into one device. The four keys are the shanks of
+    the NP2014, all linking to the single probe."""
+
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_onebox_neuropixels_nontrivial_wiring" / "Record Node 101"
+        ),
+        stream_name="Record Node 101#OneBox-111.ProbeA",
+        metadata_key="my_probe",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_devices = {"my_probe_probe": dict(name="NeuropixelsProbeA", device_model_metadata_key="imec_NP2014")}
+        expected_device_models = {
+            "imec_NP2014": dict(
+                name="NP2014",
+                model_number="NP2014",
+                manufacturer="imec",
+                description="Neuropixels 2.0 multishank probe with cap",
+            )
+        }
+        expected_electrode_groups = {
+            shank: dict(name=shank, device_metadata_key="my_probe_probe") for shank in ("0", "1", "2", "3")
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
+        assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 11, 17, 10, 48, 37)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 11, 17, 10, 48, 37)
+
+    def test_no_serial_number_is_written(self, setup_interface):
+        """``"0"`` is what the plugin writes when it cannot read a serial off the probe, so the field is
+        left unset instead of stating it."""
+        interface, test_name = setup_interface
+
+        nwbfile = interface.create_nwbfile(metadata=interface.get_metadata(use_new_metadata_format=True))
+
+        assert nwbfile.devices["NeuropixelsProbeA"].serial_number is None
+
+
 class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtractorInterfaceTestMixin):
     """Test that non-neural channels are not written as ElectricalSeries"""
 
@@ -1061,10 +1153,18 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "spikeglx_imec0_ap"
         expected_devices = {
-            "neuropixels_imec0": dict(
+            "neuropixels_18194809281": dict(
                 name="NeuropixelsImec0",
-                description='Neuropixels 1.0 probe. Additional metadata: {"part_number": "PRB_1_4_0480_1", "port": "2", "slot": "2", "model_name": "PRB_1_4_0480_1", "manufacturer": "imec"}',
                 serial_number="18194809281",
+                device_model_metadata_key="imec_PRB_1_4_0480_1",
+            )
+        }
+        expected_device_models = {
+            "imec_PRB_1_4_0480_1": dict(
+                name="PRB_1_4_0480_1",
+                model_number="PRB_1_4_0480_1",
+                manufacturer="imec",
+                description="Neuropixels 1.0 probe",
             )
         }
         expected_electrode_groups = {
@@ -1072,7 +1172,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 name="NeuropixelsImec0",
                 description="A group representing probe/shank 'NeuropixelsImec0'.",
                 location="unknown",
-                device_metadata_key="neuropixels_imec0",
+                device_metadata_key="neuropixels_18194809281",
             )
         }
         expected_electrical_series = {"spikeglx_imec0_ap": dict(name="ElectricalSeriesAP")}
@@ -1086,6 +1186,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
         # Electrode-table column descriptions are carried over in list shape; the dict migration is a follow-up.
@@ -1111,10 +1212,18 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "spikeglx_imec0_ap"
         expected_devices = {
-            "neuropixels_imec0": dict(
+            "neuropixels_22327214192": dict(
                 name="NeuropixelsImec0",
-                description='Neuropixels 1.0 NHP long linear probe with cap. Additional metadata: {"part_number": "NP1032", "port": "2", "slot": "2", "model_name": "NP1032", "manufacturer": "imec"}',
                 serial_number="22327214192",
+                device_model_metadata_key="imec_NP1032",
+            )
+        }
+        expected_device_models = {
+            "imec_NP1032": dict(
+                name="NP1032",
+                model_number="NP1032",
+                manufacturer="imec",
+                description="Neuropixels 1.0 NHP long linear probe with cap",
             )
         }
         expected_electrode_groups = {
@@ -1122,7 +1231,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
                 name="NeuropixelsImec0",
                 description="A group representing probe/shank 'NeuropixelsImec0'.",
                 location="unknown",
-                device_metadata_key="neuropixels_imec0",
+                device_metadata_key="neuropixels_22327214192",
             )
         }
         expected_electrical_series = {"spikeglx_imec0_ap": dict(name="ElectricalSeriesAP")}
@@ -1136,6 +1245,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
         # Electrode-table column descriptions are carried over in list shape; the dict migration is a follow-up.
