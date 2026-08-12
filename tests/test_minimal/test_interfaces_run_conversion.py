@@ -53,6 +53,91 @@ def test_base_data_interface_append_on_disk(tmp_path):
         assert nwbfile.acquisition["TimeSeriesSecond"].data.shape[1] == 2
 
 
+class TestBackendConfigurationRequiresTheFileItDescribes:
+    """`run_conversion` adds this conversion's data after a caller could have built a configuration.
+
+    Both combinations below reach `configure_backend` with a configuration derived from a file that has
+    since gained the conversion's own datasets, which no configuration can describe.
+    """
+
+    @pytest.fixture
+    def interface(self):
+        return MockTimeSeriesInterface(num_channels=3, duration=0.1)
+
+    @pytest.fixture
+    def converter(self):
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(Test=MockTimeSeriesInterface)
+
+        return TestConverter(source_data=dict(Test=dict(num_channels=3, duration=0.1)))
+
+    def test_interface_rejects_an_in_memory_nwbfile(self, interface, tmp_path):
+        nwbfile_path = tmp_path / "interface_in_memory.nwb"
+        metadata = interface.get_metadata()
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+        backend_configuration = interface.get_default_backend_configuration(nwbfile=nwbfile, backend="hdf5")
+
+        with pytest.raises(ValueError, match="while also providing an in-memory NWBFile"):
+            interface.run_conversion(
+                nwbfile_path=nwbfile_path,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                backend_configuration=backend_configuration,
+            )
+
+        assert not nwbfile_path.exists()
+
+    def test_interface_rejects_appending_on_disk(self, interface, tmp_path):
+        nwbfile_path = tmp_path / "interface_append.nwb"
+        metadata = interface.get_metadata()
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        backend_configuration = interface.get_default_backend_configuration(
+            nwbfile=interface.create_nwbfile(metadata=metadata), backend="hdf5"
+        )
+
+        with pytest.raises(ValueError, match="while also appending to an existing file on disk"):
+            interface.run_conversion(
+                nwbfile_path=nwbfile_path,
+                metadata=metadata,
+                backend_configuration=backend_configuration,
+                append_on_disk_nwbfile=True,
+            )
+
+    def test_converter_rejects_an_in_memory_nwbfile(self, converter, tmp_path):
+        nwbfile_path = tmp_path / "converter_in_memory.nwb"
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1).astimezone())
+        nwbfile = converter.create_nwbfile(metadata=metadata)
+        backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend="hdf5")
+
+        with pytest.raises(ValueError, match="while also providing an in-memory NWBFile"):
+            converter.run_conversion(
+                nwbfile_path=nwbfile_path,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                backend_configuration=backend_configuration,
+            )
+
+        assert not nwbfile_path.exists()
+
+    def test_converter_rejects_appending_on_disk(self, converter, tmp_path):
+        nwbfile_path = tmp_path / "converter_append.nwb"
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1).astimezone())
+        converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        backend_configuration = converter.get_default_backend_configuration(
+            nwbfile=converter.create_nwbfile(metadata=metadata), backend="hdf5"
+        )
+
+        with pytest.raises(ValueError, match="while also appending to an existing file on disk"):
+            converter.run_conversion(
+                nwbfile_path=nwbfile_path,
+                metadata=metadata,
+                backend_configuration=backend_configuration,
+                append_on_disk_nwbfile=True,
+            )
+
+
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_interface_backend_matches_default_backend_configuration(tmp_path, backend):
     """`backend=...` and the matching default `backend_configuration` write the same file.
