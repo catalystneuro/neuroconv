@@ -27,5 +27,6 @@ and synchronize data across multiple sources.
   backend_configuration
   linking_sorted_data
   yaml
+  converting_multiple_sessions
   docker_demo
   aws_demo
