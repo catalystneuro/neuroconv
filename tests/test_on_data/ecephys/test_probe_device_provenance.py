@@ -1,34 +1,12 @@
-"""The probe attached to a Neuropixels recording is written as a ``Device`` naming the physical unit and
-a ``DeviceModel`` naming the catalogue entry, so the geometry can be rebuilt from what is in the file."""
+"""What an interface writes for its own probe is asserted with the other interface tests. This file holds
+what a single interface cannot show: how two of them merge, and a branch no fixture reaches."""
 
-from neuroconv.datainterfaces import (
-    OpenEphysBinaryRecordingInterface,
-    SpikeGLXRecordingInterface,
-)
+from neuroconv.datainterfaces import SpikeGLXRecordingInterface
 from neuroconv.utils import dict_deep_update
 
 from ..setup_paths import ECEPHY_DATA_PATH
 
 SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
-OPENEPHYS_PATH = ECEPHY_DATA_PATH / "openephysbinary"
-
-
-def test_serial_less_probe_keys_by_interface_and_index():
-    """This Open Ephys settings file reports a serial number of ``"0"``, which names no unit, so the key
-    falls back to the interface-scoped shape and no serial reaches the file."""
-    interface = OpenEphysBinaryRecordingInterface(
-        folder_path=OPENEPHYS_PATH / "v0.6.x_onebox_neuropixels_nontrivial_wiring" / "Record Node 101",
-        stream_name="Record Node 101#OneBox-111.ProbeA",
-        metadata_key="my_probe",
-    )
-
-    metadata = interface.get_metadata(use_new_metadata_format=True)
-
-    assert set(metadata["Devices"]) == {"my_probe_probe_0"}
-    assert "serial_number" not in metadata["Devices"]["my_probe_probe_0"]
-
-    nwbfile = interface.create_nwbfile(metadata=metadata, stub_test=True)
-    assert nwbfile.devices["NeuropixelsProbeA"].serial_number is None
 
 
 def test_a_probe_without_a_model_number_writes_no_model(monkeypatch):

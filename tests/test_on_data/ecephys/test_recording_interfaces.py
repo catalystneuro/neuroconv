@@ -820,10 +820,10 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
 
 
 class TestOpenEphysBinaryRecordingInterfaceNeuropixelsProbe(RecordingExtractorInterfaceTestMixin):
-    """The only Open Ephys fixture here whose `settings.xml` names a probe part number.
+    """A probe whose `settings.xml` names both a part number and a serial number.
 
-    The v0.5.3 ones carry a serial number and no part number, so probeinterface cannot build a
-    catalogue probe from them and spikeinterface attaches none."""
+    The v0.5.3 fixtures carry a serial number and no part number, so probeinterface cannot build a
+    catalogue probe from them and spikeinterface attaches none at all."""
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
     interface_kwargs = dict(
@@ -860,6 +860,55 @@ class TestOpenEphysBinaryRecordingInterfaceNeuropixelsProbe(RecordingExtractorIn
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 8, 30, 23, 41, 36)
+
+
+class TestOpenEphysBinaryRecordingInterfaceProbeWithoutSerialNumber(RecordingExtractorInterfaceTestMixin):
+    """A probe whose `settings.xml` reports `probe_serial_number="0"`, which names no unit.
+
+    The device key then falls back to the interface-scoped shape, since a key built from the model
+    number would merge two probes of the same model into one device. The four keys are the shanks of
+    the NP2014, all linking to the single probe."""
+
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_onebox_neuropixels_nontrivial_wiring" / "Record Node 101"
+        ),
+        stream_name="Record Node 101#OneBox-111.ProbeA",
+        metadata_key="my_probe",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_devices = {"my_probe_probe_0": dict(name="NeuropixelsProbeA", device_model_metadata_key="imec_NP2014")}
+        expected_device_models = {
+            "imec_NP2014": dict(
+                name="NP2014",
+                model_number="NP2014",
+                manufacturer="imec",
+                description="Neuropixels 2.0 multishank probe with cap",
+            )
+        }
+        expected_electrode_groups = {
+            shank: dict(name=shank, device_metadata_key="my_probe_probe_0") for shank in ("0", "1", "2", "3")
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
+        assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 11, 17, 10, 48, 37)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 11, 17, 10, 48, 37)
+
+    def test_no_serial_number_is_written(self, setup_interface):
+        """``"0"`` is what the plugin writes when it cannot read a serial off the probe, so the field is
+        left unset instead of stating it."""
+        interface, test_name = setup_interface
+
+        nwbfile = interface.create_nwbfile(metadata=interface.get_metadata(use_new_metadata_format=True))
+
+        assert nwbfile.devices["NeuropixelsProbeA"].serial_number is None
 
 
 class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtractorInterfaceTestMixin):
