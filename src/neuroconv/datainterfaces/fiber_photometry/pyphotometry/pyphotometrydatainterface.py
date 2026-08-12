@@ -154,9 +154,9 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         measured against, and the subtraction that used to happen on the board moved into the reader. The
         response series carries the difference, which is the quantity every pipeline expects and the one
         earlier firmware wrote itself. Both measurements go in beside it, since dropping either would
-        discard something the hardware recorded. No recording of that version exists in any public
-        deposit, so this path is written from pyPhotometry's own reader source and the reader warns when
-        it meets one: https://github.com/catalystneuro/neuroconv/issues/1907.
+        discard something the hardware recorded. No file of that version was available when this was
+        written, so the layout comes from pyPhotometry's own reader and the reader says so when it meets
+        one.
 
         They are linked differently, because the table can describe one of them and not the other. Every
         field of the row the difference references is true of the LED-on trace, so it references the same
