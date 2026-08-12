@@ -1820,9 +1820,9 @@ class TestAddElectrodeGroups:
 
         assert set(nwbfile.devices) == {expected_name}
 
-    def test_a_group_naming_its_own_device_ignores_the_probe(self):
-        """Precedence is per entity: a caller who described their own device gets that device, and no
-        probe-derived one is created alongside it."""
+    def test_user_specified_device_overrides_the_probe(self):
+        """A caller who described their own device gets that device, and the probe-derived one is never
+        created rather than created and left unreferenced."""
         recording = _recording_with_probe(model_name="NP1000", manufacturer="imec", serial_number="123")
         nwbfile = mock_NWBFile()
         group_name = str(recording.get_channel_groups()[0])
