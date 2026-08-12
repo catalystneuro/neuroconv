@@ -61,6 +61,11 @@ allowed to appear. It returns the same source-derived values, wrapped in the ful
 writer expects, with the cross-references between entries already resolved and every field only the
 experimenter can supply set to ``None``.
 
+``BaseFiberPhotometryInterface`` is the only one that implements it today, since its chain is the most
+elaborate one in the codebase and so the first place the strict rule above cost a user something. The
+rule below is written for any modality that follows, and whether it generalizes unchanged to the
+modalities whose tables scale with the recording is still open.
+
 The two methods answer different questions. ``get_metadata()`` answers "what does the source say?",
 and its answer must never contain a value the source did not provide. ``get_metadata_template()``
 answers "what does this file need from me?", and its blanks *are* the answer: what comes back

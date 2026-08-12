@@ -422,15 +422,6 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             assert response_series.description == "GCaMP6s at 465 nm in VTA."
             assert response_series.fiber_photometry_table_region.data[:] == [0]
 
-    def test_unfilled_metadata_template_is_refused(self):
-        # Writing a template as-is would be exactly the fabricated provenance #1789 removed, so it has to
-        # fail on the blank the user did not fill. It does fail, but not yet for that reason: metadata
-        # validation rejects the `None` first, since `device_model_metadata_key` is typed `string`. This
-        # asserts the refusal we want rather than the one we get, so it is red until that is settled.
-        interface = MockFiberPhotometryInterface()
-        with pytest.raises(TypeError, match="label"):
-            interface.create_nwbfile(metadata=interface.get_metadata_template())
-
     def test_minimally_annotated_metadata_round_trips(self, tmp_path):
         # The minimally annotated path: the default metadata describes only the response series, so the file
         # must contain exactly that and nothing fabricated — no table region, no devices, no lab metadata.

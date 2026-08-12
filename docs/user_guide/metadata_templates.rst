@@ -8,6 +8,9 @@ what else the NWB file needs from you. ``get_metadata_template()`` answers that 
 returns the same source-derived values wrapped in the full structure the writer expects, with the
 cross-references between entries already resolved and every field only you can supply left blank.
 
+The fiber photometry interfaces are the ones that offer it today. Other modalities will follow, and
+this page grows a section for each.
+
 Fill in the blanks and pass the result on:
 
 .. code-block:: python

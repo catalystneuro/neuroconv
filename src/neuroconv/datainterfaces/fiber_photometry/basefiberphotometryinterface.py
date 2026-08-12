@@ -137,6 +137,11 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     def get_metadata_template(self) -> DeepDict:
         """Return the full fiber photometry provenance chain, sized to this interface's traces.
 
+        The counterpart to :meth:`get_metadata`, which reports only what the source recorded and so
+        leaves a user no indication of what else the file needs. This returns those same values wrapped
+        in the structure the writer expects. Fill in the blanks and pass the result to ``add_to_nwbfile``
+        or ``run_conversion``; a blank still ``None`` at write time is an error rather than a value.
+
         One ``FiberPhotometryTable`` row per trace, one optical fiber per row, and a shared excitation
         source, photodetector and indicator, since one interface writes one series and
         `ndx-fiber-photometry
