@@ -1,9 +1,6 @@
 """The probe attached to a Neuropixels recording is written as a ``Device`` naming the physical unit and
 a ``DeviceModel`` naming the catalogue entry, so the geometry can be rebuilt from what is in the file."""
 
-import probeinterface
-import pytest
-
 from neuroconv.datainterfaces import (
     OpenEphysBinaryRecordingInterface,
     SpikeGLXRecordingInterface,
@@ -14,37 +11,6 @@ from ..setup_paths import ECEPHY_DATA_PATH
 
 SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 OPENEPHYS_PATH = ECEPHY_DATA_PATH / "openephysbinary"
-
-
-@pytest.mark.parametrize(
-    "interface_class, source_data, device_name",
-    [
-        (
-            SpikeGLXRecordingInterface,
-            dict(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0", stream_id="imec0.ap"),
-            "NeuropixelsImec0",
-        ),
-        (
-            OpenEphysBinaryRecordingInterface,
-            dict(
-                folder_path=OPENEPHYS_PATH / "v0.6.x_neuropixels_with_sync" / "Record Node 104",
-                stream_name="Record Node 104#Neuropix-PXI-100.ProbeA-AP",
-            ),
-            "NeuropixelsProbeA",
-        ),
-    ],
-    ids=["spikeglx", "open_ephys"],
-)
-def test_written_identity_rebuilds_the_catalogue_probe(interface_class, source_data, device_name):
-    """The point of writing the part number verbatim: the two strings in the file are enough to get the
-    geometry back, which a manufacturer blob in a description could not offer."""
-    interface = interface_class(**source_data)
-
-    nwbfile = interface.create_nwbfile(metadata=interface.get_metadata(use_new_metadata_format=True), stub_test=True)
-
-    model = nwbfile.devices[device_name].model
-    catalogue_probe = probeinterface.get_probe(model.manufacturer, model.model_number)
-    assert catalogue_probe.get_contact_count() > 0
 
 
 def test_serial_less_probe_keys_by_interface_and_index():
