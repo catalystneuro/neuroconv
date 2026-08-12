@@ -113,11 +113,3 @@ to a single conversion. It targets
 the microelectrode electrophysiology extension covering extracellular and intracellular
 recordings and their associated behavioral events. That extension is still under formal review
 and has not been merged into the BIDS specification, so the layout it produces may still change.
-
-Running the Conversion Elsewhere
---------------------------------
-
-The conversion does not have to run on your machine. :doc:`docker_demo` runs one in a container,
-and :doc:`aws_demo` transfers the source data to AWS, converts it there and uploads the result
-straight to a Dandiset. Both are driven by a YAML specification file rather than by the loop
-above.
