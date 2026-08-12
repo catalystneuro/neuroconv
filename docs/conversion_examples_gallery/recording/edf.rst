@@ -132,10 +132,29 @@ Remember to group auxiliary channels by their unit types:
         metadata_key=percent_channels_metadata_key,
     )
 
+    bpm_channels_metadata_key = "time_series_pulse_rate"  # Beats per minute unit
+    bpm_interface = EDFAnalogInterface(
+        file_path=file_path,
+        channels_to_include=["PR"],  # Beats per minute units
+        metadata_key=bpm_channels_metadata_key,
+    )
+
+    microvolt_channels_metadata_key = "time_series_plethysmography"  # Microvolt unit
+    microvolt_interface = EDFAnalogInterface(
+        file_path=file_path,
+        channels_to_include=["Pleth"],  # Microvolt units
+        metadata_key=microvolt_channels_metadata_key,
+    )
+
     # Combine all interfaces
     converter = ConverterPipe(
-        data_interfaces=[recording_interface, trigger_interface, percent_interface],
-
+        data_interfaces=[
+            recording_interface,
+            trigger_interface,
+            percent_interface,
+            bpm_interface,
+            microvolt_interface,
+        ],
     )
 
     # Extract metadata and add timezone information
@@ -156,6 +175,14 @@ Remember to group auxiliary channels by their unit types:
             percent_channels_metadata_key: {
                 "name": "TimeSeriesOxygen",
                 "description": "Oxygen saturation monitoring data"
+            },
+            bpm_channels_metadata_key: {
+                "name": "TimeSeriesPulseRate",
+                "description": "Pulse rate reported by the patient monitor"
+            },
+            microvolt_channels_metadata_key: {
+                "name": "TimeSeriesPlethysmography",
+                "description": "Plethysmography waveform from the pulse oximeter"
             }
         }
     }

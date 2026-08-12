@@ -11,7 +11,7 @@ Writing a recording whose channels carry different offsets raises an error like 
     ElectricalSeries cannot represent.
     Multiple offsets were found per channel IDs:
       Offset 0.0: Channel IDs ['Fp1', 'Fp2', 'C3', 'C4']
-      Offset -1.5: Channel IDs ['OSAT', 'Pleth']
+      Offset -1.5: Channel IDs ['OSAT']
 
 An ``ElectricalSeries`` stores a single scalar ``offset`` for the whole series, so there is nowhere
 to put a per-channel offset. Per-channel *gains* are not a problem, they go into the optional
@@ -89,7 +89,7 @@ interface:
     from neuroconv.datainterfaces import EDFRecordingInterface, EDFAnalogInterface
 
     recording_interface = EDFRecordingInterface(file_path=file_path)
-    recording_interface.remove_channels(channel_ids=["OSAT", "Pleth"])
+    recording_interface.remove_channels(channel_ids=["OSAT"])
 
     oxygen_interface = EDFAnalogInterface(
         file_path=file_path,
