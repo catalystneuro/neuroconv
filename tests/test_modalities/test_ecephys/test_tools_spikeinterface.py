@@ -1724,6 +1724,39 @@ class TestAddSpatialSeries:
             )
 
 
+def _probe_naming(**probe_fields):
+    """A four-contact probe with whatever identity fields the test needs set on it."""
+    from probeinterface import generate_linear_probe
+
+    probe = generate_linear_probe(num_elec=4)
+    probe.set_device_channel_indices(np.arange(4))
+    for field, value in probe_fields.items():
+        setattr(probe, field, value)
+    return probe
+
+
+def _recording_with_probe(**probe_fields):
+    recording = generate_recording(num_channels=4, durations=[1.0])
+    # TODO: drop ``in_place=True`` once spikeinterface>=0.105.0 is the minimum pin, where the call is
+    # always in place and the argument is deprecated.
+    recording.set_probe(_probe_naming(**probe_fields), in_place=True)
+    return recording
+
+
+def test_two_probes_of_one_model_share_a_model_key_and_keep_their_own_serials():
+    """Two units of one product are two devices and one ``DeviceModel``, which is what rules out keying
+    the device on the model number. The model key is what dedups them, so it has to match while the
+    device fields do not."""
+    first, second = (
+        _get_probe_device_metadata(probe=_probe_naming(model_name="NP1000", manufacturer="imec", serial_number=serial))
+        for serial in ("18194809281", "22327214192")
+    )
+
+    assert first["device_models"] == second["device_models"]
+    assert first["device"]["serial_number"] == "18194809281"
+    assert second["device"]["serial_number"] == "22327214192"
+
+
 class TestAddElectrodeGroups:
     def test_group_naming_not_matching_group_number(self):
         recording = generate_recording(num_channels=4)
@@ -1746,31 +1779,14 @@ class TestAddElectrodeGroups:
         with pytest.raises(ValueError, match="Inconsistent mapping between group numbers and group names"):
             _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
 
-
-class TestAddElectrodeGroupsProbeTier:
-    """A group naming no device falls to the attached probe before it falls to the placeholder.
-
-    This is what a bare ``add_recording_to_nwbfile`` relies on: the identity is read off the probe, so a
-    caller who passes no metadata still gets it. The tier only fires when the probe names a model, since
-    a ``DeviceModel`` without a ``model_number`` reconstructs nothing and a ``Device`` carrying neither a
-    model nor a serial number says no more than the placeholder."""
-
-    @staticmethod
-    def _recording_with_probe(**probe_fields):
-        from probeinterface import generate_linear_probe
-
-        recording = generate_recording(num_channels=4, durations=[1.0])
-        probe = generate_linear_probe(num_elec=4)
-        probe.set_device_channel_indices(np.arange(4))
-        for field, value in probe_fields.items():
-            setattr(probe, field, value)
-        # TODO: drop ``in_place=True`` once spikeinterface>=0.105.0 is the minimum pin, where the call is
-        # always in place and the argument is deprecated.
-        recording.set_probe(probe, in_place=True)
-        return recording
+    # A group naming no device falls to the attached probe before it falls to the placeholder. This is
+    # what a bare ``add_recording_to_nwbfile`` relies on, so a caller who passes no metadata still gets
+    # the identity. The tier only fires when the probe names a model, since a ``DeviceModel`` without a
+    # ``model_number`` reconstructs nothing and a ``Device`` carrying neither a model nor a serial number
+    # says no more than the placeholder.
 
     def test_a_probe_naming_a_model_becomes_the_group_device(self):
-        recording = self._recording_with_probe(model_name="NP1000", manufacturer="imec", serial_number="18194809281")
+        recording = _recording_with_probe(model_name="NP1000", manufacturer="imec", serial_number="18194809281")
         nwbfile = mock_NWBFile()
 
         _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
@@ -1785,7 +1801,7 @@ class TestAddElectrodeGroupsProbeTier:
     def test_a_probe_naming_no_model_falls_to_the_placeholder(self):
         """Biocam and Maxwell attach probes carrying a manufacturer and no part number. A manufacturer
         alone earns no model, so these keep the placeholder they write today."""
-        recording = self._recording_with_probe(manufacturer="3Brain")
+        recording = _recording_with_probe(manufacturer="3Brain")
         nwbfile = mock_NWBFile()
 
         _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
@@ -1795,7 +1811,7 @@ class TestAddElectrodeGroupsProbeTier:
 
     def test_a_serial_number_of_zero_names_no_unit(self):
         """``"0"`` is what a reader writes when it could not read a serial off the probe."""
-        recording = self._recording_with_probe(model_name="NP2014", manufacturer="imec", serial_number="0")
+        recording = _recording_with_probe(model_name="NP2014", manufacturer="imec", serial_number="0")
         nwbfile = mock_NWBFile()
 
         _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
@@ -1807,7 +1823,7 @@ class TestAddElectrodeGroupsProbeTier:
     def test_the_readers_own_label_names_the_device(self):
         """Open Ephys names its probes in ``settings.xml``, so the file says ``ProbeA`` rather than a
         serial number nobody reads."""
-        recording = self._recording_with_probe(
+        recording = _recording_with_probe(
             name="ProbeA", model_name="NP1110", manufacturer="imec", serial_number="21144110211"
         )
         nwbfile = mock_NWBFile()
@@ -1817,30 +1833,10 @@ class TestAddElectrodeGroupsProbeTier:
         assert set(nwbfile.devices) == {"ProbeA"}
         assert nwbfile.devices["ProbeA"].serial_number == "21144110211"
 
-    def test_two_probes_of_one_model_share_a_model_key_and_keep_their_own_serials(self):
-        """Two units of one product are two devices and one ``DeviceModel``, which is what rules out
-        keying the device on the model number. The model key is what dedups them, so it has to match
-        while the device fields do not."""
-        from probeinterface import generate_linear_probe
-
-        probes = []
-        for serial_number in ("18194809281", "22327214192"):
-            probe = generate_linear_probe(num_elec=4)
-            probe.model_name = "NP1000"
-            probe.manufacturer = "imec"
-            probe.serial_number = serial_number
-            probes.append(probe)
-
-        first, second = (_get_probe_device_metadata(probe=probe) for probe in probes)
-
-        assert first["device_models"] == second["device_models"]
-        assert first["device"]["serial_number"] == "18194809281"
-        assert second["device"]["serial_number"] == "22327214192"
-
     def test_a_group_naming_its_own_device_ignores_the_probe(self):
         """Precedence is per entity: a caller who described their own device gets that device, and no
         probe-derived one is created alongside it."""
-        recording = self._recording_with_probe(model_name="NP1000", manufacturer="imec", serial_number="123")
+        recording = _recording_with_probe(model_name="NP1000", manufacturer="imec", serial_number="123")
         nwbfile = mock_NWBFile()
         group_name = str(recording.get_channel_groups()[0])
         metadata = {

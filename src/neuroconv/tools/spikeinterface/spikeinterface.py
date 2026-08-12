@@ -143,6 +143,40 @@ def _get_probe_device_metadata(probe) -> dict | None:
         and ``device_models`` is the ``DeviceModels`` registry keyed by ``device_model_metadata_key``.
         Both are freshly built, so the caller's metadata is never touched. The keys are lowercase
         because this is a return value and not a metadata fragment.
+
+    Examples
+    --------
+    A Neuropixels probe read from SpikeGLX, which reports a part number and the unit's serial number::
+
+        {
+            "device": {
+                "device_model_metadata_key": "imec_PRB_1_4_0480_1",
+                "serial_number": "18194809281",
+            },
+            "device_models": {
+                "imec_PRB_1_4_0480_1": {
+                    "name": "PRB_1_4_0480_1",
+                    "model_number": "PRB_1_4_0480_1",
+                    "manufacturer": "imec",
+                    "description": "Neuropixels 1.0 probe",
+                }
+            },
+        }
+
+    A Cambridge Neurotech probe the user attached themselves with
+    ``recording.set_probe(get_probe("cambridgeneurotech", "ASSY-156-E-1"))``. The catalogue names the
+    product but not the individual unit, so there is no ``serial_number`` and no description::
+
+        {
+            "device": {"device_model_metadata_key": "cambridgeneurotech_ASSY-156-E-1"},
+            "device_models": {
+                "cambridgeneurotech_ASSY-156-E-1": {
+                    "name": "ASSY-156-E-1",
+                    "model_number": "ASSY-156-E-1",
+                    "manufacturer": "cambridgeneurotech",
+                }
+            },
+        }
     """
     model_number = probe.model_name
     if not model_number:
