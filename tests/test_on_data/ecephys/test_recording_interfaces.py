@@ -347,7 +347,7 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
         pass
 
 
-class TestEDFRecordingInterfaceClassMethodsAndAssertions:
+class TestEDFRecordingInterfaceStreamSelection:
     """A file whose signals were not all sampled at the same rate carries one stream per rate."""
 
     file_path = str(ECEPHY_DATA_PATH / "edf" / "heterogeneous_offsets" / "same_unit_offsets_multirate.edf")
@@ -357,9 +357,24 @@ class TestEDFRecordingInterfaceClassMethodsAndAssertions:
 
         assert stream_names == ["stream ((100.0,) Hz)", "stream ((1.0,) Hz)"]
 
-    def test_stream_name_missing_assertion(self):
+    def test_stream_name_is_required_for_a_multi_stream_file(self):
         with pytest.raises(ValueError, match="several streams"):
             EDFRecordingInterface(file_path=self.file_path)
+
+    def test_stream_name_selects_the_channels_of_its_stream(self):
+        interface = EDFRecordingInterface(file_path=self.file_path, stream_name="stream ((1.0,) Hz)")
+
+        assert list(interface.channel_ids) == ["Resp oro-nasal", "EMG submental", "Temp rectal", "Event marker"]
+        assert interface.recording_extractor.get_sampling_frequency() == 1.0
+
+    def test_channels_to_skip_applies_within_the_selected_stream(self):
+        interface = EDFRecordingInterface(
+            file_path=self.file_path,
+            stream_name="stream ((100.0,) Hz)",
+            channels_to_skip=["EOG horizontal"],
+        )
+
+        assert list(interface.channel_ids) == ["EEG Fpz-Cz", "EEG Pz-Oz"]
 
     def test_get_available_channel_ids_takes_a_stream_name(self):
         channel_ids = EDFRecordingInterface.get_available_channel_ids(
@@ -367,52 +382,6 @@ class TestEDFRecordingInterfaceClassMethodsAndAssertions:
         )
 
         assert channel_ids == ["EEG Fpz-Cz", "EEG Pz-Oz", "EOG horizontal"]
-
-
-class TestEDFRecordingInterfaceStream100Hz(RecordingExtractorInterfaceTestMixin):
-    data_interface_cls = EDFRecordingInterface
-    # This file holds its 100 Hz signals in one stream and its 1 Hz ones in another. `EEG Pz-Oz` is
-    # skipped because it is the channel whose offset differs from the rest of its stream, which is
-    # what this file was staged for and a separate problem from selecting the stream.
-    interface_kwargs = dict(
-        file_path=str(ECEPHY_DATA_PATH / "edf" / "heterogeneous_offsets" / "same_unit_offsets_multirate.edf"),
-        stream_name="stream ((100.0,) Hz)",
-        channels_to_skip=["EEG Pz-Oz"],
-    )
-    save_directory = OUTPUT_PATH
-
-    def test_stream_name_selects_the_channels_of_its_stream(self, setup_interface):
-        assert list(self.interface.channel_ids) == ["EEG Fpz-Cz", "EOG horizontal"]
-        assert self.interface.recording_extractor.get_sampling_frequency() == 100.0
-
-    def check_run_conversion_with_backend(self, nwbfile_path: str, backend="hdf5"):
-        metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            metadata=metadata,
-            backend=backend,
-            **self.conversion_options,
-        )
-
-    # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
-    def test_metadata_schema_valid(self):
-        pass
-
-    def test_no_metadata_mutation(self):
-        pass
-
-    def test_interface_alignment(self):
-        pass
-
-    def test_conversion_options_schema_valid(self):
-        pass
-
-    def test_metadata(self):
-        pass
 
 
 class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
