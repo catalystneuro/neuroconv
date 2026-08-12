@@ -13,8 +13,7 @@ acquisition mode the recording was made in, and ``get_available_streams`` report
 construction, named after the analog input they came off.
 
 ``PyPhotometryFiberPhotometryInterface`` reads one signal into a single
-``FiberPhotometryResponseSeries``. The signals of a recording cannot share a series because they were
-not sampled at the same instants: the board reads its analog inputs one after another.
+``FiberPhotometryResponseSeries``.
 
 Convert pyPhotometry Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,8 +58,10 @@ signal of a 130 Hz recording starts 1/260 of a second after the first:
 The continuous modes are the exception: the offset is real there too but its size is not recorded
 anywhere, so those signals keep the header's timebase and say so in their description.
 
-To write every signal of a recording into one file, sharing a single ``FiberPhotometryTable``, pass one
-interface per signal to a :py:class:`~neuroconv.nwbconverter.ConverterPipe`:
+Since a response series carries one time axis, and no two signals of a recording share one, each signal
+is its own interface and its own series. To write all of them into one file, sharing a single
+``FiberPhotometryTable``, pass one interface per signal to a
+:py:class:`~neuroconv.nwbconverter.ConverterPipe`:
 
 .. code-block:: python
 
