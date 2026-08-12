@@ -51,35 +51,36 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         return stream_names
 
     @staticmethod
-    def get_available_channel_ids(file_path: FilePath, stream_name: str | None = None) -> list:
+    def get_available_channel_ids(file_path: FilePath) -> list:
         """
         Get all available channel names from an EDF file.
+
+        The names span the whole file. A file that sampled some of its signals at a different rate
+        than the rest holds them in separate streams, and an interface reads one stream at a time, so
+        the channels of the stream it holds are a subset of these. They are read from the file's
+        header, so this works on a file with more than one stream.
 
         Parameters
         ----------
         file_path : FilePath
             Path to the EDF file
-        stream_name : str, optional
-            Name of the stream to inspect, as returned by ``get_stream_names``. Required for files
-            with more than one stream.
 
         Returns
         -------
         list
             List of all channel names in the EDF file
         """
-        from spikeinterface.extractors import read_edf
+        from pyedflib import EdfReader
 
-        # Load the recording to inspect channels
-        recording = read_edf(file_path=file_path, stream_name=stream_name, all_annotations=True, use_names_as_ids=True)
+        edf_reader = EdfReader(str(file_path))
+        try:
+            channel_names = edf_reader.getSignalLabels()
+        finally:
+            # EDFlib refuses to open a file it already has open, so the handle is released here
+            # rather than left to garbage collection.
+            edf_reader.close()
 
-        # Get all channel IDs
-        channel_ids = recording.get_channel_ids()
-
-        # Clean up to avoid dangling references
-        del recording
-
-        return channel_ids.tolist()
+        return channel_names
 
     @classmethod
     def get_extractor_class(cls):

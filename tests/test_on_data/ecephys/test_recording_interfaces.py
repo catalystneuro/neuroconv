@@ -340,12 +340,19 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
 
         assert list(interface.channel_ids) == ["EEG Fpz-Cz", "EEG Pz-Oz"]
 
-    def test_get_available_channel_ids_takes_a_stream_name(self):
-        channel_ids = EDFRecordingInterface.get_available_channel_ids(
-            file_path=self.interface_kwargs["file_path"], stream_name="stream ((100.0,) Hz)"
-        )
+    def test_get_available_channel_ids_spans_every_stream(self):
+        """The channel names come from the header, so a file with several streams still answers."""
+        channel_ids = EDFRecordingInterface.get_available_channel_ids(file_path=self.interface_kwargs["file_path"])
 
-        assert channel_ids == ["EEG Fpz-Cz", "EEG Pz-Oz", "EOG horizontal"]
+        assert channel_ids == [
+            "EEG Fpz-Cz",
+            "EEG Pz-Oz",
+            "EOG horizontal",
+            "Resp oro-nasal",
+            "EMG submental",
+            "Temp rectal",
+            "Event marker",
+        ]
 
     def check_read_nwb(self, nwbfile_path: str):
         """The traces were written in physical units, so they are read back and compared as such."""
