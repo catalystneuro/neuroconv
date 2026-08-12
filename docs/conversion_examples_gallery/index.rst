@@ -135,6 +135,7 @@ Events
     CSV Events <events/csv_events>
     Doric Events <events/doric_events>
     NPM Events <events/npm_events>
+    pyPhotometry Events <events/pyphotometry_events>
     TDT Events <events/tdt_events>
 
 
