@@ -219,11 +219,8 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # No device is claimed here. The sync trace is written as a plain ``TimeSeries``, which has no
-        # device link, so the device this used to emit was never referenced by anything. It also could
-        # not be keyed correctly any more: ``SpikeGLXRecordingInterface`` keys the probe by its serial
-        # number, which this interface cannot read, since its stream is the sync channel and carries no
-        # probe. The probe's provenance comes from the recording interface.
+        # The sync trace goes in as a plain ``TimeSeries``, which has no device link, so no device is
+        # claimed here.
 
         # TimeSeries metadata for sync channel
         if "TimeSeries" not in metadata:

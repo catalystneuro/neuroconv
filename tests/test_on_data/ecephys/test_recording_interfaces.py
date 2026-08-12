@@ -880,7 +880,7 @@ class TestOpenEphysBinaryRecordingInterfaceProbeWithoutSerialNumber(RecordingExt
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        expected_devices = {"my_probe_probe_0": dict(name="NeuropixelsProbeA", device_model_metadata_key="imec_NP2014")}
+        expected_devices = {"my_probe_probe": dict(name="NeuropixelsProbeA", device_model_metadata_key="imec_NP2014")}
         expected_device_models = {
             "imec_NP2014": dict(
                 name="NP2014",
@@ -890,7 +890,7 @@ class TestOpenEphysBinaryRecordingInterfaceProbeWithoutSerialNumber(RecordingExt
             )
         }
         expected_electrode_groups = {
-            shank: dict(name=shank, device_metadata_key="my_probe_probe_0") for shank in ("0", "1", "2", "3")
+            shank: dict(name=shank, device_metadata_key="my_probe_probe") for shank in ("0", "1", "2", "3")
         }
 
         assert metadata["Devices"] == expected_devices

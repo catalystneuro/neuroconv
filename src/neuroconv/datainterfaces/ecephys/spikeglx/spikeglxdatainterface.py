@@ -254,10 +254,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             # The serial number is the only field that identifies a unit across both. Without one, the
             # key is scoped to the interface, which is already unique per ``metadata_key``, so two
             # serial-less interfaces in a converter cannot collide on it.
-            probe_index = 0  # one probe per SpikeGLX stream
-            device_metadata_key = (
-                f"neuropixels_{serial_number}" if serial_number else f"{self.metadata_key}_probe_{probe_index}"
-            )
+            device_metadata_key = f"neuropixels_{serial_number}" if serial_number else f"{self.metadata_key}_probe"
 
             # The probe answers what the hardware is, this interface answers what to call it: the name
             # is the stream's own ``Imec0``, which comes from the filename and not from the probe.

@@ -242,16 +242,12 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
                 # entry. The serial number is the only field that identifies a unit across both.
                 # Without one, the key is scoped to the interface, which is already unique per
                 # ``metadata_key``, so two serial-less interfaces in a converter cannot collide on it.
-                probe_index = 0  # one probe per Open Ephys stream
-                device_metadata_key = (
-                    f"neuropixels_{serial_number}" if serial_number else f"{self.metadata_key}_probe_{probe_index}"
-                )
+                device_metadata_key = f"neuropixels_{serial_number}" if serial_number else f"{self.metadata_key}_probe"
 
                 # The probe answers what the hardware is, this interface answers what to call it.
                 # ``probe.name`` is the label the Neuropix-PXI plugin gives the probe in the signal
                 # chain, so every Record Node recording it agrees on the name.
-                probe_name = probe.name or f"Probe{probe_index}"
-                device = dict(name=f"Neuropixels{probe_name}")
+                device = dict(name=f"Neuropixels{probe.name or 'Probe'}")
 
                 probe_metadata = _get_probe_device_metadata(probe=probe)
                 if probe_metadata is not None:
