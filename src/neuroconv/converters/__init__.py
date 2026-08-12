@@ -26,6 +26,7 @@ from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
 )
 from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConverter
 from ..datainterfaces.ophys.scanimage.scanimageconverter import ScanImageConverter
+from ..datainterfaces.ophys.suite2p.suite2pconverter import Suite2pConverter
 from ..datainterfaces.ophys.thor.thorconverter import ThorConverter
 
 converter_list = [
@@ -40,6 +41,7 @@ converter_list = [
     BrukerTiffSinglePlaneConverter,
     MiniscopeConverter,
     ScanImageConverter,
+    Suite2pConverter,
     ThorConverter,
     SortedRecordingConverter,
     SortedSpikeGLXConverter,
