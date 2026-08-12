@@ -32,6 +32,16 @@ or any other, with the arguments its format needs, and annotate the metadata exa
 :ref:`fiber photometry section of the Conversion Gallery <conversion_gallery_fiber_photometry>` for how
 to construct each one.
 
+.. admonition:: Start from a template
+   :class: tip
+
+   ``interface.get_metadata_template()`` returns the whole structure below already assembled and sized
+   to your recording, with the cross-references wired and every field only you can answer left blank.
+   That is the fastest way to annotate a recording, and :ref:`metadata_templates` prints it as a YAML
+   or JSON file to fill in by hand. The sections below build the same structure a block at a time, so
+   that each piece and each link between them is visible, and :ref:`the last one
+   <how_to_annotate_from_a_template>` returns to the template with that context.
+
 A **trace** is one column of that series, one fluorescence time series, and it is the unit everything
 below describes: one trace, one row. By itself a trace is just a column of numbers. Nothing records
 which optical fiber it came from, where in the brain, at what excitation wavelength, or which indicator
@@ -717,6 +727,8 @@ Real setups usually combine both axes, and the two combine cleanly: N fibers eac
 and an isosbestic wavelength give 2N rows, one per (fiber, wavelength) trace, written as two series of
 N columns each. One interface per wavelength, ``num_fibers=N`` on each, one shared table.
 
+
+.. _how_to_annotate_from_a_template:
 
 How to Annotate from a Template
 -------------------------------

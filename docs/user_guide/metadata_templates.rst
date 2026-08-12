@@ -46,8 +46,7 @@ columns are written, and ``fiber_photometry_table_region`` has to list them in t
 Rename ``calcium_signal`` to whatever ``metadata_key`` the interface was constructed with. The dichroic
 mirror, the two optical filters and the three device models are optional, and appear so that you know
 the writer accepts them at all. A filter is a ``BandOpticalFilter`` or an ``EdgeOpticalFilter``, never a
-plain one, and its wavelengths belong to its model rather than to the filter itself. Rows also accept
-``coordinates`` and ``notes``, left out here for brevity.
+plain one, and its wavelengths belong to its model rather than to the filter itself.
 
 For the same chain filled in with real values, built one block at a time and explained as it goes, see
 :ref:`annotate_fiber_photometry_metadata`. That how-to also covers the layouts this block does not
@@ -69,15 +68,18 @@ locations.
               optical_fiber_model:
                 type: OpticalFiberModel
                 name: optical_fiber_model
+                manufacturer: null
                 numerical_aperture: null
               excitation_source_model:
                 type: ExcitationSourceModel
                 name: excitation_source_model
+                manufacturer: null
                 source_type: null        # LED, laser
                 excitation_mode: null    # one-photon, two-photon
               photodetector_model:
                 type: PhotodetectorModel
                 name: photodetector_model
+                manufacturer: null
                 detector_type: null      # photodiode, PMT
 
             # The equipment itself. One optical fiber per fiber you recorded from; the source and detector are
@@ -142,7 +144,9 @@ locations.
                     photodetector_metadata_key: photodetector
                     dichroic_mirror_metadata_key: dichroic_mirror        # optional, delete if unused
                     excitation_filter_metadata_key: excitation_filter    # optional, delete if unused
-                    emission_filter_metadata_key: emission_filter        # optional, delete if unused
+                    emission_filter_metadata_key: emission_filter
+                    coordinates: null                        # (ap, ml, dv) of the recorded volume, in mm
+                    notes: null        # optional, delete if unused
                   trace_1:                                   # one entry like this per trace
                     location: null
                     excitation_wavelength_in_nm: null
@@ -154,6 +158,8 @@ locations.
                     dichroic_mirror_metadata_key: dichroic_mirror
                     excitation_filter_metadata_key: excitation_filter
                     emission_filter_metadata_key: emission_filter
+                    coordinates: null                        # (ap, ml, dv) of the recorded volume, in mm
+                    notes: null
               # Rename this key to the `metadata_key` the interface was constructed with.
               calcium_signal:
                 name: FiberPhotometryResponseSeries
@@ -171,17 +177,20 @@ locations.
                     "optical_fiber_model": {
                         "type": "OpticalFiberModel",
                         "name": "optical_fiber_model",
+                        "manufacturer": null,
                         "numerical_aperture": null
                     },
                     "excitation_source_model": {
                         "type": "ExcitationSourceModel",
                         "name": "excitation_source_model",
+                        "manufacturer": null,
                         "source_type": null,
                         "excitation_mode": null
                     },
                     "photodetector_model": {
                         "type": "PhotodetectorModel",
                         "name": "photodetector_model",
+                        "manufacturer": null,
                         "detector_type": null
                     }
                 },
@@ -252,7 +261,9 @@ locations.
                                 "photodetector_metadata_key": "photodetector",
                                 "dichroic_mirror_metadata_key": "dichroic_mirror",
                                 "excitation_filter_metadata_key": "excitation_filter",
-                                "emission_filter_metadata_key": "emission_filter"
+                                "emission_filter_metadata_key": "emission_filter",
+                                "coordinates": null,
+                                "notes": null
                             },
                             "trace_1": {
                                 "location": null,
@@ -264,7 +275,9 @@ locations.
                                 "photodetector_metadata_key": "photodetector",
                                 "dichroic_mirror_metadata_key": "dichroic_mirror",
                                 "excitation_filter_metadata_key": "excitation_filter",
-                                "emission_filter_metadata_key": "emission_filter"
+                                "emission_filter_metadata_key": "emission_filter",
+                                "coordinates": null,
+                                "notes": null
                             }
                         }
                     },

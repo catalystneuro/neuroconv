@@ -348,9 +348,9 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         assert row_metadata["photodetector_metadata_key"] in template["Devices"]
 
     def test_filled_metadata_template_round_trips(self, tmp_path):
-        # The template is a scaffold to edit, so filling the blanks it marks has to be enough to write a
-        # file. What the user left blank must not reach that file, which is the point of blanking it: the
-        # optional hardware is offered so its existence is discoverable, not so it is written empty.
+        # The template is a scaffold to edit, so filling every blank it marks has to be enough to write a
+        # file, with nothing left to add and nothing to delete. It returns the whole chain, so this fills
+        # the whole chain: the optional optics and the three device models included.
         interface = MockFiberPhotometryInterface(metadata_key="calcium_signal")
         metadata = interface.get_metadata_template()
 
@@ -359,13 +359,33 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         row_metadata["location"] = "VTA"
         row_metadata["excitation_wavelength_in_nm"] = 465.0
         row_metadata["emission_wavelength_in_nm"] = 525.0
+        row_metadata["coordinates"] = (3.0, 1.0, 4.0)
+        row_metadata["notes"] = "Recorded on the second day."
+        row_metadata["dichroic_mirror_metadata_key"] = "dichroic_mirror"
+        row_metadata["excitation_filter_metadata_key"] = "excitation_filter"
+        row_metadata["emission_filter_metadata_key"] = "emission_filter"
         fiber_photometry_metadata["FiberPhotometryIndicators"]["indicator"]["label"] = "GCaMP6s"
-        metadata["Devices"]["optical_fiber_0"]["fiber_insertion"] = dict(
+        fiber_photometry_metadata["calcium_signal"]["description"] = "GCaMP6s at 465 nm in VTA."
+
+        devices_metadata = metadata["Devices"]
+        devices_metadata["optical_fiber_0"]["fiber_insertion"] = dict(
             insertion_position_ap_in_mm=3.0,
             insertion_position_ml_in_mm=1.0,
             insertion_position_dv_in_mm=4.0,
             depth_in_mm=4.0,
         )
+        devices_metadata["optical_fiber_0"]["device_model_metadata_key"] = "optical_fiber_model"
+        devices_metadata["excitation_source"]["device_model_metadata_key"] = "excitation_source_model"
+        devices_metadata["photodetector"]["device_model_metadata_key"] = "photodetector_model"
+        for device_metadata_key in ("dichroic_mirror", "excitation_filter", "emission_filter"):
+            devices_metadata[device_metadata_key].pop("device_model_metadata_key")
+
+        device_models_metadata = metadata["DeviceModels"]
+        device_models_metadata["optical_fiber_model"].update(manufacturer="Doric Lenses", numerical_aperture=0.48)
+        device_models_metadata["excitation_source_model"].update(
+            manufacturer="Doric Lenses", source_type="LED", excitation_mode="one-photon"
+        )
+        device_models_metadata["photodetector_model"].update(manufacturer="Doric Lenses", detector_type="photodiode")
 
         nwbfile_path = tmp_path / "filled_template.nwb"
         nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -374,20 +394,32 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
             read_nwbfile = io.read()
 
-            # Exactly the hardware the filled rows reference. The dichroic mirror and the two filters were
-            # offered by the template and left blank, so they are absent rather than present and empty.
-            assert set(read_nwbfile.devices) == {"optical_fiber_0", "excitation_source", "photodetector"}
-            assert len(read_nwbfile.device_models) == 0
+            assert set(read_nwbfile.devices) == {
+                "optical_fiber_0",
+                "excitation_source",
+                "photodetector",
+                "dichroic_mirror",
+                "excitation_filter",
+                "emission_filter",
+            }
+            assert set(read_nwbfile.device_models) == {
+                "optical_fiber_model",
+                "excitation_source_model",
+                "photodetector_model",
+            }
+            assert read_nwbfile.devices["optical_fiber_0"].model.numerical_aperture == 0.48
 
             table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
             assert len(table) == 1
             assert table["location"][0] == "VTA"
+            assert table["notes"][0] == "Recorded on the second day."
             assert table["indicator"][0].label == "GCaMP6s"
             assert table["optical_fiber"][0].name == "optical_fiber_0"
-            assert "dichroic_mirror" not in table.colnames
-            assert "excitation_filter" not in table.colnames
+            assert table["dichroic_mirror"][0].name == "dichroic_mirror"
+            assert table["excitation_filter"][0].name == "excitation_filter"
 
             response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
+            assert response_series.description == "GCaMP6s at 465 nm in VTA."
             assert response_series.fiber_photometry_table_region.data[:] == [0]
 
     def test_unfilled_metadata_template_is_refused(self):
