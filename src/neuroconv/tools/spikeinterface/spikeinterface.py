@@ -96,7 +96,7 @@ def _get_ecephys_metadata_placeholders():
 
     metadata["Devices"] = {
         default_metadata_key: {
-            "name": "Device",
+            "name": "PlaceholderElectrodeDevice",
         },
     }
 

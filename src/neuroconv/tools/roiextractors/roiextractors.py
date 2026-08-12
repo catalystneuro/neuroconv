@@ -101,7 +101,7 @@ def _get_ophys_metadata_placeholders():
 
     metadata["Devices"] = {
         default_metadata_key: {
-            "name": "Microscope",
+            "name": "PlaceholderMicroscope",
         },
     }
 
