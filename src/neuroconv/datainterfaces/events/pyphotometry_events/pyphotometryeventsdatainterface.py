@@ -172,13 +172,13 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         # types it yields.
         detection_plan = _resolve_detection_plan(self._detection_configuration)
         digital_signals = {
-            self._signal_source_id(digital_signal): digital_signal
-            for digital_signal in self._recording.digital_signals
+            self._signal_source_id(digital_signal): digital_signal for digital_signal in self._recording.digital_signals
         }
 
         events_data_dict = {}
         for signal_source_id, detection_specs in detection_plan.items():
             digital_signal = digital_signals[signal_source_id]
+
             # A .ppd stores no clock, only a rate, and each line starts when the analog input it shares a
             # slot with does. The clock is handed over as a function of frame so only the frames the
             # events landed on are read, rather than materialising one timestamp per sample to index a
