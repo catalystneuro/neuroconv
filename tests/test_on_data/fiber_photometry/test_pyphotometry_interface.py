@@ -111,3 +111,32 @@ def test_the_written_signal_matches_the_file():
     with NWBHDF5IO(nwbfile_path, "r") as io:
         series = io.read().acquisition["FiberPhotometryResponseSeries"]
         assert series.data[:] == pytest.approx(expected)
+
+
+def test_continuous_recordings_say_why_their_signals_share_a_timebase(tmp_path):
+    """The lag between a continuous file's signals is real but its size is not knowable from the file.
+
+    The firmware reads the inputs one after the other, so they are staggered by at least the oversampling
+    window, but neither that constant nor the interrupt overhead is recorded anywhere, and no upstream
+    document states the resulting offset. So the series carry the header's timebase and say so, rather
+    than carrying a start time that would read as measured.
+    """
+    file_path = get_fixture_file_path("legacy_two_colour_continuous")
+    interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2")
+
+    nwbfile_path = tmp_path / "continuous.nwb"
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=interface.get_metadata(), overwrite=True)
+
+    with NWBHDF5IO(nwbfile_path, "r") as io:
+        series = io.read().acquisition["FiberPhotometryResponseSeries"]
+        assert series.starting_time == 0.0
+        assert "213 microseconds" in series.description
+        assert "sequentially" in series.description
+
+
+def test_pulsed_recordings_carry_no_such_note():
+    """A pulsed file's stagger is exact, so it is in the start time and needs no explanation."""
+    file_path = get_fixture_file_path("legacy_one_colour_time_division")
+    interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2")
+
+    assert "description" not in interface.get_metadata()["FiberPhotometry"][interface.metadata_key]

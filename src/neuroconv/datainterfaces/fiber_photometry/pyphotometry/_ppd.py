@@ -127,6 +127,7 @@ class PPDRecording:
     analog_signals: list[PPDAnalogSignal]
     digital_signals: list[PPDDigitalSignal]
     has_paired_samples: bool
+    pulsed: bool
 
 
 def _parse_version(header: dict) -> tuple[int, ...]:
@@ -313,4 +314,5 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
         analog_signals=analog_signals,
         digital_signals=digital_signals,
         has_paired_samples=has_paired_samples,
+        pulsed=layout.pulsed,
     )

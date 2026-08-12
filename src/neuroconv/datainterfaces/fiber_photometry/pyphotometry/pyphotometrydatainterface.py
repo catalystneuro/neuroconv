@@ -10,6 +10,21 @@ from ._ppd import PPDRecording, read_ppd
 from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 from ....utils import DeepDict, dict_deep_update
 
+#: Said in the series rather than in its timestamps, because the size of the lag is not knowable from
+#: the file. The firmware reads the analog inputs one after the other inside a single timer interrupt,
+#: so the second one is late by the 64-sample oversampling buffer at the 300 kHz oversampling clock,
+#: plus interrupt work nobody has quantified. Neither constant is in the header, and no pyPhotometry
+#: document states the resulting offset, so writing a number here would look measured while being, at
+#: best, a floor.
+_CONTINUOUS_TIMING_DESCRIPTION = (
+    "Acquired in a continuous mode, in which the board reads its analog inputs sequentially within one "
+    "timer interrupt rather than sampling them simultaneously. A signal is therefore later than the one "
+    "read before it by at least 213 microseconds (a 64-sample oversampling buffer at the firmware's 300 "
+    "kHz oversampling clock) plus unquantified interrupt overhead. The file records neither constant and "
+    "the offset has never been characterized upstream, so every signal here is written on the timebase "
+    "the header states, as pyPhotometry's own reader does."
+)
+
 
 class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
     """Interface for one signal of a pyPhotometry ``.ppd`` recording.
@@ -111,12 +126,17 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         return signal.starting_time_in_seconds + np.arange(sample_count) / signal.rate_in_hz
 
     def get_metadata(self) -> DeepDict:
-        """Add what the header states about the session, which is its start time."""
+        """Add what the header states about the session, and what it fails to state about the timing."""
         metadata = super().get_metadata()
         date_time = self.recording.header.get("date_time")
         if date_time is not None:
             metadata = dict_deep_update(
                 metadata, dict(NWBFile=dict(session_start_time=datetime.fromisoformat(date_time)))
+            )
+        if not self.recording.pulsed:
+            metadata = dict_deep_update(
+                metadata,
+                dict(FiberPhotometry={self.metadata_key: dict(description=_CONTINUOUS_TIMING_DESCRIPTION)}),
             )
         return metadata
 
