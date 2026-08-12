@@ -97,13 +97,61 @@ def test_electrodes_table_has_channel_names_and_no_geometry():
         assert coordinate_column not in electrodes.colnames
 
 
-def test_mixed_voltage_channel_types_all_written():
-    # eeg + eog are both voltage; v1 writes them together in one ElectricalSeries.
+def test_non_neural_voltage_channels_go_to_their_own_time_series():
+    """eog is a voltage like eeg, but it is not a neural electrode, so it does not join the series."""
     interface = MockMNEContinuousDataInterface(num_channels=3, ch_types=["eeg", "eeg", "eog"])
     nwbfile = interface.create_nwbfile()
 
-    assert nwbfile.acquisition["ElectricalSeries"].data.shape[1] == 3
-    assert len(nwbfile.electrodes) == 3
+    assert nwbfile.acquisition["ElectricalSeries"].data.shape[1] == 2
+    # Only the neural channels get electrodes-table rows.
+    assert len(nwbfile.electrodes) == 2
+
+    eog_series = nwbfile.acquisition["TimeSeriesEOG"]
+    assert eog_series.data.shape[1] == 1
+    assert eog_series.unit == "volts"
+
+    # Each object holds its own channels' samples: the routing must carry the indices, not just the count.
+    source = interface.raw.get_data()
+    np.testing.assert_allclose(nwbfile.acquisition["ElectricalSeries"].data[:], source[[0, 1]].T)
+    np.testing.assert_allclose(eog_series.data[:], source[[2]].T)
+
+
+def test_every_channel_type_reaches_the_file_with_its_own_unit():
+    """Nothing the Raw holds is dropped, and each TimeSeries carries the unit MNE assigned its type."""
+    channel_types = ["eeg", "seeg", "ecog", "dbs", "eog", "stim", "mag", "grad", "misc"]
+    interface = MockMNEContinuousDataInterface(num_channels=len(channel_types), ch_types=channel_types)
+
+    nwbfile = interface.create_nwbfile()
+
+    # The four electrode kinds share the one ElectricalSeries; the rest get one TimeSeries each.
+    assert nwbfile.acquisition["ElectricalSeries"].data.shape[1] == 4
+    assert len(nwbfile.electrodes) == 4
+
+    expected_units = {
+        "TimeSeriesEOG": "volts",
+        "TimeSeriesSTIM": "volts",  # MNE labels trigger lines volts; the type, not the unit, routes them
+        "TimeSeriesMAG": "teslas",
+        "TimeSeriesGRAD": "teslas/meter",  # gradiometers are not in teslas
+        "TimeSeriesMISC": "n.a.",  # MNE declares this one unitless; NWB still requires a string
+    }
+    assert set(nwbfile.acquisition) == {"ElectricalSeries"} | set(expected_units)
+    for series_name, unit in expected_units.items():
+        assert nwbfile.acquisition[series_name].unit == unit
+
+    total_written = sum(series.data.shape[1] for series in nwbfile.acquisition.values())
+    assert total_written == len(channel_types)
+
+
+def test_raw_without_electrode_channels_writes_no_electrodes_table():
+    """A Raw of nothing but auxiliary channels has no ElectricalSeries to back, so it writes none."""
+    interface = MockMNEContinuousDataInterface(num_channels=2, ch_types=["stim", "misc"])
+
+    nwbfile = interface.create_nwbfile()
+
+    assert "ElectricalSeries" not in nwbfile.acquisition
+    assert nwbfile.electrodes is None
+    assert len(nwbfile.devices) == 0
+    assert set(nwbfile.acquisition) == {"TimeSeriesSTIM", "TimeSeriesMISC"}
 
 
 def test_write_electrical_series_false_writes_only_electrodes():

@@ -13,6 +13,7 @@ class MNERawDataChunkIterator(GenericDataChunkIterator):
     def __init__(
         self,
         raw: "mne.io.BaseRaw",  # noqa: F821
+        picks: list[int] | None = None,
         buffer_gb: float | None = None,
         buffer_shape: tuple | None = None,
         chunk_mb: float | None = None,
@@ -30,6 +31,10 @@ class MNERawDataChunkIterator(GenericDataChunkIterator):
             The MNE ``Raw`` object which handles the data access. A ``Raw`` read with ``preload=False``
             is served from disk one selection at a time; a preloaded one (which some formats force, such
             as an EEGLAB ``.set`` carrying its data inline) is served from memory through the same call.
+        picks : list of int, optional
+            Indices of the channels to iterate over, in the order they should be written. Defaults to every
+            channel. One ``Raw`` holds channels of several kinds, so a caller writing one kind to its own
+            neurodata object passes that subset here rather than reading everything and slicing after.
         buffer_gb : float, optional
             The upper bound on size in gigabytes (GB) of each selection from the iteration.
             The buffer_shape will be set implicitly by this argument.
@@ -60,8 +65,8 @@ class MNERawDataChunkIterator(GenericDataChunkIterator):
         """
         self.raw = raw
         # Resolved once: MNE's `picks` takes an index array, and the channel axis of a selection indexes
-        # into this same order as `raw.ch_names`.
-        self.channel_indices = np.arange(len(raw.ch_names))
+        # into this array rather than into `raw.ch_names`, so a subset iterates as its own dense axis.
+        self.channel_indices = np.arange(len(raw.ch_names)) if picks is None else np.asarray(picks, dtype=int)
         super().__init__(
             buffer_gb=buffer_gb,
             buffer_shape=buffer_shape,
@@ -87,7 +92,7 @@ class MNERawDataChunkIterator(GenericDataChunkIterator):
     @property
     def shape(self) -> tuple[int, int]:
         """Return (num_samples, num_channels); MNE's own axis order is the transpose of this."""
-        return (int(self.raw.n_times), len(self.raw.ch_names))
+        return (int(self.raw.n_times), len(self.channel_indices))
 
     @property
     def ndim(self) -> int:
