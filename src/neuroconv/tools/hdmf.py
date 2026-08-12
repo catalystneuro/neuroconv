@@ -10,6 +10,7 @@ from hdmf.build.builders import (
 )
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
 from hdmf.utils import get_data_shape
+from pynwb import NWBFile, get_manager
 
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):  # noqa: D101
@@ -230,6 +231,28 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
 
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         return self.data[selection]
+
+
+def get_nwbfile_builder(nwbfile: NWBFile) -> BaseBuilder:
+    """Build the builder that would be used to write the NWBFile.
+
+    Parameters
+    ----------
+    nwbfile : pynwb.NWBFile
+        An in-memory NWBFile object, either constructed in this process or read from an existing file.
+
+    Returns
+    -------
+    hdmf.build.builders.BaseBuilder
+        The builder object for the NWBFile.
+    """
+    # A file read from disk is built by the manager that read it, whose type map carries the namespaces cached in
+    # that file. The global manager only knows the extensions this process imported, and builds a container of an
+    # unimported extension without any of its datasets.
+    manager = nwbfile.read_io.manager if nwbfile.read_io is not None else get_manager()
+
+    # export=True builds the file the same way the export that follows will, rather than as an append to its source.
+    return manager.build(nwbfile, export=True)
 
 
 def get_full_data_shape(

@@ -10,12 +10,13 @@ from hdmf import Container
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
-from pynwb import NWBHDF5IO, NWBFile, get_manager
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable, Image, TimeSeriesReferenceVectorData
 from pynwb.file import NWBContainer
 
 from ._configuration_models import DATASET_IO_CONFIGURATIONS
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
+from ..hdmf import get_nwbfile_builder
 
 
 def _get_io_mode(io: NWBHDF5IO | NWBZarrIO) -> str:
@@ -107,10 +108,7 @@ def get_default_dataset_io_configurations(
         )
 
     known_dataset_fields = ("data", "timestamps")
-    manager = get_manager()
-    builder = manager.build(nwbfile, export=True)
-    # export = True ensures that the builder is created fresh (as opposed to a cached version),
-    # which is essential to make sure that all of the datasets are properly represented.
+    builder = get_nwbfile_builder(nwbfile=nwbfile)
     for neurodata_object in nwbfile.objects.values():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
