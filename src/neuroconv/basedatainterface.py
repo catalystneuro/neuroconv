@@ -108,6 +108,30 @@ class BaseDataInterface(ABC):
 
         return metadata
 
+    def get_metadata_template(self) -> DeepDict:
+        """
+        Return the metadata this interface consumes, with everything the source cannot answer left blank.
+
+        A discovery aid, and the counterpart to :meth:`get_metadata`. ``get_metadata`` reports only what
+        the source recorded, which leaves a user with no indication of what else the file needs; this
+        returns the same values plus the full nested structure around them, with the cross-references
+        between entries already wired and every field only the experimenter can supply set to ``None``.
+        Fill in the blanks and pass the result to ``add_to_nwbfile`` or ``run_conversion``.
+
+        The blanks are the checklist: what comes back ``None`` is exactly what the source could not tell
+        us. Nothing here is a default, and a blank that is still ``None`` at write time is an error rather
+        than a value.
+
+        Interfaces with no provenance chain to scaffold return their metadata unchanged. Each modality
+        base overrides this with the structure its writer expects.
+
+        Returns
+        -------
+        DeepDict
+            The metadata dictionary, structurally complete, with unanswerable fields set to ``None``.
+        """
+        return self.get_metadata()
+
     def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
         Return the schema used to validate metadata in the old list-based format.

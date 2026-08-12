@@ -48,6 +48,43 @@ value is written regardless.
 
 See `issue #1557 <https://github.com/catalystneuro/neuroconv/issues/1557>`_ for the discussion.
 
+Faithfulness costs the user something, though, and it is worth naming: a dictionary that omits
+everything the source did not record does not tell you what else the file needs. That is what
+``get_metadata_template()`` is for.
+
+
+Templates: the structure, with the blanks marked
+--------------------------------------------------
+
+``get_metadata_template()`` is the counterpart to ``get_metadata()`` and the one place ``None`` is
+allowed to appear. It returns the same source-derived values, wrapped in the full structure the
+writer expects, with the cross-references between entries already resolved and every field only the
+experimenter can supply set to ``None``.
+
+The two methods answer different questions. ``get_metadata()`` answers "what does the source say?",
+and its answer must never contain a value the source did not provide. ``get_metadata_template()``
+answers "what does this file need from me?", and its blanks *are* the answer: what comes back
+``None`` is exactly what the source could not tell us. Asking for a template is consent, which is why
+a blank there is honest where the same value arriving from ``get_metadata()`` would be a fabrication.
+
+The template offers the optional parts of the chain as well as the required ones, since a user cannot
+fill in a field they do not know exists. It is a scaffold to edit, so the contract is **fill what
+applies and delete what does not**:
+
+- **Required and left blank**: the conversion fails, and should. A location or a wavelength nobody
+  supplied is not something to guess at.
+- **Optional and not wanted**: delete the entry. Removing the dichroic mirror block is what gives you
+  a file with no dichroic mirror; leaving it blank is not, and the write will refuse it rather than
+  guess which you meant.
+
+This is why ``None`` is the blank rather than a sentinel string. A sentinel is greppable but is a
+perfectly valid value, so a path that skips the check writes it into the file; ``None`` cannot be
+written to a required field at all, so the worst case is a failure rather than a fabricated value.
+
+See `issue #1802 <https://github.com/catalystneuro/neuroconv/issues/1802>`_ for the discussion, and
+:ref:`annotate_fiber_photometry_metadata` for a worked example.
+
+
 Staying faithful is not the whole story, though. Some of what a source leaves out is genuinely
 required by NWB, and a file cannot be written without it, so a value has to come from somewhere even
 when the interface reports none.
@@ -198,7 +235,8 @@ Checklist for a new interface
 When writing or reviewing an interface:
 
 - Every key ``get_metadata()`` returns corresponds to something read from the source.
-- No key holds ``""``, ``{}``, ``None``, ``np.nan``, ``"unknown"``, or any other sentinel.
+- No key holds ``""``, ``{}``, ``None``, ``np.nan``, ``"unknown"``, or any other sentinel. This
+  constrains ``get_metadata()``; ``get_metadata_template()`` is where blanks belong.
 - No object is returned that the source gives no evidence for: no imaging plane without optical
   information, no electrode group without probe information, no fiber without a fiber.
 - Required NWB fields with no source value are filled where the object is built, in the

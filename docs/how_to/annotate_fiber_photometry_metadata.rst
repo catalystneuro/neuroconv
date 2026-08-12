@@ -716,3 +716,94 @@ series are what break the symmetry, one here against two there. The
 Real setups usually combine both axes, and the two combine cleanly: N fibers each recorded at a signal
 and an isosbestic wavelength give 2N rows, one per (fiber, wavelength) trace, written as two series of
 N columns each. One interface per wavelength, ``num_fibers=N`` on each, one shared table.
+
+
+How to Discover What to Annotate, With a Template
+-------------------------------------------------
+
+The sections above build the chain by hand, one block at a time, so that each piece and each link
+between them is visible. Once you know the shape, you do not have to type it again.
+``get_metadata_template()`` returns the whole thing already assembled, sized to the traces this
+interface writes, with every cross-reference resolved and every field only you can answer set to
+``None``:
+
+.. code-block:: python
+
+    from neuroconv.tools.testing import MockFiberPhotometryInterface
+
+    interface = MockFiberPhotometryInterface(
+        excitation_wavelengths_in_nm=465.0, metadata_key="calcium_signal"
+    )
+    metadata = interface.get_metadata_template()
+
+.. admonition:: What comes back
+   :class: tip
+
+   .. code-block:: text
+
+       Devices
+       ├── optical_fiber_0      fiber_insertion: ap/ml/dv/depth = None    model: None
+       ├── excitation_source                                             model: None
+       ├── photodetector                                                 model: None
+       ├── dichroic_mirror      ─┐
+       ├── excitation_filter     ├─ optional hardware
+       └── emission_filter      ─┘
+
+       DeviceModels             optical_fiber / excitation_source / photodetector, all blank
+
+       FiberPhotometry
+       ├── FiberPhotometryIndicators · indicator        label = None
+       ├── FiberPhotometryTable · row "trace_0"         location, excitation, emission = None
+       │                                                fiber/source/detector/indicator ──▶ wired
+       └── calcium_signal                               region ──▶ ["trace_0"]
+
+This is a discovery aid, and it answers the question the earlier sections answer in prose: what does
+this file need from me? **The blanks are the checklist.** What comes back ``None`` is exactly what the
+source could not tell us, and everything else is already done, in particular the ``*_metadata_key``
+cross-references and the series' ``fiber_photometry_table_region``, which are the tedious part to
+reconstruct by hand.
+
+It also shows what it does not require. The dichroic mirror, the two filters and the three device
+models are optional, and they appear so that you know the writer accepts them at all; drop the ones
+this recording did not use. ``trace_0`` and the device keys are handles rather than names in the file,
+so rename them freely, as long as the table region keeps naming the same rows.
+
+Filling in the one-fiber recording from the first section:
+
+.. code-block:: python
+   :emphasize-lines: 9-17
+
+    from neuroconv.tools.testing import MockFiberPhotometryInterface
+
+    interface = MockFiberPhotometryInterface(
+        excitation_wavelengths_in_nm=465.0, metadata_key="calcium_signal"
+    )
+    metadata = interface.get_metadata_template()
+    fiber_photometry = metadata["FiberPhotometry"]
+
+    row = fiber_photometry["FiberPhotometryTable"]["rows"]["trace_0"]
+    row["location"] = "VTA"
+    row["excitation_wavelength_in_nm"] = 465.0
+    row["emission_wavelength_in_nm"] = 525.0
+    fiber_photometry["FiberPhotometryIndicators"]["indicator"]["label"] = "GCaMP6s"
+    metadata["Devices"]["optical_fiber_0"]["fiber_insertion"] = {
+        "depth_in_mm": 4.0,
+        "insertion_position_ap_in_mm": 3.0,
+    }
+
+    # This rig had no filters and no dichroic mirror, and we do not know the catalog models.
+    del metadata["DeviceModels"]
+    for unused_device in ("dichroic_mirror", "excitation_filter", "emission_filter"):
+        del metadata["Devices"][unused_device]
+    for device_key in ("optical_fiber_0", "excitation_source", "photodetector"):
+        del metadata["Devices"][device_key]["device_model_metadata_key"]
+    for unused_field in ("coordinates", "notes", "dichroic_mirror_metadata_key",
+                         "excitation_filter_metadata_key", "emission_filter_metadata_key"):
+        del row[unused_field]
+    del fiber_photometry["calcium_signal"]["description"]
+
+    nwbfile = interface.create_nwbfile(metadata=metadata)
+
+That writes the same file as the first section. Which route to take is a matter of taste: the template
+saves you remembering the nesting and wiring the references by hand, while building the dictionary
+yourself keeps only what you need in front of you.
