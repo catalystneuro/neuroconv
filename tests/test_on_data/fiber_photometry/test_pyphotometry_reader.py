@@ -41,6 +41,12 @@ FIXTURE_EXPECTATIONS = {
         signal_rate=130.0,
         starting_times=[0.0, 1 / 260],
     ),
+    "mode_named_in_prose/two_colour_time_division.ppd": dict(
+        mode="2 colour time div.",
+        signal_count=2,
+        signal_rate=130.0,
+        starting_times=[0.0, 1 / 260],
+    ),
     "mode_named_in_prose/two_colour_continuous.ppd": dict(
         mode="2 colour continuous",
         signal_count=2,
