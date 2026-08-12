@@ -1,4 +1,4 @@
-"""Data-free unit tests for ``_GuppyInterface``.
+"""Data-free unit tests for ``GuppyInterface``.
 
 Two kinds of test live here, and neither makes a claim about GuPPy's on-disk format. That claim is
 made once, against output GuPPy itself produced, in
@@ -24,7 +24,7 @@ from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface import (
-    _GuppyInterface,
+    GuppyInterface,
 )
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 
@@ -44,7 +44,7 @@ MOCK_TRIAL_ONSETS = [10.0, 20.0, 30.0, 40.0]
 
 
 class TestExtractBins:
-    """``_GuppyInterface._extract_bins`` parses ``bin_(...)`` value/error COLUMNS of a PSTH/cross-corr file."""
+    """``GuppyInterface._extract_bins`` parses ``bin_(...)`` value/error COLUMNS of a PSTH/cross-corr file."""
 
     def test_time_min_float_labels(self):
         # Columns deliberately out of order to confirm the result is sorted by bin start.
@@ -57,7 +57,7 @@ class TestExtractBins:
                 "bin_err_(0.0-2.0)": [0.1, 0.2],
             }
         )
-        result = _GuppyInterface._extract_bins(dataframe)
+        result = GuppyInterface._extract_bins(dataframe)
         np.testing.assert_array_equal(result["bin_edges"], np.array([[0.0, 2.0], [2.0, 4.0]]))
         np.testing.assert_array_equal(result["binned_value"], np.array([[10.0, 12.0], [11.0, 13.0]]))
         np.testing.assert_array_equal(result["binned_error"], np.array([[0.1, 0.3], [0.2, 0.4]]))
@@ -69,18 +69,18 @@ class TestExtractBins:
                 "bin_err_(0-3)": [0.1, 0.2],
             }
         )
-        result = _GuppyInterface._extract_bins(dataframe)
+        result = GuppyInterface._extract_bins(dataframe)
         np.testing.assert_array_equal(result["bin_edges"], np.array([[0.0, 3.0]]))
         np.testing.assert_array_equal(result["binned_value"], np.array([[10.0], [11.0]]))
         np.testing.assert_array_equal(result["binned_error"], np.array([[0.1], [0.2]]))
 
     def test_returns_none_without_bin_columns(self):
         dataframe = pandas.DataFrame({"0.5": [1.0, 2.0], "mean": [3.0, 4.0]})
-        assert _GuppyInterface._extract_bins(dataframe) is None
+        assert GuppyInterface._extract_bins(dataframe) is None
 
 
 class TestPartitionPeakAucIndex:
-    """``_GuppyInterface._partition_peak_auc_index`` splits a peak_AUC file's INDEX into trial/bin/mean rows."""
+    """``GuppyInterface._partition_peak_auc_index`` splits a peak_AUC file's INDEX into trial/bin/mean rows."""
 
     def test_time_min_float_rows_route_to_bins(self):
         # Float bin rows used to crash the trial-onset parse (ValueError: '(0.0-2.0)'); they must route to bins.
@@ -91,7 +91,7 @@ class TestPartitionPeakAucIndex:
             f"{SESSION}_bin_(0.0-2.0)",
             f"{SESSION}_mean",
         ]
-        trial_rows, bin_rows, mean_row = _GuppyInterface._partition_peak_auc_index(index)
+        trial_rows, bin_rows, mean_row = GuppyInterface._partition_peak_auc_index(index)
         assert trial_rows == [(3.0, f"{SESSION}_3.0"), (12.5, f"{SESSION}_12.5")]
         assert bin_rows == [
             (0.0, 2.0, f"{SESSION}_bin_(0.0-2.0)"),
@@ -106,7 +106,7 @@ class TestPartitionPeakAucIndex:
             f"{SESSION}_bin_(3-6)",
             f"{SESSION}_mean",
         ]
-        trial_rows, bin_rows, mean_row = _GuppyInterface._partition_peak_auc_index(index)
+        trial_rows, bin_rows, mean_row = GuppyInterface._partition_peak_auc_index(index)
         assert trial_rows == [(7.0, f"{SESSION}_7.0")]
         assert bin_rows == [
             (0.0, 3.0, f"{SESSION}_bin_(0-3)"),
@@ -116,7 +116,7 @@ class TestPartitionPeakAucIndex:
 
     def test_unbinned_index(self):
         index = [f"{SESSION}_3.0", f"{SESSION}_12.5", f"{SESSION}_mean"]
-        trial_rows, bin_rows, mean_row = _GuppyInterface._partition_peak_auc_index(index)
+        trial_rows, bin_rows, mean_row = GuppyInterface._partition_peak_auc_index(index)
         assert trial_rows == [(3.0, f"{SESSION}_3.0"), (12.5, f"{SESSION}_12.5")]
         assert bin_rows == []
         assert mean_row == f"{SESSION}_mean"
@@ -132,12 +132,12 @@ class TestGuppyInterfaceBehavior:
 
     @pytest.fixture
     def interface(self, guppy_output_folder):
-        return _GuppyInterface(folder_path=str(guppy_output_folder))
+        return GuppyInterface(folder_path=str(guppy_output_folder))
 
     @pytest.fixture
     def nwbfile(self):
-        """A plain NWBFile. ``_GuppyInterface`` is standalone: it needs no acquisition or events tables
-        to write, since the two registry links are populated later by a converter that owns them."""
+        """A plain NWBFile. ``GuppyInterface`` is standalone: it needs no acquisition or events tables
+        to write, since it writes its own events and the fiber link is populated later by a converter."""
         return mock_NWBFile()
 
     def add_to_nwbfile(self, interface, nwbfile, *, stub_test):
@@ -167,7 +167,7 @@ class TestGuppyInterfaceBehavior:
     def test_metadata_key_scopes_block_and_edits_propagate(self, guppy_output_folder, nwbfile):
         """A non-default metadata_key scopes the whole block, and editing an object's name and
         description propagates to the written object -- including an event-bearing product (PSTH)."""
-        interface = _GuppyInterface(folder_path=str(guppy_output_folder), metadata_key="GuppyB")
+        interface = GuppyInterface(folder_path=str(guppy_output_folder), metadata_key="GuppyB")
         metadata = interface.get_metadata()
         guppy_namespace = metadata["FiberPhotometry"]["Guppy"]
         assert set(guppy_namespace) == {"GuppyB"}
@@ -187,11 +187,11 @@ class TestGuppyInterfaceBehavior:
 
     # ------------------------------------------------------------------ standalone writing
 
-    def test_standalone_registries_carry_no_outward_links(self, interface, nwbfile):
-        """Run without a converter, the interface builds names-only registries.
+    def test_standalone_recording_sites_registry_carries_no_outward_link(self, interface, nwbfile):
+        """Run without a converter, the recording sites registry is names only.
 
-        The outward links (fiber rows, event occurrence rows) require a converter that owns those
-        tables and authors the registries itself.
+        The fiber link requires a converter that owns the FiberPhotometryTable, or an NWBFile already
+        holding it; the interface has no acquisition provenance of its own to write.
         """
         module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
 
@@ -200,10 +200,29 @@ class TestGuppyInterfaceBehavior:
         assert list(recording_sites_table["recording_site"].data) == RECORDING_SITES
         assert "fiber_photometry_table_region" not in recording_sites_table.colnames
 
+    def test_standalone_events_registry_links_to_guppys_own_events(self, interface, nwbfile):
+        """The events registry links even with nothing to link to: the onsets are GuPPy's own output.
+
+        The written table is chronological across every event, so the three events' shared onsets
+        interleave, and each registry row's region selects its own event's four occurrences.
+        """
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+
+        written_events = nwbfile.events["GuppyEvents"]
+        assert list(written_events["timestamp"].data) == [
+            onset for onset in MOCK_TRIAL_ONSETS for _ in sorted(EVENT_NAMES)
+        ]
+        assert list(written_events["event_type"].data) == sorted(EVENT_NAMES) * len(MOCK_TRIAL_ONSETS)
+
         events_table = module["events"]
         assert events_table.neurodata_type == "GuppyEventsTable"
-        assert sorted(events_table["event_name"].data) == sorted(EVENT_NAMES)
-        assert "events" not in events_table.colnames
+        registry_event_names = list(events_table["event_name"].data)
+        assert registry_event_names == sorted(EVENT_NAMES)
+        assert events_table["events"].target.table is written_events
+        for row_index, event_name in enumerate(registry_event_names):
+            linked = events_table["events"][row_index]
+            assert list(linked["event_type"]) == [event_name] * len(MOCK_TRIAL_ONSETS)
+            assert list(linked["timestamp"]) == MOCK_TRIAL_ONSETS
 
     def test_nothing_is_written_to_acquisition(self, interface, nwbfile):
         """GuPPy outputs are derived data; the raw acquisition belongs to a separate interface."""
@@ -293,7 +312,7 @@ class TestGuppyInterfaceBehavior:
             h5_path.unlink()
             dataframe.to_hdf(h5_path, key="df", mode="w")
 
-        interface = _GuppyInterface(folder_path=str(copied_folder))
+        interface = GuppyInterface(folder_path=str(copied_folder))
         module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)
         for feature in ("dff", "z_score"):
             cross_correlation = module[f"cross_correlation_{feature}_dls_dms"]
@@ -306,7 +325,7 @@ class TestGuppyInterfaceBehavior:
         shutil.copytree(guppy_output_folder, copied_folder)
         (copied_folder / "GuPPyParamtersUsed.json").unlink()
         with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):
-            _GuppyInterface(folder_path=str(copied_folder))
+            GuppyInterface(folder_path=str(copied_folder))
 
     # ------------------------------------------------------------------ the onsets GuPPy analyzed
 
@@ -327,7 +346,7 @@ class TestGuppyInterfaceBehavior:
         shutil.copytree(guppy_output_folder, copied_folder)
         (copied_folder / f"{EVENT_NAMES[0]}_{RECORDING_SITES[0]}.hdf5").unlink()
         with pytest.raises(AssertionError, match=f"{EVENT_NAMES[0]}_{RECORDING_SITES[0]}.hdf5 not found"):
-            _GuppyInterface(folder_path=str(copied_folder))
+            GuppyInterface(folder_path=str(copied_folder))
 
     def test_recording_sites_disagreeing_on_onsets_raises(self, guppy_output_folder, tmp_path):
         """GuppyEventsTable has one row per event, so a per-site onset list cannot be represented.
@@ -343,4 +362,4 @@ class TestGuppyInterfaceBehavior:
             onsets_file.create_dataset("ts", data=np.array(MOCK_TRIAL_ONSETS[:-1], dtype=np.float64))
 
         with pytest.raises(AssertionError, match=f"different onsets for event '{EVENT_NAMES[0]}'"):
-            _GuppyInterface(folder_path=str(copied_folder))
+            GuppyInterface(folder_path=str(copied_folder))

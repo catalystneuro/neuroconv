@@ -94,6 +94,8 @@ Segmentation
     Inscopix <segmentation/inscopix>
     Suite2P <segmentation/suite2p>
 
+.. _conversion_gallery_fiber_photometry:
+
 Fiber Photometry
 ~~~~~~~~~~~~~~~~
 

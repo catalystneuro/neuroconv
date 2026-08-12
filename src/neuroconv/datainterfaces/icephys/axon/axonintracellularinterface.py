@@ -184,8 +184,7 @@ class AxonIntracellularInterface(BaseDataInterface):
         """The amplifier model the telegraph header reports, or None when the file reports none.
 
         Read from the ABF File Support Pack ``nTelegraphInstrument`` constants. Absent for ABF v1 (no telegraph
-        block) or a manual / unknown instrument, in which case the device is named generically and no model is
-        invented for it.
+        block) or a manual / unknown instrument, in which case the interface reports no device at all.
         """
         telegraph_device = {15: "Axopatch 200B", 24: "MultiClamp 700", 27: "Axoclamp 900"}
         adc_info = self._reader._axon_info.get("listADCInfo")
@@ -193,13 +192,14 @@ class AxonIntracellularInterface(BaseDataInterface):
         return telegraph_device.get(instrument_code)
 
     @property
-    def _device_metadata_key(self) -> str:
+    def _device_metadata_key(self) -> str | None:
         # Keyed by the amplifier rather than the run: the registry holds one key per device name, so several runs
-        # recorded on one amplifier have to meet at a single entry once a converter merges their metadata. Files
-        # whose header reports no model share the one fallback key, as they share the generic device name.
+        # recorded on one amplifier have to meet at a single entry once a converter merges their metadata. A file
+        # whose header reports no model names no amplifier, since the telegraph is what identifies one and a file
+        # that carries none may not be on Axon hardware at all; the write path supplies the placeholder device.
         amplifier_name = self._amplifier_name
         if amplifier_name is None:
-            return "amplifier"
+            return None
         return amplifier_name.lower().replace(" ", "_")
 
     @property
@@ -231,23 +231,21 @@ class AxonIntracellularInterface(BaseDataInterface):
         series_metadata_key = self._series_metadata_key
         electrode_name_suffix = to_camel_case(electrode_metadata_key)
 
-        if amplifier_name is not None:
-            device_metadata = {
-                "name": amplifier_name,
-                "description": "Axon Instruments amplifier (telegraph-reported model).",
-            }
-        else:
-            # No telegraph model: the model stays unstated in the description, but NWB requires the object to
-            # carry a name (as it does for the series), so a generic one is given rather than a model invented.
-            device_metadata = {"name": "AxonAmplifier", "description": "Axon Instruments amplifier."}
-        metadata["Devices"] = {device_metadata_key: device_metadata}
-        metadata["Icephys"]["IntracellularElectrodes"] = {
-            electrode_metadata_key: {
-                "name": f"IntracellularElectrode{electrode_name_suffix}",
-                "description": "Patch-clamp electrode.",
-                "device_metadata_key": device_metadata_key,
-            }
+        electrode_metadata = {
+            "name": f"IntracellularElectrode{electrode_name_suffix}",
+            "description": "Patch-clamp electrode.",
         }
+        # A device only where the telegraph named the amplifier. With no telegraph block there is nothing to
+        # report, so the electrode links no device and the write path supplies its placeholder.
+        if device_metadata_key is not None:
+            metadata["Devices"] = {
+                device_metadata_key: {
+                    "name": amplifier_name,
+                    "description": "Axon Instruments amplifier (telegraph-reported model).",
+                }
+            }
+            electrode_metadata["device_metadata_key"] = device_metadata_key
+        metadata["Icephys"]["IntracellularElectrodes"] = {electrode_metadata_key: electrode_metadata}
 
         # Default series name = the NWB neurodata type + the electrode suffix, written out per clamp mode so the
         # naming pattern is explicit here (add_to_nwbfile instantiates the matching class via _RESPONSE_CLASS).

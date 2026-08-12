@@ -115,6 +115,7 @@ from .fiber_photometry.csv.multifilecsvfiberphotometrydatainterface import (
     MultiFileCSVFiberPhotometryInterface,
 )
 from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
+from .fiber_photometry.guppy.guppydatainterface import GuppyInterface
 from .fiber_photometry.npm.npmfiberphotometrydatainterface import (
     NPMFiberPhotometryInterface,
 )
@@ -212,6 +213,7 @@ interface_list = [
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
     NPMFiberPhotometryInterface,
+    GuppyInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
