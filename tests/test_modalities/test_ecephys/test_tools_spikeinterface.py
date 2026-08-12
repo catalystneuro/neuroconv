@@ -2726,11 +2726,13 @@ class TestAddRecording:
 
         nwbfile = mock_NWBFile()
         expected_error_msg = (
-            "A single ElectricalSeries can store only one scalar offset. To write these channels as one "
-            "series anyway, pass data_representation='physical_units' to add_recording_to_nwbfile (this "
-            "folds each channel's offset into the data and writes float physical values). Alternatively, "
-            "drop the channels that do not share the common offset with "
-            "recording.remove_channels(remove_channel_ids=[...]) and write them as their own series."
+            "A single ElectricalSeries can store only one scalar offset. If these channels are all the same "
+            "kind of signal and the offsets come from per-channel scaling, pass "
+            "data_representation='physical_units' to add_recording_to_nwbfile to write them as one series "
+            "(this folds each channel's offset into the data and writes float physical values). If the "
+            "channels carrying the odd offsets are not electrode channels, drop them with "
+            "recording.remove_channels(remove_channel_ids=[...]) and write them as TimeSeries instead. "
+            "See https://neuroconv.readthedocs.io/en/main/how_to/handle_heterogeneous_offsets.html"
         )
         with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
             add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
