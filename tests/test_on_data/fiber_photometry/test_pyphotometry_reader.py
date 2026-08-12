@@ -9,10 +9,6 @@ real recording.
 Two branches cannot be covered here and are unit tested against files assembled in
 ``tests/test_modalities/test_fiber_photometry/test_pyphotometry_ppd.py`` instead: the paired
 LED-on/baseline storage of version 1.1, for which no public recording exists anywhere, and the refusals.
-
-TODO: these recordings are not on gin yet, so this module skips unless a local copy is present. Publish
-them under ``fiber_photometry_datasets/pyphotometry``, then delete the skip so CI covers this. Tracked in
-``ongoing_work/fiber_photometry/pyphotometry_interface_plan``.
 """
 
 import json
@@ -74,19 +70,11 @@ FIXTURE_EXPECTATIONS = {
 }
 
 
-def get_recording_path(relative_path: str):
-    """Return a recording by name, or skip when this machine does not have the corpus."""
-    file_path = PYPHOTOMETRY_PATH / relative_path
-    if not file_path.exists():
-        pytest.skip(f"{file_path} is not present; the recordings are not published yet.")
-    return file_path
-
-
 @pytest.mark.parametrize("recording_path", list(FIXTURE_EXPECTATIONS))
 def test_every_header_generation_reads(recording_path):
     """Each generation's mode string resolves to a layout, and the signals come out with their timing."""
     expectations = FIXTURE_EXPECTATIONS[recording_path]
-    file_path = get_recording_path(recording_path)
+    file_path = PYPHOTOMETRY_PATH / recording_path
 
     recording = read_ppd(file_path)
 
@@ -113,7 +101,7 @@ def test_signals_match_the_upstream_de_interleave(recording_path):
     Upstream takes ``analog[signal_index::signal_count] * volts_per_division``. Agreeing with it on the
     modes it reads correctly is what makes the disagreement on the fork a claim rather than a bug.
     """
-    file_path = get_recording_path(recording_path)
+    file_path = PYPHOTOMETRY_PATH / recording_path
     raw = file_path.read_bytes()
     header_length = int.from_bytes(raw[:2], "little")
     words = np.frombuffer(raw[2 + header_length :], dtype="<u2")
@@ -130,7 +118,7 @@ def test_signals_match_the_upstream_de_interleave(recording_path):
 
 def test_the_pre_json_header_carries_the_same_scale_as_the_json_one():
     """The fixed layout packs volts per division as a scaled integer rather than a float."""
-    file_path = get_recording_path("header_predates_json/two_signals_200hz.ppd")
+    file_path = PYPHOTOMETRY_PATH / "header_predates_json" / "two_signals_200hz.ppd"
 
     recording = read_ppd(file_path)
 
