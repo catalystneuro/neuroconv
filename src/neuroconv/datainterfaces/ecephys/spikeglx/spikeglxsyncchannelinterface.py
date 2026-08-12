@@ -211,7 +211,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         Returns
         -------
         DeepDict
-            Metadata dictionary containing device and TimeSeries information.
+            Metadata dictionary containing the TimeSeries information.
         """
         metadata = super().get_metadata()
 
@@ -219,17 +219,11 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # Device metadata - link to the parent probe device
-        device_name = f"NeuropixelsImec{self._probe_index}"
-        device = dict(
-            name=device_name,
-            description=f"Neuropixels probe {self._probe_index} used with SpikeGLX.",
-            manufacturer="Imec",
-        )
-
-        # Same key as ``SpikeGLXRecordingInterface`` uses for this probe, so the sync channel and
-        # the probe's streams share one device entry.
-        metadata["Devices"] = {f"neuropixels_imec{self._probe_index}": device}
+        # No device is claimed here. The sync trace is written as a plain ``TimeSeries``, which has no
+        # device link, so the device this used to emit was never referenced by anything. It also could
+        # not be keyed correctly any more: ``SpikeGLXRecordingInterface`` keys the probe by its serial
+        # number, which this interface cannot read, since its stream is the sync channel and carries no
+        # probe. The probe's provenance comes from the recording interface.
 
         # TimeSeries metadata for sync channel
         if "TimeSeries" not in metadata:
@@ -325,21 +319,6 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
             recording = _stub_recording(recording=self.recording_extractor)
 
         metadata = metadata or self.get_metadata()
-
-        # Add device (probe) if not already present, from the top-level registry keyed by metadata key.
-        # The list shape this interface used to emit is named rather than silently accepted, so a script
-        # written against it is told what to change instead of failing on an attribute deep in here.
-        device_metadata = metadata.get("Devices", {})
-        if isinstance(device_metadata, list):
-            device_metadata_key = f"neuropixels_imec{self._probe_index}"
-            raise ValueError(
-                "metadata['Devices'] is a list. It is now a registry keyed by metadata key, so this "
-                f"interface's entry belongs under '{device_metadata_key}': "
-                f"metadata['Devices'] = {{'{device_metadata_key}': {{'name': ..., 'description': ...}}}}."
-            )
-        for device in device_metadata.values():
-            if device["name"] not in nwbfile.devices:
-                nwbfile.create_device(**device)
 
         add_recording_as_time_series_to_nwbfile(
             recording=recording,

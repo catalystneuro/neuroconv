@@ -1004,10 +1004,18 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "spikeglx_imec0_ap"
         expected_devices = {
-            "neuropixels_imec0": dict(
+            "neuropixels_18194809281": dict(
                 name="NeuropixelsImec0",
-                description='Neuropixels 1.0 probe. Additional metadata: {"part_number": "PRB_1_4_0480_1", "port": "2", "slot": "2", "model_name": "PRB_1_4_0480_1", "manufacturer": "imec"}',
                 serial_number="18194809281",
+                device_model_metadata_key="imec_PRB_1_4_0480_1",
+            )
+        }
+        expected_device_models = {
+            "imec_PRB_1_4_0480_1": dict(
+                name="PRB_1_4_0480_1",
+                model_number="PRB_1_4_0480_1",
+                manufacturer="imec",
+                description="Neuropixels 1.0 probe",
             )
         }
         expected_electrode_groups = {
@@ -1015,7 +1023,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 name="NeuropixelsImec0",
                 description="A group representing probe/shank 'NeuropixelsImec0'.",
                 location="unknown",
-                device_metadata_key="neuropixels_imec0",
+                device_metadata_key="neuropixels_18194809281",
             )
         }
         expected_electrical_series = {"spikeglx_imec0_ap": dict(name="ElectricalSeriesAP")}
@@ -1029,6 +1037,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
         # Electrode-table column descriptions are carried over in list shape; the dict migration is a follow-up.
@@ -1054,10 +1063,18 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "spikeglx_imec0_ap"
         expected_devices = {
-            "neuropixels_imec0": dict(
+            "neuropixels_22327214192": dict(
                 name="NeuropixelsImec0",
-                description='Neuropixels 1.0 NHP long linear probe with cap. Additional metadata: {"part_number": "NP1032", "port": "2", "slot": "2", "model_name": "NP1032", "manufacturer": "imec"}',
                 serial_number="22327214192",
+                device_model_metadata_key="imec_NP1032",
+            )
+        }
+        expected_device_models = {
+            "imec_NP1032": dict(
+                name="NP1032",
+                model_number="NP1032",
+                manufacturer="imec",
+                description="Neuropixels 1.0 NHP long linear probe with cap",
             )
         }
         expected_electrode_groups = {
@@ -1065,7 +1082,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
                 name="NeuropixelsImec0",
                 description="A group representing probe/shank 'NeuropixelsImec0'.",
                 location="unknown",
-                device_metadata_key="neuropixels_imec0",
+                device_metadata_key="neuropixels_22327214192",
             )
         }
         expected_electrical_series = {"spikeglx_imec0_ap": dict(name="ElectricalSeriesAP")}
@@ -1079,6 +1096,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
         # Electrode-table column descriptions are carried over in list shape; the dict migration is a follow-up.

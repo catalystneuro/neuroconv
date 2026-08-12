@@ -239,15 +239,48 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             if session_start_time:
                 metadata["NWBFile"]["session_start_time"] = session_start_time
 
-            # The probe device is recorded in the top-level ``Devices`` registry and every electrode
-            # group links to it via ``device_metadata_key``, so the Neuropixels provenance survives to
-            # the file instead of the pipeline's synthesized default device. The key encodes the probe
-            # (``imec0``, ``imec1``, ...) so the AP and LF streams of one probe share a single device
-            # while distinct probes stay separate when a converter merges their metadata.
-            device = self._get_device_metadata_from_probe()
+            # The probe identity is split across the two registries: the model carries what names the
+            # catalogue entry (``manufacturer`` and ``model_number``), the device carries what names the
+            # individual unit (``serial_number``). Written this way,
+            # ``probeinterface.get_probe(manufacturer, model_number)`` rebuilds the geometry from the
+            # file, which the description blob this replaces could not offer.
+            probe = self.recording_extractor.get_probe()
+            serial_number = probe.serial_number if probe.serial_number not in (None, "", "0") else None
+
+            # The key names the physical probe rather than the stream, because the AP and LF interfaces
+            # hold the same probe and their metadata has to deep-merge into one entry instead of two.
+            # The serial number is the only field that identifies a unit across both. Without one, the
+            # key is scoped to the interface, which is already unique per ``metadata_key``, so two
+            # serial-less interfaces in a converter cannot collide on it.
+            probe_index = 0  # one probe per SpikeGLX stream
+            device_metadata_key = (
+                f"neuropixels_{serial_number}" if serial_number else f"{self.metadata_key}_probe_{probe_index}"
+            )
+
             probe_name = self._signals_info_dict["device"].capitalize()  # Imec0, Imec1, etc.
-            device["name"] = f"Neuropixels{probe_name}"
-            device_metadata_key = f"neuropixels_{self._signals_info_dict['device']}"  # e.g. neuropixels_imec0
+            device = dict(name=f"Neuropixels{probe_name}")
+            if serial_number:
+                device["serial_number"] = serial_number
+
+            # No model number means no model. A manufacturer on its own would have to go on
+            # ``Device.manufacturer``, which pynwb 4.0 deprecates, or into a model named after its maker,
+            # which states nothing.
+            model_number = probe.model_name
+            if model_number:
+                device_model_metadata_key = f"{probe.manufacturer}_{model_number}"
+                device["device_model_metadata_key"] = device_model_metadata_key
+                # ``model_number`` holds probeinterface's ``model_name`` verbatim, since that string is
+                # the ``get_probe`` lookup key.
+                device_model = dict(name=model_number, model_number=model_number)
+                if probe.manufacturer:
+                    device_model["manufacturer"] = probe.manufacturer
+                if probe.annotations.get("description"):
+                    device_model["description"] = probe.annotations["description"]
+                metadata["DeviceModels"] = {device_model_metadata_key: device_model}
+
+            # Every electrode group links to the device, both so the Neuropixels provenance reaches the
+            # file instead of the pipeline's placeholder and because a device is only written when a
+            # group references it.
             metadata["Devices"] = {device_metadata_key: device}
 
             metadata["Ecephys"]["ElectrodeGroups"] = {
