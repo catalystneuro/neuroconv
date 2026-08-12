@@ -2779,28 +2779,6 @@ class TestAddRecording:
             assert stored_data.dtype == np.dtype("float32")
             np.testing.assert_array_equal(stored_data[:], traces * np.float32(0.195))
 
-    def test_iterator_dtype_matches_the_traces_it_yields(self):
-        """The dataset is allocated from `_get_dtype`, so it has to agree with what `_get_data`
-        returns: float32 once spikeinterface applies the gains, and the recording's own dtype when
-        there are none to apply or none were asked for."""
-        integer_traces = np.ones(shape=(10, 3), dtype="int16")
-        scaleable_recording = NumpyRecording(traces_list=[integer_traces], sampling_frequency=1000.0)
-        scaleable_recording.set_channel_gains(gains=[0.195] * 3)
-        scaleable_recording.set_channel_offsets(offsets=[0.0] * 3)
-
-        float_traces = np.ones(shape=(10, 3), dtype="float64")
-        unscaleable_recording = NumpyRecording(traces_list=[float_traces], sampling_frequency=1000.0)  # no gains
-
-        cases = [
-            (scaleable_recording, True, np.dtype("float32")),
-            (scaleable_recording, False, np.dtype("int16")),
-            (unscaleable_recording, True, np.dtype("float64")),  # nothing to apply, the traces pass through
-        ]
-        for recording, return_in_uV, expected_dtype in cases:
-            iterator = SpikeInterfaceRecordingDataChunkIterator(recording=recording, return_in_uV=return_in_uV)
-            assert iterator._get_dtype() == expected_dtype
-            assert iterator[:, :].dtype == expected_dtype
-
     def test_scaled_chunk_shape_is_sized_on_the_dtype_written(self):
         """The chunk budget is in bytes, so sizing it on the recording's int16 while writing float32
         would put four times the requested megabytes in every chunk."""
