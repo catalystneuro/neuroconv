@@ -182,19 +182,9 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
             expected_session_start_time = datetime(1900, 1, 1, 14, 15, 0, 711999)
         assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
 
-        # ABF v1 has no telegraph block, so the amplifier model is unknown and the device key is the fallback.
-        device_metadata_key = "amplifier"
         electrode_metadata_key = "abf1_gapfree_bogus_episode_count_10Vm"
         electrode_name_suffix = "Abf1GapfreeBogusEpisodeCount10vm"
 
-        # The model being unknown, the description stays generic and the name is the generic one (NWB requires a
-        # name, so it is not a made-up model).
-        expected_device_metadata = {
-            device_metadata_key: {
-                "name": "AxonAmplifier",
-                "description": "Axon Instruments amplifier.",
-            }
-        }
         # No stimulus configured -> exactly the response entry, no `_stimulus`.
         expected_series_metadata = {
             electrode_metadata_key: {
@@ -204,7 +194,10 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
             }
         }
 
-        assert metadata["Devices"] == expected_device_metadata
+        # ABF v1 has no telegraph block, so nothing identifies the amplifier and no device is reported. The
+        # electrode links none either, and the write path supplies its placeholder.
+        assert "Devices" not in metadata
+        assert "device_metadata_key" not in metadata["Icephys"]["IntracellularElectrodes"][electrode_metadata_key]
         assert metadata["Icephys"]["PatchClampSeries"] == expected_series_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -213,8 +206,11 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
         assert response.rate == 1000.0  # single segment -> uniform rate in Hz, not timestamps
         assert response.timestamps is None
         assert len(nwbfile.stimulus) == 0
-        # No telegraph model -> the device carries the generic name.
-        assert "AxonAmplifier" in nwbfile.devices
+        # No telegraph model -> the interface named no amplifier, so the electrode is on the placeholder device.
+        # NWB requires the electrode to link one, so the link the metadata no longer states is still written.
+        assert list(nwbfile.devices) == ["PlaceholderIntracellularDevice"]
+        electrode = nwbfile.icephys_electrodes["IntracellularElectrodeAbf1GapfreeBogusEpisodeCount10vm"]
+        assert electrode.device is nwbfile.devices["PlaceholderIntracellularDevice"]
         intracellular_recordings = nwbfile.intracellular_recordings
         assert len(intracellular_recordings) == 1
         # Gap-free acquisition (operation mode 3) -> the `stimulus_type` column is the "gap-free" label.

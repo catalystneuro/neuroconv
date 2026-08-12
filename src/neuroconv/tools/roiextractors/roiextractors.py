@@ -329,22 +329,22 @@ def _add_imaging_plane_to_nwbfile(
     if imaging_plane_name in nwbfile.imaging_planes:
         return nwbfile.imaging_planes[imaging_plane_name]
 
-    # Resolve device. Entries without a ``device_metadata_key`` fall back to the placeholder device,
-    # which is exposed through the registry under its default key so every device is added by the
-    # canonical path.
+    # Resolve device. An entry naming no device gets the placeholder: a plain Device carrying the one
+    # field NWB requires, built here rather than through the registry writer, since there is no registry
+    # entry to key it against. Reused by name, so several planes naming no device land on one device. A
+    # keyed entry resolves against the caller's ``metadata``, which goes down whole because the device
+    # may name its model with ``device_model_metadata_key``, resolved against ``metadata["DeviceModels"]``.
     device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
-    # The whole metadata goes to the helper, since a device entry may name its model by
-    # ``device_model_metadata_key``; only the ``Devices`` registry is rebuilt, for the placeholder below.
-    devices_metadata = {**(metadata or {}), "Devices": dict((metadata or {}).get("Devices", {}))}
     if device_metadata_key is None:
-        # Only synthesize the placeholder when nothing was referenced, so a user device that happens
-        # to share the placeholder's name is not turned into a duplicate-name conflict.
-        device_metadata_key = "default_metadata_key"
         placeholder = _get_ophys_metadata_placeholders()["Devices"]["default_metadata_key"]
-        devices_metadata["Devices"].setdefault(device_metadata_key, placeholder)
-    imaging_plane_kwargs["device"] = _add_device_to_nwbfile(
-        nwbfile=nwbfile, metadata=devices_metadata, metadata_key=device_metadata_key
-    )
+        placeholder_name = placeholder["name"]
+        if placeholder_name not in nwbfile.devices:
+            nwbfile.create_device(**placeholder)
+        imaging_plane_kwargs["device"] = nwbfile.devices[placeholder_name]
+    else:
+        imaging_plane_kwargs["device"] = _add_device_to_nwbfile(
+            nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key
+        )
 
     # ``optical_channel`` is written inline as a list of dicts and built into OpticalChannel objects
     # by the shared primitive, which reads the target type off ImagingPlane's own constructor spec.
