@@ -7,7 +7,8 @@ Install NeuroConv with the additional dependencies necessary for reading Thor TI
 
     pip install "neuroconv[thor]"
 
-**Convert a ThorImageLS acquisition**
+Convert a ThorImageLS acquisition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Point :py:class:`~neuroconv.converters.ThorConverter` at the first OME-TIFF of the acquisition and
 every channel named in the accompanying ``Experiment.xml`` is written, one ``ImagingPlane`` and one
@@ -29,7 +30,8 @@ every channel named in the accompanying ``Experiment.xml`` is written, one ``Ima
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-**Converting a single channel**
+Convert a single channel
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use :py:class:`~neuroconv.datainterfaces.ophys.thor.thordatainterface.ThorImagingInterface` to write
 one channel, chosen with the `channel_name` argument. To see what is available, use
