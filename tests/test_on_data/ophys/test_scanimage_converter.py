@@ -22,7 +22,6 @@ class TestScanImageConverterPlanarTwoChannels:
 
         nwbfile_path = str(tmp_path / "scanimage_planar_two_channels.nwb")
         metadata = converter.get_metadata()
-        metadata["NWBFile"]["session_description"] = "test"
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)
@@ -44,7 +43,6 @@ class TestScanImageConverterVolumetricTwoChannels:
 
         nwbfile_path = str(tmp_path / "scanimage_volumetric_two_channels.nwb")
         metadata = converter.get_metadata()
-        metadata["NWBFile"]["session_description"] = "test"
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)
@@ -68,7 +66,6 @@ class TestScanImageConverterSingleChannel:
 
         nwbfile_path = str(tmp_path / "scanimage_single_channel.nwb")
         metadata = converter.get_metadata()
-        metadata["NWBFile"]["session_description"] = "test"
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)

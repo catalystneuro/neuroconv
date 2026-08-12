@@ -21,13 +21,11 @@ class TestThorConverterSingleChannel:
 
         nwbfile_path = str(tmp_path / "thor_converter.nwb")
         metadata = converter.get_metadata()
-        metadata["NWBFile"]["session_description"] = "test"
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         interface = ThorImagingInterface(file_path=THOR_FILE_PATH)
         interface_nwbfile_path = str(tmp_path / "thor_interface.nwb")
         interface_metadata = interface.get_metadata()
-        interface_metadata["NWBFile"]["session_description"] = "test"
         interface.run_conversion(nwbfile_path=interface_nwbfile_path, overwrite=True, metadata=interface_metadata)
 
         nwbfile = read_nwb(nwbfile_path)
@@ -52,7 +50,6 @@ class TestThorConverterSingleChannel:
         assert len(imaging_plane_metadata["grid_spacing"]) == 2
 
         nwbfile_path = str(tmp_path / "thor_square_field_of_view.nwb")
-        metadata["NWBFile"]["session_description"] = "test"
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)
@@ -62,10 +59,12 @@ class TestThorConverterSingleChannel:
 class TestThorConverterMultiChannel:
     """Two channels over three z planes, written in one call."""
 
-    def test_available_channels_come_from_the_experiment_xml(self):
-        """The extractor's own discovery reads the OME-XML, which names no channels for this format
-        and falls back to ['0', '1'], neither of which it accepts back as a channel_name."""
-        assert ThorConverter.get_available_channels(file_path=THOR_MULTI_CHANNEL_FILE_PATH) == ["ChanA", "ChanB"]
+    def test_get_available_channels(self):
+        channel_names = ThorConverter.get_available_channels(file_path=THOR_MULTI_CHANNEL_FILE_PATH)
+
+        assert channel_names == ["ChanA", "ChanB"]
+        # The names are what the interface accepts back, which is the point of asking.
+        ThorImagingInterface(file_path=THOR_MULTI_CHANNEL_FILE_PATH, channel_name=channel_names[0])
 
     def test_run_conversion(self, tmp_path):
         converter = ThorConverter(file_path=THOR_MULTI_CHANNEL_FILE_PATH)
@@ -74,7 +73,6 @@ class TestThorConverterMultiChannel:
 
         nwbfile_path = str(tmp_path / "thor_multi_channel.nwb")
         metadata = converter.get_metadata()
-        metadata["NWBFile"]["session_description"] = "test"
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)
