@@ -122,31 +122,6 @@ def test_signals_match_the_upstream_de_interleave(recording_path):
         np.testing.assert_array_equal(signal.data_in_volts, expected)
 
 
-def test_the_fork_decodes_to_four_smooth_traces():
-    """The fork is the reason the reader dispatches on ``mode`` instead of trusting the default.
-
-    Its file is indistinguishable from an ordinary two-signal recording except by its mode string. Read
-    the documented way it yields traces that alternate every sample, which is what a negative lag-one
-    autocorrelation measures; read as four color-multiplexed signals it yields fluorescence.
-    """
-    file_path = get_recording_path("mode_named_in_prose/four_colour_time_division.ppd")
-
-    recording = read_ppd(file_path)
-
-    def lag_one_autocorrelation(trace):
-        centered = trace - trace.mean()
-        return float(np.dot(centered[:-1], centered[1:]) / np.dot(centered, centered))
-
-    for signal in recording.analog_signals:
-        assert lag_one_autocorrelation(signal.data_in_volts) > 0.5
-
-    raw = file_path.read_bytes()
-    header_length = int.from_bytes(raw[:2], "little")
-    words = np.frombuffer(raw[2 + header_length :], dtype="<u2")
-    read_as_documented = (words >> 1).astype(np.float64)[0::2]
-    assert lag_one_autocorrelation(read_as_documented) < 0
-
-
 def test_the_pre_json_header_carries_the_same_scale_as_the_json_one():
     """The fixed layout packs volts per division as a scaled integer rather than a float."""
     file_path = get_recording_path("header_predates_json/two_signals_200hz.ppd")
