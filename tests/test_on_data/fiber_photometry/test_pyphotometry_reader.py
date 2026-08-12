@@ -16,7 +16,9 @@ import json
 import numpy as np
 import pytest
 
-from neuroconv.datainterfaces.fiber_photometry.pyphotometry._ppd import read_ppd
+from neuroconv.datainterfaces.fiber_photometry.pyphotometry._ppd_file_reader import (
+    read_ppd,
+)
 
 from ..setup_paths import OPHYS_DATA_PATH
 

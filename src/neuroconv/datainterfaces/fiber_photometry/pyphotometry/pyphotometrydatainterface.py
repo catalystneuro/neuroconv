@@ -6,7 +6,7 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile, TimeSeries
 
-from ._ppd import PPDRecording, read_ppd
+from ._ppd_file_reader import PPDRecording, read_ppd
 from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 from ....utils import DeepDict, dict_deep_update
 
@@ -59,6 +59,7 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *,
         stream_name: str | None = None,
         metadata_key: str | None = None,
         verbose: bool = False,

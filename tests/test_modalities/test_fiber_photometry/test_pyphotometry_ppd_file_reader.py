@@ -14,7 +14,9 @@ import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import PyPhotometryFiberPhotometryInterface
-from neuroconv.datainterfaces.fiber_photometry.pyphotometry._ppd import read_ppd
+from neuroconv.datainterfaces.fiber_photometry.pyphotometry._ppd_file_reader import (
+    read_ppd,
+)
 
 VOLTS_PER_DIVISION = 0.00010122
 
