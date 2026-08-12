@@ -79,6 +79,9 @@ which one you want depends on where the data is going.
 Uploading to DANDI
 ~~~~~~~~~~~~~~~~~~
 
+Upload to DANDI when the dataset is going to be published, so that the archive stores it, gives
+it a citable identifier and serves it for streaming.
+
 :py:func:`~neuroconv.tools.data_transfers.automatic_dandi_upload` organizes the folder into the
 `DANDI <https://dandiarchive.org/>`_ layout and uploads it to a Dandiset you have already
 created. It needs your API token in the ``DANDI_API_KEY`` environment variable, and the
@@ -94,6 +97,9 @@ Every file needs a ``session_id`` in its metadata, since DANDI requires one.
 
 Reorganizing into BIDS
 ~~~~~~~~~~~~~~~~~~~~~~
+
+Reorganize into BIDS when the dataset feeds tooling that expects that layout, or has to sit
+beside other modalities of the same study in a single dataset.
 
 NeuroConv does not write a `BIDS <https://bids.neuroimaging.io/>`_ (Brain Imaging Data
 Structure) directory layout. BIDS organization is a separate step over finished NWB files, so
