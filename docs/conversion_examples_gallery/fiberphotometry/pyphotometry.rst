@@ -83,11 +83,6 @@ is its own interface and its own series. To write all of them into one file, sha
 
     >>> converter.run_conversion(nwbfile_path=f"{path_to_save_nwbfile}", metadata=metadata, overwrite=True)
 
-Recordings made with header version 1.1 or later store an LED-on value and the LED-off baseline it is
-corrected against. The response series carries their difference and both measurements are written beside
-it, and reading such a file warns that the conversion is untested, since no recording of that version
-was available when the interface was written.
-
 How to fill in the metadata a conversion needs, the device models, devices, indicators and the
 ``FiberPhotometryTable``, is shared across the fiber photometry interfaces and covered in
 :ref:`annotate_fiber_photometry_metadata`.
