@@ -1,5 +1,6 @@
-"""What an interface writes for its own probe is asserted with the other interface tests. This file holds
-what a single interface cannot show: how two of them merge, and a branch no fixture reaches."""
+"""What an interface writes for its own probe is asserted with the other interface tests, and what the
+write path derives is asserted against constructed probes in ``tests/test_modalities/test_ecephys``. This
+file holds what neither can show: what two interfaces holding different probes merge into."""
 
 from neuroconv.datainterfaces import SpikeGLXRecordingInterface
 from neuroconv.utils import dict_deep_update
@@ -7,20 +8,6 @@ from neuroconv.utils import dict_deep_update
 from ..setup_paths import ECEPHY_DATA_PATH
 
 SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
-
-
-def test_the_two_streams_of_one_probe_converge_on_one_device():
-    """The key names the probe rather than the stream, so the AP and LF interfaces of one probe merge
-    into a single entry instead of writing the probe twice."""
-    interfaces = [
-        SpikeGLXRecordingInterface(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0", stream_id=stream_id)
-        for stream_id in ("imec0.ap", "imec0.lf")
-    ]
-
-    metadata = interfaces[0].get_metadata(use_new_metadata_format=True)
-    metadata = dict_deep_update(metadata, interfaces[1].get_metadata(use_new_metadata_format=True))
-
-    assert set(metadata["Devices"]) == {"neuropixels_18194809281"}
 
 
 def test_two_probes_of_the_same_model_share_one_model_and_keep_separate_devices():
