@@ -332,25 +332,6 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
         self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
         self.check_read_nwb(nwbfile_path=nwbfile_path)
 
-    # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
-    def test_metadata_schema_valid(self):
-        pass
-
-    def test_no_metadata_mutation(self):
-        pass
-
-    def test_interface_alignment(self):
-        pass
-
-    def test_conversion_options_schema_valid(self):
-        pass
-
-    def test_metadata(self):
-        pass
-
-    def test_conversion_options_schema_valid(self):
-        pass
-
 
 class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin):
     """This file sampled part of its signals at 100 Hz and the rest at 1 Hz, so it holds two streams."""
@@ -423,22 +404,6 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
             backend=backend,
             **self.conversion_options,
         )
-
-    # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
-    def test_metadata_schema_valid(self):
-        pass
-
-    def test_no_metadata_mutation(self):
-        pass
-
-    def test_interface_alignment(self):
-        pass
-
-    def test_conversion_options_schema_valid(self):
-        pass
-
-    def test_metadata(self):
-        pass
 
 
 class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
