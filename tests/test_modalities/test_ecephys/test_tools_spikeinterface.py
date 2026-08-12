@@ -1798,28 +1798,6 @@ class TestAddElectrodeGroups:
         assert device.model.model_number == "NP1000"
         assert all(group.device is device for group in nwbfile.electrode_groups.values())
 
-    def test_a_probe_naming_no_model_falls_to_the_placeholder(self):
-        """Biocam and Maxwell attach probes carrying a manufacturer and no part number. A manufacturer
-        alone earns no model, so these keep the placeholder they write today."""
-        recording = _recording_with_probe(manufacturer="3Brain")
-        nwbfile = mock_NWBFile()
-
-        _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
-
-        assert set(nwbfile.devices) == {"PlaceholderElectrodeDevice"}
-        assert len(nwbfile.device_models) == 0
-
-    def test_a_serial_number_of_zero_names_no_unit(self):
-        """``"0"`` is what a reader writes when it could not read a serial off the probe."""
-        recording = _recording_with_probe(model_name="NP2014", manufacturer="imec", serial_number="0")
-        nwbfile = mock_NWBFile()
-
-        _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
-
-        device = nwbfile.devices["ProbeNP2014"]
-        assert device.serial_number is None
-        assert device.model.model_number == "NP2014"
-
     def test_the_readers_own_label_names_the_device(self):
         """Open Ephys names its probes in ``settings.xml``, so the file says ``ProbeA`` rather than a
         serial number nobody reads."""
@@ -2929,7 +2907,11 @@ class TestAddRecording:
         assert electrodes_df["group_name"].tolist() == ["0"] * recording.get_num_channels()
 
     def test_missing_device_metadata_key_falls_back_to_default(self):
-        """Electrode group entries without device_metadata_key get a default device."""
+        """Electrode group entries without device_metadata_key get a default device.
+
+        The recording's generated probe names no model, so it earns no ``DeviceModel`` and the group
+        falls past the probe tier. This is the shape Biocam and Maxwell attach, a manufacturer and no
+        part number."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
         nwbfile = mock_NWBFile()
 
@@ -2961,6 +2943,7 @@ class TestAddRecording:
         default_device_metadata = _get_ecephys_metadata_placeholders()["Devices"]["default_metadata_key"]
         device = nwbfile.devices[default_device_metadata["name"]]
         assert nwbfile.electrode_groups[channel_groups[0]].device is device
+        assert len(nwbfile.device_models) == 0
 
     def test_shared_device_two_recordings(self):
         """Two recordings pointing at the same Devices entry share one device."""

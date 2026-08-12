@@ -193,8 +193,10 @@ def _get_probe_device_metadata(probe) -> dict | None:
     device = dict()
     if probe.name:
         device["name"] = probe.name
-    # ``"0"`` is what a reader writes when it could not read a serial off the probe, so it names no unit
-    # and the field is left out rather than stating it.
+    # Open Ephys writes ``probe_serial_number="0"`` into ``settings.xml`` when the plugin could not read
+    # one off the probe, so that value names no unit and the field is left out rather than claiming a
+    # serial number of zero. Checked here rather than in that interface because a caller can override a
+    # value the helper reports but cannot remove one.
     if probe.serial_number not in (None, "", "0"):
         device["serial_number"] = probe.serial_number
 
