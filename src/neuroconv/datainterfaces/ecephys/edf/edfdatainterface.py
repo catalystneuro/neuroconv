@@ -27,10 +27,38 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
         return source_schema
 
+    @classmethod
+    def get_stream_names(cls, file_path: FilePath) -> list[str]:
+        """
+        Get the names of the streams available in an EDF file.
+
+        A stream is a set of channels that share a sampling rate, so a file that sampled some of
+        its signals at a different rate than the rest carries more than one.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the EDF file
+
+        Returns
+        -------
+        list of str
+            List of the stream names in the EDF file
+        """
+        from spikeinterface.extractors.extractor_classes import EDFRecordingExtractor
+
+        stream_names, _ = EDFRecordingExtractor.get_streams(file_path=file_path)
+        return stream_names
+
     @staticmethod
     def get_available_channel_ids(file_path: FilePath) -> list:
         """
         Get all available channel names from an EDF file.
+
+        The names span the whole file. A file that sampled some of its signals at a different rate
+        than the rest holds them in separate streams, and an interface reads one stream at a time, so
+        the channels of the stream it holds are a subset of these. They are read from the file's
+        header, so this works on a file with more than one stream.
 
         Parameters
         ----------
@@ -42,18 +70,17 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         list
             List of all channel names in the EDF file
         """
-        from spikeinterface.extractors import read_edf
+        from pyedflib import EdfReader
 
-        # Load the recording to inspect channels
-        recording = read_edf(file_path=file_path, all_annotations=True, use_names_as_ids=True)
+        edf_reader = EdfReader(str(file_path))
+        try:
+            channel_names = edf_reader.getSignalLabels()
+        finally:
+            # EDFlib refuses to open a file it already has open, so the handle is released here
+            # rather than left to garbage collection.
+            edf_reader.close()
 
-        # Get all channel IDs
-        channel_ids = recording.get_channel_ids()
-
-        # Clean up to avoid dangling references
-        del recording
-
-        return channel_ids.tolist()
+        return channel_names
 
     @classmethod
     def get_extractor_class(cls):
@@ -82,6 +109,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str = "ElectricalSeries",
         metadata_key: str | None = None,
         channels_to_skip: list | None = None,
+        stream_name: str | None = None,
     ):
         """
         Load and prepare data for EDF.
@@ -102,6 +130,10 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         channels_to_skip : list, default: None
             Channels to skip when adding the data to the nwbfile. These parameter can be used to skip non-neural
             channels that are present in the EDF file.
+        stream_name : str, optional
+            Name of the stream to read, as returned by ``get_stream_names``. A file that sampled some
+            of its signals at a different rate than the rest carries more than one stream and cannot
+            be read without naming one, since a single recording holds a single sampling rate.
 
         """
         # Handle deprecated positional arguments
@@ -144,6 +176,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
             metadata_key=metadata_key,
             channels_to_skip=channels_to_skip,
+            stream_name=stream_name,
         )
 
         if metadata_key is None:

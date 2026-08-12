@@ -118,6 +118,91 @@ def _get_ecephys_metadata_placeholders():
     return metadata
 
 
+def _get_probe_device_metadata(probe) -> dict | None:
+    """
+    What a probe says about itself, as a ``Device`` entry and a ``DeviceModel`` entry.
+
+    Returns ``None`` unless the probe names a model, which is the only case where there is anything to
+    write: a ``DeviceModel`` needs a ``model_number`` to be reconstructable, and a ``Device`` carrying
+    neither a model nor a serial number says no more than the placeholder does.
+
+    Only fields the probe states are present, so a caller can merge its own on top without overwriting
+    anything it did not mean to. Addressing is not here: which registry key each entry is filed under is
+    the caller's, since the ``Devices`` key has to differ per interface and the caller is the one that
+    knows its own ``metadata_key``.
+
+    Parameters
+    ----------
+    probe : probeinterface.Probe
+        The probe to read. Whether the recording has one, and which one, is the caller's question.
+
+    Returns
+    -------
+    dict | None
+        ``{"device": ..., "device_model": ...}``, or ``None`` when the probe names no model. Both are
+        entries rather than registries, freshly built, so the caller's metadata is never touched. The
+        outer keys are lowercase because this is a return value and not a metadata fragment.
+
+    Examples
+    --------
+    A Neuropixels probe read from SpikeGLX, which reports a part number and the unit's serial number but
+    no name of its own, since ``Imec0`` comes from the filename::
+
+        {
+            "device": {"serial_number": "18194809281"},
+            "device_model": {
+                "name": "PRB_1_4_0480_1",
+                "model_number": "PRB_1_4_0480_1",
+                "manufacturer": "imec",
+                "description": "Neuropixels 1.0 probe",
+            },
+        }
+
+    A Cambridge Neurotech probe the user attached themselves with
+    ``recording.set_probe(get_probe("cambridgeneurotech", "ASSY-156-E-1"))``. The catalogue names the
+    product but not the individual unit, so the device entry is empty::
+
+        {
+            "device": {},
+            "device_model": {
+                "name": "ASSY-156-E-1",
+                "model_number": "ASSY-156-E-1",
+                "manufacturer": "cambridgeneurotech",
+            },
+        }
+
+    An Open Ephys probe, which the Neuropix-PXI plugin names in ``settings.xml``::
+
+        {
+            "device": {"name": "ProbeA", "serial_number": "21144110211"},
+            "device_model": {"name": "NP1110", "model_number": "NP1110", "manufacturer": "imec"},
+        }
+    """
+    model_number = probe.model_name
+    if not model_number:
+        return None
+
+    # ``model_number`` holds probeinterface's ``model_name`` verbatim, since that string is the
+    # ``get_probe`` lookup key.
+    device_model = dict(name=model_number, model_number=model_number)
+    if probe.manufacturer:
+        device_model["manufacturer"] = probe.manufacturer
+    if probe.annotations.get("description"):
+        device_model["description"] = probe.annotations["description"]
+
+    device = dict()
+    if probe.name:
+        device["name"] = probe.name
+    # Open Ephys writes ``probe_serial_number="0"`` into ``settings.xml`` when the plugin could not read
+    # one off the probe, so that value names no unit and the field is left out rather than claiming a
+    # serial number of zero. Checked here rather than in that interface because a caller can override a
+    # value the helper reports but cannot remove one.
+    if probe.serial_number not in (None, "", "0"):
+        device["serial_number"] = probe.serial_number
+
+    return {"device": device, "device_model": device_model}
+
+
 def _add_electrode_groups_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -130,7 +215,8 @@ def _add_electrode_groups_to_nwbfile(
     matches a channel ``group_name`` on the recording. For channel groups not covered by
     user metadata, synthesizes default entries using the placeholders. Each entry's
     ``device_metadata_key`` is resolved against ``metadata["Devices"]`` and the device is
-    created lazily on first reference; an entry naming no device gets the placeholder device.
+    created lazily on first reference; an entry naming no device falls to the attached probe when it
+    names a model, and to the placeholder device otherwise.
     """
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
@@ -140,6 +226,36 @@ def _add_electrode_groups_to_nwbfile(
     placeholders = _get_ecephys_metadata_placeholders()
     default_group_template = placeholders["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]
     default_device_metadata = placeholders["Devices"]["default_metadata_key"]
+
+    # A group naming no device falls to the attached probe before it falls to the placeholder, so a
+    # caller who passed no metadata at all still gets the probe's identity. Only a single-probe recording
+    # is handled: with several probes a group would have to be traced back to the probe its contacts sit
+    # on, which the channel ``group`` property does not answer, since a four-shank probe wired
+    # ``by_shank`` reports four groups for one probe.
+    probes = recording.get_probegroup().probes if recording.has_probe() else []
+    probe_metadata = _get_probe_device_metadata(probe=probes[0]) if len(probes) == 1 else None
+    if probe_metadata is not None:
+        probe_device = probe_metadata["device"]
+        device_model = probe_metadata["device_model"]
+        # The name has to be unique per physical probe, since devices are reused by name. The reader's
+        # own label comes first where there is one, then the serial number, and the model number last,
+        # which collides only between two unnamed probes of one model in a single file.
+        probe_device_name = probe_device.get("name") or (
+            f"Probe{probe_device.get('serial_number') or device_model['model_number']}"
+        )
+        # Every caller has to key a model the same way, or two entries for one model collide on name.
+        device_model_metadata_key = f"{device_model.get('manufacturer')}_{device_model['model_number']}"
+        # Thrown away once the device is written, so ``"probe"`` is an internal handle.
+        probe_metadata = {
+            "Devices": {
+                "probe": {
+                    **probe_device,
+                    "name": probe_device_name,
+                    "device_model_metadata_key": device_model_metadata_key,
+                }
+            },
+            "DeviceModels": {device_model_metadata_key: device_model},
+        }
 
     electrode_groups_metadata = metadata.get("Ecephys", {}).get("ElectrodeGroups", {})
     channel_group_names = set(_get_group_name(recording=recording).tolist())
@@ -169,22 +285,28 @@ def _add_electrode_groups_to_nwbfile(
         if group_kwargs["name"] in nwbfile.electrode_groups:
             continue
 
-        # An entry naming no device gets the placeholder: a plain Device carrying the one field NWB
-        # requires, built here rather than through the registry writer, since there is no registry entry
-        # to key it against. Reused by name, so several groups naming no device land on one device. A
-        # keyed entry resolves against the caller's ``metadata``, which goes down whole because the
-        # device may name its model with ``device_model_metadata_key``, resolved against
-        # ``metadata["DeviceModels"]``.
+        # Three tiers. A keyed entry resolves against the caller's ``metadata``, which goes down whole
+        # because the device may name its model with ``device_model_metadata_key``, resolved against
+        # ``metadata["DeviceModels"]``. An entry naming no device falls to the probe when the recording
+        # carries one that names a model, so a caller who passed no metadata at all still gets the
+        # probe's identity rather than an anonymous device. Failing both, the placeholder: a plain
+        # Device carrying the one field NWB requires, built here rather than through the registry
+        # writer since there is no registry entry to key it against. Both fallbacks are reused by name,
+        # so several groups landing on the same tier share one device.
         device_metadata_key = group_kwargs.pop("device_metadata_key", None)
-        if device_metadata_key is None:
+        if device_metadata_key is not None:
+            group_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key
+            )
+        elif probe_metadata is not None:
+            group_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, metadata=probe_metadata, metadata_key="probe"
+            )
+        else:
             default_device_name = default_device_metadata["name"]
             if default_device_name not in nwbfile.devices:
                 nwbfile.create_device(**default_device_metadata)
             group_kwargs["device"] = nwbfile.devices[default_device_name]
-        else:
-            group_kwargs["device"] = _add_device_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key
-            )
 
         nwbfile.create_electrode_group(**group_kwargs)
 
