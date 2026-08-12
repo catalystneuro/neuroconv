@@ -7,6 +7,15 @@ Install NeuroConv with the additional dependencies necessary for reading Spike2 
 
     pip install "neuroconv[spike2]"
 
+.. warning::
+    The `sonpy <https://pypi.org/project/sonpy/>`_ library that reads Spike2 files only publishes wheels for Windows
+    (Python 3.9 to 3.14) and, on Linux and macOS, for Python 3.14 and above. On any other combination the extra
+    installs everything except ``sonpy`` and the interface throws an error naming the platform and the Python version.
+
+.. note::
+    Reading is broken right now against ``sonpy>=1.9.12``, which removed the ``sonpy.lib`` namespace that Neo uses.
+    See https://github.com/NeuralEnsemble/python-neo/issues/1890.
+
 Convert Spike2 data to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.spike2.spike2datainterface.Spike2RecordingInterface`.
 
@@ -33,9 +42,3 @@ Convert Spike2 data to NWB using
     # Choose a path for saving the nwb file and run the conversion
     nwbfile_path = f"{path_to_save_nwbfile}"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
-.. note::
-    At the moment, Spike2 data conversion is not supported because the python API only supports python 3.9 which we no longer
-    support. We are in the process of updating the interface to support python 3.10 and above. Please fill an issue if you
-    require this feature so we can assess the priority of this feature. You can use a version an older version of NeuroConv (< 0.7.3>)
-    to converter this data in the meanwhile
