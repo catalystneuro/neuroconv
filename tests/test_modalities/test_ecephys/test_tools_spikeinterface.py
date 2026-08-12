@@ -35,6 +35,7 @@ from neuroconv.tools.spikeinterface import (
 )
 from neuroconv.tools.spikeinterface.spikeinterface import (
     _get_ecephys_metadata_placeholders,
+    _get_probe_device_metadata,
 )
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
@@ -1815,6 +1816,26 @@ class TestAddElectrodeGroupsProbeTier:
 
         assert set(nwbfile.devices) == {"ProbeA"}
         assert nwbfile.devices["ProbeA"].serial_number == "21144110211"
+
+    def test_two_probes_of_one_model_share_a_model_key_and_keep_their_own_serials(self):
+        """Two units of one product are two devices and one ``DeviceModel``, which is what rules out
+        keying the device on the model number. The model key is what dedups them, so it has to match
+        while the device fields do not."""
+        from probeinterface import generate_linear_probe
+
+        probes = []
+        for serial_number in ("18194809281", "22327214192"):
+            probe = generate_linear_probe(num_elec=4)
+            probe.model_name = "NP1000"
+            probe.manufacturer = "imec"
+            probe.serial_number = serial_number
+            probes.append(probe)
+
+        first, second = (_get_probe_device_metadata(probe=probe) for probe in probes)
+
+        assert first["device_models"] == second["device_models"]
+        assert first["device"]["serial_number"] == "18194809281"
+        assert second["device"]["serial_number"] == "22327214192"
 
     def test_a_group_naming_its_own_device_ignores_the_probe(self):
         """Precedence is per entity: a caller who described their own device gets that device, and no
