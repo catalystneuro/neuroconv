@@ -259,11 +259,11 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
         # reader rather than from a recording.
         warnings.warn(
             "This recording states header version 1.1 or later, where a strobed mode stores an LED-on "
-            "sample and the LED-off baseline beside it, and the trace written is their difference. That "
-            "layout is read from pyPhotometry's own reader rather than from a recording: no file of that "
-            "version was available when this was written, so there was nothing to test against and the "
-            "traces are unverified. If you have such a recording, please open an issue at "
-            "https://github.com/catalystneuro/neuroconv/issues so we can check this path and add a test.",
+            "sample and the LED-off baseline beside it, and the trace written here is their difference. "
+            "No file of that version was available when this interface was written, so this path is "
+            "untested and its output is less certain than for the other recordings the format has. If "
+            "you have such a recording, please open an issue at "
+            "https://github.com/catalystneuro/neuroconv/issues so we can test this path and improve it.",
             UserWarning,
             stacklevel=3,
         )

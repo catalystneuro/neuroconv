@@ -99,5 +99,5 @@ def test_a_version_1_1_recording_warns_that_its_layout_is_unverified(tmp_path):
     file_path = tmp_path / "version_1_1.ppd"
     write_ppd_file(file_path, paired_header(), [1000, 100, 2000, 200, 1010, 110, 2010, 210])
 
-    with pytest.warns(UserWarning, match="nothing to test against"):
+    with pytest.warns(UserWarning, match="this path is untested"):
         PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
