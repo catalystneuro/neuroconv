@@ -175,9 +175,13 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         devices[photodetector_key] = dict(type="Photodetector", name=photodetector_key)
         # Optional hardware, offered so a user knows the writer accepts it. Delete what the recording
         # did not use; a blank left behind is refused at write time rather than guessed at.
+        # ``BandOpticalFilter`` rather than a generic optical filter, as ndx-ophys-devices has no such
+        # class: a filter is a band or an edge one, and the band is the common case here. Swap the type
+        # for ``EdgeOpticalFilter`` if that is what the rig used. The wavelengths belong to the filter's
+        # model rather than to the filter, so the device itself carries nothing but a name.
         devices["dichroic_mirror"] = dict(type="DichroicMirror", name="dichroic_mirror")
-        devices["excitation_filter"] = dict(type="OpticalFilter", name="excitation_filter", filter_type=None)
-        devices["emission_filter"] = dict(type="OpticalFilter", name="emission_filter", filter_type=None)
+        devices["excitation_filter"] = dict(type="BandOpticalFilter", name="excitation_filter")
+        devices["emission_filter"] = dict(type="BandOpticalFilter", name="emission_filter")
 
         # Models carry the make and catalog specifications, shared by every recording that used the same
         # equipment. Optional: fill one and point its device at it, or delete both.
