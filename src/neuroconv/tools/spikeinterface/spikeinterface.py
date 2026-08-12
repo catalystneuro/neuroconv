@@ -96,8 +96,7 @@ def _get_ecephys_metadata_placeholders():
 
     metadata["Devices"] = {
         default_metadata_key: {
-            "name": "Device",
-            "description": "Ecephys probe. Automatically generated.",
+            "name": "PlaceholderElectrodeDevice",
         },
     }
 
@@ -129,10 +128,9 @@ def _add_electrode_groups_to_nwbfile(
 
     Creates groups for entries in ``metadata["Ecephys"]["ElectrodeGroups"]`` whose ``name``
     matches a channel ``group_name`` on the recording. For channel groups not covered by
-    user metadata, synthesizes default entries using the placeholders, all linked to the
-    default device under ``metadata["Devices"]["default_metadata_key"]``. Each entry's
-    ``device_metadata_key`` is resolved against ``metadata["Devices"]`` and the device
-    is created lazily on first reference.
+    user metadata, synthesizes default entries using the placeholders. Each entry's
+    ``device_metadata_key`` is resolved against ``metadata["Devices"]`` and the device is
+    created lazily on first reference; an entry naming no device gets the placeholder device.
     """
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
@@ -142,11 +140,6 @@ def _add_electrode_groups_to_nwbfile(
     placeholders = _get_ecephys_metadata_placeholders()
     default_group_template = placeholders["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]
     default_device_metadata = placeholders["Devices"]["default_metadata_key"]
-
-    # Entries without a ``device_metadata_key`` fall back to the placeholder device, exposed through the
-    # registry under its default key so every device is added by the canonical path. It is only added
-    # when actually referenced, so a user device sharing the placeholder's name stays legal.
-    devices_metadata = {"Devices": dict(metadata.get("Devices", {}))}
 
     electrode_groups_metadata = metadata.get("Ecephys", {}).get("ElectrodeGroups", {})
     channel_group_names = set(_get_group_name(recording=recording).tolist())
@@ -176,13 +169,22 @@ def _add_electrode_groups_to_nwbfile(
         if group_kwargs["name"] in nwbfile.electrode_groups:
             continue
 
+        # An entry naming no device gets the placeholder: a plain Device carrying the one field NWB
+        # requires, built here rather than through the registry writer, since there is no registry entry
+        # to key it against. Reused by name, so several groups naming no device land on one device. A
+        # keyed entry resolves against the caller's ``metadata``, which goes down whole because the
+        # device may name its model with ``device_model_metadata_key``, resolved against
+        # ``metadata["DeviceModels"]``.
         device_metadata_key = group_kwargs.pop("device_metadata_key", None)
         if device_metadata_key is None:
-            device_metadata_key = "default_metadata_key"
-            devices_metadata["Devices"].setdefault(device_metadata_key, default_device_metadata)
-        group_kwargs["device"] = _add_device_to_nwbfile(
-            nwbfile=nwbfile, metadata=devices_metadata, metadata_key=device_metadata_key
-        )
+            default_device_name = default_device_metadata["name"]
+            if default_device_name not in nwbfile.devices:
+                nwbfile.create_device(**default_device_metadata)
+            group_kwargs["device"] = nwbfile.devices[default_device_name]
+        else:
+            group_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key
+            )
 
         nwbfile.create_electrode_group(**group_kwargs)
 
@@ -298,6 +300,15 @@ def add_recording_to_nwbfile(
         raise ValueError(
             f"Argument parent_container ({parent_container}) should be one of "
             "'acquisition', 'processing/LFP', or 'processing/FilteredEphys'!"
+        )
+
+    # Checked before anything is added to the file, so a recording that cannot be written in this
+    # representation does not leave behind the devices, groups and electrodes of a series that
+    # never arrives.
+    if data_representation == "physical_units" and not recording.has_scaleable_traces():
+        raise ValueError(
+            "data_representation='physical_units' requires the recording to have gains and offsets "
+            "to convert the samples to microvolts, but this recording has none."
         )
 
     # Old-shaped metadata is converted here, the last public function before the private writers, so
@@ -545,11 +556,6 @@ def _add_recording_segment_to_nwbfile(
     eseries_kwargs["electrodes"] = electrode_table_region
 
     if data_representation == "physical_units":
-        if not recording.has_scaleable_traces():
-            raise ValueError(
-                "data_representation='physical_units' requires the recording to have gains and offsets "
-                "to convert the samples to microvolts, but this recording has none."
-            )
         # The traces are written already in microvolts (each channel's gain and offset folded in), so
         # only the microvolt-to-volt factor remains and the shared offset is zero. This is the only
         # representation that can hold heterogeneous per-channel gains and offsets in a single series.

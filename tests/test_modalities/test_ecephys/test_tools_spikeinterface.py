@@ -12,7 +12,7 @@ import psutil
 import pynwb.ecephys
 import pytest
 from hdmf.testing import TestCase
-from pynwb import NWBFile
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core.generate import (
     generate_ground_truth_recording,
@@ -2738,7 +2738,9 @@ class TestAddRecording:
             add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
 
     def test_physical_units_requires_scaleable_traces(self):
-        """`physical_units` needs gains and offsets on the recording; without them it errors clearly."""
+        """`physical_units` needs gains and offsets on the recording; without them it errors clearly,
+        and it does so before anything is written, so a caller that catches the error is not left
+        with the devices, groups and electrodes of a series that never arrives."""
         traces = np.ones(shape=(10, 3), dtype="float32")
         recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)  # no gains/offsets
 
@@ -2748,9 +2750,48 @@ class TestAddRecording:
             "to convert the samples to microvolts, but this recording has none."
         )
         with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
-            add_recording_to_nwbfile(
-                recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
-            )
+            add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, data_representation="physical_units")
+
+        assert len(nwbfile.devices) == 0
+        assert len(nwbfile.electrode_groups) == 0
+        assert nwbfile.electrodes is None
+
+    def test_physical_units_stores_float_values_through_the_default_iterator(self, tmp_path):
+        """`physical_units` on the default (`v2`) iterator writes the physical values themselves.
+
+        The dataset used to be allocated as the recording's own integer dtype while the iterator
+        yielded scaled floats, so every value was cast back on write and truncated toward zero.
+        """
+        traces = np.array([[100, -3], [7, 2000]], dtype="int16")
+        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)
+        recording.set_channel_gains(gains=[0.195, 0.195])  # fractional, so a cast to int is visible
+        recording.set_channel_offsets(offsets=[0.0, 0.0])
+
+        nwbfile = mock_NWBFile()
+        add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, data_representation="physical_units")
+
+        nwbfile_path = tmp_path / "physical_units.nwb"
+        with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
+            io.write(nwbfile)
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            stored_data = io.read().acquisition["ElectricalSeriesRaw"].data
+            assert stored_data.dtype == np.dtype("float32")
+            np.testing.assert_array_equal(stored_data[:], traces * np.float32(0.195))
+
+    def test_scaled_chunk_shape_is_sized_on_the_dtype_written(self):
+        """The chunk budget is in bytes, so sizing it on the recording's int16 while writing float32
+        would put four times the requested megabytes in every chunk."""
+        traces = np.ones(shape=(20_000, 4), dtype="int16")
+        recording = NumpyRecording(traces_list=[traces], sampling_frequency=1000.0)
+        recording.set_channel_gains(gains=[0.195] * 4)
+        recording.set_channel_offsets(offsets=[0.0] * 4)
+
+        chunk_mb = 0.01
+        iterator = SpikeInterfaceRecordingDataChunkIterator(recording=recording, return_in_uV=True, chunk_mb=chunk_mb)
+
+        chunk_bytes = np.prod(iterator.chunk_shape) * iterator._get_dtype().itemsize
+        assert chunk_bytes <= chunk_mb * 1e6
 
     def test_full_metadata_specification(self):
         """User-supplied fields land on every created object and the cross-links resolve.
@@ -2918,6 +2959,77 @@ class TestAddRecording:
         assert len(nwbfile.electrodes) == recording.get_num_channels()
         electrodes_df = nwbfile.electrodes.to_dataframe()
         assert all(row_group is group for row_group in electrodes_df["group"])
+
+    def test_device_model_is_written_and_linked(self):
+        """A device reached from an electrode group can name its model with ``device_model_metadata_key``.
+        The model is resolved against ``metadata["DeviceModels"]``, so the whole metadata has to reach the
+        device writer, not just the ``Devices`` registry."""
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        channel_groups = sorted({str(group) for group in recording.get_channel_groups()})
+        metadata = {
+            "DeviceModels": {
+                "utah_array_model": {"name": "UtahArray96", "manufacturer": "Blackrock Neurotech"},
+            },
+            "Devices": {
+                "utah_array": {"name": "UtahArrayM1", "device_model_metadata_key": "utah_array_model"},
+            },
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    "m1": {
+                        "name": channel_groups[0],
+                        "description": "a group",
+                        "location": "M1",
+                        "device_metadata_key": "utah_array",
+                    },
+                },
+                "ElectricalSeries": {"series": {"name": "ElectricalSeries", "description": "acq"}},
+            },
+        }
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
+        )
+
+        device = nwbfile.devices["UtahArrayM1"]
+        assert nwbfile.electrode_groups[channel_groups[0]].device is device
+        assert device.model is nwbfile.device_models["UtahArray96"]
+        assert device.model.manufacturer == "Blackrock Neurotech"
+
+    def test_caller_metadata_is_not_mutated(self):
+        """The write path reads the caller's metadata and never writes back into it, so the same dictionary
+        can be reused across calls. Nothing else pins this on the ecephys path, which now hands its
+        ``metadata`` straight down to the device writer rather than a private copy."""
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        nwbfile = mock_NWBFile()
+
+        channel_groups = sorted({str(group) for group in recording.get_channel_groups()})
+        metadata = {
+            "DeviceModels": {"probe_model": {"name": "ProbeModel", "manufacturer": "ACME"}},
+            "Devices": {"probe": {"name": "Probe", "device_model_metadata_key": "probe_model"}},
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    "shank": {"name": channel_groups[0], "device_metadata_key": "probe"},
+                },
+                "ElectricalSeries": {"series": {"name": "ElectricalSeries", "description": "acq"}},
+            },
+        }
+        metadata_before = deepcopy(metadata)
+
+        add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="series",
+            iterator_type=None,
+        )
+
+        assert metadata == metadata_before
 
     def test_missing_electrode_group_fields_are_defaulted(self):
         """An electrode group entry that omits description/location is not rejected; the write path fills

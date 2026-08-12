@@ -1,3 +1,4 @@
+import re
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -419,7 +420,11 @@ def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metada
     metadata["Behavior"]["ExternalVideos"]["video_test1"]["device_metadata_key"] = "missing_camera"
 
     conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
-    with pytest.raises(KeyError):
+    expected_message = (
+        "device_metadata_key 'missing_camera' was not found in metadata['Devices'] "
+        "(available keys: ['video_test1_camera', 'video_test3_camera'])."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_message)):
         nwb_converter.run_conversion(
             nwbfile_path=nwbfile_path,
             overwrite=True,
