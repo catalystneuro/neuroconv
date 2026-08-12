@@ -26,7 +26,7 @@ from ._device_types import (
     _build_inline_containers,
     _resolve_type,
 )
-from ..ontology import validate_species
+from ..ontology import validate_species, validate_strain
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import _validate_device_registry_names, validate_metadata
 
@@ -118,11 +118,12 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
     assert metadata is not None, "Metadata is required to create an NWBFile but metadata=None was passed."
 
-    # Recommend a standardized species term (non-blocking). Runs before schema validation so
-    # that common names (e.g. "mouse") surface a helpful suggestion even though the schema's
-    # binomial pattern will subsequently reject them.
+    # Recommend standardized species and strain terms (non-blocking). Runs before schema
+    # validation so that common names (e.g. "mouse") surface a helpful suggestion even though the
+    # schema's binomial pattern will subsequently reject them.
     if isinstance(metadata.get("Subject"), dict):
         validate_species(metadata["Subject"].get("species"))
+        validate_strain(metadata["Subject"].get("strain"))
 
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 

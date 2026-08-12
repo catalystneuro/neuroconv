@@ -2,10 +2,11 @@
 
 HERD (HDMF External Resources Data) lets an NWB file carry machine-readable links from its
 metadata values to entities in external ontologies. NeuroConv uses it to annotate values it
-can recognize -- ``Subject.species`` -> NCBITaxon, and anatomical ``location`` fields (the
-electrodes table, electrode groups, imaging planes, and the ``FiberPhotometryTable``) -> the Allen
-Mouse or Human Brain Atlas (or a species-agnostic UBERON vocabulary for any other recognized
-species) -- so downstream tools (e.g. the DANDI archive) can resolve the term without guessing.
+can recognize -- ``Subject.species`` -> NCBITaxon, ``Subject.strain`` -> RRID, and anatomical
+``location`` fields (the electrodes table, electrode groups, imaging planes, and the
+``FiberPhotometryTable``) -> the Allen Mouse or Human Brain Atlas (or a species-agnostic UBERON
+vocabulary for any other recognized species) -- so downstream tools (e.g. the DANDI archive) can
+resolve the term without guessing.
 
 The reference is stored in-file under ``/general/external_resources``, which requires
 ``pynwb >= 4.0.0`` (guaranteed by NeuroConv's dependency pin).
@@ -15,20 +16,22 @@ from pynwb import NWBFile, get_type_map
 
 from ._brain_regions import get_brain_region_term
 from ._species import get_species_term
+from ._strain import get_strain_term
 
 __all__ = [
     "OntologyAnnotationMixin",
     "add_brain_region_external_resources",
     "add_species_external_resource",
+    "add_strain_external_resource",
 ]
 
 
-def _species_already_annotated(herd, subject) -> bool:
-    """Whether ``herd`` already has a species entity for ``subject`` (keeps the call idempotent)."""
+def _attribute_already_annotated(herd, container, attribute: str) -> bool:
+    """Whether ``herd`` already has an entity for ``container.attribute`` (keeps a call idempotent)."""
     try:
-        existing = herd.get_object_entities(subject, attribute="species")
+        existing = herd.get_object_entities(container, attribute=attribute)
     except ValueError:
-        # Raised when the subject is not yet registered in the object table.
+        # Raised when the container is not yet registered in the object table.
         return False
     return not existing.empty
 
@@ -66,7 +69,7 @@ def add_species_external_resource(nwbfile: NWBFile) -> bool:
     is_new_herd = herd is None
     if is_new_herd:
         herd = HERD(type_map=get_type_map())
-    elif _species_already_annotated(herd, subject):
+    elif _attribute_already_annotated(herd, subject, attribute="species"):
         return False
 
     herd.add_ref(
@@ -84,6 +87,92 @@ def add_species_external_resource(nwbfile: NWBFile) -> bool:
     return True
 
 
+def _strain_mapping_from_metadata(metadata: dict | None) -> dict:
+    """Parse ``metadata["Strain"]`` into ``{strain string: [(entity_id, entity_uri), ...]}``.
+
+    Maps a strain string (as it appears on ``Subject.strain``) to one or more ontology terms, each
+    given as a ``dict`` with an ``id`` (a CURIE such as ``"RRID:IMSR_JAX:000664"``) and a resolvable
+    ``uri``. A single ``dict`` or a list of them is accepted. This is how you annotate a strain the
+    curated :data:`~neuroconv.tools.ontology.STRAIN_TERMS` table does not recognize (e.g. an
+    in-house line), or override one it does.
+    """
+    return _id_uri_mapping_from_metadata(metadata, metadata_key="Strain", item_label="strain")
+
+
+def add_strain_external_resource(nwbfile: NWBFile, metadata: dict | None = None) -> bool:
+    """
+    Annotate ``nwbfile.subject.strain`` with an RRID entity via HERD.
+
+    Adds an external-resource reference mapping the subject's strain (a laboratory rodent strain
+    designation) to its RRID identifier, stored in-file under ``/general/external_resources``. The
+    strain is resolved by:
+
+    1. the ``metadata["Strain"]`` mapping, if it provides an entry for the exact strain string
+       (this takes precedence and is ontology-agnostic, so it may map the strain to several
+       terms); then
+    2. the curated :data:`~neuroconv.tools.ontology.STRAIN_TERMS` offline lookup.
+
+    This is a no-op (returns ``False``) when there is no subject, the subject has no strain set,
+    or the strain resolves through neither.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The file whose subject strain should be annotated. Modified in place.
+    metadata : dict, optional
+        Conversion metadata. ``metadata["Strain"]`` maps the strain string to a term
+        ``{"id": ..., "uri": ...}`` or a list of such terms.
+
+    Returns
+    -------
+    bool
+        ``True`` if at least one reference was added, ``False`` otherwise.
+    """
+    subject = getattr(nwbfile, "subject", None)
+    if subject is None:
+        return False
+
+    strain = getattr(subject, "strain", None)
+    if not isinstance(strain, str) or strain.strip() == "":
+        return False
+
+    custom_mapping = _strain_mapping_from_metadata(metadata)
+    entities = custom_mapping.get(strain)
+    if entities is None:
+        term = get_strain_term(strain)
+        entities = [(term.rrid, term.entity_uri)] if term is not None else None
+    if not entities:
+        return False
+
+    from hdmf.common import HERD
+
+    herd = nwbfile.external_resources
+    is_new_herd = herd is None
+    if is_new_herd:
+        herd = HERD(type_map=get_type_map())
+
+    already_annotated = _existing_external_resource_refs(herd)
+    number_added = 0
+    # All terms for the strain share one HERD key; reuse the key object across entities so a
+    # single object<->key link carries every ontology reference.
+    key = None
+    for entity_id, entity_uri in entities:
+        if (subject.object_id, strain, entity_id) in already_annotated:
+            continue
+        if key is None:
+            key = _find_existing_key(herd, subject, "strain", strain)
+        if key is None:
+            herd.add_ref(container=subject, attribute="strain", key=strain, entity_id=entity_id, entity_uri=entity_uri)
+            key = herd.get_key(strain, container=subject, relative_path="strain")
+        else:
+            herd.add_ref(container=subject, attribute="strain", key=key, entity_id=entity_id, entity_uri=entity_uri)
+        number_added += 1
+
+    if number_added > 0 and is_new_herd:
+        nwbfile.external_resources = herd
+    return number_added > 0
+
+
 def _subject_atlas_species(nwbfile: NWBFile) -> str | None:
     """Canonical species name if the subject is recognized, else ``None``.
 
@@ -98,6 +187,53 @@ def _subject_atlas_species(nwbfile: NWBFile) -> str | None:
     return species_term.canonical_name if species_term is not None else None
 
 
+def _id_uri_mapping_from_metadata(metadata: dict | None, *, metadata_key: str, item_label: str) -> dict:
+    """Parse ``metadata[metadata_key]`` into ``{value string: [(entity_id, entity_uri), ...]}``.
+
+    Shared by the ``"BrainRegions"`` and ``"Strain"`` metadata overrides: each maps a value string
+    (a location or a strain designation) to one or more ontology terms, each given as a ``dict``
+    with an ``id`` (a CURIE) and a resolvable ``uri``. A single ``dict`` or a list of them is
+    accepted, so one value can be annotated with several ontologies. This representation is
+    ontology-agnostic and species-agnostic.
+
+    Parameters
+    ----------
+    metadata : dict, optional
+        Conversion metadata.
+    metadata_key : str
+        The top-level metadata key holding the mapping (``"BrainRegions"`` or ``"Strain"``).
+    item_label : str
+        Human-readable noun for the mapped value, used only in error messages (e.g. ``"brain
+        area"`` or ``"strain"``).
+    """
+    if not isinstance(metadata, dict):
+        return {}
+    raw_mapping = metadata.get(metadata_key)
+    if not isinstance(raw_mapping, dict):
+        return {}
+
+    mapping = {}
+    for value, term_value in raw_mapping.items():
+        terms = term_value if isinstance(term_value, list) else [term_value]
+        entities = []
+        for term in terms:
+            if not isinstance(term, dict):
+                raise TypeError(
+                    f"Each metadata[{metadata_key!r}] term must be a dict with 'id' and 'uri' keys; "
+                    f"got {type(term).__name__} for {item_label} {value!r}."
+                )
+            entity_id = term.get("id")
+            entity_uri = term.get("uri")
+            if not entity_id or not entity_uri:
+                raise ValueError(
+                    f"Each metadata[{metadata_key!r}] term for {item_label} {value!r} must define "
+                    "both 'id' and 'uri'."
+                )
+            entities.append((str(entity_id), str(entity_uri)))
+        mapping[value] = entities
+    return mapping
+
+
 def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
     """Parse ``metadata["BrainRegions"]`` into ``{location string: [(entity_id, entity_uri), ...]}``.
 
@@ -107,32 +243,7 @@ def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
     (e.g. both MBA and UBERON). This representation is ontology-agnostic, so it applies to any
     species, not just mouse.
     """
-    if not isinstance(metadata, dict):
-        return {}
-    raw_mapping = metadata.get("BrainRegions")
-    if not isinstance(raw_mapping, dict):
-        return {}
-
-    mapping = {}
-    for location, value in raw_mapping.items():
-        terms = value if isinstance(value, list) else [value]
-        entities = []
-        for term in terms:
-            if not isinstance(term, dict):
-                raise TypeError(
-                    f"Each metadata['BrainRegions'] term must be a dict with 'id' and 'uri' keys; "
-                    f"got {type(term).__name__} for brain area {location!r}."
-                )
-            entity_id = term.get("id")
-            entity_uri = term.get("uri")
-            if not entity_id or not entity_uri:
-                raise ValueError(
-                    f"Each metadata['BrainRegions'] term for brain area {location!r} must define "
-                    "both 'id' and 'uri'."
-                )
-            entities.append((str(entity_id), str(entity_uri)))
-        mapping[location] = entities
-    return mapping
+    return _id_uri_mapping_from_metadata(metadata, metadata_key="BrainRegions", item_label="brain area")
 
 
 def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
@@ -307,6 +418,27 @@ class OntologyAnnotationMixin:
             Whether a reference was added.
         """
         return add_species_external_resource(nwbfile)
+
+    def add_strain_external_resource(self, nwbfile: NWBFile, metadata: dict | None = None) -> bool:
+        """
+        Attach a strain (RRID) reference for the subject to ``nwbfile`` (HERD).
+
+        Override to customize. The default implementation delegates to
+        :func:`neuroconv.tools.ontology.add_strain_external_resource`.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The populated file to annotate, modified in place.
+        metadata : dict, optional
+            Conversion metadata (see the delegated function for the ``"Strain"`` mapping).
+
+        Returns
+        -------
+        bool
+            Whether a reference was added.
+        """
+        return add_strain_external_resource(nwbfile, metadata=metadata)
 
     def add_brain_region_external_resources(self, nwbfile: NWBFile, metadata: dict | None = None) -> int:
         """
