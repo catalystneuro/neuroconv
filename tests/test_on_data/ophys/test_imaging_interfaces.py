@@ -408,33 +408,79 @@ class TestScanImageImagingInterfaceDiscovery:
         assert plane_names == ["0"]
 
 
-def test_single_channel_file_opened_without_naming_its_channel_takes_the_plain_names():
-    """Opening a single-channel file without ``channel_name`` is documented, and used to raise
-    ``AttributeError`` from the list-based metadata. The objects keep the plain names, since naming
-    them after the channel the extractor resolved would rename them for everyone who never asked for a
-    channel; the dict-based format has always done this and the two branches now agree."""
-    file_path = str(
-        OPHYS_DATA_PATH
-        / "imaging_datasets"
-        / "ScanImage"
-        / "volumetric_single_channel_single_file"
-        / "vol_one_ch_single_files_00002_00001.tif"
+class TestScanImageImagingInterfaceSingleChannelNoChannelName(ImagingExtractorInterfaceTestMixin):
+    """A single-channel file opened without naming its channel, which is the documented way to open one.
+
+    This class exists for what its ``interface_kwargs`` omits. Every other ScanImage class passes
+    ``channel_name`` explicitly, so nothing constructed the interface the way its own documentation says
+    to, and the list-based metadata raised ``AttributeError: 'NoneType' object has no attribute
+    'replace'`` on that path for as long as it existed.
+
+    The objects take the plain names. Naming them after the channel the extractor resolved would rename
+    them for everyone who never asked for a channel, so an unnamed channel stays unnamed.
+    """
+
+    data_interface_cls = ScanImageImagingInterface
+    interface_kwargs = dict(
+        file_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "ScanImage"
+            / "volumetric_single_channel_single_file"
+            / "vol_one_ch_single_files_00002_00001.tif"
+        ),
     )
-    interface = ScanImageImagingInterface(file_path=file_path)
+    save_directory = OUTPUT_PATH
 
-    metadata = interface.get_metadata()
+    photon_series_name = "TwoPhotonSeries"
+    optical_series_name = "TwoPhotonSeries"
+    imaging_plane_name = "ImagingPlane"
+    expected_two_photon_series_data_shape = (100, 20, 20, 9)
+    # The written rate comes from the timestamps the extractor reports, not from the header's nominal
+    # volume rate, so it differs slightly from ``expected_imaging_rate`` below.
+    expected_rate = 32.74837101415483
+    expected_starting_time = 0.01526797
+    expected_metadata_key = "scan_image_imaging"
+    expected_imaging_rate = 32.7454
+    expected_scan_line_rate = 24100.624929204416
+    expected_device_description = "Microscope and acquisition data with ScanImage (version 2021.0.0)"
 
-    imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-    assert imaging_plane_metadata["name"] == "ImagingPlane"
-    assert [channel["name"] for channel in imaging_plane_metadata["optical_channel"]] == ["OpticalChannel"]
-    photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
-    assert photon_series_metadata["name"] == "TwoPhotonSeries"
-    # The description used to interpolate the attribute directly and would now read "for None".
-    assert photon_series_metadata["description"] == "Imaging data acquired using ScanImage"
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane_metadata["name"] == self.imaging_plane_name
+        assert [channel["name"] for channel in imaging_plane_metadata["optical_channel"]] == ["OpticalChannel"]
+        photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
+        assert photon_series_metadata["name"] == self.photon_series_name
+        # This used to interpolate the attribute directly and would otherwise read "for None".
+        assert photon_series_metadata["description"] == "Imaging data acquired using ScanImage"
 
-    new_format_metadata = interface.get_metadata(use_new_metadata_format=True)
-    assert [entry["name"] for entry in new_format_metadata["Ophys"]["ImagingPlanes"].values()] == ["ImagingPlane"]
-    assert [entry["name"] for entry in new_format_metadata["Ophys"]["MicroscopySeries"].values()] == ["TwoPhotonSeries"]
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["Devices"] == {
+            "scan_image_microscope": {"name": "Microscope", "description": self.expected_device_description}
+        }
+        # The two metadata formats agree that an unnamed channel leaves the objects unnamed.
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key]["name"] == self.imaging_plane_name
+        assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
+            "imaging_plane_metadata_key": metadata_key,
+            "description": "Imaging data acquired using ScanImage",
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+
+        assert self.imaging_plane_name in nwbfile.imaging_planes
+        assert self.photon_series_name in nwbfile.acquisition
+
+        two_photon_series = nwbfile.acquisition[self.photon_series_name]
+        assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
+        assert two_photon_series.rate == self.expected_rate
+        assert two_photon_series.starting_time == self.expected_starting_time
+        nwbfile.read_io.close()
 
 
 def test_two_channels_of_one_acquisition_share_one_device_entry():
