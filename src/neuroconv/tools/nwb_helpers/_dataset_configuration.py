@@ -16,7 +16,7 @@ from pynwb.file import NWBContainer
 
 from ._configuration_models import DATASET_IO_CONFIGURATIONS
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
-from ..hdmf import get_nwbfile_builder
+from ..hdmf import _get_nwbfile_builder
 
 
 def _get_io_mode(io: NWBHDF5IO | NWBZarrIO) -> str:
@@ -108,7 +108,7 @@ def get_default_dataset_io_configurations(
         )
 
     known_dataset_fields = ("data", "timestamps")
-    builder = get_nwbfile_builder(nwbfile=nwbfile)
+    builder = _get_nwbfile_builder(nwbfile=nwbfile)
     for neurodata_object in nwbfile.objects.values():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability

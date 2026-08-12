@@ -4,6 +4,7 @@ import math
 import warnings
 
 import numpy as np
+from hdmf.build import BuildManager
 from hdmf.build.builders import (
     BaseBuilder,
     LinkBuilder,
@@ -233,7 +234,7 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
         return self.data[selection]
 
 
-def get_nwbfile_builder(nwbfile: NWBFile) -> BaseBuilder:
+def _get_nwbfile_builder(nwbfile: NWBFile) -> BaseBuilder:
     """Build the builder that would be used to write the NWBFile.
 
     Parameters
@@ -246,10 +247,12 @@ def get_nwbfile_builder(nwbfile: NWBFile) -> BaseBuilder:
     hdmf.build.builders.BaseBuilder
         The builder object for the NWBFile.
     """
-    # A file read from disk is built by the manager that read it, whose type map carries the namespaces cached in
-    # that file. The global manager only knows the extensions this process imported, and builds a container of an
-    # unimported extension without any of its datasets.
-    manager = nwbfile.read_io.manager if nwbfile.read_io is not None else get_manager()
+    # The type map of a file read from disk carries the namespaces cached in that file, while the global one only
+    # knows the extensions this process imported and builds a container of an unimported extension without any of
+    # its datasets. The manager wrapping it must be a fresh one: when appending, the reading manager is also the
+    # writing manager, and a builder cached in it is written in place of one that sees the DataIO wrapping that
+    # callers apply after this call.
+    manager = BuildManager(nwbfile.read_io.manager.type_map) if nwbfile.read_io is not None else get_manager()
 
     # export=True builds the file the same way the export that follows will, rather than as an append to its source.
     return manager.build(nwbfile, export=True)

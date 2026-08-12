@@ -12,7 +12,7 @@ from pynwb.core import NWBData
 from ._configuration_models._base_dataset_io import _find_location_in_memory_nwbfile
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
-from ..hdmf import get_nwbfile_builder, has_compound_dtype
+from ..hdmf import _get_nwbfile_builder, has_compound_dtype
 from ..importing import get_package_version, is_package_installed
 
 
@@ -39,7 +39,7 @@ def configure_backend(
     if any(locations_to_remap):
         backend_configuration = backend_configuration.build_remapped_backend(locations_to_remap=locations_to_remap)
 
-    builder = get_nwbfile_builder(nwbfile=nwbfile)
+    builder = _get_nwbfile_builder(nwbfile=nwbfile)
 
     # Set all DataIO based on the configuration
     data_io_class = backend_configuration.data_io_class
