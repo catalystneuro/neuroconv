@@ -29,6 +29,7 @@ from datetime import datetime
 
 import numpy as np
 import pytest
+from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import PyPhotometryFiberPhotometryInterface
 from neuroconv.tools.testing.data_interface_mixins import (
@@ -62,6 +63,16 @@ class TestPyPhotometrySymbolicMode(FiberPhotometryInterfaceTestMixin):
             "analog_1",
             "analog_2",
         ]
+
+    def run_custom_checks(self):
+        """A recording that stores no LED-off baseline writes one series and nothing beside it.
+
+        The shared checks look their own series up by name, so they pass with anything else sitting
+        beside it. Only recordings written by header version 1.1 or later carry the raw measurements that
+        would add series here, and this is the assertion that says so.
+        """
+        with NWBHDF5IO(self.nwbfile_path, "r") as io:
+            assert set(io.read().acquisition) == {"FiberPhotometryResponseSeries"}
 
 
 class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMixin):

@@ -42,20 +42,6 @@ def paired_header(version="1.1") -> dict:
     }
 
 
-def test_a_recording_without_a_pair_writes_one_series(tmp_path):
-    """Before 1.1 the board did the subtraction itself, so there is nothing beside the trace to write."""
-    file_path = tmp_path / "unpaired.ppd"
-    write_ppd_file(file_path, paired_header(version="1.0"), [1000, 2000, 1010, 2010])
-    interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
-
-    nwbfile = interface.create_nwbfile(metadata=interface.get_metadata())
-
-    assert set(nwbfile.acquisition) == {"FiberPhotometryResponseSeries"}
-    assert nwbfile.acquisition["FiberPhotometryResponseSeries"].data == pytest.approx(
-        np.array([1000, 1010]) * VOLTS_PER_DIVISION
-    )
-
-
 def test_an_unknown_mode_is_refused(tmp_path):
     """A mode the interface does not know must raise rather than fall back to two signals.
 
