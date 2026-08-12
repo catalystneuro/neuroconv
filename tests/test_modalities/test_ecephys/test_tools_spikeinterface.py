@@ -1798,18 +1798,27 @@ class TestAddElectrodeGroups:
         assert device.model.model_number == "NP1000"
         assert all(group.device is device for group in nwbfile.electrode_groups.values())
 
-    def test_the_readers_own_label_names_the_device(self):
-        """Open Ephys names its probes in ``settings.xml``, so the file says ``ProbeA`` rather than a
-        serial number nobody reads."""
-        recording = _recording_with_probe(
-            name="ProbeA", model_name="NP1110", manufacturer="imec", serial_number="21144110211"
-        )
+    @pytest.mark.parametrize(
+        "probe_fields, expected_name",
+        [
+            (dict(name="ProbeA", model_name="NP1110", manufacturer="imec", serial_number="21144110211"), "ProbeA"),
+            (dict(model_name="PRB_1_4_0480_1", manufacturer="imec", serial_number="18194809281"), "Probe18194809281"),
+            (dict(model_name="NP1000", manufacturer="imec"), "ProbeNP1000"),
+        ],
+        ids=["reader_label", "serial_number", "model_number"],
+    )
+    def test_probe_naming_policy(self, probe_fields, expected_name):
+        """The device name falls from the reader's own label, to the serial number, to the model number.
+
+        Readability first, subject to uniqueness: devices are reused by name, so two probes sharing one
+        would silently become a single device. The first two rungs are unique per physical probe, the
+        last is not, and it exists only because the alternative is no name at all."""
+        recording = _recording_with_probe(**probe_fields)
         nwbfile = mock_NWBFile()
 
         _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
 
-        assert set(nwbfile.devices) == {"ProbeA"}
-        assert nwbfile.devices["ProbeA"].serial_number == "21144110211"
+        assert set(nwbfile.devices) == {expected_name}
 
     def test_a_group_naming_its_own_device_ignores_the_probe(self):
         """Precedence is per entity: a caller who described their own device gets that device, and no
