@@ -313,6 +313,92 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         assert "optical_fiber_dms" in nwbfile.devices
         assert "optical_fiber_model" in nwbfile.device_models
 
+    def test_metadata_template_sizes_the_table_to_the_traces(self):
+        # One row per trace, measured from the data rather than fixed. The table region is positional, so
+        # a hard-coded row count would silently mismatch every recording but the one it was written for.
+        interface = MockFiberPhotometryInterface(num_fibers=3, metadata_key="calcium_signal")
+        template = interface.get_metadata_template()
+
+        rows_metadata = template["FiberPhotometry"]["FiberPhotometryTable"]["rows"]
+        assert list(rows_metadata) == ["trace_0", "trace_1", "trace_2"]
+        assert template["FiberPhotometry"]["calcium_signal"]["fiber_photometry_table_region"] == list(rows_metadata)
+
+        # One fiber per row, since a fiber is what a column distinguishes; the rest of the chain is shared.
+        optical_fiber_metadata_keys = [row["optical_fiber_metadata_key"] for row in rows_metadata.values()]
+        assert optical_fiber_metadata_keys == ["optical_fiber_0", "optical_fiber_1", "optical_fiber_2"]
+        assert {row["excitation_source_metadata_key"] for row in rows_metadata.values()} == {"excitation_source"}
+
+    def test_metadata_template_blanks_only_what_the_source_cannot_answer(self):
+        # The blanks are the checklist, so whatever the source does know has to survive into the template
+        # instead of being blanked along with the rest, and every cross-reference has to resolve.
+        interface = MockFiberPhotometryInterface(metadata_key="calcium_signal")
+        template = interface.get_metadata_template()
+
+        assert template["NWBFile"]["session_start_time"] == datetime(2020, 1, 1, tzinfo=timezone.utc)
+        assert template["FiberPhotometry"]["calcium_signal"]["name"] == "FiberPhotometryResponseSeries"
+
+        row_metadata = template["FiberPhotometry"]["FiberPhotometryTable"]["rows"]["trace_0"]
+        assert row_metadata["location"] is None
+        assert row_metadata["excitation_wavelength_in_nm"] is None
+        assert row_metadata["emission_wavelength_in_nm"] is None
+        assert template["FiberPhotometry"]["FiberPhotometryIndicators"]["indicator"]["label"] is None
+
+        assert row_metadata["indicator_metadata_key"] in template["FiberPhotometry"]["FiberPhotometryIndicators"]
+        assert row_metadata["optical_fiber_metadata_key"] in template["Devices"]
+        assert row_metadata["photodetector_metadata_key"] in template["Devices"]
+
+    def test_filled_metadata_template_round_trips(self, tmp_path):
+        # The template is a scaffold to edit, so filling the blanks it marks has to be enough to write a
+        # file. What the user left blank must not reach that file, which is the point of blanking it: the
+        # optional hardware is offered so its existence is discoverable, not so it is written empty.
+        interface = MockFiberPhotometryInterface(metadata_key="calcium_signal")
+        metadata = interface.get_metadata_template()
+
+        fiber_photometry_metadata = metadata["FiberPhotometry"]
+        row_metadata = fiber_photometry_metadata["FiberPhotometryTable"]["rows"]["trace_0"]
+        row_metadata["location"] = "VTA"
+        row_metadata["excitation_wavelength_in_nm"] = 465.0
+        row_metadata["emission_wavelength_in_nm"] = 525.0
+        fiber_photometry_metadata["FiberPhotometryIndicators"]["indicator"]["label"] = "GCaMP6s"
+        metadata["Devices"]["optical_fiber_0"]["fiber_insertion"] = dict(
+            insertion_position_ap_in_mm=3.0,
+            insertion_position_ml_in_mm=1.0,
+            insertion_position_dv_in_mm=4.0,
+            depth_in_mm=4.0,
+        )
+
+        nwbfile_path = tmp_path / "filled_template.nwb"
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+        with NWBHDF5IO(nwbfile_path, mode="w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(nwbfile_path, mode="r") as io:
+            read_nwbfile = io.read()
+
+            # Exactly the hardware the filled rows reference. The dichroic mirror and the two filters were
+            # offered by the template and left blank, so they are absent rather than present and empty.
+            assert set(read_nwbfile.devices) == {"optical_fiber_0", "excitation_source", "photodetector"}
+            assert len(read_nwbfile.device_models) == 0
+
+            table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+            assert len(table) == 1
+            assert table["location"][0] == "VTA"
+            assert table["indicator"][0].label == "GCaMP6s"
+            assert table["optical_fiber"][0].name == "optical_fiber_0"
+            assert "dichroic_mirror" not in table.colnames
+            assert "excitation_filter" not in table.colnames
+
+            response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
+            assert response_series.fiber_photometry_table_region.data[:] == [0]
+
+    def test_unfilled_metadata_template_is_refused(self):
+        # Writing a template as-is would be exactly the fabricated provenance #1789 removed, so it has to
+        # fail on the blank the user did not fill. It does fail, but not yet for that reason: metadata
+        # validation rejects the `None` first, since `device_model_metadata_key` is typed `string`. This
+        # asserts the refusal we want rather than the one we get, so it is red until that is settled.
+        interface = MockFiberPhotometryInterface()
+        with pytest.raises(TypeError, match="label"):
+            interface.create_nwbfile(metadata=interface.get_metadata_template())
+
     def test_minimally_annotated_metadata_round_trips(self, tmp_path):
         # The minimally annotated path: the default metadata describes only the response series, so the file
         # must contain exactly that and nothing fabricated — no table region, no devices, no lab metadata.
