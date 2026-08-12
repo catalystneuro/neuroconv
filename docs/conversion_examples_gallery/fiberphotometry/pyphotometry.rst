@@ -7,27 +7,20 @@ Install NeuroConv with the additional dependencies necessary for reading pyPhoto
 
     pip install "neuroconv[pyphotometry]"
 
-pyPhotometry is an open acquisition system, also sold as hardware by Open Ephys, whose ``.ppd`` file
-holds every signal the board recorded interleaved word by word. Which signals a file holds is decided by
-its acquisition mode, and the same acquisition has been spelled three different ways as the format
-evolved: ``GCaMP/RFP`` in the earliest headers, ``2 colour continuous`` in the middle era and
-``2EX_2EM_continuous`` today. A file whose mode is not recognized is refused rather than read with a
-default layout, because a mode that multiplexes more colors than the default assumes decodes into
-interleaved traces that look like a signal.
+pyPhotometry is an open acquisition system, also sold as hardware by Open Ephys, which writes a binary
+``.ppd`` file holding every signal the board recorded. How many signals that is depends on the
+acquisition mode the recording was made in, and ``get_available_streams`` reports them before
+construction, named after the analog input they came off.
 
 ``PyPhotometryFiberPhotometryInterface`` reads one signal into a single
 ``FiberPhotometryResponseSeries``, so instantiate one interface per signal, with distinct
-``metadata_key`` values, and combine them in a converter. This is not a stylistic choice: the board has
-no simultaneous analog-to-digital conversion, so no two signals in a ``.ppd`` were sampled at the same
-instants and a response series carries one time axis.
+``metadata_key`` values, and combine them in a converter. The signals cannot share a series because they
+were not sampled at the same instants: the board reads its analog inputs one after another.
 
-``get_available_streams`` reports what to pass, callable before construction. Signals are named after
-the analog input they came off, the way pyPhotometry's own reader names them.
+Convert pyPhotometry Fiber Photometry data to NWB
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Convert pyPhotometry data to NWB
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Convert pyPhotometry data to NWB using
+Convert pyPhotometry Fiber Photometry data to NWB using
 :py:class:`~neuroconv.datainterfaces.fiber_photometry.pyphotometry.pyphotometrydatainterface.PyPhotometryFiberPhotometryInterface`.
 
 .. code-block:: python
@@ -54,9 +47,9 @@ Convert pyPhotometry data to NWB using
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-Each signal is written with the start time the acquisition gave it, which is what a shared timebase
-would throw away. In the pulsed modes the sampling timer advances one analog input per tick, so the
-second signal of a 130 Hz recording starts 1/260 of a second after the first:
+Each signal is written with the start time it was sampled at. In the strobed modes the analog inputs
+are read one per tick of a timer running at the number of inputs times the header's rate, so the second
+signal of a 130 Hz recording starts 1/260 of a second after the first:
 
 .. code-block:: python
 
@@ -64,13 +57,11 @@ second signal of a 130 Hz recording starts 1/260 of a second after the first:
     >>> float(round(control.get_timestamps()[0], 6))
     0.003846
 
-The continuous modes are the exception. The board reads its inputs sequentially there too, but by an
-amount the file does not record and no pyPhotometry document states, so those signals keep the timebase
-the header states and say why in their description.
+The continuous modes are the exception: the offset is real there too but its size is not recorded
+anywhere, so those signals keep the header's timebase and say so in their description.
 
-Recordings made with header version 1.1 or later store two measurements per sample in the pulsed modes,
-the LED-on value and the LED-off baseline it is corrected against. The response series carries their
-difference, which is what earlier firmware computed on the board, and the two measurements are written
+Recordings made with header version 1.1 or later store an LED-on value and the LED-off baseline it is
+corrected against. The response series carries their difference, and both measurements are written
 beside it as plain ``TimeSeries``.
 
 The full metadata format (device models, devices, indicators, the ``FiberPhotometryTable``, and the
