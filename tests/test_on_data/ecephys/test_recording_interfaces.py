@@ -286,10 +286,6 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
-@pytest.mark.skipif(
-    platform == "darwin",
-    reason="Interface unsupported for OSX.",
-)
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
@@ -301,36 +297,12 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
 
     def test_get_stream_names(self):
         stream_names = EDFRecordingInterface.get_stream_names(file_path=self.interface_kwargs["file_path"])
 
         assert stream_names == ["stream ((256.0,) Hz)"]
-
-    def check_run_conversion_with_backend(self, nwbfile_path: str, backend="hdf5"):
-        metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            metadata=metadata,
-            backend=backend,
-            **self.conversion_options,
-        )
-
-    def test_all_conversion_checks(self, setup_interface, tmp_path):
-        # Create a unique test name and file path
-        nwbfile_path = str(tmp_path / f"{self.__class__.__name__}.nwb")
-        self.nwbfile_path = nwbfile_path
-
-        # Now run the checks using the setup objects
-        metadata = self.interface.get_metadata()
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
-
-        self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
-        self.check_read_nwb(nwbfile_path=nwbfile_path)
 
 
 class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin):
@@ -391,19 +363,6 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
         )
 
         check_recordings_equal(RX1=recording, RX2=nwb_recording, return_in_uV=True)
-
-    def check_run_conversion_with_backend(self, nwbfile_path: str, backend="hdf5"):
-        metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            metadata=metadata,
-            backend=backend,
-            **self.conversion_options,
-        )
 
 
 class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
