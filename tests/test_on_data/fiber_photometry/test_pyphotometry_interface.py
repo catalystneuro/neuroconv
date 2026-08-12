@@ -13,18 +13,20 @@ this module is organized to match, one round-trip class per recording and signal
 - ``mode_named_by_indicators`` -- version 0.1, where the mode names the fluorophores.
 - ``header_predates_json`` -- the fixed-layout header, whose mode is an unpublished byte code.
 
+A last class holds what no recording can show: a mode nothing recognizes, a header readable as neither
+generation, and a version 1.1 recording, which stores an LED-on sample beside the LED-off baseline it is
+corrected against and exists in no public deposit at all. Those files are written by the test.
+
 What the round trips assert beyond reading at all is timing. The board samples its analog inputs one
 after another, so each signal is written with the start time its slot implies, where the vendor's reader
 reports every signal as starting at zero. Classes come in pairs where that matters, one per signal, so
 the second one's ``expected_starting_time`` is the claim.
 
 Each expected trace is the leading samples of that signal, read off the file by hand rather than through
-the interface, with ``stub_samples`` keeping them short. Construction errors, which the mixin cannot
-express, live in a dedicated plain class. The version 1.1 paired path and the refusals for malformed
-headers are in ``tests/test_modalities/test_fiber_photometry/test_pyphotometry.py``, since no recording
-of that version exists and a broken header has to be built.
+the interface, with ``stub_samples`` keeping them short.
 """
 
+import json
 from datetime import datetime
 
 import numpy as np
@@ -250,8 +252,37 @@ class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
     expected_starting_time = 0.0
 
 
-class TestPyPhotometryConstruction:
-    """Errors raised before a conversion, which the round-trip mixin cannot express."""
+def write_ppd_file(tmp_path, header_overrides: dict | None = None, header_bytes: bytes | None = None):
+    """Write a ``.ppd``: a two-byte header length, a header, then the packed words.
+
+    Fields passed override a header version 1.1 recording. Passing ``header_bytes`` writes them verbatim
+    instead, for the case where the point is a header readable as neither generation.
+    """
+    if header_bytes is None:
+        header = {
+            "subject_ID": "test",
+            "date_time": "2025-11-18T10:00:00",
+            "mode": "2EX_2EM_pulsed",
+            "sampling_rate": 130,
+            "volts_per_division": [0.00010122, 0.00010122],
+            "n_analog_signals": 2,
+            "n_digital_signals": 2,
+            "version": "1.1",
+        }
+        header_bytes = json.dumps(header | (header_overrides or {})).encode("utf-8")
+
+    words = (np.array([1000, 100, 2000, 200, 1010, 110, 2010, 210], dtype=np.uint16) << 1).astype("<u2")
+    file_path = tmp_path / "recording.ppd"
+    file_path.write_bytes(len(header_bytes).to_bytes(2, "little") + header_bytes + words.tobytes())
+    return file_path
+
+
+class TestPyPhotometryEdgeCases:
+    """What a round-trip class cannot express: errors before a conversion, and files nobody has.
+
+    The first two read a published recording; the rest are written here, either because the file is
+    deliberately unreadable or because no recording of that header version exists anywhere.
+    """
 
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
 
@@ -265,3 +296,49 @@ class TestPyPhotometryConstruction:
         interface = PyPhotometryFiberPhotometryInterface(file_path=self.file_path)
 
         assert interface.stream_names == ["analog_1"]
+
+    def test_an_unknown_mode_is_refused(self, tmp_path):
+        """A mode the interface does not know must raise rather than fall back to two signals.
+
+        That fallback is what turns the four-colour fork's recording, which is indistinguishable from an
+        ordinary two-signal file except by this string, into interleaved colours that look like a trace.
+        """
+        file_path = write_ppd_file(tmp_path, {"mode": "5EX_3EM_whatever"})
+
+        with pytest.raises(ValueError, match="Unknown pyPhotometry acquisition mode '5EX_3EM_whatever'"):
+            PyPhotometryFiberPhotometryInterface(file_path=file_path)
+
+    def test_a_header_that_is_neither_json_nor_the_fixed_layout_is_refused(self, tmp_path):
+        """A failed JSON parse means the pre-2018 fixed layout, and anything else is not a recording.
+
+        Pointing the interface at another file is how this happens: pyPhotometry also exports a CSV, and
+        its first two characters become a declared header length.
+        """
+        file_path = write_ppd_file(tmp_path, header_bytes=b"\x00\x01\x02\x03\x04\x05\x06\x07")
+
+        with pytest.raises(ValueError, match="neither JSON nor the 42-byte fixed layout"):
+            PyPhotometryFiberPhotometryInterface(file_path=file_path)
+
+    def test_a_version_1_1_recording_warns_that_its_layout_is_unverified(self, tmp_path):
+        """Version 1.1 stores an LED-on sample and an LED-off baseline, and no recording of it exists.
+
+        The interface reads that layout from pyPhotometry's own reader rather than from a file, so it
+        says so instead of presenting the traces as it does every other generation's. This asserts the
+        warning, not the traces: certifying values for a layout nobody has seen is what it exists to
+        avoid.
+        """
+        file_path = write_ppd_file(tmp_path)
+
+        expected_warning = (
+            "This recording states header version 1.1 or later, where a strobed mode stores an LED-on "
+            "sample and the LED-off baseline beside it, and the trace written here is their difference. "
+            "No file of that version was available when this interface was written, so this path is "
+            "untested and its output is less certain than for the other recordings the format has. If "
+            "you have such a recording, please open an issue at "
+            "https://github.com/catalystneuro/neuroconv/issues so we can test this path and improve it."
+        )
+
+        with pytest.warns(UserWarning) as raised:
+            PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
+
+        assert str(raised[0].message) == expected_warning
