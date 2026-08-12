@@ -61,8 +61,12 @@ The continuous modes are the exception: the offset is real there too but its siz
 anywhere, so those signals keep the header's timebase and say so in their description.
 
 Recordings made with header version 1.1 or later store an LED-on value and the LED-off baseline it is
-corrected against. The response series carries their difference, and both measurements are written
-beside it as plain ``TimeSeries``.
+corrected against. The response series carries their difference, which is what earlier firmware computed
+on the board, and both measurements are written beside it as response series of their own. The LED-on
+trace references the same ``FiberPhotometryTable`` row as the difference; the baseline references none,
+since a row states an excitation source and wavelength and neither applies to a measurement taken in the
+dark. Such a recording also warns on read: no file of that version was available when this interface was
+written, so that path is untested.
 
 The full metadata format (device models, devices, indicators, the ``FiberPhotometryTable``, and the
 per-interface response series) is shared across the fiber photometry interfaces and documented at
