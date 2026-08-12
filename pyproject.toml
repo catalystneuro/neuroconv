@@ -303,7 +303,8 @@ ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
 ]
 brukertiff = [
     "neuroconv[ophys_minimal]",
-    "tifffile>=2023.3.21",
+    # See the note on 'tifffile[codecs]' in the 'tiff' extra below.
+    "tifffile[codecs]>=2023.3.21",
     "natsort",
 ]
 caiman = [
@@ -338,7 +339,8 @@ inscopix = [
 ]
 micromanagertiff = [
     "neuroconv[ophys_minimal]",
-    "tifffile>=2023.3.21",
+    # See the note on 'tifffile[codecs]' in the 'tiff' extra below.
+    "tifffile[codecs]>=2023.3.21",
 ]
 miniscope = [
     "natsort>=8.3.1",
@@ -357,7 +359,8 @@ scanbox = [
 scanimage = [
     "neuroconv[ophys_minimal]",
     "natsort",
-    "tifffile>=2023.3.21",
+    # See the note on 'tifffile[codecs]' in the 'tiff' extra below.
+    "tifffile[codecs]>=2023.3.21",
 ]
 scanimage_legacy = [
     "neuroconv[ophys_minimal]",
@@ -403,11 +406,22 @@ guppy = [
 ]
 thor = [
     "neuroconv[ophys_minimal]",
-    "tifffile>=2023.3.21",
+    # See the note on 'tifffile[codecs]' in the 'tiff' extra below. ThorImageLS is the format that
+    # surfaced this: it writes LZW-compressed TIFFs when the operator leaves compression on.
+    "tifffile[codecs]>=2023.3.21",
 ]
 tiff = [
     "neuroconv[ophys_minimal]",
-    "tifffile>=2018.10.18",
+    # The 'codecs' extra pulls 'imagecodecs' (~49 MB), which tifffile needs to decode a compressed
+    # TIFF; without it a compressed file raises "<COMPRESSION.LZW: 5> requires the 'imagecodecs'
+    # package" from six frames inside tifffile, mid-read, reading as though the file were corrupt.
+    # Compression is a property of the file a user was handed rather than a choice they made, so
+    # they cannot know to install it in advance, which is why it is declared rather than left out.
+    # This is meant to be temporary: remove it from every tiff-reading extra once roiextractors
+    # detects the compression at construction time and raises a message naming 'imagecodecs' and
+    # saying the file is not corrupt. At that point the minority who need it can install it on a
+    # clear instruction, and the majority stop paying for it.
+    "tifffile[codecs]>=2018.10.18",
 ]
 ophys = [
     "neuroconv[brukertiff]",
