@@ -1730,8 +1730,12 @@ class TestAddElectrodeGroups:
         recording.set_property(key="group_name", values=["A", "A", "A", "A"])
 
         nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="The number of group names must match the number of groups"):
+        # The message names the two properties and the remedy, because the counts on their own do not point
+        # at the one that went stale when the channels were re-grouped.
+        expected_message = re.escape("1 names ('A') against 4 groups")
+        with pytest.raises(ValueError, match=expected_message) as error:
             _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
+        assert "delete the property" in str(error.value)
 
     def test_inconsistent_group_name_mapping(self):
         recording = generate_recording(num_channels=3)
@@ -1742,7 +1746,7 @@ class TestAddElectrodeGroups:
         )
 
         nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="Inconsistent mapping between group numbers and group names"):
+        with pytest.raises(ValueError, match=re.escape("group '0' is named both 'A' and 'B'")):
             _add_electrode_groups_to_nwbfile(nwbfile=nwbfile, recording=recording)
 
 

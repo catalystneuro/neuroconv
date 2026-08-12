@@ -480,6 +480,9 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         channel_groups = np.full(shape=num_channels, fill_value=0, dtype=int)
         channel_groups[::2] = 1  # Every other channel is in group 1, the rest are in group 0
         recording.set_channel_groups(groups=channel_groups)
+        # The interface named the groups after the headstage port, so that name is stale once the channels
+        # are re-grouped and has to be restated alongside the new groups.
+        recording.set_property(key="group_name", values=[str(group) for group in channel_groups])
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile)
         assert len(nwbfile.devices) == 1
