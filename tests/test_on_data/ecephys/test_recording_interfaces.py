@@ -356,7 +356,13 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
         expected_devices = {
             "intan_device": dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan")
         }
-        expected_electrode_groups = {"0": dict(name="0", device_metadata_key="intan_device")}
+        expected_electrode_groups = {
+            "B": dict(
+                name="B",
+                device_metadata_key="intan_device",
+                description="Amplifier channels recorded on Intan headstage port B.",
+            )
+        }
         expected_electrical_series = {"intan_recording": dict(name="ElectricalSeries")}
 
         assert self.interface.metadata_key == expected_metadata_key
@@ -391,15 +397,19 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
             "intan_device": dict(name="Intan", description="RHD Recording System", manufacturer="Intan")
         }
         expected_electrical_series = {"intan_recording": dict(name="ElectricalSeries")}
-        # The three fixtures carry different channel-group sets, so the expected groups are pinned per fixture.
-        expected_group_names = {
-            "rhd": ("0", "1", "2"),
-            "one-file-per-channel": ("0", "1"),
-            "one-file-per-signal": ("0", "1"),
+        # The three fixtures use different sets of headstage ports, so the expected groups are pinned per fixture.
+        expected_ports = {
+            "rhd": ("A", "B", "C"),
+            "one-file-per-channel": ("A", "B"),
+            "one-file-per-signal": ("A", "B"),
         }
         expected_electrode_groups = {
-            group_name: dict(name=group_name, device_metadata_key="intan_device")
-            for group_name in expected_group_names[self.test_name]
+            port: dict(
+                name=port,
+                device_metadata_key="intan_device",
+                description=f"Amplifier channels recorded on Intan headstage port {port}.",
+            )
+            for port in expected_ports[self.test_name]
         }
 
         assert self.interface.metadata_key == expected_metadata_key
@@ -432,6 +442,25 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
 
         return self.interface, self.test_name
 
+    def test_headstage_port_is_written_as_group_name_and_column(self, setup_interface):
+        # The port names the electrode group and is also written per channel, because the two survive
+        # different things: attaching a probe regroups the channels and overwrites the group name, while
+        # the port stays true of every channel afterwards.
+        expected_ports = {
+            "rhd": ["A", "B", "C"],
+            "one-file-per-channel": ["A", "B"],
+            "one-file-per-signal": ["A", "B"],
+        }[self.test_name]
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        assert sorted(nwbfile.electrode_groups) == expected_ports
+        assert sorted(set(nwbfile.electrodes["port"].data[:])) == expected_ports
+        # SpikeInterface's ``group_names`` is restated as ``port``, so it must not also reach the table
+        # under a name one character from the ``group_name`` column beside it.
+        assert "group_names" not in nwbfile.electrodes.colnames
+
     def test_devices_written_correctly(self, setup_interface):
 
         nwbfile = mock_NWBFile()
@@ -451,6 +480,9 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         channel_groups = np.full(shape=num_channels, fill_value=0, dtype=int)
         channel_groups[::2] = 1  # Every other channel is in group 1, the rest are in group 0
         recording.set_channel_groups(groups=channel_groups)
+        # The interface named the groups after the headstage port, so that name is stale once the channels
+        # are re-grouped and has to be restated alongside the new groups.
+        recording.set_property(key="group_name", values=[str(group) for group in channel_groups])
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile)
         assert len(nwbfile.devices) == 1

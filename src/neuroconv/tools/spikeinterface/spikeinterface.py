@@ -963,20 +963,36 @@ def _get_group_name(recording: BaseRecording) -> np.ndarray:
     # If for any reason the group names are empty, fill them with the default
     group_names[group_names == ""] = default_group_name
 
-    # Validate group names against groups
+    # Validate group names against groups. The two disagree when the channels were re-grouped after
+    # ``group_name`` was set, which is easy to do without noticing: several interfaces set a name of their
+    # own at construction, so a later ``set_channel_groups`` leaves a stale one behind. Say so, since the
+    # counts on their own do not point at the property to fix.
+    remedy = (
+        "This happens when the channels are re-grouped after 'group_name' is set. Set 'group_name' to match "
+        "the new grouping, or delete the property to name the groups after 'group' instead."
+    )
     if groups is not None:
         unique_groups = set(groups)
         unique_names = set(group_names)
 
         if len(unique_names) != len(unique_groups):
-            raise ValueError("The number of group names must match the number of groups")
+            # The values are numpy scalars, so they are formatted rather than repr'd to keep
+            # ``np.str_('A')`` out of a message a user reads.
+            listed_names = ", ".join(sorted(f"'{name}'" for name in unique_names))
+            raise ValueError(
+                f"The recording's 'group_name' property does not match its 'group' property: "
+                f"{len(unique_names)} names ({listed_names}) against {len(unique_groups)} groups. {remedy}"
+            )
 
         # Check consistency of group name to group number mapping
         group_to_name_map = {}
         for group, name in zip(groups, group_names):
             if group in group_to_name_map:
                 if group_to_name_map[group] != name:
-                    raise ValueError("Inconsistent mapping between group numbers and group names")
+                    raise ValueError(
+                        f"The recording's 'group_name' property does not match its 'group' property: group "
+                        f"'{group}' is named both '{group_to_name_map[group]}' and '{name}'. {remedy}"
+                    )
             else:
                 group_to_name_map[group] = name
 
