@@ -983,7 +983,11 @@ def _imaging_frames_to_hdmf_iterator(
 
     if iterator_type is None:
         _check_if_imaging_fits_into_memory(imaging=imaging)
-        return imaging.get_series().transpose((0, 2, 1))
+        series = imaging.get_series()
+        # (samples, height, width) planar, (samples, height, width, planes) volumetric. The same rule
+        # the v2 iterator applies in ImagingExtractorDataChunkIterator._get_data.
+        transpose_axes = (0, 2, 1) if series.ndim == 3 else (0, 2, 1, 3)
+        return series.transpose(transpose_axes)
 
     return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
