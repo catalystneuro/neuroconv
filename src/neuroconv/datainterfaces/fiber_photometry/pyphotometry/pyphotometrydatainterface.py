@@ -4,10 +4,11 @@ from datetime import datetime
 
 import numpy as np
 from pydantic import FilePath, validate_call
-from pynwb import NWBFile, TimeSeries
+from pynwb import NWBFile
 
 from ._ppd_file_reader import PPDRecording, read_ppd
 from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
+from ....tools import get_package
 from ....utils import DeepDict, dict_deep_update
 
 #: Said in the series rather than in its timestamps, because the size of the lag is not knowable from
@@ -152,10 +153,16 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         From header version 1.1 a pulsed file stores the LED-on sample and the LED-off baseline it was
         measured against, and the subtraction that used to happen on the board moved into the reader. The
         response series carries the difference, which is the quantity every pipeline expects and the one
-        earlier firmware wrote itself. The two measurements it came from are written beside it as plain
-        ``TimeSeries``: they are real measurements, so dropping them would destroy data, but neither is a
-        response of an indicator to an excitation, and the baseline was taken with the LED dark, so
-        neither belongs in a ``FiberPhotometryTable`` row.
+        earlier firmware wrote itself. Both measurements go in beside it, since dropping either would
+        discard something the hardware recorded.
+
+        They are linked differently, because the table can describe one of them and not the other. Every
+        field of the row the difference references is true of the LED-on trace, so it references the same
+        row. The dark measurement was taken with no excitation at all, and a row cannot say that:
+        ``excitation_source`` and ``excitation_wavelength_in_nm`` are both required columns, so any row
+        written for it would name an excitation that was not applied. It is written unlinked instead,
+        with a description saying what it is. Whether the extension should model this is
+        https://github.com/catalystneuro/ndx-fiber-photometry/issues/54.
         """
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
@@ -163,30 +170,48 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         if signal.raw_led_on_in_volts is None:
             return
 
+        FiberPhotometryResponseSeries = get_package(package_name="ndx_fiber_photometry").FiberPhotometryResponseSeries
+
         series_name = (metadata or self.get_metadata())["FiberPhotometry"][self.metadata_key]["name"]
-        timestamps = self.get_timestamps()
-        starting_time, rate = float(timestamps[0]), float(signal.rate_in_hz)
-        for suffix, data, description in (
+        response_series = nwbfile.acquisition[series_name]
+        table_region = getattr(response_series, "fiber_photometry_table_region", None)
+        starting_time, rate = float(self.get_timestamps()[0]), float(signal.rate_in_hz)
+
+        for suffix, data, description, links_to_the_row in (
             (
                 "RawLEDOn",
                 signal.raw_led_on_in_volts,
                 "The measurement taken with the excitation LED on, before the baseline recorded beside "
                 "it was subtracted. Written because the acquisition system measured it.",
+                True,
             ),
             (
                 "RawBaseline",
                 signal.raw_baseline_in_volts,
                 "The measurement taken with the excitation LED off, which the LED-on sample is corrected "
-                "against. It measures ambient light and detector offset at that instant.",
+                "against. It measures ambient light and detector offset at that instant. It references no "
+                "FiberPhotometryTable row because a row states an excitation source and wavelength, and "
+                "neither applies to a measurement taken in the dark.",
+                False,
             ),
         ):
+            # A region belongs to one series, so the LED-on trace gets its own over the rows the
+            # difference uses rather than sharing the object.
+            own_region = (
+                table_region.table.create_fiber_photometry_table_region(
+                    description=table_region.description, region=list(table_region.data)
+                )
+                if links_to_the_row and table_region is not None
+                else None
+            )
             nwbfile.add_acquisition(
-                TimeSeries(
+                FiberPhotometryResponseSeries(
                     name=f"{series_name}{suffix}",
                     data=data,
                     unit="volts",
                     starting_time=starting_time,
                     rate=rate,
                     description=description,
+                    fiber_photometry_table_region=own_region,
                 )
             )
