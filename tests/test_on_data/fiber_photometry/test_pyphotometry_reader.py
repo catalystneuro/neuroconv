@@ -1,0 +1,158 @@
+"""On-data tests for the pyPhotometry ``.ppd`` reader, one fixture per header generation.
+
+The format's layout is decided by its ``mode`` string, and the vocabulary changed twice: version 0.1
+names the indicators, 0.2 and 0.3 describe the acquisition in prose, and 1.0 onward uses symbolic names.
+A sixth generation predates the JSON header entirely. Each directory below is one of those generations,
+so between them they exercise every branch of the mode table against a real recording.
+
+Two branches cannot be covered here and are unit tested against files assembled in
+``tests/test_modalities/test_fiber_photometry/test_pyphotometry_ppd.py`` instead: the paired
+LED-on/baseline storage of version 1.1, for which no public recording exists anywhere, and the refusals.
+
+TODO: these recordings are not on gin yet, so this module skips unless a local copy is present. Stub
+them and publish them under ``fiber_photometry_datasets/pyphotometry``, then delete the skip so CI
+covers this. Tracked in ``ongoing_work/fiber_photometry/pyphotometry_interface_plan``.
+"""
+
+import json
+
+import numpy as np
+import pytest
+
+from neuroconv.datainterfaces.fiber_photometry.pyphotometry._ppd import read_ppd
+
+from ..setup_paths import OPHYS_DATA_PATH
+
+PYPHOTOMETRY_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "pyphotometry"
+
+# What each fixture directory holds, read off the file's own header. `starting_times` is what the
+# reader must reconstruct: the signals are sampled one after another, so they do not all start at zero.
+FIXTURE_EXPECTATIONS = {
+    "two_excitation_two_emission_pulsed": dict(
+        mode="2EX_2EM_pulsed",
+        signal_count=2,
+        signal_rate=130.0,
+        starting_times=[0.0, 1 / 260],
+    ),
+    "legacy_one_colour_time_division": dict(
+        mode="1 colour time div.",
+        signal_count=2,
+        signal_rate=130.0,
+        starting_times=[0.0, 1 / 260],
+    ),
+    "legacy_two_colour_continuous": dict(
+        mode="2 colour continuous",
+        signal_count=2,
+        signal_rate=1000.0,
+        starting_times=[0.0, 0.0],
+    ),
+    "legacy_indicator_named_pulsed": dict(
+        mode="GCaMP/RFP_dif",
+        signal_count=2,
+        signal_rate=130.0,
+        starting_times=[0.0, 1 / 260],
+    ),
+    "four_colour_fork": dict(
+        mode="4 colour time div.",
+        signal_count=4,
+        signal_rate=32.5,
+        starting_times=[0.0, 1 / 130, 2 / 130, 3 / 130],
+    ),
+    "pre_json_header": dict(
+        mode=None,
+        signal_count=2,
+        signal_rate=200.0,
+        starting_times=[0.0, 0.0],
+    ),
+}
+
+
+def get_fixture_file_path(directory_name: str):
+    """Return the one recording in a fixture directory, or skip when it is not on this machine."""
+    directory = PYPHOTOMETRY_PATH / directory_name
+    file_paths = sorted(directory.glob("*.ppd")) if directory.exists() else []
+    if not file_paths:
+        pytest.skip(f"No pyPhotometry fixture in {directory}; the corpus is not published yet.")
+    return file_paths[0]
+
+
+@pytest.mark.parametrize("directory_name", list(FIXTURE_EXPECTATIONS))
+def test_every_header_generation_reads(directory_name):
+    """Each generation's mode string resolves to a layout, and the signals come out with their timing."""
+    expectations = FIXTURE_EXPECTATIONS[directory_name]
+    file_path = get_fixture_file_path(directory_name)
+
+    recording = read_ppd(file_path)
+
+    assert recording.header.get("mode") == expectations["mode"]
+    assert len(recording.analog_signals) == expectations["signal_count"]
+    assert [signal.rate_in_hz for signal in recording.analog_signals] == [expectations["signal_rate"]] * len(
+        recording.analog_signals
+    )
+    assert [signal.starting_time_in_seconds for signal in recording.analog_signals] == pytest.approx(
+        expectations["starting_times"]
+    )
+    for signal in recording.analog_signals:
+        assert signal.data_in_volts.size > 0
+        assert np.all(np.isfinite(signal.data_in_volts))
+
+
+@pytest.mark.parametrize("directory_name", [name for name in FIXTURE_EXPECTATIONS if name != "four_colour_fork"])
+def test_signals_match_the_upstream_de_interleave(directory_name):
+    """Every ordinary recording must decode to exactly what pyPhotometry's own reader returns.
+
+    Upstream takes ``analog[signal_index::signal_count] * volts_per_division``. Agreeing with it on the
+    modes it reads correctly is what makes the disagreement on the fork a claim rather than a bug.
+    """
+    file_path = get_fixture_file_path(directory_name)
+    raw = file_path.read_bytes()
+    header_length = int.from_bytes(raw[:2], "little")
+    words = np.frombuffer(raw[2 + header_length :], dtype="<u2")
+    analog_words = (words >> 1).astype(np.float64)
+
+    recording = read_ppd(file_path)
+
+    signal_count = len(recording.analog_signals)
+    for signal_index, signal in enumerate(recording.analog_signals):
+        volts_per_division = recording.header["volts_per_division"][signal.analog_input]
+        expected = analog_words[signal_index::signal_count] * volts_per_division
+        np.testing.assert_array_equal(signal.data_in_volts, expected)
+
+
+def test_the_fork_decodes_to_four_smooth_traces():
+    """The fork is the reason the reader dispatches on ``mode`` instead of trusting the default.
+
+    Its file is indistinguishable from an ordinary two-signal recording except by its mode string. Read
+    the documented way it yields traces that alternate every sample, which is what a negative lag-one
+    autocorrelation measures; read as four color-multiplexed signals it yields fluorescence.
+    """
+    file_path = get_fixture_file_path("four_colour_fork")
+
+    recording = read_ppd(file_path)
+
+    def lag_one_autocorrelation(trace):
+        centered = trace - trace.mean()
+        return float(np.dot(centered[:-1], centered[1:]) / np.dot(centered, centered))
+
+    for signal in recording.analog_signals:
+        assert lag_one_autocorrelation(signal.data_in_volts) > 0.5
+
+    raw = file_path.read_bytes()
+    header_length = int.from_bytes(raw[:2], "little")
+    words = np.frombuffer(raw[2 + header_length :], dtype="<u2")
+    read_as_documented = (words >> 1).astype(np.float64)[0::2]
+    assert lag_one_autocorrelation(read_as_documented) < 0
+
+
+def test_the_pre_json_header_carries_the_same_scale_as_the_json_one():
+    """The fixed layout packs volts per division as a scaled integer rather than a float."""
+    file_path = get_fixture_file_path("pre_json_header")
+
+    recording = read_ppd(file_path)
+
+    with pytest.raises(json.JSONDecodeError):
+        header_length = int.from_bytes(file_path.read_bytes()[:2], "little")
+        json.loads(file_path.read_bytes()[2 : 2 + header_length].decode("utf-8", errors="replace"))
+
+    assert recording.header["volts_per_division"] == [pytest.approx(0.000100708), pytest.approx(0.000100708)]
+    assert "mode_code" in recording.header
