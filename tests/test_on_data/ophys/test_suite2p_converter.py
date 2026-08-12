@@ -2,7 +2,7 @@ import shutil
 from datetime import datetime
 
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.converters import Suite2pConverter
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
@@ -28,34 +28,33 @@ class TestSuite2pConverter:
         metadata["NWBFile"].update(session_description="test", session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
-            plane_segmentations = nwbfile.processing["ophys"]["ImageSegmentation"].plane_segmentations
-            assert set(plane_segmentations) == {
-                "PlaneSegmentationChan1Plane0",
-                "PlaneSegmentationChan2Plane0",
-                "PlaneSegmentationChan1Plane1",
-                "PlaneSegmentationChan2Plane1",
-            }
-            # One ImagingPlane per (channel, plane) pair, see the 'one ImagingPlane per channel' policy.
-            assert set(nwbfile.imaging_planes) == {
-                "ImagingPlaneChan1Plane0",
-                "ImagingPlaneChan2Plane0",
-                "ImagingPlaneChan1Plane1",
-                "ImagingPlaneChan2Plane1",
-            }
-            assert set(nwbfile.processing["ophys"]["Fluorescence"].roi_response_series) == {
-                "RoiResponseSeriesChan1Plane0",
-                "NeuropilChan1Plane0",
-                "DeconvolvedChan1Plane0",
-                "RoiResponseSeriesChan2Plane0",
-                "NeuropilChan2Plane0",
-                "RoiResponseSeriesChan1Plane1",
-                "NeuropilChan1Plane1",
-                "DeconvolvedChan1Plane1",
-                "RoiResponseSeriesChan2Plane1",
-                "NeuropilChan2Plane1",
-            }
+        nwbfile = read_nwb(nwbfile_path)
+        plane_segmentations = nwbfile.processing["ophys"]["ImageSegmentation"].plane_segmentations
+        assert set(plane_segmentations) == {
+            "PlaneSegmentationChan1Plane0",
+            "PlaneSegmentationChan2Plane0",
+            "PlaneSegmentationChan1Plane1",
+            "PlaneSegmentationChan2Plane1",
+        }
+        # One ImagingPlane per (channel, plane) pair, see the 'one ImagingPlane per channel' policy.
+        assert set(nwbfile.imaging_planes) == {
+            "ImagingPlaneChan1Plane0",
+            "ImagingPlaneChan2Plane0",
+            "ImagingPlaneChan1Plane1",
+            "ImagingPlaneChan2Plane1",
+        }
+        assert set(nwbfile.processing["ophys"]["Fluorescence"].roi_response_series) == {
+            "RoiResponseSeriesChan1Plane0",
+            "NeuropilChan1Plane0",
+            "DeconvolvedChan1Plane0",
+            "RoiResponseSeriesChan2Plane0",
+            "NeuropilChan2Plane0",
+            "RoiResponseSeriesChan1Plane1",
+            "NeuropilChan1Plane1",
+            "DeconvolvedChan1Plane1",
+            "RoiResponseSeriesChan2Plane1",
+            "NeuropilChan2Plane1",
+        }
 
     def test_combined_folder_is_skipped(self):
         """Suite2p writes a 'combined' folder whose ROIs repeat the per-plane ones."""
@@ -86,11 +85,10 @@ class TestSuite2pConverterSinglePlaneSingleChannel:
         metadata["NWBFile"].update(session_description="test", session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
-            # With nothing to disambiguate the names carry no channel or plane suffix.
-            assert list(nwbfile.processing["ophys"]["ImageSegmentation"].plane_segmentations) == ["PlaneSegmentation"]
-            assert list(nwbfile.imaging_planes) == ["ImagingPlane"]
+        nwbfile = read_nwb(nwbfile_path)
+        # With nothing to disambiguate the names carry no channel or plane suffix.
+        assert list(nwbfile.processing["ophys"]["ImageSegmentation"].plane_segmentations) == ["PlaneSegmentation"]
+        assert list(nwbfile.imaging_planes) == ["ImagingPlane"]
 
 
 class TestSuite2pConverterChannelInOnePlaneOnly:
@@ -120,10 +118,9 @@ class TestSuite2pConverterChannelInOnePlaneOnly:
         metadata["NWBFile"].update(session_description="test", session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
-            assert set(nwbfile.processing["ophys"]["ImageSegmentation"].plane_segmentations) == {
-                "PlaneSegmentationChan1Plane0",
-                "PlaneSegmentationChan2Plane0",
-                "PlaneSegmentationChan1Plane1",
-            }
+        nwbfile = read_nwb(nwbfile_path)
+        assert set(nwbfile.processing["ophys"]["ImageSegmentation"].plane_segmentations) == {
+            "PlaneSegmentationChan1Plane0",
+            "PlaneSegmentationChan2Plane0",
+            "PlaneSegmentationChan1Plane1",
+        }
