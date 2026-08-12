@@ -27,5 +27,6 @@ and synchronize data across multiple sources.
   backend_configuration
   linking_sorted_data
   yaml
+  metadata_templates
   docker_demo
   aws_demo
