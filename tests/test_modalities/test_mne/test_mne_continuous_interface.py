@@ -1,8 +1,8 @@
-"""Tests for BaseMNEContinuousDataInterface via the synthetic MockMNEContinuousDataInterface.
+"""Tests for the MNE-backed continuous interfaces, via the synthetic mocks and a real `.fif` on disk.
 
-These exercise the base's ``mne.io.BaseRaw`` -> ElectricalSeries + electrodes-table write path
-with no data on disk. Scope mirrors v1: voltage channels only, no electrode geometry, no
-temporal alignment.
+One interface writes one MNE channel type to one neurodata object, so the destination classes are
+tested separately and the streaming machinery they share is tested once, through whichever of them is
+convenient. Scope mirrors v1: no electrode geometry, no temporal alignment.
 """
 
 from datetime import datetime
@@ -14,18 +14,19 @@ from pynwb import NWBHDF5IO
 pytest.importorskip("mne")
 
 from neuroconv.datainterfaces.ecephys.basemnecontinuousdatainterface import (  # noqa: E402
-    BaseMNEContinuousDataInterface,
+    BaseMNEElectricalSeriesInterface,
 )
 from neuroconv.tools.mne import MNERawDataChunkIterator  # noqa: E402
 from neuroconv.tools.testing.mock_interfaces import (  # noqa: E402
-    MockMNEContinuousDataInterface,
+    MockMNEElectricalSeriesInterface,
+    MockMNETimeSeriesInterface,
 )
 
 
-class OnDiskMNEInterface(BaseMNEContinuousDataInterface):
+class OnDiskMNEInterface(BaseMNEElectricalSeriesInterface):
     """Reads a ``.fif`` from disk with ``preload=False``, the case the chunk iterator exists for.
 
-    The ``RawArray`` the mock builds is preloaded by construction, so it cannot show that the write
+    The ``RawArray`` the mocks build is preloaded by construction, so it cannot show that the write
     path leaves a lazily-opened Raw on disk.
     """
 
@@ -62,16 +63,51 @@ def lazy_interface_and_source(tmp_path):
     return OnDiskMNEInterface(file_path=file_path), source
 
 
-def test_electrical_series_written_and_data_round_trips():
-    interface = MockMNEContinuousDataInterface(num_channels=6, sampling_frequency=250.0, duration=2.0)
+# ---------------------------------------------------------------------------------------------
+# Scoping to one channel type
+# ---------------------------------------------------------------------------------------------
+
+
+def test_interface_writes_only_its_own_channel_type():
+    """A Raw of mixed kinds yields only this interface's channels, in the source's own order."""
+    interface = MockMNEElectricalSeriesInterface(num_channels=4, ch_types=["eeg", "eog", "eeg", "stim"])
+
     nwbfile = interface.create_nwbfile()
 
-    assert "ElectricalSeries" in nwbfile.acquisition
+    assert interface.channel_indices == [0, 2]
+    electrical_series = nwbfile.acquisition["ElectricalSeries"]
+    assert electrical_series.data.shape[1] == 2
+    assert len(nwbfile.electrodes) == 2
+    # Only this interface's channels reach the file; the eog and stim ones are another interface's.
+    assert set(nwbfile.acquisition) == {"ElectricalSeries"}
+    np.testing.assert_allclose(electrical_series.data[:], interface.raw.get_data()[[0, 2]].T)
+
+
+def test_channel_type_absent_from_the_raw_raises():
+    with pytest.raises(ValueError, match="channel_type 'ecog' was not found in the Raw"):
+        MockMNEElectricalSeriesInterface(num_channels=2, ch_types=["eeg", "eog"], channel_type="ecog")
+
+
+def test_get_channel_types_reports_what_the_raw_holds():
+    """Discovery: which interfaces a file needs is answerable before writing any of them."""
+    interface = MockMNEElectricalSeriesInterface(num_channels=3, ch_types=["eeg", "eog", "stim"])
+
+    assert interface.get_channel_types() == {"eeg", "eog", "stim"}
+
+
+# ---------------------------------------------------------------------------------------------
+# The ElectricalSeries destination
+# ---------------------------------------------------------------------------------------------
+
+
+def test_electrical_series_written_and_data_round_trips():
+    interface = MockMNEElectricalSeriesInterface(num_channels=6, sampling_frequency=250.0, duration=2.0)
+    nwbfile = interface.create_nwbfile()
+
     electrical_series = nwbfile.acquisition["ElectricalSeries"]
 
     # MNE Raw is (n_channels, n_times); the ElectricalSeries stores (n_times, n_channels).
-    expected = interface.raw.get_data().T
-    np.testing.assert_allclose(electrical_series.data[:], expected)
+    np.testing.assert_allclose(electrical_series.data[:], interface.raw.get_data().T)
     assert electrical_series.data.shape == (500, 6)
 
     # Regularly sampled from sfreq, no alignment, MNE already in volts.
@@ -81,14 +117,11 @@ def test_electrical_series_written_and_data_round_trips():
 
 
 def test_electrodes_table_has_channel_names_and_no_geometry():
-    interface = MockMNEContinuousDataInterface(num_channels=4)
+    interface = MockMNEElectricalSeriesInterface(num_channels=4)
     nwbfile = interface.create_nwbfile()
 
     electrodes = nwbfile.electrodes
-    assert electrodes is not None
     assert len(electrodes) == 4
-
-    # channel_name column mirrors the Raw channel order.
     assert "channel_name" in electrodes.colnames
     assert list(electrodes["channel_name"][:]) == interface.raw.ch_names
 
@@ -97,84 +130,97 @@ def test_electrodes_table_has_channel_names_and_no_geometry():
         assert coordinate_column not in electrodes.colnames
 
 
-def test_non_neural_voltage_channels_go_to_their_own_time_series():
-    """eog is a voltage like eeg, but it is not a neural electrode, so it does not join the series."""
-    interface = MockMNEContinuousDataInterface(num_channels=3, ch_types=["eeg", "eeg", "eog"])
-    nwbfile = interface.create_nwbfile()
-
-    assert nwbfile.acquisition["ElectricalSeries"].data.shape[1] == 2
-    # Only the neural channels get electrodes-table rows.
-    assert len(nwbfile.electrodes) == 2
-
-    eog_series = nwbfile.acquisition["TimeSeriesEOG"]
-    assert eog_series.data.shape[1] == 1
-    assert eog_series.unit == "volts"
-
-    # Each object holds its own channels' samples: the routing must carry the indices, not just the count.
-    source = interface.raw.get_data()
-    np.testing.assert_allclose(nwbfile.acquisition["ElectricalSeries"].data[:], source[[0, 1]].T)
-    np.testing.assert_allclose(eog_series.data[:], source[[2]].T)
-
-
-def test_every_channel_type_reaches_the_file_with_its_own_unit():
-    """Nothing the Raw holds is dropped, and each TimeSeries carries the unit MNE assigned its type."""
-    channel_types = ["eeg", "seeg", "ecog", "dbs", "eog", "stim", "mag", "grad", "misc"]
-    interface = MockMNEContinuousDataInterface(num_channels=len(channel_types), ch_types=channel_types)
-
-    nwbfile = interface.create_nwbfile()
-
-    # The four electrode kinds share the one ElectricalSeries; the rest get one TimeSeries each.
-    assert nwbfile.acquisition["ElectricalSeries"].data.shape[1] == 4
-    assert len(nwbfile.electrodes) == 4
-
-    expected_units = {
-        "TimeSeriesEOG": "volts",
-        "TimeSeriesSTIM": "volts",  # MNE labels trigger lines volts; the type, not the unit, routes them
-        "TimeSeriesMAG": "teslas",
-        "TimeSeriesGRAD": "teslas/meter",  # gradiometers are not in teslas
-        "TimeSeriesMISC": "n.a.",  # MNE declares this one unitless; NWB still requires a string
-    }
-    assert set(nwbfile.acquisition) == {"ElectricalSeries"} | set(expected_units)
-    for series_name, unit in expected_units.items():
-        assert nwbfile.acquisition[series_name].unit == unit
-
-    total_written = sum(series.data.shape[1] for series in nwbfile.acquisition.values())
-    assert total_written == len(channel_types)
-
-
-def test_raw_without_electrode_channels_writes_no_electrodes_table():
-    """A Raw of nothing but auxiliary channels has no ElectricalSeries to back, so it writes none."""
-    interface = MockMNEContinuousDataInterface(num_channels=2, ch_types=["stim", "misc"])
-
-    nwbfile = interface.create_nwbfile()
-
-    assert "ElectricalSeries" not in nwbfile.acquisition
-    assert nwbfile.electrodes is None
-    assert len(nwbfile.devices) == 0
-    assert set(nwbfile.acquisition) == {"TimeSeriesSTIM", "TimeSeriesMISC"}
-
-
 def test_write_electrical_series_false_writes_only_electrodes():
-    interface = MockMNEContinuousDataInterface(num_channels=4)
+    interface = MockMNEElectricalSeriesInterface(num_channels=4)
     nwbfile = interface.create_nwbfile(write_electrical_series=False)
 
     assert len(nwbfile.acquisition) == 0
-    assert nwbfile.electrodes is not None
     assert len(nwbfile.electrodes) == 4
 
 
 def test_round_trip_through_disk(tmp_path):
-    interface = MockMNEContinuousDataInterface(num_channels=5, sampling_frequency=100.0, duration=1.0)
+    interface = MockMNEElectricalSeriesInterface(num_channels=5, sampling_frequency=100.0, duration=1.0)
     nwbfile_path = tmp_path / "mne_continuous.nwb"
     interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
 
-    expected = interface.raw.get_data().T
     with NWBHDF5IO(path=str(nwbfile_path), mode="r") as io:
         read_nwbfile = io.read()
         read_series = read_nwbfile.acquisition["ElectricalSeries"]
-        np.testing.assert_allclose(read_series.data[:], expected)
+        np.testing.assert_allclose(read_series.data[:], interface.raw.get_data().T)
         assert read_series.rate == 100.0
         assert list(read_nwbfile.electrodes["channel_name"][:]) == interface.raw.ch_names
+
+
+# ---------------------------------------------------------------------------------------------
+# The TimeSeries destination
+# ---------------------------------------------------------------------------------------------
+
+
+def test_time_series_written_with_no_electrodes_table():
+    """The TimeSeries destination backs its data with nothing: no electrodes, no group, no device."""
+    interface = MockMNETimeSeriesInterface(num_channels=3, ch_types=["eeg", "eog", "eog"], channel_type="eog")
+
+    nwbfile = interface.create_nwbfile()
+
+    time_series = nwbfile.acquisition["TimeSeriesEOG"]
+    assert time_series.data.shape == (1000, 2)
+    np.testing.assert_allclose(time_series.data[:], interface.raw.get_data()[[1, 2]].T)
+    assert nwbfile.electrodes is None
+    assert len(nwbfile.devices) == 0
+
+
+@pytest.mark.parametrize(
+    "channel_type,expected_unit",
+    [
+        ("eog", "volts"),
+        ("stim", "volts"),  # MNE labels trigger lines volts; the type, not the unit, scopes an interface
+        ("mag", "teslas"),
+        ("grad", "teslas/meter"),  # gradiometers are not in teslas
+        ("misc", "n.a."),  # MNE declares this one unitless; NWB still requires a string
+    ],
+)
+def test_time_series_unit_is_read_from_the_channel_type(channel_type, expected_unit):
+    interface = MockMNETimeSeriesInterface(num_channels=1, ch_types=[channel_type], channel_type=channel_type)
+
+    nwbfile = interface.create_nwbfile()
+
+    assert nwbfile.acquisition[f"TimeSeries{channel_type.upper()}"].unit == expected_unit
+
+
+def test_interfaces_compose_into_one_file():
+    """Several interfaces over the same Raw cover it between them, which is how a whole file is written."""
+    channel_types = ["eeg", "eog", "stim"]
+    kwargs = dict(num_channels=3, ch_types=channel_types)
+    electrical_series_interface = MockMNEElectricalSeriesInterface(**kwargs)
+    eog_interface = MockMNETimeSeriesInterface(**kwargs, channel_type="eog")
+    stim_interface = MockMNETimeSeriesInterface(**kwargs, channel_type="stim")
+
+    nwbfile = electrical_series_interface.create_nwbfile()
+    eog_interface.add_to_nwbfile(nwbfile=nwbfile)
+    stim_interface.add_to_nwbfile(nwbfile=nwbfile)
+
+    assert set(nwbfile.acquisition) == {"ElectricalSeries", "TimeSeriesEOG", "TimeSeriesSTIM"}
+    total_written = sum(series.data.shape[1] for series in nwbfile.acquisition.values())
+    assert total_written == len(channel_types)
+    # Only the eeg channel is an electrode.
+    assert len(nwbfile.electrodes) == 1
+
+
+def test_each_interface_addresses_its_own_metadata_entry():
+    """One interface, one key, one object: the default key names the channel type it is scoped to."""
+    kwargs = dict(num_channels=2, ch_types=["eeg", "eog"])
+    electrical_series_interface = MockMNEElectricalSeriesInterface(**kwargs)
+    eog_interface = MockMNETimeSeriesInterface(**kwargs, channel_type="eog")
+
+    assert electrical_series_interface.metadata_key == "mne_eeg"
+    assert eog_interface.metadata_key == "mne_eog"
+    assert list(electrical_series_interface.get_metadata()["Ecephys"]["ElectricalSeries"]) == ["mne_eeg"]
+    assert list(eog_interface.get_metadata()["TimeSeries"]) == ["mne_eog"]
+
+
+# ---------------------------------------------------------------------------------------------
+# Streaming, shared by both destinations
+# ---------------------------------------------------------------------------------------------
 
 
 def test_full_write_streams_from_disk_without_preloading(lazy_interface_and_source):

@@ -12,7 +12,8 @@ from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.ecephys.basemnecontinuousdatainterface import (
-    BaseMNEContinuousDataInterface,
+    BaseMNEElectricalSeriesInterface,
+    BaseMNETimeSeriesInterface,
 )
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
@@ -967,12 +968,12 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-class MockMNEContinuousDataInterface(BaseMNEContinuousDataInterface):
-    """A mock MNE-backed continuous interface built from a synthetic ``mne.io.RawArray``.
+class _MockMNERawMixin:
+    """Builds a synthetic ``mne.io.RawArray`` in place of reading a file.
 
-    Exercises the ``BaseMNEContinuousDataInterface`` write path (Raw -> ElectricalSeries + a
-    minimal electrodes table) with no data on disk. Unlike a reader-based fixture this is not
-    circular: it validates the base's handling of an ``mne.io.BaseRaw``, not a file parser.
+    Shared by the mock MNE interfaces so each one differs only in its write destination, which is the
+    thing under test. Unlike a reader-based fixture this is not circular: it validates the bases'
+    handling of an ``mne.io.BaseRaw``, not a file parser.
     """
 
     def __init__(
@@ -983,8 +984,7 @@ class MockMNEContinuousDataInterface(BaseMNEContinuousDataInterface):
         duration: float = 1.0,
         ch_types: str | list[str] = "eeg",
         seed: int = 0,
-        verbose: bool = False,
-        metadata_key: str = "ElectricalSeries",
+        **kwargs,
     ):
         """
         Parameters
@@ -999,17 +999,15 @@ class MockMNEContinuousDataInterface(BaseMNEContinuousDataInterface):
             The MNE channel type(s) passed to ``mne.create_info``.
         seed : int, default: 0
             Seed for the synthetic data.
-        verbose : bool, default: False
-            Control verbosity.
-        metadata_key : str, default: "ElectricalSeries"
-            Key of this interface's ElectricalSeries in ``metadata["Ecephys"]["ElectricalSeries"]``.
+        kwargs : dict
+            Passed through to the interface, notably ``channel_type`` and ``metadata_key``.
         """
         self.num_channels = num_channels
         self.sampling_frequency = sampling_frequency
         self.duration = duration
         self.ch_types = ch_types
         self.seed = seed
-        super().__init__(verbose=verbose, metadata_key=metadata_key)
+        super().__init__(**kwargs)
 
     def _read_raw(self):
         import mne
@@ -1025,6 +1023,14 @@ class MockMNEContinuousDataInterface(BaseMNEContinuousDataInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         return metadata
+
+
+class MockMNEElectricalSeriesInterface(_MockMNERawMixin, BaseMNEElectricalSeriesInterface):
+    """A mock MNE-backed interface writing one channel type as an ElectricalSeries."""
+
+
+class MockMNETimeSeriesInterface(_MockMNERawMixin, BaseMNETimeSeriesInterface):
+    """A mock MNE-backed interface writing one channel type as a TimeSeries."""
 
 
 class MockSortingInterface(BaseSortingExtractorInterface):
