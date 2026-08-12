@@ -1,7 +1,7 @@
-.. _converting_a_dataset:
+.. _converting_multiple_sessions:
 
-Converting a Dataset
-====================
+Converting Multiple Sessions into a Dataset
+===========================================
 
 The :doc:`nwbconverter` page covers combining several streams into one NWB file, which is one
 session. An experiment is usually many sessions, and converting all of them means running that
