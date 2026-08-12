@@ -13,9 +13,8 @@ acquisition mode the recording was made in, and ``get_available_streams`` report
 construction, named after the analog input they came off.
 
 ``PyPhotometryFiberPhotometryInterface`` reads one signal into a single
-``FiberPhotometryResponseSeries``, so instantiate one interface per signal, with distinct
-``metadata_key`` values, and combine them in a converter. The signals cannot share a series because they
-were not sampled at the same instants: the board reads its analog inputs one after another.
+``FiberPhotometryResponseSeries``. The signals of a recording cannot share a series because they were
+not sampled at the same instants: the board reads its analog inputs one after another.
 
 Convert pyPhotometry Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,6 +58,28 @@ signal of a 130 Hz recording starts 1/260 of a second after the first:
 
 The continuous modes are the exception: the offset is real there too but its size is not recorded
 anywhere, so those signals keep the header's timebase and say so in their description.
+
+To write every signal of a recording into one file, sharing a single ``FiberPhotometryTable``, pass one
+interface per signal to a :py:class:`~neuroconv.nwbconverter.ConverterPipe`:
+
+.. code-block:: python
+
+    >>> from neuroconv import ConverterPipe
+
+    >>> signal = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1", metadata_key="signal", verbose=False)
+    >>> isosbestic = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2", metadata_key="isosbestic", verbose=False)
+
+    >>> converter = ConverterPipe(data_interfaces=dict(signal=signal, isosbestic=isosbestic))
+    >>> metadata = converter.get_metadata()
+
+    >>> # Every interface names its series ``FiberPhotometryResponseSeries`` by default, so give each
+    >>> # one a name of its own before writing them into the same file.
+    >>> metadata["FiberPhotometry"]["signal"]["name"] = "FiberPhotometryResponseSeriesSignal"
+    >>> metadata["FiberPhotometry"]["isosbestic"]["name"] = "FiberPhotometryResponseSeriesIsosbestic"
+
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+
+    >>> converter.run_conversion(nwbfile_path=f"{path_to_save_nwbfile}", metadata=metadata, overwrite=True)
 
 Recordings made with header version 1.1 or later store an LED-on value and the LED-off baseline it is
 corrected against. The response series carries their difference, which is what earlier firmware computed
