@@ -42,23 +42,14 @@ except ImportError:
 
 PYPHOTOMETRY_PATH = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "pyphotometry"
 
-SYMBOLIC_PULSED_FILE = PYPHOTOMETRY_PATH / "mode_named_symbolically" / "two_excitation_two_emission_pulsed.ppd"
-ONE_COLOUR_TIME_DIVISION_FILE = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
-TWO_COLOUR_TIME_DIVISION_FILE = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_time_division.ppd"
-TWO_COLOUR_CONTINUOUS_FILE = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_continuous.ppd"
-FOUR_COLOUR_TIME_DIVISION_FILE = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "four_colour_time_division.ppd"
-INDICATOR_NAMED_FILE = PYPHOTOMETRY_PATH / "mode_named_by_indicators" / "gcamp_rfp_dif.ppd"
-PRE_JSON_HEADER_FILE = PYPHOTOMETRY_PATH / "header_predates_json" / "two_signals_200hz.ppd"
-
-STUB = dict(stub_test=True, stub_samples=5)
-
 
 class TestPyPhotometrySymbolicMode(FiberPhotometryInterfaceTestMixin):
     """Round-trip the first analog input of a ``2EX_2EM_pulsed`` recording, header version 1.0."""
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    interface_kwargs = dict(file_path=SYMBOLIC_PULSED_FILE, stream_name="analog_1")
-    conversion_options = STUB
+    file_path = PYPHOTOMETRY_PATH / "mode_named_symbolically" / "two_excitation_two_emission_pulsed.ppd"
+    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
     expected_response_series_data = np.array([0.91067634, 0.91067634, 0.91067634, 0.91057512, 0.91057512])
@@ -67,7 +58,7 @@ class TestPyPhotometrySymbolicMode(FiberPhotometryInterfaceTestMixin):
 
     def test_get_available_streams(self):
         """The header states two analog signals, so the file offers two."""
-        assert self.data_interface_cls.get_available_streams(file_path=SYMBOLIC_PULSED_FILE) == [
+        assert self.data_interface_cls.get_available_streams(file_path=self.file_path) == [
             "analog_1",
             "analog_2",
         ]
@@ -77,8 +68,9 @@ class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMi
     """Round-trip the first analog input of a ``1 colour time div.`` recording, header version 0.3."""
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    interface_kwargs = dict(file_path=ONE_COLOUR_TIME_DIVISION_FILE, stream_name="analog_1")
-    conversion_options = STUB
+    file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
+    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
     expected_response_series_data = np.array([0.77757204, 0.77706594, 0.77979888, 0.7788879, 0.78020376])
@@ -104,8 +96,9 @@ class TestPyPhotometryOneColourTimeDivisionControl(FiberPhotometryInterfaceTestM
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    interface_kwargs = dict(file_path=ONE_COLOUR_TIME_DIVISION_FILE, stream_name="analog_2")
-    conversion_options = STUB
+    file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
+    interface_kwargs = dict(file_path=file_path, stream_name="analog_2")
+    conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
     expected_response_series_data = np.array([0.74882556, 0.74892678, 0.7495341, 0.74791458, 0.7485219])
@@ -121,8 +114,9 @@ class TestPyPhotometryTwoColourTimeDivision(FiberPhotometryInterfaceTestMixin):
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    interface_kwargs = dict(file_path=TWO_COLOUR_TIME_DIVISION_FILE, stream_name="analog_1")
-    conversion_options = STUB
+    file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_time_division.ppd"
+    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
     expected_response_series_data = np.array(
@@ -142,8 +136,9 @@ class TestPyPhotometryTwoColourContinuous(FiberPhotometryInterfaceTestMixin):
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    interface_kwargs = dict(file_path=TWO_COLOUR_CONTINUOUS_FILE, stream_name="analog_2")
-    conversion_options = STUB
+    file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_continuous.ppd"
+    interface_kwargs = dict(file_path=file_path, stream_name="analog_2")
+    conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
     expected_response_series_data = np.array([0.32704182, 0.32694059999999997, 0.32683938, 0.32704182, 0.32714304])
@@ -165,8 +160,9 @@ class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    interface_kwargs = dict(file_path=INDICATOR_NAMED_FILE, stream_name="analog_1")
-    conversion_options = STUB
+    file_path = PYPHOTOMETRY_PATH / "mode_named_by_indicators" / "gcamp_rfp_dif.ppd"
+    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
     expected_response_series_data = np.array(
@@ -186,8 +182,9 @@ class TestPyPhotometryFourColourFork(FiberPhotometryInterfaceTestMixin):
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    interface_kwargs = dict(file_path=FOUR_COLOUR_TIME_DIVISION_FILE, stream_name="analog_1")
-    conversion_options = STUB
+    file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "four_colour_time_division.ppd"
+    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
     expected_response_series_data = np.array(
@@ -198,7 +195,7 @@ class TestPyPhotometryFourColourFork(FiberPhotometryInterfaceTestMixin):
 
     def test_get_available_streams(self):
         """A multiplexed line is named by its input and its colour, since the input alone is ambiguous."""
-        assert self.data_interface_cls.get_available_streams(file_path=FOUR_COLOUR_TIME_DIVISION_FILE) == [
+        assert self.data_interface_cls.get_available_streams(file_path=self.file_path) == [
             "analog_1",
             "analog_2",
             "analog_1_color_2",
@@ -210,8 +207,9 @@ class TestPyPhotometryFourColourForkLastSlot(FiberPhotometryInterfaceTestMixin):
     """The fork's last slot, three ticks into the cycle and at half the header's rate."""
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    interface_kwargs = dict(file_path=FOUR_COLOUR_TIME_DIVISION_FILE, stream_name="analog_2_color_2")
-    conversion_options = STUB
+    file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "four_colour_time_division.ppd"
+    interface_kwargs = dict(file_path=file_path, stream_name="analog_2_color_2")
+    conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
     expected_response_series_data = np.array(
@@ -229,8 +227,9 @@ class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    interface_kwargs = dict(file_path=PRE_JSON_HEADER_FILE, stream_name="analog_1")
-    conversion_options = STUB
+    file_path = PYPHOTOMETRY_PATH / "header_predates_json" / "two_signals_200hz.ppd"
+    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
     expected_response_series_data = np.array(
@@ -243,13 +242,15 @@ class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
 class TestPyPhotometryConstruction:
     """Errors raised before a conversion, which the round-trip mixin cannot express."""
 
+    file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
+
     def test_asking_for_a_signal_the_file_does_not_have_is_refused(self):
         """Which signals exist depends on the acquisition mode, so this is a mistake worth naming."""
         with pytest.raises(ValueError, match="'analog_3' is not a signal of"):
-            PyPhotometryFiberPhotometryInterface(file_path=ONE_COLOUR_TIME_DIVISION_FILE, stream_name="analog_3")
+            PyPhotometryFiberPhotometryInterface(file_path=self.file_path, stream_name="analog_3")
 
     def test_the_first_signal_is_read_when_none_is_named(self):
         """A file holding one signal needs no argument; one holding several is only unambiguous with it."""
-        interface = PyPhotometryFiberPhotometryInterface(file_path=ONE_COLOUR_TIME_DIVISION_FILE)
+        interface = PyPhotometryFiberPhotometryInterface(file_path=self.file_path)
 
         assert interface.stream_names == ["analog_1"]
