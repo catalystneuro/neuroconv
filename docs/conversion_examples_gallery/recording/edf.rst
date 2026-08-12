@@ -14,6 +14,10 @@ The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordi
 Other auxiliary signal channels should be excluded using the ``channels_to_skip`` parameter.
 EDF files that give each channel its own offset need one more decision, described in
 :doc:`../../how_to/handle_heterogeneous_offsets`.
+A file that samples some of its signals at a different rate than the rest holds them in separate
+streams and is read one stream at a time: list them with
+``EDFRecordingInterface.get_stream_names(file_path=file_path)`` and pass the one you want as
+``stream_name``.
 
 .. code-block:: python
 
