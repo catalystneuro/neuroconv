@@ -245,6 +245,7 @@ class BaseDataInterface(ABC):
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
+            Cannot be combined with `nwbfile` or `append_on_disk_nwbfile=True`.
         append_on_disk_nwbfile : bool, default: False
             Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
             This is useful for appending data to an existing file without overwriting it.
@@ -264,6 +265,23 @@ class BaseDataInterface(ABC):
             raise ValueError(
                 "Cannot append to an existing file while also providing an in-memory NWBFile. "
                 "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
+            )
+
+        if backend_configuration is not None and appending_to_in_memory_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also providing an in-memory NWBFile. This "
+                "interface's data is added to that file before it is written, so a configuration built from "
+                "it beforehand does not describe the file being written. Add this interface with "
+                "add_to_nwbfile, derive the configuration from the result, and write it with "
+                "configure_and_write_nwbfile."
+            )
+
+        if backend_configuration is not None and append_on_disk_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also appending to an existing file on disk. "
+                "The file is read and this interface's data added to it before it is configured, so a "
+                "configuration built beforehand does not describe the file being written. Specify `backend` "
+                "instead, which derives the configuration after the data is added."
             )
 
         if metadata is None:
