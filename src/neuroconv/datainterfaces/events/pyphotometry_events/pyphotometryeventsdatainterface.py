@@ -35,8 +35,8 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
     ``pynwb.event.EventsTable`` into ``nwbfile.events``. By default every line is read as a
     ``high_period`` (each rising edge is an event onset, its duration the span to the next falling edge).
     A line that never toggles still yields its event type, written as a zero-row table, since the type
-    existed in the recording and nothing fired. ``session_start_time`` is read from the header's
-    ``date_time``.
+    existed in the recording and nothing fired. ``session_start_time`` and ``subject_id`` are read from
+    the header's ``date_time`` and ``subject_ID``.
 
     Lines are named the way pyPhotometry's own reader names them, ``digital_1`` and ``digital_2``. How
     many a file holds depends on the acquisition mode and on the header: a mode with two analog inputs
@@ -128,8 +128,8 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         """
         Get metadata for the PyPhotometryEventsInterface.
 
-        ``NWBFile/session_start_time`` is populated from the header's ``date_time``, which every header
-        generation carries.
+        ``NWBFile/session_start_time`` is populated from the header's ``date_time`` and
+        ``Subject/subject_id`` from its ``subject_ID``, both of which every header generation carries.
 
         Returns
         -------
@@ -140,6 +140,12 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         date_time = self._recording.header.get("date_time")
         if date_time is not None:
             metadata["NWBFile"]["session_start_time"] = datetime.fromisoformat(date_time)
+        # The identifier typed into the acquisition GUI, and the only thing a .ppd says about the animal.
+        # Every header generation carries the field, so an empty one means it was left blank rather than
+        # that the format lacks it.
+        subject_id = self._recording.header.get("subject_ID")
+        if subject_id:
+            metadata["Subject"]["subject_id"] = subject_id
 
         # Each event_type_source_id resolved from the configuration is its own event type, and event_name
         # (the human-facing label) defaults to that identifier. A .ppd carries no meaning for a line, not

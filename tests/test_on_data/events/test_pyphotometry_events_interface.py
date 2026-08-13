@@ -70,6 +70,8 @@ class PyPhotometryEventsRoundTrip(DataInterfaceTestMixin):
 
     #: The header's ``date_time``, which is the recording's start and not the window's.
     expected_session_start_time: datetime
+    #: The header's ``subject_ID``, which the window inherits from the recording it was cut from.
+    expected_subject_id: str
 
     def check_extracted_metadata(self, metadata: dict):
         """Both lines are seeded as event types, named as pyPhotometry's own reader names them.
@@ -87,8 +89,9 @@ class PyPhotometryEventsRoundTrip(DataInterfaceTestMixin):
         }
         assert metadata["Events"] == expected_events_metadata
 
-        # Unlike most events formats, a .ppd records when the session started.
+        # Unlike most events formats, a .ppd records when the session started and who it recorded.
         assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
+        assert metadata["Subject"]["subject_id"] == self.expected_subject_id
 
 
 class TestPyPhotometryNarrowPulsesAndIdleLine(PyPhotometryEventsRoundTrip):
@@ -102,6 +105,7 @@ class TestPyPhotometryNarrowPulsesAndIdleLine(PyPhotometryEventsRoundTrip):
     interface_kwargs = dict(file_path=file_path)
 
     expected_session_start_time = datetime(2021, 6, 8, 16, 52, 48)
+    expected_subject_id = "FFC_AF50-202"
     #: Every rising edge of digital_1 in the window; the first five are the ones checked in full below.
     expected_pulse_count = 37
     expected_first_rising_frames = [488, 493, 497, 501, 506]
@@ -144,6 +148,7 @@ class TestPyPhotometryStartsAndEndsHigh(PyPhotometryEventsRoundTrip):
     interface_kwargs = dict(file_path=file_path)
 
     expected_session_start_time = datetime(2021, 6, 8, 16, 52, 48)
+    expected_subject_id = "FFC_AF50-202"
     #: 33 rising edges: the pulse the window opens inside contributes none, since its onset is outside.
     expected_pulse_count = 33
     #: The window's first falling edge is at frame 1 and its first rising edge at frame 4, so the first
@@ -186,6 +191,7 @@ class TestPyPhotometryWidePulsesOnBothLines(PyPhotometryEventsRoundTrip):
     interface_kwargs = dict(file_path=file_path)
 
     expected_session_start_time = datetime(2019, 5, 6, 12, 17)
+    expected_subject_id = "m28_DMS_L"
     expected_rising_frames = {"digital_1": [20, 885], "digital_2": [403, 568]}
     expected_pulse_widths = {"digital_1": [8, 8], "digital_2": [6, 6]}
 
