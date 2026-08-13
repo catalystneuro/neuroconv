@@ -98,7 +98,7 @@ class TestPyPhotometryNarrowPulsesAndIdleLine(PyPhotometryEventsRoundTrip):
     was low, and it ends on a low sample, which leaves every high period closed.
     """
 
-    file_path = PYPHOTOMETRY_EVENTS_PATH / "narrow_pulses_and_idle_line.ppd"
+    file_path = PYPHOTOMETRY_EVENTS_PATH / "narrow_pulses_and_idle_line" / "one_colour_time_division_window.ppd"
     interface_kwargs = dict(file_path=file_path)
 
     expected_session_start_time = datetime(2021, 6, 8, 16, 52, 48)
@@ -140,7 +140,7 @@ class TestPyPhotometryStartsAndEndsHigh(PyPhotometryEventsRoundTrip):
     running to the end of the file, which is the shape of a closed bug in Doric's reader.
     """
 
-    file_path = PYPHOTOMETRY_EVENTS_PATH / "starts_and_ends_high.ppd"
+    file_path = PYPHOTOMETRY_EVENTS_PATH / "starts_and_ends_high" / "one_colour_time_division_window.ppd"
     interface_kwargs = dict(file_path=file_path)
 
     expected_session_start_time = datetime(2021, 6, 8, 16, 52, 48)
@@ -182,7 +182,7 @@ class TestPyPhotometryWidePulsesOnBothLines(PyPhotometryEventsRoundTrip):
     zero. Every edge of the window falls on a low sample of both lines, so nothing here is truncated.
     """
 
-    file_path = PYPHOTOMETRY_EVENTS_PATH / "wide_pulses_on_both_lines.ppd"
+    file_path = PYPHOTOMETRY_EVENTS_PATH / "wide_pulses_on_both_lines" / "two_colour_time_division_window.ppd"
     interface_kwargs = dict(file_path=file_path)
 
     expected_session_start_time = datetime(2019, 5, 6, 12, 17)
@@ -234,7 +234,7 @@ def write_ppd_file(tmp_path, digital_line_1, digital_line_2):
 class TestPyPhotometryEventsReadings:
     """Readings and selections no round trip exercises, and the timing no window can isolate."""
 
-    file_path = PYPHOTOMETRY_EVENTS_PATH / "narrow_pulses_and_idle_line.ppd"
+    file_path = PYPHOTOMETRY_EVENTS_PATH / "narrow_pulses_and_idle_line" / "one_colour_time_division_window.ppd"
 
     def test_rising_detection_is_onset_only(self):
         """detection='rising' reads point events: onset timestamps and no duration column."""
