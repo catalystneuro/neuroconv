@@ -364,10 +364,16 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         row_metadata["dichroic_mirror_metadata_key"] = "dichroic_mirror"
         row_metadata["excitation_filter_metadata_key"] = "excitation_filter"
         row_metadata["emission_filter_metadata_key"] = "emission_filter"
-        fiber_photometry_metadata["FiberPhotometryIndicators"]["indicator"]["label"] = "GCaMP6s"
+        fiber_photometry_metadata["FiberPhotometryIndicators"]["indicator"].update(name="indicator", label="GCaMP6s")
         fiber_photometry_metadata["calcium_signal"]["description"] = "GCaMP6s at 465 nm in VTA."
 
+        # The name of every entry is blank, so keeping one costs naming it.
         devices_metadata = metadata["Devices"]
+        for device_metadata_key, device_metadata in devices_metadata.items():
+            device_metadata["name"] = device_metadata_key
+        for model_metadata_key, model_metadata in metadata["DeviceModels"].items():
+            model_metadata["name"] = model_metadata_key
+
         devices_metadata["optical_fiber_0"]["fiber_insertion"] = dict(
             insertion_position_ap_in_mm=3.0,
             insertion_position_ml_in_mm=1.0,

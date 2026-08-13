@@ -163,10 +163,14 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         photodetector_key = "photodetector"
         indicator_key = "indicator"
 
+        # Every entry's ``name`` is blank, and deliberately so: an entry all of whose fields are
+        # satisfied reaches no check and is written as stated, so a user who leaves an offered one in
+        # place gets hardware the rig never had. Every NWB object requires a name, which makes it the
+        # one field that can carry that blank for any entry in any modality.
         devices = {
             optical_fiber_key: dict(
                 type="OpticalFiber",
-                name=optical_fiber_key,
+                name=None,
                 fiber_insertion=dict(
                     insertion_position_ap_in_mm=None,
                     insertion_position_ml_in_mm=None,
@@ -176,40 +180,38 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             )
             for optical_fiber_key in optical_fiber_keys
         }
-        devices[excitation_source_key] = dict(type="ExcitationSource", name=excitation_source_key)
-        devices[photodetector_key] = dict(type="Photodetector", name=photodetector_key)
+        devices[excitation_source_key] = dict(type="ExcitationSource", name=None)
+        devices[photodetector_key] = dict(type="Photodetector", name=None)
         # Optional hardware, offered so a user knows the writer accepts it. Delete what the recording
         # did not use; a blank left behind is refused at write time rather than guessed at.
         # ``BandOpticalFilter`` rather than a generic optical filter, as ndx-ophys-devices has no such
         # class: a filter is a band or an edge one, and the band is the common case here. Swap the type
         # for ``EdgeOpticalFilter`` if that is what the rig used. The wavelengths belong to the filter's
-        # model rather than to the filter, so the device itself carries nothing but a name.
-        devices["dichroic_mirror"] = dict(type="DichroicMirror", name="dichroic_mirror")
-        devices["excitation_filter"] = dict(type="BandOpticalFilter", name="excitation_filter")
-        devices["emission_filter"] = dict(type="BandOpticalFilter", name="emission_filter")
+        # model rather than to the filter, so the device itself carries nothing but its name.
+        devices["dichroic_mirror"] = dict(type="DichroicMirror", name=None)
+        devices["excitation_filter"] = dict(type="BandOpticalFilter", name=None)
+        devices["emission_filter"] = dict(type="BandOpticalFilter", name=None)
 
         # Models carry the make and catalog specifications, shared by every recording that used the same
         # equipment. Optional: fill one and point its device at it, or delete both.
         device_models = {
             "optical_fiber_model": dict(
-                type="OpticalFiberModel", name="optical_fiber_model", manufacturer=None, numerical_aperture=None
+                type="OpticalFiberModel", name=None, manufacturer=None, numerical_aperture=None
             ),
             "excitation_source_model": dict(
                 type="ExcitationSourceModel",
-                name="excitation_source_model",
+                name=None,
                 manufacturer=None,
                 source_type=None,
                 excitation_mode=None,
             ),
-            "photodetector_model": dict(
-                type="PhotodetectorModel", name="photodetector_model", manufacturer=None, detector_type=None
-            ),
+            "photodetector_model": dict(type="PhotodetectorModel", name=None, manufacturer=None, detector_type=None),
         }
         for device_metadata in devices.values():
             device_metadata.setdefault("device_model_metadata_key", None)
 
         fiber_photometry = dict(
-            FiberPhotometryIndicators={indicator_key: dict(name=indicator_key, label=None)},
+            FiberPhotometryIndicators={indicator_key: dict(name=None, label=None)},
             FiberPhotometryTable=dict(
                 name="fiber_photometry_table",
                 description="Each row describes one trace: the fiber, hardware and indicator that produced it.",

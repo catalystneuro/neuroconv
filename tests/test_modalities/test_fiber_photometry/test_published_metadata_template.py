@@ -62,7 +62,7 @@ def test_published_fiber_photometry_template_converts_once_filled(tmp_path):
         row_metadata["coordinates"] = (3.0, 1.0, 4.0)
         row_metadata["notes"] = f"Fiber in {location}."
         del row_metadata["emission_filter_metadata_key"]
-    fiber_photometry_metadata["FiberPhotometryIndicators"]["indicator"]["label"] = "GCaMP6s"
+    fiber_photometry_metadata["FiberPhotometryIndicators"]["indicator"].update(name="indicator", label="GCaMP6s")
     fiber_photometry_metadata["calcium_signal"]["description"] = "GCaMP6s at 465 nm in DMS and DLS."
 
     devices_metadata = metadata["Devices"]
@@ -76,6 +76,12 @@ def test_published_fiber_photometry_template_converts_once_filled(tmp_path):
     for device_metadata_key in ("dichroic_mirror", "excitation_filter"):
         devices_metadata[device_metadata_key].pop("device_model_metadata_key")
     del devices_metadata["emission_filter"]
+
+    # The name of every entry is blank, so keeping one costs naming it.
+    for device_metadata_key, device_metadata in devices_metadata.items():
+        device_metadata["name"] = device_metadata_key
+    for model_metadata_key, model_metadata in metadata["DeviceModels"].items():
+        model_metadata["name"] = model_metadata_key
 
     device_models_metadata = metadata["DeviceModels"]
     device_models_metadata["optical_fiber_model"].update(manufacturer="Doric Lenses", numerical_aperture=0.48)

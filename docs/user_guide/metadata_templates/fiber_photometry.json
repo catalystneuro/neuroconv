@@ -2,20 +2,20 @@
     "DeviceModels": {
         "optical_fiber_model": {
             "type": "OpticalFiberModel",
-            "name": "optical_fiber_model",
+            "name": null,
             "manufacturer": null,
             "numerical_aperture": null
         },
         "excitation_source_model": {
             "type": "ExcitationSourceModel",
-            "name": "excitation_source_model",
+            "name": null,
             "manufacturer": null,
             "source_type": null,
             "excitation_mode": null
         },
         "photodetector_model": {
             "type": "PhotodetectorModel",
-            "name": "photodetector_model",
+            "name": null,
             "manufacturer": null,
             "detector_type": null
         }
@@ -23,7 +23,7 @@
     "Devices": {
         "optical_fiber_0": {
             "type": "OpticalFiber",
-            "name": "optical_fiber_0",
+            "name": null,
             "device_model_metadata_key": "optical_fiber_model",
             "fiber_insertion": {
                 "insertion_position_ap_in_mm": null,
@@ -34,7 +34,7 @@
         },
         "optical_fiber_1": {
             "type": "OpticalFiber",
-            "name": "optical_fiber_1",
+            "name": null,
             "device_model_metadata_key": "optical_fiber_model",
             "fiber_insertion": {
                 "insertion_position_ap_in_mm": null,
@@ -45,34 +45,34 @@
         },
         "excitation_source": {
             "type": "ExcitationSource",
-            "name": "excitation_source",
+            "name": null,
             "device_model_metadata_key": "excitation_source_model"
         },
         "photodetector": {
             "type": "Photodetector",
-            "name": "photodetector",
+            "name": null,
             "device_model_metadata_key": "photodetector_model"
         },
         "dichroic_mirror": {
             "type": "DichroicMirror",
-            "name": "dichroic_mirror",
+            "name": null,
             "device_model_metadata_key": null
         },
         "excitation_filter": {
             "type": "BandOpticalFilter",
-            "name": "excitation_filter",
+            "name": null,
             "device_model_metadata_key": null
         },
         "emission_filter": {
             "type": "BandOpticalFilter",
-            "name": "emission_filter",
+            "name": null,
             "device_model_metadata_key": null
         }
     },
     "FiberPhotometry": {
         "FiberPhotometryIndicators": {
             "indicator": {
-                "name": "indicator",
+                "name": null,
                 "label": null
             }
         },

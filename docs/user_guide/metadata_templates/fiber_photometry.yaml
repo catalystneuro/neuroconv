@@ -6,18 +6,18 @@
 DeviceModels:
   optical_fiber_model:
     type: OpticalFiberModel
-    name: optical_fiber_model
+    name: null
     manufacturer: null
     numerical_aperture: null
   excitation_source_model:
     type: ExcitationSourceModel
-    name: excitation_source_model
+    name: null
     manufacturer: null
     source_type: null        # LED, laser
     excitation_mode: null    # one-photon, two-photon
   photodetector_model:
     type: PhotodetectorModel
-    name: photodetector_model
+    name: null
     manufacturer: null
     detector_type: null      # photodiode, PMT
 
@@ -26,7 +26,7 @@ DeviceModels:
 Devices:
   optical_fiber_0:
     type: OpticalFiber
-    name: optical_fiber_0
+    name: null
     device_model_metadata_key: optical_fiber_model   # a key in DeviceModels above
     fiber_insertion:                                 # where this fiber sat, stereotaxic
       insertion_position_ap_in_mm: null
@@ -35,7 +35,7 @@ Devices:
       depth_in_mm: null
   optical_fiber_1:                                   # one entry like this per fiber
     type: OpticalFiber
-    name: optical_fiber_1
+    name: null
     device_model_metadata_key: optical_fiber_model
     fiber_insertion:
       insertion_position_ap_in_mm: null
@@ -44,32 +44,32 @@ Devices:
       depth_in_mm: null
   excitation_source:
     type: ExcitationSource
-    name: excitation_source
+    name: null
     device_model_metadata_key: excitation_source_model
   photodetector:
     type: Photodetector
-    name: photodetector
+    name: null
     device_model_metadata_key: photodetector_model
   # Optional optics. Delete the entry and every row reference to it if the rig had none.
   # These three have model types of their own too, not shown; delete the key or point it at one.
   dichroic_mirror:
     type: DichroicMirror
-    name: dichroic_mirror
+    name: null
     device_model_metadata_key: null
   excitation_filter:
     type: BandOpticalFilter    # or EdgeOpticalFilter; there is no plain OpticalFilter
-    name: excitation_filter
+    name: null
     device_model_metadata_key: null
   emission_filter:
     type: BandOpticalFilter
-    name: emission_filter
+    name: null
     device_model_metadata_key: null
 
 FiberPhotometry:
   # What was expressed in the tissue, and what it fluoresces as.
   FiberPhotometryIndicators:
     indicator:
-      name: indicator
+      name: null
       label: null              # GCaMP6s, dLight1.1, tdTomato
   # One row per column of the response series, in the order the columns are written.
   FiberPhotometryTable:

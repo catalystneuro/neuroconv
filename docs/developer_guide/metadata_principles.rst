@@ -46,7 +46,7 @@ A placeholder in the dictionary makes it impossible for anything downstream to t
 came from the source, the user, or NeuroConv. Warning about it at write time does not help, since the
 value is written regardless.
 
-See `issue #1557 <https://github.com/catalystneuro/neuroconv/issues/1557>`_ for the discussion.
+See `issue #1557 <https://github.com/catalystneuro/neuroconv/issues/1557>`_ for the original discussion.
 
 Faithfulness costs the user something, though, and it is worth naming: a dictionary that omits
 everything the source did not record does not tell you what else the file needs. That is what
@@ -54,45 +54,43 @@ everything the source did not record does not tell you what else the file needs.
 
 
 Templates: the structure, with the blanks marked
---------------------------------------------------
+------------------------------------------------
 
-``get_metadata_template()`` is the counterpart to ``get_metadata()`` and the one place ``None`` is
-allowed to appear. It returns the same source-derived values, wrapped in the full structure the
-writer expects, with the cross-references between entries already resolved and every field only the
-experimenter can supply set to ``None``.
+``get_metadata_template()`` is the counterpart to ``get_metadata()``. Where ``get_metadata()`` answers
+what the source recorded, and must never carry a value it did not, ``get_metadata_template()`` answers
+what metadata can be added to the file through this interface.
 
-``BaseFiberPhotometryInterface`` is the only one that implements it today, since its chain is the most
-elaborate one in the codebase and so the first place the strict rule above cost a user something. The
-rule below is written for any modality that follows, and whether it generalizes unchanged to the
-modalities whose tables scale with the recording is still open.
+The design principles of ``get_metadata_template()`` are the following:
 
-The two methods answer different questions. ``get_metadata()`` answers "what does the source say?",
-and its answer must never contain a value the source did not provide. ``get_metadata_template()``
-answers "what does this file need from me?", and its blanks *are* the answer: what comes back
-``None`` is exactly what the source could not tell us. Asking for a template is consent, which is why
-a blank there is honest where the same value arriving from ``get_metadata()`` would be a fabrication.
+**It returns the complete structure that could be added.** A template carries every entry and every
+field the schema accepts including the optional ones. The point here is discoverability, since nobody
+can fill in a field they do not know exists. This is in tension with the principle that neuroconv
+should not provide ways of adding incorrect metadata, so the metadata as returned by
+``get_metadata_template()`` should fail when used as it is. At the moment, this is implemented with
+``None``, which the metadata schema and pynwb both reject. Every entry needs at least one blank for
+that to bite, and the ``name`` is the field that always qualifies, since every NWB object requires one.
 
-The template offers the optional parts of the chain as well as the required ones, since a user cannot
-fill in a field they do not know exists. It is a scaffold to edit, so the contract is **fill what
-applies and delete what does not**:
+**It adapts to the interface.** This means the following things in practice:
 
-- **Required and left blank**: the conversion fails, and should. A location or a wavelength nobody
-  supplied is not something to guess at.
-- **Optional and not wanted**: delete the entry. Removing the dichroic mirror block is what gives you
-  a file with no dichroic mirror; leaving it blank is not, and the write will refuse it rather than
-  guess which you meant.
+* The ``metadata_key`` entries are already the ones the interface would use. This includes the
+  cross-references between ``metadata_key`` entries.
+* The metadata that is available on the source is prefilled.
+* For metadata whose length and extent depends on the data, ``get_metadata_template()`` returns the
+  right shape.
 
-This is why ``None`` is the blank rather than a sentinel string. A sentinel is greppable but is a
-perfectly valid value, so a path that skips the check writes it into the file; ``None`` cannot be
-written to a required field at all, so the worst case is a failure rather than a fabricated value.
+To make the last point concrete, it refers to the variable-length fields like the number of rows in a
+``FiberPhotometryTable``, the number of ``ElectrodeGroups`` on a recording or the number of body parts
+in a ``PoseEstimation``.
 
-See `issue #1802 <https://github.com/catalystneuro/neuroconv/issues/1802>`_ for the discussion, and
-:ref:`annotate_fiber_photometry_metadata` for a worked example.
+Implementing ``get_metadata_template()`` is the responsibility of each modality base class, with
+``BaseDataInterface`` supplying only the generic ``NWBFile`` and ``Subject`` metadata.
 
+In opposition to how ``get_metadata_template()`` adapts itself to the interface, we provide generic
+structures as references in the user guide at :ref:`metadata_templates`. There the metadata keys are
+generic, the fields are blank as there is no source, and whatever repeats is shown twice as an example
+of how to fill the variable-length fields.
 
-Staying faithful is not the whole story, though. Some of what a source leaves out is genuinely
-required by NWB, and a file cannot be written without it, so a value has to come from somewhere even
-when the interface reports none.
+See `issue #1802 <https://github.com/catalystneuro/neuroconv/issues/1802>`_ for the original discussion.
 
 
 Placeholders for required fields

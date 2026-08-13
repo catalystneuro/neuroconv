@@ -751,13 +751,15 @@ reconstruct by hand.
 
 It also shows what it does not require. The dichroic mirror, the two filters and the three device
 models are optional, and they appear so that you know the writer accepts them at all; drop the ones
-this recording did not use. ``trace_0`` and the device keys are handles rather than names in the file,
-so rename them freely, as long as the table region keeps naming the same rows.
+this recording did not use. Every entry's ``name`` comes back blank, so keeping one costs naming it,
+which is what stops an offered entry reaching the file because nobody looked at it. ``trace_0`` and
+the device keys are handles rather than names in the file, so rename them freely, as long as the table
+region keeps naming the same rows.
 
 Filling in the one-fiber recording from the first section:
 
 .. code-block:: python
-   :emphasize-lines: 9-17
+   :emphasize-lines: 9-21
 
     from neuroconv.tools.testing import MockFiberPhotometryInterface
 
@@ -771,11 +773,15 @@ Filling in the one-fiber recording from the first section:
     row["location"] = "VTA"
     row["excitation_wavelength_in_nm"] = 465.0
     row["emission_wavelength_in_nm"] = 525.0
-    fiber_photometry["FiberPhotometryIndicators"]["indicator"]["label"] = "GCaMP6s"
+    indicator = fiber_photometry["FiberPhotometryIndicators"]["indicator"]
+    indicator["name"] = "indicator"
+    indicator["label"] = "GCaMP6s"
     metadata["Devices"]["optical_fiber_0"]["fiber_insertion"] = {
         "depth_in_mm": 4.0,
         "insertion_position_ap_in_mm": 3.0,
     }
+    for device_key in ("optical_fiber_0", "excitation_source", "photodetector"):
+        metadata["Devices"][device_key]["name"] = device_key
 
     # This rig had no filters and no dichroic mirror, and we do not know the catalog models.
     del metadata["DeviceModels"]
