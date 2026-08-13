@@ -25,7 +25,7 @@ named the way pyPhotometry's own reader names them, and ``session_start_time`` c
 
     >>> from neuroconv.datainterfaces import PyPhotometryEventsInterface
 
-    >>> file_path = OPHYS_DATA_PATH / "events_datasets" / "pyphotometry" / "narrow_pulses_and_idle_line.ppd"
+    >>> file_path = OPHYS_DATA_PATH / "events_datasets" / "pyphotometry" / "narrow_pulses_and_idle_line" / "one_colour_time_division_window.ppd"
 
     >>> interface = PyPhotometryEventsInterface(file_path=file_path, verbose=False)
 
