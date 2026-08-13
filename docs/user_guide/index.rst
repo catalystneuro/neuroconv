@@ -20,6 +20,7 @@ and synchronize data across multiple sources.
 
   datainterfaces
   nwbconverter
+  metadata_templates
   adding_trials
   temporal_alignment
   csvs
