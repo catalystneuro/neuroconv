@@ -69,6 +69,35 @@ To write both the isosbestic and the signal channels (and their regions) into on
 single ``FiberPhotometryTable``, instantiate one interface per channel — e.g. a second interface with
 ``excitation_wavelength_in_nm=470`` and a distinct ``metadata_key`` — and combine them in a converter.
 
-The full metadata format (device models, devices, indicators, the ``FiberPhotometryTable``, and the
-per-interface response series) is shared across the fiber photometry interfaces and documented at
-:ref:`fiber_photometry_metadata_structure`.
+Filling the device models
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The CSV carries no hardware specifications, but Neurophotometrics publishes what the FP3002 contains,
+so the excitation sources can be looked up and put into the metadata ``get_metadata()`` returned.
+The company states no per-part model number for them, so the part is named rather than numbered:
+
+.. code-block:: python
+
+    >>> from neuroconv.tools.fiber_photometry_hardware_catalogue import (
+    ...     get_reference_excitation_source_model,
+    ... )
+
+    >>> metadata = interface.get_metadata()
+    >>> metadata["DeviceModels"]["excitation_source_model"] = get_reference_excitation_source_model(
+    ...     manufacturer="Neurophotometrics", part="FP3002 415 nm"
+    ... )
+    >>> metadata["DeviceModels"]["excitation_source_model"]["wavelength_range_in_nm"]
+    [400.0, 425.0]
+
+Two Neurophotometrics parts stay yours to fill. The FP3002's camera is published only as an sCMOS
+sensor: its manufacturer, model number and gain appear nowhere, so the catalogue records the sensor
+type and leaves the rest unset rather than guessing. And the patch cords are published with a
+numerical aperture given as a range, 0.37 to 0.4, where ``OpticalFiberModel`` requires a single
+number, so pick the value matching the cord you have.
+
+The rest of the metadata (device models, devices, indicators, the ``FiberPhotometryTable``, and the
+per-interface response series) is shared across the fiber photometry interfaces.
+:ref:`annotate_fiber_photometry_metadata` fills it in one block at a time, and
+:ref:`fiber_photometry_metadata_template` is that same structure with its blanks unfilled, ready to
+copy and edit. :ref:`fiber_photometry_device_models` lists every part the catalogue covers, with the
+vendor page each value came from.

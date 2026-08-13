@@ -347,6 +347,13 @@ aperture, the light source type, the detector type. Those are identical across e
 the same equipment, so they belong in a shared device model rather than being repeated on each device. We
 add the models next, attach one to each device, and write the file.
 
+Those specifications describe the hardware, so no recording file carries them and they have to be stated
+rather than read. Where the part is commercial you can look it up instead of typing it:
+:ref:`fiber_photometry_device_models` collects the published specifications for common fiber photometry
+hardware, each with the vendor page its values came from, and one function per model type,
+``get_reference_optical_fiber_model`` and its siblings, returns a row as a ready
+``metadata["DeviceModels"]`` entry.
+
 **Add the device models, attach them, and write the file.** Each model in the top-level ``DeviceModels``
 registry carries the make and specifications of a piece of hardware; the ``type`` field names its concrete
 ndx-ophys-devices class. Define the models, point each device at its model with

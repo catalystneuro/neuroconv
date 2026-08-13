@@ -107,7 +107,46 @@ interface picks the reader based on the file extension:
     ``metadata["NWBFile"]["session_start_time"]`` must always be set by hand when converting from
     either of those.
 
+Filling the device models
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A Doric file names the console, not the cannula, the light-emitting diodes or the detector plugged
+into it, so the specifications the NWB device models ask for cannot be read from the recording. Doric
+publishes them, so look up the parts you used and put them into the metadata ``get_metadata()``
+returned:
+
+.. code-block:: python
+
+    >>> from neuroconv.tools.fiber_photometry_hardware_catalogue import (
+    ...     get_reference_band_optical_filter_model,
+    ...     get_reference_excitation_source_model,
+    ...     get_reference_optical_fiber_model,
+    ... )
+
+    >>> metadata = interface.get_metadata()
+    >>> doric = "Doric Lenses"
+    >>> device_models = metadata["DeviceModels"]
+    >>> device_models["optical_fiber_model"] = get_reference_optical_fiber_model(manufacturer=doric, part="400/430-0.48")
+    >>> device_models["excitation_source_model"] = get_reference_excitation_source_model(manufacturer=doric, part="CLED_G2_470")
+    >>> metadata["DeviceModels"]["optical_fiber_model"]["numerical_aperture"]
+    0.48
+    >>> device_models["emission_filter_model"] = get_reference_band_optical_filter_model(manufacturer=doric, part="FMC4 emission 500-550 nm")
+    >>> metadata["DeviceModels"]["excitation_source_model"]["wavelength_range_in_nm"]
+    [457.0, 484.0]
+    >>> metadata["DeviceModels"]["emission_filter_model"]["center_wavelength_in_nm"]
+    525.0
+
+The Doric ordering code is a fragment of the full one, covering the fiber rather than the ferrule, and
+the blue light-emitting diode was renumbered in Doric's 2025 Generation-2 redesign, so a rig built
+before then carries ``CLED_465`` rather than ``CLED_G2_470``. The filter bands come from
+the fluorescence mini-cube, whose bands are chosen when it is ordered, so the cube's own ordering code
+is what says which ones yours has. Check all three against your own hardware before writing them.
+
 .. seealso::
 
-    :ref:`fiber_photometry_metadata_structure` for the full metadata format reference shared by all
-    single-series fiber photometry interfaces.
+    :ref:`fiber_photometry_device_models` for every part the catalogue covers and the vendor page each
+    value came from.
+
+    :ref:`annotate_fiber_photometry_metadata` for the rest of the chain, filled in one block at a
+    time, and :ref:`fiber_photometry_metadata_template` for that same structure with its blanks
+    unfilled, ready to copy and edit.

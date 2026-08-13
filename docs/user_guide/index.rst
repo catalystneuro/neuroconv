@@ -25,6 +25,7 @@ and synchronize data across multiple sources.
   temporal_alignment
   csvs
   expand_path
+  fiber_photometry_device_models
   backend_configuration
   linking_sorted_data
   yaml

@@ -162,8 +162,9 @@ To ensure that the NWB file is fully annotated, specify the metadata using the f
 
     For the single-series interface, several things differ from the block below (which predates the
     single-series refactor and is retained here as a field reference for the shared device, indicator,
-    and virus sections). The single-series metadata format is documented in full at
-    :ref:`fiber_photometry_metadata_structure`; in short:
+    and virus sections). The single-series format is walked through at
+    :ref:`annotate_fiber_photometry_metadata` and printed with its blanks unfilled at
+    :ref:`fiber_photometry_metadata_template`; in short:
 
     * The metadata lives at the top-level key ``metadata["FiberPhotometry"]``, not nested under
       ``metadata["Ophys"]``.
@@ -546,6 +547,35 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> nwbfile_path =  f"{path_to_save_nwbfile}"
     >>> # t1 and t2 are optional arguments to specify the start and end times for the conversion
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, t1=0.0, t2=1.0, overwrite=True)
+
+Filling the device models
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A TDT block stores no hardware specifications at all, so the numbers the NWB device models ask for
+have to come from the parts rather than the recording. Tucker-Davis Technologies publishes them for
+the Lux line, so look up what the rig ran and put it into the metadata ``get_metadata()`` returned:
+
+.. code-block:: python
+
+    >>> from neuroconv.tools.fiber_photometry_hardware_catalogue import (
+    ...     get_reference_excitation_source_model,
+    ...     get_reference_photodetector_model,
+    ... )
+
+    >>> metadata = interface.get_metadata()
+    >>> tdt = "Tucker-Davis Technologies"
+    >>> device_models = metadata["DeviceModels"]
+    >>> device_models["excitation_source_model"] = get_reference_excitation_source_model(manufacturer=tdt, part="Lx465")
+    >>> device_models["photodetector_model"] = get_reference_photodetector_model(manufacturer=tdt, part="PS1")
+    >>> metadata["DeviceModels"]["photodetector_model"]["wavelength_range_in_nm"]
+    [320.0, 1100.0]
+    >>> metadata["DeviceModels"]["excitation_source_model"]["description"]
+    'Lux LED, 465 nm nominal center wavelength; bandwidth not published.'
+
+Two of those specifications are published less completely than they look. The Lux light-emitting
+diodes state a nominal center wavelength with no bandwidth, so the catalogue writes the center into
+the description rather than inventing a range, and the photosensor's gain is printed as ``1e10`` with
+no unit, so ``gain_unit`` is left unset. See :ref:`fiber_photometry_device_models` for the rest.
 
 .. seealso::
 
