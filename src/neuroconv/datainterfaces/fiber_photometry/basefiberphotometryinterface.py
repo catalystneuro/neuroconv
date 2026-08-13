@@ -126,7 +126,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         series_metadata = dict(name="FiberPhotometryResponseSeries")
         return dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: series_metadata}))
 
-    def get_number_of_traces(self) -> int:
+    def _get_number_of_traces(self) -> int:
         """Return how many traces this interface's response series carries, one per table row.
 
         Reads the data to measure it. Formats that can answer from a header should override this.
@@ -155,7 +155,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         recording; they are handles, not names in the file.
         """
         metadata = self.get_metadata()
-        number_of_traces = self.get_number_of_traces()
+        number_of_traces = self._get_number_of_traces()
 
         row_keys = [f"trace_{index}" for index in range(number_of_traces)]
         optical_fiber_keys = [f"optical_fiber_{index}" for index in range(number_of_traces)]
@@ -399,9 +399,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         response_series = FiberPhotometryResponseSeries(
             name=series_metadata["name"],
-            # ``or ""`` rather than a ``get`` default: the template hands back ``description=None`` for
-            # a series the user did not describe, and an unfilled optional field writes as absent.
-            description=series_metadata.get("description") or "",
+            description=series_metadata.get("description", ""),
             data=data,
             unit="a.u.",
             fiber_photometry_table_region=table_region,
