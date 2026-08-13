@@ -555,7 +555,7 @@ docs = [
     "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be removed see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
     "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
     "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
-    "sphinx-design==0.7.0",  # Provides the tab-set directive the metadata templates are shown in.
+    "sphinx-design==0.7.0",  # Used by metadata_templates.rst to show the YAML and JSON forms of each template in tabs.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
     "spikeinterface>=0.104.7",  # Needed for the API documentation
