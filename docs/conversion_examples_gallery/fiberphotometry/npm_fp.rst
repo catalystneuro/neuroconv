@@ -95,7 +95,9 @@ type and leaves the rest unset rather than guessing. And the patch cords are pub
 numerical aperture given as a range, 0.37 to 0.4, where ``OpticalFiberModel`` requires a single
 number, so pick the value matching the cord you have.
 
-The full metadata format (device models, devices, indicators, the ``FiberPhotometryTable``, and the
-per-interface response series) is shared across the fiber photometry interfaces and documented at
-:ref:`fiber_photometry_metadata_structure`. :ref:`fiber_photometry_device_models` lists every part the
-catalogue covers, with the vendor page each value came from.
+The rest of the metadata (device models, devices, indicators, the ``FiberPhotometryTable``, and the
+per-interface response series) is shared across the fiber photometry interfaces.
+:ref:`annotate_fiber_photometry_metadata` fills it in one block at a time, and
+:ref:`fiber_photometry_metadata_template` is that same structure with its blanks unfilled, ready to
+copy and edit. :ref:`fiber_photometry_device_models` lists every part the catalogue covers, with the
+vendor page each value came from.

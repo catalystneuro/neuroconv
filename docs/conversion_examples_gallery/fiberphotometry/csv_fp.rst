@@ -138,8 +138,8 @@ each with ``timestamps`` and ``data`` columns on a common timebase:
     >>> nwbfile_path =  f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-The full metadata format (device models, devices, indicators, the ``FiberPhotometryTable``, and the
-per-interface response series) is shared across the fiber photometry interfaces and documented at
-:ref:`fiber_photometry_metadata_structure`. For a worked example that fills it in one block at a time,
-see :ref:`annotate_fiber_photometry_metadata`; for the same structure with its blanks unfilled, ready
-to copy and edit, see :ref:`fiber_photometry_metadata_template`.
+The rest of the metadata (device models, devices, indicators, the ``FiberPhotometryTable``, and the
+per-interface response series) is shared across the fiber photometry interfaces.
+:ref:`annotate_fiber_photometry_metadata` fills it in one block at a time, and
+:ref:`fiber_photometry_metadata_template` is that same structure with its blanks unfilled, ready to
+copy and edit.

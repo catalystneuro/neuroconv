@@ -59,7 +59,9 @@ As with every fiber photometry interface, the hardware chain is yours to supply.
 and each series' region must name its stores in column order.
 
 The rest of the format — device models, devices, indicators, and the response series blocks — is shared
-across the fiber photometry interfaces and documented at :ref:`fiber_photometry_metadata_structure`.
+across the fiber photometry interfaces. :ref:`annotate_fiber_photometry_metadata` fills it in one block
+at a time, and :ref:`fiber_photometry_metadata_template` is that same structure with its blanks
+unfilled, ready to copy and edit.
 
 .. code-block:: python
 

@@ -147,5 +147,6 @@ is what says which ones yours has. Check all three against your own hardware bef
     :ref:`fiber_photometry_device_models` for every part the catalogue covers and the vendor page each
     value came from.
 
-    :ref:`fiber_photometry_metadata_structure` for the full metadata format reference shared by all
-    single-series fiber photometry interfaces.
+    :ref:`annotate_fiber_photometry_metadata` for the rest of the chain, filled in one block at a
+    time, and :ref:`fiber_photometry_metadata_template` for that same structure with its blanks
+    unfilled, ready to copy and edit.
