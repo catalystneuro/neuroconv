@@ -5,17 +5,15 @@ from neuroconv.datainterfaces import ThorImagingInterface
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
 
 THORLABS_FOLDER_PATH = OPHYS_DATA_PATH / "imaging_datasets" / "ThorlabsTiff"
-THOR_FILE_PATH = THORLABS_FOLDER_PATH / "single_channel_single_plane" / "20231018-002" / "ChanA_001_001_001_001.tif"
-THOR_MULTI_CHANNEL_FILE_PATH = (
-    THORLABS_FOLDER_PATH / "multi_channel_multi_plane" / "lzw_compressed" / "ChanA_0001_0001_0001_0001.tif"
-)
 
 
 class TestThorConverterSingleChannel:
     """A single-channel acquisition writes the same file the interface writes on its own."""
 
+    file_path = THORLABS_FOLDER_PATH / "single_channel_single_plane" / "20231018-002" / "ChanA_001_001_001_001.tif"
+
     def test_run_conversion(self, tmp_path):
-        converter = ThorConverter(file_path=THOR_FILE_PATH)
+        converter = ThorConverter(file_path=self.file_path)
 
         assert list(converter.data_interface_objects) == ["ThorImaging"]
 
@@ -23,7 +21,7 @@ class TestThorConverterSingleChannel:
         metadata = converter.get_metadata()
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
-        interface = ThorImagingInterface(file_path=THOR_FILE_PATH)
+        interface = ThorImagingInterface(file_path=self.file_path)
         interface_nwbfile_path = str(tmp_path / "thor_interface.nwb")
         interface_metadata = interface.get_metadata()
         interface.run_conversion(nwbfile_path=interface_nwbfile_path, overwrite=True, metadata=interface_metadata)
@@ -41,7 +39,7 @@ class TestThorConverterSingleChannel:
         Merging the interfaces' metadata by appending lists would dedupe those two equal values into
         one, and NWB requires two or three.
         """
-        converter = ThorConverter(file_path=THOR_FILE_PATH)
+        converter = ThorConverter(file_path=self.file_path)
 
         metadata = converter.get_metadata()
         series_metadata = metadata["Ophys"]["MicroscopySeries"]["thor_imaging"]
@@ -59,15 +57,17 @@ class TestThorConverterSingleChannel:
 class TestThorConverterMultiChannel:
     """Two channels over three z planes, written in one call."""
 
+    file_path = THORLABS_FOLDER_PATH / "multi_channel_multi_plane" / "lzw_compressed" / "ChanA_0001_0001_0001_0001.tif"
+
     def test_get_available_channels(self):
-        channel_names = ThorConverter.get_available_channels(file_path=THOR_MULTI_CHANNEL_FILE_PATH)
+        channel_names = ThorConverter.get_available_channels(file_path=self.file_path)
 
         assert channel_names == ["ChanA", "ChanB"]
         # The names are what the interface accepts back, which is the point of asking.
-        ThorImagingInterface(file_path=THOR_MULTI_CHANNEL_FILE_PATH, channel_name=channel_names[0])
+        ThorImagingInterface(file_path=self.file_path, channel_name=channel_names[0])
 
     def test_run_conversion(self, tmp_path):
-        converter = ThorConverter(file_path=THOR_MULTI_CHANNEL_FILE_PATH)
+        converter = ThorConverter(file_path=self.file_path)
 
         assert list(converter.data_interface_objects) == ["ThorImaging_ChanA", "ThorImaging_ChanB"]
 

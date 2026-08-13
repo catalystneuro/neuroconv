@@ -84,17 +84,9 @@ class ScanImageConverter(ConverterPipe):
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+    def get_metadata(self) -> DeepDict:
         """
         Get metadata for every channel of the acquisition.
-
-        Parameters
-        ----------
-        use_new_metadata_format : bool, default: True
-            Ask the channel interfaces for the dict-based format. This defaults to True where the
-            interfaces themselves still default to False, because the old list-based format addresses
-            a photon series by its position in a list, which cannot name one entry per channel
-            unambiguously; the dict-based format keys each channel's entry by its metadata key.
 
         Returns
         -------
@@ -103,9 +95,10 @@ class ScanImageConverter(ConverterPipe):
         """
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
-            interface_metadata = self._get_interface_metadata(
-                interface=interface, use_new_metadata_format=use_new_metadata_format
-            )
+            # The channel interfaces still default to the old list-based format, which addresses a photon
+            # series by its position in a list and so cannot name one entry per channel unambiguously.
+            # This converter is new and has only ever spoken the dict-based format, so it asks for it.
+            interface_metadata = self._get_interface_metadata(interface=interface, use_new_metadata_format=True)
             # Entries are keyed per channel, so a list inside one of them describes that channel and is
             # not something to merge across interfaces. Appending would also dedupe the repeated values
             # of a symmetric field, and a square field of view's [x, x] would reach the file as [x].
