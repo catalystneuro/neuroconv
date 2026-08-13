@@ -45,8 +45,9 @@ def test_published_fiber_photometry_template_matches_the_method():
 
 def test_published_fiber_photometry_template_converts_once_filled(tmp_path):
     # The page's actual promise: copy this, fill in the blanks that apply, delete what does not, convert.
-    # One optional link is left blank rather than deleted, which is what a user who skims does, and it
-    # must write no device rather than fail.
+    # The emission filter stands for the half nobody exercises, the delete: a rig without one drops the
+    # device and every row that referenced it, and the file then has no emission filter rather than a
+    # blank one.
     metadata = yaml.safe_load((PUBLISHED_TEMPLATES / "fiber_photometry.yaml").read_text())
     interface = MockFiberPhotometryInterface(num_fibers=2, metadata_key="calcium_signal")
     metadata["NWBFile"] = interface.get_metadata()["NWBFile"]
@@ -58,7 +59,9 @@ def test_published_fiber_photometry_template_converts_once_filled(tmp_path):
         row_metadata["location"] = location
         row_metadata["excitation_wavelength_in_nm"] = 465.0
         row_metadata["emission_wavelength_in_nm"] = 525.0
-        row_metadata["emission_filter_metadata_key"] = None  # Offered, skimmed past, left blank.
+        row_metadata["coordinates"] = (3.0, 1.0, 4.0)
+        row_metadata["notes"] = f"Fiber in {location}."
+        del row_metadata["emission_filter_metadata_key"]
     fiber_photometry_metadata["FiberPhotometryIndicators"]["indicator"]["label"] = "GCaMP6s"
     fiber_photometry_metadata["calcium_signal"]["description"] = "GCaMP6s at 465 nm in DMS and DLS."
 
@@ -70,8 +73,9 @@ def test_published_fiber_photometry_template_converts_once_filled(tmp_path):
             insertion_position_dv_in_mm=4.0,
             depth_in_mm=4.0,
         )
-    for device_metadata_key in ("dichroic_mirror", "excitation_filter", "emission_filter"):
+    for device_metadata_key in ("dichroic_mirror", "excitation_filter"):
         devices_metadata[device_metadata_key].pop("device_model_metadata_key")
+    del devices_metadata["emission_filter"]
 
     device_models_metadata = metadata["DeviceModels"]
     device_models_metadata["optical_fiber_model"].update(manufacturer="Doric Lenses", numerical_aperture=0.48)
