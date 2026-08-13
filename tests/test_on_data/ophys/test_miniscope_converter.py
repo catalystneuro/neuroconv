@@ -5,13 +5,54 @@ from pathlib import Path
 from warnings import warn
 
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.image import ImageSeries
 from pynwb.ophys import OnePhotonSeries
 
 from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.converters import MiniscopeConverter
+from neuroconv.tools.roiextractors.roiextractors import (
+    _get_ophys_metadata_placeholders,
+)
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
+
+
+@pytest.mark.parametrize("device_kind,declared_name", [("miniscopes", "HPC_miniscope1"), ("cameras", "a_camera")])
+def test_declared_device_without_a_folder_warns(tmp_path, device_kind, declared_name):
+    """A device the config declares but whose folder is absent is skipped, never silently."""
+    import json
+
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
+    user_config = json.loads((folder_path / "UserConfigFile.json").read_text(encoding="utf-8"))
+    devices = user_config["devices"].setdefault(device_kind, {})
+    # Rename one declared device (or add one, for the cameras this dataset has none of) so that
+    # nothing on disk matches it
+    devices.pop(declared_name, None)
+    devices["a_device_with_no_folder"] = {"deviceType": "Miniscope_V4_BNO"}
+    config_file_path = tmp_path / "UserConfigFile.json"
+    config_file_path.write_text(json.dumps(user_config), encoding="utf-8")
+
+    with pytest.warns(UserWarning, match="No folder named 'a_device_with_no_folder' was found"):
+        MiniscopeConverter(folder_path=folder_path, user_configuration_file_path=config_file_path)
+
+
+@pytest.mark.parametrize("device_kind", ["miniscopes", "cameras"])
+def test_legacy_user_config_device_list_raises(tmp_path, device_kind):
+    """The DAQ schema allows devices as a list; we have no such file, so we say so instead of failing."""
+    import json
+
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
+    user_config = json.loads((folder_path / "UserConfigFile.json").read_text(encoding="utf-8"))
+    # Rewrite the devices of one kind into the legacy shape: a list, with the key moved inline
+    devices = user_config["devices"].get(device_kind, {"a_device": {"deviceType": "Miniscope_V4_BNO"}})
+    user_config["devices"][device_kind] = [
+        {"deviceName": device_name, **device_config} for device_name, device_config in devices.items()
+    ]
+    config_file_path = tmp_path / "UserConfigFile.json"
+    config_file_path.write_text(json.dumps(user_config), encoding="utf-8")
+
+    with pytest.raises(NotImplementedError, match=f"devices\\[{device_kind}\\] as a list of devices"):
+        MiniscopeConverter(folder_path=folder_path, user_configuration_file_path=config_file_path)
 
 
 class TestMiniscopeConverter:
@@ -20,17 +61,87 @@ class TestMiniscopeConverter:
     folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "dual_miniscope_with_config"
     config_file_path = folder_path / "UserConfigFile.json"
 
-    def test_run_conversion(self, tmp_path):
-        """Test conversion with dual miniscope setup, multiple sessions, and time alignment."""
-        from pynwb import read_nwb
+    def test_get_metadata(self):
+        """One Device and one ImagingPlane per Miniscope, one MicroscopySeries per recording."""
+        converter = MiniscopeConverter(folder_path=self.folder_path, user_configuration_file_path=self.config_file_path)
+        metadata = converter.get_metadata()
 
-        # Create converter
-        converter = MiniscopeConverter(
-            folder_path=str(self.folder_path), user_configuration_file_path=str(self.config_file_path)
+        # A device is shared by its recordings, so the two Miniscopes are two entries and not four. This
+        # dataset adjusted 'gain', 'led0' and 'ewl' between its two recordings, so those three are left
+        # off the shared device and reported per recording on the series below; the settings the two
+        # recordings agree on stay here.
+        expected_devices = {
+            "hpc_miniscope1": {
+                "type": "Miniscope",
+                "name": "HPCMiniscope1",
+                "compression": "GREY",
+                "deviceType": "Miniscope_V4_BNO",
+                "frameRate": "30FPS",
+                "framesPerFile": 10,
+                "device_model_metadata_key": "miniscope_v4_bno",
+            },
+            "acc_miniscope2": {
+                "type": "Miniscope",
+                "name": "ACCMiniscope2",
+                "compression": "GREY",
+                "deviceType": "Miniscope_V4_BNO",
+                "frameRate": "30FPS",
+                "framesPerFile": 10,
+                "device_model_metadata_key": "miniscope_v4_bno",
+            },
+        }
+        assert metadata["Devices"] == expected_devices
+
+        # Both Miniscopes are of the same design, so they share one model rather than carrying one each
+        assert metadata["DeviceModels"] == {"miniscope_v4_bno": {"name": "Miniscope_V4_BNO"}}
+
+        # An imaging plane belongs to a device, so it is also shared across that device's recordings.
+        # The fields NWB requires and the config says nothing about come from the placeholder template.
+        placeholder_imaging_plane = _get_ophys_metadata_placeholders()["Ophys"]["ImagingPlanes"]["default_metadata_key"]
+        imaging_planes = metadata["Ophys"]["ImagingPlanes"]
+        expected_imaging_plane = {
+            **placeholder_imaging_plane,
+            "name": "ImagingPlaneACCMiniscope2",
+            "description": "Imaging plane for ACC_miniscope2 Miniscope device.",
+            "device_metadata_key": "acc_miniscope2",
+            "imaging_rate": converter.data_interface_objects[
+                "2025_06_12/15_15_04/ACC_miniscope2"
+            ].imaging_extractor.get_sampling_frequency(),
+        }
+        assert set(imaging_planes) == {"imaging_plane_ACC_miniscope2", "imaging_plane_HPC_miniscope1"}
+        assert imaging_planes["imaging_plane_ACC_miniscope2"] == expected_imaging_plane
+
+        # A series belongs to a recording: two devices over two sessions is four
+        series_metadata = metadata["Ophys"]["MicroscopySeries"]
+        assert set(series_metadata) == {
+            "miniscope_imaging_ACC_miniscope2_2025_06_1215_15_04",
+            "miniscope_imaging_ACC_miniscope2_2025_06_1215_26_31",
+            "miniscope_imaging_HPC_miniscope1_2025_06_1215_15_04",
+            "miniscope_imaging_HPC_miniscope1_2025_06_1215_26_31",
+        }
+        expected_series = {
+            "name": "OnePhotonSeriesACCMiniscope22025_06_1215_15_04",
+            "unit": "px",
+            "imaging_plane_metadata_key": "imaging_plane_ACC_miniscope2",
+            # The settings this recording was made with, which the second recording of this Miniscope
+            # changed, so they cannot be stated once on the shared device.
+            "description": (
+                "Imaging data acquired with a Miniscope. Settings the Miniscope was recorded with, "
+                "which differ across the recordings of this device: ewl: 21, gain: 2, led0: 4."
+            ),
+        }
+        assert series_metadata["miniscope_imaging_ACC_miniscope2_2025_06_1215_15_04"] == expected_series
+        assert "ewl: 19, gain: 1, led0: 12" in (
+            series_metadata["miniscope_imaging_ACC_miniscope2_2025_06_1215_26_31"]["description"]
         )
 
+    def test_run_conversion(self, tmp_path):
+        """Test conversion with dual miniscope setup, multiple sessions, and time alignment."""
+        # Create converter
+        converter = MiniscopeConverter(folder_path=self.folder_path, user_configuration_file_path=self.config_file_path)
+
         # Run conversion
-        nwbfile_path = str(tmp_path / "test_miniscope_dual.nwb")
+        nwbfile_path = tmp_path / "test_miniscope_dual.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, stub_test=True, stub_samples=2)
 
         # Read the NWB file
@@ -136,13 +247,119 @@ class TestMiniscopeConverter:
             assert ho_hpc_session2.starting_time == expected_offset
 
 
+class TestMiniscopeConverterSingleRecording:
+    """A Miniscope recorded once has no settings that vary, so they all stay on its device."""
+
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "behavior_camera_with_config"
+    config_file_path = folder_path / "UserConfigFile.json"
+
+    def test_get_metadata(self):
+        converter = MiniscopeConverter(folder_path=self.folder_path, user_configuration_file_path=self.config_file_path)
+        metadata = converter.get_metadata()
+
+        expected_device = {
+            "type": "Miniscope",
+            "name": "Miniscopedevicename",
+            "compression": "GREY",
+            "deviceType": "Miniscope_V4_BNO",
+            "frameRate": "20FPS",
+            "gain": "3.5",
+            "framesPerFile": 1000,
+            "led0": 6,
+            "ROI": [600, 600],
+            "description": (
+                "Settings recorded by the Miniscope DAQ software that the ndx-miniscope schema has "
+                "no field for: ROI.leftEdge: 0, ROI.topEdge: 0, ewl: -4."
+            ),
+            "device_model_metadata_key": "miniscope_v4_bno",
+        }
+        assert metadata["Devices"]["miniscope_device_name"] == expected_device
+
+        # Nothing varies, so the series carries no per-recording settings
+        series_metadata = metadata["Ophys"]["MicroscopySeries"][
+            "miniscope_imaging_miniscopeDeviceName_2021_07_1516_18_59"
+        ]
+        assert series_metadata["description"] == "Imaging data acquired with a Miniscope."
+
+
+class TestMiniscopeConverterBehaviorCamera:
+    """The behavior camera declared in the User Config as 'devices[cameras]'."""
+
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "behavior_camera_with_config"
+    config_file_path = folder_path / "UserConfigFile.json"
+
+    image_series_name = "ImageSeriesCameradevicename2021_07_1516_18_59"
+    photon_series_name = "OnePhotonSeriesMiniscopedevicename2021_07_1516_18_59"
+
+    def test_get_metadata(self):
+        """The camera gets a Device of its own, and its settings are described rather than dropped."""
+        converter = MiniscopeConverter(
+            folder_path=self.folder_path,
+            user_configuration_file_path=self.config_file_path,
+        )
+        metadata = converter.get_metadata()
+
+        expected_device = {
+            "name": "Cameradevicename",
+            "description": (
+                "Behavior camera recorded by the Miniscope DAQ software. Acquisition settings: "
+                "compression: MJPG, frameRate: 50, framesPerFile: 1000, gain: 16, led0: 20."
+            ),
+            "device_model_metadata_key": "minicam_mono_xga",
+        }
+        expected_video = {
+            "name": self.image_series_name,
+            "description": "Video recorded by the 'cameraDeviceName' behavior camera.",
+            "unit": "Frames",
+            "device_metadata_key": "camera_device_name",
+            # The camera's ROI in the config, as (width, height)
+            "dimension": [740, 734],
+        }
+
+        assert metadata["Devices"]["camera_device_name"] == expected_device
+        # The camera is a different design from the Miniscope, so it carries a model of its own
+        assert metadata["DeviceModels"]["minicam_mono_xga"] == {"name": "Minicam-Mono-XGA"}
+        assert metadata["Behavior"]["ExternalVideos"]["video_cameraDeviceName_2021_07_1516_18_59"] == expected_video
+
+    def test_run_conversion(self, tmp_path):
+        """The camera folder sits six levels below the top folder, far from the legacy 'BehavCam*' depth."""
+        converter = MiniscopeConverter(folder_path=self.folder_path, user_configuration_file_path=self.config_file_path)
+
+        nwbfile_path = tmp_path / "test_miniscope_behavior_camera.nwb"
+        converter.run_conversion(nwbfile_path=nwbfile_path)
+
+        nwbfile = read_nwb(nwbfile_path)
+
+        # Both the imaging and the behavior video are written
+        assert isinstance(nwbfile.acquisition[self.photon_series_name], OnePhotonSeries)
+        image_series = nwbfile.acquisition[self.image_series_name]
+        assert isinstance(image_series, ImageSeries)
+
+        # The video is external and points at the .avi of the camera folder
+        assert [Path(file_path).name for file_path in image_series.external_file] == ["0.avi"]
+        assert list(image_series.starting_frame) == [0]
+
+        # The camera gets its own Device and DeviceModel, separate from the Miniscope's
+        assert image_series.device.name == "Cameradevicename"
+        assert "Miniscopedevicename" in nwbfile.devices
+        assert image_series.device.model.name == "Minicam-Mono-XGA"
+        # 'manufacturer' is required by NWB and the DAQ does not record it
+        assert image_series.device.model.manufacturer == "unknown"
+
+        # Timestamps come from the camera's own timeStamps.csv, as recorded. The first frame is
+        # negative because the camera free-runs and that frame was exposed before the recording start
+        # marker, which is what the format says and so what is written.
+        expected_timestamps = [-0.015, 0.008, 0.029, 0.049, 0.07, 0.093]
+        assert image_series.timestamps[:] == pytest.approx(expected_timestamps)
+
+
 class TestMiniscopeConverterLegacyTyeLabFormat:
     """Test MiniscopeConverter with Tye Lab legacy folder structure."""
 
     @pytest.fixture(autouse=True)
     def setup_class_fixture(self):
         """Set up test fixtures for legacy Tye Lab data."""
-        self.folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
+        self.folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"
         with pytest.warns(FutureWarning, match="Not passing 'user_configuration_file_path'"):
             self.converter = MiniscopeConverter(folder_path=self.folder_path)
         self.test_dir = Path(tempfile.mkdtemp())
@@ -183,17 +400,16 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
 
     def _assert_nwbfile_structure(self, nwbfile_path: str):
         """Helper method to assert NWB file structure."""
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert nwbfile.session_start_time.replace(tzinfo=None) == datetime(2021, 10, 7, 15, 3, 28, 635)
+        assert nwbfile.session_start_time.replace(tzinfo=None) == datetime(2021, 10, 7, 15, 3, 28, 635)
 
-            assert self.device_name in nwbfile.devices
-            assert self.behavcam_name in nwbfile.devices
-            assert self.photon_series_name in nwbfile.acquisition
-            assert isinstance(nwbfile.acquisition[self.photon_series_name], OnePhotonSeries)
-            assert self.image_series_name in nwbfile.acquisition
-            assert isinstance(nwbfile.acquisition[self.image_series_name], ImageSeries)
+        assert self.device_name in nwbfile.devices
+        assert self.behavcam_name in nwbfile.devices
+        assert self.photon_series_name in nwbfile.acquisition
+        assert isinstance(nwbfile.acquisition[self.photon_series_name], OnePhotonSeries)
+        assert self.image_series_name in nwbfile.acquisition
+        assert isinstance(nwbfile.acquisition[self.image_series_name], ImageSeries)
 
     def test_converter_metadata(self):
         """Test that metadata is correctly extracted from legacy format."""
@@ -204,21 +420,20 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
 
     def test_run_conversion(self):
         """Test basic conversion to NWB."""
-        nwbfile_path = str(self.test_dir / "test_miniscope_converter.nwb")
+        nwbfile_path = self.test_dir / "test_miniscope_converter.nwb"
         self.converter.run_conversion(nwbfile_path=nwbfile_path)
 
         self._assert_nwbfile_structure(nwbfile_path=nwbfile_path)
 
     def test_run_conversion_add_conversion_options(self):
         """Test conversion with stub options."""
-        nwbfile_path = str(self.test_dir / "test_miniscope_converter_conversion_options.nwb")
+        nwbfile_path = self.test_dir / "test_miniscope_converter_conversion_options.nwb"
         self.converter.run_conversion(
             nwbfile_path=nwbfile_path,
             **self.conversion_options,
         )
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
         num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
         assert num_samples == self.stub_samples
@@ -234,16 +449,15 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         metadata["Behavior"]["Device"][0].update(name=test_behavcam_name)
         metadata["Behavior"]["ImageSeries"][0].update(device=test_behavcam_name)
 
-        nwbfile_path = str(self.test_dir / "test_miniscope_converter_updated_metadata.nwb")
+        nwbfile_path = self.test_dir / "test_miniscope_converter_updated_metadata.nwb"
         self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            assert test_device_name in nwbfile.devices
-            assert test_behavcam_name in nwbfile.devices
-            assert nwbfile.devices[test_device_name] == nwbfile.imaging_planes["ImagingPlaneMiniscope"].device
-            assert nwbfile.devices[test_behavcam_name] == nwbfile.acquisition[self.image_series_name].device
+        assert test_device_name in nwbfile.devices
+        assert test_behavcam_name in nwbfile.devices
+        assert nwbfile.devices[test_device_name] == nwbfile.imaging_planes["ImagingPlaneMiniscope"].device
+        assert nwbfile.devices[test_behavcam_name] == nwbfile.acquisition[self.image_series_name].device
 
     def test_converter_in_converter(self):
         """Test MiniscopeConverter within another NWBConverter."""
@@ -257,7 +471,7 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
             )
         )
 
-        nwbfile_path = str(self.test_dir / "test_miniscope_converter_in_nwbconverter.nwb")
+        nwbfile_path = self.test_dir / "test_miniscope_converter_in_nwbconverter.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path)
 
         self._assert_nwbfile_structure(nwbfile_path)
@@ -268,7 +482,7 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestMiniscopeConverter=MiniscopeConverter)
 
-        nwbfile_path = str(self.test_dir / "test_miniscope_converter_in_nwbconverter_conversion_options.nwb")
+        nwbfile_path = self.test_dir / "test_miniscope_converter_in_nwbconverter_conversion_options.nwb"
         converter = TestConverter(
             source_data=dict(
                 TestMiniscopeConverter=dict(folder_path=self.folder_path),
@@ -277,8 +491,7 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         conversion_options = dict(TestMiniscopeConverter=self.conversion_options)
         converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
         num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
         assert num_samples == self.stub_samples
@@ -300,7 +513,6 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         conversion_options = dict(MiniscopeConverter=self.conversion_options)
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
         num_samples = nwbfile.acquisition[self.photon_series_name].data.shape[0]
         assert num_samples == self.stub_samples

@@ -17,11 +17,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ALL_PYTHON_VERSIONS: ${{ steps.load_python_versions.outputs.python_versions }}
+      MIN_PYTHON_VERSION: ${{ steps.load_python_versions.outputs.min_python_version }}
+      MAX_PYTHON_VERSION: ${{ steps.load_python_versions.outputs.max_python_version }}
       ALL_OS_VERSIONS: ${{ steps.load_os_versions.outputs.os_versions }}
     steps:
       - uses: actions/checkout@v6
       - id: load_python_versions
-        run: echo "python_versions=$(cat ./.github/workflows/all_python_versions.txt)" >> "$GITHUB_OUTPUT"
+        run: |
+          MINIMUM=$(cat ./.github/workflows/min_python_version.txt)
+          MAXIMUM=$(cat ./.github/workflows/max_python_version.txt)
+          echo "min_python_version=$MINIMUM" >> "$GITHUB_OUTPUT"
+          echo "max_python_version=$MAXIMUM" >> "$GITHUB_OUTPUT"
+          echo "python_versions=[\"$MINIMUM\", \"$MAXIMUM\"]" >> "$GITHUB_OUTPUT"
       - id: load_os_versions
         run: echo "os_versions=$(cat ./.github/workflows/all_os_versions.txt)" >> "$GITHUB_OUTPUT"
       - name: Debugging
@@ -42,8 +49,8 @@ jobs:
         run: echo "CHANGELOG.md has been updated."
       - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'false' }}
         run: |
-          echo "CHANGELOG.md has not been updated."
-          0
+          echo "::error::This pull request changes source files but does not update CHANGELOG.md. Add an entry under the upcoming version's section, or say in the pull request why the change needs none."
+          exit 1
 
   run-tests:
     needs: [assess-file-changes, load_python_and_os_versions]
@@ -55,7 +62,7 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.10"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      python-versions: ${{ github.event.pull_request.draft == true && format('["{0}"]', needs.load_python_and_os_versions.outputs.MIN_PYTHON_VERSION) || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
   # If the conversion gallery is the only thing that changed, run doctests only
@@ -68,7 +75,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.10"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      python-versions: ${{ github.event.pull_request.draft == true && format('["{0}"]', needs.load_python_and_os_versions.outputs.MIN_PYTHON_VERSION) || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
 
@@ -81,9 +88,28 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
       DANDI_SANDBOX_API_KEY: ${{ secrets.DANDI_SANDBOX_API_KEY }}
-      EMBER_API_KEY: ${{ secrets.EMBER_API_KEY }}
+      EMBER_SANDBOX_API_KEY: ${{ secrets.EMBER_SANDBOX_API_KEY }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
-      python-versions: ${{ github.event.pull_request.draft == true && '["3.10"]' || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
+      # These test network behavior against the DANDI, EMBER and Globus sandboxes rather than anything
+      # platform-specific, so a pull request runs every OS on the newest Python only; the dev dailies
+      # still run the full matrix nightly.
+      python-versions: ${{ format('["{0}"]', needs.load_python_and_os_versions.outputs.MAX_PYTHON_VERSION) }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
+
+
+  # A gallery page names the extra it needs, and `pyproject.toml` declares that extra, so either side
+  # changing can leave a page installing nothing. That is silent until the page imports something, so it
+  # is checked here rather than waiting for the daily.
+  run-formatwise-tests:
+    needs: [assess-file-changes, load_python_and_os_versions]
+    if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' || needs.assess-file-changes.outputs.PYPROJECT_CHANGED == 'true' }}
+    uses: ./.github/workflows/formatwise-installation-testing.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+    with:  #  Ternary operator: condition && value_if_true || value_if_false
+      python-versions: ${{ github.event.pull_request.draft == true && format('["{0}"]', needs.load_python_and_os_versions.outputs.MIN_PYTHON_VERSION) || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
 
@@ -93,10 +119,11 @@ jobs:
     needs:
       - run-tests
       - run-doctests-only
+      - run-formatwise-tests
     runs-on: ubuntu-latest
     steps:
       - name: Decide whether all jobs succeeded or at least one failed
         uses: re-actors/alls-green@release/v1
         with:
-          allowed-skips: run-tests, run-doctests-only
+          allowed-skips: run-tests, run-doctests-only, run-formatwise-tests
           jobs: ${{ toJSON(needs) }}

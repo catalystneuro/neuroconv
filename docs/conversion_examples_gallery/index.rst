@@ -59,6 +59,7 @@ Intracellular electrophysiology
     :maxdepth: 1
 
     Axon Binary Format (ABF) <recording/abf>
+    Bruker VoltageRecording <recording/brukervoltagerecording>
 
 Optical physiology
 ------------------
@@ -93,6 +94,8 @@ Segmentation
     Inscopix <segmentation/inscopix>
     Suite2P <segmentation/suite2p>
 
+.. _conversion_gallery_fiber_photometry:
+
 Fiber Photometry
 ~~~~~~~~~~~~~~~~
 
@@ -101,6 +104,9 @@ Fiber Photometry
 
     Doric Fiber Photometry <fiberphotometry/doric_fp>
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    NPM Fiber Photometry <fiberphotometry/npm_fp>
+    CSV Fiber Photometry <fiberphotometry/csv_fp>
+    GuPPy Fiber Photometry <fiberphotometry/guppy_fp>
 
 Behavior
 --------
@@ -126,6 +132,8 @@ Events
     :maxdepth: 1
 
     CSV Events <events/csv_events>
+    Doric Events <events/doric_events>
+    NPM Events <events/npm_events>
     TDT Events <events/tdt_events>
 
 

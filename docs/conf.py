@@ -89,6 +89,8 @@ linkcheck_ignore = [
     "https://doi.org/10.25080/cehj4257",  # Does not seem to support multiple access
     "https://ibl.flatironinstitute.org/public",  # Fails with bot access
     "https://www.winehq.org/",  # Wine prevents bot access
+    r"https://ffmpeg\.org/.*",  # Their host drops connections on 443 under load, so the check times out
+    "https://nwb-users.slack.com",  # Slack answers a bot with 403
 ]
 
 # --------------------------------------------------
@@ -176,7 +178,7 @@ def update_version_switcher_in_read_the_docs(app, config):
 
     # Update switcher.json with PR/branch entry
     # switcher.json structure: [{"name": str, "version": str, "url": str}, ...]
-    with open(switcher_path, "r") as f:
+    with open(switcher_path, "r", encoding="utf-8") as f:
         switcher_entries = json.load(f)
 
     # Avoid duplicated entries
@@ -186,7 +188,7 @@ def update_version_switcher_in_read_the_docs(app, config):
 
     # Add and save new entry
     switcher_entries.append(entry_to_add)
-    with open(switcher_path, "w") as f:
+    with open(switcher_path, "w", encoding="utf-8") as f:
         json.dump(switcher_entries, f, indent=4)
 
 

@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 import yaml
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import NWBConverter
@@ -50,7 +50,7 @@ def _write_minimal_config(tmp_path, **fields):
     """Write a minimal VAME config.yaml with the given fields and return its path."""
     config = {"project_name": "unit_test_project", **fields}
     config_path = tmp_path / "config.yaml"
-    config_path.write_text(yaml.dump(config))
+    config_path.write_text(yaml.dump(config), encoding="utf-8")
     return config_path
 
 
@@ -74,17 +74,17 @@ class TestVameInterfaceMinimal(DataInterfaceTestMixin):
         assert "CommunitySeries" not in vame
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
-            config = json.loads(project.vame_config)
-            assert config["project_name"] == "my_vame_project"
-            assert project.latent_space_series is None
-            assert len(project.community_series) == 0
-            assert_array_equal(
-                project.motif_series["MotifSeriesKmeans"].data[:],
-                np.load(MOTIF_LABELS_PATH).astype(np.int32),
-            )
+        nwbfile = read_nwb(nwbfile_path)
+        project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
+        config = json.loads(project.vame_config)
+        assert config["project_name"] == "my_vame_project"
+        assert project.latent_space_series is None
+        assert len(project.community_series) == 0
+        assert_array_equal(
+            project.motif_series["MotifSeriesKmeans"].data[:],
+            np.load(MOTIF_LABELS_PATH).astype(np.int32),
+        )
+        nwbfile.read_io.close()
 
 
 class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -111,24 +111,24 @@ class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
         assert community["algorithm"] == "kmeans"
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
-            assert_array_equal(
-                project.motif_series["MotifSeriesKmeans"].data[:],
-                np.load(MOTIF_LABELS_PATH).astype(np.int32),
-            )
-            assert_array_equal(
-                project.latent_space_series.data[:],
-                np.load(LATENT_VECTORS_PATH).astype(np.float32),
-            )
-            assert_array_equal(
-                project.community_series["CommunitySeriesKmeans"].data[:],
-                np.load(COMMUNITY_LABELS_PATH).astype(np.int32),
-            )
-            config = json.loads(project.vame_config)
-            assert config["project_name"] == "my_vame_project"
-            assert config["n_clusters"] == 15
+        nwbfile = read_nwb(nwbfile_path)
+        project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
+        assert_array_equal(
+            project.motif_series["MotifSeriesKmeans"].data[:],
+            np.load(MOTIF_LABELS_PATH).astype(np.int32),
+        )
+        assert_array_equal(
+            project.latent_space_series.data[:],
+            np.load(LATENT_VECTORS_PATH).astype(np.float32),
+        )
+        assert_array_equal(
+            project.community_series["CommunitySeriesKmeans"].data[:],
+            np.load(COMMUNITY_LABELS_PATH).astype(np.int32),
+        )
+        config = json.loads(project.vame_config)
+        assert config["project_name"] == "my_vame_project"
+        assert config["n_clusters"] == 15
+        nwbfile.read_io.close()
 
 
 class TestVameInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -153,12 +153,12 @@ class TestVameInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMix
         assert "CommunitySeries" in vame
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
-            assert len(project.motif_series["MotifSeriesKmeans"].data[:]) == 100
-            assert len(project.latent_space_series.data[:]) == 100
-            assert len(project.community_series["CommunitySeriesKmeans"].data[:]) == 100
+        nwbfile = read_nwb(nwbfile_path)
+        project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
+        assert len(project.motif_series["MotifSeriesKmeans"].data[:]) == 100
+        assert len(project.latent_space_series.data[:]) == 100
+        assert len(project.community_series["CommunitySeriesKmeans"].data[:]) == 100
+        nwbfile.read_io.close()
 
 
 class TestVameInterfaceMultipleAlgorithms(DataInterfaceTestMixin):
@@ -188,26 +188,26 @@ class TestVameInterfaceMultipleAlgorithms(DataInterfaceTestMixin):
         )
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
-            assert len(project.motif_series) == 2
-            motif_series_kmeans = project.motif_series["MotifSeriesKmeans"]
-            assert_array_equal(
-                motif_series_kmeans.data[:],
-                np.load(MOTIF_LABELS_PATH).astype(np.int32),
-            )
-            assert_array_equal(
-                project.motif_series["MotifSeriesHmm"].data[:],
-                np.load(HMM_LABELS_PATH).astype(np.int32),
-            )
-            assert len(project.community_series) == 1
-            community_series_kmeans = project.community_series["CommunitySeriesKmeans"]
-            assert community_series_kmeans.motif_series == motif_series_kmeans
-            assert_array_equal(
-                community_series_kmeans.data[:],
-                np.load(COMMUNITY_LABELS_PATH).astype(np.int32),
-            )
+        nwbfile = read_nwb(nwbfile_path)
+        project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
+        assert len(project.motif_series) == 2
+        motif_series_kmeans = project.motif_series["MotifSeriesKmeans"]
+        assert_array_equal(
+            motif_series_kmeans.data[:],
+            np.load(MOTIF_LABELS_PATH).astype(np.int32),
+        )
+        assert_array_equal(
+            project.motif_series["MotifSeriesHmm"].data[:],
+            np.load(HMM_LABELS_PATH).astype(np.int32),
+        )
+        assert len(project.community_series) == 1
+        community_series_kmeans = project.community_series["CommunitySeriesKmeans"]
+        assert community_series_kmeans.motif_series == motif_series_kmeans
+        assert_array_equal(
+            community_series_kmeans.data[:],
+            np.load(COMMUNITY_LABELS_PATH).astype(np.int32),
+        )
+        nwbfile.read_io.close()
 
 
 class TestVameInterfaceAutoDiscoverFilePaths(DataInterfaceTestMixin):
@@ -233,23 +233,23 @@ class TestVameInterfaceAutoDiscoverFilePaths(DataInterfaceTestMixin):
         )
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
-            assert len(project.motif_series) == 2
-            assert_array_equal(
-                project.motif_series["MotifSeriesKmeans"].data[:],
-                np.load(MOTIF_LABELS_PATH).astype(np.int32),
-            )
-            assert_array_equal(
-                project.motif_series["MotifSeriesHmm"].data[:],
-                np.load(HMM_LABELS_PATH).astype(np.int32),
-            )
-            assert_array_equal(
-                project.latent_space_series.data[:],
-                np.load(LATENT_VECTORS_PATH).astype(np.float32),
-            )
-            assert len(project.community_series) == 1
+        nwbfile = read_nwb(nwbfile_path)
+        project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
+        assert len(project.motif_series) == 2
+        assert_array_equal(
+            project.motif_series["MotifSeriesKmeans"].data[:],
+            np.load(MOTIF_LABELS_PATH).astype(np.int32),
+        )
+        assert_array_equal(
+            project.motif_series["MotifSeriesHmm"].data[:],
+            np.load(HMM_LABELS_PATH).astype(np.int32),
+        )
+        assert_array_equal(
+            project.latent_space_series.data[:],
+            np.load(LATENT_VECTORS_PATH).astype(np.float32),
+        )
+        assert len(project.community_series) == 1
+        nwbfile.read_io.close()
 
 
 class TestVameInterfaceEthogram:
@@ -262,19 +262,16 @@ class TestVameInterfaceEthogram:
         sampling_frequency_hz=30.0,
     )
 
-    def _add_to_nwbfile(self, **add_kwargs):
-        interface = VameInterface(**self.interface_kwargs)
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata(), **add_kwargs)
-        return nwbfile.processing["behavior"]
-
     def test_metadata_has_ethogram_entries(self):
         ethograms = VameInterface(**self.interface_kwargs).get_metadata()["Behavior"]["Ethograms"]
         assert ethograms["VAMEProject_kmeans"]["EthogramBouts"]["name"] == "VAMEProjectEthogramBoutsKmeans"
         assert ethograms["VAMEProject_kmeans"]["Ethogram"]["name"] == "VAMEProjectEthogramKmeans"
 
     def test_bouts_are_motif_labels_run_length_encoded(self):
-        bouts = self._add_to_nwbfile()["VAMEProjectEthogramBoutsKmeans"]
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata())
+        bouts = nwbfile.processing["behavior"]["VAMEProjectEthogramBoutsKmeans"]
         labels = np.load(MOTIF_LABELS_PATH).astype(np.int32)
         run_starts = np.concatenate(([0], np.flatnonzero(np.diff(labels)) + 1))
         # One row per maximal run; the label is that run's motif id as text.
@@ -289,7 +286,10 @@ class TestVameInterfaceEthogram:
         assert bouts.source_software.startswith("VAME")
 
     def test_catalogue_covers_full_cluster_space_with_community_category(self):
-        catalogue = self._add_to_nwbfile()["VAMEProjectEthogramKmeans"]
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata())
+        catalogue = nwbfile.processing["behavior"]["VAMEProjectEthogramKmeans"]
         assert len(catalogue) == 15  # n_clusters from config, including motifs absent this session.
         assert catalogue.exclusive
         assert list(catalogue["behavior"][:]) == [str(index) for index in range(15)]
@@ -306,7 +306,10 @@ class TestVameInterfaceEthogram:
             assert catalogue["category"][motif_id] == expected_category
 
     def test_bouts_link_to_source_motif_series_and_catalogue(self):
-        behavior = self._add_to_nwbfile()
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata())
+        behavior = nwbfile.processing["behavior"]
         bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
         assert bouts.source is behavior["VAMEProject"].motif_series["MotifSeriesKmeans"]
         assert bouts.ethogram is behavior["VAMEProjectEthogramKmeans"]
@@ -319,12 +322,38 @@ class TestVameInterfaceEthogram:
         interface.run_conversion(nwbfile_path=str(path), metadata=metadata, overwrite=True)
         labels = np.load(MOTIF_LABELS_PATH).astype(np.int32)
         expected_runs = len(np.flatnonzero(np.diff(labels))) + 1
-        with NWBHDF5IO(path=str(path), mode="r", load_namespaces=True) as io:
-            behavior = io.read().processing["behavior"]
-            bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
-            assert len(bouts) == expected_runs
-            assert bouts.source.name == "MotifSeriesKmeans"
-            assert behavior["VAMEProjectEthogramKmeans"].exclusive
+        nwbfile = read_nwb(path)
+        behavior = nwbfile.processing["behavior"]
+        bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
+        assert len(bouts) == expected_runs
+        assert bouts.source.name == "MotifSeriesKmeans"
+        assert behavior["VAMEProjectEthogramKmeans"].exclusive
+        nwbfile.read_io.close()
+
+    def test_data_to_write_algorithm_output_writes_project_without_ethogram(self):
+        interface = VameInterface(**self.interface_kwargs)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata(), data_to_write="algorithm_output")
+        behavior = nwbfile.processing["behavior"]
+        assert "VAMEProject" in behavior.data_interfaces
+        assert "VAMEProjectEthogramBoutsKmeans" not in behavior.data_interfaces
+        assert "VAMEProjectEthogramKmeans" not in behavior.data_interfaces
+
+    def test_data_to_write_ethogram_writes_without_project_and_drops_source(self, tmp_path):
+        # ethogram-only: the faithful MotifSeries is absent, so the bouts' source back-link is dropped
+        # to None. A source-less ndx-ethogram must still be a valid, writable file, hence the roundtrip.
+        interface = VameInterface(**self.interface_kwargs)
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1).astimezone()
+        path = tmp_path / "vame_curated.nwb"
+        interface.run_conversion(nwbfile_path=str(path), metadata=metadata, overwrite=True, data_to_write="ethogram")
+        nwbfile = read_nwb(path)
+        behavior = nwbfile.processing["behavior"]
+        assert "VAMEProject" not in behavior.data_interfaces
+        bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
+        assert bouts.source is None
+        assert behavior["VAMEProjectEthogramKmeans"].exclusive
+        nwbfile.read_io.close()
 
 
 class TestVameInterfaceGetAvailableSessions:
@@ -784,32 +813,32 @@ class TestVameInterfacesInConverter:
         nwbfile_path = tmp_path / "two_projects.nwb"
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata)
 
-        with NWBHDF5IO(path=str(nwbfile_path), mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            behavior = nwbfile.processing["behavior"].data_interfaces
-            assert "ProjectA" in behavior
-            assert "ProjectB" in behavior
+        nwbfile = read_nwb(str(nwbfile_path))
+        behavior = nwbfile.processing["behavior"].data_interfaces
+        assert "ProjectA" in behavior
+        assert "ProjectB" in behavior
 
-            project_a = behavior["ProjectA"]
-            assert len(project_a.motif_series) == 2
-            assert_array_equal(
-                project_a.motif_series["MotifSeriesKmeans"].data[:],
-                np.load(MOTIF_LABELS_PATH).astype(np.int32),
-            )
-            assert_array_equal(
-                project_a.motif_series["MotifSeriesHmm"].data[:],
-                np.load(HMM_LABELS_PATH).astype(np.int32),
-            )
-            assert_array_equal(
-                project_a.latent_space_series.data[:],
-                np.load(LATENT_VECTORS_PATH).astype(np.float32),
-            )
-            assert len(project_a.community_series) == 1
+        project_a = behavior["ProjectA"]
+        assert len(project_a.motif_series) == 2
+        assert_array_equal(
+            project_a.motif_series["MotifSeriesKmeans"].data[:],
+            np.load(MOTIF_LABELS_PATH).astype(np.int32),
+        )
+        assert_array_equal(
+            project_a.motif_series["MotifSeriesHmm"].data[:],
+            np.load(HMM_LABELS_PATH).astype(np.int32),
+        )
+        assert_array_equal(
+            project_a.latent_space_series.data[:],
+            np.load(LATENT_VECTORS_PATH).astype(np.float32),
+        )
+        assert len(project_a.community_series) == 1
 
-            project_b = behavior["ProjectB"]
-            assert len(project_b.motif_series) == 1
-            assert_array_equal(
-                project_b.motif_series["MotifSeriesKmeans"].data[:],
-                np.load(MOTIF_LABELS_PATH).astype(np.int32),
-            )
-            assert project_b.latent_space_series is None
+        project_b = behavior["ProjectB"]
+        assert len(project_b.motif_series) == 1
+        assert_array_equal(
+            project_b.motif_series["MotifSeriesKmeans"].data[:],
+            np.load(MOTIF_LABELS_PATH).astype(np.int32),
+        )
+        assert project_b.latent_space_series is None
+        nwbfile.read_io.close()

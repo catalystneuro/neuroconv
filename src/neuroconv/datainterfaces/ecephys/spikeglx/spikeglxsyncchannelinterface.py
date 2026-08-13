@@ -71,7 +71,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         stream_id: str,
         verbose: bool = False,
-        metadata_key: str = "SpikeGLXSync",
+        metadata_key: str = "spikeglx_sync",
     ):
         """
         Read synchronization channel data from SpikeGLX Neuropixel probe recordings.
@@ -88,10 +88,11 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
             Examples: 'imec0.ap-SYNC', 'imec1.lf-SYNC'
         verbose : bool, default: False
             Whether to output verbose text.
-        metadata_key : str, default: "SpikeGLXSync"
+        metadata_key : str, default: "spikeglx_sync"
             Key used to organize metadata in the metadata dictionary. This is especially useful
             when multiple sync channel interfaces are used in the same conversion. The metadata_key is used
-            to organize TimeSeries metadata.
+            to organize TimeSeries metadata. It addresses the entry; the written object's name is the
+            entry's ``name`` field, derived from the probe index.
 
         Raises
         ------
@@ -210,23 +211,13 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         Returns
         -------
         DeepDict
-            Metadata dictionary containing device and TimeSeries information.
+            Metadata dictionary containing the TimeSeries information.
         """
         metadata = super().get_metadata()
 
         session_start_time = self._get_session_start_time()
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
-
-        # Device metadata - link to the parent probe device
-        device_name = f"NeuropixelsImec{self._probe_index}"
-        device = dict(
-            name=device_name,
-            description=f"Neuropixels probe {self._probe_index} used with SpikeGLX.",
-            manufacturer="Imec",
-        )
-
-        metadata["Devices"] = [device]
 
         # TimeSeries metadata for sync channel
         if "TimeSeries" not in metadata:
@@ -322,12 +313,6 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
             recording = _stub_recording(recording=self.recording_extractor)
 
         metadata = metadata or self.get_metadata()
-
-        # Add device (probe) if not already present
-        device_metadata = metadata.get("Devices", [])
-        for device in device_metadata:
-            if device["name"] not in nwbfile.devices:
-                nwbfile.create_device(**device)
 
         add_recording_as_time_series_to_nwbfile(
             recording=recording,

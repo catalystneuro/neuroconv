@@ -83,7 +83,7 @@ C:
     15:      666.150      702.550      703.350      703.850      706.300
 """
     medpc_file_path = tmp_path / "medpc_file.txt"
-    medpc_file_path.write_text(content)
+    medpc_file_path.write_text(content, encoding="utf-8")
     return medpc_file_path
 
 
@@ -105,7 +105,7 @@ def test_get_medpc_variables(medpc_file_path):
     ],
 )
 def test_get_session_lines(medpc_file_path, session_conditions, start_variable, expected_slice):
-    with open(medpc_file_path, "r") as f:
+    with open(medpc_file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     session_lines = _get_session_lines(lines, session_conditions, start_variable)
     expected_session_lines = lines[expected_slice]
@@ -113,7 +113,7 @@ def test_get_session_lines(medpc_file_path, session_conditions, start_variable, 
 
 
 def test_get_session_lines_invalid_session_conditions(medpc_file_path):
-    with open(medpc_file_path, "r") as f:
+    with open(medpc_file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     session_conditions = {"Invalid": "session condition"}
     start_variable = "Start Date"
@@ -123,7 +123,7 @@ def test_get_session_lines_invalid_session_conditions(medpc_file_path):
 
 
 def test_get_session_lines_invalid_start_variable(medpc_file_path):
-    with open(medpc_file_path, "r") as f:
+    with open(medpc_file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     session_conditions = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
     start_variable = "Invalid Start Variable"
@@ -136,7 +136,7 @@ def test_get_session_lines_invalid_start_variable(medpc_file_path):
 
 
 def test_get_session_lines_ambiguous_session_conditions(medpc_file_path):
-    with open(medpc_file_path, "r") as f:
+    with open(medpc_file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     session_conditions = {"Subject": "95.259"}
     start_variable = "Start Date"

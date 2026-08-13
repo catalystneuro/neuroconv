@@ -63,8 +63,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ``"_405R"`` gives ``"fiber_photometry_405r"``), so multiple interfaces over different streams
             already get distinct keys. Pass an explicit value to override.
         stream_indices : list of int, optional
-            Column indices selecting which channels of the (column-stacked) stream data to keep.
-            ``None`` (default) keeps all channels.
+            Column indices selecting which columns of the (column-stacked) stream data to keep.
+            ``None`` (default) keeps all columns.
         verbose : bool, default: False
             Whether to print status messages.
         **source_data
@@ -90,7 +90,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         """Return time-major data for a single atomic source stream.
 
-        Shaped ``(num_samples,)`` or ``(num_samples, num_channels)``.
+        Shaped ``(num_samples,)`` or ``(num_samples, num_columns)``.
         """
         raise NotImplementedError
 
@@ -127,9 +127,13 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: series_metadata}))
 
     def get_metadata_schema(self) -> dict:
-        """Return a permissive schema for the ``FiberPhotometry`` and top-level device metadata blocks."""
+        """Return a permissive schema for the ``FiberPhotometry`` block.
+
+        The device registries are declared centrally in ``base_metadata_schema.json``, so only
+        ``FiberPhotometry`` still needs an escape hatch here, until it gets a declaration of its own.
+        """
         metadata_schema = super().get_metadata_schema()
-        for tag in ("FiberPhotometry", "Devices", "DeviceModels"):
+        for tag in ("FiberPhotometry",):
             metadata_schema["properties"][tag] = get_base_schema(tag=tag)
             metadata_schema["properties"][tag]["additionalProperties"] = True
         return metadata_schema
@@ -272,7 +276,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 fiber_photometry_table=fiber_photometry_table,
                 table_rows_metadata=fiber_photometry_metadata["FiberPhotometryTable"]["rows"],
                 row_metadata_keys=series_metadata["fiber_photometry_table_region"],
-                description=series_metadata["fiber_photometry_table_region_description"],
+                description=series_metadata.get(
+                    "fiber_photometry_table_region_description", "fiber_photometry_table_region"
+                ),
             )
 
         # Add this interface's single response series.

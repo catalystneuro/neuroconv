@@ -28,7 +28,11 @@ class _EventsData:
         key to the metadata ``event_types`` entry, whose ``event_name``/``event_description`` supply the
         human-facing name and meaning.
     timestamps : numpy.ndarray
-        The event onset times, in seconds.
+        The event onset times, in seconds. May be empty: an event type that was recorded but had no
+        occurrences (for example an enabled digital line that never toggled) is written as a zero-row
+        table, which is faithful to the source (the type existed, nothing fired). Turning that normal
+        experimental condition into a conversion-time error or warning is not this layer's job; whether
+        an empty table is acceptable for archival is a best-practice question the NWB Inspector owns.
     durations : numpy.ndarray or None
         The per-event durations, in seconds, for an interval (durative) event type; ``None`` for a
         point event type. Within an interval type, ``NaN`` marks an event whose offset is missing.
@@ -43,11 +47,6 @@ class _EventsData:
     timestamps: np.ndarray
     durations: np.ndarray | None = None
     payload: dict[str, np.ndarray] = field(default_factory=dict)
-
-    def __post_init__(self):
-        # An event type with no occurrences is meaningless; keep the empty state unrepresentable so
-        # the writer never has to guard against it (producers skip such types instead).
-        assert len(self.timestamps) > 0, "An event type must have at least one event; empty timestamps are not allowed."
 
 
 class BaseEventsInterface(BaseDataInterface):
@@ -250,12 +249,18 @@ class BaseEventsInterface(BaseDataInterface):
             event_type_source_ids_by_table.setdefault(table_metadata_key, []).append(event_type_source_id)
 
         table_owners = {}  # table object name -> event_type_source_ids this call wrote into it (to name collisions)
-        for table_metadata_key, event_type_source_ids in event_type_source_ids_by_table.items():
+        for (
+            table_metadata_key,
+            event_type_source_ids,
+        ) in event_type_source_ids_by_table.items():
             # Resolve the table name/description: a declared EventTables entry wins, else a solo type
             # supplies both, else the name comes from the routing key and the description stays empty.
             declared_entry = event_tables_metadata.get(table_metadata_key)
             if declared_entry is not None:  # an EventTables entry always has the last word
-                table_name, description = declared_entry["table_name"], declared_entry["description"]
+                table_name, description = (
+                    declared_entry["table_name"],
+                    declared_entry["description"],
+                )
             elif len(event_type_source_ids) == 1:
                 only = event_types[event_type_source_ids[0]]
                 table_name = _to_table_object_name(only["event_name"])
@@ -311,7 +316,10 @@ class BaseEventsInterface(BaseDataInterface):
                 existing_table if existing_table is not None else EventsTable(name=table_name, description=description)
             )
             self._append_events_to_table(
-                table=table, metadata=metadata, event_type_source_ids=event_type_source_ids, is_merge=is_merge
+                table=table,
+                metadata=metadata,
+                event_type_source_ids=event_type_source_ids,
+                is_merge=is_merge,
             )
             if existing_table is None:
                 nwbfile.add_events_table(table)
@@ -326,7 +334,12 @@ class BaseEventsInterface(BaseDataInterface):
                         column.data[:] = [column.data[index] for index in order]
 
     def _append_events_to_table(
-        self, *, table: EventsTable, metadata: dict, event_type_source_ids: list, is_merge: bool
+        self,
+        *,
+        table: EventsTable,
+        metadata: dict,
+        event_type_source_ids: list,
+        is_merge: bool,
     ) -> None:
         """Append this interface's events to ``table``, creating whatever columns that data needs.
 
@@ -383,9 +396,20 @@ class BaseEventsInterface(BaseDataInterface):
                     "no duration column. Duration presence must be consistent across the types sharing a table."
                 )
 
+        # A table that gets no rows at all is a real result, a line that was recorded and never fired, and
+        # it is written rather than dropped. hdmf infers a column added at runtime from its data, though,
+        # and an empty Python list carries no dtype, so those columns get a typed empty instead. (The
+        # predefined timestamp and duration columns declare theirs in the schema, which is why a table
+        # holding a single event type has always written empty without this.)
+        stays_empty = n_existing == 0 and not rows
+
         # A fresh merged table needs the discriminator column before its MeaningsTable and rows.
         if is_merge and "event_type" not in table.colnames:
-            table.add_column(name="event_type", description="The event type of each event.", data=[""] * n_existing)
+            table.add_column(
+                name="event_type",
+                description="The event type of each event.",
+                data=np.array([], dtype=str) if stays_empty else [""] * n_existing,
+            )
 
         # Ensure each value column this interface writes exists (backfilling already-present rows), and
         # create or extend its MeaningsTable. A shared column is the union of its contributors' declarations
@@ -395,10 +419,11 @@ class BaseEventsInterface(BaseDataInterface):
             categories = column_spec.get("column_categories")
             if column_name not in table.colnames:
                 fill = "" if categories is not None else np.nan
+                empty = np.array([], dtype=str if categories is not None else float)
                 table.add_column(
                     name=column_name,
                     description=column_spec.get("description", ""),
-                    data=[fill] * n_existing,
+                    data=empty if stays_empty else [fill] * n_existing,
                 )
             # Only a meaning the user actually wrote earns a row: a column whose meanings are all empty
             # gets no MeaningsTable rather than a table of empty strings, and a partly annotated column
@@ -415,7 +440,8 @@ class BaseEventsInterface(BaseDataInterface):
                 labels = categories["labels"]
                 column = table[column_name]
                 meanings_table = next(
-                    (other for other in (table.meanings_tables or {}).values() if other.target is column), None
+                    (other for other in (table.meanings_tables or {}).values() if other.target is column),
+                    None,
                 )
                 creating = meanings_table is None
                 if creating:
@@ -437,7 +463,8 @@ class BaseEventsInterface(BaseDataInterface):
         if is_merge:
             column = table["event_type"]
             meanings_table = next(
-                (other for other in (table.meanings_tables or {}).values() if other.target is column), None
+                (other for other in (table.meanings_tables or {}).values() if other.target is column),
+                None,
             )
             existing_values = set(meanings_table["value"].data) if meanings_table is not None else set()
             described_types = []

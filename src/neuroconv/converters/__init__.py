@@ -10,26 +10,36 @@ from ..datainterfaces.behavior.lightningpose.lightningposeconverter import (
     LightningPoseConverter,
 )
 from ..datainterfaces.icephys.axon.axonintracellularconverter import AxonIntracellularConverter
+from ..datainterfaces.icephys.brukervoltagerecording.brukervoltagerecordingconverter import (
+    BrukerVoltageRecordingConverter,
+)
 from ..datainterfaces.ecephys.sortedrecordinginterface import SortedRecordingConverter
 from ..datainterfaces.ecephys.spikeglx.sorted_spikeglx_converter import SortedSpikeGLXConverter
 from ..datainterfaces.ecephys.intan.intanconverter import IntanConverter
 from ..datainterfaces.ecephys.openephys.openephysbinaryconverter import OpenEphysBinaryConverter
 from ..datainterfaces.ecephys.spikeglx.spikeglxconverter import SpikeGLXConverterPipe
+from ..datainterfaces.fiber_photometry.guppy.guppyconverter import GuppyConverter
 from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
+    BrukerTiffConverter,
     BrukerTiffMultiPlaneConverter,
     BrukerTiffSinglePlaneConverter,
 )
 from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConverter
+from ..datainterfaces.ophys.suite2p.suite2pconverter import Suite2pConverter
 
 converter_list = [
     AxonIntracellularConverter,
+    BrukerVoltageRecordingConverter,
     IntanConverter,
     LightningPoseConverter,
     OpenEphysBinaryConverter,
     SpikeGLXConverterPipe,
+    BrukerTiffConverter,
     BrukerTiffMultiPlaneConverter,
     BrukerTiffSinglePlaneConverter,
     MiniscopeConverter,
+    Suite2pConverter,
     SortedRecordingConverter,
     SortedSpikeGLXConverter,
+    GuppyConverter,
 ]
