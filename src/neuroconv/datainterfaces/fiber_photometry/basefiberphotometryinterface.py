@@ -125,20 +125,10 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return timestamps + self.alignment.offset
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        """Replace this interface's timestamps with externally aligned values.
-
-        The values given are this interface's times outright, so a pending ``alignment.shift_times``
-        offset is consumed here: it is cleared, and :meth:`get_timestamps` returns exactly what was
-        passed. The inherited ``set_aligned_starting_time`` and ``align_by_interpolation`` reach this
-        method with :meth:`get_timestamps` already applied, so for them the offset arrives folded into
-        the array rather than lost, and clearing it is what keeps it from being counted a second time.
-        Calling this directly after a shift does discard the shift, which is what replacing every
-        timestamp means. It passes without a warning because the two cases are indistinguishable from
-        here: both arrive as an array to store while an offset is pending.
-        """
+        """Replace this interface's timestamps with externally aligned values."""
         self._aligned_timestamps = np.asarray(aligned_timestamps)
-        # Spend the pending offset. Shifting by minus itself lands exactly on zero, and says it through
-        # the component's own method rather than reaching into state that belongs to it.
+        # Spend the pending offset. The inherited setters reach here with get_timestamps already
+        # applied, so leaving it would count the shift twice.
         self.alignment.shift_times(-self.alignment.offset)
 
     # ------------------------------------------------------------------
@@ -357,12 +347,6 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         helpers: the first interface to run builds them and subsequent interfaces reuse them. Timing is
         written as ``starting_time`` + ``rate`` when the timestamps are regular, otherwise as an explicit
         timestamps array.
-
-        Everything written here is timed through :meth:`get_timestamps`, which already carries any
-        ``alignment.shift_times`` offset, so a shift needs nothing of this method. A subclass that
-        overrides it to write a further series has to keep that true: times taken from
-        :meth:`get_timestamps` are shifted already, times read from a stream directly are not and need
-        ``self.alignment.offset`` added, as the commanded voltage series below does.
 
         Parameters
         ----------
