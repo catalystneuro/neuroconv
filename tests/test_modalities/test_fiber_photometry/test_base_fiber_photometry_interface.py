@@ -467,3 +467,76 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             assert len(read_nwbfile.devices) == 0
             assert len(read_nwbfile.device_models) == 0
             assert "fiber_photometry" not in read_nwbfile.lab_meta_data
+
+
+class TestFiberPhotometryTemporalAlignment:
+    """Gross temporal alignment: ``interface.alignment.shift_times`` places the interface on a session clock.
+
+    The offset is rigid, so it moves the whole interface and changes nothing about its internal timing, and
+    the source times are never mutated. Unlike the events interfaces, which hold the same component, this one
+    also has a timestamps getter, so a shift is observable there as well as in the written file.
+
+    Nothing here tests ``shift_times`` against the older scalar and interpolation setters. That
+    ``set_aligned_timestamps`` is authoritative over a pending offset is a contract of the temporal
+    alignment API rather than of this modality, so it belongs in ``TemporalAlignmentMixin``, and the
+    arithmetic of ``set_aligned_starting_time`` is what ``shift_times`` exists to replace.
+    """
+
+    def test_shift_moves_the_starting_time_and_accumulates(self):
+        # Successive shifts add up, and the rate is untouched: a rigid translation cancels in the sample
+        # differences calculate_regular_series_rate measures, so a shifted regular series stays regular.
+        interface = MockFiberPhotometryInterface()
+        interface.alignment.shift_times(1.0)
+        interface.alignment.shift_times(0.5)
+
+        response_series = interface.create_nwbfile().acquisition["FiberPhotometryResponseSeries"]
+
+        assert response_series.starting_time == pytest.approx(1.5)
+        assert response_series.rate == pytest.approx(100.0)
+
+    def test_shift_moves_an_explicitly_written_timestamps_vector(self):
+        # The other timing representation. A regular series collapses to starting_time + rate, where the
+        # shift lands in one scalar; forced onto the explicit vector, every sample of it has to move.
+        interface = MockFiberPhotometryInterface()
+        original_timestamps = interface.get_original_timestamps()
+        interface.alignment.shift_times(2.5)
+
+        nwbfile = interface.create_nwbfile(always_write_timestamps=True)
+        response_series = nwbfile.acquisition["FiberPhotometryResponseSeries"]
+
+        assert_array_equal(response_series.timestamps[:], original_timestamps + 2.5)
+
+    def test_get_timestamps_reports_the_accumulated_shift(self):
+        # The decision this modality forced: a shift is visible through get_timestamps, since an interface
+        # with a timestamps getter should not report times the file will disagree with. The source times
+        # stay where they were, so the alignment is a transform and not an edit.
+        interface = MockFiberPhotometryInterface()
+        original_timestamps = interface.get_original_timestamps()
+        interface.alignment.shift_times(3.0)
+
+        assert_array_equal(interface.get_original_timestamps(), original_timestamps)
+        assert_array_equal(interface.get_timestamps(), original_timestamps + 3.0)
+
+    def test_shift_moves_the_commanded_voltage_series_with_the_response_series(self, full_metadata):
+        # The second time-bearing object the writer produces, and the one place a shift has to be applied
+        # by hand, since it reads its stream directly instead of going through get_timestamps. A shift is
+        # interface-wide, so a commanded voltage left behind would misreport which samples it drove.
+        # The mock has no dedicated commanded-voltage stream, so this points at a response stream: the
+        # data is beside the point here, the timing is the subject.
+        full_metadata["FiberPhotometry"]["CommandedVoltageSeries"] = dict(
+            commanded_voltage=dict(
+                name="CommandedVoltageSeries470",
+                description="The voltage commanding the 470 nm excitation.",
+                stream_name="470nm",
+                index=0,
+                unit="volts",
+                frequency=211.0,
+            )
+        )
+        interface = MockFiberPhotometryInterface(num_fibers=2)
+        interface.alignment.shift_times(4.0)
+
+        nwbfile = interface.create_nwbfile(metadata=full_metadata)
+
+        assert nwbfile.acquisition["FiberPhotometryResponseSeries"].starting_time == pytest.approx(4.0)
+        assert nwbfile.acquisition["CommandedVoltageSeries470"].starting_time == pytest.approx(4.0)

@@ -23,6 +23,7 @@ from abc import abstractmethod
 import numpy as np
 from pynwb.file import NWBFile
 
+from ..._temporal_alignment import _TemporalAlignment
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...tools.fiber_photometry import (
     add_commanded_voltage_series,
@@ -77,6 +78,10 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             metadata_key = "_".join(["fiber_photometry", *stream_parts])
         self.metadata_key = metadata_key
         self._aligned_timestamps: np.ndarray | None = None
+        # Gross alignment by composition, the same component the events interfaces hold: one offset every
+        # time this interface writes is measured from, reached as ``interface.alignment.shift_times``.
+        # See neuroconv/_temporal_alignment.py.
+        self.alignment = _TemporalAlignment()
         super().__init__(verbose=verbose, stream_names=stream_names, **source_data)
         # Keep the ndx extensions registered so pynwb IO works correctly.
         import ndx_fiber_photometry  # noqa: F401
@@ -108,14 +113,33 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return self._get_stream_timestamps(stream_name=self.stream_names[0])
 
     def get_timestamps(self) -> np.ndarray:
-        """Return aligned timestamps if set, otherwise the original timestamps."""
-        if self._aligned_timestamps is not None:
-            return self._aligned_timestamps
-        return self.get_original_timestamps()
+        """Return this interface's times: the aligned ones if set, otherwise the original ones, shifted.
+
+        ``output = native + offset``, where the offset is whatever ``alignment.shift_times`` has
+        accumulated. A shift is therefore visible here and not only in the written file, which is what
+        distinguishes this from the events interfaces: they carry no timestamps getter for it to show up in.
+        """
+        timestamps = self._aligned_timestamps
+        if timestamps is None:
+            timestamps = self.get_original_timestamps()
+        return timestamps + self.alignment.offset
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        """Replace this interface's timestamps with externally aligned values."""
+        """Replace this interface's timestamps with externally aligned values.
+
+        The values given are this interface's times outright, so a pending ``alignment.shift_times``
+        offset is consumed here: it is cleared, and :meth:`get_timestamps` returns exactly what was
+        passed. The inherited ``set_aligned_starting_time`` and ``align_by_interpolation`` reach this
+        method with :meth:`get_timestamps` already applied, so for them the offset arrives folded into
+        the array rather than lost, and clearing it is what keeps it from being counted a second time.
+        Calling this directly after a shift does discard the shift, which is what replacing every
+        timestamp means. It passes without a warning because the two cases are indistinguishable from
+        here: both arrive as an array to store while an offset is pending.
+        """
         self._aligned_timestamps = np.asarray(aligned_timestamps)
+        # Spend the pending offset. Shifting by minus itself lands exactly on zero, and says it through
+        # the component's own method rather than reaching into state that belongs to it.
+        self.alignment.shift_times(-self.alignment.offset)
 
     # ------------------------------------------------------------------
     # Metadata
@@ -334,6 +358,12 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         written as ``starting_time`` + ``rate`` when the timestamps are regular, otherwise as an explicit
         timestamps array.
 
+        Everything written here is timed through :meth:`get_timestamps`, which already carries any
+        ``alignment.shift_times`` offset, so a shift needs nothing of this method. A subclass that
+        overrides it to write a further series has to keep that true: times taken from
+        :meth:`get_timestamps` are shifted already, times read from a stream directly are not and need
+        ``self.alignment.offset`` added, as the commanded voltage series below does.
+
         Parameters
         ----------
         nwbfile : NWBFile
@@ -370,7 +400,12 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 index = commanded_voltage_metadata.get("index")
                 if index is not None and commanded_voltage_data.ndim == 2:
                     commanded_voltage_data = commanded_voltage_data[:, index]
-                commanded_voltage_timestamps = self._get_stream_timestamps(stream_name=commanded_voltage_stream_name)
+                # This series reads its own stream rather than going through get_timestamps, so the
+                # alignment offset has to be applied here: a shift is interface-wide, and a commanded
+                # voltage left on its native times would drift from the response series it drove.
+                commanded_voltage_timestamps = (
+                    self._get_stream_timestamps(stream_name=commanded_voltage_stream_name) + self.alignment.offset
+                )
                 add_commanded_voltage_series(
                     nwbfile=nwbfile,
                     name=commanded_voltage_metadata["name"],
