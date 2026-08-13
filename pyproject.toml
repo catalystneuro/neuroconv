@@ -404,6 +404,13 @@ npm_fp = [
 pyphotometry_fp = [
     "neuroconv[fiber_photometry]",
 ]
+# One .ppd holds both modalities and PyPhotometryConverter writes both, so this is the install for a
+# whole recording. It resolves to the same packages as pyphotometry_fp while pyphotometry_events is
+# empty, and states what the converter needs rather than what it happens to cost today.
+pyphotometry = [
+    "neuroconv[pyphotometry_fp]",
+    "neuroconv[pyphotometry_events]",
+]
 csv_fp = [
     "neuroconv[fiber_photometry]",
 ]
