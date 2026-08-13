@@ -31,16 +31,8 @@ download. Everything after the constructor is the same for any fiber photometry 
 or any other, with the arguments its format needs, and annotate the metadata exactly as shown. See the
 :ref:`fiber photometry section of the Conversion Gallery <conversion_gallery_fiber_photometry>` for how
 to construct each one.
-
-.. admonition:: Start from a template
-   :class: tip
-
-   ``interface.get_metadata_template()`` returns the whole structure below already assembled and sized
-   to your recording, with the cross-references wired and every field only you can answer left blank.
-   That is the fastest way to annotate a recording, and :ref:`metadata_templates` prints it as a YAML
-   or JSON file to fill in by hand. The sections below build the same structure a block at a time, so
-   that each piece and each link between them is visible, and :ref:`the last one
-   <how_to_annotate_from_a_template>` returns to the template with that context.
+If you already know the shape and only want something to fill in, the same structure is printed as a
+YAML and a JSON file at :ref:`metadata_templates`.
 
 A **trace** is one column of that series, one fluorescence time series, and it is the unit everything
 below describes: one trace, one row. By itself a trace is just a column of numbers. Nothing records
