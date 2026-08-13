@@ -164,7 +164,9 @@ class BackendConfiguration(BaseModel):
         if len(default_configurations) != len(self.dataset_configurations):
             raise ValueError(
                 f"The number of default configurations ({len(default_configurations)}) does not match the number of "
-                f"specified configurations ({len(self.dataset_configurations)})!"
+                f"specified configurations ({len(self.dataset_configurations)})! This usually occurs when the file "
+                "gained or lost datasets after the configuration was built; derive the configuration from the file "
+                "you are about to write."
             )
 
         objects_requiring_remapping = {}
