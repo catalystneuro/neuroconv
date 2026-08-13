@@ -235,11 +235,12 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         )
         fiber_photometry[self.metadata_key] = dict(fiber_photometry_table_region=row_keys, description=None)
 
-        template = dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry)
+        template = DeepDict(dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry))
 
-        # For each interface, the template contains what the source format already provides
-        metadata = self.get_metadata()
-        return dict_deep_update(metadata, template)
+        # The blanks are a floor rather than an override: whatever the source recorded wins over the
+        # template, so a field the interface was able to read is never handed back as one to fill in.
+        template.deep_update(self.get_metadata())
+        return template
 
     def get_metadata_schema(self) -> dict:
         """Return a permissive schema for the ``FiberPhotometry`` block.

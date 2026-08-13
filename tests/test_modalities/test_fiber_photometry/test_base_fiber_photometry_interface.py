@@ -347,6 +347,22 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         assert row_metadata["optical_fiber_metadata_key"] in template["Devices"]
         assert row_metadata["photodetector_metadata_key"] in template["Devices"]
 
+    def test_metadata_template_does_not_blank_a_field_the_source_filled(self):
+        # The merge direction, which nothing else pins: the template declares fields no interface reports
+        # today, so a source that starts reporting one has to win over the blank rather than be overwritten
+        # by it. No such interface exists yet, hence the subclass.
+        class DescribingFiberPhotometryInterface(MockFiberPhotometryInterface):
+            def get_metadata(self):
+                metadata = super().get_metadata()
+                metadata["FiberPhotometry"][self.metadata_key]["description"] = "Read from the source."
+                return metadata
+
+        interface = DescribingFiberPhotometryInterface(metadata_key="calcium_signal")
+
+        template = interface.get_metadata_template()
+
+        assert template["FiberPhotometry"]["calcium_signal"]["description"] == "Read from the source."
+
     def test_filled_metadata_template_round_trips(self, tmp_path):
         # The template is a scaffold to edit, so filling every blank it marks has to be enough to write a
         # file, with nothing left to add and nothing to delete. It returns the whole chain, so this fills
