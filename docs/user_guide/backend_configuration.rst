@@ -182,6 +182,7 @@ The following example uses the :ref:`example data <example_data>` available from
     from zoneinfo import ZoneInfo
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import SpikeGLXRecordingInterface, PhySortingInterface
+    from neuroconv.tools import configure_and_write_nwbfile
 
     # Instantiate interfaces and converter
     ap_interface = SpikeGLXRecordingInterface(
@@ -211,11 +212,13 @@ The following example uses the :ref:`example data <example_data>` available from
 
     # Configure and write the NWB file
     nwbfile_path = "./my_nwbfile_name.nwb"
-    converter.run_conversion(
-        nwbfile_path=nwbfile_path,
+    configure_and_write_nwbfile(
         nwbfile=nwbfile,
+        nwbfile_path=nwbfile_path,
         backend_configuration=backend_configuration,
     )
+
+A configuration describes the file it was derived from, so build it once the NWB file holds everything it is going to hold, and write that same file. Adding anything to the file after this point raises when the configuration is applied.
 
 If you do not intend to make any alterations to the default configuration for the given backend type, then you can follow a more streamlined approach:
 
@@ -226,16 +229,12 @@ If you do not intend to make any alterations to the default configuration for th
         # Fetch available metadata
         metadata = converter.get_metadata()
 
-        # Create the in-memory NWBFile object and apply the default configuration for HDF5
-        nwbfile = converter.create_nwbfile(metadata=metadata)
-        backend="hdf5"
-
-        # Configure and write the NWB file
+        # Configure and write the NWB file, applying the default configuration for HDF5
         nwbfile_path = "./my_nwbfile_name.nwb"
         converter.run_conversion(
             nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            backend=backend,
+            metadata=metadata,
+            backend="hdf5",
         )
 
 and all datasets in the NWB file will automatically use the default configurations!

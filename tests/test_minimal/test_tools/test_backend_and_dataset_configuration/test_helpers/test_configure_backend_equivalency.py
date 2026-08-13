@@ -130,7 +130,9 @@ def test_configure_backend_equivalency_empty_to_nonempty_failure(array_1: np.nda
         configure_backend(nwbfile=nwbfile, backend_configuration=empty_backend_configuration)
 
     expected_message = (
-        "The number of default configurations (1) does not match the number of specified configurations (0)!"
+        "The number of default configurations (1) does not match the number of specified configurations (0)! "
+        "This usually occurs when the file gained or lost datasets after the configuration was built; derive the "
+        "configuration from the file you are about to write."
     )
     assert expected_message == str(exception_info.value)
 
@@ -149,6 +151,8 @@ def test_configure_backend_equivalency_nonempty_to_empty_failure(array_1: np.nda
         configure_backend(nwbfile=empty_nwbfile, backend_configuration=nonempty_backend_configuration)
 
     expected_message = (
-        "The number of default configurations (0) does not match the number of specified configurations (1)!"
+        "The number of default configurations (0) does not match the number of specified configurations (1)! "
+        "This usually occurs when the file gained or lost datasets after the configuration was built; derive the "
+        "configuration from the file you are about to write."
     )
     assert expected_message == str(exception_info.value)
