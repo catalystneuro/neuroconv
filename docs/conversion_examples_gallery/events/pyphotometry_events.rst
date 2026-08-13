@@ -61,4 +61,5 @@ them in ``detection_configuration``:
 
 .. seealso::
 
-    - :doc:`../fiberphotometry/pyphotometry_fp` to convert the fluorescence carried in the same words.
+    - :doc:`../fiberphotometry/pyphotometry_fp` to convert the fluorescence carried in the same words,
+      and ``PyPhotometryConverter`` on that page to write the fluorescence and the lines in one call.

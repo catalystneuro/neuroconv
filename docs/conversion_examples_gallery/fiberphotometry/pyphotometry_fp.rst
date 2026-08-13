@@ -13,7 +13,8 @@ acquisition mode the recording was made in, and ``get_available_streams`` report
 construction, named after the analog input they came off.
 
 ``PyPhotometryFiberPhotometryInterface`` reads one signal into a single
-``FiberPhotometryResponseSeries``.
+``FiberPhotometryResponseSeries``, and ``PyPhotometryConverter`` writes a recording whole, every signal
+and every digital line, in one call.
 
 Convert pyPhotometry Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,30 +59,42 @@ signal of a 130 Hz recording starts 1/260 of a second after the first:
 The continuous modes are the exception: the offset is real there too but its size is not recorded
 anywhere, so those signals keep the header's timebase and say so in their description.
 
+Convert a whole recording at once
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Since a response series carries one time axis, and no two signals of a recording share one, each signal
-is its own interface and its own series. To write all of them into one file, sharing a single
-``FiberPhotometryTable``, pass one interface per signal to a
-:py:class:`~neuroconv.nwbconverter.ConverterPipe`:
+is its own interface and its own series, and the digital lines in the same words are an interface of
+their own again. To write all of them into one file, use
+:py:class:`~neuroconv.datainterfaces.fiber_photometry.pyphotometry.pyphotometryconverter.PyPhotometryConverter`,
+which reads the acquisition mode and builds that set for you:
 
 .. code-block:: python
 
-    >>> from neuroconv import ConverterPipe
-    >>> signal_metadata_key = "signal"
-    >>> isosbestic_metadata_key = "isosbestic"
-    >>> signal = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1", metadata_key=signal_metadata_key)
-    >>> isosbestic = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2", metadata_key=isosbestic_metadata_key)
+    >>> from neuroconv.converters import PyPhotometryConverter
 
-    >>> converter = ConverterPipe(data_interfaces=dict(signal=signal, isosbestic=isosbestic))
+    >>> recording_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "pyphotometry" / "mode_named_in_prose" / "two_colour_time_division.ppd"
+
+    >>> # The fluorescence signals first, then the digital lines that ride beside them.
+    >>> PyPhotometryConverter.get_available_streams(file_path=recording_path)
+    ['analog_1', 'analog_2', 'digital_1', 'digital_2']
+
+    >>> converter = PyPhotometryConverter(file_path=recording_path)
     >>> metadata = converter.get_metadata()
 
-    >>> # Every interface names its series ``FiberPhotometryResponseSeries`` by default, so give each
-    >>> # one a name of its own before writing them into the same file.
-    >>> metadata["FiberPhotometry"][signal_metadata_key]["name"] = "FiberPhotometryResponseSeriesSignal"
-    >>> metadata["FiberPhotometry"][isosbestic_metadata_key]["name"] = "FiberPhotometryResponseSeriesIsosbestic"
+    >>> # Every interface would name its series ``FiberPhotometryResponseSeries``, and one file cannot
+    >>> # hold two of those, so the converter names each after the input its signal came off.
+    >>> [metadata["FiberPhotometry"][key]["name"] for key in ("fiber_photometry_analog_1", "fiber_photometry_analog_2")]
+    ['FiberPhotometryResponseSeriesAnalog1', 'FiberPhotometryResponseSeriesAnalog2']
 
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
     >>> converter.run_conversion(nwbfile_path=f"{path_to_save_nwbfile}", metadata=metadata, overwrite=True)
+
+Every signal shares one ``FiberPhotometryTable``, and each digital line is written as its own
+``EventsTable``, read as a ``high_period`` unless told otherwise. Passing ``detection_configuration``
+hands it to the events interface, which documents it and which the
+:doc:`pyPhotometry events page <../events/pyphotometry_events>` covers; naming only some of the lines
+there is also how the rest are left out.
 
 How to fill in the metadata a conversion needs, the device models, devices, indicators and the
 ``FiberPhotometryTable``, is shared across the fiber photometry interfaces and covered in
