@@ -1,4 +1,5 @@
 {
+  "version": 1,
   "description": "Published specifications for commercial fiber photometry hardware, keyed to the device model classes of the ndx-ophys-devices extension. Every entry carries the vendor page the values were read from. These are a copy-from reference, not values to infer from a recording file: no fiber photometry format stores the fiber, excitation source or photodetector specs, so the part has to be identified by the person who ran the rig. Product lines change; treat source_url as the authority and re-verify against the live page.",
   "device_models": [
     {

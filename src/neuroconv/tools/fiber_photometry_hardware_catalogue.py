@@ -6,8 +6,9 @@ catalogue lives in a module of its own: it has no dependency on any interface, i
 rest of the library is the shape of a ``metadata["DeviceModels"]`` entry, and if it ever outgrows
 NeuroConv it can be extracted as a package without unpicking anything.
 
-The data itself is ``src/neuroconv/reference_data/fiber_photometry_device_models.json``, and the
-user guide page is rendered from that same file so the table and the lookups cannot disagree.
+The lookups and :func:`list_reference_device_models` are the supported interface. The data ships with
+the package as a versioned file, and the user guide page is rendered from that same file so the table
+and the lookups cannot disagree, but where it lives and how it is laid out are internal and may change.
 """
 
 import json
