@@ -502,7 +502,9 @@ class BaseEventsInterface(BaseDataInterface):
                 else:  # a column from a prior interface: infer the fill from its existing dtype
                     existing = table[column_name].data
                     row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
-            table.add_row(**row_kwargs)
+            # check_ragged=False: hdmf rescans the whole column on every add_row, making the fill quadratic
+            # in its rows. Every cell here is a scalar, so the check can only ever return False.
+            table.add_row(check_ragged=False, **row_kwargs)
 
     @staticmethod
     def _validate_shared_columns(events_metadata: dict) -> None:
