@@ -154,7 +154,6 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         wavelengths, the indicator's label and the fiber insertion geometry. Rename the keys to suit the
         recording; they are handles, not names in the file.
         """
-        metadata = self.get_metadata()
         number_of_traces = self._get_number_of_traces()
 
         row_keys = [f"trace_{index}" for index in range(number_of_traces)]
@@ -237,6 +236,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         fiber_photometry[self.metadata_key] = dict(fiber_photometry_table_region=row_keys, description=None)
 
         template = dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry)
+
+        # For each interface, the template contains what the source format already provides
+        metadata = self.get_metadata()
         return dict_deep_update(metadata, template)
 
     def get_metadata_schema(self) -> dict:
