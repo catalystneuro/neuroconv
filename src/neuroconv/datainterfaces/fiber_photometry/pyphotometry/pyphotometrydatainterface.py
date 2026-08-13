@@ -128,13 +128,20 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         return signal.starting_time_in_seconds + np.arange(sample_count) / signal.rate_in_hz
 
     def get_metadata(self) -> DeepDict:
-        """Add what the header states about the session, and what it fails to state about the timing."""
+        """Add what the header states about the session and the subject, and what it omits about timing."""
         metadata = super().get_metadata()
         date_time = self.recording.header.get("date_time")
         if date_time is not None:
             metadata = dict_deep_update(
                 metadata, dict(NWBFile=dict(session_start_time=datetime.fromisoformat(date_time)))
             )
+        # The identifier typed into the acquisition GUI, and the only thing a .ppd says about the animal.
+        # Every header generation carries the field, so an empty one means it was left blank rather than
+        # that the format lacks it, and writing that would be indistinguishable from an experimenter
+        # naming their subject "".
+        subject_id = self.recording.header.get("subject_ID")
+        if subject_id:
+            metadata = dict_deep_update(metadata, dict(Subject=dict(subject_id=subject_id)))
         if not self.recording.pulsed:
             metadata = dict_deep_update(
                 metadata,

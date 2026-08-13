@@ -94,6 +94,10 @@ class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMi
         """Unlike most fiber photometry formats, a ``.ppd`` records when the session started."""
         assert self.interface.get_metadata()["NWBFile"]["session_start_time"] == datetime(2021, 6, 8, 16, 52, 48)
 
+    def test_subject_id_comes_from_the_header(self, setup_interface):
+        """The identifier typed into the acquisition GUI, and all a ``.ppd`` says about the animal."""
+        assert self.interface.get_metadata()["Subject"]["subject_id"] == "FFC_AF50-202"
+
     def test_strobed_recordings_carry_no_timing_note(self, setup_interface):
         """The stagger of a strobed recording is exact, so it is in the start time and needs no prose."""
         metadata = self.interface.get_metadata()
@@ -296,6 +300,16 @@ class TestPyPhotometryEdgeCases:
         interface = PyPhotometryFiberPhotometryInterface(file_path=self.file_path)
 
         assert interface.stream_names == ["analog_1"]
+
+    def test_a_blank_subject_id_writes_no_subject(self, tmp_path):
+        """Every header carries the field, so a blank one means it was left blank in the GUI.
+
+        No published recording has one, since an experimenter who bothers to save a file usually names
+        the animal, but the field is free text and nothing enforces it.
+        """
+        file_path = write_ppd_file(tmp_path, {"subject_ID": "", "version": "1.0"})
+
+        assert "Subject" not in PyPhotometryFiberPhotometryInterface(file_path=file_path).get_metadata()
 
     def test_an_unknown_mode_is_refused(self, tmp_path):
         """A mode the interface does not know must raise rather than fall back to two signals.
