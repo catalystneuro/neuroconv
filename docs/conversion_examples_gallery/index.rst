@@ -115,6 +115,7 @@ Behavior
     :maxdepth: 1
 
     Audio <behavior/audio>
+    DANNCE <behavior/dannce>
     DeepLabCut <behavior/deeplabcut>
     FicTrac <behavior/fictrac>
     LightningPose <behavior/lightningpose>

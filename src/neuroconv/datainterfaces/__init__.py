@@ -1,5 +1,6 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
+from .behavior.dannce.danncedatainterface import DANNCEInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
@@ -220,6 +221,7 @@ interface_list = [
     ExternalVideoInterface,
     InternalVideoInterface,
     AudioInterface,
+    DANNCEInterface,
     DeepLabCutInterface,
     SLEAPInterface,
     MiniscopeBehaviorInterface,
@@ -286,6 +288,7 @@ interfaces_by_category = dict(
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
+        DANNCE=DANNCEInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
