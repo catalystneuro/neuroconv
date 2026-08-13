@@ -1,0 +1,84 @@
+id: https://neuroconv.readthedocs.io/termset/species
+name: Species
+version: 0.0.1
+prefixes:
+  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_
+imports:
+  - linkml:types
+default_range: string
+
+enums:
+  Species:
+    permissible_values:
+      Mus musculus:
+        description: house mouse
+        meaning: NCBITaxon:10090
+      Rattus norvegicus:
+        description: Norway rat
+        meaning: NCBITaxon:10116
+      Homo sapiens:
+        description: human
+        meaning: NCBITaxon:9606
+      Macaca mulatta:
+        description: rhesus macaque
+        meaning: NCBITaxon:9544
+      Macaca fascicularis:
+        description: crab-eating macaque
+        meaning: NCBITaxon:9541
+      Callithrix jacchus:
+        description: common marmoset
+        meaning: NCBITaxon:9483
+      Mustela putorius furo:
+        description: domestic ferret
+        meaning: NCBITaxon:9669
+      Danio rerio:
+        description: zebrafish
+        meaning: NCBITaxon:7955
+      Drosophila melanogaster:
+        description: fruit fly
+        meaning: NCBITaxon:7227
+      Caenorhabditis elegans:
+        description: roundworm
+        meaning: NCBITaxon:6239
+      Gallus gallus:
+        description: chicken
+        meaning: NCBITaxon:9031
+      Sus scrofa:
+        description: pig
+        meaning: NCBITaxon:9823
+      Oryctolagus cuniculus:
+        description: rabbit
+        meaning: NCBITaxon:9986
+      Cavia porcellus:
+        description: guinea pig
+        meaning: NCBITaxon:10141
+      Felis catus:
+        description: domestic cat
+        meaning: NCBITaxon:9685
+      Canis lupus familiaris:
+        description: domestic dog
+        meaning: NCBITaxon:9615
+      Ovis aries:
+        description: sheep
+        meaning: NCBITaxon:9940
+      Mesocricetus auratus:
+        description: golden hamster
+        meaning: NCBITaxon:10036
+      Monodelphis domestica:
+        description: gray short-tailed opossum
+        meaning: NCBITaxon:13616
+      Taeniopygia guttata:
+        description: zebra finch
+        meaning: NCBITaxon:59729
+      Xenopus laevis:
+        description: African clawed frog
+        meaning: NCBITaxon:8355
+      Ambystoma mexicanum:
+        description: axolotl
+        meaning: NCBITaxon:8296
+      Carassius auratus:
+        description: goldfish
+        meaning: NCBITaxon:7957
+      Apis mellifera:
+        description: western honey bee
+        meaning: NCBITaxon:7460
