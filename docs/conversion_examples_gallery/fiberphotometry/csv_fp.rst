@@ -140,40 +140,6 @@ each with ``timestamps`` and ``data`` columns on a common timebase:
 
 The full metadata format (device models, devices, indicators, the ``FiberPhotometryTable``, and the
 per-interface response series) is shared across the fiber photometry interfaces and documented at
-:ref:`fiber_photometry_metadata_structure`.
-
-Filling the device models
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-A comma-separated-value export says nothing about the rig that produced it, so the device model
-specifications have to be stated by whoever ran it. Where the parts are commercial,
-:ref:`fiber_photometry_device_models` publishes their numbers with the vendor page each came from, and
-one lookup per model type returns a row ready to drop into the metadata ``get_metadata()`` returned.
-
-A generic export is also the likeliest sign of a bench built from parts rather than a turnkey system,
-which is the case the dichroic and edge-filter rows serve: those are the components that set a rig's
-spectral geometry, and only the vendors selling them individually publish an edge. Doric describes the
-dichroic inside its mini-cubes without ever stating its wavelength.
-
-.. code-block:: python
-
-    >>> from neuroconv.tools.fiber_photometry_hardware_catalogue import (
-    ...     get_reference_dichroic_mirror_model,
-    ...     get_reference_edge_optical_filter_model,
-    ... )
-
-    >>> metadata = interface.get_metadata()
-    >>> device_models = metadata["DeviceModels"]
-    >>> device_models["dichroic_mirror_model"] = get_reference_dichroic_mirror_model(
-    ...     manufacturer="Semrock", part="FF495-Di04-25x36"
-    ... )
-    >>> device_models["emission_filter_model"] = get_reference_edge_optical_filter_model(
-    ...     manufacturer="Thorlabs", part="FELH0500"
-    ... )
-    >>> device_models["dichroic_mirror_model"]["cut_on_wavelength_in_nm"]
-    495.0
-    >>> device_models["emission_filter_model"]["cut_wavelength_in_nm"]
-    500.0
-
-Both figures are the vendor's, at the angle of incidence the vendor specifies, so a part mounted at a
-different angle has a different edge in practice.
+:ref:`fiber_photometry_metadata_structure`. For a worked example that fills it in one block at a time,
+see :ref:`annotate_fiber_photometry_metadata`; for the same structure with its blanks unfilled, ready
+to copy and edit, see :ref:`fiber_photometry_metadata_template`.
