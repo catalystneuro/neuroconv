@@ -89,16 +89,15 @@ Fine alignment
 --------------
 
 Fine alignment is the case where the clocks themselves disagree, so no single shift lines things up and the times have
-to be rewritten. There are two ways to do it, and which you use depends on what you already have. The examples here
-assume the interface holds a single time-bearing object, so the calls act on it directly; interfaces with several are
-covered in the next section.
+to be rewritten. There are two ways to do it, and which you use depends on what you already have.
 
 **Set the times directly.** When you already have the correct per-sample times, from a per-sample synchronization
-signal or any computation you trust, hand them to ``set_times``:
+signal or any computation you trust, hand them to ``set_times`` on the object they belong to. Times are per-object, so
+this call always names one, even where the interface writes only that one; the next section covers how to find the key:
 
 .. code-block:: python
 
-    imaging_interface.alignment.set_times(frame_times)   # write these times for the object
+    imaging_interface.alignment["two_photon_series"].set_times(frame_times)
 
 **Re-time against a reference clock.** When you do not have the true times, you recover them by comparison with a clock
 you trust, the reference clock.
@@ -122,7 +121,7 @@ samples that fall between pulses:
     pulses_reference = ...   # the same pulses on the reference clock
 
     imaging_interface.alignment.remap_times(
-        stream_sync_times=pulses_local,
+        local_sync_times=pulses_local,
         reference_sync_times=pulses_reference,
     )
 
@@ -164,25 +163,26 @@ end in ``_time``, an NWB convention the `NWB Inspector checks
 <https://nwbinspector.readthedocs.io/en/dev/best_practices/tables.html#timing-columns>`_. Structural and metadata
 objects (a ``Device``, an ``electrodes`` table) carry no time and are left untouched.
 
-``alignment`` exposes those objects as a mapping: its keys enumerate them, and indexing one reaches it, giving you the
-same ``set_times`` / ``remap_times`` / ``shift_times`` on that single object:
+``alignment`` exposes those objects as a mapping: its keys enumerate them, and indexing one reaches it, giving you that
+object's times and the operations that rewrite them:
 
 .. code-block:: python
 
     pose_interface.alignment.keys()                    # e.g. ("nose", "left_ear", "tail_base")
 
+    pose_interface.alignment["nose"].get_times()
     pose_interface.alignment["nose"].set_times(times)
-    pose_interface.alignment["nose"].remap_times(stream_sync_times=pulses_local, reference_sync_times=pulses_reference)
-    pose_interface.alignment["nose"].shift_times(0.5)
+    pose_interface.alignment["nose"].remap_times(local_sync_times=pulses_local, reference_sync_times=pulses_reference)
 
-Two of these do not need a key even when there are several objects, because their correction is the same for all of
-them: ``shift_times`` adds one offset to every object, and ``remap_times`` applies one clock's map to every object (a
-single acquisition clock, one correction). ``set_times`` is the exception, its literal per-sample values belong to one
-object, so with several you must name which.
+What you call an operation on is what it applies to. ``shift_times`` places the whole interface, so it moves every
+object and takes no key at all. ``remap_times`` is one clock's correction, so it is available at either scope: on the
+interface it applies the same map to every object. Times themselves belong to one object, so ``set_times`` and
+``get_times`` are only ever reached through the object.
 
-A per-object ``shift_times`` breaks the inter-object relationships the whole-interface shift is designed to protect,
-so use it only for a deliberate single-object correction (a fixed cable latency on one stream, say), not to place a
-whole interface.
+There is no per-object shift, and none is needed: an interface reads one source from one acquisition system, so its
+objects share a clock rather than merely happening to agree. All of a pose interface's keypoints come off the same
+video, and all of an events interface's tables off the same board. An object that is genuinely misplaced against its
+siblings has a wrong array, which ``set_times`` replaces, and one that runs on a second clock wants a second interface.
 
 Alignment in a converter
 ------------------------
