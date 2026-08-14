@@ -120,22 +120,22 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         Whatever the alignment holds for that object, the interface-wide offset included. With no alignment
         applied these are the source's own times.
         """
-        return self.alignment._get_times(self.metadata_key)
+        return self.alignment[self.metadata_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         """Replace this interface's timestamps with externally aligned values.
 
         .. deprecated::
-            Use ``interface.alignment.set_times(aligned_timestamps)``, which does the same thing and can
-            name one object when an interface writes several. Removed on or after August 2027.
+            Use ``interface.alignment[key].set_times(aligned_timestamps)``, which does the same thing and
+            names the object it lands on. Removed on or after August 2027.
         """
         warnings.warn(
             "`set_aligned_timestamps` is deprecated and will be removed on or after August 2027. "
-            "Use `interface.alignment.set_times(times)` instead.",
+            "Use `interface.alignment[key].set_times(times)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment.set_times(aligned_timestamps)
+        self.alignment[self.metadata_key].set_times(aligned_timestamps)
 
     def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
         """Shift this interface's times by ``aligned_starting_time`` seconds.
@@ -156,16 +156,16 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         """Re-time this interface against a reference clock through synchronization pulses.
 
         .. deprecated::
-            Use ``interface.alignment.remap_times(stream_sync_times=..., reference_sync_times=...)``, whose
+            Use ``interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)``, whose
             argument names say which clock each set of pulses came off. Removed on or after August 2027.
         """
         warnings.warn(
             "`align_by_interpolation` is deprecated and will be removed on or after August 2027. Use "
-            "`interface.alignment.remap_times(stream_sync_times=..., reference_sync_times=...)` instead.",
+            "`interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment.remap_times(stream_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps)
+        self.alignment.remap_times(local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps)
 
     # ------------------------------------------------------------------
     # Metadata

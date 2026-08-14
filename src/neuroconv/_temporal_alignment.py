@@ -6,14 +6,16 @@ can be reached and re-timed on its own::
 
     interface.alignment.shift_times(3.0)                   # every object, rigid, accumulates
     interface.alignment.keys()                             # the objects this interface can name
+    interface.alignment["response"].get_times()            # the times this object will be written on
     interface.alignment["response"].set_times(times)       # this object's times outright
     interface.alignment["response"].remap_times(...)       # this object's clock against a reference
 
-An interface that names nothing still shifts: registration is what a keyed operation needs, and the events
-interfaces register nothing because enumerating their event types means reading the source. The units are
-split by shape because the operations are: a series has one sample axis and takes all three operations, while
-a table is timestamps plus durations and cannot take ``set_times`` at all, since there is no single array to
-hand it. Only the series-shaped unit exists here so far.
+What an operation is called on is what it applies to: a shift positions the whole interface and so cannot take
+a key, while literal times belong to one object and so cannot be given without one. An interface that names
+nothing still shifts: registration is what a keyed operation needs, and the events interfaces register nothing
+because enumerating their event types means reading the source. The objects are typed by shape, since a series
+is a single sample axis and takes ``set_times`` while a table is timestamps plus durations and cannot, there
+being no one array to hand it. Only the series-shaped one exists here so far.
 """
 
 from collections.abc import Iterator
@@ -21,86 +23,71 @@ from collections.abc import Iterator
 import numpy as np
 
 
-class _TimeSeriesAlignment:
-    """The alignment of one series-shaped time-bearing object, reached as ``interface.alignment[key]``.
+class _TimeBearingSeries:
+    """One series-shaped time-bearing object, reached as ``interface.alignment[key]``.
 
-    Holds what re-times this object and nothing else: an optional replacement for its times, and an offset of
-    its own. The source times are never mutated, so what is written is
-    ``(replacement or native) + own offset + the interface's offset``, the last of which is added by the
-    container.
+    Holds an optional replacement for the object's times and nothing else, so the source times are never
+    mutated and what is written is ``(replacement or native) + the interface's offset``.
     """
 
-    def __init__(self, *, get_native_times):
+    def __init__(self, *, get_native_times, alignment: "_TemporalAlignment"):
         # A callable rather than an array, so an interface registers its objects without reading its source.
         self._get_native_times = get_native_times
+        self._alignment = alignment
         self._times: np.ndarray | None = None
-        self._offset = 0.0
-
-    @property
-    def offset(self) -> float:
-        """The offset, in seconds, this object carries on its own, before the interface's own offset."""
-        return self._offset
 
     def get_times(self) -> np.ndarray:
-        """Return this object's times as they stand, without the interface-wide offset."""
+        """Return the times this object will be written on, the interface's offset included."""
         times = self._times if self._times is not None else np.asarray(self._get_native_times())
-        return times + self._offset
+        return times + self._alignment.offset
 
     def set_times(self, times) -> None:
         """Replace this object's times with the ones given.
 
         For per-sample times you already trust, from a synchronization signal or a computation of your own.
-        The interface's own offset still applies on top, since that positions the whole interface and this
+        The interface's offset still applies on top, since that positions the whole interface and this
         positions one object inside it.
         """
         self._times = np.asarray(times)
-        self._offset = 0.0
 
-    def shift_times(self, delta: float) -> None:
-        """Shift this object alone by ``delta`` seconds (relative, accumulates).
-
-        This breaks the relationship between this object and its siblings, which the interface-wide shift is
-        there to protect, so it is for a deliberate single-object correction (a cable latency on one stream)
-        rather than for placing an interface.
-        """
-        self._offset += float(delta)
-
-    def remap_times(self, *, stream_sync_times, reference_sync_times) -> None:
+    def remap_times(self, *, local_sync_times, reference_sync_times) -> None:
         """Re-express this object's times on a reference clock through synchronization pulses.
 
-        ``stream_sync_times`` are the pulses as this object's own clock recorded them and
+        ``local_sync_times`` are the pulses as this object's own clock recorded them and
         ``reference_sync_times`` are the same pulses on the clock being aligned to. Times between pulses are
         interpolated. Use this when the two clocks drift, so no single shift lines them up.
         """
-        stream_sync_times = np.asarray(stream_sync_times)
+        local_sync_times = np.asarray(local_sync_times)
         reference_sync_times = np.asarray(reference_sync_times)
-        if stream_sync_times.shape != reference_sync_times.shape:
+        if local_sync_times.shape != reference_sync_times.shape:
             raise ValueError(
-                "The synchronization pulses have to pair up: `stream_sync_times` has "
-                f"{stream_sync_times.size} of them and `reference_sync_times` has {reference_sync_times.size}."
+                "The synchronization pulses have to pair up: `local_sync_times` has "
+                f"{local_sync_times.size} of them and `reference_sync_times` has {reference_sync_times.size}."
             )
-        self._times = np.interp(self.get_times(), stream_sync_times, reference_sync_times)
-        self._offset = 0.0
+        remapped_times = np.interp(self.get_times(), local_sync_times, reference_sync_times)
+        # These are the times to be written, and ``get_times`` adds the interface's offset on the way back
+        # out, so what is stored is the remapped times less that offset.
+        self._times = remapped_times - self._alignment.offset
 
 
 class _TemporalAlignment:
     """The alignment surface for an interface's time-bearing objects, exposed as ``interface.alignment``.
 
     Carries the interface-wide offset, ``output = native + offset``, default ``0.0`` (identity), and names the
-    objects the interface registered. ``shift_times`` and ``remap_times`` need no key, as one correction
-    applies to every object; ``set_times`` is per-object literal values, so it needs one unless the interface
-    has exactly one object to mean.
+    objects the interface registered. ``shift_times`` positions the whole interface, so it takes no key, and
+    ``remap_times`` is one clock's correction, so it applies to every object. Times for one object are given
+    through the object itself: ``alignment[key].set_times(times)``.
     """
 
     def __init__(self):
         self._offset = 0.0
-        self._objects: dict[str, _TimeSeriesAlignment] = {}
+        self._name_to_time_bearing_object: dict[str, _TimeBearingSeries] = {}
 
-    def _register_series(self, *, key: str, get_native_times) -> _TimeSeriesAlignment:
+    def _register_series(self, *, key: str, get_native_times) -> _TimeBearingSeries:
         """Name one series-shaped time-bearing object. Called by the interface, not by a user."""
-        alignment = _TimeSeriesAlignment(get_native_times=get_native_times)
-        self._objects[key] = alignment
-        return alignment
+        time_bearing_object = _TimeBearingSeries(get_native_times=get_native_times, alignment=self)
+        self._name_to_time_bearing_object[key] = time_bearing_object
+        return time_bearing_object
 
     @property
     def offset(self) -> float:
@@ -109,52 +96,34 @@ class _TemporalAlignment:
 
     def keys(self) -> tuple[str, ...]:
         """The time-bearing objects this interface can name, empty when it names none."""
-        return tuple(self._objects)
+        return tuple(self._name_to_time_bearing_object)
 
-    def __getitem__(self, key: str) -> _TimeSeriesAlignment:
-        if key not in self._objects:
-            named = ", ".join(repr(name) for name in self._objects) or "nothing"
+    def __getitem__(self, key: str) -> _TimeBearingSeries:
+        if key not in self._name_to_time_bearing_object:
+            named = ", ".join(repr(name) for name in self._name_to_time_bearing_object) or "nothing"
             raise KeyError(f"{key!r} is not a time-bearing object of this interface. It names {named}.")
-        return self._objects[key]
+        return self._name_to_time_bearing_object[key]
 
     def __contains__(self, key: str) -> bool:
-        return key in self._objects
+        return key in self._name_to_time_bearing_object
 
     def __iter__(self) -> Iterator[str]:
-        return iter(self._objects)
+        return iter(self._name_to_time_bearing_object)
 
     def __len__(self) -> int:
-        return len(self._objects)
+        return len(self._name_to_time_bearing_object)
 
     def shift_times(self, delta: float) -> None:
         """Shift every time-bearing object in the interface by ``delta`` seconds (relative, accumulates)."""
         self._offset += float(delta)
 
-    def set_times(self, times) -> None:
-        """Replace the times of this interface's single time-bearing object.
-
-        Literal per-sample values belong to one object, so this is only keyless where there is one object to
-        mean. With several, name it: ``interface.alignment[key].set_times(times)``.
-        """
-        if len(self._objects) != 1:
-            named = ", ".join(repr(name) for name in self._objects) or "none"
-            raise ValueError(
-                "`set_times` writes the times of one object, so it can only be called without a key on an "
-                f"interface that has exactly one. This one names {named}. Reach the object you mean with "
-                "`alignment[key].set_times(times)`."
-            )
-        (single_object,) = self._objects.values()
-        single_object.set_times(times)
-
-    def remap_times(self, *, stream_sync_times, reference_sync_times) -> None:
+    def remap_times(self, *, local_sync_times, reference_sync_times) -> None:
         """Re-express every time-bearing object on a reference clock through synchronization pulses.
 
         One acquisition clock means one correction, so this needs no key. See
-        :meth:`_TimeSeriesAlignment.remap_times`.
+        :meth:`_TimeBearingSeries.remap_times`.
         """
-        for single_object in self._objects.values():
-            single_object.remap_times(stream_sync_times=stream_sync_times, reference_sync_times=reference_sync_times)
-
-    def _get_times(self, key: str) -> np.ndarray:
-        """Return the times that will be written for one object, the interface's offset included."""
-        return self[key].get_times() + self._offset
+        for time_bearing_object in self._name_to_time_bearing_object.values():
+            time_bearing_object.remap_times(
+                local_sync_times=local_sync_times, reference_sync_times=reference_sync_times
+            )
