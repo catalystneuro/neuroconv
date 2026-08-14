@@ -504,16 +504,16 @@ class TestFiberPhotometryTemporalAlignment:
 
         assert_array_equal(response_series.timestamps[:], original_timestamps + 2.5)
 
-    def test_get_timestamps_reports_the_accumulated_shift(self):
-        # The decision this modality forced: a shift is visible through get_timestamps, since an interface
-        # with a timestamps getter should not report times the file will disagree with. The source times
-        # stay where they were, so the alignment is a transform and not an edit.
+    def test_the_read_reports_the_accumulated_shift(self):
+        # The decision this modality forced: a shift is visible through the read, since an interface that
+        # reports its times should not report ones the file will disagree with. The source times stay where
+        # they were, so the alignment is a transform and not an edit.
         interface = MockFiberPhotometryInterface()
         original_timestamps = interface.get_original_timestamps()
         interface.alignment.shift_times(3.0)
 
         assert_array_equal(interface.get_original_timestamps(), original_timestamps)
-        assert_array_equal(interface.get_timestamps(), original_timestamps + 3.0)
+        assert_array_equal(interface.alignment[interface.metadata_key].get_times(), original_timestamps + 3.0)
 
     def test_set_times_writes_the_times_it_is_given(self):
         # Fine alignment by literal values, for per-sample times the user already trusts. Literal values
@@ -537,8 +537,9 @@ class TestFiberPhotometryTemporalAlignment:
         set_first.alignment[set_first.metadata_key].set_times(set_first.get_original_timestamps() + 5.0)
         set_first.alignment.shift_times(2.0)
 
-        assert_allclose(shift_first.get_timestamps(), set_first.get_timestamps())
-        assert shift_first.get_timestamps()[0] == pytest.approx(7.0)
+        shift_first_times = shift_first.alignment[shift_first.metadata_key].get_times()
+        assert_allclose(shift_first_times, set_first.alignment[set_first.metadata_key].get_times())
+        assert shift_first_times[0] == pytest.approx(7.0)
 
     def test_remap_times_re_expresses_the_series_on_the_reference_clock(self):
         # Fine alignment against a reference clock. These pulses say the stream's clock runs at half the
@@ -605,7 +606,7 @@ class TestFiberPhotometryTemporalAlignment:
         ],
     )
     def test_the_older_methods_warn_and_do_what_their_successor_does(self, legacy_call, new_call):
-        # Each of the three has a successor now, so they route into it rather than holding a second
+        # Each of the three writers has a successor now, so they route into it rather than holding a second
         # mechanism. Every one of these lands the series at five seconds by a different road.
         legacy_interface = MockFiberPhotometryInterface()
         with pytest.warns(FutureWarning, match="removed on or after August 2027"):
@@ -614,8 +615,21 @@ class TestFiberPhotometryTemporalAlignment:
         new_interface = MockFiberPhotometryInterface()
         new_call(new_interface)
 
-        assert_allclose(legacy_interface.get_timestamps(), new_interface.get_timestamps())
-        assert legacy_interface.get_timestamps()[0] == pytest.approx(5.0)
+        legacy_times = legacy_interface.alignment[legacy_interface.metadata_key].get_times()
+        assert_allclose(legacy_times, new_interface.alignment[new_interface.metadata_key].get_times())
+        assert legacy_times[0] == pytest.approx(5.0)
+
+    def test_the_older_read_warns_and_returns_what_its_successor_returns(self):
+        # The read is deprecated with the writers. An interface-level read has to assume the interface
+        # writes one time-bearing object, which is the assumption the mapping surface exists to drop, so
+        # its successor names the object rather than answering for the interface.
+        interface = MockFiberPhotometryInterface()
+        interface.alignment.shift_times(5.0)
+
+        with pytest.warns(FutureWarning, match="removed on or after August 2027"):
+            legacy_times = interface.get_timestamps()
+
+        assert_array_equal(legacy_times, interface.alignment[interface.metadata_key].get_times())
 
     def test_shift_moves_the_commanded_voltage_series_with_the_response_series(self, full_metadata):
         # The second time-bearing object the writer produces, and the one place a shift has to be applied

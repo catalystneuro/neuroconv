@@ -117,9 +117,16 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     def get_timestamps(self) -> np.ndarray:
         """Return the times this interface's response series will be written on.
 
-        Whatever the alignment holds for that object, the interface-wide offset included. With no alignment
-        applied these are the source's own times.
+        .. deprecated::
+            Use ``interface.alignment[key].get_times()``, which reads the object it names rather than
+            assuming the interface writes one. Removed on or after August 2027.
         """
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed on or after August 2027. "
+            "Use `interface.alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         return self.alignment[self.metadata_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
@@ -454,7 +461,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         # Add this interface's single response series.
         data = stub(self._read_response_data())
-        timestamps = stub(self.get_timestamps())
+        timestamps = stub(self.alignment[self.metadata_key].get_times())
         timing_kwargs = self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps)
 
         response_series = FiberPhotometryResponseSeries(
