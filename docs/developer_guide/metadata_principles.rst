@@ -46,11 +46,51 @@ A placeholder in the dictionary makes it impossible for anything downstream to t
 came from the source, the user, or NeuroConv. Warning about it at write time does not help, since the
 value is written regardless.
 
-See `issue #1557 <https://github.com/catalystneuro/neuroconv/issues/1557>`_ for the discussion.
+See `issue #1557 <https://github.com/catalystneuro/neuroconv/issues/1557>`_ for the original discussion.
 
-Staying faithful is not the whole story, though. Some of what a source leaves out is genuinely
-required by NWB, and a file cannot be written without it, so a value has to come from somewhere even
-when the interface reports none.
+Faithfulness costs the user something, though, and it is worth naming: a dictionary that omits
+everything the source did not record does not tell you what else the file needs. That is what
+``get_metadata_template()`` is for.
+
+
+Templates: the structure, with the blanks marked
+------------------------------------------------
+
+``get_metadata_template()`` is the counterpart to ``get_metadata()``. Where ``get_metadata()`` answers
+what the source recorded, and must never carry a value it did not, ``get_metadata_template()`` answers
+what metadata can be added to the file through this interface.
+
+The design principles of ``get_metadata_template()`` are the following:
+
+**It returns the complete structure that could be added.** A template carries every entry and every
+field the schema accepts including the optional ones. The point here is discoverability, since nobody
+can fill in a field they do not know exists. This is in tension with the principle that neuroconv
+should not provide ways of adding incorrect metadata, so the metadata as returned by
+``get_metadata_template()`` should fail when used as it is. At the moment, this is implemented with
+``None``, which the metadata schema and pynwb both reject. Every entry needs at least one blank for
+that to bite, and the ``name`` is the field that always qualifies, since every NWB object requires one.
+
+**It adapts to the interface.** This means the following things in practice:
+
+* The ``metadata_key`` entries are already the ones the interface would use. This includes the
+  cross-references between ``metadata_key`` entries.
+* The metadata that is available on the source is prefilled.
+* For metadata whose length and extent depends on the data, ``get_metadata_template()`` returns the
+  right shape.
+
+To make the last point concrete, it refers to the variable-length fields like the number of rows in a
+``FiberPhotometryTable``, the number of ``ElectrodeGroups`` on a recording or the number of body parts
+in a ``PoseEstimation``.
+
+Implementing ``get_metadata_template()`` is the responsibility of each modality base class, with
+``BaseDataInterface`` supplying only the generic ``NWBFile`` and ``Subject`` metadata.
+
+In opposition to how ``get_metadata_template()`` adapts itself to the interface, we provide generic
+structures as references in the user guide at :ref:`metadata_templates`. There the metadata keys are
+generic, the fields are blank as there is no source, and whatever repeats is shown twice as an example
+of how to fill the variable-length fields.
+
+See `issue #1802 <https://github.com/catalystneuro/neuroconv/issues/1802>`_ for the original discussion.
 
 
 Placeholders for required fields
@@ -198,7 +238,8 @@ Checklist for a new interface
 When writing or reviewing an interface:
 
 - Every key ``get_metadata()`` returns corresponds to something read from the source.
-- No key holds ``""``, ``{}``, ``None``, ``np.nan``, ``"unknown"``, or any other sentinel.
+- No key holds ``""``, ``{}``, ``None``, ``np.nan``, ``"unknown"``, or any other sentinel. This
+  constrains ``get_metadata()``; ``get_metadata_template()`` is where blanks belong.
 - No object is returned that the source gives no evidence for: no imaging plane without optical
   information, no electrode group without probe information, no fiber without a fiber.
 - Required NWB fields with no source value are filled where the object is built, in the

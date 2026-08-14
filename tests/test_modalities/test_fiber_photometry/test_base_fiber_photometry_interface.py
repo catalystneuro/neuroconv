@@ -313,6 +313,134 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         assert "optical_fiber_dms" in nwbfile.devices
         assert "optical_fiber_model" in nwbfile.device_models
 
+    def test_metadata_template_sizes_the_table_to_the_traces(self):
+        # One row per trace, measured from the data rather than fixed. The table region is positional, so
+        # a hard-coded row count would silently mismatch every recording but the one it was written for.
+        interface = MockFiberPhotometryInterface(num_fibers=3, metadata_key="calcium_signal")
+        template = interface.get_metadata_template()
+
+        rows_metadata = template["FiberPhotometry"]["FiberPhotometryTable"]["rows"]
+        assert list(rows_metadata) == ["trace_0", "trace_1", "trace_2"]
+        assert template["FiberPhotometry"]["calcium_signal"]["fiber_photometry_table_region"] == list(rows_metadata)
+
+        # One fiber per row, since a fiber is what a column distinguishes; the rest of the chain is shared.
+        optical_fiber_metadata_keys = [row["optical_fiber_metadata_key"] for row in rows_metadata.values()]
+        assert optical_fiber_metadata_keys == ["optical_fiber_0", "optical_fiber_1", "optical_fiber_2"]
+        assert {row["excitation_source_metadata_key"] for row in rows_metadata.values()} == {"excitation_source"}
+
+    def test_metadata_template_blanks_only_what_the_source_cannot_answer(self):
+        # The blanks are the checklist, so whatever the source does know has to survive into the template
+        # instead of being blanked along with the rest, and every cross-reference has to resolve.
+        interface = MockFiberPhotometryInterface(metadata_key="calcium_signal")
+        template = interface.get_metadata_template()
+
+        assert template["NWBFile"]["session_start_time"] == datetime(2020, 1, 1, tzinfo=timezone.utc)
+        assert template["FiberPhotometry"]["calcium_signal"]["name"] == "FiberPhotometryResponseSeries"
+
+        row_metadata = template["FiberPhotometry"]["FiberPhotometryTable"]["rows"]["trace_0"]
+        assert row_metadata["location"] is None
+        assert row_metadata["excitation_wavelength_in_nm"] is None
+        assert row_metadata["emission_wavelength_in_nm"] is None
+        assert template["FiberPhotometry"]["FiberPhotometryIndicators"]["indicator"]["label"] is None
+
+        assert row_metadata["indicator_metadata_key"] in template["FiberPhotometry"]["FiberPhotometryIndicators"]
+        assert row_metadata["optical_fiber_metadata_key"] in template["Devices"]
+        assert row_metadata["photodetector_metadata_key"] in template["Devices"]
+
+    def test_metadata_template_does_not_blank_a_field_the_source_filled(self):
+        # The merge direction, which nothing else pins: the template declares fields no interface reports
+        # today, so a source that starts reporting one has to win over the blank rather than be overwritten
+        # by it. No such interface exists yet, hence the subclass.
+        class DescribingFiberPhotometryInterface(MockFiberPhotometryInterface):
+            def get_metadata(self):
+                metadata = super().get_metadata()
+                metadata["FiberPhotometry"][self.metadata_key]["description"] = "Read from the source."
+                return metadata
+
+        interface = DescribingFiberPhotometryInterface(metadata_key="calcium_signal")
+
+        template = interface.get_metadata_template()
+
+        assert template["FiberPhotometry"]["calcium_signal"]["description"] == "Read from the source."
+
+    def test_filled_metadata_template_round_trips(self, tmp_path):
+        # The template is a scaffold to edit, so filling every blank it marks has to be enough to write a
+        # file, with nothing left to add and nothing to delete. It returns the whole chain, so this fills
+        # the whole chain: the optional optics and the three device models included.
+        interface = MockFiberPhotometryInterface(metadata_key="calcium_signal")
+        metadata = interface.get_metadata_template()
+
+        fiber_photometry_metadata = metadata["FiberPhotometry"]
+        row_metadata = fiber_photometry_metadata["FiberPhotometryTable"]["rows"]["trace_0"]
+        row_metadata["location"] = "VTA"
+        row_metadata["excitation_wavelength_in_nm"] = 465.0
+        row_metadata["emission_wavelength_in_nm"] = 525.0
+        row_metadata["coordinates"] = (3.0, 1.0, 4.0)
+        row_metadata["notes"] = "Recorded on the second day."
+        row_metadata["dichroic_mirror_metadata_key"] = "dichroic_mirror"
+        row_metadata["excitation_filter_metadata_key"] = "excitation_filter"
+        row_metadata["emission_filter_metadata_key"] = "emission_filter"
+        fiber_photometry_metadata["FiberPhotometryIndicators"]["indicator"].update(name="indicator", label="GCaMP6s")
+        fiber_photometry_metadata["calcium_signal"]["description"] = "GCaMP6s at 465 nm in VTA."
+
+        # The name of every entry is blank, so keeping one costs naming it.
+        devices_metadata = metadata["Devices"]
+        for device_metadata_key, device_metadata in devices_metadata.items():
+            device_metadata["name"] = device_metadata_key
+        for model_metadata_key, model_metadata in metadata["DeviceModels"].items():
+            model_metadata["name"] = model_metadata_key
+
+        devices_metadata["optical_fiber_0"]["fiber_insertion"] = dict(
+            insertion_position_ap_in_mm=3.0,
+            insertion_position_ml_in_mm=1.0,
+            insertion_position_dv_in_mm=4.0,
+            depth_in_mm=4.0,
+        )
+        devices_metadata["optical_fiber_0"]["device_model_metadata_key"] = "optical_fiber_model"
+        devices_metadata["excitation_source"]["device_model_metadata_key"] = "excitation_source_model"
+        devices_metadata["photodetector"]["device_model_metadata_key"] = "photodetector_model"
+        for device_metadata_key in ("dichroic_mirror", "excitation_filter", "emission_filter"):
+            devices_metadata[device_metadata_key].pop("device_model_metadata_key")
+
+        device_models_metadata = metadata["DeviceModels"]
+        device_models_metadata["optical_fiber_model"].update(manufacturer="Doric Lenses", numerical_aperture=0.48)
+        device_models_metadata["excitation_source_model"].update(
+            manufacturer="Doric Lenses", source_type="LED", excitation_mode="one-photon"
+        )
+        device_models_metadata["photodetector_model"].update(manufacturer="Doric Lenses", detector_type="photodiode")
+
+        nwbfile_path = tmp_path / "filled_template.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+        read_nwbfile = read_nwb(nwbfile_path)
+
+        assert set(read_nwbfile.devices) == {
+            "optical_fiber_0",
+            "excitation_source",
+            "photodetector",
+            "dichroic_mirror",
+            "excitation_filter",
+            "emission_filter",
+        }
+        assert set(read_nwbfile.device_models) == {
+            "optical_fiber_model",
+            "excitation_source_model",
+            "photodetector_model",
+        }
+        assert read_nwbfile.devices["optical_fiber_0"].model.numerical_aperture == 0.48
+
+        table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+        assert len(table) == 1
+        assert table["location"][0] == "VTA"
+        assert table["notes"][0] == "Recorded on the second day."
+        assert table["indicator"][0].label == "GCaMP6s"
+        assert table["optical_fiber"][0].name == "optical_fiber_0"
+        assert table["dichroic_mirror"][0].name == "dichroic_mirror"
+        assert table["excitation_filter"][0].name == "excitation_filter"
+
+        response_series = read_nwbfile.acquisition["FiberPhotometryResponseSeries"]
+        assert response_series.description == "GCaMP6s at 465 nm in VTA."
+        assert response_series.fiber_photometry_table_region.data[:] == [0]
+
     def test_minimally_annotated_metadata_round_trips(self, tmp_path):
         # The minimally annotated path: the default metadata describes only the response series, so the file
         # must contain exactly that and nothing fabricated — no table region, no devices, no lab metadata.
