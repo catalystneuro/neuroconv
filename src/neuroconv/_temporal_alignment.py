@@ -18,8 +18,6 @@ is a single sample axis and takes ``set_times`` while a table is timestamps plus
 being no one array to hand it. Only the series-shaped one exists here so far.
 """
 
-from collections.abc import Iterator
-
 import numpy as np
 
 
@@ -103,15 +101,6 @@ class _TemporalAlignment:
             named = ", ".join(repr(name) for name in self._name_to_time_bearing_object) or "nothing"
             raise KeyError(f"{key!r} is not a time-bearing object of this interface. It names {named}.")
         return self._name_to_time_bearing_object[key]
-
-    def __contains__(self, key: str) -> bool:
-        return key in self._name_to_time_bearing_object
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._name_to_time_bearing_object)
-
-    def __len__(self) -> int:
-        return len(self._name_to_time_bearing_object)
 
     def shift_times(self, delta: float) -> None:
         """Shift every time-bearing object in the interface by ``delta`` seconds (relative, accumulates)."""
