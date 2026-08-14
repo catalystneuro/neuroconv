@@ -1,4 +1,5 @@
 import re
+import sys
 import warnings
 from platform import python_version as get_python_version
 
@@ -8,11 +9,13 @@ import pytest
 from hdmf.testing import TestCase
 from packaging.version import Version
 from probeinterface import Probe, ProbeGroup
+from pynwb import NWBHDF5IO
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import Spike2RecordingInterface
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.testing.mock_interfaces import (
+    MockIcephysInterface,
     MockRecordingInterface,
     MockSortingInterface,
 )
@@ -36,7 +39,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         nwbfile = interface.create_nwbfile(
             stub_test=True,
             metadata=metadata,
-            write_as="processing",
+            parent_container="processing",
             units_name="processed_units",
             units_description="The processed units.",
         )
@@ -213,14 +216,8 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         # "Devices" not in metadata).
         assert "Devices" not in metadata
         metadata_key = self.interface.metadata_key
-        assert metadata["Ecephys"] == {
-            "ElectricalSeries": {
-                metadata_key: {
-                    "name": metadata_key,
-                    "description": f"Acquisition traces for the {metadata_key}.",
-                }
-            }
-        }
+        # No description: the base emits none, leaving it to the interfaces and the write pipeline.
+        assert metadata["Ecephys"] == {"ElectricalSeries": {metadata_key: {"name": "ElectricalSeries"}}}
 
     def test_metadata_key_passed_to_add_recording(self, setup_interface):
         from unittest.mock import patch
@@ -242,6 +239,43 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=old_metadata)
             assert mock_add.call_args.kwargs["metadata_key"] is None
 
+    def test_heterogeneous_offset_error_points_to_conversion_option(self):
+        """Heterogeneous offsets on the default path raise an interface-oriented error that points at
+        passing data_representation as a conversion option (distinct from the tools-level message)."""
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+        interface.recording_extractor.set_channel_offsets(offsets=[0, 0, 1, 1, 2])  # heterogeneous
+
+        expected_error_msg = (
+            "The channels of this recording have heterogeneous offsets, which a single NWB "
+            "ElectricalSeries cannot represent.\n"
+            "Multiple offsets were found per channel IDs:\n"
+            "  Offset 0: Channel IDs ['0', '1']\n"
+            "  Offset 1: Channel IDs ['2', '3']\n"
+            "  Offset 2: Channel IDs ['4']\n"
+            "\n"
+            "If these channels are all the same kind of signal and the offsets come from "
+            "per-channel scaling, pass data_representation='physical_units' as a conversion "
+            "option to add_to_nwbfile() or run_conversion() to write them as one series (this "
+            "folds each channel's offset into the data and writes float physical values). If the "
+            "channels carrying the odd offsets are not electrode channels, drop them with "
+            "interface.remove_channels(channel_ids=[...]) and write them as TimeSeries instead. "
+            "See https://neuroconv.readthedocs.io/en/main/how_to/handle_heterogeneous_offsets.html"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile())
+
+    def test_remove_channels(self):
+        """`remove_channels` is the drop the offset error points at: it replaces the held recording with
+        the reduced one, so everything downstream of the interface sees only the channels that are left."""
+        interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+
+        returned_interface = interface.remove_channels(channel_ids=["1", "3"])
+
+        assert returned_interface is interface  # returns self so the call can be chained
+        assert list(interface.channel_ids) == ["0", "2", "4"]
+
     def test_stub(self, setup_interface):
         interface = self.interface
         metadata = interface.get_metadata()
@@ -252,9 +286,6 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         interface = MockRecordingInterface(durations=[1.0])
 
         recording = interface.recording_extractor
-        # TODO Remove the following line once Spikeinterface 0.102.4 or higher is released
-        # See https://github.com/SpikeInterface/spikeinterface/pull/3940
-        recording._recording_segments[0].t_start = 0.0
         recording.shift_times(2.0)
 
         interface.create_nwbfile(stub_test=True)
@@ -540,20 +571,60 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         np.testing.assert_array_equal(electrode_names, expected_contact_ids)
 
 
-class TestAssertions(TestCase):
-    @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
-    def test_spike2_import_assertions_3_10(self):
-        with self.assertRaisesWith(
-            exc_type=ModuleNotFoundError,
-            exc_msg="\nThe package 'sonpy' is not available for Python version 3.10!",
-        ):
-            Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
+def test_recording_routes_on_its_own_block_in_a_mixed_converter():
+    """A converter builds one metadata dictionary and hands the same one to every interface, so an
+    interface that emits only the dict-based format contributes a dict-shaped top-level ``Devices``
+    while a recording interface contributes a list-based ``Ecephys``. One dictionary, two shapes: the
+    recording has to read its own block rather than the dictionary's overall shape, or it looks for a
+    keyed ``ElectricalSeries`` entry its own ``get_metadata`` never wrote."""
+    from pynwb.testing.mock.file import mock_NWBFile
 
-    @pytest.mark.skipif(python_version.minor != 11, reason="Only testing with Python 3.11!")
-    def test_spike2_import_assertions_3_11(self):
+    recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    dict_only_interface = MockIcephysInterface()
+    converter = ConverterPipe(data_interfaces=dict(Recording=recording_interface, Icephys=dict_only_interface))
+
+    metadata = converter.get_metadata()
+    assert isinstance(metadata["Devices"], dict)  # contributed by the dict-only interface
+    assert "name" in metadata["Ecephys"]["ElectricalSeries"]  # list-based: a flat dict of fields, not entries
+
+    nwbfile = mock_NWBFile()
+    recording_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+    assert "ElectricalSeries" in nwbfile.acquisition
+    # The electrode groups route on the Ecephys block too, so the device is the one the recording's own
+    # metadata names rather than the placeholder the dict path falls back to.
+    assert "DeviceEcephys" in nwbfile.devices
+    assert "Device" not in nwbfile.devices
+
+
+def test_run_conversion_through_converter(tmp_path):
+    # Dict metadata has to survive validation to reach the writer, and a converter validates against its own
+    # merged schema rather than an interface's. The interface-level equivalent of this test was removed once
+    # the shared test mixins started writing dict metadata for every interface on real data.
+    interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    converter = ConverterPipe(data_interfaces=dict(Recording=interface))
+
+    metadata = interface.get_metadata(use_new_metadata_format=True)
+    nwbfile_path = tmp_path / "converter_conversion.nwb"
+    converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["name"] in nwbfile.acquisition
+
+
+class TestAssertions(TestCase):
+    @pytest.mark.skipif(
+        sys.platform == "win32" or python_version >= Version("3.14"),
+        reason="sonpy is installable on Windows for all supported versions, and on other platforms from 3.14",
+    )
+    def test_spike2_import_assertions(self):
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
-            exc_msg="\nThe package 'sonpy' is not available for Python version 3.11!",
+            exc_msg=(
+                f"\nThe package 'sonpy' is not available on the {sys.platform} platform for "
+                f"Python version 3.{python_version.minor}!"
+            ),
         ):
             Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 

@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import FilePath, validate_call
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import DeepDict
+from ....utils import DeepDict, to_snake_case
 
 
 def _read_isxd_json_metadata_tail(file_path) -> dict:
@@ -183,9 +183,15 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
 
         # Device information
         if use_new_metadata_format:
-            device_entry = {}
-            if device_info.get("device_name"):
-                device_entry["name"] = device_info["device_name"]
+            # The name is a convention for writing the file rather than something the source states, so
+            # it falls back to the generic microscope name the old format used. The registry is keyed by
+            # the microscope, on the serial number when the file records one, so this interface and the
+            # segmentation interface of the same session resolve to one entry.
+            device_entry = {"name": device_info.get("device_name") or "Microscope"}
+            serial_number = device_info.get("device_serial_number")
+            device_metadata_key = (
+                f"inscopix_{to_snake_case(str(serial_number))}" if serial_number else "inscopix_microscope"
+            )
             description_parts = []
             if device_info.get("device_serial_number"):
                 description_parts.append(f"Serial: {device_info['device_serial_number']}")
@@ -193,27 +199,39 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 description_parts.append(f"Software: {device_info['acquisition_software_version']}")
             if description_parts:
                 device_entry["description"] = f"Inscopix Microscope ({', '.join(description_parts)})"
-            if device_entry:
-                metadata["Devices"] = {self.metadata_key: device_entry}
+            metadata["Devices"] = {device_metadata_key: device_entry}
+
+            # ImagingPlanes. The acquisition settings have no field on any NWB class, so they are stated
+            # in the description, which is where the old format carried them too.
+            imaging_plane_entry = {"device_metadata_key": device_metadata_key}
+            acquisition_details = []
+            if device_info.get("exposure_time_ms"):
+                acquisition_details.append(f"Exposure Time (ms): {device_info['exposure_time_ms']}")
+            if device_info.get("microscope_gain"):
+                acquisition_details.append(f"Gain: {device_info['microscope_gain']}")
+            if device_info.get("microscope_focus"):
+                acquisition_details.append(f"Focus: {device_info['microscope_focus']}")
+            if device_info.get("efocus"):
+                acquisition_details.append(f"eFocus: {device_info['efocus']}")
+            if device_info.get("led_power_ex_mw_per_mm2"):
+                acquisition_details.append(f"EX LED Power (mw/mm^2): {device_info['led_power_ex_mw_per_mm2']}")
+            if device_info.get("led_power_og_mw_per_mm2"):
+                acquisition_details.append(f"OG LED Power (mw/mm^2): {device_info['led_power_og_mw_per_mm2']}")
+            if acquisition_details:
+                imaging_plane_entry["description"] = (
+                    f"The plane or volume being imaged by the microscope. ({'; '.join(acquisition_details)})"
+                )
 
             # MicroscopySeries
             microscopy_series_entry = {
                 "description": "Imaging data acquired with Inscopix nVista.",
+                "imaging_plane_metadata_key": self.metadata_key,
             }
-            if device_info.get("exposure_time_ms"):
-                microscopy_series_entry["exposure_time_ms"] = device_info["exposure_time_ms"]
-            if device_info.get("microscope_gain"):
-                microscopy_series_entry["microscope_gain"] = device_info["microscope_gain"]
-            if device_info.get("microscope_focus"):
-                microscopy_series_entry["microscope_focus"] = device_info["microscope_focus"]
-            if device_info.get("efocus"):
-                microscopy_series_entry["efocus"] = device_info["efocus"]
-            if device_info.get("led_power_ex_mw_per_mm2"):
-                microscopy_series_entry["led_power_ex_mw_per_mm2"] = device_info["led_power_ex_mw_per_mm2"]
-            if device_info.get("led_power_og_mw_per_mm2"):
-                microscopy_series_entry["led_power_og_mw_per_mm2"] = device_info["led_power_og_mw_per_mm2"]
 
             metadata["Ophys"] = {
+                "ImagingPlanes": {
+                    self.metadata_key: imaging_plane_entry,
+                },
                 "MicroscopySeries": {
                     self.metadata_key: microscopy_series_entry,
                 },
@@ -310,12 +328,11 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
                 subject_metadata["weight"] = str(subject_info["weight"])
                 has_any_subject_data = True
 
-        # Add Subject if we have ANY subject information, filling required fields with defaults
+        # Add Subject if we have ANY subject information. Only "sex" gets a fallback: "U" is NWB's own
+        # term for unknown, so recording it states that the file did not say. A subject_id or a species
+        # the file does not carry would be an invented value, indistinguishable once written from one
+        # the experimenter entered.
         if has_any_subject_data:
-            if "subject_id" not in subject_metadata:
-                subject_metadata["subject_id"] = "Unknown"
-            if "species" not in subject_metadata:
-                subject_metadata["species"] = "Unknown species"
             if "sex" not in subject_metadata:
                 subject_metadata["sex"] = "U"
 

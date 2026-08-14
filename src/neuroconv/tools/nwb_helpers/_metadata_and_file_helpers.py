@@ -23,10 +23,11 @@ from . import (
 from ._device_types import (
     _DEVICE_MODEL_TYPE_SOURCES,
     _DEVICE_TYPE_SOURCES,
+    _build_inline_containers,
     _resolve_type,
 )
 from ...utils.dict import DeepDict, load_dict_from_file
-from ...utils.json_schema import validate_metadata
+from ...utils.json_schema import _validate_device_registry_names, validate_metadata
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -214,11 +215,12 @@ def _add_device_model_to_nwbfile(
     DeviceModel
         The DeviceModel object (either newly created or existing).
     """
+    _validate_device_registry_names(metadata)
     device_models_metadata = metadata.get("DeviceModels", {})
     if metadata_key not in device_models_metadata:
         raise ValueError(
-            f"device_model_metadata_key '{metadata_key}' is not present in metadata['DeviceModels'] "
-            f"(available: {list(device_models_metadata)})."
+            f"device_model_metadata_key '{metadata_key}' was not found in metadata['DeviceModels'] "
+            f"(available keys: {list(device_models_metadata)})."
         )
     device_model_metadata = device_models_metadata[metadata_key]
 
@@ -227,9 +229,21 @@ def _add_device_model_to_nwbfile(
         return nwbfile.device_models[model_name]
 
     model_kwargs = {key: value for key, value in device_model_metadata.items() if key != "type"}
+
+    # Required by the NWB ``DeviceModel`` but rarely recorded by an acquisition file. Fill any missing
+    # one at write time rather than forcing every ``get_metadata`` to state a manufacturer its source
+    # never named. The placeholder is an explicit unknown-marker, as in the ophys and ecephys templates,
+    # so it reads as "the source did not say" rather than as a value. Mirrors
+    # ``_add_imaging_plane_to_nwbfile`` and ``_add_electrode_groups_to_nwbfile``.
+    required_fields = ["manufacturer"]
+    default_device_model_metadata = {"manufacturer": "unknown"}
+    for field in required_fields:
+        model_kwargs.setdefault(field, default_device_model_metadata[field])
+
     model_class = _resolve_type(
         device_model_metadata.get("type", "DeviceModel"), sources=_DEVICE_MODEL_TYPE_SOURCES, base_class=DeviceModel
     )
+    model_kwargs = _build_inline_containers(target_class=model_class, kwargs=model_kwargs)
     device_model = model_class(**model_kwargs)
     nwbfile.add_device_model(device_model)
     return device_model
@@ -250,9 +264,9 @@ def _add_device_to_nwbfile(
     * **Canonical** ``(nwbfile, metadata, metadata_key)`` — the shape all callers should converge on,
       matching the rest of NeuroConv. Resolves ``metadata["Devices"][metadata_key]`` and, if the entry
       carries a ``device_model_metadata_key``, adds that model (idempotently, on demand) and links it.
-    * **Transitional** ``(nwbfile, device_metadata)`` — a pre-resolved entry dict, for callers that
-      build the entry themselves (e.g. placeholder or deprecated-nested-device fallbacks). This form
-      will be removed once those callers can pass ``metadata`` + ``metadata_key``.
+    * **Transitional** ``(nwbfile, device_metadata)`` — a pre-resolved entry dict, for the deprecated
+      nested-device fallbacks on the video interfaces, whose entry has no registry key to resolve. This
+      form goes with them.
 
     In either form the entry may carry a ``"type"`` field naming the concrete class (e.g.
     ``"OpticalFiber"``); when omitted, a plain ``pynwb.device.Device`` is created.
@@ -263,7 +277,19 @@ def _add_device_to_nwbfile(
         The Device object (either newly created or existing).
     """
     if metadata_key is not None:
-        device_metadata = metadata["Devices"][metadata_key]
+        if metadata is None:
+            raise ValueError("Provide `metadata` with `metadata_key`.")
+        _validate_device_registry_names(metadata)
+        # Checked rather than indexed: ``metadata`` is often a ``DeepDict``, where a missing key
+        # auto-vivifies instead of raising, and the failure then surfaces several lines later as
+        # ``TypeError: unhashable type: 'DeepDict'`` naming neither the key nor the registry.
+        devices_metadata = metadata.get("Devices", {})
+        if metadata_key not in devices_metadata:
+            raise ValueError(
+                f"device_metadata_key '{metadata_key}' was not found in metadata['Devices'] "
+                f"(available keys: {list(devices_metadata)})."
+            )
+        device_metadata = devices_metadata[metadata_key]
         device_model_metadata_key = device_metadata.get("device_model_metadata_key")
         if device_model_metadata_key is not None:
             model = _add_device_model_to_nwbfile(
@@ -280,6 +306,7 @@ def _add_device_to_nwbfile(
     internal_keys = ("type", "device_model_metadata_key")
     device_kwargs = {key: value for key, value in device_metadata.items() if key not in internal_keys}
     device_class = _resolve_type(device_metadata.get("type", "Device"), sources=_DEVICE_TYPE_SOURCES, base_class=Device)
+    device_kwargs = _build_inline_containers(target_class=device_class, kwargs=device_kwargs)
     device = device_class(**device_kwargs)
     nwbfile.add_device(device)
     return device

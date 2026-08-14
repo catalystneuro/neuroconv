@@ -2,11 +2,10 @@ import warnings
 from pathlib import Path
 
 from pydantic import FilePath
-from pynwb.ecephys import ElectricalSeries
 
 from ._utils import _warn_if_split_siblings_detected
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import DeepDict, get_schema_from_hdmf_class
+from ....utils import DeepDict
 
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
@@ -69,6 +68,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
         ignore_integrity_checks: bool = False,
         saved_files_are_split: bool = False,
     ):
@@ -83,6 +83,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
             Verbose
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to ``"intan_recording"``.
         ignore_integrity_checks : bool, default: False
             If True, data that violates integrity assumptions will be loaded. At the moment the only integrity
             check performed is that timestamps are continuous. If False, an error will be raised if the check fails.
@@ -131,27 +133,84 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             file_path=self.file_path,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
             ignore_integrity_checks=ignore_integrity_checks,
         )
 
         super().__init__(**init_kwargs)
 
-    def get_metadata_schema(self) -> dict:
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        return metadata_schema
+        # ``metadata_key`` is a snake_case dict handle, not the series name. Intan is single-stream, so the
+        # default is a constant; conversions that combine several sources pass their own.
+        if metadata_key is None:
+            self.metadata_key = "intan_recording"
 
-    def get_metadata(self) -> DeepDict:
+        self._name_channel_groups_after_their_port()
+
+    def _name_channel_groups_after_their_port(self) -> None:
+        """
+        Restate the headstage port as ``port`` and name the electrode groups after it.
+
+        Intan names amplifier channels ``Port-Number`` (``A-001``), and SpikeInterface recovers the port letter
+        into a ``group_names`` property that nothing downstream reads: the write pipeline looks for
+        ``group_name``, singular. So the ports currently reach the file only as a stray electrodes column
+        sitting beside ``group_name`` and differing from it by one character, while the electrode groups
+        themselves are named ``0``, ``1``, ``2``, which is the position of the port in a sorted list rather
+        than anything the file says.
+
+        The port is written as a channel property as well as a group name because the two survive different
+        things: attaching a probe regroups the channels and overwrites ``group_name``, and the port is still
+        true of every channel afterwards. The group takes the port letter unchanged rather than a decorated
+        form, so that the name and the ``port`` column are the same string and relating them is an equality
+        check; what the letter means is stated in the group's description instead.
+        """
+        ports = self.recording_extractor.get_property("group_names")
+        if ports is None:  # Set by SpikeInterface for the amplifier stream only.
+            return
+
+        self.recording_extractor.set_property(key="port", values=ports)
+        self.recording_extractor.delete_property("group_names")
+        self.recording_extractor.set_property(key="group_name", values=ports)
+
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        system = self.file_path.suffix  # .rhd or .rhs
+        device_description = {".rhd": "RHD Recording System", ".rhs": "RHS Stim/Recording System"}[system]
+
+        if use_new_metadata_format:
+            from ....tools.spikeinterface.spikeinterface import _get_group_name
+
+            metadata = super().get_metadata(use_new_metadata_format=True)
+            # State the series name here, where the metadata is produced: Intan is single-stream, so it is the
+            # fixed "ElectricalSeries" (matching the old-format branch below), independent of ``metadata_key``
+            # (the dict key), so re-keying an entry never renames the written series.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeries"
+
+            device_metadata_key = "intan_device"
+            metadata["Devices"] = {
+                device_metadata_key: dict(name="Intan", description=device_description, manufacturer="Intan"),
+            }
+
+            # Link every channel group to the Intan device so it is written to the NWBFile. Devices are
+            # created lazily when an electrode group references them; without this linkage the pipeline
+            # would synthesize its own default device instead of the Intan one. The group name is the
+            # headstage port, a bare letter, so the description is what says which letter it is and what
+            # the letter means; ``location`` is left to the write pipeline, which the source cannot know.
+            groups_are_ports = self.recording_extractor.get_property("port") is not None
+            channel_group_names = set(_get_group_name(recording=self.recording_extractor).tolist())
+
+            electrode_groups = {}
+            for group_name in channel_group_names:
+                entry = dict(name=group_name, device_metadata_key=device_metadata_key)
+                if groups_are_ports:
+                    entry["description"] = f"Amplifier channels recorded on Intan headstage port {group_name}."
+                electrode_groups[group_name] = entry
+            metadata["Ecephys"]["ElectrodeGroups"] = electrode_groups
+
+            return metadata
+
         metadata = super().get_metadata()
         ecephys_metadata = metadata["Ecephys"]
 
         # Add device
-
-        system = self.file_path.suffix  # .rhd or .rhs
-        device_description = {".rhd": "RHD Recording System", ".rhs": "RHS Stim/Recording System"}[system]
-
         intan_device = dict(
             name="Intan",
             description=device_description,
@@ -165,8 +224,5 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             electrode_group["device"] = intan_device["name"]
 
         ecephys_metadata[self.es_key]["name"] = "ElectricalSeries"
-        ecephys_metadata.update(
-            ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="Raw acquisition traces."),
-        )
 
         return metadata

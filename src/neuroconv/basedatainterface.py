@@ -25,8 +25,13 @@ from .utils import (
     get_json_schema_from_method_signature,
     load_dict_from_file,
 )
+from .utils._metadata_translation import _translate_old_metadata
 from .utils.dict import DeepDict
-from .utils.json_schema import _NWBMetaDataEncoder, _NWBSourceDataEncoder
+from .utils.json_schema import (
+    _metadata_uses_old_list_format,
+    _NWBSourceDataEncoder,
+    validate_metadata,
+)
 
 
 class BaseDataInterface(ABC):
@@ -103,20 +108,55 @@ class BaseDataInterface(ABC):
 
         return metadata
 
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        """
+        Return the schema used to validate metadata in the old list-based format.
+
+        Transitional. Most interfaces describe one format only, so this is their own schema. The modality
+        bases whose ``get_metadata_schema`` still describes the old format override it the other way
+        round: they answer here with that schema and hand ``get_metadata_schema`` callers the base schema,
+        which is what dict-based metadata can be validated against. Both go when those schemas are
+        migrated.
+        """
+        return self.get_metadata_schema()
+
+    def _get_metadata_for_writing(self) -> DeepDict:
+        """
+        Return the metadata used when the caller passes none.
+
+        Transitional: ``get_metadata`` still hands users the old list-based format by default, but what
+        NeuroConv writes for itself is the dict-based one. Interfaces that emit only the dict format do not
+        take the argument and are asked plainly.
+
+        Remove this method when the old list-based format is removed. At that point ``get_metadata``
+        returns the dict format unconditionally, ``use_new_metadata_format`` is gone, and every caller
+        below goes back to ``metadata or self.get_metadata()``.
+        """
+        import inspect
+
+        if "use_new_metadata_format" in inspect.signature(self.get_metadata).parameters:
+            return self.get_metadata(use_new_metadata_format=True)
+        return self.get_metadata()
+
     def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
-        encoder = _NWBMetaDataEncoder()
-        # The encoder produces a serialized object, so we deserialized it for comparison
+        # Old-shaped metadata is converted before it is checked, so validation only ever sees one shape.
+        # The conversion is thrown away afterwards: the schema accepts any key under a keyed block, so
+        # validation needs the right shape but not the right label, and what the writers receive is the
+        # caller's own dictionary, converted again there with the label in hand.
+        metadata = _translate_old_metadata(metadata)
 
-        serialized_metadata = encoder.encode(metadata)
-        decoded_metadata = json.loads(serialized_metadata)
-        metdata_schema = self.get_metadata_schema()
+        if _metadata_uses_old_list_format(metadata):
+            metdata_schema = self._get_metadata_schema_for_old_list_format()
+        else:
+            metdata_schema = self.get_metadata_schema()
+
         if append_mode:
             # Eliminate required from NWBFile
             nwbfile_schema = metdata_schema["properties"]["NWBFile"]
             nwbfile_schema.pop("required", None)
 
-        validate(instance=decoded_metadata, schema=metdata_schema)
+        validate_metadata(metadata=metadata, schema=metdata_schema)
 
     def get_conversion_options_schema(self) -> dict:
         """
@@ -146,7 +186,7 @@ class BaseDataInterface(ABC):
             The in-memory object with this interface's data added to it.
         """
         if metadata is None:
-            metadata = self.get_metadata()
+            metadata = self._get_metadata_for_writing()
 
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
@@ -205,6 +245,7 @@ class BaseDataInterface(ABC):
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
+            Cannot be combined with `nwbfile` or `append_on_disk_nwbfile=True`.
         append_on_disk_nwbfile : bool, default: False
             Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
             This is useful for appending data to an existing file without overwriting it.
@@ -226,8 +267,25 @@ class BaseDataInterface(ABC):
                 "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
             )
 
+        if backend_configuration is not None and appending_to_in_memory_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also providing an in-memory NWBFile. This "
+                "interface's data is added to that file before it is written, so a configuration built from "
+                "it beforehand does not describe the file being written. Add this interface with "
+                "add_to_nwbfile, derive the configuration from the result, and write it with "
+                "configure_and_write_nwbfile."
+            )
+
+        if backend_configuration is not None and append_on_disk_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also appending to an existing file on disk. "
+                "The file is read and this interface's data added to it before it is configured, so a "
+                "configuration built beforehand does not describe the file being written. Specify `backend` "
+                "instead, which derives the configuration after the data is added."
+            )
+
         if metadata is None:
-            metadata = self.get_metadata()
+            metadata = self._get_metadata_for_writing()
         self.validate_metadata(metadata=metadata, append_mode=append_on_disk_nwbfile)
 
         writing_new_file = not append_on_disk_nwbfile

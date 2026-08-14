@@ -24,7 +24,7 @@ from datetime import datetime
 
 import pytest
 from pydantic import ValidationError
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.icephys import (
     CurrentClampStimulusSeries,
     IZeroClampSeries,
@@ -65,9 +65,10 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
         # session_start_time is read from the ABF header (a real date for version 2).
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 12, 3, 14, 13, 3, 760000)
 
-        # Default identity: the device key is the plain file stem and the electrode key is the plain stem plus
-        # response channel. NWB object names are the CamelCase form of the electrode key.
-        device_metadata_key = "user_list"
+        # Default identity: the electrode key is the plain file stem plus response channel, and the device key is
+        # the amplifier the header reports (runs on one amplifier meet at one entry, so it is not the stem). NWB
+        # object names are the CamelCase form of the electrode key.
+        device_metadata_key = "axopatch_200b"
         electrode_metadata_key = "user_list_IN0"
         electrode_name_suffix = "UserListIN0"
 
@@ -106,47 +107,45 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
         assert metadata["Icephys"]["PatchClampStimulusSeries"] == expected_stimulus_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            # The interface concatenates all sweeps into one continuous series, so there is exactly one response
-            # series and one stimulus series, not one per sweep.
-            assert len(nwbfile.acquisition) == 1
-            assert len(nwbfile.stimulus) == 1
-            response = nwbfile.acquisition["VoltageClampSeriesUserListIN0"]
-            stimulus = nwbfile.stimulus["VoltageClampStimulusSeriesUserListIN0"]
-            assert isinstance(response, VoltageClampSeries)
-            assert isinstance(stimulus, VoltageClampStimulusSeries)
+        nwbfile = read_nwb(nwbfile_path)
+        # The interface concatenates all sweeps into one continuous series, so there is exactly one response
+        # series and one stimulus series, not one per sweep.
+        assert len(nwbfile.acquisition) == 1
+        assert len(nwbfile.stimulus) == 1
+        response = nwbfile.acquisition["VoltageClampSeriesUserListIN0"]
+        stimulus = nwbfile.stimulus["VoltageClampStimulusSeriesUserListIN0"]
+        assert isinstance(response, VoltageClampSeries)
+        assert isinstance(stimulus, VoltageClampStimulusSeries)
 
-            # Multi-sweep timing: one continuous series sampled at 2 kHz, gaps carried as timestamps (not a rate).
-            assert response.rate is None
-            assert response.timestamps[:5].tolist() == [0.0, 0.0005, 0.001, 0.0015, 0.002]
-            assert response.electrode.device.name == "Axopatch 200B"
+        # Multi-sweep timing: one continuous series sampled at 2 kHz, gaps carried as timestamps (not a rate).
+        assert response.rate is None
+        assert response.timestamps[:5].tolist() == [0.0, 0.0005, 0.001, 0.0015, 0.002]
+        assert response.electrode.device.name == "Axopatch 200B"
 
-            # The sweep structure is preserved on the intracellular table: one row per sweep, each addressing its
-            # slice of the concatenated series by (start, count) in samples.
-            number_of_sweeps = 3
-            sweep_start_sample_indices = [0, 51612, 103224]
-            samples_per_sweep = [51612] * number_of_sweeps
+        # The sweep structure is preserved on the intracellular table: one row per sweep, each addressing its
+        # slice of the concatenated series by (start, count) in samples.
+        number_of_sweeps = 3
+        sweep_start_sample_indices = [0, 51612, 103224]
+        samples_per_sweep = [51612] * number_of_sweeps
 
-            intracellular_recordings = nwbfile.intracellular_recordings
-            assert len(intracellular_recordings) == number_of_sweeps  # one row per sweep
-            responses = intracellular_recordings["responses"]["response"]
-            assert sweep_start_sample_indices == [responses[i].idx_start for i in range(len(intracellular_recordings))]
-            assert samples_per_sweep == [responses[i].count for i in range(len(intracellular_recordings))]
+        intracellular_recordings = nwbfile.intracellular_recordings
+        assert len(intracellular_recordings) == number_of_sweeps  # one row per sweep
+        responses = intracellular_recordings["responses"]["response"]
+        assert sweep_start_sample_indices == [responses[i].idx_start for i in range(len(intracellular_recordings))]
+        assert samples_per_sweep == [responses[i].count for i in range(len(intracellular_recordings))]
 
-            # Stimulus is referenced over the identical per-sweep ranges.
-            stimuli = intracellular_recordings["stimuli"]["stimulus"]
-            assert sweep_start_sample_indices == [stimuli[i].idx_start for i in range(len(intracellular_recordings))]
-            assert samples_per_sweep == [stimuli[i].count for i in range(len(intracellular_recordings))]
+        # Stimulus is referenced over the identical per-sweep ranges.
+        stimuli = intracellular_recordings["stimuli"]["stimulus"]
+        assert sweep_start_sample_indices == [stimuli[i].idx_start for i in range(len(intracellular_recordings))]
+        assert samples_per_sweep == [stimuli[i].count for i in range(len(intracellular_recordings))]
 
-            # Every row carries the run's `sequence` (the file stem; one run per file, so all rows share it) and
-            # `stimulus_type` (here the protocol name from the header) -- the run information in denormalized form.
-            sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
-            assert set(sequences) == {"user_list"}
-            stimulus_types = [
-                intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))
-            ]
-            assert set(stimulus_types) == {"WT_act with ramp_reversed_env"}
+        # Every row carries the run's `sequence` (the file stem; one run per file, so all rows share it) and
+        # `stimulus_type` (here the protocol name from the header) -- the run information in denormalized form.
+        sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
+        assert set(sequences) == {"user_list"}
+        stimulus_types = [intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))]
+        assert set(stimulus_types) == {"WT_act with ramp_reversed_env"}
+        nwbfile.read_io.close()
 
 
 class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
@@ -171,20 +170,21 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
         assert names == ["10Vm"]
 
     def check_extracted_metadata(self, metadata: dict):
-        # session_start_time is a version-1 placeholder (no real date: 1900-01-01 plus a time-of-day).
-        assert metadata["NWBFile"]["session_start_time"] == datetime(1900, 1, 1, 14, 15, 0, 711999)
+        # neo below 0.15 reports a version-1 placeholder for this file (no real date: 1900-01-01 plus a
+        # time-of-day); 0.15 and above parse the real acquisition date out of the header.
+        # TODO: drop the branch once neo>=0.15 is the minimum pin and keep only the real date.
+        import neo
+        from packaging.version import Version
 
-        device_metadata_key = "abf1_gapfree_bogus_episode_count"
+        if Version(neo.__version__).release >= (0, 15):
+            expected_session_start_time = datetime(2005, 6, 11, 14, 15, 0, 711999)
+        else:
+            expected_session_start_time = datetime(1900, 1, 1, 14, 15, 0, 711999)
+        assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
+
         electrode_metadata_key = "abf1_gapfree_bogus_episode_count_10Vm"
         electrode_name_suffix = "Abf1GapfreeBogusEpisodeCount10vm"
 
-        # ABF v1 has no telegraph block, so the amplifier model is unknown: get_metadata does not invent a name
-        # (only a generic description); the actual device name is filled at write time from the placeholder.
-        expected_device_metadata = {
-            device_metadata_key: {
-                "description": "Axon Instruments amplifier.",
-            }
-        }
         # No stimulus configured -> exactly the response entry, no `_stimulus`.
         expected_series_metadata = {
             electrode_metadata_key: {
@@ -194,22 +194,28 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
             }
         }
 
-        assert metadata["Devices"] == expected_device_metadata
+        # ABF v1 has no telegraph block, so nothing identifies the amplifier and no device is reported. The
+        # electrode links none either, and the write path supplies its placeholder.
+        assert "Devices" not in metadata
+        assert "device_metadata_key" not in metadata["Icephys"]["IntracellularElectrodes"][electrode_metadata_key]
         assert metadata["Icephys"]["PatchClampSeries"] == expected_series_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            response = nwbfile.acquisition["CurrentClampSeriesAbf1GapfreeBogusEpisodeCount10vm"]
-            assert response.rate == 1000.0  # single segment -> uniform rate in Hz, not timestamps
-            assert response.timestamps is None
-            assert len(nwbfile.stimulus) == 0
-            # No telegraph model -> the device name comes from the write-time placeholder.
-            assert "Amplifier" in nwbfile.devices
-            intracellular_recordings = nwbfile.intracellular_recordings
-            assert len(intracellular_recordings) == 1
-            # Gap-free acquisition (operation mode 3) -> the `stimulus_type` column is the "gap-free" label.
-            assert intracellular_recordings["stimulus_type"][0] == "gap-free"
+        nwbfile = read_nwb(nwbfile_path)
+        response = nwbfile.acquisition["CurrentClampSeriesAbf1GapfreeBogusEpisodeCount10vm"]
+        assert response.rate == 1000.0  # single segment -> uniform rate in Hz, not timestamps
+        assert response.timestamps is None
+        assert len(nwbfile.stimulus) == 0
+        # No telegraph model -> the interface named no amplifier, so the electrode is on the placeholder device.
+        # NWB requires the electrode to link one, so the link the metadata no longer states is still written.
+        assert list(nwbfile.devices) == ["PlaceholderIntracellularDevice"]
+        electrode = nwbfile.icephys_electrodes["IntracellularElectrodeAbf1GapfreeBogusEpisodeCount10vm"]
+        assert electrode.device is nwbfile.devices["PlaceholderIntracellularDevice"]
+        intracellular_recordings = nwbfile.intracellular_recordings
+        assert len(intracellular_recordings) == 1
+        # Gap-free acquisition (operation mode 3) -> the `stimulus_type` column is the "gap-free" label.
+        assert intracellular_recordings["stimulus_type"][0] == "gap-free"
+        nwbfile.read_io.close()
 
 
 class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
@@ -234,7 +240,7 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2018, 7, 2, 9, 29, 4, 849999)
 
-        device_metadata_key = "step"
+        device_metadata_key = "multiclamp_700"
         electrode_metadata_key = "step_IN0"
         electrode_name_suffix = "StepIN0"
         assert metadata["Devices"] == {
@@ -258,35 +264,33 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
         }
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            assert len(nwbfile.acquisition) == 1
-            assert len(nwbfile.stimulus) == 1
-            response = nwbfile.acquisition["VoltageClampSeriesStepIN0"]
-            stimulus = nwbfile.stimulus["VoltageClampStimulusSeriesStepIN0"]
-            assert isinstance(response, VoltageClampSeries)
-            assert isinstance(stimulus, VoltageClampStimulusSeries)
-            assert response.electrode.device.name == "MultiClamp 700"
-            # The sweeps are contiguous (no inter-sweep gaps), so neo's per-segment start times are regular and
-            # the series is written as a uniform 20 kHz rate from the start of the file, not timestamps.
-            assert response.timestamps is None
-            assert response.rate == pytest.approx(20000.0, rel=1e-6)
-            assert response.starting_time == pytest.approx(0.0)
+        nwbfile = read_nwb(nwbfile_path)
+        assert len(nwbfile.acquisition) == 1
+        assert len(nwbfile.stimulus) == 1
+        response = nwbfile.acquisition["VoltageClampSeriesStepIN0"]
+        stimulus = nwbfile.stimulus["VoltageClampStimulusSeriesStepIN0"]
+        assert isinstance(response, VoltageClampSeries)
+        assert isinstance(stimulus, VoltageClampStimulusSeries)
+        assert response.electrode.device.name == "MultiClamp 700"
+        # The sweeps are contiguous (no inter-sweep gaps), so neo's per-segment start times are regular and
+        # the series is written as a uniform 20 kHz rate from the start of the file, not timestamps.
+        assert response.timestamps is None
+        assert response.rate == pytest.approx(20000.0, rel=1e-6)
+        assert response.starting_time == pytest.approx(0.0)
 
-            number_of_sweeps = 3
-            sweep_start_sample_indices = [0, 20000, 40000]
-            samples_per_sweep = [20000] * number_of_sweeps
-            intracellular_recordings = nwbfile.intracellular_recordings
-            assert len(intracellular_recordings) == number_of_sweeps
-            responses = intracellular_recordings["responses"]["response"]
-            assert sweep_start_sample_indices == [responses[i].idx_start for i in range(len(intracellular_recordings))]
-            assert samples_per_sweep == [responses[i].count for i in range(len(intracellular_recordings))]
-            sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
-            assert set(sequences) == {"step"}
-            stimulus_types = [
-                intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))
-            ]
-            assert set(stimulus_types) == {"0201 memtest"}
+        number_of_sweeps = 3
+        sweep_start_sample_indices = [0, 20000, 40000]
+        samples_per_sweep = [20000] * number_of_sweeps
+        intracellular_recordings = nwbfile.intracellular_recordings
+        assert len(intracellular_recordings) == number_of_sweeps
+        responses = intracellular_recordings["responses"]["response"]
+        assert sweep_start_sample_indices == [responses[i].idx_start for i in range(len(intracellular_recordings))]
+        assert samples_per_sweep == [responses[i].count for i in range(len(intracellular_recordings))]
+        sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
+        assert set(sequences) == {"step"}
+        stimulus_types = [intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))]
+        assert set(stimulus_types) == {"0201 memtest"}
+        nwbfile.read_io.close()
 
 
 class TestAxonIZero(DataInterfaceTestMixin):
@@ -310,7 +314,7 @@ class TestAxonIZero(DataInterfaceTestMixin):
         # session_start_time is read from the ABF header (this file is anonymized, so the date is a cleared default).
         assert metadata["NWBFile"]["session_start_time"] == datetime(2000, 1, 1, 0, 0)
 
-        device_metadata_key = "abf2_zero_current_clamp"
+        device_metadata_key = "multiclamp_700"
         electrode_metadata_key = "abf2_zero_current_clamp_IN0"
         electrode_name_suffix = "Abf2ZeroCurrentClampIN0"
         assert metadata["Devices"] == {
@@ -329,33 +333,31 @@ class TestAxonIZero(DataInterfaceTestMixin):
         }
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            assert len(nwbfile.acquisition) == 1
-            assert len(nwbfile.stimulus) == 0
-            response = nwbfile.acquisition["IZeroClampSeriesAbf2ZeroCurrentClampIN0"]
-            assert isinstance(response, IZeroClampSeries)
-            assert response.electrode.device.name == "MultiClamp 700"
-            # The sweeps are gapped (episodic), so the series is written with explicit timestamps, not a rate; the
-            # first sample sits at the file's 21 ms pre-sweep offset.
-            assert response.rate is None
-            assert response.timestamps is not None
-            assert response.timestamps[0] == pytest.approx(0.021)
+        nwbfile = read_nwb(nwbfile_path)
+        assert len(nwbfile.acquisition) == 1
+        assert len(nwbfile.stimulus) == 0
+        response = nwbfile.acquisition["IZeroClampSeriesAbf2ZeroCurrentClampIN0"]
+        assert isinstance(response, IZeroClampSeries)
+        assert response.electrode.device.name == "MultiClamp 700"
+        # The sweeps are gapped (episodic), so the series is written with explicit timestamps, not a rate; the
+        # first sample sits at the file's 21 ms pre-sweep offset.
+        assert response.rate is None
+        assert response.timestamps is not None
+        assert response.timestamps[0] == pytest.approx(0.021)
 
-            number_of_sweeps = 4
-            sweep_start_sample_indices = [0, 1000, 2000, 3000]
-            samples_per_sweep = [1000] * number_of_sweeps
-            intracellular_recordings = nwbfile.intracellular_recordings
-            assert len(intracellular_recordings) == number_of_sweeps
-            responses = intracellular_recordings["responses"]["response"]
-            assert sweep_start_sample_indices == [responses[i].idx_start for i in range(len(intracellular_recordings))]
-            assert samples_per_sweep == [responses[i].count for i in range(len(intracellular_recordings))]
-            sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
-            assert set(sequences) == {"abf2_zero_current_clamp"}
-            stimulus_types = [
-                intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))
-            ]
-            assert set(stimulus_types) == {"Simple Voltage Clamp Protocol"}
+        number_of_sweeps = 4
+        sweep_start_sample_indices = [0, 1000, 2000, 3000]
+        samples_per_sweep = [1000] * number_of_sweeps
+        intracellular_recordings = nwbfile.intracellular_recordings
+        assert len(intracellular_recordings) == number_of_sweeps
+        responses = intracellular_recordings["responses"]["response"]
+        assert sweep_start_sample_indices == [responses[i].idx_start for i in range(len(intracellular_recordings))]
+        assert samples_per_sweep == [responses[i].count for i in range(len(intracellular_recordings))]
+        sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
+        assert set(sequences) == {"abf2_zero_current_clamp"}
+        stimulus_types = [intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))]
+        assert set(stimulus_types) == {"Simple Voltage Clamp Protocol"}
+        nwbfile.read_io.close()
 
 
 class TestAxonRecordedMonitorStimulus(DataInterfaceTestMixin):
@@ -399,14 +401,14 @@ class TestAxonRecordedMonitorStimulus(DataInterfaceTestMixin):
         }
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            response = nwbfile.acquisition["CurrentClampSeriesCurrentClampIN0"]
-            stimulus = nwbfile.stimulus["CurrentClampStimulusSeriesCurrentClampIN0"]
-            assert isinstance(stimulus, CurrentClampStimulusSeries)
-            # The recorded monitor (IN1) is read like the response, so the stimulus shares the response's length
-            # (unlike a reconstructed command, which is synthesized from the protocol).
-            assert stimulus.data.shape[0] == response.data.shape[0]
+        nwbfile = read_nwb(nwbfile_path)
+        response = nwbfile.acquisition["CurrentClampSeriesCurrentClampIN0"]
+        stimulus = nwbfile.stimulus["CurrentClampStimulusSeriesCurrentClampIN0"]
+        assert isinstance(stimulus, CurrentClampStimulusSeries)
+        # The recorded monitor (IN1) is read like the response, so the stimulus shares the response's length
+        # (unlike a reconstructed command, which is synthesized from the protocol).
+        assert stimulus.data.shape[0] == response.data.shape[0]
+        nwbfile.read_io.close()
 
 
 class TestAxonIntracellularMetadata:

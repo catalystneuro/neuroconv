@@ -238,13 +238,22 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
                 pmt_description = ", ".join(desc_parts)
 
         if use_new_metadata_format:
+            # The registry is keyed by the microscope rather than by this interface, whose key carries the
+            # session, unit and channel: those are several views of one Femtonics system.
+            device_metadata_key = "femtonics_microscope"
             if version_parts:
                 metadata["Devices"] = {
-                    self.metadata_key: {"description": f"Femtonics MESc ({', '.join(version_parts)})"},
+                    device_metadata_key: {
+                        "name": "Microscope",
+                        "description": f"Femtonics MESc ({', '.join(version_parts)})",
+                    },
                 }
 
-            # ImagingPlanes
+            # ImagingPlanes. The plane links the device registered above, so the registry entry is used
+            # rather than being shadowed by the placeholder device the writer would otherwise synthesize.
             imaging_plane_entry = {}
+            if version_parts:
+                imaging_plane_entry["device_metadata_key"] = device_metadata_key
             if x_size is not None and y_size is not None:
                 imaging_plane_entry["grid_spacing"] = [float(x_size) * 1e-6, float(y_size) * 1e-6]
                 imaging_plane_entry["grid_spacing_unit"] = "meters"
@@ -261,6 +270,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             ophys = {}
             if imaging_plane_entry:
                 ophys["ImagingPlanes"] = {self.metadata_key: imaging_plane_entry}
+                microscopy_series_entry["imaging_plane_metadata_key"] = self.metadata_key
             if microscopy_series_entry:
                 ophys["MicroscopySeries"] = {self.metadata_key: microscopy_series_entry}
             if ophys:

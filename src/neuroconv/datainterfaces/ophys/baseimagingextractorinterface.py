@@ -8,6 +8,7 @@ from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
 
+from ._metadata_schema import _get_ophys_registry_entry_definitions, _keyed_registry
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     DeepDict,
@@ -75,9 +76,31 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.photon_series_type = photon_series_type
         self.metadata_key = metadata_key
 
-    def get_metadata_schema(
-        self,
-    ) -> dict:
+    def get_metadata_schema(self) -> dict:
+        """
+        Compile the metadata schema.
+
+        The registries are objects keyed by ``metadata_key``, and the entries stay permissive: an entry is
+        passed to a pynwb constructor, so it may legitimately carry any field that constructor takes. What is
+        pinned is the shape, that an entry is an object, and the cross-reference fields
+        (``device_metadata_key``, ``imaging_plane_metadata_key``) that no hdmf class knows about.
+
+        Metadata in the old list-based format is validated against
+        ``_get_metadata_schema_for_old_list_format``, and both go when that format does.
+        """
+        from ...basedatainterface import BaseDataInterface
+
+        metadata_schema = BaseDataInterface.get_metadata_schema(self)
+        metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
+        metadata_schema["properties"]["Ophys"]["required"] = []
+        metadata_schema["properties"]["Ophys"]["properties"] = dict(
+            ImagingPlanes=_keyed_registry("#/properties/Ophys/definitions/ImagingPlaneEntry"),
+            MicroscopySeries=_keyed_registry("#/properties/Ophys/definitions/MicroscopySeriesEntry"),
+        )
+        metadata_schema["properties"]["Ophys"]["definitions"] = _get_ophys_registry_entry_definitions()
+        return metadata_schema
+
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
         Retrieve the metadata schema for the optical physiology (Ophys) data.
 
@@ -150,7 +173,12 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             When True, includes only NWBFile basics.
         """
         if use_new_metadata_format:
-            return super().get_metadata()
+            metadata = super().get_metadata()
+            # Mirrors ``BaseRecordingExtractorInterface``: the base states the conventional default name
+            # for the series it writes, and interfaces that know better overwrite it. ``MicroscopySeries``
+            # is the forward-looking generic, used wherever the source does not say what was imaged.
+            metadata["Ophys"] = {"MicroscopySeries": {self.metadata_key: dict(name="MicroscopySeries")}}
+            return metadata
 
         # Old list-based path (unchanged)
         from ...tools.roiextractors import get_nwb_imaging_metadata
@@ -275,7 +303,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             imaging_extractor = self.imaging_extractor
 
         # TODO: change to self.get_metadata(use_new_metadata_format=True) when all imaging interfaces are migrated
-        metadata = metadata or self.get_metadata()
+        metadata = metadata or self._get_metadata_for_writing()
 
         add_imaging_to_nwbfile(
             imaging=imaging_extractor,

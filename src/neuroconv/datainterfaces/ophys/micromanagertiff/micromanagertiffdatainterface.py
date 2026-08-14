@@ -118,6 +118,8 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
                     self.metadata_key: {
                         "description": "Imaging data acquired with Micro-Manager.",
                         "imaging_plane_metadata_key": self.metadata_key,
+                        "unit": "px",
+                        "format": "tiff",
                     },
                 },
             }

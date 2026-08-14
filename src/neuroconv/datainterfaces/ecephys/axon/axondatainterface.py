@@ -40,6 +40,7 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
         es_key: str = "ElectricalSeries",
+        metadata_key: str | None = None,
     ):
         """
         Load and prepare raw data and corresponding metadata from the Axon Binary Format (.abf files).
@@ -51,6 +52,9 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
             Verbose
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"axon_recording"``.
             The key for the ElectricalSeries in the metadata
         """
         # Handle deprecated positional arguments
@@ -82,7 +86,10 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
 
         self.file_path = Path(file_path)
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+
+        if metadata_key is None:
+            self.metadata_key = "axon_recording"
 
     def _get_start_datetime(self, neo_reader):
         """
@@ -111,16 +118,15 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
             )
             return neo_reader._axon_info["rec_datetime"]
 
-    def get_metadata_schema(self) -> dict:
-        metadata_schema = super().get_metadata_schema()
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        metadata_schema = super()._get_metadata_schema_for_old_list_format()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
             ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
-        ecephys_metadata = metadata["Ecephys"]
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         # Extract session start time from ABF file using the existing neo_reader
         neo_reader = self.recording_extractor.neo_reader
@@ -128,14 +134,34 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         session_start_time_str = session_start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         metadata["NWBFile"].update(session_start_time=session_start_time_str)
 
-        # Add device information
         axon_device = dict(
             name="Axon Instruments",
             description="Axon Instruments data acquisition system (pCLAMP/AxoScope)",
             manufacturer="Molecular Devices",
         )
-        device_list = [axon_device]
-        ecephys_metadata.update(Device=device_list)
+        if use_new_metadata_format:
+            from ....tools.spikeinterface.spikeinterface import _get_group_name
+
+            device_metadata_key = "axon_device"
+            metadata["Devices"] = {device_metadata_key: axon_device}
+
+            # Link every channel group to the device so it reaches the file: devices are created lazily
+            # when an electrode group references them. Only the fields the source carries are emitted;
+            # the required description and location are defaulted by the write pipeline.
+            channel_group_names = set(_get_group_name(recording=self.recording_extractor).tolist())
+            metadata["Ecephys"]["ElectrodeGroups"] = {
+                group_name: dict(name=group_name, device_metadata_key=device_metadata_key)
+                for group_name in channel_group_names
+            }
+
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key].update(
+                name="ElectricalSeriesRaw", description="Raw acquisition traces from Axon Binary Format file."
+            )
+
+            return metadata
+
+        ecephys_metadata = metadata["Ecephys"]
+        ecephys_metadata.update(Device=[axon_device])
 
         # Update electrode groups with device information
         electrode_group_metadata = ecephys_metadata["ElectrodeGroup"]
