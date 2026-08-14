@@ -476,10 +476,9 @@ class TestFiberPhotometryTemporalAlignment:
     the source times are never mutated. Unlike the events interfaces, which hold the same component, this one
     also has a timestamps getter, so a shift is observable there as well as in the written file.
 
-    Nothing here tests ``shift_times`` against the older scalar and interpolation setters. That
-    ``set_aligned_timestamps`` is authoritative over a pending offset is a contract of the temporal
-    alignment API rather than of this modality, so it belongs in ``TemporalAlignmentMixin``, and the
-    arithmetic of ``set_aligned_starting_time`` is what ``shift_times`` exists to replace.
+    An interface is on one alignment API or the other and never both, which the last two tests pin from
+    either side. The arithmetic of ``set_aligned_starting_time`` composed with a shift is deliberately not
+    tested, since that composition can no longer happen.
     """
 
     def test_shift_moves_the_starting_time_and_accumulates(self):
@@ -516,6 +515,26 @@ class TestFiberPhotometryTemporalAlignment:
 
         assert_array_equal(interface.get_original_timestamps(), original_timestamps)
         assert_array_equal(interface.get_timestamps(), original_timestamps + 3.0)
+
+    def test_shifting_after_setting_the_timestamps_is_refused(self):
+        # Reaching for `alignment` at all is what raises, so the error lands on the call the user typed
+        # instead of several steps later at write.
+        interface = MockFiberPhotometryInterface()
+        interface.set_aligned_timestamps(aligned_timestamps=interface.get_original_timestamps() + 7.0)
+
+        with pytest.raises(ValueError, match="older alignment API"):
+            interface.alignment.shift_times(1.0)
+
+    def test_setting_the_timestamps_after_shifting_is_refused(self):
+        # The other order. `set_aligned_starting_time` and `align_by_interpolation` are inherited and both
+        # route through this setter, so one check covers all three of the older entry points.
+        interface = MockFiberPhotometryInterface()
+        interface.alignment.shift_times(1.0)
+
+        with pytest.raises(ValueError, match="already been shifted"):
+            interface.set_aligned_timestamps(aligned_timestamps=interface.get_original_timestamps())
+        with pytest.raises(ValueError, match="already been shifted"):
+            interface.set_aligned_starting_time(aligned_starting_time=2.0)
 
     def test_shift_moves_the_commanded_voltage_series_with_the_response_series(self, full_metadata):
         # The second time-bearing object the writer produces, and the one place a shift has to be applied
