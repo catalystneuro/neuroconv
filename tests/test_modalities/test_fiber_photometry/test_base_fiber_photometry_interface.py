@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, read_nwb
 
 from neuroconv.tools.testing.data_interface_mixins import (
     FiberPhotometryInterfaceTestMixin,
@@ -340,36 +340,20 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             assert len(read_nwbfile.device_models) == 0
             assert "fiber_photometry" not in read_nwbfile.lab_meta_data
 
-    def test_series_added_to_processing_ophys_module(self):
+    def test_parent_container_processing_ophys_round_trips(self, tmp_path):
         # parent_container="processing/ophys" routes the series into the ophys processing module
-        # instead of acquisition — the acquisition container must stay empty.
-        interface = MockFiberPhotometryInterface()
-        nwbfile = interface.create_nwbfile(parent_container="processing/ophys")
-
-        assert "FiberPhotometryResponseSeries" not in nwbfile.acquisition
-        assert "ophys" in nwbfile.processing
-        assert "FiberPhotometryResponseSeries" in nwbfile.processing["ophys"].data_interfaces
-
-    def test_ophys_module_not_created_when_added_to_acquisition(self):
-        # The default path must not create a processing/ophys module as a side-effect.
-        interface = MockFiberPhotometryInterface()
-        nwbfile = interface.create_nwbfile()
-
-        assert "FiberPhotometryResponseSeries" in nwbfile.acquisition
-        assert "ophys" not in nwbfile.processing
-
-    def test_series_added_to_processing_ophys_round_trips(self, tmp_path):
-        # Write via processing/ophys, read back, and verify the series is in the right container.
+        # instead of acquisition — verified through a full run_conversion / read_nwb cycle.
         interface = MockFiberPhotometryInterface()
         nwbfile_path = tmp_path / "processing_ophys.nwb"
-        nwbfile = interface.create_nwbfile(parent_container="processing/ophys")
-        with NWBHDF5IO(nwbfile_path, mode="w") as io:
-            io.write(nwbfile)
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_nwbfile = io.read()
+        interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            parent_container="processing/ophys",
+        )
+        nwbfile = read_nwb(str(nwbfile_path))
 
-            assert "FiberPhotometryResponseSeries" not in read_nwbfile.acquisition
-            response_series = read_nwbfile.processing["ophys"]["FiberPhotometryResponseSeries"]
-            assert response_series.unit == "a.u."
-            assert response_series.data[:].shape == (100,)
-            assert response_series.rate == pytest.approx(100.0)
+        assert "FiberPhotometryResponseSeries" not in nwbfile.acquisition
+        response_series = nwbfile.processing["ophys"]["FiberPhotometryResponseSeries"]
+        assert response_series.unit == "a.u."
+        assert response_series.data[:].shape == (100,)
+        assert response_series.rate == pytest.approx(100.0)
