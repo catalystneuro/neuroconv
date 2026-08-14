@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 from pynwb import NWBHDF5IO, read_nwb
 
 from neuroconv.tools.testing.data_interface_mixins import (
@@ -516,25 +516,78 @@ class TestFiberPhotometryTemporalAlignment:
         assert_array_equal(interface.get_original_timestamps(), original_timestamps)
         assert_array_equal(interface.get_timestamps(), original_timestamps + 3.0)
 
-    def test_shifting_after_setting_the_timestamps_is_refused(self):
-        # Reaching for `alignment` at all is what raises, so the error lands on the call the user typed
-        # instead of several steps later at write.
+    def test_set_times_writes_the_times_it_is_given(self):
+        # Fine alignment by literal values, for per-sample times the user already trusts. Keyless here
+        # because this interface writes one series, so there is one object it could mean.
         interface = MockFiberPhotometryInterface()
-        interface.set_aligned_timestamps(aligned_timestamps=interface.get_original_timestamps() + 7.0)
+        interface.alignment.set_times(interface.get_original_timestamps() + 5.0)
 
-        with pytest.raises(ValueError, match="older alignment API"):
-            interface.alignment.shift_times(1.0)
+        response_series = interface.create_nwbfile().acquisition["FiberPhotometryResponseSeries"]
 
-    def test_setting_the_timestamps_after_shifting_is_refused(self):
-        # The other order. `set_aligned_starting_time` and `align_by_interpolation` are inherited and both
-        # route through this setter, so one check covers all three of the older entry points.
+        assert response_series.starting_time == pytest.approx(5.0)
+        assert response_series.rate == pytest.approx(100.0)
+
+    def test_remap_times_re_expresses_the_series_on_the_reference_clock(self):
+        # Fine alignment against a reference clock. These pulses say the stream's clock runs at half the
+        # reference's, so the series stretches: a 100 Hz recording is 50 Hz on the reference clock, and the
+        # samples between pulses are interpolated rather than resampled.
         interface = MockFiberPhotometryInterface()
-        interface.alignment.shift_times(1.0)
+        interface.alignment.remap_times(stream_sync_times=[0.0, 1.0], reference_sync_times=[10.0, 12.0])
 
-        with pytest.raises(ValueError, match="already been shifted"):
-            interface.set_aligned_timestamps(aligned_timestamps=interface.get_original_timestamps())
-        with pytest.raises(ValueError, match="already been shifted"):
-            interface.set_aligned_starting_time(aligned_starting_time=2.0)
+        response_series = interface.create_nwbfile().acquisition["FiberPhotometryResponseSeries"]
+
+        assert response_series.starting_time == pytest.approx(10.0)
+        assert response_series.rate == pytest.approx(50.0)
+
+    def test_the_interface_names_its_one_time_bearing_object(self):
+        # The mapping surface. One response series means one key, the same one its metadata is under, and
+        # reaching it gives the same operations scoped to that object.
+        interface = MockFiberPhotometryInterface(metadata_key="my_series")
+
+        assert interface.alignment.keys() == ("my_series",)
+        interface.alignment["my_series"].shift_times(2.0)
+        assert interface.create_nwbfile().acquisition["FiberPhotometryResponseSeries"].starting_time == pytest.approx(
+            2.0
+        )
+
+        with pytest.raises(KeyError, match="not a time-bearing object"):
+            interface.alignment["nose"]
+
+    @pytest.mark.parametrize(
+        "legacy_call, new_call",
+        [
+            (
+                lambda interface: interface.set_aligned_timestamps(
+                    aligned_timestamps=interface.get_original_timestamps() + 5.0
+                ),
+                lambda interface: interface.alignment.set_times(interface.get_original_timestamps() + 5.0),
+            ),
+            (
+                lambda interface: interface.set_aligned_starting_time(aligned_starting_time=5.0),
+                lambda interface: interface.alignment.shift_times(5.0),
+            ),
+            (
+                lambda interface: interface.align_by_interpolation(
+                    unaligned_timestamps=np.array([0.0, 1.0]), aligned_timestamps=np.array([5.0, 6.0])
+                ),
+                lambda interface: interface.alignment.remap_times(
+                    stream_sync_times=[0.0, 1.0], reference_sync_times=[5.0, 6.0]
+                ),
+            ),
+        ],
+    )
+    def test_the_older_methods_warn_and_do_what_their_successor_does(self, legacy_call, new_call):
+        # Each of the three has a successor now, so they route into it rather than holding a second
+        # mechanism. Every one of these lands the series at five seconds by a different road.
+        legacy_interface = MockFiberPhotometryInterface()
+        with pytest.warns(FutureWarning, match="removed on or after August 2027"):
+            legacy_call(legacy_interface)
+
+        new_interface = MockFiberPhotometryInterface()
+        new_call(new_interface)
+
+        assert_allclose(legacy_interface.get_timestamps(), new_interface.get_timestamps())
+        assert legacy_interface.get_timestamps()[0] == pytest.approx(5.0)
 
     def test_shift_moves_the_commanded_voltage_series_with_the_response_series(self, full_metadata):
         # The second time-bearing object the writer produces, and the one place a shift has to be applied
