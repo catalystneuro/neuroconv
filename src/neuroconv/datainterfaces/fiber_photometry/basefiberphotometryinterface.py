@@ -20,6 +20,7 @@ Child interfaces implement only the format-reading seam:
 
 import warnings
 from abc import abstractmethod
+from typing import Literal
 
 import numpy as np
 from pynwb.file import NWBFile
@@ -32,6 +33,7 @@ from ...tools.fiber_photometry import (
     add_fiber_photometry_lab_metadata,
     get_fiber_photometry_table_region,
 )
+from ...tools.nwb_helpers import get_module
 from ...utils import DeepDict, dict_deep_update, get_base_schema
 from ...utils.checks import calculate_regular_series_rate
 
@@ -380,6 +382,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stub_test: bool = False,
         stub_samples: int = 100,
         always_write_timestamps: bool = False,
+        parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     ) -> None:
         """Add this interface's ``FiberPhotometryResponseSeries`` (and, once, the shared containers).
 
@@ -403,6 +406,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             The number of samples to write when ``stub_test`` is True.
         always_write_timestamps : bool, default: False
             If True, always write an explicit timestamps array even when the series is regularly sampled.
+        parent_container : {"acquisition", "processing/ophys"}, default: "acquisition"
+            The NWBFile container to add the ``FiberPhotometryResponseSeries`` to. Use
+            ``"processing/ophys"`` when the series represents processed data rather than raw acquisition.
         """
         from ndx_fiber_photometry import FiberPhotometryResponseSeries
 
@@ -472,4 +478,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             fiber_photometry_table_region=table_region,
             **timing_kwargs,
         )
-        nwbfile.add_acquisition(response_series)
+        if parent_container == "acquisition":
+            nwbfile.add_acquisition(response_series)
+        elif parent_container == "processing/ophys":
+            ophys_module = get_module(nwbfile, name="ophys", description="contains optical physiology processed data")
+            ophys_module.add(response_series)
