@@ -51,9 +51,47 @@ class _TimeBearingSeries:
     def remap_times(self, *, local_sync_times, reference_sync_times) -> None:
         """Re-express this object's times on a reference clock through synchronization pulses.
 
-        ``local_sync_times`` are the pulses as this object's own clock recorded them and
-        ``reference_sync_times`` are the same pulses on the clock being aligned to. Times between pulses are
-        interpolated. Use this when the two clocks drift, so no single shift lines them up.
+        Use this when the two clocks drift, so no single shift lines them up. When they differ only by a
+        constant, ``interface.alignment.shift_times`` says so more cheaply and keeps a regular series
+        regular.
+
+        Parameters
+        ----------
+        local_sync_times : array-like of float
+            The pulses as this object's own system timestamped them, on the timeline the object currently
+            reports: if you have already shifted this interface, these have to carry that shift too.
+        reference_sync_times : array-like of float
+            The same pulses, in the same order, as timestamped by the clock being aligned to.
+
+        Notes
+        -----
+        The two arrays are one set of physical events read off two clocks. A synchronization line runs
+        between the systems and each of them timestamps every pulse on it, so pulse ``i`` appears once in
+        each array, at a different time::
+
+                                 pulse 1    pulse 2    pulse 3
+            this object's clock      0.0        1.9        3.8     <- local_sync_times
+            reference clock         10.0       12.0       14.0     <- reference_sync_times
+
+        For example, a behaviour camera records alongside an electrophysiology rig. On every tenth frame the
+        camera sends a TTL pulse into a digital input on the electrophysiology acquisition board, and it
+        also writes its own log of when it sent them. If we are writing the session time in the clock of the
+        electrophysiology rig then we need to remap the times of the camera, so the parameters are
+
+        - ``reference_sync_times``: the times the acquisition board recorded those pulses on its digital
+          input. Those are on the session's clock.
+        - ``local_sync_times``: the times the camera's own log gives for the same pulses. Those are on the
+          (local) camera clock.
+
+        So in this case, remap is called on the camera interface to remap its times towards the
+        electrophysiology board.
+
+        Times falling between two local pulses are interpolated proportionally, and nothing is resampled:
+        the data is left alone and only the times move. The two arrays pair up positionally, so a pulse only
+        one of the systems recorded has to be dropped from the other array as well, and a mismatched count
+        raises rather than guessing an offset. Samples outside the first and last local pulse are clamped
+        rather than extrapolated, following ``numpy.interp``, so anything recorded before the first local
+        pulse lands on the first reference time.
         """
         local_sync_times = np.asarray(local_sync_times)
         reference_sync_times = np.asarray(reference_sync_times)
