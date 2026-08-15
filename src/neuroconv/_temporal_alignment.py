@@ -40,15 +40,17 @@ class _TimeBearingSeries:
         return times + self._alignment.offset
 
     def set_times(self, times) -> None:
-        """Replace this object's times with the ones given.
+        """Write these times for this object, exactly as given.
 
         For per-sample times you already trust, from a synchronization signal or a computation of your own.
-        The interface's offset still applies on top, since that positions the whole interface and this
-        positions one object inside it.
+        They are the times the file will carry, so a shift applied earlier is superseded for this object;
+        a shift applied afterwards still moves it, the way any later correction would.
         """
-        self._times = np.asarray(times)
+        # ``get_times`` adds the interface's offset on the way back out, so store these less that offset
+        # and the caller reads back exactly what they passed.
+        self._times = np.asarray(times) - self._alignment.offset
 
-    def remap_times(self, *, local_sync_times, reference_sync_times) -> None:
+    def remap_times(self, *, local_sync_times, reference_sync_times, interpolation_function=np.interp) -> None:
         """Re-express this object's times on a reference clock through synchronization pulses.
 
         Use this when the two clocks drift, so no single shift lines them up. When they differ only by a
@@ -62,6 +64,16 @@ class _TimeBearingSeries:
             reports: if you have already shifted this interface, these have to carry that shift too.
         reference_sync_times : array-like of float
             The same pulses, in the same order, as timestamped by the clock being aligned to.
+        interpolation_function : callable, default: ``numpy.interp``
+            How to turn the pulse pairs into a map. Called as
+            ``interpolation_function(times, local_sync_times, reference_sync_times)`` and returns the
+            remapped times, which is ``numpy.interp``'s own signature. Bind its options with
+            ``functools.partial``, ``partial(numpy.interp, left=numpy.nan, right=numpy.nan)`` to mark
+            samples outside the pulse range instead of clamping them. Anything of that shape works, so a
+            different scheme is a small adapter::
+
+                def extrapolating(times, local_sync_times, reference_sync_times):
+                    return interp1d(local_sync_times, reference_sync_times, fill_value="extrapolate")(times)
 
         Notes
         -----
@@ -89,9 +101,10 @@ class _TimeBearingSeries:
         Times falling between two local pulses are interpolated proportionally, and nothing is resampled:
         the data is left alone and only the times move. The two arrays pair up positionally, so a pulse only
         one of the systems recorded has to be dropped from the other array as well, and a mismatched count
-        raises rather than guessing an offset. Samples outside the first and last local pulse are clamped
-        rather than extrapolated, following ``numpy.interp``, so anything recorded before the first local
-        pulse lands on the first reference time.
+        raises rather than guessing an offset. Under the default, samples outside the first and last local
+        pulse are clamped rather than extrapolated, following ``numpy.interp``, so anything recorded before
+        the first local pulse lands on the first reference time; ``interpolation_function`` is how you
+        choose otherwise.
         """
         local_sync_times = np.asarray(local_sync_times)
         reference_sync_times = np.asarray(reference_sync_times)
@@ -100,7 +113,7 @@ class _TimeBearingSeries:
                 "The synchronization pulses have to pair up: `local_sync_times` has "
                 f"{local_sync_times.size} of them and `reference_sync_times` has {reference_sync_times.size}."
             )
-        remapped_times = np.interp(self.get_times(), local_sync_times, reference_sync_times)
+        remapped_times = interpolation_function(self.get_times(), local_sync_times, reference_sync_times)
         # These are the times to be written, and ``get_times`` adds the interface's offset on the way back
         # out, so what is stored is the remapped times less that offset.
         self._times = remapped_times - self._alignment.offset
@@ -144,7 +157,7 @@ class _TemporalAlignment:
         """Shift every time-bearing object in the interface by ``delta`` seconds (relative, accumulates)."""
         self._offset += float(delta)
 
-    def remap_times(self, *, local_sync_times, reference_sync_times) -> None:
+    def remap_times(self, *, local_sync_times, reference_sync_times, interpolation_function=np.interp) -> None:
         """Re-express every time-bearing object on a reference clock through synchronization pulses.
 
         One acquisition clock means one correction, so this needs no key. See
@@ -152,5 +165,7 @@ class _TemporalAlignment:
         """
         for time_bearing_object in self._name_to_time_bearing_object.values():
             time_bearing_object.remap_times(
-                local_sync_times=local_sync_times, reference_sync_times=reference_sync_times
+                local_sync_times=local_sync_times,
+                reference_sync_times=reference_sync_times,
+                interpolation_function=interpolation_function,
             )

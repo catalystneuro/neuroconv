@@ -544,20 +544,29 @@ class TestFiberPhotometryTemporalAlignment:
         assert response_series.starting_time == pytest.approx(5.0)
         assert response_series.rate == pytest.approx(100.0)
 
-    def test_a_shift_and_set_times_compose_in_either_order(self):
-        # The interface-wide shift places the interface and set_times places one object inside it, so the
-        # two are independent and the order they are called in cannot matter.
-        shift_first = MockFiberPhotometryInterface()
-        shift_first.alignment.shift_times(2.0)
-        shift_first.alignment[shift_first.metadata_key].set_times(shift_first.get_original_timestamps() + 5.0)
+    def test_set_times_gives_the_times_the_file_carries_whatever_preceded_it(self):
+        # set_times states the times outright, so a shift already applied is superseded for that object
+        # rather than added on top of the values given. Reading them back returns them unchanged.
+        interface = MockFiberPhotometryInterface()
+        stated_times = interface.get_original_timestamps() + 5.0
+        interface.alignment.shift_times(2.0)
+        interface.alignment[interface.metadata_key].set_times(stated_times)
 
-        set_first = MockFiberPhotometryInterface()
-        set_first.alignment[set_first.metadata_key].set_times(set_first.get_original_timestamps() + 5.0)
-        set_first.alignment.shift_times(2.0)
+        assert_allclose(interface.alignment[interface.metadata_key].get_times(), stated_times)
+        assert interface.create_nwbfile().acquisition["FiberPhotometryResponseSeries"].starting_time == pytest.approx(
+            5.0
+        )
 
-        shift_first_times = shift_first.alignment[shift_first.metadata_key].get_times()
-        assert_allclose(shift_first_times, set_first.alignment[set_first.metadata_key].get_times())
-        assert shift_first_times[0] == pytest.approx(7.0)
+    def test_a_shift_after_set_times_still_moves_the_object(self):
+        # The other order. A shift is a correction applied to whatever the times are now, so it moves
+        # stated times as readily as source ones, and the interface stays movable after a set.
+        interface = MockFiberPhotometryInterface()
+        interface.alignment[interface.metadata_key].set_times(interface.get_original_timestamps() + 5.0)
+        interface.alignment.shift_times(2.0)
+
+        response_series = interface.create_nwbfile().acquisition["FiberPhotometryResponseSeries"]
+
+        assert response_series.starting_time == pytest.approx(7.0)
 
     def test_remap_times_re_expresses_the_series_on_the_reference_clock(self):
         # Fine alignment against a reference clock. These pulses say the stream's clock runs at half the
@@ -570,6 +579,22 @@ class TestFiberPhotometryTemporalAlignment:
 
         assert response_series.starting_time == pytest.approx(10.0)
         assert response_series.rate == pytest.approx(50.0)
+
+    def test_remap_times_builds_its_map_with_the_function_it_is_given(self):
+        # The interpolation is a parameter, so a scheme numpy.interp cannot express (extrapolation, a
+        # spline, identified pulses) is supplied rather than requested. The function here ignores the
+        # pulses and states the map outright, which no default could produce.
+        interface = MockFiberPhotometryInterface()
+        interface.alignment.remap_times(
+            local_sync_times=[0.0, 1.0],
+            reference_sync_times=[10.0, 12.0],
+            interpolation_function=lambda times, local, reference: times + 100.0,
+        )
+
+        response_series = interface.create_nwbfile().acquisition["FiberPhotometryResponseSeries"]
+
+        assert response_series.starting_time == pytest.approx(100.0)
+        assert response_series.rate == pytest.approx(100.0)
 
     def test_remap_times_reads_the_pulses_on_the_times_the_interface_currently_reports(self):
         # The other side of the composition. Pulses are given in whatever frame the interface reports, which
