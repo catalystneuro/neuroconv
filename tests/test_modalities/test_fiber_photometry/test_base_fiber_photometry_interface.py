@@ -467,3 +467,21 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             assert len(read_nwbfile.devices) == 0
             assert len(read_nwbfile.device_models) == 0
             assert "fiber_photometry" not in read_nwbfile.lab_meta_data
+
+    def test_parent_container_processing_ophys_round_trips(self, tmp_path):
+        # parent_container="processing/ophys" routes the series into the ophys processing module
+        # instead of acquisition — verified through a full run_conversion / read_nwb cycle.
+        interface = MockFiberPhotometryInterface()
+        nwbfile_path = tmp_path / "processing_ophys.nwb"
+        interface.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            parent_container="processing/ophys",
+        )
+        nwbfile = read_nwb(str(nwbfile_path))
+
+        assert "FiberPhotometryResponseSeries" not in nwbfile.acquisition
+        response_series = nwbfile.processing["ophys"]["FiberPhotometryResponseSeries"]
+        assert response_series.unit == "a.u."
+        assert response_series.data[:].shape == (100,)
+        assert response_series.rate == pytest.approx(100.0)
