@@ -165,6 +165,11 @@ class _TemporalAlignment:
         One acquisition clock means one correction, so this needs no key. See
         :meth:`_TimeBearingSeries.remap_times`.
         """
+        if not self._name_to_time_bearing_object:
+            raise NotImplementedError(
+                "This interface has registered no time-bearing objects, so there is nothing to remap. Only "
+                "`shift_times` is supported here for now."
+            )
         for time_bearing_object in self._name_to_time_bearing_object.values():
             time_bearing_object.remap_times(
                 local_sync_times=local_sync_times,
