@@ -99,8 +99,8 @@ this call always names one, even where the interface writes only that one; the n
 
     imaging_interface.alignment["two_photon_series"].set_times(frame_times)
 
-These are the times the file will carry. ``set_times`` writes them exactly as given and ``get_times`` reports them
-back unchanged (a shift applied earlier is superseded for that object, and one applied afterwards still moves it).
+These are the times the file will carry: ``set_times`` writes them exactly as given. Call ``get_times`` afterwards
+and you get back what you just set.
 
 **Re-time against a reference clock.** When you do not have the true times, you recover them by comparison with a clock
 you trust, the reference clock.
