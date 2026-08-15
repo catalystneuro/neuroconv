@@ -99,6 +99,9 @@ this call always names one, even where the interface writes only that one; the n
 
     imaging_interface.alignment["two_photon_series"].set_times(frame_times)
 
+These are the times the file will carry. ``set_times`` writes them exactly as given and ``get_times`` reports them
+back unchanged (a shift applied earlier is superseded for that object, and one applied afterwards still moves it).
+
 **Re-time against a reference clock.** When you do not have the true times, you recover them by comparison with a clock
 you trust, the reference clock.
 
@@ -117,7 +120,7 @@ samples that fall between pulses:
 .. code-block:: python
 
     # The shared pulses, timestamped on each clock.
-    pulses_local = ...       # on the interface's own clock
+    pulses_local = ...       # on the timeline the interface currently reports
     pulses_reference = ...   # the same pulses on the reference clock
 
     imaging_interface.alignment.remap_times(
@@ -131,6 +134,51 @@ samples that fall between pulses:
    :alt: The same synchronization pulses, recorded on both a camera clock and the reference clock, pin one clock's
          times to the other's. Because the pulses are sparser than the camera's frames, a frame that falls between
          two pulses is placed on the reference clock by interpolating between the surrounding anchors.
+
+``local_sync_times`` is on the timeline the interface currently reports, so if you have already shifted it these have
+to carry that shift too, while ``reference_sync_times`` is on the clock you are aligning to and cannot vary that way.
+The two arrays pair up positionally, index by index, so a pulse that only one system recorded has to be dropped from
+the other as well; equal lengths are not proof that the pairing is right.
+
+Choosing how the map is built
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The map between the pulses is built with :func:`numpy.interp`, so a sample falling between two pulses is placed
+proportionally between them, and samples outside the first and last pulse are clamped to the nearest reference time
+rather than extrapolated. ``interpolation_function`` is how you change that, and there are two cases.
+
+The first is when you want ``numpy.interp`` itself, with different arguments. Bind them with :func:`functools.partial`,
+for instance to mark the samples outside the pulse range instead of clamping them:
+
+.. code-block:: python
+
+    from functools import partial
+
+    imaging_interface.alignment.remap_times(
+        local_sync_times=pulses_local,
+        reference_sync_times=pulses_reference,
+        interpolation_function=partial(np.interp, left=np.nan, right=np.nan),
+    )
+
+The second is when you want a different scheme altogether, a spline or a fit that extrapolates. Any callable will do,
+as long as it takes the object's times and the two pulse arrays and returns the remapped times, which is
+``numpy.interp``'s own signature:
+
+.. code-block:: python
+
+    from scipy.interpolate import interp1d
+
+    def extrapolating(times, local_sync_times, reference_sync_times):
+        return interp1d(local_sync_times, reference_sync_times, fill_value="extrapolate")(times)
+
+    imaging_interface.alignment.remap_times(
+        local_sync_times=pulses_local,
+        reference_sync_times=pulses_reference,
+        interpolation_function=extrapolating,
+    )
+
+None of this is a closed set. If the map you need is not expressible this way, compute the times you want by whatever
+means you like and hand them to ``set_times``, which writes exactly what you give it.
 
 Multiple time-bearing objects
 -----------------------------
