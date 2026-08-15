@@ -427,3 +427,13 @@ class TestStoreIdResolution:
         assert resolve_acquisition_store_rows(nwbfile=nwbfile, store_ids=[UNLINKED_SERIES_NAME]) == {
             UNLINKED_SERIES_NAME: None
         }
+
+    def test_series_added_after_the_objects_cache_was_read_still_resolves(self):
+        """Anything reading ``nwbfile.objects`` freezes it, and the series may be added after that."""
+        nwbfile = mock_NWBFile()
+        nwbfile.objects
+        _add_unlinked_response_series(nwbfile)
+
+        assert resolve_acquisition_store_rows(nwbfile=nwbfile, store_ids=[UNLINKED_SERIES_NAME]) == {
+            UNLINKED_SERIES_NAME: None
+        }

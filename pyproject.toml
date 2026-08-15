@@ -39,7 +39,7 @@ dependencies = [
     "numpy>=1.26.0; python_version >= '3.12'",
     "PyYAML>=5.4",
     "h5py>=3.9.0",
-    "hdmf>=4.1.1",
+    "hdmf>=6.1.0",
     "hdmf_zarr>=0.11",
     "pynwb>=4.0.0",
     "pydantic>=2.0",
@@ -301,9 +301,23 @@ fiber_photometry = [
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
     "roiextractors>=0.9.0",
 ]
-brukertiff = [
+# What it takes to read a tiff, stated once for the formats that are stored as one. Membership is by
+# what the format reads and not by modality, so Inscopix (.isxd) and Miniscope (video) are not here.
+ophys_tiff = [
     "neuroconv[ophys_minimal]",
-    "tifffile>=2023.3.21",
+    # The 'codecs' extra pulls 'imagecodecs' (~49 MB), which tifffile needs to decode a compressed
+    # tiff; without it a compressed file raises "<COMPRESSION.LZW: 5> requires the 'imagecodecs'
+    # package" from six frames inside tifffile, mid-read, reading as though the file were corrupt.
+    # Compression is a property of the file a user was handed rather than a choice they made, so
+    # they cannot know to install it in advance, which is why it is declared rather than left out.
+    # This is meant to be temporary: remove it once roiextractors detects the compression at
+    # construction time and raises a message naming 'imagecodecs' and saying the file is not corrupt.
+    # At that point the minority who need it can install it on a clear instruction, and the majority
+    # stop paying for it.
+    "tifffile[codecs]>=2023.3.21",
+]
+brukertiff = [
+    "neuroconv[ophys_tiff]",
     "natsort",
 ]
 caiman = [
@@ -337,8 +351,7 @@ inscopix = [
     "neuroconv[ophys_minimal]",
 ]
 micromanagertiff = [
-    "neuroconv[ophys_minimal]",
-    "tifffile>=2023.3.21",
+    "neuroconv[ophys_tiff]",
 ]
 miniscope = [
     "natsort>=8.3.1",
@@ -355,9 +368,8 @@ scanbox = [
     "neuroconv[ophys_minimal]",
 ]
 scanimage = [
-    "neuroconv[ophys_minimal]",
+    "neuroconv[ophys_tiff]",
     "natsort",
-    "tifffile>=2023.3.21",
 ]
 scanimage_legacy = [
     "neuroconv[ophys_minimal]",
@@ -402,12 +414,12 @@ guppy = [
     "neuroconv[npm_events]",
 ]
 thor = [
-    "neuroconv[ophys_minimal]",
-    "tifffile>=2023.3.21",
+    # ThorImageLS is the format that surfaced the codecs question, see 'ophys_tiff' above: it writes
+    # LZW-compressed TIFFs when the operator leaves compression on.
+    "neuroconv[ophys_tiff]",
 ]
 tiff = [
-    "neuroconv[ophys_minimal]",
-    "tifffile>=2018.10.18",
+    "neuroconv[ophys_tiff]",
 ]
 ophys = [
     "neuroconv[brukertiff]",
@@ -543,6 +555,7 @@ docs = [
     "readthedocs-sphinx-search==0.1.2",  # Deprecated, probably should be removed see https://github.com/readthedocs/readthedocs-sphinx-search/issues/144
     "sphinx-toggleprompt==0.6.0",  # Latest as of April 2025.
     "sphinx-copybutton==0.5.2",  # Latest as of April 2025.
+    "sphinx-design==0.7.0; python_version>='3.11'",  # Used by metadata_templates.rst to show the YAML and JSON forms of each template in tabs.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
     "spikeinterface>=0.104.7",  # Needed for the API documentation

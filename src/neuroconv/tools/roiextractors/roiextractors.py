@@ -101,7 +101,7 @@ def _get_ophys_metadata_placeholders():
 
     metadata["Devices"] = {
         default_metadata_key: {
-            "name": "Microscope",
+            "name": "PlaceholderMicroscope",
         },
     }
 
@@ -329,22 +329,22 @@ def _add_imaging_plane_to_nwbfile(
     if imaging_plane_name in nwbfile.imaging_planes:
         return nwbfile.imaging_planes[imaging_plane_name]
 
-    # Resolve device. Entries without a ``device_metadata_key`` fall back to the placeholder device,
-    # which is exposed through the registry under its default key so every device is added by the
-    # canonical path.
+    # Resolve device. An entry naming no device gets the placeholder: a plain Device carrying the one
+    # field NWB requires, built here rather than through the registry writer, since there is no registry
+    # entry to key it against. Reused by name, so several planes naming no device land on one device. A
+    # keyed entry resolves against the caller's ``metadata``, which goes down whole because the device
+    # may name its model with ``device_model_metadata_key``, resolved against ``metadata["DeviceModels"]``.
     device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
-    # The whole metadata goes to the helper, since a device entry may name its model by
-    # ``device_model_metadata_key``; only the ``Devices`` registry is rebuilt, for the placeholder below.
-    devices_metadata = {**(metadata or {}), "Devices": dict((metadata or {}).get("Devices", {}))}
     if device_metadata_key is None:
-        # Only synthesize the placeholder when nothing was referenced, so a user device that happens
-        # to share the placeholder's name is not turned into a duplicate-name conflict.
-        device_metadata_key = "default_metadata_key"
         placeholder = _get_ophys_metadata_placeholders()["Devices"]["default_metadata_key"]
-        devices_metadata["Devices"].setdefault(device_metadata_key, placeholder)
-    imaging_plane_kwargs["device"] = _add_device_to_nwbfile(
-        nwbfile=nwbfile, metadata=devices_metadata, metadata_key=device_metadata_key
-    )
+        placeholder_name = placeholder["name"]
+        if placeholder_name not in nwbfile.devices:
+            nwbfile.create_device(**placeholder)
+        imaging_plane_kwargs["device"] = nwbfile.devices[placeholder_name]
+    else:
+        imaging_plane_kwargs["device"] = _add_device_to_nwbfile(
+            nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key
+        )
 
     # ``optical_channel`` is written inline as a list of dicts and built into OpticalChannel objects
     # by the shared primitive, which reads the target type off ImagingPlane's own constructor spec.
@@ -590,7 +590,9 @@ def _add_plane_segmentation_to_nwbfile(
         image_mask_array = image_or_pixel_masks.T
         for roi_index, roi_name in zip(roi_indices, roi_names):
             image_mask = image_mask_array[roi_index]
-            plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, image_mask=image_mask)
+            # check_ragged=False: hdmf rescans the whole column on every add_roi, making this quadratic in
+            # the ROI count. (The pixel/voxel branch below goes through a VectorIndex, which is never checked.)
+            plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, image_mask=image_mask, check_ragged=False)
     else:
         mask_type_kwarg = f"{mask_type}_mask"
         pixel_masks = image_or_pixel_masks
@@ -983,7 +985,11 @@ def _imaging_frames_to_hdmf_iterator(
 
     if iterator_type is None:
         _check_if_imaging_fits_into_memory(imaging=imaging)
-        return imaging.get_series().transpose((0, 2, 1))
+        series = imaging.get_series()
+        # (samples, height, width) planar, (samples, height, width, planes) volumetric. The same rule
+        # the v2 iterator applies in ImagingExtractorDataChunkIterator._get_data.
+        transpose_axes = (0, 2, 1) if series.ndim == 3 else (0, 2, 1, 3)
+        return series.transpose(transpose_axes)
 
     return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
