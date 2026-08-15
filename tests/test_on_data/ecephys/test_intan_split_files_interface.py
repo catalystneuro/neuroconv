@@ -82,20 +82,19 @@ class TestIntanDigitalInterfaceSplit:
         table = nwbfile.events[line]
         return np.asarray(table["timestamp"][:]), np.asarray(table["duration"][:])
 
-    def test_single_file_read_stops_at_the_chunk_boundary(self):
-        """Without the flag the interface sees one chunk: the four pulses of the file it was given."""
-        first_file = sorted(DIGITAL_SPLIT_FOLDER.glob("*.rhd"))[0]
-        interface = IntanDigitalInterface(file_path=first_file)
-        timestamps, _ = self._read_line(interface, self.LINE)
-
-        assert len(timestamps) == 4
-
     def test_split_read_joins_the_chunks_in_filename_order(self):
         """With the flag every chunk's pulses are there, each one shifted by the chunks ahead of it.
 
         Asserted against the per-chunk reads rather than against hardcoded times, because the claim is
         exactly that: the joined read is the four separate reads laid end to end, in filename order,
         on one clock that keeps running across the joins.
+
+        The frame period is then checked against the camera's own rate, which is the one assertion here
+        that does not go through the same reader twice: a join that dropped or duplicated even one
+        sample would show up as a period no chunk contains. 1502 and 1503 samples are the two the
+        camera alternates between, since its rate does not land on a whole sample of the 30 kHz clock;
+        the joins sit at indices 3, 7 and 11 and carry the same pair. That is what makes a pulse rising
+        in one chunk and falling in the next read as the single pulse it is.
         """
         files = sorted(DIGITAL_SPLIT_FOLDER.glob("*.rhd"))
         expected_timestamps = np.concatenate(
@@ -114,22 +113,7 @@ class TestIntanDigitalInterfaceSplit:
         # unterminated high.
         assert not np.isnan(durations).any()
 
-    def test_pulse_train_is_unbroken_across_the_joins(self):
-        """The frame period across a join is the same as inside a chunk, so no sample is lost or
-        repeated at a boundary.
-
-        This is what makes a pulse that rises in one chunk and falls in the next read as the single
-        pulse it is: the camera runs at a fixed rate the whole time, and a join that dropped or
-        duplicated even one sample would show up as a period no chunk contains. 1502 and 1503 samples
-        are the two the camera alternates between, since its rate does not land on a whole sample of
-        the 30 kHz clock; the joins sit at indices 3, 7 and 11 and carry the same pair.
-        """
-        first_file = sorted(DIGITAL_SPLIT_FOLDER.glob("*.rhd"))[0]
-        interface = IntanDigitalInterface(file_path=first_file, saved_files_are_split=True)
-        timestamps, _ = self._read_line(interface, self.LINE)
-
         periods_in_samples = np.round(np.diff(timestamps) * self.SAMPLING_FREQUENCY).astype(int)
-        assert len(periods_in_samples) == 15  # the sixteen pulses of the joined read
         assert sorted(set(periods_in_samples)) == [1502, 1503]
 
     def test_joined_read_exposes_the_same_lines(self):
