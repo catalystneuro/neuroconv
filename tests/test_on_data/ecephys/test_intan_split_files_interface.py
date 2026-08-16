@@ -71,8 +71,16 @@ class TestIntanDigitalInterfaceSplit:
     """
 
     LINE = "DIGITAL-IN-14"
-    CHUNK_DURATION = 6016 / 30_000.0  # seconds per rotated chunk, all four are the same length
     SAMPLING_FREQUENCY = 30_000.0
+    # The camera's rising edges over the whole session, read off the fixture, as sample indices of the
+    # concatenated recording (the joins sit at 6016, 12032 and 18048, since all four chunks are 6016
+    # samples long). Hardcoded rather than assembled from per-chunk reads, which would only compare the
+    # reader against itself.
+    ONSETS = (539, 2041, 3543, 5046, 6548, 8050, 9553, 11055, 12558, 14060, 15562, 17065, 18567, 20069, 21572, 23075)
+    # Onset -> duration, in samples, for the three low periods that span a join: the line goes low at
+    # 5947 and does not come back up until 6548, which is past the boundary at 6016, and likewise at
+    # the other two.
+    LOW_PERIODS_SPANNING_A_JOIN = {5947: 601, 11956: 602, 17966: 601}
 
     @staticmethod
     def _read_line(interface, line):
@@ -83,38 +91,46 @@ class TestIntanDigitalInterfaceSplit:
         return np.asarray(table["timestamp"][:]), np.asarray(table["duration"][:])
 
     def test_split_read_joins_the_chunks_in_filename_order(self):
-        """With the flag every chunk's pulses are there, each one shifted by the chunks ahead of it.
+        """Every chunk's pulses are there, on one clock that keeps running across the joins.
 
-        Asserted against the per-chunk reads rather than against hardcoded times, because the claim is
-        exactly that: the joined read is the four separate reads laid end to end, in filename order,
-        on one clock that keeps running across the joins.
-
-        The frame period is then checked against the camera's own rate, which is the one assertion here
-        that does not go through the same reader twice: a join that dropped or duplicated even one
-        sample would show up as a period no chunk contains. 1502 and 1503 samples are the two the
-        camera alternates between, since its rate does not land on a whole sample of the 30 kHz clock;
-        the joins sit at indices 3, 7 and 11 and carry the same pair. That is what makes a pulse rising
-        in one chunk and falling in the next read as the single pulse it is.
+        The chunk a pulse came from is not recoverable from the result, which is the point: the four
+        pulses of the second chunk sit at 6548 onwards rather than back at 532, so the times are the
+        session's rather than an offset into whichever file happens to hold them.
         """
-        files = sorted(DIGITAL_SPLIT_FOLDER.glob("*.rhd"))
-        expected_timestamps = np.concatenate(
-            [
-                self._read_line(IntanDigitalInterface(file_path=file), self.LINE)[0] + chunk_index * self.CHUNK_DURATION
-                for chunk_index, file in enumerate(files)
-            ]
-        )
+        first_file = sorted(DIGITAL_SPLIT_FOLDER.glob("*.rhd"))[0]
+        interface = IntanDigitalInterface(file_path=first_file, saved_files_are_split=True)
+        timestamps, _ = self._read_line(interface, self.LINE)
 
-        interface = IntanDigitalInterface(file_path=files[0], saved_files_are_split=True)
+        expected_timestamps = np.array(self.ONSETS) / self.SAMPLING_FREQUENCY
+        np.testing.assert_allclose(timestamps, expected_timestamps)
+
+    def test_a_low_period_spanning_a_join_reads_as_one_event(self):
+        """An event that opens in one chunk and closes in the next comes out whole.
+
+        The camera line idles low between frames, so reading it as a low period puts an event across
+        every join, which the high pulses themselves do not do: each of them is over well before the
+        file it is in ends. Read one chunk on its own and the low period it ends on has no rising edge
+        left to close it, so the duration is NaN; the durations asserted here are the ones the whole
+        session gives, and they are only available if the chunks were joined before edge detection.
+        """
+        first_file = sorted(DIGITAL_SPLIT_FOLDER.glob("*.rhd"))[0]
+        interface = IntanDigitalInterface(
+            file_path=first_file,
+            saved_files_are_split=True,
+            detection_configuration={
+                self.LINE: [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "low_period"}]
+            },
+        )
         timestamps, durations = self._read_line(interface, self.LINE)
 
-        assert len(timestamps) == 16  # four pulses in each of the four chunks
-        np.testing.assert_allclose(timestamps, expected_timestamps)
-        # Every pulse ends inside the recording, so none is left with the NaN duration of an
-        # unterminated high.
-        assert not np.isnan(durations).any()
-
-        periods_in_samples = np.round(np.diff(timestamps) * self.SAMPLING_FREQUENCY).astype(int)
-        assert sorted(set(periods_in_samples)) == [1502, 1503]
+        onsets_in_samples = np.round(timestamps * self.SAMPLING_FREQUENCY).astype(int)
+        durations_in_samples = durations * self.SAMPLING_FREQUENCY
+        spanning_a_join = {
+            int(onset): round(float(duration))
+            for onset, duration in zip(onsets_in_samples, durations_in_samples)
+            if int(onset) in self.LOW_PERIODS_SPANNING_A_JOIN
+        }
+        assert spanning_a_join == self.LOW_PERIODS_SPANNING_A_JOIN
 
     def test_joined_read_exposes_the_same_lines(self):
         """The joined read declares the three lines the header does, the two idle ones included.
