@@ -438,7 +438,7 @@ class TestScanImageImagingInterfaceSingleChannelNoChannelName(ImagingExtractorIn
     expected_two_photon_series_data_shape = (100, 20, 20, 9)
     # The written rate comes from the timestamps the extractor reports, not from the header's nominal
     # volume rate, so it differs slightly from ``expected_imaging_rate`` below.
-    expected_rate = 32.74837101415483
+    expected_rate = 32.74833656561069
     expected_starting_time = 0.01526797
     expected_metadata_key = "scan_image_imaging"
     expected_imaging_rate = 32.7454
@@ -619,6 +619,9 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
 
     expected_metadata_key = "bruker_tiff_imaging"
     expected_imaging_rate = 29.873732099062256
+    # The written rate is recovered from the timestamps rather than reported by the extractor, so it differs
+    # from ``expected_imaging_rate`` in the last ulp.
+    expected_rate = 29.87373209906225
     expected_scan_line_rate = 15840.580398865815
 
     def check_extracted_metadata(self, metadata: dict):
@@ -670,7 +673,7 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
         assert "BrukerFluorescenceMicroscope" in nwbfile.devices
         assert "ImagingPlane" in nwbfile.imaging_planes
         two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
-        assert two_photon_series.rate == self.expected_imaging_rate
+        assert two_photon_series.rate == self.expected_rate
         assert two_photon_series.scan_line_rate == self.expected_scan_line_rate
         assert two_photon_series.data.shape == (10, 64, 64)
 
