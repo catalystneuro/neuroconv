@@ -122,6 +122,15 @@ class TestLightningPoseConverter(TestCase):
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path)
 
+    def test_run_conversion_new_metadata_format(self):
+        """The videos are still referenced by the name of the ImageSeries in the dict-based shape."""
+        nwbfile_path = str(self.test_dir / "test_lightningpose_converter_new_metadata_format.nwb")
+
+        metadata = self.converter.get_metadata(use_new_metadata_format=True)
+        self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, **self.conversion_options)
+
+        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.conversion_options)
+
     def test_run_conversion_add_conversion_options(self):
         nwbfile_path = str(self.test_dir / "test_lightningpose_converter_conversion_options.nwb")
 

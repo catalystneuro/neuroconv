@@ -156,6 +156,92 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
             assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
         nwbfile.read_io.close()
 
+    def test_get_metadata_new_format(self, setup_interface):
+        """The dict-based ("new") metadata shape, checked against a full expected dict.
+
+        The equality is strict: provenance-first means ``get_metadata`` emits only source-derived
+        values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
+        applied by the writer), so any extra emitted field would fail the comparison.
+        """
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        metadata_key = "lightning_pose"
+
+        # The legacy metadata["Behavior"]["PoseEstimation"] block must be gone in the dict-based shape.
+        assert "Behavior" not in metadata
+
+        expected_devices = {
+            metadata_key: {
+                "name": "CameraPoseEstimation",
+                "description": "Camera used for behavioral recording and pose estimation.",
+            },
+        }
+
+        expected_pose_metadata = {
+            "Skeletons": {
+                metadata_key: {
+                    "name": "SkeletonPoseEstimation",
+                    "nodes": self.expected_keypoint_names,
+                    "edges": [],
+                },
+            },
+            "PoseEstimations": {
+                metadata_key: {
+                    "name": self.pose_estimation_name,
+                    "source_software": "LightningPose",
+                    "scorer": "heatmap_tracker",
+                    "dimensions": [[self.original_video_height, self.original_video_width]],
+                    "original_videos": [self.interface_kwargs["original_video_file_path"]],
+                    "labeled_videos": None,
+                    "device_metadata_key": metadata_key,
+                    "skeleton_metadata_key": metadata_key,
+                    "PoseEstimationSeries": {
+                        keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name}"}
+                        for keypoint_name in self.expected_keypoint_names
+                    },
+                },
+            },
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Pose"] == expected_pose_metadata
+
+    def test_conversion_new_metadata_format(self, setup_interface):
+        """Run the conversion with the dict-based ("new") metadata format and read it back.
+
+        The mixin's standard conversion checks only exercise the default (old) format. The reference
+        frame the checks expect is set per series here, which is where the dict-based shape carries
+        it, so ``check_read_nwb`` can be reused as is (the written NWB is the same for both formats).
+        """
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        metadata["NWBFile"].update(session_start_time=datetime.now(timezone.utc))
+        container_metadata = metadata["Pose"]["PoseEstimations"]["lightning_pose"]
+        for series_entry in container_metadata["PoseEstimationSeries"].values():
+            series_entry["reference_frame"] = self.conversion_options["reference_frame"]
+
+        nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_new_metadata_format.nwb")
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+        self.check_read_nwb(nwbfile_path=nwbfile_path)
+
+    def test_series_conversion_options_are_deprecated(self, setup_interface):
+        """The deprecated conversion options are routed into every series entry."""
+        reference_frame = "(0,0) corresponds to the top left corner of the video."
+        confidence_definition = "Softmax output of the deep neural network."
+
+        nwbfile = mock_NWBFile()
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        with pytest.warns(FutureWarning, match="conversion option"):
+            self.interface.add_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                reference_frame=reference_frame,
+                confidence_definition=confidence_definition,
+            )
+
+        pose_estimation_container = nwbfile.processing["behavior"][self.pose_estimation_name]
+        for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
+            assert pose_estimation_series.reference_frame == reference_frame
+            assert pose_estimation_series.confidence_definition == confidence_definition
+
 
 class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = LightningPoseDataInterface
