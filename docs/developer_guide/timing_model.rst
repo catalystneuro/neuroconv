@@ -94,15 +94,3 @@ The reason a shift moves everything at once is that an interface reads one sourc
 objects share a clock: every keypoint of a pose interface comes off the same video, every table of an events
 interface off the same board. Moving them together is what preserves the timing they already have relative to one
 another, which is a fact about the recording rather than something the framework needs to compute.
-
-The interpolation is a callable, not a keyword passthrough
------------------------------------------------------------
-
-``remap_times`` takes an ``interpolation_function`` rather than forwarding keywords to :func:`numpy.interp`.
-
-Two reasons. What several objects, or several interfaces, share when they are aligned against one reference is the
-*strategy* and not the numbers, since each has its own pulses, so the thing worth passing once is a function. And
-:func:`numpy.interp` cannot extrapolate at all: its ``left`` and ``right`` keywords substitute constants outside the
-pulse range, so forwarding them could not have expressed the case that motivated the request. A callable can, because
-anything with the signature ``f(times, local_sync_times, reference_sync_times)`` will do, which is
-:func:`numpy.interp`'s own signature and therefore also its default.
