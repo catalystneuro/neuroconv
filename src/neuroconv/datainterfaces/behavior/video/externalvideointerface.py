@@ -306,7 +306,7 @@ class ExternalVideoInterface(BaseDataInterface):
             (removal on or after December 2026).
         starting_frames : list, optional
             List of start frames for each video written using external mode.
-            Required if more than one path is specified.
+            If not provided, it is computed from the frame count of each video file.
         parent_container: {'acquisition', 'processing/behavior'}
             The container where the ImageSeries is added, default is nwbfile.acquisition.
             When 'processing/behavior' is chosen, the ImageSeries is added to nwbfile.processing['behavior'].
@@ -417,23 +417,27 @@ class ExternalVideoInterface(BaseDataInterface):
                 rate = video.get_video_fps()
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
 
+        # The frame count of each external file backs both `num_samples` and `starting_frame`, so read it once.
+        compute_starting_frames = self._number_of_files > 1 and starting_frames is None
+        if "rate" in image_series_kwargs or compute_starting_frames:
+            frame_counts = []
+            for file_path in file_paths:
+                with VideoCaptureContext(file_path=str(file_path)) as video:
+                    frame_counts.append(video.get_video_frame_count())
+
         # pynwb>=4 requires num_samples on an external ImageSeries when timing is rate-based, because the
         # empty data array cannot convey the frame count. Sum the frame count across the external video files.
         if "rate" in image_series_kwargs:
-            num_samples = 0
-            for file_path in file_paths:
-                with VideoCaptureContext(file_path=str(file_path)) as video:
-                    num_samples += video.get_video_frame_count()
-            image_series_kwargs.update(num_samples=num_samples)
+            image_series_kwargs.update(num_samples=sum(frame_counts))
 
-        if self._number_of_files > 1 and starting_frames is None:
-            raise TypeError("Multiple paths were specified for the ImageSeries, but no starting_frames were specified!")
-        elif starting_frames is not None and len(starting_frames) != self._number_of_files:
-            raise ValueError(
-                f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
-                f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
-            )
-        elif starting_frames is not None:
+        if compute_starting_frames:
+            starting_frames = np.cumsum([0, *frame_counts[:-1]]).tolist()
+        if starting_frames is not None:
+            if len(starting_frames) != self._number_of_files:
+                raise ValueError(
+                    f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
+                    f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
+                )
             image_series_kwargs.update(starting_frame=starting_frames)
 
         image_series_kwargs.update(format="external", external_file=file_paths)
