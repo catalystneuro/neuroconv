@@ -3,6 +3,7 @@ from pathlib import Path
 
 from pydantic import FilePath, validate_call
 
+from ._utils import _warn_if_split_siblings_detected
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools.events import (
     _get_event_type_source_ids,
@@ -101,6 +102,8 @@ class IntanDigitalInterface(BaseEventsInterface):
             Whether to print status messages.
         """
         file_path = str(file_path)
+        if not saved_files_are_split:
+            _warn_if_split_siblings_detected(Path(file_path), interface_name="IntanDigitalInterface")
         # One extractor per digital word present, held because reading a line's trace goes through the
         # word that carries it. Building them reads the header only, so construction stays cheap.
         self._recording_extractors = self._read_digital_streams(file_path, saved_files_are_split=saved_files_are_split)
