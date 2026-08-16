@@ -80,17 +80,3 @@ against ``x += 2``, and it follows from ``set_times`` being absolute and ``shift
 times as they currently stand, so ``local_sync_times`` is on the timeline ``get_times`` reports and carries a shift
 already applied, while ``reference_sync_times`` is on the clock being aligned to. The two arrays pair up positionally,
 so a pulse only one system recorded has to be dropped from the other as well.
-
-Whole-interface against per-object
-----------------------------------
-
-What an operation is called on is what it applies to.
-
-``shift_times`` places the whole interface and takes no key. ``remap_times`` is one clock's correction, so it applies
-to every object of the interface for the same reason. Times themselves belong to one object, so ``get_times`` and
-``set_times`` are reached through the object: ``alignment[key].set_times(times)``.
-
-The reason a shift moves everything at once is that an interface reads one source from one acquisition system, so its
-objects share a clock: every keypoint of a pose interface comes off the same video, every table of an events
-interface off the same board. Moving them together is what preserves the timing they already have relative to one
-another, which is a fact about the recording rather than something the framework needs to compute.
