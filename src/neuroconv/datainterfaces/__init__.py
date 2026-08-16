@@ -138,6 +138,9 @@ from .events.csv_events.csveventsdatainterface import CSVEventsInterface
 from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
 from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
 from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
+from .events.pyphotometry_events.pyphotometryeventsdatainterface import (
+    PyPhotometryEventsInterface,
+)
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
@@ -243,6 +246,7 @@ interface_list = [
     DoricCSVEventsInterface,
     DoricEventsInterface,
     NPMEventsInterface,
+    PyPhotometryEventsInterface,
     TDTEventsInterface,
 ]
 
@@ -309,6 +313,7 @@ interfaces_by_category = dict(
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,
         NPMEvents=NPMEventsInterface,
+        PyPhotometryEvents=PyPhotometryEventsInterface,
         TDTEvents=TDTEventsInterface,
     ),
 )
