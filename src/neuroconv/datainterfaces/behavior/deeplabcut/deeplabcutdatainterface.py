@@ -257,7 +257,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
-    def get_metadata_schema(self, *, use_new_metadata_format: bool = False) -> dict:
+    def get_metadata_schema(self, *, use_new_metadata_format: bool = True) -> dict:
         """
         Retrieve JSON schema for metadata specific to the DeepLabCutInterface.
 
@@ -425,7 +425,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         from ._dlc_utils import (
             _ensure_individuals_in_header,
             _get_graph_edges,

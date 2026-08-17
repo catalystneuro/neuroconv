@@ -97,7 +97,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         if metadata_key is None:
             self.metadata_key = "alpha_omega_recording"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         annotation = self.recording_extractor.neo_reader.raw_annotations
         metadata["NWBFile"].update(session_start_time=annotation["blocks"][0]["rec_datetime"])

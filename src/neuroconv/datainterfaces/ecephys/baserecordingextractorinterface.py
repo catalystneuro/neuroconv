@@ -199,7 +199,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata()
 
         if use_new_metadata_format:

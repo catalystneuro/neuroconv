@@ -25,7 +25,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".csv", ".mp4")
     info = "Interface for handling a single stream of lightning pose data."
 
-    def get_metadata_schema(self, *, use_new_metadata_format: bool = False) -> dict:
+    def get_metadata_schema(self, *, use_new_metadata_format: bool = True) -> dict:
         """
         Retrieve JSON schema for metadata specific to the LightningPoseDataInterface.
 
@@ -212,7 +212,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self._times = aligned_timestamps
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata()
 
         # Update the session start time if folder structure is saved in the format: YYYY-MM-DD/HH-MM-SS

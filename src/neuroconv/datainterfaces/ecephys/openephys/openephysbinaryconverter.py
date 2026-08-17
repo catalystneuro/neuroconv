@@ -131,13 +131,13 @@ class OpenEphysBinaryConverter(ConverterPipe):
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Aggregate the metadata of every stream interface.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             If True, the recording interfaces emit the dict-based format and each stream's
             ``ElectricalSeries`` entry is named after its stream, so several streams can be written to one
             NWB file. The interfaces themselves cannot do this: each one only knows that it is "the"

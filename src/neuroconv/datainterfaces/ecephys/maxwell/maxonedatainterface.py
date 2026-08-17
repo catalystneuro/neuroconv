@@ -131,7 +131,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
         if metadata_key is None:
             self.metadata_key = "maxone_recording"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         maxwell_version = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["maxwell_version"]

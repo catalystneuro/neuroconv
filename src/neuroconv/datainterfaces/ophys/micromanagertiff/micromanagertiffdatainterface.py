@@ -86,13 +86,13 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         channel_name = self.imaging_extractor._channel_names[0]
         self.imaging_extractor._channel_names = [f"OpticalChannel{channel_name}"]
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the Micro-Manager TIFF imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with Micro-Manager provenance.
 

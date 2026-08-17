@@ -214,13 +214,13 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             iterator_options=iterator_options,
         )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the Minian segmentation data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata keyed by ``metadata_key`` under
             ``Ophys.PlaneSegmentations``.

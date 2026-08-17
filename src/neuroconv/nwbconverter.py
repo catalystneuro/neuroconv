@@ -138,13 +138,13 @@ class NWBConverter:
         fill_defaults(metadata_schema, default_values)
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Auto-fill as much of the metadata as possible. Must comply with metadata schema.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             Ask each interface for the dict-based format. Interfaces that emit only that format ignore the
             argument, so a converter mixing the two kinds returns one consistently dict-based dictionary.
 

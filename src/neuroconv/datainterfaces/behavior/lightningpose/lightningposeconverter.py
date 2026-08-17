@@ -77,7 +77,7 @@ class LightningPoseConverter(BaseDataInterface):
                 video_name=self.labeled_video_name,
             )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
         metadata = pose_estimation_interface.get_metadata(use_new_metadata_format=use_new_metadata_format)
         original_video_interface = self.data_interface_objects["OriginalVideo"]

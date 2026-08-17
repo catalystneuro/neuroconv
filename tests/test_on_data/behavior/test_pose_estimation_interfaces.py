@@ -101,7 +101,7 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
     # metadata["Behavior"]["PoseEstimation"] block is removed (then check_extracted_metadata is the
     # only metadata hook).
     def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.interface.validate_metadata(metadata=metadata)
         self.check_extracted_metadata_old_format(metadata)
 
@@ -221,7 +221,7 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
     # mixin's conversion checks write from the dict-based format, so that is the covered path and
     # this is what holds the old one to writing the same file.
     def test_conversion_old_metadata_format(self, setup_interface):
-        metadata = self.interface.get_metadata()
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         metadata["NWBFile"].update(session_start_time=datetime.now(timezone.utc))
 
         nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_old_metadata_format.nwb")
@@ -536,7 +536,9 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
     def check_renaming_instance(self, nwbfile_path: str):
         custom_container_name = "TestPoseEstimation"
 
-        metadata = self.interface.get_metadata()
+        # `pose_estimation_metadata_key` is the deprecated old-format argument, so the old shape is what
+        # this check is about.
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         # Create a new interface with the custom container name
@@ -577,7 +579,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         custom_labeled_videos = ["custom_labeled_video.mp4"]
         custom_dimensions = [[1, 2]]
 
-        metadata = self.interface.get_metadata()
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
 
         # Modify the metadata with custom values
         pose_metadata = metadata["PoseEstimation"]

@@ -145,7 +145,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         return nwbfile_metadata, neuralynx_device
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         nwbfile_metadata, neuralynx_device = self._extract_header_metadata()
 
         if use_new_metadata_format:
