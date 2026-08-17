@@ -162,8 +162,10 @@ To ensure that the NWB file is fully annotated, specify the metadata using the f
 
     For the single-series interface, several things differ from the block below (which predates the
     single-series refactor and is retained here as a field reference for the shared device, indicator,
-    and virus sections). The single-series metadata format is documented in full at
-    :ref:`fiber_photometry_metadata_structure`; in short:
+    and virus sections). The single-series format is covered by
+    :ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>` and
+    :ref:`its section on templates <how_to_annotate_from_a_template>`, and every element it accepts is
+    listed in the :ref:`reference template <fiber_photometry_metadata_template>`. In short:
 
     * The metadata lives at the top-level key ``metadata["FiberPhotometry"]``, not nested under
       ``metadata["Ophys"]``.
