@@ -87,7 +87,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         block_index: int | None = None,
         stub_test: bool = False,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """

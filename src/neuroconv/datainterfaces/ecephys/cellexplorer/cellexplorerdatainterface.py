@@ -325,7 +325,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         folder_path: DirectoryPath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """
@@ -433,6 +433,8 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     """
 
     display_name = "CellExplorer LFP"
+    # Subclasses a recording interface rather than the LFP base, so it states the LFP default itself.
+    _default_es_key = "ElectricalSeriesLFP"
     keywords = BaseRecordingExtractorInterface.keywords + (
         "extracellular electrophysiology",
         "LFP",
@@ -450,7 +452,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         folder_path: DirectoryPath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeriesLFP",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         # Handle deprecated positional arguments

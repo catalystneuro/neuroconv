@@ -17,7 +17,9 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         "LF",
     )
 
-    def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeriesLFP", **source_data):
+    _default_es_key = "ElectricalSeriesLFP"
+
+    def __init__(self, verbose: bool = False, es_key: str | None = None, **source_data):
         super().__init__(verbose=verbose, es_key=es_key, **source_data)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:

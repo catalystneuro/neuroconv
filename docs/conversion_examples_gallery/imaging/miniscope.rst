@@ -42,6 +42,15 @@ streams into a single NWB conversion. Behavioral video is handled automatically 
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
+NeuroConv writes as much metadata as is available in the source format, but most of the time the
+experimenter has metadata that the records do not carry. Adding the rest improves the provenance of
+the file and makes it more useful for future users and for the community as a whole. To add it, follow
+:ref:`the ophys how-to <annotate_ophys_metadata>`, which walks through common experimental
+configurations, and in particular
+:ref:`its section on templates <how_to_annotate_ophys_from_a_template>`, which starts from scratch.
+For a general reference of every element the metadata accepts, see the
+:ref:`reference template <ophys_imaging_metadata_template>`.
+
 .. deprecated::
    The legacy mode (omitting ``user_configuration_file_path``) is deprecated and will be removed on or after
    December 2026. The legacy path assumes all recordings within a session are back-to-back, which does not hold
