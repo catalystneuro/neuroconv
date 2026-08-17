@@ -146,7 +146,7 @@ We can add this information as follows:
 
 .. code-block:: python
 
-    metadata["Ecephys"]["ElectrodeGroup"]["location"] = "V1"
+    metadata["Ecephys"]["ElectrodeGroup"][0]["location"] = "V1"
 
 
 Use ``.get_metadata_schema()`` to get the schema of the metadata dictionary.
