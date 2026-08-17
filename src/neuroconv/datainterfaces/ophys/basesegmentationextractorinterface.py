@@ -7,6 +7,12 @@ from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
 from ._metadata_schema import _get_ophys_registry_entry_definitions, _keyed_registry
+from ._metadata_template import (
+    _get_device_model_template_entry,
+    _get_device_template_entry,
+    _get_imaging_plane_template_entry,
+    _resolve_device_metadata_key,
+)
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     DeepDict,
@@ -170,6 +176,76 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         }
 
         return metadata
+
+    def get_metadata_template(self) -> DeepDict:
+        """Return the segmentation this interface writes, sized to its traces, with the blanks marked.
+
+        The counterpart to :meth:`get_metadata`, which reports only what the source recorded and so
+        leaves a user no indication of what else the file needs. This returns those same values wrapped
+        in the structure the writer expects. Fill in the blanks and pass the result to ``add_to_nwbfile``
+        or ``run_conversion``; a blank still ``None`` at write time is an error rather than a value.
+
+        One plane segmentation, one response series per trace the pipeline produced and one summary image
+        per image it produced, all under this interface's ``metadata_key``, on an imaging plane that hangs
+        off one microscope. The segmentation, its traces and its images share the one key because the
+        writer resolves all three through it, so rename them together or not at all.
+
+        Only the traces and images this segmentation actually holds are offered, since naming one it does
+        not hold writes nothing and warns. Those inner keys are roiextractors' own vocabulary (``raw``,
+        ``dff``, ``neuropil``, ``deconvolved``, ``correlation``, ``mean``) and are the one set of keys here
+        that cannot be renamed; the ``name`` inside each is what the object is called in the file.
+        """
+        # What ``add_segmentation_to_nwbfile`` falls back to for an interface constructed without a key.
+        metadata_key = self.metadata_key or "default_metadata_key"
+        # Prefilled through the same transitional shim the writers use, so an interface whose
+        # ``get_metadata`` still answers in the old list format does not leak that shape into the
+        # template. When the old format goes the shim goes with it, and this becomes
+        # ``self.get_metadata()`` with nothing else to change.
+        source_metadata = self._get_metadata_for_writing()
+        device_metadata_key = _resolve_device_metadata_key(source_metadata=source_metadata, metadata_key=metadata_key)
+
+        ophys = dict(
+            ImagingPlanes={metadata_key: _get_imaging_plane_template_entry(device_metadata_key=device_metadata_key)},
+            PlaneSegmentations={
+                metadata_key: dict(name=None, description=None, imaging_plane_metadata_key=metadata_key)
+            },
+        )
+
+        # Sized to the data, the same filter the writers apply: an entry for a trace or an image the
+        # extractor does not hold is a blank nobody can fill, since the object is never written.
+        traces_dict = self.segmentation_extractor.get_traces_dict()
+        available_traces = [
+            trace_name for trace_name, trace in traces_dict.items() if trace is not None and trace.size != 0
+        ]
+        if available_traces:
+            ophys["RoiResponses"] = {
+                metadata_key: {
+                    trace_name: dict(name=None, description=None, unit=None) for trace_name in available_traces
+                }
+            }
+
+        images_dict = self.segmentation_extractor.get_images_dict()
+        available_images = [image_name for image_name, image in images_dict.items() if image is not None]
+        if available_images:
+            ophys["SegmentationImages"] = {
+                metadata_key: {image_name: dict(name=None, description=None) for image_name in available_images}
+            }
+
+        device_model_metadata_key = f"{device_metadata_key}_model"
+        template = DeepDict(
+            dict(
+                DeviceModels={device_model_metadata_key: _get_device_model_template_entry()},
+                Devices={
+                    device_metadata_key: _get_device_template_entry(device_model_metadata_key=device_model_metadata_key)
+                },
+                Ophys=ophys,
+            )
+        )
+
+        # The blanks are a floor rather than an override: whatever the source recorded wins over the
+        # template, so a field the interface was able to read is never handed back as one to fill in.
+        template.deep_update(source_metadata)
+        return template
 
     def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self._initialize_extractor(self.source_data)

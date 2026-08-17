@@ -58,8 +58,14 @@ As with every fiber photometry interface, the hardware chain is yours to supply.
 ``FiberPhotometryTable`` carries one row per store, so this two-site isosbestic session has four rows,
 and each series' region must name its stores in column order.
 
-The rest of the format — device models, devices, indicators, and the response series blocks — is shared
-across the fiber photometry interfaces and documented at :ref:`fiber_photometry_metadata_structure`.
+NeuroConv writes as much metadata as is available in the source format, but most of the time the
+experimenter has metadata that the records do not carry. Adding the rest improves the provenance of
+the file and makes it more useful for future users and for the community as a whole. To add it, follow
+:ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>`, which walks through common
+experimental configurations, and in particular
+:ref:`its section on templates <how_to_annotate_from_a_template>`, which starts from scratch.
+For a general reference of every element the metadata accepts, see the
+:ref:`reference template <fiber_photometry_metadata_template>`.
 
 .. code-block:: python
 

@@ -208,6 +208,109 @@ use a different ``metadata_key`` for each pipeline. Link them to the same imagin
     )
 
 
+.. _how_to_annotate_ophys_from_a_template:
+
+How to Annotate from a Template
+-------------------------------
+
+The sections above reach into ``get_metadata()`` and edit what it returns. That works, but it does not
+tell you what is missing: ``get_metadata()`` reports what the source file recorded, so a field it leaves
+out looks the same as a field that does not exist. ``get_metadata_template()`` answers the other
+question. It returns those same source-derived values wrapped in the whole structure the writer expects,
+with the cross-references already resolved and every field only you can answer set to ``None``:
+
+.. code-block:: python
+
+    from neuroconv.datainterfaces import TiffImagingInterface
+
+    interface = TiffImagingInterface(
+        file_path="path/to/imaging_data.tif",
+        sampling_frequency=30.0,
+        metadata_key="visual_cortex",
+    )
+    metadata = interface.get_metadata_template()
+
+What comes back is printed in full, in both YAML and JSON, at
+:ref:`Metadata Templates <ophys_metadata_template>`.
+
+**The blanks are the checklist.** What comes back ``None`` is exactly what the source could not tell us,
+and everything else is already done: the ``device_metadata_key`` that links the plane to the microscope
+and the ``imaging_plane_metadata_key`` that links the series to the plane are wired for you. Fill in
+what applies and delete what does not, since a blank left behind is refused at write time rather than
+guessed at.
+
+.. code-block:: python
+
+    imaging_plane = metadata["Ophys"]["ImagingPlanes"]["visual_cortex"]
+    imaging_plane["name"] = "ImagingPlaneVisualCortex"
+    imaging_plane["description"] = "Imaging plane in V1 layer 2/3"
+    imaging_plane["excitation_lambda"] = 920.0
+    imaging_plane["indicator"] = "GCaMP6s"
+    imaging_plane["location"] = "V1 layer 2/3"
+    imaging_plane["imaging_rate"] = 30.0
+    imaging_plane["optical_channel"][0].update(
+        name="Green", description="Green channel", emission_lambda=510.0
+    )
+
+    microscopy_series = metadata["Ophys"]["MicroscopySeries"]["visual_cortex"]
+    microscopy_series["name"] = "TwoPhotonSeriesVisualCortex"
+    microscopy_series["description"] = "Calcium imaging during visual stimulation"
+    microscopy_series["unit"] = "n.a."
+
+    metadata["Devices"]["microscope"].update(
+        name="Microscope",
+        description="Custom two-photon microscope",
+        serial_number="2019-04-01",
+    )
+    metadata["DeviceModels"]["microscope_model"].update(
+        name="MicroscopeModel",
+        manufacturer="DIY",
+        description="Custom-built, no catalog model",
+    )
+
+    # This rig did not measure where the plane sat, and the scanner settings were not recorded.
+    for unknown_field in ("origin_coords", "origin_coords_unit", "grid_spacing",
+                          "grid_spacing_unit", "reference_frame"):
+        del imaging_plane[unknown_field]
+    for unknown_field in ("field_of_view", "pmt_gain", "scan_line_rate"):
+        del microscopy_series[unknown_field]
+    del metadata["DeviceModels"]["microscope_model"]["model_number"]
+
+    nwbfile = interface.create_nwbfile(metadata=metadata)
+
+A segmentation interface offers the same thing, sized to what its pipeline produced. Only the traces
+and the summary images the file actually holds appear, so the entries you get back are the list to fill
+in rather than a menu to check against your output:
+
+.. code-block:: python
+
+    from neuroconv.datainterfaces import Suite2pSegmentationInterface
+
+    interface = Suite2pSegmentationInterface(
+        folder_path="path/to/suite2p/plane0",
+        metadata_key="suite2p",
+    )
+    metadata = interface.get_metadata_template()
+
+    plane_segmentation = metadata["Ophys"]["PlaneSegmentations"]["suite2p"]
+    plane_segmentation["name"] = "PlaneSegmentationSuite2p"
+    plane_segmentation["description"] = "ROIs detected by Suite2p"
+
+    # Whatever Suite2p wrote: raw and neuropil traces here, plus deconvolved and dff if it ran them.
+    for trace_name, trace_metadata in metadata["Ophys"]["RoiResponses"]["suite2p"].items():
+        trace_metadata["name"] = trace_name.capitalize()
+        trace_metadata["description"] = f"Suite2p {trace_name} traces"
+        trace_metadata["unit"] = "n.a."
+
+    for image_name, image_metadata in metadata["Ophys"]["SegmentationImages"]["suite2p"].items():
+        image_metadata["name"] = f"{image_name}_image"
+        image_metadata["description"] = f"Suite2p {image_name} image"
+
+The imaging plane and the device come back on the segmentation template too, and are filled in exactly
+as above. If the same conversion also writes the imaging the pipeline ran on, do not fill them in twice:
+point the segmentation's ``imaging_plane_metadata_key`` at the imaging interface's plane, as the
+sections above do, and delete the plane the segmentation template offered.
+
 .. note::
 
     If you have a use case not covered here, please open an issue at
