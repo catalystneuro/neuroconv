@@ -292,8 +292,44 @@ image = [
 ]
 
 ## Fiber Photometry
-fiber_photometry = [
+fiber_photometry_minimal = [  # Keeps the minimal version of the fiber photometry dependency in the repo
     "ndx-fiber-photometry>=0.2.3",
+]
+csv_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+]
+doric_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+    "h5py>=3",
+]
+npm_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+]
+tdt_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+    "tdt",
+]
+guppy = [
+    "neuroconv[fiber_photometry_minimal]",
+    "ndx-guppy>=0.1.0",
+    "tables",
+    # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
+    # whatever it was recorded on.
+    "neuroconv[tdt_fp]",
+    "neuroconv[tdt_events]",
+    "neuroconv[csv_fp]",
+    "neuroconv[csv_events]",
+    "neuroconv[doric_fp]",
+    "neuroconv[doric_events]",
+    "neuroconv[npm_fp]",
+    "neuroconv[npm_events]",
+]
+fiber_photometry = [
+    "neuroconv[csv_fp]",
+    "neuroconv[doric_fp]",
+    "neuroconv[guppy]",
+    "neuroconv[npm_fp]",
+    "neuroconv[tdt_fp]",
 ]
 
 
@@ -384,35 +420,6 @@ suite2p = [
     "natsort",
     "neuroconv[ophys_minimal]",
 ]
-doric_fp = [
-    "neuroconv[fiber_photometry]",
-    "h5py>=3",
-]
-tdt_fp = [
-    "neuroconv[fiber_photometry]",
-    "tdt",
-]
-npm_fp = [
-    "neuroconv[fiber_photometry]",
-]
-csv_fp = [
-    "neuroconv[fiber_photometry]",
-]
-guppy = [
-    "neuroconv[fiber_photometry]",
-    "ndx-guppy>=0.1.0",
-    "tables",
-    # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
-    # whatever it was recorded on.
-    "neuroconv[tdt_fp]",
-    "neuroconv[tdt_events]",
-    "neuroconv[csv_fp]",
-    "neuroconv[csv_events]",
-    "neuroconv[doric_fp]",
-    "neuroconv[doric_events]",
-    "neuroconv[npm_fp]",
-    "neuroconv[npm_events]",
-]
 thor = [
     # ThorImageLS is the format that surfaced the codecs question, see 'ophys_tiff' above: it writes
     # LZW-compressed TIFFs when the operator leaves compression on.
@@ -423,12 +430,10 @@ tiff = [
 ]
 ophys = [
     "neuroconv[brukertiff]",
-    "neuroconv[doric_fp]",
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
     "neuroconv[femtonics]",
-    "neuroconv[guppy]",
     "neuroconv[inscopix]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
@@ -437,12 +442,16 @@ ophys = [
     "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",
-    "neuroconv[tdt_fp]",
-    "neuroconv[npm_fp]",
-    "neuroconv[csv_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
+    # TODO: remove on or after August 2027. Fiber photometry is its own modality now (see the
+    # 'Fiber Photometry' section above) and no other modality aggregate pulls in another one.
+    # This line is kept so that an install which reached photometry through neuroconv[ophys] keeps
+    # working, at the cost of every calcium imaging install carrying tdt, ndx-guppy, tables and h5py.
+    # No documentation has ever pointed at this path, every photometry gallery page installs the
+    # single format extra it needs, so removing it should reach very few people.
+    "neuroconv[fiber_photometry]",
 ]
 # Note these are references to the package in pipy (not local)
 full = [
@@ -452,6 +461,7 @@ full = [
     "neuroconv[behavior]",
     "neuroconv[ecephys]",
     "neuroconv[events]",
+    "neuroconv[fiber_photometry]",
     "neuroconv[icephys]",
     "neuroconv[image]",
     "neuroconv[ophys]",

@@ -111,7 +111,7 @@ class TestLightningPoseConverter(TestCase):
             warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
     def test_expected_metadata(self):
-        metadata = self.converter.get_metadata()
+        metadata = self.converter.get_metadata(use_new_metadata_format=False)
         videos_metadata = metadata["Behavior"]["ExternalVideos"]
         self.assertEqual(len(videos_metadata), 2)
         self.assertDictEqual(metadata["Behavior"], self.converter_metadata["Behavior"])
@@ -128,7 +128,7 @@ class TestLightningPoseConverter(TestCase):
     def test_run_conversion_old_metadata_format(self):
         nwbfile_path = str(self.test_dir / "test_lightningpose_converter_old_metadata_format.nwb")
 
-        metadata = self.converter.get_metadata()
+        metadata = self.converter.get_metadata(use_new_metadata_format=False)
         self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, **self.conversion_options)
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.conversion_options)

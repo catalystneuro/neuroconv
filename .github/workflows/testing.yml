@@ -124,7 +124,7 @@ jobs:
           else
             source env_fiber_photometry/bin/activate
           fi
-          uv pip install ".[fiber_photometry]"
+          uv pip install ".[fiber_photometry_minimal]"
           uv pip install --group test
           python -m pytest tests/test_modalities/test_fiber_photometry -vv -rsx -n logical --dist loadscope
           deactivate
