@@ -210,13 +210,13 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self.plane_segmentation_name = plane_segmentation_name
         self.verbose = verbose
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the Suite2p segmentation data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with Suite2p provenance.
 

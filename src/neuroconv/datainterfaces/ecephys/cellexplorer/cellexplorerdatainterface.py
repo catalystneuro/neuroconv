@@ -485,7 +485,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         if metadata_key is None:
             self.metadata_key = "cell_explorer_lfp"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         if use_new_metadata_format:

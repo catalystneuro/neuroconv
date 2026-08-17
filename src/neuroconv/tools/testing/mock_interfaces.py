@@ -949,7 +949,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             # which otherwise returns a new recording and leaves this one unchanged.
             self.recording_extractor.set_probe(probe, group_mode="by_probe", in_place=True)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the recording interface.
 
@@ -1101,7 +1101,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -1285,7 +1285,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             metadata_key=metadata_key,
         )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         session_start_time = datetime.now().astimezone()
 
         if use_new_metadata_format:

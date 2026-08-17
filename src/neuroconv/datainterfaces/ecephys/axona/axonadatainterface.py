@@ -141,7 +141,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
         return ecephys_metadata
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         nwbfile_metadata = self.extract_nwb_file_metadata()

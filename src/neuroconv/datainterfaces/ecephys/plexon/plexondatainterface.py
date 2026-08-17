@@ -98,7 +98,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         if metadata_key is None:
             self.metadata_key = "plexon_recording"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         neo_reader = self.recording_extractor.neo_reader
 
@@ -204,7 +204,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         if metadata_key is None:
             self.metadata_key = "plexon_lfp"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         if use_new_metadata_format:
@@ -330,7 +330,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         if metadata_key is None:
             self.metadata_key = "plexon2_recording"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         neo_reader = self.recording_extractor.neo_reader

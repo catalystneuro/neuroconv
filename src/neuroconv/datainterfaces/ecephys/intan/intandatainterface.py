@@ -171,7 +171,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor.delete_property("group_names")
         self.recording_extractor.set_property(key="group_name", values=ports)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         system = self.file_path.suffix  # .rhd or .rhs
         device_description = {".rhd": "RHD Recording System", ".rhs": "RHS Stim/Recording System"}[system]
 
