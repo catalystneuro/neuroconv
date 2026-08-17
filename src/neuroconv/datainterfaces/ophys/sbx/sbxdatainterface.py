@@ -116,6 +116,6 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             }
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         metadata["Ophys"]["Device"][0]["description"] = "Scanbox imaging"
         return metadata

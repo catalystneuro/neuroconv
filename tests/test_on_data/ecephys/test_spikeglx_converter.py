@@ -44,7 +44,7 @@ class TestSingleProbeSpikeGLXConverter:
 
     def test_single_probe_spikeglx_converter(self, tmp_path):
         converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
-        metadata = converter.get_metadata()
+        metadata = converter.get_metadata(use_new_metadata_format=False)
 
         test_metadata = deepcopy(metadata)
         for exclude_field in ["session_start_time", "identifier"]:
@@ -114,7 +114,7 @@ class TestMultiProbeSpikeGLXConverter:
         converter = SpikeGLXConverterPipe(
             folder_path=self.test_folder,
         )
-        metadata = converter.get_metadata()
+        metadata = converter.get_metadata(use_new_metadata_format=False)
 
         test_metadata = deepcopy(metadata)
         for exclude_field in ["session_start_time", "identifier"]:

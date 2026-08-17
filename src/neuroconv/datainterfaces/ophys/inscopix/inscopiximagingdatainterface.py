@@ -156,11 +156,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             photon series configuration, and Inscopix-specific acquisition parameters.
         """
         # Get metadata from parent
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         extractor = self.imaging_extractor
         extractor_metadata = extractor._get_metadata()
