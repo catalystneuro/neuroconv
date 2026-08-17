@@ -1352,12 +1352,12 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
             Metadata key for this interface.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to
-            ``metadata_key`` and will be removed on or after December 2026.
+            ``metadata_key`` and will be removed on or after February 2027.
         """
         if pose_estimation_metadata_key is not None:
             warnings.warn(
                 "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
-                "will be removed on or after December 2026. Please use 'metadata_key' instead.",
+                "will be removed on or after February 2027. Please use 'metadata_key' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
