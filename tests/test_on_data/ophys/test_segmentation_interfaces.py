@@ -395,7 +395,7 @@ class TestSuite2pSegmentationInterfaceChan1Plane0(SegmentationExtractorInterface
         cls.neuropil_traces_names = "Neuropil" + plane_suffix
         cls.deconvolved_trace_name = "Deconvolved" + plane_suffix
 
-    def test_check_extracted_metadata(self):
+    def test_check_extracted_metadata_old_list_format(self):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         metadata = self.interface.get_metadata(use_new_metadata_format=False)
@@ -472,7 +472,7 @@ class TestSuite2pSegmentationInterfaceChan2Plane0(SegmentationExtractorInterface
         cls.neuropil_traces_names = "Neuropil" + plane_suffix
         cls.deconvolved_trace_name = None
 
-    def test_check_extracted_metadata(self):
+    def test_check_extracted_metadata_old_list_format(self):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         metadata = self.interface.get_metadata(use_new_metadata_format=False)
