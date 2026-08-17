@@ -62,4 +62,4 @@ class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
             }
             return metadata
 
-        return super().get_metadata()
+        return super().get_metadata(use_new_metadata_format=False)

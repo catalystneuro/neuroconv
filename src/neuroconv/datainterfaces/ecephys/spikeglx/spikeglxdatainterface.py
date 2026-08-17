@@ -323,7 +323,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         session_start_time = self._get_session_start_time()
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time

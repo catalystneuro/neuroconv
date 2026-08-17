@@ -149,7 +149,7 @@ class OpenEphysBinaryConverter(ConverterPipe):
             The metadata of all interfaces, merged.
         """
         if not use_new_metadata_format:
-            return super().get_metadata()
+            return super().get_metadata(use_new_metadata_format=False)
 
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():

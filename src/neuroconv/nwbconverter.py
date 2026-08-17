@@ -164,12 +164,9 @@ class NWBConverter:
     @staticmethod
     def _get_interface_metadata(interface, *, use_new_metadata_format: bool) -> DeepDict:
         """Ask an interface for a format it understands: only some of them take the argument."""
-        if not use_new_metadata_format:
-            return interface.get_metadata()
-
         takes_the_argument = "use_new_metadata_format" in inspect.signature(interface.get_metadata).parameters
         if takes_the_argument:
-            return interface.get_metadata(use_new_metadata_format=True)
+            return interface.get_metadata(use_new_metadata_format=use_new_metadata_format)
         return interface.get_metadata()
 
     def _get_metadata_for_writing(self) -> DeepDict:

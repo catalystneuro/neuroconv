@@ -125,7 +125,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
             }
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         metadata["NWBFile"].update(session_start_time=session_start_time)
 
         imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
