@@ -212,7 +212,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
                     self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         from ._openephys_utils import _get_session_start_time
         from ....tools.spikeinterface.spikeinterface import (
             _get_group_name,

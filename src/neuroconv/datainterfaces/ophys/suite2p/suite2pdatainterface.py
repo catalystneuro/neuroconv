@@ -210,13 +210,13 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self.plane_segmentation_name = plane_segmentation_name
         self.verbose = verbose
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the Suite2p segmentation data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with Suite2p provenance.
 
@@ -382,7 +382,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
                 "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
                 "written automatically as a column on the PlaneSegmentation table whenever the "
                 "segmentation extractor exposes acceptance/rejection through its property system. "
-                "This parameter will be removed on or after November 2026.",
+                "This parameter will be removed on or after February 2027.",
                 DeprecationWarning,
                 stacklevel=2,
             )

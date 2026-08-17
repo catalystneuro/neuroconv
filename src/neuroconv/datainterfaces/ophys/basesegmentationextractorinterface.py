@@ -152,7 +152,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         if use_new_metadata_format:
             return super().get_metadata()
 
@@ -375,7 +375,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
                 "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
                 "written automatically as a column on the PlaneSegmentation table whenever the "
                 "segmentation extractor exposes acceptance/rejection through its property system. "
-                "This parameter will be removed on or after November 2026.",
+                "This parameter will be removed on or after February 2027.",
                 DeprecationWarning,
                 stacklevel=2,
             )

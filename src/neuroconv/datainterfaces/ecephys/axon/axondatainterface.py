@@ -125,7 +125,7 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         )
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         # Extract session start time from ABF file using the existing neo_reader

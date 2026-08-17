@@ -103,7 +103,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             used to link the skeleton to the subject in the NWB file.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to ``metadata_key``
-            and will be removed on or after December 2026. Passing both raises ``ValueError``.
+            and will be removed on or after February 2027. Passing both raises ``ValueError``.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         metadata_key : str, optional
@@ -241,7 +241,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         if pose_estimation_metadata_key is not None:
             warnings.warn(
                 "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
-                "will be removed on or after December 2026. Please use 'metadata_key' instead.",
+                "will be removed on or after February 2027. Please use 'metadata_key' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -257,7 +257,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
-    def get_metadata_schema(self, *, use_new_metadata_format: bool = False) -> dict:
+    def get_metadata_schema(self, *, use_new_metadata_format: bool = True) -> dict:
         """
         Retrieve JSON schema for metadata specific to the DeepLabCutInterface.
 
@@ -425,7 +425,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         from ._dlc_utils import (
             _ensure_individuals_in_header,
             _get_graph_edges,

@@ -66,13 +66,13 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         super().__init__(file_path=file_path, verbose=verbose, metadata_key=metadata_key)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix segmentation data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with Inscopix provenance keyed by
             ``metadata_key`` under ``Devices`` and ``Ophys.PlaneSegmentations``.

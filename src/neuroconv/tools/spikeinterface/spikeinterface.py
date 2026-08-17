@@ -367,7 +367,7 @@ def add_recording_to_nwbfile(
         - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
     write_as : {'raw', 'processed', 'lfp'}, optional
         Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-        'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+        'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
     data_representation : {'digital_counts', 'physical_units'}, default: 'digital_counts'
         How the trace values are materialized in the stored data array.
         - 'digital_counts': store the raw integer samples and carry the per-channel gain in
@@ -410,7 +410,7 @@ def add_recording_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_recording_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead "
+            "on or after February 2027. Use 'parent_container' instead "
             "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
             FutureWarning,
             stacklevel=2,
@@ -547,12 +547,12 @@ def add_sorting_to_nwbfile(
             - "sampling_rate": float, the sampling rate of the waveforms in Hz
             - "unit": str, the unit of measurement (default: "volts")
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead.",
+            "on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -834,7 +834,7 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = N
     devices within the metadata list will also be created.
 
     .. deprecated::
-        ``add_devices_to_nwbfile`` is deprecated and will be removed on or after November 2026.
+        ``add_devices_to_nwbfile`` is deprecated and will be removed on or after February 2027.
         Use the dict-based metadata format (``metadata["Devices"]``) with
         :func:`add_recording_to_nwbfile` instead, or call
         :func:`~neuroconv.tools.nwb_helpers._add_device_to_nwbfile` directly for a single device.
@@ -858,7 +858,7 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = N
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
     warnings.warn(
-        "add_devices_to_nwbfile is deprecated and will be removed on or after November 2026. "
+        "add_devices_to_nwbfile is deprecated and will be removed on or after February 2027. "
         "Use _add_device_to_nwbfile with the new dict-based metadata format (metadata['Devices']) instead.",
         FutureWarning,
         stacklevel=2,
@@ -1585,10 +1585,10 @@ def add_electrodes_to_nwbfile(
     orchestrates devices, electrode groups, and electrodes together and should be
     used to ensure all recording metadata is properly added.
 
-    This function will be removed on or after October 2026.
+    This function will be removed on or after February 2027.
     """
     warnings.warn(
-        "add_electrodes_to_nwbfile is deprecated and will be removed on or after October 2026. "
+        "add_electrodes_to_nwbfile is deprecated and will be removed on or after February 2027. "
         "Use add_recording_metadata_to_nwbfile to ensure all recording metadata "
         "(devices, electrode groups, and electrodes) is properly added.",
         FutureWarning,
@@ -2045,14 +2045,14 @@ def add_recording_as_spatial_series_to_nwbfile(
         By default (False), the function checks if timestamps are uniformly sampled,
         and if so, stores data using a regular sampling rate.
     write_as : {'acquisition', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
 
 
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_recording_as_spatial_series_to_nwbfile is deprecated and will be "
-            "removed on or after December 2026. Use 'parent_container' instead.",
+            "removed on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -2324,7 +2324,7 @@ def write_recording_to_nwbfile(
         - 'processing/FilteredEphys' writes a ``FilteredEphys`` container in the ecephys processing module
     write_as: {'raw', 'processed', 'lfp'}, optional
         Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-        'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+        'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
     es_key: str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series
     iterator_type: {"v2",  None}
@@ -2411,7 +2411,7 @@ def write_recording_to_nwbfile(
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of write_recording_to_nwbfile is deprecated and will be removed "
-                "on or after December 2026. Use 'parent_container' instead "
+                "on or after February 2027. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,
@@ -2455,7 +2455,7 @@ def write_recording_to_nwbfile(
             if write_as is not None:
                 warnings.warn(
                     "The 'write_as' parameter of write_recording_to_nwbfile is deprecated and will be removed "
-                    "on or after December 2026. Use 'parent_container' instead "
+                    "on or after February 2027. Use 'parent_container' instead "
                     "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                     FutureWarning,
                     stacklevel=2,
@@ -3010,7 +3010,7 @@ def write_sorting_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
 
     Returns
     -------
@@ -3021,7 +3021,7 @@ def write_sorting_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead.",
+            "on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -3184,12 +3184,12 @@ def add_sorting_analyzer_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead.",
+            "on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -3362,7 +3362,7 @@ def write_sorting_analyzer_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
 
     Returns
     -------
@@ -3373,7 +3373,7 @@ def write_sorting_analyzer_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead.",
+            "on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
