@@ -105,29 +105,6 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             and the camera under ``metadata["Devices"]``. It is an internal handle and never appears in
             the written file. Only used by the dict-based shape, reachable through
             ``get_metadata(use_new_metadata_format=True)``.
-
-        Notes
-        -----
-        With ``use_new_metadata_format=True`` the metadata follows the unified, dict-based layout::
-
-            metadata["Devices"] = {
-                "lightning_pose": {"name": "CameraPoseEstimation", "description": ...},
-            }
-            metadata["Pose"] = {
-                "Skeletons": {
-                    "lightning_pose": {"name": "SkeletonPoseEstimation", "nodes": [...], "edges": []},
-                },
-                "PoseEstimations": {
-                    "lightning_pose": {  # keyed by metadata_key
-                        "name": "PoseEstimation",
-                        "source_software": "LightningPose",
-                        "scorer": ...,
-                        "device_metadata_key": "lightning_pose",   # -> metadata["Devices"]
-                        "skeleton_metadata_key": "lightning_pose",  # -> Pose.Skeletons
-                        "PoseEstimationSeries": {...},
-                    },
-                },
-            }
         """
         # Handle deprecated positional arguments
         if args:
