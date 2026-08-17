@@ -189,9 +189,11 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             self.recording_extractor = self.recording_extractor.remove_channels(remove_channel_ids=channels_to_skip)
 
     def extract_nwb_file_metadata(self) -> dict:
+        # The header names a single technician, while experimenter is a list of names.
+        technician = self.edf_header["technician"]
         nwbfile_metadata = dict(
             session_start_time=self.edf_header["startdate"],
-            experimenter=self.edf_header["technician"],
+            experimenter=[technician] if technician else None,
         )
 
         # Filter empty values
@@ -200,9 +202,15 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         return nwbfile_metadata
 
     def extract_subject_metadata(self) -> dict:
+        # The readers normalize the patient field's sex code to a word, and only wrote it under
+        # "gender" before pyedflib 0.1.36. A file that does not state it leaves both empty.
+        sex_in_header = self.edf_header.get("sex") or self.edf_header.get("gender") or ""
+
+        # The header's birthdate is not reported here: the readers hand it back as "17 mar 1985"
+        # while Subject.date_of_birth requires a datetime, so it needs a parse first.
         subject_metadata = dict(
             subject_id=self.edf_header["patientcode"],
-            date_of_birth=self.edf_header["birthdate"],
+            sex={"male": "M", "female": "F"}.get(sex_in_header.lower()),
         )
 
         # Filter empty values
@@ -216,6 +224,9 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         metadata["NWBFile"].update(nwbfile_metadata)
 
         subject_metadata = self.extract_subject_metadata()
-        metadata.get("Subject", dict()).update(subject_metadata)
+        # metadata is a DeepDict, which creates a key on access, so a file that carries no patient
+        # information must not reach it at all or it gains an empty Subject.
+        if subject_metadata:
+            metadata["Subject"].update(subject_metadata)
 
         return metadata
