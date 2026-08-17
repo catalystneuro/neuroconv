@@ -95,8 +95,8 @@ each one brings its own key; the ``optical_channel`` list is the exception, and 
 channel the plane was imaged in.
 
 The last three fields of the series are what a two-photon acquisition describes. A one-photon one takes
-``exposure_time``, ``binning``, ``power`` and ``intensity`` in their place, which is what
-``get_metadata_template()`` returns for an interface built with ``photon_series_type="OnePhotonSeries"``.
+``exposure_time``, ``binning``, ``power`` and ``intensity`` in their place, and
+``get_metadata_template()`` offers whichever of the two sets matches the series being written.
 
 .. tab-set::
 
