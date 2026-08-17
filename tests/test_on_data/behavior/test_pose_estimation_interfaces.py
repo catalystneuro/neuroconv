@@ -435,15 +435,11 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format when the old list
-    # format is removed (then check_extracted_metadata is the only metadata hook).
-    def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format when
+    # the old list format is removed (then check_extracted_metadata is the only metadata hook).
+    def test_metadata_old_list_format(self, setup_interface):
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
-
-    def test_get_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        self.check_extracted_metadata(metadata)
 
     def check_extracted_metadata(self, metadata: dict):
         """The dict-based ("new") metadata shape, checked against a full expected dict.

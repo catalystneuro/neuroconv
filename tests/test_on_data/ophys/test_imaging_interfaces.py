@@ -1514,7 +1514,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         )
 
         # Test that metadata extraction works
-        metadata = interface.get_metadata()
+        metadata = interface.get_metadata(use_new_metadata_format=False)
         assert metadata["Ophys"]["Device"][0]["name"] == "Miniscope"
 
         # Test that it has timestamps

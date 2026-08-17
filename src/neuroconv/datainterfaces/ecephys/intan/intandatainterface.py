@@ -207,7 +207,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         ecephys_metadata = metadata["Ecephys"]
 
         # Add device

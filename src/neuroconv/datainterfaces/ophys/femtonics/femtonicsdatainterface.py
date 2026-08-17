@@ -157,11 +157,7 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing extracted metadata including device information,
             optical channels, imaging plane details, and acquisition parameters.
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         femtonics_metadata = self.imaging_extractor._get_metadata()
 
