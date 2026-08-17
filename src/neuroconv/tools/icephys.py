@@ -62,21 +62,29 @@ def _get_icephys_metadata_placeholders() -> DeepDict:
 
     Structure
     ---------
-    - ``Icephys.IntracellularElectrodes[key]``: the patch electrode, linked to its device by
-      ``device_metadata_key``. ``description`` is schema-required, so it carries a ``"no description"``
-      placeholder.
+    - ``Devices[key]``: the device an electrode records through, for a file that names none. Only ``name``
+      is here, the one field NWB requires of a ``Device``, and it names no instrument class: published
+      files put an amplifier, a digitizer, a rig or the pipette itself behind this link, so a default
+      cannot pick one. An electrode links its own device with ``device_metadata_key``; an electrode that
+      names none gets this one.
+    - ``Icephys.IntracellularElectrodes[key]``: the patch electrode. ``description`` is schema-required,
+      so it carries a ``"no description"`` placeholder.
     - ``Icephys.PatchClampSeries[key]``: the response series, linked to its electrode by
       ``electrode_metadata_key``.
     - ``Icephys.PatchClampStimulusSeries[key]``: the optional paired stimulus, in a parallel registry at the
       SAME key as its response. It reuses the response's electrode, so it carries no ``electrode_metadata_key``.
     """
     metadata = DeepDict()
+    metadata["Devices"] = {
+        DEFAULT_METADATA_KEY: {
+            "name": "PlaceholderIntracellularDevice",
+        },
+    }
     metadata["Icephys"] = {
         "IntracellularElectrodes": {
             DEFAULT_METADATA_KEY: {
                 "name": "IntracellularElectrode",
                 "description": "no description",
-                "device_metadata_key": DEFAULT_METADATA_KEY,
             }
         },
         "PatchClampSeries": {
@@ -98,11 +106,10 @@ def _add_intracellular_electrode_to_nwbfile(nwbfile: NWBFile, metadata: dict, el
     """Return the intracellular electrode named by the metadata entry ``electrode_metadata_key``, reusing an
     existing one by name or creating it (and its device) if absent.
 
-    Resolves the electrode entry, follows its ``device_metadata_key`` link, and fills any schema-required field the
-    entry omits from :func:`_get_icephys_metadata_placeholders` (defaults are applied here, at write time, so an
-    interface's ``get_metadata`` only returns what the source provides). The electrode dedups by ``name``, and the
-    device is added by the shared registry helper, which is idempotent on its own ``name``, so several interfaces
-    pointing at one entry share a single object.
+    Resolves the electrode entry, follows its ``device_metadata_key`` link where it states one, and fills any
+    schema-required field the entry omits from :func:`_get_icephys_metadata_placeholders` (defaults are applied
+    here, at write time, so an interface's ``get_metadata`` only returns what the source provides). The electrode
+    dedups by ``name``, and so does the device, so several interfaces pointing at one entry share a single object.
     """
     placeholders = _get_icephys_metadata_placeholders()
     electrode_metadata = {
@@ -114,9 +121,18 @@ def _add_intracellular_electrode_to_nwbfile(nwbfile: NWBFile, metadata: dict, el
     if name in nwbfile.icephys_electrodes:
         return nwbfile.icephys_electrodes[name]
 
-    device = _add_device_to_nwbfile(
-        nwbfile=nwbfile, metadata=metadata, metadata_key=electrode_metadata["device_metadata_key"]
-    )
+    # An electrode naming no device gets the placeholder: a plain Device carrying the one field NWB
+    # requires, built here rather than through the registry writer, since there is no registry entry to
+    # key it against. Reused by name, so several electrodes naming no device land on one device.
+    device_metadata_key = electrode_metadata.get("device_metadata_key")
+    if device_metadata_key is None:
+        placeholder_device_metadata = placeholders["Devices"][DEFAULT_METADATA_KEY]
+        placeholder_device_name = placeholder_device_metadata["name"]
+        if placeholder_device_name not in nwbfile.devices:
+            nwbfile.create_device(**placeholder_device_metadata)
+        device = nwbfile.devices[placeholder_device_name]
+    else:
+        device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key)
     # Optional IntracellularElectrode fields passed through from metadata if present.
     electrode_fields = ("cell_id", "location", "slice", "resistance", "seal", "filtering", "initial_access_resistance")
     extra_fields = {field: electrode_metadata[field] for field in electrode_fields if field in electrode_metadata}
@@ -459,6 +475,8 @@ def _add_sweep_time_intervals_to_nwbfile(nwbfile: NWBFile, name: str = "sweeps")
         row = dict(start_time=start_time, stop_time=stop_time)
         if has_sequence_column:
             row["sequence"] = sequence_by_interval[(start_time, stop_time)]
-        sweeps.add_row(**row)
+        # check_ragged=False: hdmf rescans the whole column on every add_row, making this quadratic in the
+        # number of sweeps. Every cell here is a scalar, so the check can only ever return False.
+        sweeps.add_row(**row, check_ragged=False)
 
     nwbfile.add_time_intervals(sweeps)

@@ -3,7 +3,7 @@ import warnings
 from pydantic import FilePath
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
-from ....utils import DeepDict
+from ....utils import DeepDict, to_snake_case
 
 
 class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
@@ -66,13 +66,13 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         super().__init__(file_path=file_path, verbose=verbose, metadata_key=metadata_key)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix segmentation data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with Inscopix provenance keyed by
             ``metadata_key`` under ``Devices`` and ``Ophys.PlaneSegmentations``.
@@ -89,11 +89,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         See related issue: https://github.com/inscopix/pyisx/issues/62
 
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         extractor = self.segmentation_extractor
 
         # Get all metadata from extractor using the consolidated method
@@ -120,10 +116,15 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
             if session_info.get("session_name"):
                 metadata["NWBFile"]["session_id"] = session_info["session_name"]
 
-            # Devices
-            device_entry = {}
-            if device_info.get("device_name"):
-                device_entry["name"] = device_info["device_name"]
+            # Devices. The name is a convention for writing the file rather than something the source
+            # states, so it falls back to the generic microscope name the old format used. The registry is
+            # keyed by the microscope, on the serial number when the file records one, so this interface
+            # and the imaging interface of the same session resolve to one entry.
+            device_entry = {"name": device_info.get("device_name") or "Microscope"}
+            serial_number = device_info.get("device_serial_number")
+            device_metadata_key = (
+                f"inscopix_{to_snake_case(str(serial_number))}" if serial_number else "inscopix_microscope"
+            )
             desc_parts = []
             if device_info.get("device_serial_number"):
                 desc_parts.append(f"Serial: {device_info['device_serial_number']}")
@@ -142,8 +143,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                     desc_parts.append(f"{field}: {value}")
             if desc_parts:
                 device_entry["description"] = f"Inscopix Microscope ({', '.join(desc_parts)})"
-            if device_entry:
-                metadata["Devices"] = {self.metadata_key: device_entry}
+            metadata["Devices"] = {device_metadata_key: device_entry}
 
             # PlaneSegmentations
             plane_segmentation_description = "Inscopix cell segmentation"
@@ -153,8 +153,14 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
                 plane_segmentation_description += f" with traces in {analysis_info['trace_units']}"
 
             metadata["Ophys"] = {
+                "ImagingPlanes": {
+                    self.metadata_key: {"device_metadata_key": device_metadata_key},
+                },
                 "PlaneSegmentations": {
-                    self.metadata_key: {"description": plane_segmentation_description},
+                    self.metadata_key: {
+                        "description": plane_segmentation_description,
+                        "imaging_plane_metadata_key": self.metadata_key,
+                    },
                 },
             }
         elif session_info.get("session_name"):

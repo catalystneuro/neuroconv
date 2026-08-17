@@ -1,3 +1,4 @@
+import inspect
 import json
 import tempfile
 from abc import abstractmethod
@@ -28,6 +29,22 @@ from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
 )
 from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
 from neuroconv.utils.json_schema import _NWBMetaDataEncoder
+
+
+def _get_metadata_for_writing(interface) -> dict:
+    """Return the interface's metadata in the format NeuroConv itself writes.
+
+    The internal fills use the dict-based format, so the tests that write a file ask for the same thing
+    rather than for the old list-based shape ``get_metadata()`` still hands users. Interfaces that never
+    exposed the old format take no such argument and are asked plainly.
+    """
+    import inspect
+
+    signature = inspect.signature(interface.get_metadata)
+    if "use_new_metadata_format" in signature.parameters:
+        return interface.get_metadata(use_new_metadata_format=True)
+
+    return interface.get_metadata()
 
 
 class DataInterfaceTestMixin:
@@ -89,17 +106,27 @@ class DataInterfaceTestMixin:
         Draft7Validator.check_schema(schema=schema)
 
     def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+        """Test the dict-based metadata, which is the format every interface will emit.
 
-        # `test_metadata_schema_valid` checks the schema is well formed; this checks the metadata satisfies
-        # it. `get_metadata` reports only what the source carries, and a source that knows no session start
-        # time legitimately omits it for the writer to default, so validate the metadata the writer would
-        # receive. The json round trip is what turns datetimes into something jsonschema can validate.
+        See https://github.com/catalystneuro/neuroconv/issues/1557 for discussion on
+        what get_metadata() should return (provenance vs convenience).
+
+        Dual-mode interfaces (those that still expose the old list-based format) opt
+        into the dict format via ``use_new_metadata_format=True``. Dict-only interfaces
+        return it unconditionally from ``get_metadata()``.
+        """
+        # When the default flips to the dict format this branch goes and the whole thing becomes a bare
+        # ``self.interface.get_metadata()``, since that is what the argument would be asking for anyway.
+        # The old-format tests keep stating ``use_new_metadata_format=False`` until they are removed.
+        if "use_new_metadata_format" in inspect.signature(self.interface.get_metadata).parameters:
+            metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        else:
+            metadata = self.interface.get_metadata()
+
         metadata_for_validation = deepcopy(metadata)
         if "session_start_time" not in metadata_for_validation["NWBFile"]:
             metadata_for_validation["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        schema = self.interface.get_metadata_schema()
-        validate(json.loads(json.dumps(metadata_for_validation, cls=_NWBMetaDataEncoder)), schema)
+        self.interface.validate_metadata(metadata=metadata_for_validation)
 
         self.check_extracted_metadata(metadata)
 
@@ -112,7 +139,7 @@ class DataInterfaceTestMixin:
 
         nwbfile = mock_NWBFile()
 
-        metadata = self.interface.get_metadata()
+        metadata = _get_metadata_for_writing(self.interface)
         metadata_before_add_method = deepcopy(metadata)
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
@@ -126,7 +153,7 @@ class DataInterfaceTestMixin:
         writes the same file; that equivalence is covered once on a mock interface in
         `tests/test_minimal/test_interfaces_run_conversion.py`.
         """
-        metadata = self.interface.get_metadata()
+        metadata = _get_metadata_for_writing(self.interface)
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
@@ -269,40 +296,19 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
     # `check_read_nwb` goes through roiextractors' NwbImagingExtractor, which opens the file with NWBHDF5IO
     check_read_nwb_backends = ("hdf5",)
 
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
-    def test_metadata(self, setup_interface):
-        from ..roiextractors.roiextractors import _is_dict_based_metadata
-
-        metadata = self.interface.get_metadata()
+    def test_metadata_old_list_format(self, setup_interface):
         # Dict-only interfaces no longer expose the old list-based format,
         # so there is nothing for check_extracted_metadata_old_list_format to assert.
-        if _is_dict_based_metadata(metadata):
+        if "use_new_metadata_format" not in inspect.signature(self.interface.get_metadata).parameters:
             pytest.skip("Interface returns the new dict-based metadata format only")
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Override this method to make assertions about extracted metadata in old list-based format."""
         pass
-
-    def test_get_metadata(self, setup_interface):
-        """Test get_metadata with the new dict-based format.
-
-        See https://github.com/catalystneuro/neuroconv/issues/1557 for discussion on
-        what get_metadata() should return (provenance vs convenience).
-
-        Dual-mode interfaces (those that still expose the old list-based format) opt
-        into the new format via ``use_new_metadata_format=True``. Dict-only interfaces
-        return the new format unconditionally from ``get_metadata()``.
-        """
-        import inspect
-
-        sig = inspect.signature(self.interface.get_metadata)
-        if "use_new_metadata_format" in sig.parameters:
-            metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        else:
-            metadata = self.interface.get_metadata()
-        self.check_extracted_metadata(metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         from roiextractors import NwbImagingExtractor
@@ -325,7 +331,7 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         aligned_starting_time = 1.23
         interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
 
-        metadata = interface.get_metadata()
+        metadata = _get_metadata_for_writing(interface)
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         # Use conversion_options if available
@@ -350,26 +356,17 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: BaseSegmentationExtractorInterface
 
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
-    def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+    def test_metadata_old_list_format(self, setup_interface):
+        if "use_new_metadata_format" not in inspect.signature(self.interface.get_metadata).parameters:
+            pytest.skip("Interface returns the new dict-based metadata format only")
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Override this method to make assertions about extracted metadata in old list-based format."""
         pass
-
-    def test_get_metadata(self, setup_interface):
-        """Test get_metadata with the new dict-based format."""
-        import inspect
-
-        sig = inspect.signature(self.interface.get_metadata)
-        if "use_new_metadata_format" not in sig.parameters:
-            pytest.skip("Interface does not support use_new_metadata_format yet")
-
-        metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        self.check_extracted_metadata(metadata)
 
     def check_read(self, nwbfile_path: str):
         from roiextractors import NwbSegmentationExtractor
@@ -388,26 +385,17 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     data_interface_cls: type[BaseRecordingExtractorInterface]
     is_lfp_interface: bool = False
 
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
-    def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+    def test_metadata_old_list_format(self, setup_interface):
+        if "use_new_metadata_format" not in inspect.signature(self.interface.get_metadata).parameters:
+            pytest.skip("Interface returns the new dict-based metadata format only")
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Override this method to make assertions about extracted metadata in old list-based format."""
         pass
-
-    def test_get_metadata(self, setup_interface):
-        """Test get_metadata with the new dict-based format."""
-        import inspect
-
-        sig = inspect.signature(self.interface.get_metadata)
-        if "use_new_metadata_format" not in sig.parameters:
-            pytest.skip("Interface does not support use_new_metadata_format yet")
-
-        metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        self.check_extracted_metadata(metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.core.testing import check_recordings_equal
@@ -415,7 +403,17 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
         recording = self.interface.recording_extractor
 
-        electrical_series_name = self.interface.get_metadata()["Ecephys"][self.interface.es_key]["name"]
+        # The file was written from the metadata `_get_metadata_for_writing` returns, so the name is read
+        # back from the same place: the keyed entry when the interface emits the dict format, the
+        # `es_key` entry when it still emits the old one.
+        # Read with `get` rather than `[]`: metadata is a `DeepDict`, whose `__getitem__` would create the
+        # block being tested for.
+        ecephys_metadata = _get_metadata_for_writing(self.interface)["Ecephys"]
+        electrical_series_metadata = ecephys_metadata.get("ElectricalSeries", {})
+        if self.interface.metadata_key in electrical_series_metadata:
+            electrical_series_name = electrical_series_metadata[self.interface.metadata_key]["name"]
+        else:
+            electrical_series_name = ecephys_metadata[self.interface.es_key]["name"]
 
         if recording.get_num_segments() == 1:
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id

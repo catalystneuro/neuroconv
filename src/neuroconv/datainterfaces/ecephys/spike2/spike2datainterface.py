@@ -11,8 +11,10 @@ from ....utils import get_json_schema_from_method_signature
 def _test_sonpy_installation() -> None:
     get_package(
         package_name="sonpy",
-        excluded_python_versions=["3.10", "3.11"],
-        excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.9", "3.10", "3.11", "3.12"])),
+        excluded_platforms_and_python_versions=dict(
+            linux=["3.10", "3.11", "3.12", "3.13"],
+            darwin=["3.10", "3.11", "3.12", "3.13"],
+        ),
     )
 
 
@@ -68,7 +70,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """

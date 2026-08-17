@@ -69,6 +69,11 @@ To write both the isosbestic and the signal channels (and their regions) into on
 single ``FiberPhotometryTable``, instantiate one interface per channel — e.g. a second interface with
 ``excitation_wavelength_in_nm=470`` and a distinct ``metadata_key`` — and combine them in a converter.
 
-The full metadata format (device models, devices, indicators, the ``FiberPhotometryTable``, and the
-per-interface response series) is shared across the fiber photometry interfaces and documented at
-:ref:`fiber_photometry_metadata_structure`.
+NeuroConv writes as much metadata as is available in the source format, but most of the time the
+experimenter has metadata that the records do not carry. Adding the rest improves the provenance of
+the file and makes it more useful for future users and for the community as a whole. To add it, follow
+:ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>`, which walks through common
+experimental configurations, and in particular
+:ref:`its section on templates <how_to_annotate_from_a_template>`, which starts from scratch.
+For a general reference of every element the metadata accepts, see the
+:ref:`reference template <fiber_photometry_metadata_template>`.

@@ -1,7 +1,25 @@
 name: Formatwise gallery tests
 on:
   workflow_dispatch:
+    inputs:
+      python-versions:
+        description: 'List of Python versions to use in matrix, as JSON string. Defaults to all of them.'
+        required: false
+        type: string
+      os-versions:
+        description: 'List of OS versions to use in matrix, as JSON string. Defaults to all of them.'
+        required: false
+        type: string
   workflow_call:
+    inputs:
+      python-versions:
+        description: 'List of Python versions to use in matrix, as JSON string. Defaults to all of them.'
+        required: false
+        type: string
+      os-versions:
+        description: 'List of OS versions to use in matrix, as JSON string. Defaults to all of them.'
+        required: false
+        type: string
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
@@ -28,13 +46,15 @@ jobs:
 
   run:
     needs: load_python_and_os_versions
-    name: OS ${{ matrix.os }} Python ${{ matrix.python-version }}
+    name: ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ${{ fromJson(needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS) }}
-        os: ${{ fromJson(needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS) }}
+        # The caller may narrow the matrix, as `deploy-tests.yml` does for a draft pull request. The
+        # daily passes nothing and gets every leg.
+        python-version: ${{ fromJson(inputs.python-versions || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS) }}
+        os: ${{ fromJson(inputs.os-versions || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS) }}
     steps:
       - uses: actions/checkout@v6
       - name: Setup Python ${{ matrix.python-version }}
@@ -43,7 +63,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v9.0.0
         with:
           version: "latest"
           enable-cache: false
@@ -107,14 +127,16 @@ jobs:
 
           # Loop through each format
           for format in "${FORMATS[@]}"; do
-            # Split type and name, and trim any whitespace/carriage returns
-            IFS=':' read -r type name <<< "$format"
+            # Split type, name and the installation extra, and trim any whitespace/carriage returns.
+            # The extra is stated by the collection script rather than assumed to equal the page name.
+            IFS=':' read -r type name extra <<< "$format"
             # Remove any trailing whitespace or carriage returns (Windows compatibility)
             type=$(echo "$type" | tr -d '\r\n' | xargs)
             name=$(echo "$name" | tr -d '\r\n' | xargs)
+            extra=$(echo "$extra" | tr -d '\r\n' | xargs)
 
             echo "===================================================="
-            echo "Testing $type:$name"
+            echo "Testing $type:$name (installing neuroconv[$extra])"
             echo "===================================================="
 
             # Create fresh virtual environment with uv (much faster)
@@ -127,8 +149,13 @@ jobs:
               source clean_env_$name/bin/activate
             fi
 
-            # Install dependencies with uv (much faster than pip)
-            uv pip install --quiet ".[$name]"
+            # Install dependencies with uv (much faster than pip). An empty extra means the page converts
+            # on a base install, which the gallery's extras_by_gallery_entry.json states explicitly.
+            if [ -n "$extra" ]; then
+              uv pip install --quiet ".[$extra]"
+            else
+              uv pip install --quiet "."
+            fi
             uv pip install --group test
 
             # Check if the gallery file exists before running pytest

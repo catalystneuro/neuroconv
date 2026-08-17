@@ -67,7 +67,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
         ignore_integrity_checks: bool = False,
         saved_files_are_split: bool = False,
@@ -144,7 +144,34 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         if metadata_key is None:
             self.metadata_key = "intan_recording"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        self._name_channel_groups_after_their_port()
+
+    def _name_channel_groups_after_their_port(self) -> None:
+        """
+        Restate the headstage port as ``port`` and name the electrode groups after it.
+
+        Intan names amplifier channels ``Port-Number`` (``A-001``), and SpikeInterface recovers the port letter
+        into a ``group_names`` property that nothing downstream reads: the write pipeline looks for
+        ``group_name``, singular. So the ports currently reach the file only as a stray electrodes column
+        sitting beside ``group_name`` and differing from it by one character, while the electrode groups
+        themselves are named ``0``, ``1``, ``2``, which is the position of the port in a sorted list rather
+        than anything the file says.
+
+        The port is written as a channel property as well as a group name because the two survive different
+        things: attaching a probe regroups the channels and overwrites ``group_name``, and the port is still
+        true of every channel afterwards. The group takes the port letter unchanged rather than a decorated
+        form, so that the name and the ``port`` column are the same string and relating them is an equality
+        check; what the letter means is stated in the group's description instead.
+        """
+        ports = self.recording_extractor.get_property("group_names")
+        if ports is None:  # Set by SpikeInterface for the amplifier stream only.
+            return
+
+        self.recording_extractor.set_property(key="port", values=ports)
+        self.recording_extractor.delete_property("group_names")
+        self.recording_extractor.set_property(key="group_name", values=ports)
+
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         system = self.file_path.suffix  # .rhd or .rhs
         device_description = {".rhd": "RHD Recording System", ".rhs": "RHS Stim/Recording System"}[system]
 
@@ -164,18 +191,23 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
             # Link every channel group to the Intan device so it is written to the NWBFile. Devices are
             # created lazily when an electrode group references them; without this linkage the pipeline
-            # would synthesize its own default device instead of the Intan one. Only the fields the source
-            # actually carries are emitted (name + the device link); the required ``description``/
-            # ``location`` are defaulted by the write pipeline, not invented here.
+            # would synthesize its own default device instead of the Intan one. The group name is the
+            # headstage port, a bare letter, so the description is what says which letter it is and what
+            # the letter means; ``location`` is left to the write pipeline, which the source cannot know.
+            groups_are_ports = self.recording_extractor.get_property("port") is not None
             channel_group_names = set(_get_group_name(recording=self.recording_extractor).tolist())
-            metadata["Ecephys"]["ElectrodeGroups"] = {
-                group_name: dict(name=group_name, device_metadata_key=device_metadata_key)
-                for group_name in channel_group_names
-            }
+
+            electrode_groups = {}
+            for group_name in channel_group_names:
+                entry = dict(name=group_name, device_metadata_key=device_metadata_key)
+                if groups_are_ports:
+                    entry["description"] = f"Amplifier channels recorded on Intan headstage port {group_name}."
+                electrode_groups[group_name] = entry
+            metadata["Ecephys"]["ElectrodeGroups"] = electrode_groups
 
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         ecephys_metadata = metadata["Ecephys"]
 
         # Add device

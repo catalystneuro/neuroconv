@@ -8,6 +8,13 @@ from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
 
+from ._metadata_schema import _get_ophys_registry_entry_definitions, _keyed_registry
+from ._metadata_template import (
+    _get_device_model_template_entry,
+    _get_device_template_entry,
+    _get_imaging_plane_template_entry,
+    _resolve_device_metadata_key,
+)
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     DeepDict,
@@ -79,14 +86,25 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         """
         Compile the metadata schema.
 
-        The modality block of this schema has not been migrated to the dict-based format yet, so what it
-        describes is the old list-based one. It is returned by
-        ``_get_metadata_schema_for_old_list_format`` for validating that format, and until the dict shape
-        is declared here this method answers with the base schema, which dict-based metadata satisfies.
+        The registries are objects keyed by ``metadata_key``, and the entries stay permissive: an entry is
+        passed to a pynwb constructor, so it may legitimately carry any field that constructor takes. What is
+        pinned is the shape, that an entry is an object, and the cross-reference fields
+        (``device_metadata_key``, ``imaging_plane_metadata_key``) that no hdmf class knows about.
+
+        Metadata in the old list-based format is validated against
+        ``_get_metadata_schema_for_old_list_format``, and both go when that format does.
         """
         from ...basedatainterface import BaseDataInterface
 
-        return BaseDataInterface.get_metadata_schema(self)
+        metadata_schema = BaseDataInterface.get_metadata_schema(self)
+        metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
+        metadata_schema["properties"]["Ophys"]["required"] = []
+        metadata_schema["properties"]["Ophys"]["properties"] = dict(
+            ImagingPlanes=_keyed_registry("#/properties/Ophys/definitions/ImagingPlaneEntry"),
+            MicroscopySeries=_keyed_registry("#/properties/Ophys/definitions/MicroscopySeriesEntry"),
+        )
+        metadata_schema["properties"]["Ophys"]["definitions"] = _get_ophys_registry_entry_definitions()
+        return metadata_schema
 
     def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
@@ -141,13 +159,13 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Retrieve the metadata for the imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns only NWBFile-level metadata (session_description, identifier,
             etc.) without ophys keys. Ophys defaults are filled by ``add_imaging_to_nwbfile()``
@@ -183,6 +201,67 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                 if "rate" in two_photon_series:
                     two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
+
+    def get_metadata_template(self) -> DeepDict:
+        """Return the imaging plane and series this interface writes, with the blanks marked.
+
+        The counterpart to :meth:`get_metadata`, which reports only what the source recorded and so
+        leaves a user no indication of what else the file needs. This returns those same values wrapped
+        in the structure the writer expects. Fill in the blanks and pass the result to ``add_to_nwbfile``
+        or ``run_conversion``; a blank still ``None`` at write time is an error rather than a value.
+
+        One imaging plane and one series, both under this interface's ``metadata_key`` and already
+        cross-referenced, hanging off one microscope. What is left ``None`` is what only the experimenter
+        can supply: the brain region imaged, the indicator, the excitation and emission wavelengths and
+        the name every object needs. The optional fields appear so that a user knows the writer accepts
+        them; delete the ones this recording cannot answer, since a blank left behind is refused at write
+        time rather than guessed at.
+
+        Rename the keys to suit the recording; they are handles, not names in the file.
+        """
+        # What ``add_imaging_to_nwbfile`` falls back to for an interface constructed without a key.
+        metadata_key = self.metadata_key or "default_metadata_key"
+        # Prefilled through the same transitional shim the writers use, so an interface whose
+        # ``get_metadata`` still answers in the old list format does not leak that shape into the
+        # template. When the old format goes the shim goes with it, and this becomes
+        # ``self.get_metadata()`` with nothing else to change.
+        source_metadata = self._get_metadata_for_writing()
+        device_metadata_key = _resolve_device_metadata_key(source_metadata=source_metadata, metadata_key=metadata_key)
+
+        # Optional fields of the series being written, which differ by photon series: a one-photon
+        # acquisition describes its camera exposure, a two-photon one its scanner.
+        optional_series_fields = dict(
+            TwoPhotonSeries=dict(field_of_view=None, pmt_gain=None, scan_line_rate=None),
+            OnePhotonSeries=dict(exposure_time=None, binning=None, power=None, intensity=None),
+        )[self.photon_series_type]
+        series_entry = dict(
+            name=None,
+            description=None,
+            unit=None,
+            imaging_plane_metadata_key=metadata_key,
+            **optional_series_fields,
+        )
+
+        device_model_metadata_key = f"{device_metadata_key}_model"
+        template = DeepDict(
+            dict(
+                DeviceModels={device_model_metadata_key: _get_device_model_template_entry()},
+                Devices={
+                    device_metadata_key: _get_device_template_entry(device_model_metadata_key=device_model_metadata_key)
+                },
+                Ophys=dict(
+                    ImagingPlanes={
+                        metadata_key: _get_imaging_plane_template_entry(device_metadata_key=device_metadata_key)
+                    },
+                    MicroscopySeries={metadata_key: series_entry},
+                ),
+            )
+        )
+
+        # The blanks are a floor rather than an override: whatever the source recorded wins over the
+        # template, so a field the interface was able to read is never handed back as one to fill in.
+        template.deep_update(source_metadata)
+        return template
 
     def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self._initialize_extractor(self.source_data)
@@ -291,7 +370,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             imaging_extractor = self.imaging_extractor
 
         # TODO: change to self.get_metadata(use_new_metadata_format=True) when all imaging interfaces are migrated
-        metadata = metadata or self.get_metadata()
+        metadata = metadata or self._get_metadata_for_writing()
 
         add_imaging_to_nwbfile(
             imaging=imaging_extractor,

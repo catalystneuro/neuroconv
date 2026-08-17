@@ -613,7 +613,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
     @staticmethod
     def _get_pose_estimation(nwbfile: NWBFile, name: str):
         pose_estimation_containers = {
-            obj.name: obj for obj in nwbfile.objects.values() if type(obj).__name__ == "PoseEstimation"
+            obj.name: obj for obj in nwbfile.all_children() if type(obj).__name__ == "PoseEstimation"
         }
         if name in pose_estimation_containers:
             return pose_estimation_containers[name]
@@ -630,7 +630,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
     @staticmethod
     def _get_image_series(nwbfile: NWBFile, name: str):
-        image_series = {obj.name: obj for obj in nwbfile.objects.values() if type(obj).__name__ == "ImageSeries"}
+        image_series = {obj.name: obj for obj in nwbfile.all_children() if type(obj).__name__ == "ImageSeries"}
         if name in image_series:
             return image_series[name]
         if image_series:

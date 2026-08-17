@@ -81,13 +81,13 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             metadata_key=metadata_key,
         )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the Scanbox imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with Scanbox device provenance.
 
@@ -99,16 +99,23 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
         """
         if use_new_metadata_format:
             metadata = super().get_metadata(use_new_metadata_format=True)
-            metadata["Devices"] = {self.metadata_key: {"description": "Scanbox imaging"}}
+            # The registry is keyed by the microscope rather than by this interface: one Scanbox system
+            # imaged whatever this session holds, so several interfaces resolve to one device entry.
+            device_metadata_key = "scanbox_microscope"
+            metadata["Devices"] = {device_metadata_key: {"name": "Microscope", "description": "Scanbox imaging"}}
             metadata["Ophys"] = {
+                "ImagingPlanes": {
+                    self.metadata_key: {"device_metadata_key": device_metadata_key},
+                },
                 "MicroscopySeries": {
                     self.metadata_key: {
                         "description": "Imaging data acquired with Scanbox.",
+                        "imaging_plane_metadata_key": self.metadata_key,
                     },
                 },
             }
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         metadata["Ophys"]["Device"][0]["description"] = "Scanbox imaging"
         return metadata

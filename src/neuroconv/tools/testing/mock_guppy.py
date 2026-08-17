@@ -2,17 +2,18 @@
 
 GuPPy (Guided Photometry Analysis in Python) writes a ``<session>_output_<N>`` folder full of
 derived fiber-photometry products. The real folders are ~100 MB because every condition file
-carries a long time/lag/sample axis. None of that bulk is needed to exercise ``_GuppyInterface``'s
+carries a long time/lag/sample axis. None of that bulk is needed to exercise ``GuppyInterface``'s
 parsing and writing logic, so this module reproduces the *format* of each file GuPPy emits (with
 tiny arrays) without any dependency on GuPPy itself.
 
 Each private writer reproduces a documented on-disk format -- its filename pattern plus the HDF5
-dataset keys / DataFrame columns / dtypes that ``_GuppyInterface`` reads -- described in its own
+dataset keys / DataFrame columns / dtypes that ``GuppyInterface`` reads -- described in its own
 docstring, with no dependency on GuPPy's internals. These layouts were captured from real GuPPy
 output.
 """
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 import h5py
@@ -22,7 +23,7 @@ import pandas
 # Default topology mirrors the ``Photo_249_391-200721-120136_stubbed`` TDT tank: two recording_sites, three
 # behavioral events, two transient features, one cross-correlation pair. The store ids
 # (Dv1A/Dv2A/Dv3B/Dv4B) and event epocs (LNRW/LNnR/PrtR) are the ones that tank actually exposes, so
-# ``TDTFiberPhotometryGuppyConverter`` can be driven against it with these defaults unchanged.
+# ``GuppyConverter`` can be driven against it with these defaults unchanged.
 _DEFAULT_RECORDING_SITE_TO_STORES = {
     "dms": {"signal": "Dv2A", "control": "Dv1A"},
     "dls": {"signal": "Dv4B", "control": "Dv3B"},
@@ -49,6 +50,7 @@ def generate_mock_guppy_output_folder(
     num_samples: int = 400,
     num_psth_timepoints: int = 50,
     num_trials: int = 4,
+    event_onsets: dict[str, Sequence[float]] | None = None,
     peak_start_points: tuple[float, ...] = (-5.0, 0.0, 5.0),
     peak_end_points: tuple[float, ...] = (0.0, 3.0, 10.0),
     valid_signal_intervals: tuple[tuple[float, float], ...] = ((1.25, 1.75), (2.0, 2.5)),
@@ -59,7 +61,7 @@ def generate_mock_guppy_output_folder(
     """Write a tiny GuPPy ``<session>_output`` folder to ``folder_path`` and return it.
 
     The generated folder is a faithful (but ~kilobyte-scale) replica of a real GuPPy output: the
-    filenames, HDF5 keys, DataFrame columns/index labels, and dtypes match what ``_GuppyInterface``
+    filenames, HDF5 keys, DataFrame columns/index labels, and dtypes match what ``GuppyInterface``
     reads. All arrays are internally consistent -- trace length equals timestamp length, transient
     peaks fall inside the trace window, and every event file for one condition shares an identical
     x-axis -- so the interface's ``*_matches_source`` assertions hold by construction.
@@ -86,7 +88,14 @@ def generate_mock_guppy_output_folder(
         ``num_samples / sampling_rate`` must exceed ~1 s so the first timestamp is > 0.5 s and the
         1-s stub window is non-empty.
     num_psth_timepoints, num_trials : int, optional
-        Shape of the PSTH / cross-correlation matrices.
+        Shape of the PSTH / cross-correlation matrices. ``num_trials`` builds the default onsets, so it
+        is ignored for any event named in ``event_onsets``.
+    event_onsets : dict of str to sequence of float, optional
+        The onsets GuPPy analyzed, keyed by event name; one entry per event is required when given.
+        These label the trial columns of every peri-event product and fill
+        ``<event>_<recording_site>.hdf5``, so a caller pairing this folder with a real acquisition file
+        must draw them from that file -- a converter matches them against the events table it builds.
+        Defaults to ``num_trials`` evenly spaced onsets shared by every event.
     peak_start_points, peak_end_points : tuple of float, optional
         Peak/AUC analysis windows; also written to the parameters file (NaN-padded like GuPPy).
     valid_signal_intervals : tuple of (float, float), optional
@@ -129,9 +138,22 @@ def generate_mock_guppy_output_folder(
     raw_timestamps = np.arange(num_trimmed_samples + num_samples, dtype=np.float64) / sampling_rate
     correction_index = np.flatnonzero(raw_timestamps >= _TIME_FOR_LIGHTS_TURN_ON)
     timestamps = raw_timestamps[correction_index]
-    # Trial onset times labeling the PSTH/peak-AUC trial columns (distinct floats).
-    trial_onsets = [10.0 * (index + 1) for index in range(num_trials)]
-    bin_edges = _trial_bin_edges(num_trials=num_trials, bin_size_in_trials=bin_size_in_trials)
+    # The onsets GuPPy analyzed for each event. These are the single source of truth: they label the
+    # PSTH/peak-AUC/cross-correlation trial columns AND fill <event>_<recording_site>.hdf5, the way a
+    # real GuPPy output derives both from one surviving-onset list. Callers pairing this mock with a
+    # real acquisition file must pass onsets drawn from that file, or the converter will not be able to
+    # match them against the events table it builds.
+    if event_onsets is None:
+        default_onsets = [10.0 * (index + 1) for index in range(num_trials)]
+        event_name_to_onsets = {event_name: list(default_onsets) for event_name in event_names}
+    else:
+        missing = set(event_names) - set(event_onsets)
+        assert not missing, f"event_onsets is missing an entry for {sorted(missing)}."
+        event_name_to_onsets = {event_name: list(event_onsets[event_name]) for event_name in event_names}
+    event_name_to_bin_edges = {
+        event_name: _trial_bin_edges(num_trials=len(onsets), bin_size_in_trials=bin_size_in_trials)
+        for event_name, onsets in event_name_to_onsets.items()
+    }
     peri_event_time = np.linspace(-5.0, 10.0, num_psth_timepoints)
     lag_axis = np.linspace(-5.0, 5.0, num_psth_timepoints)
 
@@ -165,7 +187,10 @@ def generate_mock_guppy_output_folder(
             _write_freq_and_amp(folder_path, feature=feature, recording_site=recording_site)
 
     for event_name in event_names:
+        trial_onsets = event_name_to_onsets[event_name]
+        bin_edges = event_name_to_bin_edges[event_name]
         for recording_site in recording_sites:
+            _write_event_onsets(folder_path, event=event_name, recording_site=recording_site, onsets=trial_onsets)
             for feature in features:
                 for baseline_corrected in (True, False):
                     _write_psth(
@@ -200,8 +225,8 @@ def generate_mock_guppy_output_folder(
                     recording_site_1=recording_site_1,
                     recording_site_2=recording_site_2,
                     lag_axis=lag_axis,
-                    trial_onsets=trial_onsets,
-                    bin_edges=bin_edges,
+                    trial_onsets=event_name_to_onsets[event_name],
+                    bin_edges=event_name_to_bin_edges[event_name],
                 )
 
     return folder_path
@@ -239,7 +264,7 @@ def _write_valid_signal_intervals(folder_path, recording_site, intervals) -> Non
     """``coordsForPreProcessing_<recording_site>.npy`` -- the artifact-removal boundary coordinates.
 
     A 2-D float array whose column 0 is a flat, even-length sequence of interval boundaries
-    ``[start, stop, start, stop, ...]`` (seconds). ``_GuppyInterface`` reads column 0, checks it is
+    ``[start, stop, start, stop, ...]`` (seconds). ``GuppyInterface`` reads column 0, checks it is
     even-length, and reshapes it to ``(num_intervals, 2)`` ``[start, stop]`` pairs. Column 1 mirrors
     the boundary amplitudes GuPPy stores alongside each coordinate (unread by the interface).
     """
@@ -260,7 +285,7 @@ def _write_parameters(
     """``GuPPyParamtersUsed.json`` written via ``json.dump``.
 
     ``peak_startPoint``/``peak_endPoint`` are padded to length 10 with NaN exactly as GuPPy does;
-    ``_GuppyInterface`` strips the NaN padding back to the real windows.
+    ``GuppyInterface`` strips the NaN padding back to the real windows.
     """
     pad_length = 10
     start_padded = list(peak_start_points) + [float("nan")] * (pad_length - len(peak_start_points))
@@ -268,6 +293,9 @@ def _write_parameters(
     parameters = dict(
         guppy_version=guppy_version,
         isosbestic_control=True,
+        # Real runs record the acquisition channel count here. Nothing reads it for TDT/CSV/Doric, but
+        # it is the only record of how many channels a header-less NPM recording interleaved.
+        noChannels=2,
         filter_window=100.0,
         removeArtifacts=remove_artifacts,
         artifactsRemovalMethod="concatenate",
@@ -296,6 +324,17 @@ def _write_trace(folder_path, prefix, recording_site, num_samples) -> None:
     data = np.linspace(-1.0, 1.0, num_samples, dtype=np.float64)
     with h5py.File(folder_path / f"{prefix}_{recording_site}.hdf5", "w") as trace_file:
         trace_file.create_dataset("data", data=data, maxshape=(None,), chunks=True)
+
+
+def _write_event_onsets(folder_path, event, recording_site, onsets) -> None:
+    """``<event>_<recording_site>.hdf5`` with a single 1-D float64 dataset under key ``ts``.
+
+    GuPPy writes this file per event per recording site while preprocessing, then rewrites it with the
+    onsets that survived trial rejection once PSTHs are computed. Its contents are therefore the onsets
+    every peri-event product was built from.
+    """
+    with h5py.File(folder_path / f"{event}_{recording_site}.hdf5", "w") as onsets_file:
+        onsets_file.create_dataset("ts", data=np.asarray(onsets, dtype=np.float64))
 
 
 def _write_time_correction(folder_path, recording_site, raw_timestamps, correction_index, sampling_rate) -> None:

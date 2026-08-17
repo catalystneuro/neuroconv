@@ -151,6 +151,10 @@ Use ``recording.select_channels()`` to extract specific channels:
     # Select wheel encoder channel
     wheel_recording = full_recording.select_channels(channel_ids=['nidq#2'])
 
+If you reached this guide from an error about heterogeneous channel offsets, see
+:doc:`handle_heterogeneous_offsets` first: it explains when the sensor channels should be split out
+as shown here and when the recording should instead be written in physical units.
+
 Adding Data
 -----------
 

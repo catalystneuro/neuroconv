@@ -2,6 +2,7 @@
 
 import re
 
+import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
 from pynwb import NWBHDF5IO
@@ -960,3 +961,145 @@ class TestEventsAcrossInterfaces:
         expected_error = "already exists but holds a single event type"
         with pytest.raises(ValueError, match=re.escape(expected_error)):
             interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata_b)
+
+
+class TestEventsTemporalAlignment:
+    """Gross temporal alignment on ``BaseEventsInterface``: ``interface.alignment.shift_times`` offsets event times at write.
+
+    The mock's single "events" type has native timestamps ``[0.1, 0.2, 0.3, 0.4]`` (``[0.1, 0.2, 0.3]`` at
+    ``num_events=3``), so two interfaces built the same way sit on top of each other until one is shifted.
+    """
+
+    def test_unshifted_events_are_written_at_native_times(self):
+        interface = MockEventsInterface()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        written = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
+        np.testing.assert_allclose(written, [0.1, 0.2, 0.3, 0.4])
+
+    def test_shift_times_offsets_written_timestamps_and_accumulates(self):
+        # Relative and rigid: repeated shifts sum, and the written events move by the total.
+        interface = MockEventsInterface()
+        interface.alignment.shift_times(1.0)
+        interface.alignment.shift_times(0.5)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        written = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
+        np.testing.assert_allclose(written, [1.6, 1.7, 1.8, 1.9])
+
+    def test_shift_preserves_durations(self):
+        # A shift moves timestamps but leaves each event's duration unchanged.
+        interface = MockEventsInterface(event_extent="event with duration")
+        interface.alignment.shift_times(5.0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        events = nwbfile.get_events_table("Events")
+        np.testing.assert_allclose(np.asarray(events["timestamp"][:]), [5.1, 5.2, 5.3, 5.4])
+        np.testing.assert_allclose(np.asarray(events["duration"][:]), [0.05, 0.05, 0.05, 0.05])
+
+    def test_merged_table_is_time_sorted_on_aligned_times(self):
+        # The cross-interface counterpart of TestMockEventsInterface.test_merged_table_is_time_sorted, and the
+        # only case where two different offsets meet: two systems pooling their events into one shared table,
+        # the second one shifted onto the first one's clock. Both interfaces fire at the same native times, so
+        # unshifted they land on top of each other and the table falls back to insertion order, A's block then
+        # B's (asserted in TestEventsAcrossInterfaces.test_merge_across_two_interfaces). The interleaving below
+        # can therefore only come from the offset: the end-of-write re-sort has to see aligned times, which is
+        # what a single-interface shift cannot pin, since a rigid shift never reorders a stream against itself.
+        interface_a = MockEventsInterface(metadata_key="events_a", num_events=3, event_payload="timestamps only")
+        interface_b = MockEventsInterface(metadata_key="events_b", num_events=3, event_payload="timestamps only")
+        interface_b.alignment.shift_times(0.15)  # B's clock started 0.15 s after A's
+        metadata = {
+            "Events": {
+                "EventTables": {"shared": {"table_name": "Trials", "description": "Trials from two systems."}},
+                "events_a": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "acquisition",
+                            "event_description": "From the acquisition system.",
+                            "table_metadata_key": "shared",
+                        }
+                    }
+                },
+                "events_b": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "auxiliary",
+                            "event_description": "From the auxiliary board.",
+                            "table_metadata_key": "shared",
+                        }
+                    }
+                },
+            }
+        }
+        nwbfile = mock_NWBFile()
+        interface_a.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Trials")
+        # A stays at 0.1/0.2/0.3, B is written at 0.25/0.35/0.45, and the two interleave into one timeline.
+        written = np.asarray(events["timestamp"][:])
+        np.testing.assert_allclose(written, [0.1, 0.2, 0.25, 0.3, 0.35, 0.45])
+        # Each row crossed the sort as a unit, so event_type still says which system fired when.
+        assert list(events["event_type"][:]) == [
+            "acquisition",
+            "acquisition",
+            "auxiliary",
+            "acquisition",
+            "auxiliary",
+            "auxiliary",
+        ]
+
+
+class TestGetEventTimes:
+    """``get_event_times``, the read-only query for events a caller wants to read rather than write.
+
+    A camera's frame-out pulse or an alignment pulse is configured like any other event type; the query
+    hands back its times so another stream can be aligned against them. It is base-class behaviour, so it
+    works the same on a pre-extracted source as on a signal-encoded one, and there is no second place to
+    state a reading, which is what makes the array it returns the array the writer writes.
+    """
+
+    def test_returns_the_onsets_the_writer_writes(self):
+        """The property the single path buys: the query cannot disagree with the file."""
+        interface = MockEventsInterface()
+
+        queried_timestamps = interface.get_event_times(event_type_source_id="events")
+        expected_timestamps = [0.1, 0.2, 0.3, 0.4]
+        np.testing.assert_allclose(queried_timestamps, expected_timestamps)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        written_timestamps = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
+        np.testing.assert_allclose(queried_timestamps, written_timestamps)
+
+    def test_answers_on_the_interfaces_current_clock(self):
+        """Shifted times, not native ones, so the events can be the input to another stream's alignment."""
+        interface = MockEventsInterface()
+        interface.alignment.shift_times(5.0)
+
+        shifted_timestamps = interface.get_event_times(event_type_source_id="events")
+        expected_timestamps = [5.1, 5.2, 5.3, 5.4]
+
+        np.testing.assert_allclose(shifted_timestamps, expected_timestamps)
+
+    def test_lists_the_event_types_it_reads(self):
+        """The handles the query takes, since a derived identifier is not guessable."""
+        interface = MockEventsInterface(num_event_types=3)
+
+        event_type_source_ids = interface.get_event_type_source_ids()
+        expected_event_type_source_ids = ["events_0", "events_1", "events_2"]
+
+        assert event_type_source_ids == expected_event_type_source_ids
+        for event_type_source_id in event_type_source_ids:
+            assert interface.get_event_times(event_type_source_id=event_type_source_id).size == 4
+
+    def test_an_event_type_that_is_not_read_raises_naming_the_ones_that_are(self):
+        interface = MockEventsInterface(num_event_types=2)
+        expected_error = (
+            "No event type 'camera' in MockEventsInterface. This interface reads ['events_0', 'events_1'], "
+            "which get_event_type_source_ids lists."
+        )
+
+        with pytest.raises(KeyError, match=re.escape(expected_error)):
+            interface.get_event_times(event_type_source_id="camera")

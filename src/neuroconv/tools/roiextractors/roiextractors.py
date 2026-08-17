@@ -51,6 +51,10 @@ from ...utils import (
     calculate_regular_series_rate,
     dict_deep_update,
 )
+from ...utils._metadata_translation import (
+    _ophys_block_is_old,
+    _translate_old_metadata,
+)
 from ...utils.str_utils import human_readable_size
 
 
@@ -97,7 +101,7 @@ def _get_ophys_metadata_placeholders():
 
     metadata["Devices"] = {
         default_metadata_key: {
-            "name": "Microscope",
+            "name": "PlaceholderMicroscope",
         },
     }
 
@@ -308,27 +312,39 @@ def _add_imaging_plane_to_nwbfile(
     for field in required_fields:
         imaging_plane_kwargs.setdefault(field, default_imaging_plane[field])
 
+    # The same rule one level down: an interface that knows a channel's name but not its emission
+    # wavelength states the name alone, and the entry is completed here rather than rejected by
+    # ``OpticalChannel``. Only a lone channel takes the default name, since two channels defaulted to the
+    # same name would collide inside the imaging plane.
+    default_optical_channel = default_imaging_plane["optical_channel"][0]
+    optical_channels = imaging_plane_kwargs["optical_channel"]
+    if len(optical_channels) > 1:
+        default_optical_channel = {field: value for field, value in default_optical_channel.items() if field != "name"}
+    imaging_plane_kwargs["optical_channel"] = [
+        {**default_optical_channel, **optical_channel} for optical_channel in optical_channels
+    ]
+
     # Check if already exists
     imaging_plane_name = imaging_plane_kwargs["name"]
     if imaging_plane_name in nwbfile.imaging_planes:
         return nwbfile.imaging_planes[imaging_plane_name]
 
-    # Resolve device. Entries without a ``device_metadata_key`` fall back to the placeholder device,
-    # which is exposed through the registry under its default key so every device is added by the
-    # canonical path.
+    # Resolve device. An entry naming no device gets the placeholder: a plain Device carrying the one
+    # field NWB requires, built here rather than through the registry writer, since there is no registry
+    # entry to key it against. Reused by name, so several planes naming no device land on one device. A
+    # keyed entry resolves against the caller's ``metadata``, which goes down whole because the device
+    # may name its model with ``device_model_metadata_key``, resolved against ``metadata["DeviceModels"]``.
     device_metadata_key = imaging_plane_kwargs.pop("device_metadata_key", None)
-    # The whole metadata goes to the helper, since a device entry may name its model by
-    # ``device_model_metadata_key``; only the ``Devices`` registry is rebuilt, for the placeholder below.
-    devices_metadata = {**(metadata or {}), "Devices": dict((metadata or {}).get("Devices", {}))}
     if device_metadata_key is None:
-        # Only synthesize the placeholder when nothing was referenced, so a user device that happens
-        # to share the placeholder's name is not turned into a duplicate-name conflict.
-        device_metadata_key = "default_metadata_key"
         placeholder = _get_ophys_metadata_placeholders()["Devices"]["default_metadata_key"]
-        devices_metadata["Devices"].setdefault(device_metadata_key, placeholder)
-    imaging_plane_kwargs["device"] = _add_device_to_nwbfile(
-        nwbfile=nwbfile, metadata=devices_metadata, metadata_key=device_metadata_key
-    )
+        placeholder_name = placeholder["name"]
+        if placeholder_name not in nwbfile.devices:
+            nwbfile.create_device(**placeholder)
+        imaging_plane_kwargs["device"] = nwbfile.devices[placeholder_name]
+    else:
+        imaging_plane_kwargs["device"] = _add_device_to_nwbfile(
+            nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key
+        )
 
     # ``optical_channel`` is written inline as a list of dicts and built into OpticalChannel objects
     # by the shared primitive, which reads the target type off ImagingPlane's own constructor spec.
@@ -574,7 +590,9 @@ def _add_plane_segmentation_to_nwbfile(
         image_mask_array = image_or_pixel_masks.T
         for roi_index, roi_name in zip(roi_indices, roi_names):
             image_mask = image_mask_array[roi_index]
-            plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, image_mask=image_mask)
+            # check_ragged=False: hdmf rescans the whole column on every add_roi, making this quadratic in
+            # the ROI count. (The pixel/voxel branch below goes through a VectorIndex, which is never checked.)
+            plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, image_mask=image_mask, check_ragged=False)
     else:
         mask_type_kwarg = f"{mask_type}_mask"
         pixel_masks = image_or_pixel_masks
@@ -967,7 +985,11 @@ def _imaging_frames_to_hdmf_iterator(
 
     if iterator_type is None:
         _check_if_imaging_fits_into_memory(imaging=imaging)
-        return imaging.get_series().transpose((0, 2, 1))
+        series = imaging.get_series()
+        # (samples, height, width) planar, (samples, height, width, planes) volumetric. The same rule
+        # the v2 iterator applies in ImagingExtractorDataChunkIterator._get_data.
+        transpose_axes = (0, 2, 1) if series.ndim == 3 else (0, 2, 1, 3)
+        return series.transpose(transpose_axes)
 
     return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
@@ -976,7 +998,7 @@ def add_imaging_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
-    *args,  # TODO: change to * (keyword only) on or after September 2026
+    *args,  # TODO: change to * (keyword only) on or after February 2027
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
     iterator_type: str | None = "v2",
@@ -1063,6 +1085,22 @@ def add_imaging_to_nwbfile(
 
     if metadata is None:
         metadata = _get_ophys_metadata_placeholders()
+
+    # Old-shaped metadata is converted here, the last public function before the private writers, so
+    # everything below sees one format. The old format addresses a series by position in
+    # ``Ophys[photon_series_type]`` and the new one by key, so the entry this call writes is named here
+    # and handed to the translator; when the caller gave no key, the series' own name becomes it.
+    ophys_metadata = metadata.get("Ophys", {})
+    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
+        series_list = ophys_metadata.get(photon_series_type, [])
+        if metadata_key is None and photon_series_index < len(series_list):
+            metadata_key = series_list[photon_series_index].get("name")
+        metadata = _translate_old_metadata(
+            metadata,
+            metadata_key=metadata_key,
+            photon_series_type=photon_series_type,
+            photon_series_index=photon_series_index,
+        )
 
     if _is_dict_based_metadata(metadata):
         metadata_key = metadata_key or "default_metadata_key"
@@ -1282,7 +1320,7 @@ def add_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
-    *args,  # TODO: change to * (keyword only) on or after September 2026
+    *args,  # TODO: change to * (keyword only) on or after February 2027
     plane_segmentation_name: str | None = None,
     background_plane_segmentation_name: str | None = None,
     include_background_segmentation: bool = False,
@@ -1383,13 +1421,33 @@ def add_segmentation_to_nwbfile(
             "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
             "written automatically as a column on the PlaneSegmentation table whenever the "
             "segmentation extractor exposes acceptance/rejection through its property system. "
-            "This parameter will be removed on or after November 2026.",
+            "This parameter will be removed on or after February 2027.",
             DeprecationWarning,
             stacklevel=2,
         )
 
     if metadata is None:
         metadata = _get_ophys_metadata_placeholders()
+
+    # As in ``add_imaging_to_nwbfile``: the old format addresses a plane segmentation by name and the new
+    # one by key, so the entry this call writes is named here. Traces and summary images are keyed by the
+    # same handle, which is why the translator needs to know which name it is.
+    ophys_metadata = metadata.get("Ophys", {})
+    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
+        segmentation_list = ophys_metadata.get("ImageSegmentation", {}).get("plane_segmentations", [])
+        addressed_name = plane_segmentation_name
+        if addressed_name is None and segmentation_list:
+            addressed_name = segmentation_list[0].get("name")
+        if metadata_key is None:
+            metadata_key = addressed_name
+        metadata = _translate_old_metadata(metadata, metadata_key=metadata_key, plane_segmentation_name=addressed_name)
+        # The old format's defaults declare six trace roles on every segmentation, so a translated block
+        # asks for traces from extractors that expose none, `InscopixSegmentationInterface` among them.
+        # That is boilerplate rather than a request, and the old writer answered it by writing nothing, so
+        # the block goes here rather than letting the writer reject metadata the caller never wrote.
+        traces = segmentation_extractor.get_traces_dict().values()
+        if not any(trace is not None and trace.size != 0 for trace in traces):
+            metadata["Ophys"] = {key: value for key, value in metadata["Ophys"].items() if key != "RoiResponses"}
 
     if _is_dict_based_metadata(metadata):
         metadata_key = metadata_key or "default_metadata_key"
@@ -1505,7 +1563,7 @@ def write_segmentation_to_nwbfile(
             "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
             "written automatically as a column on the PlaneSegmentation table whenever the "
             "segmentation extractor exposes acceptance/rejection through its property system. "
-            "This parameter will be removed on or after November 2026.",
+            "This parameter will be removed on or after February 2027.",
             DeprecationWarning,
             stacklevel=2,
         )

@@ -37,6 +37,7 @@ from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.intan.intananaloginterface import IntanAnalogInterface
+from .ecephys.intan.intandigitalinterface import IntanDigitalInterface
 from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
@@ -115,6 +116,7 @@ from .fiber_photometry.csv.multifilecsvfiberphotometrydatainterface import (
     MultiFileCSVFiberPhotometryInterface,
 )
 from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
+from .fiber_photometry.guppy.guppydatainterface import GuppyInterface
 from .fiber_photometry.npm.npmfiberphotometrydatainterface import (
     NPMFiberPhotometryInterface,
 )
@@ -151,6 +153,7 @@ interface_list = [
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
     IntanAnalogInterface,
+    IntanDigitalInterface,
     IntanStimInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
@@ -213,6 +216,7 @@ interface_list = [
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
     NPMFiberPhotometryInterface,
+    GuppyInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
@@ -275,6 +279,7 @@ interfaces_by_category = dict(
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
+        IntanDigital=IntanDigitalInterface,
         IntanStim=IntanStimInterface,
         InscopixGpio=InscopixGpioInterface,
     ),

@@ -38,7 +38,7 @@ jobs:
     needs: [run-daily-tests]
     if: ${{ always() && needs.run-daily-tests.result == 'failure' }}
     steps:
-      - uses: dawidd6/action-send-mail@v3
+      - uses: dawidd6/action-send-mail@v18
         with:
           server_address: smtp.gmail.com
           server_port: 465
@@ -62,7 +62,7 @@ jobs:
     needs: [run-daily-neuroconv-docker-testing]
     if: ${{ always() && needs.run-daily-neuroconv-docker-testing.result == 'failure' }}
     steps:
-      - uses: dawidd6/action-send-mail@v3
+      - uses: dawidd6/action-send-mail@v18
         with:
           server_address: smtp.gmail.com
           server_port: 465
@@ -85,7 +85,7 @@ jobs:
     needs: [run-daily-formatwise-installation-testing]
     if: ${{ always() && needs.run-daily-formatwise-installation-testing.result == 'failure' }}
     steps:
-      - uses: dawidd6/action-send-mail@v3
+      - uses: dawidd6/action-send-mail@v18
         with:
           server_address: smtp.gmail.com
           server_port: 465

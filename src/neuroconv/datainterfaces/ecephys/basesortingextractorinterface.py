@@ -28,14 +28,64 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         """
         Compile the metadata schema.
 
-        The modality block of this schema has not been migrated to the dict-based format yet, so what it
-        describes is the old list-based one. It is returned by
-        ``_get_metadata_schema_for_old_list_format`` for validating that format, and until the dict shape
-        is declared here this method answers with the base schema, which dict-based metadata satisfies.
+        A sorting interface registers no series of its own: what it reads from ``metadata["Ecephys"]`` is
+        the description of the columns it writes, on the units table and, when a recording is attached, on
+        the electrode table. Both are lists. It also declares ``ElectrodeGroups``, because a sorting
+        interface that was given a recording carries the groups that recording describes
+        (``NeuroScopeSortingInterface`` reads them from the session's XML), and they reach validation in
+        the dict format like any other.
+
+        Metadata in the old list-based format is validated against
+        ``_get_metadata_schema_for_old_list_format``, and both go when that format does.
         """
         from ...basedatainterface import BaseDataInterface
 
-        return BaseDataInterface.get_metadata_schema(self)
+        metadata_schema = BaseDataInterface.get_metadata_schema(self)
+        metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
+        metadata_schema["properties"]["Ecephys"]["required"] = []
+        metadata_schema["properties"]["Ecephys"]["properties"] = dict(
+            ElectrodeGroups=dict(
+                type="object",
+                additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeGroupEntry"},
+            ),
+            Electrodes=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/definitions/ColumnDescription"},
+            ),
+            UnitProperties=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/definitions/ColumnDescription"},
+            ),
+        )
+        metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
+            ElectrodeGroupEntry=dict(
+                type="object",
+                additionalProperties=True,
+                properties=dict(
+                    name=dict(type="string", pattern="^[^/]*$"),
+                    description=dict(type="string"),
+                    location=dict(type="string"),
+                    device_metadata_key=dict(
+                        type="string",
+                        description="Key of this group's device in metadata['Devices'].",
+                    ),
+                ),
+            ),
+            ColumnDescription=dict(
+                type="object",
+                additionalProperties=False,
+                required=["name"],
+                properties=dict(
+                    name=dict(type="string", description="name of this column"),
+                    description=dict(type="string", description="description of this column"),
+                ),
+            ),
+        )
+        return metadata_schema
 
     def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
@@ -358,14 +408,14 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 - "sampling_rate": float, the sampling rate of the waveforms in Hz
                 - "unit": str, the unit of measurement (default: "volts")
         write_as : {'units', 'processing'}, optional
-            Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+            Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
         """
         from ...tools.spikeinterface import add_sorting_to_nwbfile
 
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseSortingExtractorInterface.add_to_nwbfile() is deprecated and will "
-                "be removed on or after December 2026. Use 'parent_container' instead.",
+                "be removed on or after February 2027. Use 'parent_container' instead.",
                 FutureWarning,
                 stacklevel=2,
             )

@@ -2416,6 +2416,48 @@ class TestAddImaging:
         plane = nwbfile.imaging_planes["ImagingPlane"]
         assert plane.device is device
 
+    def test_device_model_is_written_and_linked(self):
+        """A device reached from an imaging plane can name its model with ``device_model_metadata_key``.
+        The model is resolved against ``metadata["DeviceModels"]``, so the whole metadata has to reach the
+        device writer, not just the ``Devices`` registry."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "DeviceModels": {
+                "microscope_model": {"name": "Bergamo III", "manufacturer": "Thorlabs"},
+            },
+            "Devices": {
+                "my_device": {"name": "Microscope", "device_model_metadata_key": "microscope_model"},
+            },
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6s",
+                        "location": "V1",
+                        "device_metadata_key": "my_device",
+                        "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
+                    },
+                },
+                "MicroscopySeries": {
+                    "my_series": {
+                        "name": "TwoPhotonSeries",
+                        "unit": "n.a.",
+                        "imaging_plane_metadata_key": "my_plane",
+                    },
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        device = nwbfile.devices["Microscope"]
+        assert nwbfile.imaging_planes["ImagingPlane"].device is device
+        assert device.model is nwbfile.device_models["Bergamo III"]
+        assert device.model.manufacturer == "Thorlabs"
+
     def test_shared_imaging_plane_two_microscopy_series(self):
         """Two microscopy series referencing the same imaging plane via imaging_plane_metadata_key."""
         nwbfile = mock_NWBFile()
@@ -2657,6 +2699,87 @@ class TestAddImaging:
         assert optical_channel.name == "OpticalChannel"
         assert np.isnan(optical_channel.emission_lambda)
 
+    def test_partially_stated_optical_channel_is_defaulted(self):
+        """An interface that knows a channel's name but not its emission wavelength states the name alone.
+        The entry is completed from the placeholder template rather than rejected by ``OpticalChannel``,
+        so knowing more about the source cannot produce a worse outcome than knowing nothing."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        # Only the channel name is known; description and emission_lambda are not.
+                        "optical_channel": [{"name": "ChanA"}],
+                    },
+                },
+                "MicroscopySeries": {
+                    "my_series": {"name": "TwoPhotonSeries", "imaging_plane_metadata_key": "my_plane"},
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        optical_channel = nwbfile.imaging_planes["ImagingPlane"].optical_channel[0]
+        assert optical_channel.name == "ChanA"
+        assert np.isnan(optical_channel.emission_lambda)
+        assert optical_channel.description == "An optical channel of the microscope."
+
+    def test_several_partially_stated_optical_channels_keep_their_own_names(self):
+        """The default name is withheld when the list holds several entries, since two channels defaulted
+        to one name would collide inside the imaging plane."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        "optical_channel": [{"name": "ChanA"}, {"name": "ChanB"}],
+                    },
+                },
+                "MicroscopySeries": {
+                    "my_series": {"name": "TwoPhotonSeries", "imaging_plane_metadata_key": "my_plane"},
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        optical_channels = nwbfile.imaging_planes["ImagingPlane"].optical_channel
+        assert [channel.name for channel in optical_channels] == ["ChanA", "ChanB"]
+        assert all(np.isnan(channel.emission_lambda) for channel in optical_channels)
+
+    def test_registered_device_is_written_rather_than_shadowed(self):
+        """A device the interface registers is only reached through an imaging plane that links it. An
+        entry nothing references is replaced by the placeholder, and its description is lost, so the link
+        is what makes the registered device the one in the file."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "Devices": {"my_device": {"name": "Microscope", "description": "Scanbox imaging"}},
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {"name": "ImagingPlane", "device_metadata_key": "my_device"},
+                },
+                "MicroscopySeries": {
+                    "my_series": {"name": "TwoPhotonSeries", "imaging_plane_metadata_key": "my_plane"},
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        assert len(nwbfile.devices) == 1
+        device = nwbfile.imaging_planes["ImagingPlane"].device
+        assert device.name == "Microscope"
+        assert device.description == "Scanbox imaging"
+
     def test_missing_required_series_fields_are_defaulted(self):
         """A series entry that omits `unit` is not rejected; the write path fills it from the placeholder
         template instead of raising."""
@@ -2774,6 +2897,36 @@ class TestAddImaging:
         series = nwbfile.acquisition[series_name]
         assert not isinstance(series.data, ImagingExtractorDataChunkIterator)
         assert series.data.shape == (num_samples, num_columns, num_rows)
+
+    def test_non_iterative_write_of_volumetric_data(self):
+        """`get_series` is 4D for a volumetric extractor, so the planar three-axis transpose does not
+        apply to it and used to raise `ValueError: axes don't match array`. Nothing here is
+        format-specific: it broke `iterator_type=None` for every volumetric extractor."""
+        nwbfile = mock_NWBFile()
+        num_samples = 10
+        num_rows = 5
+        num_columns = 4
+        num_planes = 3
+        imaging = generate_dummy_imaging_extractor(
+            num_samples=num_samples, num_rows=num_rows, num_columns=num_columns, num_planes=num_planes
+        )
+
+        metadata = get_full_ophys_metadata()
+        series_key = "my_series"
+
+        add_imaging_to_nwbfile(
+            imaging=imaging,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=series_key,
+            iterator_type=None,
+        )
+
+        series_name = metadata["Ophys"]["MicroscopySeries"][series_key]["name"]
+        series = nwbfile.acquisition[series_name]
+        assert not isinstance(series.data, ImagingExtractorDataChunkIterator)
+        # The planes axis stays last, which is the layout the v2 iterator advertises.
+        assert series.data.shape == (num_samples, num_columns, num_rows, num_planes)
 
     def test_metadata_not_mutated(self):
         """Dict-based metadata is not mutated by add_imaging_to_nwbfile."""

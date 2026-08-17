@@ -6,6 +6,7 @@ from hdmf.common import MeaningsTable
 from pynwb.event import EventsTable
 from pynwb.file import NWBFile
 
+from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
 from ...utils import to_camel_case
 
@@ -92,6 +93,11 @@ class BaseEventsInterface(BaseDataInterface):
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
         # coerced once even though get_metadata, add_to_nwbfile, and alignment all read it.
         self._events_data_dict = None
+        # Alignment by composition: the interface holds the offset applied to its event times at write and
+        # exposes it as ``interface.alignment`` (so ``alignment.shift_times``), rather than inheriting the
+        # array-shaped BaseTemporalAlignmentInterface contract, which does not fit events. Minimal (offset +
+        # shift_times) for now; see neuroconv/_temporal_alignment.py.
+        self.alignment = _TemporalAlignment()
 
     @abstractmethod
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
@@ -114,6 +120,68 @@ class BaseEventsInterface(BaseDataInterface):
             ``field_source_id`` in this record's ``payload``.
         """
         raise NotImplementedError("Event interfaces must implement `_get_events_data_dict`.")
+
+    def get_event_type_source_ids(self) -> list[str]:
+        """Return the identifiers of the event types this interface reads, in the order it reports them.
+
+        The handles :meth:`get_event_times` takes, and the keys of the metadata's ``event_types`` block.
+        For a signal-encoded interface they are what ``detection_configuration`` resolves to, so a spec
+        carrying an ``event_name`` is addressed by that name; for a pre-extracted one they are the
+        source's own handles for its event types.
+
+        Returns
+        -------
+        list of str
+            The event type identifiers.
+        """
+        return list(self.get_metadata()["Events"][self.metadata_key]["event_types"])
+
+    def get_event_times(self, event_type_source_id: str) -> np.ndarray:
+        """Return the onset times of one configured event type, writing nothing.
+
+        The read that a line used as a clock calls for: a camera's frame-out pulse or an alignment pulse
+        is configured like any other event type, and this hands back its times so another stream can be
+        aligned against them. There is no second way to state a reading here, so the array is the one the
+        writer writes, by construction rather than by agreement.
+
+        A durative reading costs nothing for this purpose, since ``high_period`` pairs each rising edge
+        with the next falling one and its onsets are those rising edges, so a line configured to be
+        written with its pulse widths still answers with the edge times.
+
+        The times are this interface's **current** times, which is ``self.alignment.offset`` added to the
+        source's own clock. That is what makes them usable as the input to another stream's alignment:
+        pulses recorded by a device that has itself been shifted onto a session clock come back already
+        on that clock, and reading them before the shift would leave them wrong by the drift with nothing
+        to catch it.
+
+        Parameters
+        ----------
+        event_type_source_id : str
+            The identifier of the event type, as :meth:`get_event_type_source_ids` reports it. Not the
+            metadata ``event_name``, which is the editable display name and which the interface never
+            sees, since it hands out metadata and keeps none. Setting ``event_name`` on a spec in
+            ``detection_configuration`` is what makes the identifier readable, since a named spec is
+            addressed by that name.
+
+        Returns
+        -------
+        numpy.ndarray
+            The event onset times, in seconds, on this interface's current clock.
+
+        Raises
+        ------
+        KeyError
+            If no event type resolves to that identifier, naming the ones that do.
+        """
+        events_data_dict = self._get_events_data_dict()
+
+        if event_type_source_id not in events_data_dict:
+            raise KeyError(
+                f"No event type '{event_type_source_id}' in {type(self).__name__}. This interface reads "
+                f"{sorted(events_data_dict)}, which get_event_type_source_ids lists."
+            )
+
+        return events_data_dict[event_type_source_id].timestamps + self.alignment.offset
 
     def get_metadata_schema(self) -> dict:
         """
@@ -345,6 +413,11 @@ class BaseEventsInterface(BaseDataInterface):
         event_types = metadata["Events"][self.metadata_key]["event_types"]
         event_data = self._get_events_data_dict()
 
+        # Apply the alignment offset here (lazily, at write): every written timestamp is native + offset, so
+        # the cached internal representation stays in the source clock. A shift is rigid, so durations are
+        # left unchanged.
+        time_offset = self.alignment.offset
+
         # Flatten this interface's types into rows (timestamp, event_name, duration, cells) and collect the
         # value-column specs keyed by column_name.
         rows = []
@@ -371,7 +444,7 @@ class BaseEventsInterface(BaseDataInterface):
                     value = event.payload[field_source_id][index]
                     cells[column_name] = labels_map[str(value)] if labels_map is not None else value
                 duration = float(event.durations[index]) if event.durations is not None else np.nan
-                rows.append((float(timestamp), event_name, duration, cells))
+                rows.append((float(timestamp) + time_offset, event_name, duration, cells))
 
         n_existing = len(table.id)
         has_duration = any(event_data[source_id].durations is not None for source_id in event_type_source_ids)
@@ -385,12 +458,19 @@ class BaseEventsInterface(BaseDataInterface):
                     "no duration column. Duration presence must be consistent across the types sharing a table."
                 )
 
+        # A table that gets no rows at all is a real result, a line that was recorded and never fired, and
+        # it is written rather than dropped. hdmf infers a column added at runtime from its data, though,
+        # and an empty Python list carries no dtype, so those columns get a typed empty instead. (The
+        # predefined timestamp and duration columns declare theirs in the schema, which is why a table
+        # holding a single event type has always written empty without this.)
+        stays_empty = n_existing == 0 and not rows
+
         # A fresh merged table needs the discriminator column before its MeaningsTable and rows.
         if is_merge and "event_type" not in table.colnames:
             table.add_column(
                 name="event_type",
                 description="The event type of each event.",
-                data=[""] * n_existing,
+                data=np.array([], dtype=str) if stays_empty else [""] * n_existing,
             )
 
         # Ensure each value column this interface writes exists (backfilling already-present rows), and
@@ -401,10 +481,11 @@ class BaseEventsInterface(BaseDataInterface):
             categories = column_spec.get("column_categories")
             if column_name not in table.colnames:
                 fill = "" if categories is not None else np.nan
+                empty = np.array([], dtype=str if categories is not None else float)
                 table.add_column(
                     name=column_name,
                     description=column_spec.get("description", ""),
-                    data=[fill] * n_existing,
+                    data=empty if stays_empty else [fill] * n_existing,
                 )
             # Only a meaning the user actually wrote earns a row: a column whose meanings are all empty
             # gets no MeaningsTable rather than a table of empty strings, and a partly annotated column
@@ -483,7 +564,9 @@ class BaseEventsInterface(BaseDataInterface):
                 else:  # a column from a prior interface: infer the fill from its existing dtype
                     existing = table[column_name].data
                     row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
-            table.add_row(**row_kwargs)
+            # check_ragged=False: hdmf rescans the whole column on every add_row, making the fill quadratic
+            # in its rows. Every cell here is a scalar, so the check can only ever return False.
+            table.add_row(check_ragged=False, **row_kwargs)
 
     @staticmethod
     def _validate_shared_columns(events_metadata: dict) -> None:

@@ -4,6 +4,7 @@ from pydantic import FilePath, validate_call
 
 from .intananaloginterface import IntanAnalogInterface
 from .intandatainterface import IntanRecordingInterface
+from .intandigitalinterface import IntanDigitalInterface
 from .intanstiminterface import IntanStimInterface
 from ....nwbconverter import ConverterPipe
 from ....utils import get_json_schema_from_method_signature
@@ -16,7 +17,10 @@ class IntanConverter(ConverterPipe):
     Auto-discovers all streams present in the file header and instantiates the
     appropriate sub-interface for each: IntanRecordingInterface for the amplifier
     stream, IntanAnalogInterface for analog streams (auxiliary, ADC inputs/outputs,
-    DC amplifier), and IntanStimInterface for the RHS stim channel.
+    DC amplifier), IntanStimInterface for the RHS stim channel, and
+    IntanDigitalInterface for the digital input/output words (every enabled line is stored
+    as a high pulse: the event timestamp is the 0->1 rise and the duration is the span to the
+    1->0 fall, assuming active-high lines; a line that never toggles is written as an empty table).
     """
 
     display_name = "Intan Converter"
@@ -26,8 +30,9 @@ class IntanConverter(ConverterPipe):
 
     # Maps header stream name to interface routing.
     # "interface_name" and "interface" are routing fields consumed by the converter loop.
-    # All remaining keys are forwarded verbatim as constructor kwargs. stream_name and
-    # file_path are always injected by the loop; only interface-specific extras appear here.
+    # All remaining keys are forwarded verbatim as constructor kwargs. file_path is always injected by
+    # the loop, and stream_name for the interfaces that take one; only interface-specific extras appear
+    # here. Two stream names may share an "interface_name", in which case one instance covers both.
     _ROUTING_KEYS = frozenset({"interface_name", "interface"})
     _STREAM_TO_INTERFACE = {
         "RHD2000 amplifier channel": {
@@ -65,6 +70,20 @@ class IntanConverter(ConverterPipe):
             "interface": IntanStimInterface,
             "metadata_key": "intan_stim",
         },
+        # Both digital words route to one interface: it addresses lines by the header's own name for
+        # them, whose DIGITAL-IN / DIGITAL-OUT prefixes already say which word a line came off, so it
+        # covers whichever words a file carries without being told. Two entries pointing at one
+        # interface_name is how a file holding both still builds a single instance.
+        "USB board digital input channel": {
+            "interface_name": "Digital",
+            "interface": IntanDigitalInterface,
+            "metadata_key": "intan_digital",
+        },
+        "USB board digital output channel": {
+            "interface_name": "Digital",
+            "interface": IntanDigitalInterface,
+            "metadata_key": "intan_digital",
+        },
     }
 
     @classmethod
@@ -93,8 +112,7 @@ class IntanConverter(ConverterPipe):
         -------
         list of str
             All stream names reported by the file header (including streams not
-            currently routed by this converter, such as digital inputs/outputs
-            and supply voltage).
+            currently routed by this converter, such as supply voltage).
         """
         from neo.rawio import IntanRawIO
 
@@ -115,7 +133,11 @@ class IntanConverter(ConverterPipe):
         Auto-discover and route all Intan streams in a .rhd or .rhs file.
 
         Streams present in the file header that do not have a routed sub-interface
-        (digital input/output, supply voltage) are skipped automatically.
+        (supply voltage) are skipped automatically. Digital input/output words are
+        routed to ``IntanDigitalInterface`` with its default config, storing every
+        enabled line as a high pulse (onset at the 0->1 rise, duration to the 1->0
+        fall, assuming active-high lines; a line that never toggles becomes an empty table); pass
+        their names to ``exclude_streams`` to skip them.
 
         Parameters
         ----------
@@ -155,17 +177,24 @@ class IntanConverter(ConverterPipe):
             if stream_name not in self._STREAM_TO_INTERFACE:
                 continue
             entry = self._STREAM_TO_INTERFACE[stream_name]
+            if entry["interface_name"] in data_interfaces:
+                # Several streams can share one sub-interface, which is how both digital words end up in
+                # a single IntanDigitalInterface: it reads whichever of them the file carries, so the
+                # second stream to come round is already covered by the instance the first one built.
+                continue
             interface_kwargs = dict(file_path=file_path)
             interface_kwargs.update({k: v for k, v in entry.items() if k not in self._ROUTING_KEYS})
             if entry["interface"] is IntanAnalogInterface:
                 interface_kwargs["stream_name"] = stream_name
-            elif entry["interface"] is IntanRecordingInterface:
-                # The recording interface takes both: ``metadata_key`` keys the dict-based metadata and
-                # ``es_key`` keys the old list-based metadata, which used this same name before the dict
-                # format existed.
-                interface_kwargs["es_key"] = interface_kwargs["metadata_key"]
             if saved_files_are_split:
                 interface_kwargs["saved_files_are_split"] = True
-            data_interfaces[entry["interface_name"]] = entry["interface"](**interface_kwargs)
+            interface = entry["interface"](**interface_kwargs)
+            if entry["interface"] is IntanRecordingInterface:
+                # The recording interface uses both: ``metadata_key`` keys the dict-based metadata and
+                # ``es_key`` keys the old list-based metadata, which used this same name before the dict
+                # format existed. It is set here rather than passed to the constructor so that the
+                # deprecation warning stays reserved for callers who state ``es_key`` themselves.
+                interface.es_key = interface_kwargs["metadata_key"]
+            data_interfaces[entry["interface_name"]] = interface
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)

@@ -94,6 +94,8 @@ Segmentation
     Inscopix <segmentation/inscopix>
     Suite2P <segmentation/suite2p>
 
+.. _conversion_gallery_fiber_photometry:
+
 Fiber Photometry
 ~~~~~~~~~~~~~~~~
 
@@ -104,6 +106,7 @@ Fiber Photometry
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
     NPM Fiber Photometry <fiberphotometry/npm_fp>
     CSV Fiber Photometry <fiberphotometry/csv_fp>
+    GuPPy Fiber Photometry <fiberphotometry/guppy_fp>
 
 Behavior
 --------

@@ -107,7 +107,11 @@ interface picks the reader based on the file extension:
     ``metadata["NWBFile"]["session_start_time"]`` must always be set by hand when converting from
     either of those.
 
-.. seealso::
-
-    :ref:`fiber_photometry_metadata_structure` for the full metadata format reference shared by all
-    single-series fiber photometry interfaces.
+NeuroConv writes as much metadata as is available in the source format, but most of the time the
+experimenter has metadata that the records do not carry. Adding the rest improves the provenance of
+the file and makes it more useful for future users and for the community as a whole. To add it, follow
+:ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>`, which walks through common
+experimental configurations, and in particular
+:ref:`its section on templates <how_to_annotate_from_a_template>`, which starts from scratch.
+For a general reference of every element the metadata accepts, see the
+:ref:`reference template <fiber_photometry_metadata_template>`.

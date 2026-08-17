@@ -19,6 +19,7 @@ Child interfaces implement only the format-reading seam:
 """
 
 from abc import abstractmethod
+from typing import Literal
 
 import numpy as np
 from pynwb.file import NWBFile
@@ -30,6 +31,7 @@ from ...tools.fiber_photometry import (
     add_fiber_photometry_lab_metadata,
     get_fiber_photometry_table_region,
 )
+from ...tools.nwb_helpers import get_module
 from ...utils import DeepDict, dict_deep_update, get_base_schema
 from ...utils.checks import calculate_regular_series_rate
 
@@ -63,8 +65,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ``"_405R"`` gives ``"fiber_photometry_405r"``), so multiple interfaces over different streams
             already get distinct keys. Pass an explicit value to override.
         stream_indices : list of int, optional
-            Column indices selecting which channels of the (column-stacked) stream data to keep.
-            ``None`` (default) keeps all channels.
+            Column indices selecting which columns of the (column-stacked) stream data to keep.
+            ``None`` (default) keeps all columns.
         verbose : bool, default: False
             Whether to print status messages.
         **source_data
@@ -90,7 +92,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         """Return time-major data for a single atomic source stream.
 
-        Shaped ``(num_samples,)`` or ``(num_samples, num_channels)``.
+        Shaped ``(num_samples,)`` or ``(num_samples, num_columns)``.
         """
         raise NotImplementedError
 
@@ -126,10 +128,130 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         series_metadata = dict(name="FiberPhotometryResponseSeries")
         return dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: series_metadata}))
 
+    def _get_number_of_traces(self) -> int:
+        """Return how many traces this interface's response series carries, one per table row.
+
+        Reads the data to measure it. Formats that can answer from a header should override this.
+        """
+        data = self._read_response_data()
+        return 1 if data.ndim == 1 else data.shape[1]
+
+    def get_metadata_template(self) -> DeepDict:
+        """Return the full fiber photometry provenance chain, sized to this interface's traces.
+
+        The counterpart to :meth:`get_metadata`, which reports only what the source recorded and so
+        leaves a user no indication of what else the file needs. This returns those same values wrapped
+        in the structure the writer expects. Fill in the blanks and pass the result to ``add_to_nwbfile``
+        or ``run_conversion``; a blank still ``None`` at write time is an error rather than a value.
+
+        One ``FiberPhotometryTable`` row per trace, one optical fiber per row, and a shared excitation
+        source, photodetector and indicator, since one interface writes one series and
+        `ndx-fiber-photometry
+        <https://github.com/catalystneuro/ndx-fiber-photometry#recommended-organization-of-response-series>`_
+        recommends one series per excitation/emission wavelength with one column per fiber.
+
+        The wiring is done for you: every ``*_metadata_key`` cross-reference is resolved and the series'
+        ``fiber_photometry_table_region`` already lists the row keys in column order. What is left
+        ``None`` is what only the experimenter can supply, the brain region each fiber sits in, the two
+        wavelengths, the indicator's label and the fiber insertion geometry. Rename the keys to suit the
+        recording; they are handles, not names in the file.
+        """
+        number_of_traces = self._get_number_of_traces()
+
+        row_keys = [f"trace_{index}" for index in range(number_of_traces)]
+        optical_fiber_keys = [f"optical_fiber_{index}" for index in range(number_of_traces)]
+        excitation_source_key = "excitation_source"
+        photodetector_key = "photodetector"
+        indicator_key = "indicator"
+
+        # Every entry's ``name`` is blank, and deliberately so: an entry all of whose fields are
+        # satisfied reaches no check and is written as stated, so a user who leaves an offered one in
+        # place gets hardware the rig never had. Every NWB object requires a name, which makes it the
+        # one field that can carry that blank for any entry in any modality.
+        devices = {
+            optical_fiber_key: dict(
+                type="OpticalFiber",
+                name=None,
+                fiber_insertion=dict(
+                    insertion_position_ap_in_mm=None,
+                    insertion_position_ml_in_mm=None,
+                    insertion_position_dv_in_mm=None,
+                    depth_in_mm=None,
+                ),
+            )
+            for optical_fiber_key in optical_fiber_keys
+        }
+        devices[excitation_source_key] = dict(type="ExcitationSource", name=None)
+        devices[photodetector_key] = dict(type="Photodetector", name=None)
+        # Optional hardware, offered so a user knows the writer accepts it. Delete what the recording
+        # did not use; a blank left behind is refused at write time rather than guessed at.
+        # ``BandOpticalFilter`` rather than a generic optical filter, as ndx-ophys-devices has no such
+        # class: a filter is a band or an edge one, and the band is the common case here. Swap the type
+        # for ``EdgeOpticalFilter`` if that is what the rig used. The wavelengths belong to the filter's
+        # model rather than to the filter, so the device itself carries nothing but its name.
+        devices["dichroic_mirror"] = dict(type="DichroicMirror", name=None)
+        devices["excitation_filter"] = dict(type="BandOpticalFilter", name=None)
+        devices["emission_filter"] = dict(type="BandOpticalFilter", name=None)
+
+        # Models carry the make and catalog specifications, shared by every recording that used the same
+        # equipment. Optional: fill one and point its device at it, or delete both.
+        device_models = {
+            "optical_fiber_model": dict(
+                type="OpticalFiberModel", name=None, manufacturer=None, numerical_aperture=None
+            ),
+            "excitation_source_model": dict(
+                type="ExcitationSourceModel",
+                name=None,
+                manufacturer=None,
+                source_type=None,
+                excitation_mode=None,
+            ),
+            "photodetector_model": dict(type="PhotodetectorModel", name=None, manufacturer=None, detector_type=None),
+        }
+        for device_metadata in devices.values():
+            device_metadata.setdefault("device_model_metadata_key", None)
+
+        fiber_photometry = dict(
+            FiberPhotometryIndicators={indicator_key: dict(name=None, label=None)},
+            FiberPhotometryTable=dict(
+                name="fiber_photometry_table",
+                description="Each row describes one trace: the fiber, hardware and indicator that produced it.",
+                rows={
+                    row_key: dict(
+                        location=None,
+                        excitation_wavelength_in_nm=None,
+                        emission_wavelength_in_nm=None,
+                        indicator_metadata_key=indicator_key,
+                        optical_fiber_metadata_key=optical_fiber_key,
+                        excitation_source_metadata_key=excitation_source_key,
+                        photodetector_metadata_key=photodetector_key,
+                        coordinates=None,
+                        notes=None,
+                        dichroic_mirror_metadata_key=None,
+                        excitation_filter_metadata_key=None,
+                        emission_filter_metadata_key=None,
+                    )
+                    for row_key, optical_fiber_key in zip(row_keys, optical_fiber_keys)
+                },
+            ),
+        )
+        fiber_photometry[self.metadata_key] = dict(fiber_photometry_table_region=row_keys, description=None)
+
+        template = DeepDict(dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry))
+
+        # The blanks are a floor rather than an override: whatever the source recorded wins over the
+        # template, so a field the interface was able to read is never handed back as one to fill in.
+        template.deep_update(self.get_metadata())
+        return template
+
     def get_metadata_schema(self) -> dict:
-        """Return a permissive schema for the ``FiberPhotometry`` and top-level device metadata blocks."""
+        """Return a permissive schema for the ``FiberPhotometry`` block.
+
+        The device registries are declared centrally in ``base_metadata_schema.json``, so only
+        ``FiberPhotometry`` still needs an escape hatch here, until it gets a declaration of its own.
+        """
         metadata_schema = super().get_metadata_schema()
-        for tag in ("FiberPhotometry", "Devices", "DeviceModels"):
+        for tag in ("FiberPhotometry",):
             metadata_schema["properties"][tag] = get_base_schema(tag=tag)
             metadata_schema["properties"][tag]["additionalProperties"] = True
         return metadata_schema
@@ -203,6 +325,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stub_test: bool = False,
         stub_samples: int = 100,
         always_write_timestamps: bool = False,
+        parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     ) -> None:
         """Add this interface's ``FiberPhotometryResponseSeries`` (and, once, the shared containers).
 
@@ -226,6 +349,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             The number of samples to write when ``stub_test`` is True.
         always_write_timestamps : bool, default: False
             If True, always write an explicit timestamps array even when the series is regularly sampled.
+        parent_container : {"acquisition", "processing/ophys"}, default: "acquisition"
+            The NWBFile container to add the ``FiberPhotometryResponseSeries`` to. Use
+            ``"processing/ophys"`` when the series represents processed data rather than raw acquisition.
         """
         from ndx_fiber_photometry import FiberPhotometryResponseSeries
 
@@ -290,4 +416,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             fiber_photometry_table_region=table_region,
             **timing_kwargs,
         )
-        nwbfile.add_acquisition(response_series)
+        if parent_container == "acquisition":
+            nwbfile.add_acquisition(response_series)
+        elif parent_container == "processing/ophys":
+            ophys_module = get_module(nwbfile, name="ophys", description="contains optical physiology processed data")
+            ophys_module.add(response_series)

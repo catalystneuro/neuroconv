@@ -44,23 +44,19 @@ Derive discrete events from the digital and coded channels with
 :py:class:`~neuroconv.datainterfaces.events.inscopix_gpio_events.inscopixgpioeventsdatainterface.InscopixGpioEventsInterface`,
 which writes each derived event type as a ``pynwb.event.EventsTable`` into ``nwbfile.events``. Selection
 is explicit: name each channel in ``detection_configuration`` and give it a list of detection specs, one
-per event type you want from it. **Start from the inventory**, since the file itself says nothing about
-what a channel is: ``InscopixGpioEventsInterface.get_available_channels(file_path)`` reports each
-channel's sample count and value set, which is what tells you whether a channel is a two-valued line, a
-graded stimulus level, or flat for the whole session, and it is where the cut points below come from. A
-spec's ``detection`` picks which transitions become events:
-``"high_period"``/``"low_period"`` (a durative reading pairing each edge with the next opposite edge,
-giving a duration), ``"rising"``/``"falling"`` (only the up/down transitions, as point events), or
-``"value_change"`` (a point event at every transition).
+per event type you want from it. See :ref:`extract_events_from_signals` for that argument, and
+:ref:`annotate_events_metadata` for naming the resulting event types and grouping them into tables.
 
-Every spec also carries a ``signal_conditioning`` saying how its channel becomes a two-valued line. A
-channel that is already two-valued takes ``{"binarize": "midpoint"}``, whose cut falls strictly between
-its levels whatever they are, so a ``0``/``1`` line and a line at 48 and 64 both read correctly without
-you knowing either. A graded channel takes ``{"binarize": c}`` naming where to cut, and the value set
-from the inventory is what tells you where the meaningful boundaries are. To keep several levels of one
-channel apart, cut it once per boundary and give each spec its own ``event_name``, as below: each cut
-becomes a durative event type with real start and stop times, and the level the channel occupies at any
-instant is how many of them are open, so nothing is lost.
+**Start from the inventory**, since the file itself says nothing about what a channel is:
+``InscopixGpioEventsInterface.get_available_channels(file_path)`` reports each channel's sample count
+and value set, which is what tells you whether a channel is a two-valued line, a graded stimulus level,
+or flat for the whole session, and it is where the cut points below come from.
+
+A channel that is already two-valued takes ``{"binarize": "midpoint"}``, so a ``0``/``1`` line and a
+line at 48 and 64 both read correctly without you knowing either. A graded channel is cut once per
+boundary worth telling apart, each spec with its own ``event_name``, as below: each cut becomes a
+durative event type with real start and stop times, and the level the channel occupies at any instant
+is how many of them are open, so nothing is lost.
 
 .. code-block:: python
 

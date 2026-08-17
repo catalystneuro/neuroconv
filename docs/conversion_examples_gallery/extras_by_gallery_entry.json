@@ -1,0 +1,228 @@
+{
+  "behavior/audio.rst": {
+    "extra": "audio"
+  },
+  "behavior/deeplabcut.rst": {
+    "extra": "deeplabcut"
+  },
+  "behavior/fictrac.rst": {
+    "extra": "fictrac"
+  },
+  "behavior/lightningpose.rst": {
+    "extra": "lightningpose"
+  },
+  "behavior/medpc.rst": {
+    "extra": "medpc"
+  },
+  "behavior/neuralynx_nvt.rst": {
+    "extra": null,
+    "note": "Converts on a base install, so there is no extra to name"
+  },
+  "behavior/sleap.rst": {
+    "extra": "sleap"
+  },
+  "behavior/vame.rst": {
+    "extra": "vame"
+  },
+  "behavior/video.rst": {
+    "extra": "video"
+  },
+  "combinations/ecephys_pose_estimation.rst": {
+    "extra": null,
+    "skip": "Combines several interfaces, so there is no single extra to install"
+  },
+  "combinations/spikeglx_and_phy.rst": {
+    "extra": null,
+    "skip": "Combines several interfaces, so there is no single extra to install"
+  },
+  "combinations/tiff_and_suite2p.rst": {
+    "extra": null,
+    "skip": "Combines several interfaces, so there is no single extra to install"
+  },
+  "events/csv_events.rst": {
+    "extra": "csv_events"
+  },
+  "events/doric_events.rst": {
+    "extra": "doric_events"
+  },
+  "events/npm_events.rst": {
+    "extra": "npm_events"
+  },
+  "events/tdt_events.rst": {
+    "extra": "tdt_events"
+  },
+  "fiberphotometry/csv_fp.rst": {
+    "extra": "csv_fp"
+  },
+  "fiberphotometry/doric_fp.rst": {
+    "extra": "doric_fp"
+  },
+  "fiberphotometry/guppy_fp.rst": {
+    "extra": "guppy"
+  },
+  "fiberphotometry/npm_fp.rst": {
+    "extra": "npm_fp"
+  },
+  "fiberphotometry/tdt_fp.rst": {
+    "extra": "tdt_fp"
+  },
+  "imaging/brukertiff.rst": {
+    "extra": "brukertiff"
+  },
+  "imaging/femtonics.rst": {
+    "extra": "femtonics"
+  },
+  "imaging/hdf5imaging.rst": {
+    "extra": "hdf5imaging"
+  },
+  "imaging/image.rst": {
+    "extra": "image"
+  },
+  "imaging/inscopix.rst": {
+    "extra": "inscopix"
+  },
+  "imaging/micromanagertiff.rst": {
+    "extra": "micromanagertiff"
+  },
+  "imaging/miniscope.rst": {
+    "extra": "miniscope"
+  },
+  "imaging/scanbox.rst": {
+    "extra": "scanbox"
+  },
+  "imaging/scanimage.rst": {
+    "extra": "scanimage"
+  },
+  "imaging/scanimage_legacy.rst": {
+    "extra": "scanimage_legacy"
+  },
+  "imaging/thor.rst": {
+    "extra": "thor"
+  },
+  "imaging/tiff.rst": {
+    "extra": "tiff"
+  },
+  "recording/abf.rst": {
+    "extra": "abf"
+  },
+  "recording/alphaomega.rst": {
+    "extra": "alphaomega"
+  },
+  "recording/axon.rst": {
+    "extra": "axon"
+  },
+  "recording/axona.rst": {
+    "extra": "axona"
+  },
+  "recording/biocam.rst": {
+    "extra": "biocam"
+  },
+  "recording/blackrock.rst": {
+    "extra": "blackrock"
+  },
+  "recording/brukervoltagerecording.rst": {
+    "extra": null,
+    "note": "Converts on a base install, so there is no extra to name"
+  },
+  "recording/edf.rst": {
+    "extra": "edf",
+    "skip": "Does not allow parallel read, so the gallery is not tested because of a race condition"
+  },
+  "recording/intan.rst": {
+    "extra": "intan"
+  },
+  "recording/maxwell.rst": {
+    "extra": "maxwell",
+    "skip": "Was not being tested at the moment"
+  },
+  "recording/mcsraw.rst": {
+    "extra": "mcsraw"
+  },
+  "recording/mearec.rst": {
+    "extra": "mearec",
+    "skip": "Setup tools problems and I want to discuss this with Ben"
+  },
+  "recording/neuralynx.rst": {
+    "extra": "neuralynx"
+  },
+  "recording/neuroscope.rst": {
+    "extra": "neuroscope"
+  },
+  "recording/openephys.rst": {
+    "extra": "openephys"
+  },
+  "recording/plexon.rst": {
+    "extra": "plexon"
+  },
+  "recording/plexon2.rst": {
+    "extra": "plexon2",
+    "skip": "Not being tested because of wine issues on the CI"
+  },
+  "recording/spike2.rst": {
+    "extra": "spike2",
+    "skip": "sonpy only resolves on Windows or Python 3.14 and later, so the page cannot run on most legs (PR #1855)"
+  },
+  "recording/spikegadgets.rst": {
+    "extra": "spikegadgets"
+  },
+  "recording/spikeglx.rst": {
+    "extra": "spikeglx"
+  },
+  "recording/tdt.rst": {
+    "extra": "tdt"
+  },
+  "recording/whitematter.rst": {
+    "extra": "whitematter"
+  },
+  "segmentation/caiman.rst": {
+    "extra": "caiman"
+  },
+  "segmentation/cnmfe.rst": {
+    "extra": "cnmfe"
+  },
+  "segmentation/extract.rst": {
+    "extra": "extract"
+  },
+  "segmentation/inscopix.rst": {
+    "extra": "inscopix"
+  },
+  "segmentation/minian.rst": {
+    "extra": "minian"
+  },
+  "segmentation/suite2p.rst": {
+    "extra": "suite2p"
+  },
+  "sorting/blackrock.rst": {
+    "extra": "blackrock"
+  },
+  "sorting/cellexplorer.rst": {
+    "extra": "cellexplorer"
+  },
+  "sorting/kilosort.rst": {
+    "extra": "kilosort"
+  },
+  "sorting/mda.rst": {
+    "extra": "mda"
+  },
+  "sorting/neuralynx.rst": {
+    "extra": "neuralynx"
+  },
+  "sorting/neuroscope.rst": {
+    "extra": "neuroscope"
+  },
+  "sorting/phy.rst": {
+    "extra": "phy"
+  },
+  "sorting/plexon.rst": {
+    "extra": "plexon"
+  },
+  "sorting/xclust.rst": {
+    "extra": "xclust"
+  },
+  "text/csv.rst": {
+    "extra": "csv"
+  },
+  "text/excel.rst": {
+    "extra": "excel"
+  }
+}

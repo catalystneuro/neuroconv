@@ -395,10 +395,10 @@ class TestSuite2pSegmentationInterfaceChan1Plane0(SegmentationExtractorInterface
         cls.neuropil_traces_names = "Neuropil" + plane_suffix
         cls.deconvolved_trace_name = "Deconvolved" + plane_suffix
 
-    def test_check_extracted_metadata(self):
+    def test_check_extracted_metadata_old_list_format(self):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
-        metadata = self.interface.get_metadata()
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
 
         assert metadata["Ophys"]["ImagingPlane"][0]["name"] == self.imaging_plane_names
         plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
@@ -472,10 +472,10 @@ class TestSuite2pSegmentationInterfaceChan2Plane0(SegmentationExtractorInterface
         cls.neuropil_traces_names = "Neuropil" + plane_suffix
         cls.deconvolved_trace_name = None
 
-    def test_check_extracted_metadata(self):
+    def test_check_extracted_metadata_old_list_format(self):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
-        metadata = self.interface.get_metadata()
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
 
         assert metadata["Ophys"]["ImagingPlane"][0]["name"] == self.imaging_plane_names
         plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
@@ -607,12 +607,14 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
             "name": "NVista3",
             "description": "Inscopix Microscope (Serial: 11132301, Software: 1.5.2)",
         }
-        assert metadata["Devices"] == {metadata_key: expected_device}
+        assert metadata["Devices"] == {"inscopix_11132301": expected_device}
 
         expected_plane_segmentation = {
             "description": "Inscopix cell segmentation using cnmfe with traces in dF over noise",
+            "imaging_plane_metadata_key": metadata_key,
         }
         assert metadata["Ophys"]["PlaneSegmentations"][metadata_key] == expected_plane_segmentation
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {"device_metadata_key": "inscopix_11132301"}
 
         assert metadata["Subject"]["subject_id"] == "FV4581"
         assert "species" not in metadata["Subject"]  # the file does not state it, so it is not reported
@@ -714,13 +716,16 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         """Check the new dict-based metadata format on a fixture without rich device metadata."""
         metadata_key = "inscopix_segmentation"
 
-        # No device name/serial/software in this fixture, so no Devices entry
-        assert "Devices" not in metadata
+        # The fixture records no device name, serial or software, so the entry carries only the generic
+        # name the file is written with, under the generic microscope key.
+        assert metadata["Devices"] == {"inscopix_microscope": {"name": "Microscope"}}
 
         expected_plane_segmentation = {
             "description": "Inscopix cell segmentation using cnmfe with traces in dF over noise",
+            "imaging_plane_metadata_key": metadata_key,
         }
         assert metadata["Ophys"]["PlaneSegmentations"][metadata_key] == expected_plane_segmentation
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key] == {"device_metadata_key": "inscopix_microscope"}
 
         # No subject info in this fixture
         assert "Subject" not in metadata
