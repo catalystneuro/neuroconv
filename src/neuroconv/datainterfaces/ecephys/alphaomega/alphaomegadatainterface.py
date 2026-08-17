@@ -47,7 +47,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         folder_path: DirectoryPath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """
