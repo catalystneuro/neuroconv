@@ -387,12 +387,10 @@ timestamps make lexicographic order match chronological order):
     >>> interface_split.run_conversion(nwbfile_path=nwbfile_path_split, metadata=metadata_split, overwrite=True)
 
 The same ``saved_files_are_split=True`` flag is accepted by
-:py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`,
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intanstiminterface.IntanStimInterface`
 and
-:py:class:`~neuroconv.datainterfaces.ecephys.intan.intanstiminterface.IntanStimInterface`,
-since all streams rotate together in Intan's Traditional format.
-
-If ``saved_files_are_split=False`` (the default) and the interface detects
-sibling ``.rhd``/``.rhs`` files next to the one you passed, it will emit a
-warning suggesting the flag; you can safely ignore it when the neighbors are
-from an unrelated session.
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intandigitalinterface.IntanDigitalInterface`,
+since all streams rotate together in Intan's Traditional format. On the digital interface the chunks
+are concatenated before edge detection, so an event that opens in one chunk and closes in the next is
+read as the single event it is rather than being lost at the boundary.
