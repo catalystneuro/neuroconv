@@ -80,11 +80,6 @@ plane that was imaged. In a conversion that has both, keep one copy of the ``Dev
 ``ImagingPlanes`` entries and point the series and the segmentation at it, rather than writing the
 plane twice.
 
-The microscope's make and catalog specification live in ``DeviceModels`` rather than on the device,
-since pynwb deprecated ``Device.manufacturer`` and ``Device.model_number`` in favor of a linked
-``DeviceModel``. The whole block is optional: to drop it, delete it and the
-``device_model_metadata_key`` pointing at it.
-
 For either block filled in with real values, including that shared-plane case and several segmentation
 pipelines on one recording, see :ref:`annotate_ophys_metadata`.
 
