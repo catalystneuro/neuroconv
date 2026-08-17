@@ -119,11 +119,21 @@ The plane segmentation, its traces and its summary images all sit under one key,
 resolves all three through the interface's ``metadata_key``; rename ``calcium_segmentation`` in all four
 blocks together.
 
-The inner keys of ``RoiResponses`` and ``SegmentationImages`` are the exception to the rename-freely
-rule above. They are the names roiextractors reads traces and images under, so ``raw``, ``dff``,
-``neuropil``, ``deconvolved``, ``denoised``, ``baseline``, ``mean`` and ``correlation`` are fixed, and
-what you choose is the ``name`` inside each. Delete the ones your pipeline did not produce;
-``get_metadata_template()`` offers only the ones the file actually holds.
+A ``metadata_key`` is a handle you use to reference one block from another. ``calcium_segmentation`` and
+``microscope`` are never written to the file, and their whole role is to be pointed at, so rename them
+freely as long as everything pointing at them is renamed with them.
+
+The inner keys of ``RoiResponses`` and ``SegmentationImages`` do not follow that model. They are the
+names of the traces and images this segmentation produced, they cannot belong to any other entry, and
+nothing points at them: the writer matches them against the arrays it is about to write. So ``raw``,
+``dff``, ``neuropil``, ``deconvolved``, ``denoised`` and ``baseline`` for traces, and ``mean`` and
+``correlation`` for images, are roiextractors' names rather than yours. Rename ``dff`` and it matches
+nothing: the trace is not written, and you get a warning saying so.
+
+What you choose is the ``name`` inside each entry. ``dff`` says which trace you are describing and
+``name: DfOverF`` says what it is called in the file. Delete the ones your pipeline did not produce,
+and note that ``get_metadata_template()`` reads the same two extractor methods, so it offers only the
+traces and images the file actually holds.
 
 .. tab-set::
 

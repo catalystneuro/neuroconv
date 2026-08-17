@@ -254,32 +254,35 @@ handles rather than names in the file, so rename them freely, except the trace a
     imaging_plane["indicator"] = "GCaMP6s"
     imaging_plane["location"] = "V1 layer 2/3"
     imaging_plane["imaging_rate"] = 30.0
-    imaging_plane["optical_channel"][0].update(
-        name="Green", description="Green channel", emission_lambda=510.0
-    )
+    optical_channel = imaging_plane["optical_channel"][0]
+    optical_channel["name"] = "Green"
+    optical_channel["description"] = "Green channel"
+    optical_channel["emission_lambda"] = 510.0
 
     microscopy_series = metadata["Ophys"]["MicroscopySeries"]["visual_cortex"]
     microscopy_series["name"] = "TwoPhotonSeriesVisualCortex"
     microscopy_series["description"] = "Calcium imaging during visual stimulation"
     microscopy_series["unit"] = "n.a."
 
-    metadata["Devices"]["microscope"].update(
-        name="Microscope",
-        description="Custom two-photon microscope",
-        serial_number="2019-04-01",
-    )
-    metadata["DeviceModels"]["microscope_model"].update(
-        name="MicroscopeModel",
-        manufacturer="DIY",
-        description="Custom-built, no catalog model",
-    )
+    device = metadata["Devices"]["microscope"]
+    device["name"] = "Microscope"
+    device["description"] = "Custom two-photon microscope"
+    device["serial_number"] = "2019-04-01"
+
+    device_model = metadata["DeviceModels"]["microscope_model"]
+    device_model["name"] = "MicroscopeModel"
+    device_model["manufacturer"] = "DIY"
+    device_model["description"] = "Custom-built, no catalog model"
 
     # This rig did not measure where the plane sat, and the scanner settings were not recorded.
-    for unknown_field in ("origin_coords", "origin_coords_unit", "grid_spacing",
-                          "grid_spacing_unit", "reference_frame"):
-        del imaging_plane[unknown_field]
-    for unknown_field in ("field_of_view", "pmt_gain", "scan_line_rate"):
-        del microscopy_series[unknown_field]
+    del imaging_plane["origin_coords"]
+    del imaging_plane["origin_coords_unit"]
+    del imaging_plane["grid_spacing"]
+    del imaging_plane["grid_spacing_unit"]
+    del imaging_plane["reference_frame"]
+    del microscopy_series["field_of_view"]
+    del microscopy_series["pmt_gain"]
+    del microscopy_series["scan_line_rate"]
     del metadata["DeviceModels"]["microscope_model"]["model_number"]
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -302,15 +305,23 @@ in rather than a menu to check against your output:
     plane_segmentation["name"] = "PlaneSegmentationSuite2p"
     plane_segmentation["description"] = "ROIs detected by Suite2p"
 
-    # Whatever Suite2p wrote: raw and neuropil traces here, plus deconvolved and dff if it ran them.
-    for trace_name, trace_metadata in metadata["Ophys"]["RoiResponses"]["suite2p"].items():
-        trace_metadata["name"] = trace_name.capitalize()
-        trace_metadata["description"] = f"Suite2p {trace_name} traces"
-        trace_metadata["unit"] = "n.a."
+    # One entry per trace this run produced. A run that computed df/F has a "dff" entry here too.
+    roi_responses = metadata["Ophys"]["RoiResponses"]["suite2p"]
+    roi_responses["raw"]["name"] = "RoiResponseSeries"
+    roi_responses["raw"]["description"] = "Raw fluorescence traces from Suite2p"
+    roi_responses["raw"]["unit"] = "n.a."
+    roi_responses["neuropil"]["name"] = "Neuropil"
+    roi_responses["neuropil"]["description"] = "Neuropil fluorescence traces from Suite2p"
+    roi_responses["neuropil"]["unit"] = "n.a."
+    roi_responses["deconvolved"]["name"] = "Deconvolved"
+    roi_responses["deconvolved"]["description"] = "Deconvolved activity from Suite2p"
+    roi_responses["deconvolved"]["unit"] = "n.a."
 
-    for image_name, image_metadata in metadata["Ophys"]["SegmentationImages"]["suite2p"].items():
-        image_metadata["name"] = f"{image_name}_image"
-        image_metadata["description"] = f"Suite2p {image_name} image"
+    segmentation_images = metadata["Ophys"]["SegmentationImages"]["suite2p"]
+    segmentation_images["mean"]["name"] = "mean_image"
+    segmentation_images["mean"]["description"] = "Mean image from Suite2p"
+    segmentation_images["correlation"]["name"] = "correlation_image"
+    segmentation_images["correlation"]["description"] = "Correlation image from Suite2p"
 
 The imaging plane and the device come back on the segmentation template too, and are filled in exactly
 as above. If the same conversion also writes the imaging the pipeline ran on, do not fill them in twice:
