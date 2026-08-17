@@ -213,11 +213,10 @@ use a different ``metadata_key`` for each pipeline. Link them to the same imagin
 How to Annotate from a Template
 -------------------------------
 
-The sections above reach into ``get_metadata()`` and edit what it returns. That works, but it does not
-tell you what is missing: ``get_metadata()`` reports what the source file recorded, so a field it leaves
-out looks the same as a field that does not exist. ``get_metadata_template()`` answers the other
-question. It returns those same source-derived values wrapped in the whole structure the writer expects,
-with the cross-references already resolved and every field only you can answer set to ``None``:
+The sections above reach into ``get_metadata()`` one entry at a time, so that each block and each link
+between them is visible. Once you know the shape, you do not have to type it again.
+``get_metadata_template()`` returns the whole thing already assembled, sized to what this interface
+writes, with every cross-reference resolved and every field only you can answer set to ``None``:
 
 .. code-block:: python
 
@@ -238,6 +237,13 @@ and everything else is already done: the ``device_metadata_key`` that links the 
 and the ``imaging_plane_metadata_key`` that links the series to the plane are wired for you. Fill in
 what applies and delete what does not, since a blank left behind is refused at write time rather than
 guessed at.
+
+It also shows what it does not require. The device model, the plane's coordinates and the scanner
+fields are optional, and they appear so that you know the writer accepts them at all; drop the ones
+this recording cannot answer. Every entry's ``name`` comes back blank, so keeping one costs naming it,
+which is what stops an offered entry reaching the file because nobody looked at it. The keys are
+handles rather than names in the file, so rename them freely, except the trace and image names under
+``RoiResponses`` and ``SegmentationImages``, which are roiextractors' own.
 
 .. code-block:: python
 
