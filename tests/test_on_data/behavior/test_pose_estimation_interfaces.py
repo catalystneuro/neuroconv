@@ -432,6 +432,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
+        sampling_frequency=30.0,
     )
     save_directory = OUTPUT_PATH
 
@@ -547,6 +548,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             config_file_path=self.interface.source_data.get("config_file_path"),
             subject_name=self.interface.subject_name,
             pose_estimation_metadata_key=custom_container_name,
+            sampling_frequency=self.interface.sampling_frequency,
         )
 
         new_interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
@@ -630,6 +632,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             config_file_path=self.interface.source_data.get("config_file_path"),
             subject_name=self.interface.subject_name,
             pose_estimation_metadata_key=custom_pose_estimation_metadata_key,
+            sampling_frequency=self.interface.sampling_frequency,
         )
 
         # Use add_to_nwbfile with the new interface
@@ -682,7 +685,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
         for pose_estimation in pose_estimation_series_in_nwb.values():
             assert pose_estimation.starting_time == 0
-            assert pose_estimation.rate == 1.0
+            assert pose_estimation.rate == 30.0
 
         assert all(expected_pose_estimation_series_are_in_nwb_file)
 
@@ -736,6 +739,7 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
         ),
         config_file_path=None,
         subject_name="ind1",
+        sampling_frequency=30.0,
     )
     save_directory = OUTPUT_PATH
 
@@ -776,6 +780,7 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
+        sampling_frequency=30.0,
     )
 
     save_directory = OUTPUT_PATH
@@ -829,6 +834,7 @@ class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
         ),
         config_file_path=None,
         subject_name="SL18",
+        sampling_frequency=30.0,
     )
     save_directory = OUTPUT_PATH
 
@@ -882,6 +888,7 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
             / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
+        sampling_frequency=30.0,
     )
 
     interface = DeepLabCutInterface(**interface_kwargs)
@@ -895,6 +902,46 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
 
     assert len(pose_estimation_container.fields) > 0
     read_nwbfile.read_io.close()
+
+
+def test_deep_lab_cut_refuses_to_write_without_timing():
+    """Neither the output file nor the config records a frame rate, so writing has to be refused."""
+    interface = DeepLabCutInterface(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+    )
+
+    with pytest.raises(ValueError, match="No timing information is available"):
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile())
+
+
+def test_deep_lab_cut_sampling_frequency_converts_frames_to_seconds():
+    """A frame index is a time only once divided by the rate, which is what the argument is for."""
+    interface = DeepLabCutInterface(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        sampling_frequency=30.0,
+    )
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile)
+
+    pose_estimation = nwbfile.processing["behavior"]["PoseEstimationDeepLabCut"]
+    series = next(iter(pose_estimation.pose_estimation_series.values()))
+
+    # The fixture's index is a contiguous frame count, so frame / 30 Hz is a regular series and the
+    # writer stores it as starting_time plus rate rather than as a timestamps vector.
+    assert series.timestamps is None
+    assert series.starting_time == 0.0
+    assert series.rate == 30.0
 
 
 class TestDeepLabCutInterfaceGetAvailableSubjects:

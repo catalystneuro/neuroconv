@@ -20,7 +20,7 @@ This interface supports both .h5 and .csv output files from DeepLabCut.
     >>> file_path = BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
     >>> config_file_path = BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"
 
-    >>> interface = DeepLabCutInterface(file_path=file_path, config_file_path=config_file_path, subject_name="ind1", verbose=False)
+    >>> interface = DeepLabCutInterface(file_path=file_path, config_file_path=config_file_path, subject_name="ind1", sampling_frequency=30.0, verbose=False)
 
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -45,7 +45,7 @@ use the following structure:
 .. code-block:: python
 
     >>> pose_estimation_metadata_key = "PoseEstimationContainerName"
-    >>> interface = DeepLabCutInterface(file_path=file_path, pose_estimation_metadata_key=pose_estimation_metadata_key)
+    >>> interface = DeepLabCutInterface(file_path=file_path, pose_estimation_metadata_key=pose_estimation_metadata_key, sampling_frequency=30.0)
     >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
