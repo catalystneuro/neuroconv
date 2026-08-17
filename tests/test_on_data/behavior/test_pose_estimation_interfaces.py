@@ -97,10 +97,22 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
 
         cls.test_data = pd.read_csv(cls.interface_kwargs["file_path"], header=[0, 1, 2])["heatmap_tracker"]
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove test_metadata and check_extracted_metadata_old_format when the legacy
+    # metadata["Behavior"]["PoseEstimation"] block is removed (then check_extracted_metadata is the
+    # only metadata hook).
+    def test_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        self.interface.validate_metadata(metadata=metadata)
+        self.check_extracted_metadata_old_format(metadata)
+
+    def check_extracted_metadata_old_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 11, 9, 10, 14, 37, 0)
         assert self.pose_estimation_name in metadata["Behavior"]
         assert metadata["Behavior"][self.pose_estimation_name] == self.expected_metadata[self.pose_estimation_name]
+
+    def test_get_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        self.check_extracted_metadata(metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import PoseEstimation, PoseEstimationSeries
@@ -156,16 +168,16 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
             assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
         nwbfile.read_io.close()
 
-    def test_get_metadata_new_format(self, setup_interface):
-        """The dict-based ("new") metadata shape, checked against a full expected dict.
+    def check_extracted_metadata(self, metadata: dict):
+        """The dict-based metadata shape, checked against a full expected dict.
 
         The equality is strict: provenance-first means ``get_metadata`` emits only source-derived
         values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
         applied by the writer), so any extra emitted field would fail the comparison.
         """
-        metadata = self.interface.get_metadata(use_new_metadata_format=True)
         metadata_key = "lightning_pose"
 
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 11, 9, 10, 14, 37, 0)
         # The legacy metadata["Behavior"]["PoseEstimation"] block must be gone in the dict-based shape.
         assert "Behavior" not in metadata
 
@@ -205,21 +217,17 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
         assert metadata["Devices"] == expected_devices
         assert metadata["Pose"] == expected_pose_metadata
 
-    def test_conversion_new_metadata_format(self, setup_interface):
-        """Run the conversion with the dict-based ("new") metadata format and read it back.
-
-        The mixin's standard conversion checks only exercise the default (old) format. The reference
-        frame the checks expect is set per series here, which is where the dict-based shape carries
-        it, so ``check_read_nwb`` can be reused as is (the written NWB is the same for both formats).
-        """
-        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+    # TODO: remove when the legacy metadata["Behavior"]["PoseEstimation"] block is removed. The
+    # mixin's conversion checks write from the dict-based format, so that is the covered path and
+    # this is what holds the old one to writing the same file.
+    def test_conversion_old_metadata_format(self, setup_interface):
+        metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now(timezone.utc))
-        container_metadata = metadata["Pose"]["PoseEstimations"]["lightning_pose"]
-        for series_entry in container_metadata["PoseEstimationSeries"].values():
-            series_entry["reference_frame"] = self.conversion_options["reference_frame"]
 
-        nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_new_metadata_format.nwb")
-        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+        nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_old_metadata_format.nwb")
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **self.conversion_options
+        )
         self.check_read_nwb(nwbfile_path=nwbfile_path)
 
     def test_series_conversion_options_are_deprecated(self, setup_interface):
