@@ -32,10 +32,11 @@ class BaseMNEContinuousDataInterface(BaseDataInterface):
 
     keywords = ("electroencephalography", "voltage", "MNE")
 
-    # FIFF unit codes, as MNE stores them on ``raw.info["chs"][index]["unit"]``, to the unit string NWB
-    # wants. Mirrors MNE's own private ``_unit2human`` so that reading a unit needs no MNE import here.
-    # MNE labels every electrode voltage and every trigger line 107, so the code identifies the physical
-    # unit and never the channel's role; the role is the channel type, which is why that is what an
+    # Functional Imaging File Format codes (FIFF codes) for units, as MNE stores them on
+    # ``raw.info["chs"][index]["unit"]``, mapped to the unit string NWB wants. Mirrors MNE's own
+    # private ``_unit2human`` so that reading a unit needs no MNE import here. MNE labels every
+    # electrode voltage and every trigger line 107, so the code identifies the physical unit and
+    # never the channel's role; the role is the channel type, which is why that is what an
     # interface is scoped by.
     _fiff_unit_to_name = {
         107: "volts",
