@@ -89,11 +89,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         See related issue: https://github.com/inscopix/pyisx/issues/62
 
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         extractor = self.segmentation_extractor
 
         # Get all metadata from extractor using the consolidated method

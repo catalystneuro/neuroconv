@@ -6,13 +6,13 @@ import math
 from hdmf.common import Data
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from packaging import version
-from pynwb import NWBFile, TimeSeries, get_manager
+from pynwb import NWBFile, TimeSeries
 from pynwb.core import NWBData
 
 from ._configuration_models._base_dataset_io import _find_location_in_memory_nwbfile
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
-from ..hdmf import has_compound_dtype
+from ..hdmf import _get_nwbfile_builder, has_compound_dtype
 from ..importing import get_package_version, is_package_installed
 
 
@@ -39,8 +39,11 @@ def configure_backend(
     if any(locations_to_remap):
         backend_configuration = backend_configuration.build_remapped_backend(locations_to_remap=locations_to_remap)
 
-    manager = get_manager()
-    builder = manager.build(nwbfile, export=True)
+    builder = _get_nwbfile_builder(nwbfile=nwbfile)
+
+    # `nwbfile.objects` is built on its first read and never invalidated, so it does not hold anything added
+    # to the file afterwards. `all_children` recomputes the walk.
+    neurodata_objects_by_id = {child.object_id: child for child in nwbfile.all_children()}
 
     # Set all DataIO based on the configuration
     data_io_class = backend_configuration.data_io_class
@@ -51,7 +54,7 @@ def configure_backend(
 
         # TODO: update buffer shape in iterator, if present
 
-        neurodata_object = nwbfile.objects[object_id]
+        neurodata_object = neurodata_objects_by_id[object_id]
         is_dataset_linked = isinstance(neurodata_object.fields.get(dataset_name), TimeSeries)
         location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
         dtype_is_compound = has_compound_dtype(builder=builder, location_in_file=location_in_file)

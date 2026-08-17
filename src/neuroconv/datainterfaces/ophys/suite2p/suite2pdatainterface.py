@@ -277,7 +277,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             metadata["Ophys"] = ophys
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
 
         # No need to update the metadata links for the default plane segmentation name
         default_plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]

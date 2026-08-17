@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 
 from pydantic import FilePath, validate_call
@@ -182,20 +181,6 @@ class IntanConverter(ConverterPipe):
                 # Several streams can share one sub-interface, which is how both digital words end up in
                 # a single IntanDigitalInterface: it reads whichever of them the file carries, so the
                 # second stream to come round is already covered by the instance the first one built.
-                continue
-            if saved_files_are_split and entry["interface"] is IntanDigitalInterface:
-                # IntanDigitalInterface has no saved_files_are_split support: there is no test data with
-                # both split files and digital lines, so the concatenation path is unverified for events.
-                # Skip the digital stream rather than convert it wrong, and invite the data.
-                warnings.warn(
-                    f"Skipping digital stream '{stream_name}': IntanDigitalInterface does not support "
-                    "saved_files_are_split (time-split / rotated recordings) yet, because there is no test "
-                    "data covering split files with digital lines. If you have such a recording, please open "
-                    "an issue at https://github.com/catalystneuro/neuroconv/issues so we can add support and "
-                    "a test.",
-                    UserWarning,
-                    stacklevel=2,
-                )
                 continue
             interface_kwargs = dict(file_path=file_path)
             interface_kwargs.update({k: v for k, v in entry.items() if k not in self._ROUTING_KEYS})

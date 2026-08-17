@@ -214,15 +214,62 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         from ._openephys_utils import _get_session_start_time
+        from ....tools.spikeinterface.spikeinterface import (
+            _get_group_name,
+            _get_probe_device_metadata,
+        )
 
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         if use_new_metadata_format:
             # State the series name here, where the metadata is produced: it is the interface's own, and it is
             # independent of ``metadata_key`` (the dict key), so re-keying an entry never renames the series.
-            # No device or electrode groups are emitted: this interface has never claimed either, and the
-            # pipeline synthesizes its defaults from the channel-group properties.
             metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeries"
+
+            # A probe is attached only for Neuropixels streams whose ``settings.xml`` names a part
+            # number; every other stream keeps the pipeline's placeholder device, as before.
+            if self.recording_extractor.has_probe():
+                # The probe identity is split across the two registries: the model carries what names
+                # the catalogue entry (``manufacturer`` and ``model_number``), the device carries what
+                # names the individual unit (``serial_number``). Written this way,
+                # ``probeinterface.get_probe(manufacturer, model_number)`` rebuilds the geometry from
+                # the file.
+                probe = self.recording_extractor.get_probe()
+                serial_number = probe.serial_number if probe.serial_number not in (None, "", "0") else None
+
+                # The key names the physical probe rather than the stream, because the AP and LFP
+                # streams of one probe are two interfaces whose metadata has to deep-merge into one
+                # entry. The serial number is the only field that identifies a unit across both.
+                # Without one, the key is scoped to the interface, which is already unique per
+                # ``metadata_key``, so two serial-less interfaces in a converter cannot collide on it.
+                device_metadata_key = f"neuropixels_{serial_number}" if serial_number else f"{self.metadata_key}_probe"
+
+                # The probe answers what the hardware is, this interface answers what to call it.
+                # ``probe.name`` is the label the Neuropix-PXI plugin gives the probe in the signal
+                # chain, so every Record Node recording it agrees on the name.
+                device = dict(name=f"Neuropixels{probe.name or 'Probe'}")
+
+                probe_metadata = _get_probe_device_metadata(probe=probe)
+                if probe_metadata is not None:
+                    device_model = probe_metadata["device_model"]
+                    # Every caller has to key a model the same way, or two entries for one model collide.
+                    device_model_metadata_key = f"{device_model.get('manufacturer')}_{device_model['model_number']}"
+                    device = {**probe_metadata["device"], **device}
+                    device["device_model_metadata_key"] = device_model_metadata_key
+                    metadata["DeviceModels"] = {device_model_metadata_key: device_model}
+                elif serial_number:
+                    device["serial_number"] = serial_number
+
+                metadata["Devices"] = {device_metadata_key: device}
+
+                # A device is only written when an electrode group references it, so the groups carry
+                # the link. Only the fields the source supports are stated; the required
+                # ``description`` and ``location`` are defaulted by the write pipeline.
+                channel_group_names = set(_get_group_name(recording=self.recording_extractor).tolist())
+                metadata["Ecephys"]["ElectrodeGroups"] = {
+                    group_name: dict(name=group_name, device_metadata_key=device_metadata_key)
+                    for group_name in channel_group_names
+                }
 
         session_start_time = _get_session_start_time(element=self._xml_root)
         if session_start_time is not None:

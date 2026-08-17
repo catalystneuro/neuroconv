@@ -13,6 +13,7 @@ from neuroconv import (
     ConverterPipe,
     NWBConverter,
 )
+from neuroconv.utils import DeepDict
 
 try:
     from ndx_events import LabeledEvents
@@ -201,3 +202,33 @@ def test_converter_pipe_append_on_disk(tmp_path):
         # Verify we have exactly 2 TimeSeries
         timeseries_names = list(nwbfile.acquisition.keys())
         assert len(timeseries_names) == 2
+
+
+def test_converter_forwards_the_metadata_format_it_was_asked_for():
+    """A converter asks each interface for the format the caller asked for, not for the default.
+
+    The two are indistinguishable while the default is `False`, so this asks the interface itself what it
+    was handed rather than reading the shape that comes back.
+    """
+
+    class RecordingTheArgumentInterface(BaseDataInterface):
+        def __init__(self):
+            super().__init__()
+            self.asked_for = []
+
+        # The default is deliberately the opposite of what the test asks for, so a converter that drops
+        # the argument and lets this default answer is caught whatever the library's own default is.
+        def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+            self.asked_for.append(use_new_metadata_format)
+            return super().get_metadata()
+
+        def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None):
+            pass
+
+    interface = RecordingTheArgumentInterface()
+    converter = ConverterPipe(data_interfaces=dict(Recording=interface))
+
+    converter.get_metadata(use_new_metadata_format=False)
+    converter.get_metadata(use_new_metadata_format=True)
+
+    assert interface.asked_for == [False, True]

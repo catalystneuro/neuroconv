@@ -175,7 +175,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         if neuralynx_device is not None:
             nwb_metadata["Ecephys"]["Device"].append(neuralynx_device)
 
-        return dict_deep_update(super().get_metadata(), nwb_metadata)
+        return dict_deep_update(super().get_metadata(use_new_metadata_format=False), nwb_metadata)
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):

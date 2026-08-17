@@ -209,11 +209,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             - Imaging plane details including grid spacing and origin coordinates if available
             - Photon series metadata with scan line rate and other acquisition parameters
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         session_start_time = self._get_session_start_time()
         if session_start_time:
@@ -288,7 +284,11 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             microscopy_series_entry = {
                 "name": f"{self.photon_series_type}{channel_string}{plane_string}",
                 "imaging_plane_metadata_key": self.metadata_key,
-                "description": f"Imaging data acquired using ScanImage for {self.channel_name}",
+                "description": (
+                    f"Imaging data acquired using ScanImage for {self.channel_name}"
+                    if self.channel_name is not None
+                    else "Imaging data acquired using ScanImage"
+                ),
             }
             if scan_line_rate is not None:
                 microscopy_series_entry["scan_line_rate"] = scan_line_rate
@@ -302,7 +302,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         # Old list-based format
         device_name = "Microscope"
         metadata["Ophys"]["Device"][0].update(name=device_name, description="Microscope controlled by ScanImage")
-        channel_name_string = self.channel_name.replace(" ", "").capitalize()
+        # A single-channel file states no channel and its objects take the plain names, the same rule
+        # the dict-based branch above applies. The extractor resolves which channel that is, but
+        # reading the resolved name back would rename the objects of every user who never asked for one.
+        channel_name_string = self.channel_name.replace(" ", "").capitalize() if self.channel_name is not None else ""
 
         optical_channel_name = f"OpticalChannel{channel_name_string}"
         optical_channel_metadata = {
@@ -327,7 +330,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         photon_series_name = f"{photon_series_key}{channel_name_string}{plane_index_string}"
         photon_series_metadata["imaging_plane"] = imaging_plane_name
         photon_series_metadata["name"] = photon_series_name
-        photon_series_metadata["description"] = f"Imaging data acquired using ScanImage for {self.channel_name}"
+        photon_series_description = "Imaging data acquired using ScanImage"
+        if self.channel_name is not None:
+            photon_series_description = f"{photon_series_description} for {self.channel_name}"
+        photon_series_metadata["description"] = photon_series_description
 
         if scan_line_rate is not None:
             photon_series_metadata.update(scan_line_rate=scan_line_rate)
@@ -439,7 +445,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         """
         from roiextractors import ScanImageImagingExtractor
 
-        return ScanImageImagingExtractor.get_available_channels(file_path=file_path)
+        return ScanImageImagingExtractor.get_available_channel_names(file_path=file_path)
 
     @staticmethod
     def get_available_planes(file_path: Path | str) -> list[str]:
@@ -463,7 +469,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         """
         from roiextractors import ScanImageImagingExtractor
 
-        return ScanImageImagingExtractor.get_available_planes(file_path=file_path)
+        num_planes = ScanImageImagingExtractor.get_available_num_planes(file_path=file_path)
+        return [str(plane_index) for plane_index in range(num_planes)]
 
 
 class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
@@ -594,11 +601,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including session start time and device information
             specific to the ScanImage system.
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         if "state.internal.triggerTimeString" in self.image_metadata:
             extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])

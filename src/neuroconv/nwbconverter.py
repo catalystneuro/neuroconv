@@ -164,12 +164,9 @@ class NWBConverter:
     @staticmethod
     def _get_interface_metadata(interface, *, use_new_metadata_format: bool) -> DeepDict:
         """Ask an interface for a format it understands: only some of them take the argument."""
-        if not use_new_metadata_format:
-            return interface.get_metadata()
-
         takes_the_argument = "use_new_metadata_format" in inspect.signature(interface.get_metadata).parameters
         if takes_the_argument:
-            return interface.get_metadata(use_new_metadata_format=True)
+            return interface.get_metadata(use_new_metadata_format=use_new_metadata_format)
         return interface.get_metadata()
 
     def _get_metadata_for_writing(self) -> DeepDict:
@@ -333,6 +330,7 @@ class NWBConverter:
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
+            Cannot be combined with `nwbfile` or `append_on_disk_nwbfile=True`.
         conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
@@ -355,6 +353,23 @@ class NWBConverter:
             raise ValueError(
                 "Cannot append to an existing file while also providing an in-memory NWBFile. "
                 "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
+            )
+
+        if backend_configuration is not None and appending_to_in_memory_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also providing an in-memory NWBFile. This "
+                "conversion's data is added to that file before it is written, so a configuration built from "
+                "it beforehand does not describe the file being written. Add this conversion with "
+                "add_to_nwbfile, derive the configuration from the result, and write it with "
+                "configure_and_write_nwbfile."
+            )
+
+        if backend_configuration is not None and append_on_disk_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also appending to an existing file on disk. "
+                "The file is read and this conversion's data added to it before it is configured, so a "
+                "configuration built beforehand does not describe the file being written. Specify `backend` "
+                "instead, which derives the configuration after the data is added."
             )
 
         if metadata is None:

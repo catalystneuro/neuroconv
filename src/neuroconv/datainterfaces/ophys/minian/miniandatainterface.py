@@ -233,11 +233,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             - session_id: Unique identifier for the session.
             - subject_id: Unique identifier for the subject.
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         metadata["NWBFile"]["session_id"] = self.segmentation_extractor._get_session_id()
 
         if use_new_metadata_format:

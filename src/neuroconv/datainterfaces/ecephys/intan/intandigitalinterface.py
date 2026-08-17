@@ -1,7 +1,9 @@
 from functools import partial
+from pathlib import Path
 
 from pydantic import FilePath, validate_call
 
+from ._utils import _warn_if_split_siblings_detected
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools.events import (
     _get_event_type_source_ids,
@@ -43,6 +45,10 @@ class IntanDigitalInterface(BaseEventsInterface):
     reading assumes an **active-high** line (idles low, pulses high); an active-low device (idles high,
     pulses low) wants ``"low_period"``.
 
+    Recordings saved with Intan RHX's "new save file every N minutes" option are supported via
+    ``saved_files_are_split``, which concatenates the rotated siblings in ``file_path.parent`` in
+    filename order before edge detection, so a pulse spanning a chunk boundary reads as one pulse.
+
     The digital line as a continuous waveform is not stored here; that is :class:`.IntanAnalogInterface`'s
     job. This is a purely additive, opt-in product that derives discrete events from the line.
     """
@@ -60,14 +66,15 @@ class IntanDigitalInterface(BaseEventsInterface):
         detection_configuration: dict[str, list[dict]] | None = None,
         metadata_key: str | None = None,
         verbose: bool = False,
+        saved_files_are_split: bool = False,
     ):
         """Initialize the IntanDigitalInterface.
 
         Parameters
         ----------
         file_path : FilePath
-            Path to either a ``.rhd`` or a ``.rhs`` file. Time-split (rotated) recordings are not
-            supported by this interface; pass a single recording.
+            Path to either a ``.rhd`` or a ``.rhs`` file. When ``saved_files_are_split=True`` this is
+            any single file in the session folder; its parent directory is scanned for siblings.
         detection_configuration : dict, optional
             Which digital lines to read and how, keyed by the line's ``signal_source_id`` (the header's
             name for it, e.g. ``{"DIGITAL-IN-01": [{"signal_conditioning": {"binarize": "midpoint"},
@@ -87,13 +94,19 @@ class IntanDigitalInterface(BaseEventsInterface):
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata. If
             None (default), ``"intan_digital"`` is used.
+        saved_files_are_split : bool, default: False
+            Set to True when the recording was saved using Intan RHX's "new save file every N
+            minutes" option, producing several rotated ``.rhd``/``.rhs`` files in one session
+            folder. All sibling files in ``file_path.parent`` are concatenated in filename order.
         verbose : bool, default: False
             Whether to print status messages.
         """
         file_path = str(file_path)
+        if not saved_files_are_split:
+            _warn_if_split_siblings_detected(Path(file_path), interface_name="IntanDigitalInterface")
         # One extractor per digital word present, held because reading a line's trace goes through the
         # word that carries it. Building them reads the header only, so construction stays cheap.
-        self._recording_extractors = self._read_digital_streams(file_path)
+        self._recording_extractors = self._read_digital_streams(file_path, saved_files_are_split=saved_files_are_split)
         # available_signals: signal_source_id (the header's channel name) -> its descriptor. Every
         # discovered signal is a "line" because the word is already demultiplexed into strictly 0/1
         # per-line traces, which is settled structurally and is what lets the validator reject both a
@@ -131,17 +144,31 @@ class IntanDigitalInterface(BaseEventsInterface):
         self.metadata_key = metadata_key or "intan_digital"
 
     @staticmethod
-    def _read_digital_streams(file_path) -> dict:
+    def _read_digital_streams(file_path, saved_files_are_split: bool = False) -> dict:
         """Return ``stream_name -> recording`` for whichever digital words the file carries.
 
         A file may hold the input word, the output word, both, or neither, so the streams present are
         read from the header rather than named by the caller.
         """
-        from spikeinterface.extractors import get_neo_streams, read_intan
+        from spikeinterface.extractors import (
+            get_neo_streams,
+            read_intan,
+            read_split_intan_files,
+        )
 
         stream_names, _ = get_neo_streams("intan", file_path=file_path)
+
+        def read_stream(stream_name):
+            if saved_files_are_split:
+                # One continuous segment across the rotated files, so edge detection sees a pulse
+                # that starts in one chunk and ends in the next as the single pulse it is.
+                return read_split_intan_files(
+                    folder_path=Path(file_path).parent, stream_name=stream_name, all_annotations=True
+                )
+            return read_intan(file_path=file_path, stream_name=stream_name, all_annotations=True)
+
         return {
-            stream_name: read_intan(file_path=file_path, stream_name=stream_name, all_annotations=True)
+            stream_name: read_stream(stream_name)
             for stream_name in _DIGITAL_STREAM_NAMES
             if stream_name in stream_names
         }

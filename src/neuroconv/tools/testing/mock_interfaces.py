@@ -1370,7 +1370,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             }
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
