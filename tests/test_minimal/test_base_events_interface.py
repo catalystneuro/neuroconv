@@ -1097,9 +1097,9 @@ class TestGetEventTimes:
     def test_an_event_type_that_is_not_read_raises_naming_the_ones_that_are(self):
         interface = MockEventsInterface(num_event_types=2)
         expected_error = (
-            "No event type 'camera' in MockEventsInterface. This interface reads ['events_0', 'events_1']. "
-            "An event type is read only if the detection configuration names it."
+            "No event type 'camera' in MockEventsInterface. This interface reads ['events_0', 'events_1'], "
+            "which get_event_type_source_ids lists."
         )
 
         with pytest.raises(KeyError, match=re.escape(expected_error)):
-            interface.get_event_times("camera")
+            interface.get_event_times(event_type_source_id="camera")

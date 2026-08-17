@@ -178,8 +178,7 @@ class BaseEventsInterface(BaseDataInterface):
         if event_type_source_id not in events_data_dict:
             raise KeyError(
                 f"No event type '{event_type_source_id}' in {type(self).__name__}. This interface reads "
-                f"{sorted(events_data_dict)}. An event type is read only if the detection configuration "
-                "names it."
+                f"{sorted(events_data_dict)}, which get_event_type_source_ids lists."
             )
 
         return events_data_dict[event_type_source_id].timestamps + self.alignment.offset
