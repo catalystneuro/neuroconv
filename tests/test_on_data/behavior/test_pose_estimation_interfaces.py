@@ -97,10 +97,22 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
 
         cls.test_data = pd.read_csv(cls.interface_kwargs["file_path"], header=[0, 1, 2])["heatmap_tracker"]
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove test_metadata and check_extracted_metadata_old_format when the legacy
+    # metadata["Behavior"]["PoseEstimation"] block is removed (then check_extracted_metadata is the
+    # only metadata hook).
+    def test_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        self.interface.validate_metadata(metadata=metadata)
+        self.check_extracted_metadata_old_format(metadata)
+
+    def check_extracted_metadata_old_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 11, 9, 10, 14, 37, 0)
         assert self.pose_estimation_name in metadata["Behavior"]
         assert metadata["Behavior"][self.pose_estimation_name] == self.expected_metadata[self.pose_estimation_name]
+
+    def test_get_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        self.check_extracted_metadata(metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import PoseEstimation, PoseEstimationSeries
@@ -155,6 +167,88 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
             # Using numpy's assert_array_equal
             assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
         nwbfile.read_io.close()
+
+    def check_extracted_metadata(self, metadata: dict):
+        """The dict-based metadata shape, checked against a full expected dict.
+
+        The equality is strict: provenance-first means ``get_metadata`` emits only source-derived
+        values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
+        applied by the writer), so any extra emitted field would fail the comparison.
+        """
+        metadata_key = "lightning_pose"
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 11, 9, 10, 14, 37, 0)
+        # The legacy metadata["Behavior"]["PoseEstimation"] block must be gone in the dict-based shape.
+        assert "Behavior" not in metadata
+
+        expected_devices = {
+            metadata_key: {
+                "name": "CameraPoseEstimation",
+                "description": "Camera used for behavioral recording and pose estimation.",
+            },
+        }
+
+        expected_pose_metadata = {
+            "Skeletons": {
+                metadata_key: {
+                    "name": "SkeletonPoseEstimation",
+                    "nodes": self.expected_keypoint_names,
+                    "edges": [],
+                },
+            },
+            "PoseEstimations": {
+                metadata_key: {
+                    "name": self.pose_estimation_name,
+                    "source_software": "LightningPose",
+                    "scorer": "heatmap_tracker",
+                    "dimensions": [[self.original_video_height, self.original_video_width]],
+                    "original_videos": [self.interface_kwargs["original_video_file_path"]],
+                    "labeled_videos": None,
+                    "device_metadata_key": metadata_key,
+                    "skeleton_metadata_key": metadata_key,
+                    "PoseEstimationSeries": {
+                        keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name}"}
+                        for keypoint_name in self.expected_keypoint_names
+                    },
+                },
+            },
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Pose"] == expected_pose_metadata
+
+    # TODO: remove when the legacy metadata["Behavior"]["PoseEstimation"] block is removed. The
+    # mixin's conversion checks write from the dict-based format, so that is the covered path and
+    # this is what holds the old one to writing the same file.
+    def test_conversion_old_metadata_format(self, setup_interface):
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now(timezone.utc))
+
+        nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_old_metadata_format.nwb")
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **self.conversion_options
+        )
+        self.check_read_nwb(nwbfile_path=nwbfile_path)
+
+    def test_series_conversion_options_are_deprecated(self, setup_interface):
+        """The deprecated conversion options are routed into every series entry."""
+        reference_frame = "(0,0) corresponds to the top left corner of the video."
+        confidence_definition = "Softmax output of the deep neural network."
+
+        nwbfile = mock_NWBFile()
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        with pytest.warns(FutureWarning, match="conversion option"):
+            self.interface.add_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                reference_frame=reference_frame,
+                confidence_definition=confidence_definition,
+            )
+
+        pose_estimation_container = nwbfile.processing["behavior"][self.pose_estimation_name]
+        for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
+            assert pose_estimation_series.reference_frame == reference_frame
+            assert pose_estimation_series.confidence_definition == confidence_definition
 
 
 class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
