@@ -362,27 +362,27 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             default_metadata.deep_update(metadata_copy)
             metadata_copy = default_metadata
 
-            container_metadata = metadata_copy["Pose"]["PoseEstimations"][self.metadata_key]
-            skeleton_metadata = metadata_copy["Pose"]["Skeletons"][container_metadata["skeleton_metadata_key"]]
-            device_metadata = metadata_copy["Devices"][container_metadata["device_metadata_key"]]
-            series_metadata = container_metadata["PoseEstimationSeries"]
-            original_videos = container_metadata["original_videos"]
-            labeled_videos = container_metadata["labeled_videos"]
+            pose_estimation_metadata = metadata_copy["Pose"]["PoseEstimations"][self.metadata_key]
+            skeleton_metadata = metadata_copy["Pose"]["Skeletons"][pose_estimation_metadata["skeleton_metadata_key"]]
+            device_metadata = metadata_copy["Devices"][pose_estimation_metadata["device_metadata_key"]]
+            series_metadata = pose_estimation_metadata["PoseEstimationSeries"]
+            original_videos = pose_estimation_metadata["original_videos"]
+            labeled_videos = pose_estimation_metadata["labeled_videos"]
         else:
-            container_metadata = metadata_copy["Behavior"]["PoseEstimation"]
+            pose_estimation_metadata = metadata_copy["Behavior"]["PoseEstimation"]
             device_metadata = {
-                "name": container_metadata["camera_name"],
+                "name": pose_estimation_metadata["camera_name"],
                 "description": "Camera used for behavioral recording and pose estimation.",
             }
             skeleton_metadata = {
-                "name": f"Skeleton{container_metadata['name']}",
+                "name": f"Skeleton{pose_estimation_metadata['name']}",
                 "nodes": [keypoint_name.replace(" ", "") for keypoint_name in self.keypoint_names],
                 "edges": [],
             }
             # The legacy block carries its series as siblings of the container's own fields, keyed
             # by the keypoint name with the spaces removed.
             series_metadata = {
-                keypoint_name: container_metadata[keypoint_name.replace(" ", "")]
+                keypoint_name: pose_estimation_metadata[keypoint_name.replace(" ", "")]
                 for keypoint_name in self.keypoint_names
             }
             # The converter passes the names of the ImageSeries it wrote through Behavior/Videos;
@@ -414,7 +414,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         behavior = get_module(nwbfile, "behavior")
 
-        pose_estimation_name = container_metadata["name"]
+        pose_estimation_name = pose_estimation_metadata["name"]
         if pose_estimation_name in behavior.data_interfaces:
             raise ValueError(f"The nwbfile already contains a data interface with the name '{pose_estimation_name}'.")
 
@@ -480,11 +480,13 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         pose_estimation_kwargs = dict(
             name=pose_estimation_name,
-            description=container_metadata.get("description", "Contains the pose estimation series for each keypoint."),
-            source_software=container_metadata["source_software"],
-            scorer=container_metadata["scorer"],
+            description=pose_estimation_metadata.get(
+                "description", "Contains the pose estimation series for each keypoint."
+            ),
+            source_software=pose_estimation_metadata["source_software"],
+            scorer=pose_estimation_metadata["scorer"],
             original_videos=original_videos,
-            dimensions=container_metadata.get("dimensions") or [self.dimension],
+            dimensions=pose_estimation_metadata.get("dimensions") or [self.dimension],
             pose_estimation_series=pose_estimation_series,
             devices=[camera],
             skeleton=skeleton,
