@@ -464,7 +464,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
         write_as : {'raw', 'processed', 'lfp'}, optional
             Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-            'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+            'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
         data_representation : {'digital_counts', 'physical_units'}, default='digital_counts'
             How the trace values are materialized in the stored data array.
             - 'digital_counts': store the raw integer samples and carry the per-channel gain in
@@ -513,7 +513,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseRecordingExtractorInterface.add_to_nwbfile() is deprecated and "
-                "will be removed on or after December 2026. Use 'parent_container' instead "
+                "will be removed on or after February 2027. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,

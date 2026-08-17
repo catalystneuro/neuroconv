@@ -197,7 +197,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
                 "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
                 "written automatically as a column on the PlaneSegmentation table whenever the "
                 "segmentation extractor exposes acceptance/rejection through its property system. "
-                "This parameter will be removed on or after November 2026.",
+                "This parameter will be removed on or after February 2027.",
                 DeprecationWarning,
                 stacklevel=2,
             )
