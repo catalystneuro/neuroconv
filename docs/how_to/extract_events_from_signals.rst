@@ -45,6 +45,8 @@ types a configuration resolves to and ``get_event_times(event_type_source_id)`` 
 times, which is the quickest way to find out that a cut sits on the wrong side of the noise, or that a
 line you expected to fire never toggled.
 
+.. _events_conditioning:
+
 Conditioning: how a signal becomes a line
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -88,6 +90,8 @@ you.
 one is an error rather than a silent fallback, and what an event type was read from is always something
 you chose. A signal that is already a line still says so, with ``{"binarize": "midpoint"}``.
 
+.. _events_detection:
+
 Detection: how a line becomes events
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -114,8 +118,8 @@ A spec states exactly one of the two. A signal with more than two levels is read
 distinction, on the same signal, which is also how one digital word becomes many event types, one spec
 per bit.
 
-The ``detection_configuration`` argument schema
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The ``detection_configuration`` argument
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The pipeline above is formally described by the ``detection_configuration`` argument. It is keyed by
 signal, and each signal holds a **list** of specs, one per event type you want derived from it:
@@ -139,21 +143,21 @@ NIDQ board, ``"DIGITAL-IN-01"`` on an Intan header. Construct the interface with
 read ``get_metadata()`` to see which handles your own file offers. Its value is always a list, even for
 one spec, because one signal may yield several event types.
 
-``signal_conditioning`` is required, and holds exactly one of the two, the stage-one setting that turns
-this signal into a line:
+``signal_conditioning`` is required, and controls how this signal is conditioned into a line
+(:ref:`illustrated above <events_conditioning>`). It holds exactly one of:
 
-- ``{"bits": [n]}``
-- ``{"binarize": <number>}``
-- ``{"binarize": "midpoint"}``
+- ``{"bits": [n]}``, one wire selected out of a packed word
+- ``{"binarize": <number>}``, a magnitude cut at the level you give
+- ``{"binarize": "midpoint"}``, an already two-valued signal cut between its two levels
 
-``detection`` is required, and names the stage-two reading, which of that line's transitions become
-events:
+``detection`` is required, and controls which of that line's transitions become events
+(:ref:`illustrated above <events_detection>`). It is one of:
 
-- ``"rising"``
-- ``"falling"``
-- ``"high_period"``
-- ``"low_period"``
-- ``"value_change"``
+- ``"rising"``, a time at each low-to-high transition
+- ``"falling"``, a time at each high-to-low transition
+- ``"value_change"``, both directions pooled into one table
+- ``"high_period"``, each rising edge to the next falling one, with a duration
+- ``"low_period"``, each falling edge to the next rising one, with a duration
 
 ``event_name`` is optional. It is the handle the events metadata is keyed by, so it is what you address
 to name an event type, describe it, or route it into a shared table. See
