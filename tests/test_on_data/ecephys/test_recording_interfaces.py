@@ -298,11 +298,37 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
+        # The patient field of this file states a sex and nothing else.
+        assert metadata["Subject"] == dict(sex="F")
 
     def test_get_stream_names(self):
         stream_names = EDFRecordingInterface.get_stream_names(file_path=self.interface_kwargs["file_path"])
 
         assert stream_names == ["stream ((256.0,) Hz)"]
+
+
+class TestEDFRecordingInterfaceFullMetadata(RecordingExtractorInterfaceTestMixin):
+    """This file states every header field the format defines."""
+
+    data_interface_cls = EDFRecordingInterface
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "edf" / "metadata_annotations" / "full_metadata.edf"),
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 5, 2, 9, 30)
+        assert metadata["NWBFile"]["experimenter"] == ["Tech 01"]
+        assert metadata["Subject"] == dict(subject_id="SYNTH-001", sex="F")
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+
+        assert nwbfile.subject.subject_id == "SYNTH-001"
+        assert nwbfile.subject.sex == "F"
+
+        nwbfile.read_io.close()
+        return super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
 class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin):
@@ -317,6 +343,10 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
     # hold only in physical units.
     conversion_options = dict(data_representation="physical_units")
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        # The patient field of this file states nothing, so no Subject is reported for it.
+        assert "Subject" not in metadata
 
     def test_get_stream_names(self):
         stream_names = EDFRecordingInterface.get_stream_names(file_path=self.interface_kwargs["file_path"])
