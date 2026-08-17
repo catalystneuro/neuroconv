@@ -25,7 +25,24 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".csv", ".mp4")
     info = "Interface for handling a single stream of lightning pose data."
 
-    def get_metadata_schema(self) -> dict:
+    def get_metadata_schema(self, *, use_new_metadata_format: bool = False) -> dict:
+        """
+        Retrieve JSON schema for metadata specific to the LightningPoseDataInterface.
+
+        Returns
+        -------
+        dict
+            The JSON schema defining the metadata structure.
+        """
+        # Canonical (dict-based) shape: top-level Devices and top-level Pose.* validate against the
+        # base metadata schema, which permits these additional registries. The legacy
+        # ``metadata["Behavior"]["PoseEstimation"]`` schema is selected while ``use_new_metadata_format``
+        # is False.
+        if not use_new_metadata_format:
+            return self._get_metadata_schema_old_format()
+        return super().get_metadata_schema()
+
+    def _get_metadata_schema_old_format(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
 
@@ -67,6 +84,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         original_video_file_path: FilePath,
         labeled_video_file_path: FilePath | None = None,
         verbose: bool = False,
+        metadata_key: str = "lightning_pose",
     ):
         """
         Interface for writing pose estimation data from the Lightning Pose algorithm.
@@ -81,6 +99,12 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             Path to the labeled video file (.mp4).
         verbose : bool, default: False
             controls verbosity. ``True`` by default.
+        metadata_key : str, default: "lightning_pose"
+            Key addressing this interface's entries in the dict-based metadata: the container under
+            ``metadata["Pose"]["PoseEstimations"]``, the skeleton under ``metadata["Pose"]["Skeletons"]``
+            and the camera under ``metadata["Devices"]``. It is an internal handle and never appears in
+            the written file. Only used by the dict-based shape, reachable through
+            ``get_metadata(use_new_metadata_format=True)``.
         """
         # Handle deprecated positional arguments
         if args:
@@ -146,6 +170,8 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             labeled_video_file_path=labeled_video_file_path,
         )
 
+        self.metadata_key = metadata_key
+
         # dimension is width by height
         self.dimension = self._get_original_video_shape()
 
@@ -186,7 +212,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self._times = aligned_timestamps
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
         metadata = super().get_metadata()
 
         # Update the session start time if folder structure is saved in the format: YYYY-MM-DD/HH-MM-SS
@@ -199,22 +225,64 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             session_start_time = datetime.strptime(datetime_str, "%Y-%m-%d/%H-%M-%S")
             metadata["NWBFile"].update(session_start_time=session_start_time)
 
-        metadata["Behavior"]["PoseEstimation"].update(
-            name="PoseEstimation",
-            description="Contains the pose estimation series for each keypoint.",
-            scorer=self.scorer_name,
-            source_software="LightningPose",
-            camera_name="CameraPoseEstimation",
-        )
-        for keypoint_name in self.keypoint_names:
-            keypoint_name_without_spaces = keypoint_name.replace(" ", "")
-            pose_estimation_series_metadata = {
-                keypoint_name: dict(
-                    name=f"PoseEstimationSeries{keypoint_name_without_spaces}",
-                    description=f"The estimated position (x, y) of {keypoint_name} over time.",
-                )
+        # Legacy shape (deprecated; removed with the flag): the container, the camera and every
+        # series flattened into a single metadata["Behavior"]["PoseEstimation"] block, with the
+        # default strings baked in here.
+        if not use_new_metadata_format:
+            metadata["Behavior"]["PoseEstimation"].update(
+                name="PoseEstimation",
+                description="Contains the pose estimation series for each keypoint.",
+                scorer=self.scorer_name,
+                source_software="LightningPose",
+                camera_name="CameraPoseEstimation",
+            )
+            for keypoint_name in self.keypoint_names:
+                keypoint_name_without_spaces = keypoint_name.replace(" ", "")
+                pose_estimation_series_metadata = {
+                    keypoint_name: dict(
+                        name=f"PoseEstimationSeries{keypoint_name_without_spaces}",
+                        description=f"The estimated position (x, y) of {keypoint_name} over time.",
+                    )
+                }
+                metadata["Behavior"]["PoseEstimation"].update(pose_estimation_series_metadata)
+
+            return metadata
+
+        labeled_video_file_path = self.source_data["labeled_video_file_path"]
+
+        metadata["Devices"] = {
+            self.metadata_key: {
+                "name": "CameraPoseEstimation",
+                "description": "Camera used for behavioral recording and pose estimation.",
             }
-            metadata["Behavior"]["PoseEstimation"].update(pose_estimation_series_metadata)
+        }
+
+        # Lightning Pose predicts each keypoint independently, so the source carries no edges.
+        metadata["Pose"]["Skeletons"] = {
+            self.metadata_key: {
+                "name": "SkeletonPoseEstimation",
+                "nodes": [keypoint_name.replace(" ", "") for keypoint_name in self.keypoint_names],
+                "edges": [],
+            }
+        }
+
+        pose_estimation_series = {
+            keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name.replace(' ', '')}"}
+            for keypoint_name in self.keypoint_names
+        }
+        metadata["Pose"]["PoseEstimations"] = {
+            self.metadata_key: {
+                "name": "PoseEstimation",
+                "source_software": "LightningPose",
+                "scorer": self.scorer_name,
+                "dimensions": [list(self.dimension)],
+                "original_videos": [str(self.original_video_file_path)],
+                "labeled_videos": [str(labeled_video_file_path)] if labeled_video_file_path else None,
+                "device_metadata_key": self.metadata_key,
+                "skeleton_metadata_key": self.metadata_key,
+                "PoseEstimationSeries": pose_estimation_series,
+            }
+        }
 
         return metadata
 
@@ -235,11 +303,17 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         nwbfile : NWBFile
             The nwbfile to which the pose estimation data is added.
         metadata : dict, optional
-            The metadata for the pose estimation data.
+            The metadata for the pose estimation data. A metadata carrying a top-level ``"Pose"``
+            block is read in the dict-based shape; anything else is read in the legacy
+            ``metadata["Behavior"]["PoseEstimation"]`` shape.
         reference_frame : str, optional
-            The description defining what the (0, 0) coordinate corresponds to.
+            Deprecated. The description defining what the (0, 0) coordinate corresponds to. Set it per
+            series in ``metadata["Pose"]["PoseEstimations"][metadata_key]["PoseEstimationSeries"]``
+            instead.
         confidence_definition : str, optional
-            The description of how the confidence was computed, e.g., 'Softmax output of the deep neural network'.
+            Deprecated. The description of how the confidence was computed, e.g., 'Softmax output of the
+            deep neural network'. Set it per series in
+            ``metadata["Pose"]["PoseEstimations"][metadata_key]["PoseEstimationSeries"]`` instead.
         stub_test : bool, default: False
         """
         # Handle deprecated positional arguments
@@ -273,10 +347,70 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
 
-        metadata_copy = deepcopy(metadata)
+        # Dispatch on the shape of the user-supplied metadata: the dict-based format has the pose
+        # modality at the top-level metadata["Pose"]; anything else (including no metadata) uses the
+        # legacy metadata["Behavior"]["PoseEstimation"] block.
+        use_new_metadata_format = metadata is not None and "Pose" in metadata
 
-        # The parameters for the pose estimation container
-        pose_estimation_metadata = metadata_copy["Behavior"]["PoseEstimation"]
+        metadata_copy = deepcopy(metadata)
+        labeled_video_file_path = self.source_data["labeled_video_file_path"]
+
+        # Resolve the container / skeleton / device / series entries. This is the only part that
+        # differs between the two formats; everything downstream is shared.
+        if use_new_metadata_format:
+            default_metadata = DeepDict(self.get_metadata(use_new_metadata_format=True))
+            default_metadata.deep_update(metadata_copy)
+            metadata_copy = default_metadata
+
+            pose_estimation_metadata = metadata_copy["Pose"]["PoseEstimations"][self.metadata_key]
+            skeleton_metadata = metadata_copy["Pose"]["Skeletons"][pose_estimation_metadata["skeleton_metadata_key"]]
+            device_metadata = metadata_copy["Devices"][pose_estimation_metadata["device_metadata_key"]]
+            series_metadata = pose_estimation_metadata["PoseEstimationSeries"]
+            original_videos = pose_estimation_metadata["original_videos"]
+            labeled_videos = pose_estimation_metadata["labeled_videos"]
+        else:
+            pose_estimation_metadata = metadata_copy["Behavior"]["PoseEstimation"]
+            device_metadata = {
+                "name": pose_estimation_metadata["camera_name"],
+                "description": "Camera used for behavioral recording and pose estimation.",
+            }
+            skeleton_metadata = {
+                "name": f"Skeleton{pose_estimation_metadata['name']}",
+                "nodes": [keypoint_name.replace(" ", "") for keypoint_name in self.keypoint_names],
+                "edges": [],
+            }
+            # The legacy block carries its series as siblings of the container's own fields, keyed
+            # by the keypoint name with the spaces removed.
+            series_metadata = {
+                keypoint_name: pose_estimation_metadata[keypoint_name.replace(" ", "")]
+                for keypoint_name in self.keypoint_names
+            }
+            # The converter passes the names of the ImageSeries it wrote through Behavior/Videos;
+            # without it the videos are referenced by their source path.
+            videos_metadata = metadata_copy["Behavior"].get("Videos")
+            original_videos = [videos_metadata[0]["name"] if videos_metadata else str(self.original_video_file_path)]
+            labeled_videos = None
+            if labeled_video_file_path:
+                labeled_videos = [videos_metadata[1]["name"] if videos_metadata else str(labeled_video_file_path)]
+
+        # These two are deprecated as conversion options: the dict-based shape carries them per
+        # series, so the values are routed into every series entry rather than applied here.
+        deprecated_options = {
+            name: value
+            for name, value in (("reference_frame", reference_frame), ("confidence_definition", confidence_definition))
+            if value is not None
+        }
+        if deprecated_options:
+            warnings.warn(
+                f"The {list(deprecated_options)} conversion option(s) of "
+                "LightningPoseDataInterface.add_to_nwbfile() are deprecated and will be removed on or after "
+                "August 2027. Set them per series in "
+                "metadata['Pose']['PoseEstimations'][metadata_key]['PoseEstimationSeries'] instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            for series_entry in series_metadata.values():
+                series_entry.update(deprecated_options)
 
         behavior = get_module(nwbfile, "behavior")
 
@@ -284,56 +418,59 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         if pose_estimation_name in behavior.data_interfaces:
             raise ValueError(f"The nwbfile already contains a data interface with the name '{pose_estimation_name}'.")
 
-        if "Videos" not in metadata_copy["Behavior"]:
-            original_video_name = str(self.original_video_file_path)
-        else:
-            original_video_name = metadata_copy["Behavior"]["Videos"][0]["name"]
-        camera_name = pose_estimation_metadata["camera_name"]
+        camera_name = device_metadata["name"]
         if camera_name in nwbfile.devices:
             camera = nwbfile.devices[camera_name]
         else:
             camera = nwbfile.create_device(
                 name=camera_name,
-                description="Camera used for behavioral recording and pose estimation.",
+                description=device_metadata["description"],
             )
 
         pose_estimation_data = self.pose_estimation_data if not stub_test else self.pose_estimation_data.head(n=10)
         timestamps = self.get_timestamps(stub_test=stub_test)
         rate = calculate_regular_series_rate(series=timestamps)
         if rate:
-            pose_estimation_series_kwargs = dict(rate=rate, starting_time=timestamps[0])
+            timing_kwargs = dict(rate=rate, starting_time=timestamps[0])
         else:
             assert len(timestamps) == len(
                 pose_estimation_data
             ), f"The length of timestamps ({len(timestamps)}) and pose estimation data ({len(pose_estimation_data)}) must be equal."
-            pose_estimation_series_kwargs = dict(timestamps=timestamps)
+            timing_kwargs = dict(timestamps=timestamps)
 
         pose_estimation_series = []
         for keypoint_name in self.keypoint_names:
             pose_estimation_series_data = pose_estimation_data[keypoint_name]
-            keypoint_name_without_spaces = keypoint_name.replace(" ", "")
+            series_entry = series_metadata[keypoint_name]
 
             # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
             # See https://github.com/hdmf-dev/hdmf/issues/1384
-            pose_estimation_series_kwargs.update(
-                name=pose_estimation_metadata[keypoint_name_without_spaces]["name"],
-                description=pose_estimation_metadata[keypoint_name_without_spaces]["description"],
+            pose_estimation_series_kwargs = dict(
+                timing_kwargs,
+                name=series_entry["name"],
+                description=series_entry.get(
+                    "description", f"The estimated position (x, y) of {keypoint_name} over time."
+                ),
                 data=pose_estimation_series_data[["x", "y"]].to_numpy(dtype="float64"),
                 confidence=pose_estimation_series_data["likelihood"].to_numpy(dtype="float64"),
-                reference_frame=reference_frame or "(0,0) is unknown.",
-                unit="px",
+                reference_frame=series_entry.get("reference_frame", "(0,0) is unknown."),
+                unit=series_entry.get("unit", "px"),
             )
 
-            if confidence_definition:
-                pose_estimation_series_kwargs.update(confidence_definition=confidence_definition)
+            if series_entry.get("confidence_definition"):
+                pose_estimation_series_kwargs.update(confidence_definition=series_entry["confidence_definition"])
 
             pose_estimation_series.append(PoseEstimationSeries(**pose_estimation_series_kwargs))
 
         # Add Skeleton(s)
-        nodes = [keypoint_name.replace(" ", "") for keypoint_name in self.keypoint_names]
         subject = nwbfile.subject if nwbfile.subject is not None else None
-        name = f"Skeleton{pose_estimation_name}"
-        skeleton = Skeleton(name=name, nodes=nodes, subject=subject)
+        edges = skeleton_metadata["edges"]
+        skeleton = Skeleton(
+            name=skeleton_metadata["name"],
+            nodes=skeleton_metadata["nodes"],
+            edges=np.array(edges) if edges else None,
+            subject=subject,
+        )
         if "Skeletons" in behavior.data_interfaces:
             skeletons = behavior.data_interfaces["Skeletons"]
             skeletons.add_skeletons(skeleton)
@@ -342,24 +479,21 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             behavior.add(skeletons)
 
         pose_estimation_kwargs = dict(
-            name=pose_estimation_metadata["name"],
-            description=pose_estimation_metadata["description"],
+            name=pose_estimation_name,
+            description=pose_estimation_metadata.get(
+                "description", "Contains the pose estimation series for each keypoint."
+            ),
             source_software=pose_estimation_metadata["source_software"],
             scorer=pose_estimation_metadata["scorer"],
-            original_videos=[original_video_name],
-            dimensions=[self.dimension],
+            original_videos=original_videos,
+            dimensions=pose_estimation_metadata.get("dimensions") or [self.dimension],
             pose_estimation_series=pose_estimation_series,
             devices=[camera],
             skeleton=skeleton,
         )
 
-        if self.source_data["labeled_video_file_path"]:
-            if "Videos" not in metadata_copy["Behavior"]:
-                labeled_video_name = str(self.source_data["labeled_video_file_path"])
-            else:
-                labeled_video_name = metadata_copy["Behavior"]["Videos"][1]["name"]
-
-            pose_estimation_kwargs.update(labeled_videos=[labeled_video_name])
+        if labeled_videos:
+            pose_estimation_kwargs.update(labeled_videos=labeled_videos)
 
         # Create the container for pose estimation
         pose_estimation = PoseEstimation(**pose_estimation_kwargs)

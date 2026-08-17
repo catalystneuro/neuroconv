@@ -122,6 +122,17 @@ class TestLightningPoseConverter(TestCase):
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path)
 
+    # TODO: remove when the legacy metadata["Behavior"]["PoseEstimation"] block is removed. The tests
+    # above pass no metadata, which fills the dict-based format, so that is the covered path and this
+    # is what holds the old one to writing the same file.
+    def test_run_conversion_old_metadata_format(self):
+        nwbfile_path = str(self.test_dir / "test_lightningpose_converter_old_metadata_format.nwb")
+
+        metadata = self.converter.get_metadata()
+        self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, **self.conversion_options)
+
+        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.conversion_options)
+
     def test_run_conversion_add_conversion_options(self):
         nwbfile_path = str(self.test_dir / "test_lightningpose_converter_conversion_options.nwb")
 
