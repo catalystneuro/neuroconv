@@ -148,9 +148,14 @@ tdt_events = [
 doric_events = [
     "h5py>=3",  # Doric events live in the .doric HDF5 file; the CSV export variant needs only pandas.
 ]
+medpc_events = [
+    # MedPC events are parsed from a raw text file and written as native pynwb 4.0 EventsTable objects, so they
+    # need only core pynwb>=4.0; kept as a stable install alias so `neuroconv[medpc_events]` remains valid.
+]
 events = [
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
+    "neuroconv[medpc_events]",
     "neuroconv[npm_events]",
     "neuroconv[tdt_events]",
 ]
