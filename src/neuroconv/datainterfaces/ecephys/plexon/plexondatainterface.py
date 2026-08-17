@@ -38,7 +38,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
         stream_name: str = "WB-Wideband",
     ):
@@ -121,6 +121,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
     display_name = "Plexon LFP Recording"
     associated_suffixes = (".plx",)
     info = "Interface for Plexon low pass filtered data."
+    _default_es_key = "ElectricalSeriesLF"
 
     @classmethod
     def get_extractor_class(cls):
@@ -140,7 +141,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeriesLF",
+        es_key: str | None = None,
         metadata_key: str | None = None,
         stream_name: str = "FPl-Low Pass Filtered",
     ):
@@ -266,7 +267,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """
