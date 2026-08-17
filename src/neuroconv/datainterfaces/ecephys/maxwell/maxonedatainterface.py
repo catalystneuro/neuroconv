@@ -56,7 +56,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
         hdf5_plugin_path: DirectoryPath | None = None,
         download_plugin: bool = True,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ) -> None:
         """

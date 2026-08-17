@@ -178,7 +178,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         gain: float | None = None,
         xml_file_path: FilePath | None = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """
@@ -314,7 +314,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         gain: float | None = None,
         xml_file_path: FilePath | None = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """

@@ -883,7 +883,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
         set_probe: bool = False,
     ):
