@@ -445,12 +445,12 @@ ophys = [
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
-    # TODO: remove on or after the release following v0.10.0. Fiber photometry is its own modality now
-    # (see the 'Fiber Photometry' section above) and no other modality aggregate pulls in another one.
-    # This line is kept for one release so that an install which reached photometry through
-    # neuroconv[ophys] keeps working, at the cost of every calcium imaging install carrying tdt,
-    # ndx-guppy, tables and h5py. Install neuroconv[fiber_photometry], or the single format extra
-    # needed, instead of relying on this.
+    # TODO: remove on or after August 2027. Fiber photometry is its own modality now (see the
+    # 'Fiber Photometry' section above) and no other modality aggregate pulls in another one.
+    # This line is kept so that an install which reached photometry through neuroconv[ophys] keeps
+    # working, at the cost of every calcium imaging install carrying tdt, ndx-guppy, tables and h5py.
+    # No documentation has ever pointed at this path, every photometry gallery page installs the
+    # single format extra it needs, so removing it should reach very few people.
     "neuroconv[fiber_photometry]",
 ]
 # Note these are references to the package in pipy (not local)
