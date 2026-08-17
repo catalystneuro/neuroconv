@@ -81,6 +81,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         pose_estimation_metadata_key: str | None = None,
         verbose: bool = False,
         metadata_key: str | None = None,
+        sampling_frequency: float | None = None,
     ):
         """
         Interface for writing DeepLabCut's output files to NWB.
@@ -112,6 +113,12 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             internal handle and does not appear in the NWB file; rename NWB objects via their ``name``
             fields in the metadata dict instead. To opt into the dict-based shape, call
             ``get_metadata(use_new_metadata_format=True)``.
+        sampling_frequency : float, optional
+            The frame rate of the video the pose was estimated from, in Hz. A DeepLabCut output file's rows
+            are video frames and carry no times, and neither the file nor the project config records the
+            rate, so one of ``sampling_frequency`` or ``set_aligned_timestamps`` is required before writing.
+            Pass this for a constant frame rate; call ``set_aligned_timestamps`` when the frames have times
+            of their own, from a hardware clock or an alignment against another stream.
 
 
         Metadata Structure
@@ -253,6 +260,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         self.subject_name = subject_name
         self.verbose = verbose
         self.metadata_key = metadata_key
+        self.sampling_frequency = sampling_frequency
         self.pose_estimation_container_kwargs = dict()
 
         super().__init__(file_path=file_path, config_file_path=config_file_path)
@@ -653,10 +661,20 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         # Ensure individuals in header
         df = _ensure_individuals_in_header(df, self.subject_name)
 
-        # Get timestamps
+        # Get timestamps. A DeepLabCut file's index is the video frame number, so it becomes a time only
+        # once a frame rate is known. Neither the .h5/.csv nor the project config records one, so it has
+        # to come from the caller.
         timestamps = self._timestamps
         if timestamps is None:
-            timestamps = df.index.tolist()  # Use index as dummy timestamps if not provided
+            if self.sampling_frequency is None:
+                raise ValueError(
+                    "No timing information is available for this DeepLabCut output. Its rows are video "
+                    "frames, and neither the file nor the project config records the frame rate, so the "
+                    "times cannot be derived from the source. Pass 'sampling_frequency' to "
+                    "DeepLabCutInterface for a constant frame rate, or call 'set_aligned_timestamps' with "
+                    "one time per frame."
+                )
+            timestamps = np.asarray(df.index) / self.sampling_frequency
 
         df_animal = df.xs(self.subject_name, level="individuals", axis=1)
 
