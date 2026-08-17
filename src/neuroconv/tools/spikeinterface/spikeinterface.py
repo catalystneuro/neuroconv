@@ -740,9 +740,7 @@ def _add_recording_segment_to_nwbfile(
 
         if rate:
             starting_time = float(recording_t_start)
-            # Note that we call the sampling frequency again because the estimated rate might be different from the
-            # sampling frequency of the recording extractor by some epsilon.
-            eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
+            eseries_kwargs.update(starting_time=starting_time, rate=rate)
         else:
             eseries_kwargs["timestamps"] = timestamps
 
@@ -1943,7 +1941,7 @@ def _add_time_series_segment_to_nwbfile(
         if rate:
             starting_time = float(recording_t_start)
             tseries_kwargs["starting_time"] = starting_time
-            tseries_kwargs["rate"] = recording.get_sampling_frequency()
+            tseries_kwargs["rate"] = rate
         else:
             tseries_kwargs["timestamps"] = timestamps
 
@@ -2140,7 +2138,7 @@ def _add_spatial_series_segment_to_nwbfile(
         if rate:
             starting_time = float(recording_t_start)
             series_kwargs["starting_time"] = starting_time
-            series_kwargs["rate"] = recording.get_sampling_frequency()
+            series_kwargs["rate"] = rate
         else:
             series_kwargs["timestamps"] = timestamps
 
