@@ -571,7 +571,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         np.testing.assert_array_equal(electrode_names, expected_contact_ids)
 
 
-def test_recording_routes_on_its_own_block_in_a_mixed_converter():
+def test_recording_routes_on_its_own_block_in_a_mixed_converter_old_list_format():
     """A converter builds one metadata dictionary and hands the same one to every interface, so an
     interface that emits only the dict-based format contributes a dict-shaped top-level ``Devices``
     while a recording interface contributes a list-based ``Ecephys``. One dictionary, two shapes: the
