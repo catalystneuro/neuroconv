@@ -197,7 +197,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
                 "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
                 "written automatically as a column on the PlaneSegmentation table whenever the "
                 "segmentation extractor exposes acceptance/rejection through its property system. "
-                "This parameter will be removed on or after November 2026.",
+                "This parameter will be removed on or after February 2027.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -214,13 +214,13 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             iterator_options=iterator_options,
         )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the Minian segmentation data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata keyed by ``metadata_key`` under
             ``Ophys.PlaneSegmentations``.

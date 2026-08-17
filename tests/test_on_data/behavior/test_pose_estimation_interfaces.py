@@ -101,7 +101,7 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
     # metadata["Behavior"]["PoseEstimation"] block is removed (then check_extracted_metadata is the
     # only metadata hook).
     def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.interface.validate_metadata(metadata=metadata)
         self.check_extracted_metadata_old_format(metadata)
 
@@ -221,7 +221,7 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
     # mixin's conversion checks write from the dict-based format, so that is the covered path and
     # this is what holds the old one to writing the same file.
     def test_conversion_old_metadata_format(self, setup_interface):
-        metadata = self.interface.get_metadata()
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         metadata["NWBFile"].update(session_start_time=datetime.now(timezone.utc))
 
         nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_old_metadata_format.nwb")
@@ -432,6 +432,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
+        sampling_frequency=30.0,
     )
     save_directory = OUTPUT_PATH
 
@@ -536,7 +537,9 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
     def check_renaming_instance(self, nwbfile_path: str):
         custom_container_name = "TestPoseEstimation"
 
-        metadata = self.interface.get_metadata()
+        # `pose_estimation_metadata_key` is the deprecated old-format argument, so the old shape is what
+        # this check is about.
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         # Create a new interface with the custom container name
@@ -545,6 +548,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             config_file_path=self.interface.source_data.get("config_file_path"),
             subject_name=self.interface.subject_name,
             pose_estimation_metadata_key=custom_container_name,
+            sampling_frequency=self.interface.sampling_frequency,
         )
 
         new_interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
@@ -577,7 +581,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         custom_labeled_videos = ["custom_labeled_video.mp4"]
         custom_dimensions = [[1, 2]]
 
-        metadata = self.interface.get_metadata()
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
 
         # Modify the metadata with custom values
         pose_metadata = metadata["PoseEstimation"]
@@ -628,6 +632,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             config_file_path=self.interface.source_data.get("config_file_path"),
             subject_name=self.interface.subject_name,
             pose_estimation_metadata_key=custom_pose_estimation_metadata_key,
+            sampling_frequency=self.interface.sampling_frequency,
         )
 
         # Use add_to_nwbfile with the new interface
@@ -680,7 +685,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
         for pose_estimation in pose_estimation_series_in_nwb.values():
             assert pose_estimation.starting_time == 0
-            assert pose_estimation.rate == 1.0
+            assert pose_estimation.rate == 30.0
 
         assert all(expected_pose_estimation_series_are_in_nwb_file)
 
@@ -734,6 +739,7 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
         ),
         config_file_path=None,
         subject_name="ind1",
+        sampling_frequency=30.0,
     )
     save_directory = OUTPUT_PATH
 
@@ -774,6 +780,7 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
+        sampling_frequency=30.0,
     )
 
     save_directory = OUTPUT_PATH
@@ -827,6 +834,7 @@ class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
         ),
         config_file_path=None,
         subject_name="SL18",
+        sampling_frequency=30.0,
     )
     save_directory = OUTPUT_PATH
 
@@ -880,6 +888,7 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
             / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
+        sampling_frequency=30.0,
     )
 
     interface = DeepLabCutInterface(**interface_kwargs)
@@ -893,6 +902,46 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
 
     assert len(pose_estimation_container.fields) > 0
     read_nwbfile.read_io.close()
+
+
+def test_deep_lab_cut_refuses_to_write_without_timing():
+    """Neither the output file nor the config records a frame rate, so writing has to be refused."""
+    interface = DeepLabCutInterface(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+    )
+
+    with pytest.raises(ValueError, match="No timing information is available"):
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile())
+
+
+def test_deep_lab_cut_sampling_frequency_converts_frames_to_seconds():
+    """A frame index is a time only once divided by the rate, which is what the argument is for."""
+    interface = DeepLabCutInterface(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        sampling_frequency=30.0,
+    )
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile)
+
+    pose_estimation = nwbfile.processing["behavior"]["PoseEstimationDeepLabCut"]
+    series = next(iter(pose_estimation.pose_estimation_series.values()))
+
+    # The fixture's index is a contiguous frame count, so frame / 30 Hz is a regular series and the
+    # writer stores it as starting_time plus rate rather than as a timestamps vector.
+    assert series.timestamps is None
+    assert series.starting_time == 0.0
+    assert series.rate == 30.0
 
 
 class TestDeepLabCutInterfaceGetAvailableSubjects:

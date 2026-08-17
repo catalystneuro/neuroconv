@@ -110,16 +110,18 @@ class OpenEphysBinaryConverter(ConverterPipe):
 
         for stream_name in neural_streams:
             metadata_key = _to_metadata_key(stream_name)
-            data_interfaces[stream_name] = OpenEphysBinaryRecordingInterface(
+            interface = OpenEphysBinaryRecordingInterface(
                 folder_path=folder_path,
                 stream_name=stream_name,
                 metadata_key=metadata_key,
-                # The old list-based format keys its entry by ``es_key``, so there a per-stream key is the
-                # only way to give each stream its own entry and name; it carries the same name assigned
-                # above. Nothing in the dict-based path reads it, and it goes from this converter with
-                # ``es_key`` itself.
-                es_key=self._series_name_by_metadata_key[metadata_key],
             )
+            # The old list-based format keys its entry by ``es_key``, so there a per-stream key is the
+            # only way to give each stream its own entry and name; it carries the same name assigned
+            # above. Nothing in the dict-based path reads it, and it goes from this converter with
+            # ``es_key`` itself. It is set here rather than passed to ``__init__`` so that the
+            # deprecation warning stays reserved for callers who state ``es_key`` themselves.
+            interface.es_key = self._series_name_by_metadata_key[metadata_key]
+            data_interfaces[stream_name] = interface
 
         for stream_name in analog_streams:
             time_series_name = "TimeSeries" + _to_suffix(stream_name)
@@ -131,13 +133,13 @@ class OpenEphysBinaryConverter(ConverterPipe):
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Aggregate the metadata of every stream interface.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             If True, the recording interfaces emit the dict-based format and each stream's
             ``ElectricalSeries`` entry is named after its stream, so several streams can be written to one
             NWB file. The interfaces themselves cannot do this: each one only knows that it is "the"

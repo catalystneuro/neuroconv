@@ -106,7 +106,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
         channels_to_skip: list | None = None,
         stream_name: str | None = None,
@@ -218,7 +218,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         return subject_metadata
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)
