@@ -58,6 +58,14 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
         }
         assert interface.get_metadata()["Events"] == expected_metadata
 
+    def test_get_metadata_reads_the_session_header(self, interface):
+        metadata = interface.get_metadata()
+
+        # The header states no timezone, so this is the session's own wall clock, left naive for pynwb to
+        # localize at write.
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2019, 4, 10, 12, 36, 13)
+        assert metadata["Subject"]["subject_id"] == "95.259"
+
     def test_add_to_nwbfile(self, interface):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
@@ -135,7 +143,6 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
 
     def test_round_trip(self, interface, tmp_path):
         metadata = interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime(2019, 4, 10, 12, 36, 13).astimezone()
         metadata["Events"]["medpc"]["event_types"]["G"]["event_description"] = "Time spent in the reward port."
         nwbfile_path = tmp_path / "test_medpc_lerner_lab.nwb"
 
@@ -172,7 +179,12 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
     )
 
     def test_get_metadata(self, interface):
-        event_types = interface.get_metadata()["Events"]["medpc"]["event_types"]
+        metadata = interface.get_metadata()
+        event_types = metadata["Events"]["medpc"]["event_types"]
+
+        # 10/06/22 is October 6, as the recording's own filename states.
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 10, 6, 14, 12, 35)
+        assert metadata["Subject"]["subject_id"] == "cohort10-M3.3"
 
         assert list(event_types) == ["P", "N", "Q", "R", "S", "H"]
         # The column is seeded bare: the program's `.MPC` source says 1 is water, 2 ethanol and 3 both, but the
@@ -241,7 +253,6 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
 
     def test_round_trip(self, interface, tmp_path):
         metadata = interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime(2022, 10, 6, 14, 12, 35).astimezone()
         nwbfile_path = tmp_path / "test_medpc_tye_lab.nwb"
 
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
@@ -276,10 +287,14 @@ class TestPackedCodeWithLegend(MedPCEventsInterfaceMixin):
     )
 
     def test_get_metadata(self, interface):
-        event_types = interface.get_metadata()["Events"]["medpc"]["event_types"]
+        metadata = interface.get_metadata()
+        event_types = metadata["Events"]["medpc"]["event_types"]
 
         # One event type per code found in the packed array, keyed by the code's digits as the file writes
         # them, in the order the codes first occur.
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2015, 9, 25, 10, 38, 46)
+        assert metadata["Subject"]["subject_id"] == "ML03"
+
         assert list(event_types) == ["001", "011", "051", "021", "052", "012", "050", "022"]
         assert event_types["011"] == {"event_name": "pump_a_on"}
 
@@ -318,7 +333,6 @@ class TestPackedCodeWithLegend(MedPCEventsInterfaceMixin):
 
     def test_round_trip(self, interface, tmp_path):
         metadata = interface.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime(2015, 9, 25, 10, 38, 46).astimezone()
         nwbfile_path = tmp_path / "test_medpc_packed_code.nwb"
 
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
@@ -340,10 +354,14 @@ class TestPackedCodeWithoutLegend(MedPCEventsInterfaceMixin):
     )
 
     def test_get_metadata(self, interface):
-        event_types = interface.get_metadata()["Events"]["medpc"]["event_types"]
+        metadata = interface.get_metadata()
+        event_types = metadata["Events"]["medpc"]["event_types"]
 
         # A code the legend does not name is still read; it takes its digits as both its identifier and its
         # name, so the file is read completely and the user renames what they recognize.
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2015, 9, 17, 14, 23, 8)
+        assert metadata["Subject"]["subject_id"] == "EX01"
+
         assert set(event_types) == {"036", "034", "004", "029", "041", "001", "030", "032", "002", "012"}
         assert event_types["029"] == {"event_name": "code_029"}
 

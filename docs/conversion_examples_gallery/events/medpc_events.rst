@@ -18,7 +18,6 @@ and ``medpc_name_to_info_dict`` says which arrays to read and what to call them.
 
 .. code-block:: python
 
-    >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.datainterfaces import MedPCEventsInterface
     >>>
@@ -42,17 +41,20 @@ and ``medpc_name_to_info_dict`` says which arrays to read and what to call them.
     ...     medpc_name_to_info_dict=medpc_name_to_info_dict,
     ... )
     >>>
-    >>> # Extract what metadata we can from the source file
+    >>> # Extract what metadata we can from the source file, which includes the session's start time and its
+    >>> # subject, read from the header of the session picked out by session_conditions
     >>> metadata = interface.get_metadata()
-    >>> # We add the time zone information, which is required by NWB
-    >>> session_start_time = datetime(2019, 4, 9, 10, 34, 30).replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"]
+    datetime.datetime(2019, 4, 9, 10, 34, 30)
+    >>> # The file states no time zone, so we add it
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # A MedPC file carries no prose, so describing each event type is up to you
     >>> event_types = metadata["Events"]["medpc"]["event_types"]
     >>> event_types["A"]["event_description"] = "Left nose poke times."
     >>> event_types["G"]["event_description"] = "Time spent in the reward port."
-    >>> # Add subject information (required for DANDI upload)
-    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>> # The subject_id comes from the file; the rest is required for DANDI upload
+    >>> metadata["Subject"].update(species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
@@ -75,7 +77,6 @@ table through ``value_names``, and what its codes mean is stated in the metadata
     ... )
     >>>
     >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"].update(session_start_time=datetime(2022, 10, 6, 14, 12, 35).astimezone())
     >>> metadata["Events"]["medpc"]["event_types"]["S"]["columns"]["K"]["column_categories"] = {
     ...     "labels": {1: "water", 2: "ethanol", 3: "both"},
     ...     "meanings": {
@@ -84,7 +85,7 @@ table through ``value_names``, and what its codes mean is stated in the metadata
     ...         3: "Both bottles were extended.",
     ...     },
     ... }
-    >>> metadata["Subject"] = dict(subject_id="cohort10-M3.3", species="Mus musculus", sex="M", age="P90D")
+    >>> metadata["Subject"].update(species="Mus musculus", sex="M", age="P90D")
     >>>
     >>> nwbfile_path = output_folder / "medpc_value_column.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
@@ -115,9 +116,9 @@ its digits as its name.
     ... )
     >>>
     >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2015, 9, 25, 10, 38, 46).replace(tzinfo=ZoneInfo("US/Eastern"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Eastern"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>> metadata["Subject"] = dict(subject_id="ML03", species="Rattus norvegicus", sex="M", age="P90D")
+    >>> metadata["Subject"].update(species="Rattus norvegicus", sex="M", age="P90D")
     >>>
     >>> nwbfile_path = output_folder / "medpc_packed_code.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

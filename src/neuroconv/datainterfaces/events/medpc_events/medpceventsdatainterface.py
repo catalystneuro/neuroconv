@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
@@ -135,9 +137,14 @@ class MedPCEventsInterface(BaseEventsInterface):
         """
         Get metadata for the MedPCEventsInterface.
 
-        ``NWBFile/session_start_time`` is intentionally left unset: the session's 'Start Date' and 'Start Time' are
-        single-line variables of the source file, which this interface does not read, so it must be supplied by the
-        user via editable metadata. Read them with
+        ``NWBFile/session_start_time`` and ``Subject/subject_id`` are read from the selected session's header. The
+        date is taken as month/day/year, which is what MedPC IV writes on a machine set to that short date format
+        and what every file seen so far uses; a day-first date is only recognized where the first field is above
+        twelve, so a box set to that format needs the time supplied through editable metadata instead. The header
+        states no timezone, so the datetime is left naive and pynwb attaches the local one at write.
+
+        The rest of the header (`Box`, `MSN`, `Experiment`, `Group`) and the file's non-event arrays (counters,
+        trial schedules, session parameters) are not read; reach them with
         :func:`~neuroconv.datainterfaces.behavior.medpc.medpc_helpers.get_medpc_variables`.
 
         Returns
@@ -146,6 +153,19 @@ class MedPCEventsInterface(BaseEventsInterface):
             The metadata dictionary for this interface.
         """
         metadata = super().get_metadata()
+
+        header_dict = self._read_session(
+            medpc_name_to_info_dict={
+                name: {"name": name, "is_array": False} for name in ("Start Date", "Start Time", "Subject")
+            }
+        )
+        session_start_time = _parse_session_start_time(
+            start_date=header_dict.get("Start Date"), start_time=header_dict.get("Start Time")
+        )
+        if session_start_time is not None:
+            metadata["NWBFile"]["session_start_time"] = session_start_time
+        if header_dict.get("Subject"):
+            metadata["Subject"]["subject_id"] = header_dict["Subject"]
 
         # Declare one entry per event type, seeding each editable event_name from the name the user gave the array
         # (per-array) or its code's legend entry (packed-code), plus one column per value array the type carries.
@@ -376,3 +396,22 @@ def _to_integer_where_whole(values: np.ndarray) -> np.ndarray:
     if len(values) > 0 and np.all(np.mod(values, 1) == 0):
         return values.astype(int)
     return values
+
+
+def _parse_session_start_time(start_date: str | None, start_time: str | None) -> datetime | None:
+    """Build the session's start time out of the header's 'Start Date' and 'Start Time', or None if it cannot be.
+
+    MedPC prints the date in the short format of the machine it ran on, which carries no marker of which field is
+    the month, so month-first is tried first and day-first only after it fails, which is exactly the dates whose
+    first field is above twelve. A file that is genuinely day-first and dated on or before the twelfth is read a
+    month off, and there is nothing in the file to catch that with, so the header's format is worth checking
+    against the recording's filename where the program writes one.
+    """
+    if not start_date or not start_time:
+        return None
+    for date_format in ("%m/%d/%y", "%m/%d/%Y", "%d/%m/%y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(f"{start_date} {start_time}", f"{date_format} %H:%M:%S")
+        except ValueError:
+            continue
+    return None
