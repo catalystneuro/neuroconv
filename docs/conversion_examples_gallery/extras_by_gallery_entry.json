@@ -48,6 +48,9 @@
   "events/npm_events.rst": {
     "extra": "npm_events"
   },
+  "events/openephys_events.rst": {
+    "extra": "openephys_events"
+  },
   "events/tdt_events.rst": {
     "extra": "tdt_events"
   },
