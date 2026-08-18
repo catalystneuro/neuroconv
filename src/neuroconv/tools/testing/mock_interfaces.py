@@ -887,7 +887,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str | None = None,
         metadata_key: str | None = None,
         set_probe: bool = False,
-        calibration: Literal["unknown", "uniform", "heterogeneous_gains", "heterogeneous_offsets"] = "unknown",
+        calibration: Literal["unknown", "uniform", "heterogeneous_gains", "heterogeneous_offsets"] = "uniform",
     ):
         # Handle deprecated positional arguments
         if args:
@@ -958,6 +958,9 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         if gains is not None:
             self.recording_extractor.set_channel_gains(gains=gains)
             self.recording_extractor.set_channel_offsets(offsets=offsets)
+            self.recording_extractor.set_property("physical_unit", values=["uV"] * number_of_channels)
+            self.recording_extractor.set_property("gain_to_physical_unit", values=gains)
+            self.recording_extractor.set_property("offset_to_physical_unit", values=offsets)
 
         # If probe was set, customize contact IDs to use "e0", "e1", etc. format for testing
         if set_probe and self.recording_extractor.has_probe():

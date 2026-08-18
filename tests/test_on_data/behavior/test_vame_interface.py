@@ -633,6 +633,7 @@ class TestVameInterfacePoseEstimationLink:
         pose_meta["Pose"]["PoseEstimations"]["DLC"]["name"] = "PoseEstimationDeepLabCut"
 
         nwbfile = mock_NWBFile()
+        nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
         pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_meta)
 
         vame_metadata = interface.get_metadata()
@@ -657,6 +658,7 @@ class TestVameInterfacePoseEstimationLink:
         pose_interface.set_aligned_timestamps(aligned_timestamps)
         pose_metadata = pose_interface.get_metadata()
         nwbfile = mock_NWBFile()
+        nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
         pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_metadata)
         pose_key = pose_interface.metadata_key
 

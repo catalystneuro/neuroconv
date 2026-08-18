@@ -55,6 +55,9 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         cls.test_recording_extractor = generate_recording(
             sampling_frequency=cls.sampling_frequency, num_channels=cls.num_channels, durations=cls.durations
         )
+        # TODO: Add calibration presets to spikeinterface.core.generate.generate_recording.
+        cls.test_recording_extractor.set_channel_gains(gains=[1.0] * cls.num_channels)
+        cls.test_recording_extractor.set_channel_offsets(offsets=[0.0] * cls.num_channels)
 
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
@@ -79,6 +82,9 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             num_channels=self.num_channels,
             durations=self.durations,
         )
+        # TODO: Add calibration presets to spikeinterface.core.generate.generate_recording.
+        recording.set_channel_gains(gains=[1.0] * self.num_channels)
+        recording.set_channel_offsets(offsets=[0.0] * self.num_channels)
         recording.shift_times(2.0)
 
         add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile, iterator_type=None)
@@ -238,6 +244,9 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
         self.test_recording_extractor = generate_recording(
             sampling_frequency=self.sampling_frequency, num_channels=self.num_channels, durations=self.durations
         )
+        # TODO: Add calibration presets to spikeinterface.core.generate.generate_recording.
+        self.test_recording_extractor.set_channel_gains(gains=[1.0] * self.num_channels)
+        self.test_recording_extractor.set_channel_offsets(offsets=[0.0] * self.num_channels)
 
     def test_uniform_timestamps(self):
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
@@ -1196,6 +1205,10 @@ class TestAddTimeSeries:
             sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
         )
 
+        recording.set_property("physical_unit", values=["uV"] * num_channels)
+        recording.set_property("gain_to_physical_unit", values=[1.0] * num_channels)
+        recording.set_property("offset_to_physical_unit", values=[0.0] * num_channels)
+
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
 
@@ -1211,6 +1224,9 @@ class TestAddTimeSeries:
 
     def test_shifted_recording_uses_starting_time(self):
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_property("physical_unit", values=["uV"] * 3)
+        recording.set_property("gain_to_physical_unit", values=[1.0] * 3)
+        recording.set_property("offset_to_physical_unit", values=[0.0] * 3)
         recording.shift_times(2.0)
 
         nwbfile = mock_NWBFile()
@@ -1230,6 +1246,10 @@ class TestAddTimeSeries:
         recording = generate_recording(
             sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
         )
+
+        recording.set_property("physical_unit", values=["uV"] * num_channels)
+        recording.set_property("gain_to_physical_unit", values=[1.0] * num_channels)
+        recording.set_property("offset_to_physical_unit", values=[0.0] * num_channels)
 
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
@@ -1266,6 +1286,10 @@ class TestAddTimeSeries:
         recording = generate_recording(
             sampling_frequency=sampling_frequency, num_channels=num_channels, durations=durations
         )
+
+        recording.set_property("physical_unit", values=["uV"] * num_channels)
+        recording.set_property("gain_to_physical_unit", values=[1.0] * num_channels)
+        recording.set_property("offset_to_physical_unit", values=[0.0] * num_channels)
 
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
@@ -1495,7 +1519,11 @@ class TestAddTimeSeriesMetadataKeyResolution:
 
     @staticmethod
     def _recording():
-        return generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_property("physical_unit", values=["uV"] * 3)
+        recording.set_property("gain_to_physical_unit", values=[1.0] * 3)
+        recording.set_property("offset_to_physical_unit", values=[0.0] * 3)
+        return recording
 
     def test_no_metadata_needs_no_key(self):
         """The bare call stays legal: nothing is addressed, so the series is built from the recording."""
@@ -2311,6 +2339,10 @@ class TestAddUnitsTable(TestCase):
         """
         recording = generate_recording(num_channels=4, durations=[1.0])
         recording = recording.rename_channels(new_channel_ids=["A", "B", "C", "D"])
+        # TODO: Add calibration presets to spikeinterface.core.generate.generate_recording.
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
+
         add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
 
         add_sorting_to_nwbfile(
@@ -2764,6 +2796,8 @@ class TestWriteSortingAnalyzer(TestCase):
 def test_stub_recording_with_t_start():
     """Test that the _stub recording functionality does not fail when it has a start time. See issue #1355"""
     recording = generate_recording(durations=[1.0])
+    recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+    recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
     recording.shift_times(2.0)
 
     _stub_recording(recording=recording)
@@ -2775,6 +2809,8 @@ class TestAddRecording:
     def test_basic(self):
         """Test expected values for no metadata specification."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         add_recording_to_nwbfile(
@@ -2806,6 +2842,8 @@ class TestAddRecording:
         """`data_representation='physical_units'` folds each channel's gain and offset into float
         data, so channels with heterogeneous offsets fit in one ElectricalSeries."""
         recording = generate_recording(num_channels=5, durations=[0.1])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         recording = recording.rename_channels(new_channel_ids=["a", "b", "c", "d", "e"])
         recording.set_channel_gains(gains=[1.0, 1.0, 2.0, 2.0, 3.0])
         recording.set_channel_offsets(offsets=[0.0, 0.0, 1.0, 1.0, 2.0])  # heterogeneous offsets
@@ -2832,6 +2870,8 @@ class TestAddRecording:
         """The default (`digital_counts`) still rejects heterogeneous offsets, and the error points
         the user at the `physical_units` option."""
         recording = generate_recording(num_channels=5, durations=[0.1])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         recording.set_channel_gains(gains=[1, 1, 1, 1, 1])
         recording.set_channel_offsets(offsets=[0, 0, 1, 1, 2])  # heterogeneous offsets
 
@@ -2912,6 +2952,8 @@ class TestAddRecording:
         in acquisition, and each electrodes-table row linked back to the same group.
         """
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         metadata = {
@@ -2983,6 +3025,8 @@ class TestAddRecording:
         falls past the probe tier. This is the shape Biocam and Maxwell attach, a manufacturer and no
         part number."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         channel_groups = sorted({str(group) for group in recording.get_channel_groups()})
@@ -3018,6 +3062,8 @@ class TestAddRecording:
     def test_shared_device_two_recordings(self):
         """Two recordings pointing at the same Devices entry share one device."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         metadata = {
@@ -3081,6 +3127,8 @@ class TestAddRecording:
         The model is resolved against ``metadata["DeviceModels"]``, so the whole metadata has to reach the
         device writer, not just the ``Devices`` registry."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         channel_groups = sorted({str(group) for group in recording.get_channel_groups()})
@@ -3122,6 +3170,8 @@ class TestAddRecording:
         can be reused across calls. Nothing else pins this on the ecephys path, which now hands its
         ``metadata`` straight down to the device writer rather than a private copy."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         channel_groups = sorted({str(group) for group in recording.get_channel_groups()})
@@ -3152,6 +3202,8 @@ class TestAddRecording:
         those required NWB fields from the default template instead of raising, so an interface can
         provide just a name and a device link."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         channel_groups = sorted({str(group) for group in recording.get_channel_groups()})
@@ -3187,6 +3239,8 @@ class TestAddRecording:
     def test_missing_metadata_key_raises(self):
         """An unknown metadata_key raises with the available keys listed."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         metadata = _get_ecephys_metadata_placeholders()
@@ -3213,6 +3267,8 @@ class TestAddRecording:
         which writes the recording with default metadata.
         """
         recording = generate_recording()
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         metadata = {"Ecephys": {"ElectricalSeries": {"my_key": {"name": "ElectricalSeries"}}}}
@@ -3228,15 +3284,23 @@ class TestAddRecording:
     def test_metadata_not_mutated(self):
         """add_recording_to_nwbfile does not mutate the input metadata dict."""
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         channel_group_name = str(recording.get_channel_groups()[0])
         metadata = {
+            "DeviceModels": {
+                "neuropixels_1_0": {
+                    "name": "Neuropixels 1.0",
+                    "manufacturer": "IMEC",
+                },
+            },
             "Devices": {
                 "probe_a": {
                     "name": "Neuropixels 1.0",
                     "description": "IMEC Neuropixels 1.0 probe",
-                    "manufacturer": "IMEC",
+                    "device_model_metadata_key": "neuropixels_1_0",
                 },
             },
             "Ecephys": {
@@ -3278,6 +3342,8 @@ class TestAddRecording:
         silently altered.
         """
         recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         nwbfile = mock_NWBFile()
 
         # A user who has not annotated the probe simply omits ElectrodeGroups (and Devices)
@@ -3308,6 +3374,8 @@ class TestAddRecording:
         groups must get defaults; and every channel must map to its correct group.
         """
         recording = generate_recording(sampling_frequency=1.0, num_channels=4, durations=[1.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         recording.set_channel_groups([0, 0, 1, 1])
         nwbfile = mock_NWBFile()
 
@@ -3372,6 +3440,8 @@ class TestAddRecording:
         ``set_channel_groups``); no probeinterface probe is attached to the recording.
         """
         recording = generate_recording(sampling_frequency=1.0, num_channels=4, durations=[1.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         recording.set_channel_groups([0, 0, 1, 1])
         nwbfile = mock_NWBFile()
 
@@ -3440,6 +3510,8 @@ class TestAddRecording:
         probe is attached; only the metadata representation is exercised.
         """
         recording = generate_recording(sampling_frequency=1.0, num_channels=4, durations=[1.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
         recording.set_channel_groups([0, 1, 2, 3])
         nwbfile = mock_NWBFile()
 
