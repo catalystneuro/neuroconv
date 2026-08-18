@@ -1,3 +1,5 @@
+import platform
+import sys
 from datetime import datetime, timezone
 
 import pytest
@@ -14,6 +16,25 @@ except ImportError:
     from setup_paths import OPHYS_DATA_PATH
 
 
+# `isx`, which reads the file, resolves on neither of these, so the tests below have nothing to read.
+# Mirrors the guards on the other Inscopix classes in `test_imaging_interfaces.py` and
+# `test_segmentation_interfaces.py`, and the equivalent skip the gallery conftest applies to the page.
+skip_on_darwin_arm64 = pytest.mark.skipif(
+    platform.system() == "Darwin" and platform.machine() == "arm64",
+    reason="The isx package is currently not natively supported on macOS with Apple Silicon. "
+    "Installation instructions can be found at: "
+    "https://github.com/inscopix/pyisx?tab=readme-ov-file#install",
+)
+skip_on_python_313 = pytest.mark.skipif(
+    sys.version_info >= (3, 13),
+    reason="Tests are skipped on Python 3.13 because of incompatibility with the 'isx' module "
+    "Requires: Python <3.13, >=3.9)"
+    "See:https://github.com/inscopix/pyisx/issues",
+)
+
+
+@skip_on_darwin_arm64
+@skip_on_python_313
 class TestInscopixGpioOdorConcentrationStimulus:
     """InscopixGpioEventsInterface derives events from the channels of an Inscopix ``.gpio`` file.
 
