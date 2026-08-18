@@ -234,7 +234,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         # Old list-based metadata must pass metadata_key=None so the pipeline routes through es_key
         # (the two are mutually exclusive downstream).
-        old_metadata = interface.get_metadata()
+        old_metadata = interface.get_metadata(use_new_metadata_format=False)
         with patch("neuroconv.tools.spikeinterface.add_recording_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=old_metadata)
             assert mock_add.call_args.kwargs["metadata_key"] is None
@@ -571,7 +571,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         np.testing.assert_array_equal(electrode_names, expected_contact_ids)
 
 
-def test_recording_routes_on_its_own_block_in_a_mixed_converter():
+def test_recording_routes_on_its_own_block_in_a_mixed_converter_old_list_format():
     """A converter builds one metadata dictionary and hands the same one to every interface, so an
     interface that emits only the dict-based format contributes a dict-shaped top-level ``Devices``
     while a recording interface contributes a list-based ``Ecephys``. One dictionary, two shapes: the
@@ -583,7 +583,7 @@ def test_recording_routes_on_its_own_block_in_a_mixed_converter():
     dict_only_interface = MockIcephysInterface()
     converter = ConverterPipe(data_interfaces=dict(Recording=recording_interface, Icephys=dict_only_interface))
 
-    metadata = converter.get_metadata()
+    metadata = converter.get_metadata(use_new_metadata_format=False)
     assert isinstance(metadata["Devices"], dict)  # contributed by the dict-only interface
     assert "name" in metadata["Ecephys"]["ElectricalSeries"]  # list-based: a flat dict of fields, not entries
 

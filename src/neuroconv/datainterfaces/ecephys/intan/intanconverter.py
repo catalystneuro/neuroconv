@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 
 from pydantic import FilePath, validate_call
@@ -183,31 +182,19 @@ class IntanConverter(ConverterPipe):
                 # a single IntanDigitalInterface: it reads whichever of them the file carries, so the
                 # second stream to come round is already covered by the instance the first one built.
                 continue
-            if saved_files_are_split and entry["interface"] is IntanDigitalInterface:
-                # IntanDigitalInterface has no saved_files_are_split support: there is no test data with
-                # both split files and digital lines, so the concatenation path is unverified for events.
-                # Skip the digital stream rather than convert it wrong, and invite the data.
-                warnings.warn(
-                    f"Skipping digital stream '{stream_name}': IntanDigitalInterface does not support "
-                    "saved_files_are_split (time-split / rotated recordings) yet, because there is no test "
-                    "data covering split files with digital lines. If you have such a recording, please open "
-                    "an issue at https://github.com/catalystneuro/neuroconv/issues so we can add support and "
-                    "a test.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                continue
             interface_kwargs = dict(file_path=file_path)
             interface_kwargs.update({k: v for k, v in entry.items() if k not in self._ROUTING_KEYS})
             if entry["interface"] is IntanAnalogInterface:
                 interface_kwargs["stream_name"] = stream_name
-            elif entry["interface"] is IntanRecordingInterface:
-                # The recording interface takes both: ``metadata_key`` keys the dict-based metadata and
-                # ``es_key`` keys the old list-based metadata, which used this same name before the dict
-                # format existed.
-                interface_kwargs["es_key"] = interface_kwargs["metadata_key"]
             if saved_files_are_split:
                 interface_kwargs["saved_files_are_split"] = True
-            data_interfaces[entry["interface_name"]] = entry["interface"](**interface_kwargs)
+            interface = entry["interface"](**interface_kwargs)
+            if entry["interface"] is IntanRecordingInterface:
+                # The recording interface uses both: ``metadata_key`` keys the dict-based metadata and
+                # ``es_key`` keys the old list-based metadata, which used this same name before the dict
+                # format existed. It is set here rather than passed to the constructor so that the
+                # deprecation warning stays reserved for callers who state ``es_key`` themselves.
+                interface.es_key = interface_kwargs["metadata_key"]
+            data_interfaces[entry["interface_name"]] = interface
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)

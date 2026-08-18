@@ -17,6 +17,7 @@ RHS_TRADITIONAL = INTAN_PATH / "rhs_stim_data_single_file_format" / "intanTestFi
 RHD_FILE_PER_SIGNAL = INTAN_PATH / "intan_fps_test_231117_052500" / "info.rhd"
 RHS_FILE_PER_SIGNAL = INTAN_PATH / "intan_fps_rhs_test_240329_091536" / "info.rhs"
 SPLIT_FOLDER = INTAN_PATH / "test_tetrode_240502_162925"
+DIGITAL_SPLIT_FOLDER = INTAN_PATH / "time_split_with_digital_stream"
 
 
 class TestIntanConverter:
@@ -83,6 +84,23 @@ class TestIntanConverter:
 
         assert "ElectricalSeries" in nwbfile.acquisition
         assert list(nwbfile.devices.keys()) == ["Intan"]
+
+    def test_split_files_with_digital_stream_add_to_nwbfile(self):
+        """A rotated session that carries a digital line: the digital stream is routed like any other.
+
+        The converter used to skip it and warn, because the digital interface had no concatenation
+        path and no data to test one against. Its events are read across the whole session: sixteen
+        pulses over the four chunks, where the chunk the converter was pointed at holds four.
+        """
+        first_file = sorted(DIGITAL_SPLIT_FOLDER.glob("*.rhd"))[0]
+        converter = IntanConverter(file_path=first_file, saved_files_are_split=True)
+        assert set(converter.data_interface_objects) == {"Recording", "AnalogAuxiliary", "Digital"}
+
+        nwbfile = mock_NWBFile()
+        converter.add_to_nwbfile(nwbfile)
+
+        assert "ElectricalSeries" in nwbfile.acquisition
+        assert len(nwbfile.events["DIGITAL-IN-14"]) == 16
 
 
 class TestMetadataKeyRouting:
