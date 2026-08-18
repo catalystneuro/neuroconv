@@ -59,7 +59,6 @@ def test_configuration_on_electrical_series_with_non_wrapped_data(backend: Liter
     # See https://github.com/catalystneuro/neuroconv/issues/1099
     from pynwb.testing.mock.ecephys import (
         mock_ElectricalSeries,
-        mock_electrodes,
         mock_ElectrodesTable,
     )
     from pynwb.testing.mock.file import mock_NWBFile
@@ -70,15 +69,19 @@ def test_configuration_on_electrical_series_with_non_wrapped_data(backend: Liter
 
     # mock_electrodes sizes the region to n_electrodes but hardcodes a 5-row table, so the default
     # electrodes built for 128 channels point out of bounds and hdmf>=4 rejects them at construction.
-    # Pass an explicitly sized table until the pynwb mock is fixed upstream.
-    electrodes = mock_electrodes(n_electrodes=128, table=mock_ElectrodesTable(n_rows=128))
+    # Attach an explicitly sized table to the NWBFile and create the region through the file so the
+    # region and its target table share an ancestor.
+    nwbfile.electrodes = mock_ElectrodesTable(n_rows=128)
+    electrodes = nwbfile.create_electrode_table_region(region=list(range(128)), description="test electrodes")
     es = mock_ElectricalSeries(data=data, name="ElectricalSeries", electrodes=electrodes)
     nwbfile.add_acquisition(es)
     dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
 
-    assert len(dataset_configurations) == 1
-
-    electrical_series_configuration = dataset_configurations[0]
+    electrical_series_configuration = next(
+        dataset_configuration
+        for dataset_configuration in dataset_configurations
+        if dataset_configuration.location_in_file == "acquisition/ElectricalSeries/data"
+    )
 
     exppected_chunk_for_channels = 64
     assert electrical_series_configuration.chunk_shape[1] == exppected_chunk_for_channels

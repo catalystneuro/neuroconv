@@ -169,14 +169,17 @@ class IntanAnalogInterface(BaseDataInterface):
         # Add device metadata (reuse from main Intan interface)
         system = self._file_path.suffix  # .rhd or .rhs
         device_description = {".rhd": "RHD Recording System", ".rhs": "RHS Stim/Recording System"}[system]
+        device_model_metadata_key = {".rhd": "intan_rhd2000_model", ".rhs": "intan_rhs2000_model"}[system]
+        device_model_name = {".rhd": "RHD2000 Recording System", ".rhs": "RHS2000 Stim-Recording System"}[system]
 
         intan_device = dict(
             name="Intan",
             description=device_description,
-            manufacturer="Intan",
+            device_model_metadata_key=device_model_metadata_key,
         )
         # Same key as ``IntanRecordingInterface``: one Intan system, one registry entry.
         metadata["Devices"] = {"intan_device": intan_device}
+        metadata["DeviceModels"] = {device_model_metadata_key: dict(name=device_model_name, manufacturer="Intan")}
 
         # Add TimeSeries metadata
         channel_names = self.get_channel_names()

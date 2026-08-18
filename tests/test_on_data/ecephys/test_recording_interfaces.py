@@ -409,7 +409,11 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "intan_recording"
         expected_devices = {
-            "intan_device": dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan")
+            "intan_device": dict(
+                name="Intan",
+                description="RHS Stim/Recording System",
+                device_model_metadata_key="intan_rhs2000_model",
+            )
         }
         expected_electrode_groups = {
             "B": dict(
@@ -449,7 +453,11 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "intan_recording"
         expected_devices = {
-            "intan_device": dict(name="Intan", description="RHD Recording System", manufacturer="Intan")
+            "intan_device": dict(
+                name="Intan",
+                description="RHD Recording System",
+                device_model_metadata_key="intan_rhd2000_model",
+            )
         }
         expected_electrical_series = {"intan_recording": dict(name="ElectricalSeries")}
         # The three fixtures use different sets of headstage ports, so the expected groups are pinned per fixture.

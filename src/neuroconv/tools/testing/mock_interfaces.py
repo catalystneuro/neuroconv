@@ -870,6 +870,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
         self.extractor_kwargs.pop("metadata_key", None)
+        self.extractor_kwargs.pop("calibration", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
@@ -886,6 +887,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str | None = None,
         metadata_key: str | None = None,
         set_probe: bool = False,
+        calibration: Literal["unknown", "uniform", "heterogeneous_gains", "heterogeneous_offsets"] = "uniform",
     ):
         # Handle deprecated positional arguments
         if args:
@@ -936,8 +938,29 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             metadata_key=metadata_key,
         )
 
-        self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
-        self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
+        number_of_channels = self.recording_extractor.get_num_channels()
+        if calibration == "uniform":
+            gains = np.ones(number_of_channels)
+            offsets = np.zeros(number_of_channels)
+        elif calibration == "heterogeneous_gains":
+            gains = np.arange(1, number_of_channels + 1)
+            offsets = np.zeros(number_of_channels)
+        elif calibration == "heterogeneous_offsets":
+            gains = np.ones(number_of_channels)
+            offsets = np.arange(number_of_channels)
+        elif calibration == "unknown":
+            gains = offsets = None
+        else:
+            raise ValueError(
+                "calibration must be one of 'unknown', 'uniform', 'heterogeneous_gains', or " "'heterogeneous_offsets'."
+            )
+
+        if gains is not None:
+            self.recording_extractor.set_channel_gains(gains=gains)
+            self.recording_extractor.set_channel_offsets(offsets=offsets)
+            self.recording_extractor.set_property("physical_unit", values=["uV"] * number_of_channels)
+            self.recording_extractor.set_property("gain_to_physical_unit", values=gains)
+            self.recording_extractor.set_property("offset_to_physical_unit", values=offsets)
 
         # If probe was set, customize contact IDs to use "e0", "e1", etc. format for testing
         if set_probe and self.recording_extractor.has_probe():
