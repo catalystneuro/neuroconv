@@ -137,14 +137,19 @@ class MedPCEventsInterface(BaseEventsInterface):
         """
         Get metadata for the MedPCEventsInterface.
 
-        ``NWBFile/session_start_time`` and ``Subject/subject_id`` are read from the selected session's header. The
-        date is taken as month/day/year, which is what MedPC IV writes on a machine set to that short date format
-        and what every file seen so far uses; a day-first date is only recognized where the first field is above
-        twelve, so a box set to that format needs the time supplied through editable metadata instead. The header
-        states no timezone, so the datetime is left naive and pynwb attaches the local one at write.
+        Five header lines of the selected session are reported: ``Start Date`` and ``Start Time`` as
+        ``NWBFile/session_start_time``, ``Subject`` as ``Subject/subject_id``, ``MSN`` as ``NWBFile/protocol``,
+        since the MED State Notation program is the protocol the session ran and is what gives every array its
+        meaning, and ``Experiment`` as ``NWBFile/experiment_description``. The last two are often left blank at
+        the box and are reported only where the line carries something.
 
-        The rest of the header (`Box`, `MSN`, `Experiment`, `Group`) and the file's non-event arrays (counters,
-        trial schedules, session parameters) are not read; reach them with
+        The date is taken as month/day/year, which is what MedPC IV writes on a machine set to that short date
+        format and what every file seen so far uses. A day-first date is only recognized where the first field is
+        above twelve, so a box set to that format needs the time supplied through editable metadata instead. The
+        header states no timezone, so the datetime is left naive and pynwb attaches the local one at write.
+
+        ``Box`` and ``Group`` are not reported, as neither has a field in the NWB schema, nor are the file's
+        non-event arrays (counters, trial schedules, session parameters). Reach them with
         :func:`~neuroconv.datainterfaces.behavior.medpc.medpc_helpers.get_medpc_variables`.
 
         Returns
@@ -154,10 +159,9 @@ class MedPCEventsInterface(BaseEventsInterface):
         """
         metadata = super().get_metadata()
 
+        header_names = ("Start Date", "Start Time", "Subject", "MSN", "Experiment")
         header_dict = self._read_session(
-            medpc_name_to_info_dict={
-                name: {"name": name, "is_array": False} for name in ("Start Date", "Start Time", "Subject")
-            }
+            medpc_name_to_info_dict={name: {"name": name, "is_array": False} for name in header_names}
         )
         session_start_time = _parse_session_start_time(
             start_date=header_dict.get("Start Date"), start_time=header_dict.get("Start Time")
@@ -166,6 +170,10 @@ class MedPCEventsInterface(BaseEventsInterface):
             metadata["NWBFile"]["session_start_time"] = session_start_time
         if header_dict.get("Subject"):
             metadata["Subject"]["subject_id"] = header_dict["Subject"]
+        if header_dict.get("MSN"):
+            metadata["NWBFile"]["protocol"] = header_dict["MSN"]
+        if header_dict.get("Experiment"):
+            metadata["NWBFile"]["experiment_description"] = header_dict["Experiment"]
 
         # Declare one entry per event type, seeding each editable event_name from the name the user gave the array
         # (per-array) or its code's legend entry (packed-code), plus one column per value array the type carries.

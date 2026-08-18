@@ -65,6 +65,10 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
         # localize at write.
         assert metadata["NWBFile"]["session_start_time"] == datetime(2019, 4, 10, 12, 36, 13)
         assert metadata["Subject"]["subject_id"] == "95.259"
+        # The MSN is the program that ran the session, so it is what gives every array its meaning.
+        assert metadata["NWBFile"]["protocol"] == "FOOD_FR1 TTL Left"
+        # This file's Experiment line is blank, so nothing is reported for it.
+        assert "experiment_description" not in metadata["NWBFile"]
 
     def test_add_to_nwbfile(self, interface):
         nwbfile = mock_NWBFile()
@@ -185,6 +189,8 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
         # 10/06/22 is October 6, as the recording's own filename states.
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 10, 6, 14, 12, 35)
         assert metadata["Subject"]["subject_id"] == "cohort10-M3.3"
+        assert metadata["NWBFile"]["protocol"] == "HL_CS_lickometer_retract_recording_box 6"
+        assert metadata["NWBFile"]["experiment_description"] == "cued2bc-sucrose"
 
         assert list(event_types) == ["P", "N", "Q", "R", "S", "H"]
         # The column is seeded bare: the program's `.MPC` source says 1 is water, 2 ethanol and 3 both, but the
@@ -294,6 +300,8 @@ class TestPackedCodeWithLegend(MedPCEventsInterfaceMixin):
         # them, in the order the codes first occur.
         assert metadata["NWBFile"]["session_start_time"] == datetime(2015, 9, 25, 10, 38, 46)
         assert metadata["Subject"]["subject_id"] == "ML03"
+        assert metadata["NWBFile"]["protocol"] == "Lick_CShift_FI30_Box123"
+        assert metadata["NWBFile"]["experiment_description"] == "value switching"
 
         assert list(event_types) == ["001", "011", "051", "021", "052", "012", "050", "022"]
         assert event_types["011"] == {"event_name": "pump_a_on"}
@@ -361,6 +369,8 @@ class TestPackedCodeWithoutLegend(MedPCEventsInterfaceMixin):
         # name, so the file is read completely and the user renames what they recognize.
         assert metadata["NWBFile"]["session_start_time"] == datetime(2015, 9, 17, 14, 23, 8)
         assert metadata["Subject"]["subject_id"] == "EX01"
+        assert metadata["NWBFile"]["protocol"] == "Switch30-l(8-2)"
+        assert metadata["NWBFile"]["experiment_description"] == "MedParse Ex"
 
         assert set(event_types) == {"036", "034", "004", "029", "041", "001", "030", "032", "002", "012"}
         assert event_types["029"] == {"event_name": "code_029"}
