@@ -139,13 +139,13 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             **kwargs,
         )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with Inscopix provenance.
 
@@ -156,11 +156,7 @@ class InscopixImagingInterface(BaseImagingExtractorInterface):
             photon series configuration, and Inscopix-specific acquisition parameters.
         """
         # Get metadata from parent
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         extractor = self.imaging_extractor
         extractor_metadata = extractor._get_metadata()

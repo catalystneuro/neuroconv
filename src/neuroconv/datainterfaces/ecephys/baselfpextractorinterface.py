@@ -4,6 +4,7 @@ from typing import Literal
 from pynwb import NWBFile
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ...utils import DeepDict
 
 
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
@@ -16,8 +17,23 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         "LF",
     )
 
-    def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeriesLFP", **source_data):
+    _default_es_key = "ElectricalSeriesLFP"
+
+    def __init__(self, verbose: bool = False, es_key: str | None = None, **source_data):
         super().__init__(verbose=verbose, es_key=es_key, **source_data)
+
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
+
+        if use_new_metadata_format:
+            # State the series name here, where the metadata is produced, rather than leaving it to the
+            # ``es_key`` default: the dict format names a series from its own entry, so a name carried only
+            # by ``es_key`` (legacy, to be removed) never reaches the file. The name is the one the old
+            # format wrote, and it is independent of ``metadata_key`` (the dict key), so re-keying an entry
+            # never renames the written series.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeriesLFP"
+
+        return metadata
 
     def add_to_nwbfile(
         self,
@@ -67,7 +83,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseLFPExtractorInterface.add_to_nwbfile() is deprecated and will be "
-                "removed on or after December 2026. Use 'parent_container' instead "
+                "removed on or after February 2027. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,

@@ -77,8 +77,9 @@ class LightningPoseConverter(BaseDataInterface):
                 video_name=self.labeled_video_name,
             )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+        pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
+        metadata = pose_estimation_interface.get_metadata(use_new_metadata_format=use_new_metadata_format)
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         original_videos_metadata = original_video_interface.get_metadata()
         original_videos_metadata["Behavior"]["ExternalVideos"]["original_video"].update(
@@ -181,11 +182,20 @@ class LightningPoseConverter(BaseDataInterface):
                 parent_container="processing/behavior",
             )
 
+        # The pose estimation container references the videos by the name of the ImageSeries written
+        # above rather than by their source path.
         pose_metadata = deepcopy(metadata)
-        videos_list = [dict(name=self.original_video_name)]
-        if self.labeled_video_name is not None:
-            videos_list.append(dict(name=self.labeled_video_name))
-        pose_metadata["Behavior"]["Videos"] = videos_list
+        if "Pose" in pose_metadata:
+            pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
+            container_metadata = pose_metadata["Pose"]["PoseEstimations"][pose_estimation_interface.metadata_key]
+            container_metadata["original_videos"] = [self.original_video_name]
+            if self.labeled_video_name is not None:
+                container_metadata["labeled_videos"] = [self.labeled_video_name]
+        else:
+            videos_list = [dict(name=self.original_video_name)]
+            if self.labeled_video_name is not None:
+                videos_list.append(dict(name=self.labeled_video_name))
+            pose_metadata["Behavior"]["Videos"] = videos_list
         self.data_interface_objects["PoseEstimation"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=pose_metadata,

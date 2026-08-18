@@ -52,7 +52,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         nsx_override: FilePath | None = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """
@@ -115,7 +115,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         if metadata_key is None:
             self.metadata_key = "blackrock_recording"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         # Open file and extract headers
         basic_header = _parse_nsx_basic_header(self.source_data["file_path"])

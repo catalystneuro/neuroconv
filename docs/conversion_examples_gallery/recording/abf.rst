@@ -136,9 +136,11 @@ Legacy AbfInterface
 
 .. note::
 
-    ``AbfInterface`` is legacy and will be deprecated. Prefer ``AxonIntracellularInterface`` above for new
-    conversions; it writes one continuous series per electrode and records each sweep through the NWB
-    intracellular recordings table.
+    ``AbfInterface`` is deprecated and will be removed on or after August 2027. Use
+    ``AxonIntracellularInterface`` above instead; it writes one continuous series per electrode and records
+    each sweep through the NWB intracellular recordings table. Where ``AbfInterface`` takes several files at
+    once, use one ``AxonIntracellularInterface`` per electrode per file and combine them with
+    ``AxonIntracellularConverter``.
 
 Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroconv.datainterfaces.icephys.abf.abfdatainterface.AbfInterface`.
 

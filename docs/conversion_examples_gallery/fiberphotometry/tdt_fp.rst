@@ -148,7 +148,7 @@ Convert TDT Fiber Photometry data to NWB using
 
     Constructing ``TDTFiberPhotometryInterface`` without ``stream_names`` uses the deprecated
     multi-series behavior (writing every stream at once), which emits a ``DeprecationWarning`` and
-    will be removed on or after January 2027. Pass ``stream_names`` to use the single-series interface.
+    will be removed on or after February 2027. Pass ``stream_names`` to use the single-series interface.
 
 
 Specifying Metadata
@@ -162,8 +162,10 @@ To ensure that the NWB file is fully annotated, specify the metadata using the f
 
     For the single-series interface, several things differ from the block below (which predates the
     single-series refactor and is retained here as a field reference for the shared device, indicator,
-    and virus sections). The single-series metadata format is documented in full at
-    :ref:`fiber_photometry_metadata_structure`; in short:
+    and virus sections). The single-series format is covered by
+    :ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>` and
+    :ref:`its section on templates <how_to_annotate_from_a_template>`, and every element it accepts is
+    listed in the :ref:`reference template <fiber_photometry_metadata_template>`. In short:
 
     * The metadata lives at the top-level key ``metadata["FiberPhotometry"]``, not nested under
       ``metadata["Ophys"]``.

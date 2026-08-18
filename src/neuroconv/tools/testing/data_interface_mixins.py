@@ -1,3 +1,4 @@
+import inspect
 import json
 import tempfile
 from abc import abstractmethod
@@ -105,7 +106,22 @@ class DataInterfaceTestMixin:
         Draft7Validator.check_schema(schema=schema)
 
     def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+        """Test the dict-based metadata, which is the format every interface will emit.
+
+        See https://github.com/catalystneuro/neuroconv/issues/1557 for discussion on
+        what get_metadata() should return (provenance vs convenience).
+
+        Dual-mode interfaces (those that still expose the old list-based format) opt
+        into the dict format via ``use_new_metadata_format=True``. Dict-only interfaces
+        return it unconditionally from ``get_metadata()``.
+        """
+        # When the default flips to the dict format this branch goes and the whole thing becomes a bare
+        # ``self.interface.get_metadata()``, since that is what the argument would be asking for anyway.
+        # The old-format tests keep stating ``use_new_metadata_format=False`` until they are removed.
+        if "use_new_metadata_format" in inspect.signature(self.interface.get_metadata).parameters:
+            metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        else:
+            metadata = self.interface.get_metadata()
 
         metadata_for_validation = deepcopy(metadata)
         if "session_start_time" not in metadata_for_validation["NWBFile"]:
@@ -280,40 +296,19 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
     # `check_read_nwb` goes through roiextractors' NwbImagingExtractor, which opens the file with NWBHDF5IO
     check_read_nwb_backends = ("hdf5",)
 
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
-    def test_metadata(self, setup_interface):
-        from ..roiextractors.roiextractors import _is_dict_based_metadata
-
-        metadata = self.interface.get_metadata()
+    def test_metadata_old_list_format(self, setup_interface):
         # Dict-only interfaces no longer expose the old list-based format,
         # so there is nothing for check_extracted_metadata_old_list_format to assert.
-        if _is_dict_based_metadata(metadata):
+        if "use_new_metadata_format" not in inspect.signature(self.interface.get_metadata).parameters:
             pytest.skip("Interface returns the new dict-based metadata format only")
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Override this method to make assertions about extracted metadata in old list-based format."""
         pass
-
-    def test_get_metadata(self, setup_interface):
-        """Test get_metadata with the new dict-based format.
-
-        See https://github.com/catalystneuro/neuroconv/issues/1557 for discussion on
-        what get_metadata() should return (provenance vs convenience).
-
-        Dual-mode interfaces (those that still expose the old list-based format) opt
-        into the new format via ``use_new_metadata_format=True``. Dict-only interfaces
-        return the new format unconditionally from ``get_metadata()``.
-        """
-        import inspect
-
-        sig = inspect.signature(self.interface.get_metadata)
-        if "use_new_metadata_format" in sig.parameters:
-            metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        else:
-            metadata = self.interface.get_metadata()
-        self.check_extracted_metadata(metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         from roiextractors import NwbImagingExtractor
@@ -361,26 +356,17 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: BaseSegmentationExtractorInterface
 
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
-    def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+    def test_metadata_old_list_format(self, setup_interface):
+        if "use_new_metadata_format" not in inspect.signature(self.interface.get_metadata).parameters:
+            pytest.skip("Interface returns the new dict-based metadata format only")
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Override this method to make assertions about extracted metadata in old list-based format."""
         pass
-
-    def test_get_metadata(self, setup_interface):
-        """Test get_metadata with the new dict-based format."""
-        import inspect
-
-        sig = inspect.signature(self.interface.get_metadata)
-        if "use_new_metadata_format" not in sig.parameters:
-            pytest.skip("Interface does not support use_new_metadata_format yet")
-
-        metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        self.check_extracted_metadata(metadata)
 
     def check_read(self, nwbfile_path: str):
         from roiextractors import NwbSegmentationExtractor
@@ -399,26 +385,17 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     data_interface_cls: type[BaseRecordingExtractorInterface]
     is_lfp_interface: bool = False
 
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
-    def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+    def test_metadata_old_list_format(self, setup_interface):
+        if "use_new_metadata_format" not in inspect.signature(self.interface.get_metadata).parameters:
+            pytest.skip("Interface returns the new dict-based metadata format only")
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Override this method to make assertions about extracted metadata in old list-based format."""
         pass
-
-    def test_get_metadata(self, setup_interface):
-        """Test get_metadata with the new dict-based format."""
-        import inspect
-
-        sig = inspect.signature(self.interface.get_metadata)
-        if "use_new_metadata_format" not in sig.parameters:
-            pytest.skip("Interface does not support use_new_metadata_format yet")
-
-        metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        self.check_extracted_metadata(metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.core.testing import check_recordings_equal

@@ -1317,7 +1317,9 @@ class GuppyInterface(BaseDataInterface):
         events_table.add_column(name="event_type", description="The event type of each event.")
         event_name_to_rows: dict[str, list[int]] = {event_name: [] for event_name in self._event_names}
         for row_index, (onset, event_name) in enumerate(rows):
-            events_table.add_row(timestamp=onset, event_type=event_name)
+            # check_ragged=False: hdmf rescans the whole column on every add_row, making this quadratic in
+            # the number of onsets. Both cells here are scalars, so the check can only ever return False.
+            events_table.add_row(timestamp=onset, event_type=event_name, check_ragged=False)
             event_name_to_rows[event_name].append(row_index)
         nwbfile.add_events_table(events_table)
         return events_table, event_name_to_rows

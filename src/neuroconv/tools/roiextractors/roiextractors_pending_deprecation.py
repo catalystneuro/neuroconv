@@ -235,10 +235,10 @@ def add_devices_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> NW
     Add optical physiology devices from metadata.
 
     .. deprecated::
-        ``add_devices_to_nwbfile`` is deprecated and will be removed on or after September 2026.
+        ``add_devices_to_nwbfile`` is deprecated and will be removed on or after February 2027.
     """
     warnings.warn(
-        "add_devices_to_nwbfile is deprecated and will be removed on or after September 2026. "
+        "add_devices_to_nwbfile is deprecated and will be removed on or after February 2027. "
         "Use _add_device_to_nwbfile with the new dict-based metadata format (metadata['Devices']) instead.",
         FutureWarning,
         stacklevel=2,
