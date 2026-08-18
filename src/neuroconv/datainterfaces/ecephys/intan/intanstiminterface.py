@@ -100,10 +100,13 @@ class IntanStimInterface(BaseDataInterface):
         intan_device = dict(
             name="Intan",
             description="RHS Stim/Recording System",
-            manufacturer="Intan",
+            device_model_metadata_key="intan_rhs2000_model",
         )
         # Same key as ``IntanRecordingInterface``: one Intan system, one registry entry.
         metadata["Devices"] = {"intan_device": intan_device}
+        metadata["DeviceModels"] = {
+            "intan_rhs2000_model": dict(name="RHS2000 Stim-Recording System", manufacturer="Intan")
+        }
 
         channel_names = [str(name) for name in self.get_channel_names()]
 
