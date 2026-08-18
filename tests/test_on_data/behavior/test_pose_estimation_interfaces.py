@@ -29,7 +29,7 @@ except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
 from importlib.metadata import version as importlib_version
-from platform import python_version
+from platform import machine, python_version
 from sys import platform
 
 from packaging import version
@@ -37,6 +37,12 @@ from packaging import version
 python_version = version.parse(python_version())
 # TODO: remove after this is merged https://github.com/talmolab/sleap-io/pull/143 and released
 ndx_pose_version = version.parse(importlib_version("ndx-pose"))
+
+# SLEAP conversion is not yet supported on macOS Intel with Python 3.13. See
+# https://github.com/catalystneuro/neuroconv/actions/runs/32099304619/job/95596631882.
+SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED = (
+    platform == "darwin" and machine() == "x86_64" and python_version.release[:2] == (3, 13)
+)
 
 
 class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -321,6 +327,10 @@ class CustomTestSLEAPInterface(TestCase):
             )
         ]
     )
+    @pytest.mark.skipif(
+        SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+        reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+    )
     def test_sleap_to_nwb_interface(self, data_interface, interface_kwargs):
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
@@ -372,6 +382,10 @@ class CustomTestSLEAPInterface(TestCase):
                 ),
             )
         ]
+    )
+    @pytest.mark.skipif(
+        SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+        reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
     )
     def test_sleap_interface_timestamps_propagation(self, data_interface, interface_kwargs):
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")

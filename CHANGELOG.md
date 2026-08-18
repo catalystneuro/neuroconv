@@ -1,4 +1,4 @@
-# v0.10.0 (Upcoming)
+# v0.10.0 (August 18, 2026)
 
 ## Removals, Deprecations and Changes
 * Deprecated the `es_key` argument of the ecephys recording and LFP interfaces, to be removed on or after February 2027. Use `metadata_key` instead: it is the same concept, the key addressing this interface's entry in the metadata, and the name written to the file comes from that entry's `name` field rather than from the key. `es_key` now defaults to `None` and the interface's own default is used when it is not stated, so the warning reaches callers who pass it and not the interfaces and converters that pass it internally. [PR #1941](https://github.com/catalystneuro/neuroconv/pull/1941)
