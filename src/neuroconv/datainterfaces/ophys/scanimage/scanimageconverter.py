@@ -95,9 +95,9 @@ class ScanImageConverter(ConverterPipe):
         """
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
-            # The channel interfaces still default to the old list-based format, which addresses a photon
-            # series by its position in a list and so cannot name one entry per channel unambiguously.
-            # This converter is new and has only ever spoken the dict-based format, so it asks for it.
+            # The old list-based format addresses a photon series by its position in a list and so cannot
+            # name one entry per channel unambiguously. This converter has only ever spoken the dict-based
+            # format, so it states the argument rather than relying on the default.
             interface_metadata = self._get_interface_metadata(interface=interface, use_new_metadata_format=True)
             # Entries are keyed per channel, so a list inside one of them describes that channel and is
             # not something to merge across interfaces. Appending would also dedupe the repeated values

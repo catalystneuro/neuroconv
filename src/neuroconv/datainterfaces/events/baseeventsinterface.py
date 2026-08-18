@@ -121,6 +121,68 @@ class BaseEventsInterface(BaseDataInterface):
         """
         raise NotImplementedError("Event interfaces must implement `_get_events_data_dict`.")
 
+    def get_event_type_source_ids(self) -> list[str]:
+        """Return the identifiers of the event types this interface reads, in the order it reports them.
+
+        The handles :meth:`get_event_times` takes, and the keys of the metadata's ``event_types`` block.
+        For a signal-encoded interface they are what ``detection_configuration`` resolves to, so a spec
+        carrying an ``event_name`` is addressed by that name; for a pre-extracted one they are the
+        source's own handles for its event types.
+
+        Returns
+        -------
+        list of str
+            The event type identifiers.
+        """
+        return list(self.get_metadata()["Events"][self.metadata_key]["event_types"])
+
+    def get_event_times(self, event_type_source_id: str) -> np.ndarray:
+        """Return the onset times of one configured event type, writing nothing.
+
+        The read that a line used as a clock calls for: a camera's frame-out pulse or an alignment pulse
+        is configured like any other event type, and this hands back its times so another stream can be
+        aligned against them. There is no second way to state a reading here, so the array is the one the
+        writer writes, by construction rather than by agreement.
+
+        A durative reading costs nothing for this purpose, since ``high_period`` pairs each rising edge
+        with the next falling one and its onsets are those rising edges, so a line configured to be
+        written with its pulse widths still answers with the edge times.
+
+        The times are this interface's **current** times, which is ``self.alignment.offset`` added to the
+        source's own clock. That is what makes them usable as the input to another stream's alignment:
+        pulses recorded by a device that has itself been shifted onto a session clock come back already
+        on that clock, and reading them before the shift would leave them wrong by the drift with nothing
+        to catch it.
+
+        Parameters
+        ----------
+        event_type_source_id : str
+            The identifier of the event type, as :meth:`get_event_type_source_ids` reports it. Not the
+            metadata ``event_name``, which is the editable display name and which the interface never
+            sees, since it hands out metadata and keeps none. Setting ``event_name`` on a spec in
+            ``detection_configuration`` is what makes the identifier readable, since a named spec is
+            addressed by that name.
+
+        Returns
+        -------
+        numpy.ndarray
+            The event onset times, in seconds, on this interface's current clock.
+
+        Raises
+        ------
+        KeyError
+            If no event type resolves to that identifier, naming the ones that do.
+        """
+        events_data_dict = self._get_events_data_dict()
+
+        if event_type_source_id not in events_data_dict:
+            raise KeyError(
+                f"No event type '{event_type_source_id}' in {type(self).__name__}. This interface reads "
+                f"{sorted(events_data_dict)}, which get_event_type_source_ids lists."
+            )
+
+        return events_data_dict[event_type_source_id].timestamps + self.alignment.offset
+
     def get_metadata_schema(self) -> dict:
         """
         Get the metadata schema for an events interface.
@@ -502,7 +564,9 @@ class BaseEventsInterface(BaseDataInterface):
                 else:  # a column from a prior interface: infer the fill from its existing dtype
                     existing = table[column_name].data
                     row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
-            table.add_row(**row_kwargs)
+            # check_ragged=False: hdmf rescans the whole column on every add_row, making the fill quadratic
+            # in its rows. Every cell here is a scalar, so the check can only ever return False.
+            table.add_row(check_ragged=False, **row_kwargs)
 
     @staticmethod
     def _validate_shared_columns(events_metadata: dict) -> None:

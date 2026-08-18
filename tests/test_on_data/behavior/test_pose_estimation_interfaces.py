@@ -97,10 +97,22 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
 
         cls.test_data = pd.read_csv(cls.interface_kwargs["file_path"], header=[0, 1, 2])["heatmap_tracker"]
 
-    def check_extracted_metadata(self, metadata: dict):
+    # TODO: remove test_metadata and check_extracted_metadata_old_format when the legacy
+    # metadata["Behavior"]["PoseEstimation"] block is removed (then check_extracted_metadata is the
+    # only metadata hook).
+    def test_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
+        self.interface.validate_metadata(metadata=metadata)
+        self.check_extracted_metadata_old_format(metadata)
+
+    def check_extracted_metadata_old_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 11, 9, 10, 14, 37, 0)
         assert self.pose_estimation_name in metadata["Behavior"]
         assert metadata["Behavior"][self.pose_estimation_name] == self.expected_metadata[self.pose_estimation_name]
+
+    def test_get_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        self.check_extracted_metadata(metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import PoseEstimation, PoseEstimationSeries
@@ -155,6 +167,88 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
             # Using numpy's assert_array_equal
             assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
         nwbfile.read_io.close()
+
+    def check_extracted_metadata(self, metadata: dict):
+        """The dict-based metadata shape, checked against a full expected dict.
+
+        The equality is strict: provenance-first means ``get_metadata`` emits only source-derived
+        values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
+        applied by the writer), so any extra emitted field would fail the comparison.
+        """
+        metadata_key = "lightning_pose"
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 11, 9, 10, 14, 37, 0)
+        # The legacy metadata["Behavior"]["PoseEstimation"] block must be gone in the dict-based shape.
+        assert "Behavior" not in metadata
+
+        expected_devices = {
+            metadata_key: {
+                "name": "CameraPoseEstimation",
+                "description": "Camera used for behavioral recording and pose estimation.",
+            },
+        }
+
+        expected_pose_metadata = {
+            "Skeletons": {
+                metadata_key: {
+                    "name": "SkeletonPoseEstimation",
+                    "nodes": self.expected_keypoint_names,
+                    "edges": [],
+                },
+            },
+            "PoseEstimations": {
+                metadata_key: {
+                    "name": self.pose_estimation_name,
+                    "source_software": "LightningPose",
+                    "scorer": "heatmap_tracker",
+                    "dimensions": [[self.original_video_height, self.original_video_width]],
+                    "original_videos": [self.interface_kwargs["original_video_file_path"]],
+                    "labeled_videos": None,
+                    "device_metadata_key": metadata_key,
+                    "skeleton_metadata_key": metadata_key,
+                    "PoseEstimationSeries": {
+                        keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name}"}
+                        for keypoint_name in self.expected_keypoint_names
+                    },
+                },
+            },
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["Pose"] == expected_pose_metadata
+
+    # TODO: remove when the legacy metadata["Behavior"]["PoseEstimation"] block is removed. The
+    # mixin's conversion checks write from the dict-based format, so that is the covered path and
+    # this is what holds the old one to writing the same file.
+    def test_conversion_old_metadata_format(self, setup_interface):
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
+        metadata["NWBFile"].update(session_start_time=datetime.now(timezone.utc))
+
+        nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_old_metadata_format.nwb")
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **self.conversion_options
+        )
+        self.check_read_nwb(nwbfile_path=nwbfile_path)
+
+    def test_series_conversion_options_are_deprecated(self, setup_interface):
+        """The deprecated conversion options are routed into every series entry."""
+        reference_frame = "(0,0) corresponds to the top left corner of the video."
+        confidence_definition = "Softmax output of the deep neural network."
+
+        nwbfile = mock_NWBFile()
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        with pytest.warns(FutureWarning, match="conversion option"):
+            self.interface.add_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                reference_frame=reference_frame,
+                confidence_definition=confidence_definition,
+            )
+
+        pose_estimation_container = nwbfile.processing["behavior"][self.pose_estimation_name]
+        for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
+            assert pose_estimation_series.reference_frame == reference_frame
+            assert pose_estimation_series.confidence_definition == confidence_definition
 
 
 class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -338,18 +432,15 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
+        sampling_frequency=30.0,
     )
     save_directory = OUTPUT_PATH
 
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format when the old list
-    # format is removed (then check_extracted_metadata is the only metadata hook).
-    def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format when
+    # the old list format is removed (then check_extracted_metadata is the only metadata hook).
+    def test_metadata_old_list_format(self, setup_interface):
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
-
-    def test_get_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        self.check_extracted_metadata(metadata)
 
     def check_extracted_metadata(self, metadata: dict):
         """The dict-based ("new") metadata shape, checked against a full expected dict.
@@ -446,7 +537,9 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
     def check_renaming_instance(self, nwbfile_path: str):
         custom_container_name = "TestPoseEstimation"
 
-        metadata = self.interface.get_metadata()
+        # `pose_estimation_metadata_key` is the deprecated old-format argument, so the old shape is what
+        # this check is about.
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         # Create a new interface with the custom container name
@@ -455,6 +548,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             config_file_path=self.interface.source_data.get("config_file_path"),
             subject_name=self.interface.subject_name,
             pose_estimation_metadata_key=custom_container_name,
+            sampling_frequency=self.interface.sampling_frequency,
         )
 
         new_interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
@@ -487,7 +581,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         custom_labeled_videos = ["custom_labeled_video.mp4"]
         custom_dimensions = [[1, 2]]
 
-        metadata = self.interface.get_metadata()
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
 
         # Modify the metadata with custom values
         pose_metadata = metadata["PoseEstimation"]
@@ -538,6 +632,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             config_file_path=self.interface.source_data.get("config_file_path"),
             subject_name=self.interface.subject_name,
             pose_estimation_metadata_key=custom_pose_estimation_metadata_key,
+            sampling_frequency=self.interface.sampling_frequency,
         )
 
         # Use add_to_nwbfile with the new interface
@@ -590,7 +685,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
         for pose_estimation in pose_estimation_series_in_nwb.values():
             assert pose_estimation.starting_time == 0
-            assert pose_estimation.rate == 1.0
+            assert pose_estimation.rate == 30.0
 
         assert all(expected_pose_estimation_series_are_in_nwb_file)
 
@@ -644,6 +739,7 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
         ),
         config_file_path=None,
         subject_name="ind1",
+        sampling_frequency=30.0,
     )
     save_directory = OUTPUT_PATH
 
@@ -684,6 +780,7 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
+        sampling_frequency=30.0,
     )
 
     save_directory = OUTPUT_PATH
@@ -737,6 +834,7 @@ class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
         ),
         config_file_path=None,
         subject_name="SL18",
+        sampling_frequency=30.0,
     )
     save_directory = OUTPUT_PATH
 
@@ -790,6 +888,7 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
             / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
         ),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
+        sampling_frequency=30.0,
     )
 
     interface = DeepLabCutInterface(**interface_kwargs)
@@ -803,6 +902,46 @@ def test_deep_lab_cut_import_pose_extension_bug(clean_pose_extension_import, tmp
 
     assert len(pose_estimation_container.fields) > 0
     read_nwbfile.read_io.close()
+
+
+def test_deep_lab_cut_refuses_to_write_without_timing():
+    """Neither the output file nor the config records a frame rate, so writing has to be refused."""
+    interface = DeepLabCutInterface(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+    )
+
+    with pytest.raises(ValueError, match="No timing information is available"):
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile())
+
+
+def test_deep_lab_cut_sampling_frequency_converts_frames_to_seconds():
+    """A frame index is a time only once divided by the rate, which is what the argument is for."""
+    interface = DeepLabCutInterface(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "open_field_without_video"
+            / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
+        ),
+        sampling_frequency=30.0,
+    )
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile)
+
+    pose_estimation = nwbfile.processing["behavior"]["PoseEstimationDeepLabCut"]
+    series = next(iter(pose_estimation.pose_estimation_series.values()))
+
+    # The fixture's index is a contiguous frame count, so frame / 30 Hz is a regular series and the
+    # writer stores it as starting_time plus rate rather than as a timestamps vector.
+    assert series.timestamps is None
+    assert series.starting_time == 0.0
+    assert series.rate == 30.0
 
 
 class TestDeepLabCutInterfaceGetAvailableSubjects:

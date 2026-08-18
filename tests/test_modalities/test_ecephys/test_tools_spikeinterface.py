@@ -263,6 +263,19 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
         extracted_timestamps = electrical_series.timestamps.data
         np.testing.assert_array_almost_equal(extracted_timestamps, expected_timestamps)
 
+    def test_timestamps_rate_overrides_nominal_sampling_frequency(self):
+        """The rate written is the one the timestamps measure, not the one the extractor reports."""
+        number_of_samples = self.test_recording_extractor.get_num_samples()
+        measured_sampling_frequency = self.sampling_frequency * (1 + 100e-6)  # a 100 ppm faster clock
+        timestamps = np.arange(number_of_samples) / measured_sampling_frequency
+        self.test_recording_extractor.set_times(times=timestamps, with_warning=False)
+
+        add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+
+        electrical_series = self.nwbfile.acquisition["ElectricalSeriesRaw"]
+        assert electrical_series.rate == pytest.approx(measured_sampling_frequency, rel=1e-12)
+        assert electrical_series.rate != self.test_recording_extractor.get_sampling_frequency()
+
 
 class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
     @classmethod

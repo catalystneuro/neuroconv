@@ -590,7 +590,9 @@ def _add_plane_segmentation_to_nwbfile(
         image_mask_array = image_or_pixel_masks.T
         for roi_index, roi_name in zip(roi_indices, roi_names):
             image_mask = image_mask_array[roi_index]
-            plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, image_mask=image_mask)
+            # check_ragged=False: hdmf rescans the whole column on every add_roi, making this quadratic in
+            # the ROI count. (The pixel/voxel branch below goes through a VectorIndex, which is never checked.)
+            plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, image_mask=image_mask, check_ragged=False)
     else:
         mask_type_kwarg = f"{mask_type}_mask"
         pixel_masks = image_or_pixel_masks
@@ -996,7 +998,7 @@ def add_imaging_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
-    *args,  # TODO: change to * (keyword only) on or after September 2026
+    *args,  # TODO: change to * (keyword only) on or after February 2027
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
     iterator_type: str | None = "v2",
@@ -1318,7 +1320,7 @@ def add_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
-    *args,  # TODO: change to * (keyword only) on or after September 2026
+    *args,  # TODO: change to * (keyword only) on or after February 2027
     plane_segmentation_name: str | None = None,
     background_plane_segmentation_name: str | None = None,
     include_background_segmentation: bool = False,
@@ -1419,7 +1421,7 @@ def add_segmentation_to_nwbfile(
             "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
             "written automatically as a column on the PlaneSegmentation table whenever the "
             "segmentation extractor exposes acceptance/rejection through its property system. "
-            "This parameter will be removed on or after November 2026.",
+            "This parameter will be removed on or after February 2027.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1561,7 +1563,7 @@ def write_segmentation_to_nwbfile(
             "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
             "written automatically as a column on the PlaneSegmentation table whenever the "
             "segmentation extractor exposes acceptance/rejection through its property system. "
-            "This parameter will be removed on or after November 2026.",
+            "This parameter will be removed on or after February 2027.",
             DeprecationWarning,
             stacklevel=2,
         )

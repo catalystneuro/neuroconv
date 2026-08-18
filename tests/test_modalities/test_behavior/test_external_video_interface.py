@@ -160,20 +160,23 @@ def test_irregular_timestamps(nwb_converter, nwbfile_path, metadata, aligned_seg
         np.testing.assert_array_equal(expected_timestamps, nwbfile.acquisition["Video test1"].timestamps[:])
 
 
-def test_starting_frames_type_error(nwb_converter, nwbfile_path, metadata):
-    """Test that an error is raised when starting_frames is not provided for multiple file paths."""
+def test_starting_frames_computed_from_video_files(nwb_converter, nwbfile_path, metadata):
+    """Test that starting_frames is computed from the video frame counts when it is not provided."""
     timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
 
-    with pytest.raises(
-        TypeError, match="Multiple paths were specified for the ImageSeries, but no starting_frames were specified!"
-    ):
-        nwb_converter.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            metadata=metadata,
-        )
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        metadata=metadata,
+    )
+
+    number_of_frames_per_file = 30  # Each of the test video files holds 30 frames
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        starting_frame = nwbfile.acquisition["Video test1"].starting_frame
+        np.testing.assert_array_equal(starting_frame, [0, number_of_frames_per_file])
 
 
 def test_starting_frames_value_error(nwb_converter, nwbfile_path, metadata):
