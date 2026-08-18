@@ -1,4 +1,3 @@
-import re
 from datetime import timezone
 
 import numpy as np
@@ -8,6 +7,7 @@ from ..baseeventsinterface import BaseEventsInterface, _EventsData
 from ...ophys.inscopix.inscopixgpiodatainterface import (
     _get_gpio_channel_inventory,
     _read_gpio,
+    _to_snake_case,
 )
 from ....tools.events import (
     _get_event_type_source_ids,
@@ -190,8 +190,3 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
 
         self._events_data_dict = events_data_dict
         return self._events_data_dict
-
-
-def _to_snake_case(name: str) -> str:
-    """``"BNC Sync Output"`` -> ``bnc_sync_output`` (a lowercase name the base writer CamelCases cleanly)."""
-    return re.sub(r"_+", "_", re.sub(r"[^0-9a-zA-Z]+", "_", name)).strip("_").lower()

@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 
-import pytest
-from pynwb import NWBHDF5IO, TimeSeries
+from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import InscopixGpioInterface
+from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
 
 try:
     from ..setup_paths import OPHYS_DATA_PATH
@@ -30,13 +30,26 @@ class TestInscopixGpioOdorConcentrationStimulus:
         "e-focus": "micrometers",
     }
 
-    @pytest.fixture
-    def interface(self):
-        return InscopixGpioInterface(file_path=self.FILE_PATH)
+    def test_get_metadata(self):
+        interface = InscopixGpioInterface(file_path=self.FILE_PATH)
 
-    def test_session_start_time(self, interface):
-        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
-        assert session_start_time == datetime(2025, 2, 27, 11, 25, 28, 935000, tzinfo=timezone.utc)
+        metadata = interface.get_metadata()
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(
+            2025, 2, 27, 11, 25, 28, 935000, tzinfo=timezone.utc
+        )
+
+        # One entry per channel, keyed by the interface and the channel it describes.
+        time_series_metadata = metadata["TimeSeries"]
+        assert len(time_series_metadata) == 26
+        assert time_series_metadata["inscopix_gpio_gpio_1"] == {
+            "name": "GPIO-1",
+            "description": "Inscopix GPIO channel 'GPIO-1'.",
+        }
+        # The monitor channels are the only ones whose unit the format fixes; the rest state none, so
+        # nothing here claims a unit the file did not record.
+        assert time_series_metadata["inscopix_gpio_e_focus"]["unit"] == "micrometers"
+        assert "unit" not in time_series_metadata["inscopix_gpio_gpio_1"]
 
     def test_get_available_channels(self):
         inventory = InscopixGpioInterface.get_available_channels(self.FILE_PATH)
@@ -46,57 +59,57 @@ class TestInscopixGpioOdorConcentrationStimulus:
         assert by_name["GPIO-2"]["num_samples"] == 336
         assert by_name["GPIO-2"]["unique_values"] == [128.0, 144.0, 160.0, 224.0]
 
-    def test_writes_all_channels_by_default(self, interface):
+    def test_add_to_nwbfile(self, tmp_path):
+        interface = InscopixGpioInterface(file_path=self.FILE_PATH)
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        nwbfile_path = tmp_path / "test_inscopix_gpio.nwb"
+        configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+        read_nwbfile = read_nwb(path=nwbfile_path)
+
         # Every one of the 26 channels is written as a TimeSeries (digital and BNC lines included).
-        assert len(nwbfile.acquisition) == 26
-        assert "BNC_Sync_Output" in nwbfile.acquisition
-        assert "Digital_GPI_0" in nwbfile.acquisition
+        assert len(read_nwbfile.acquisition) == 26
+        assert "BNC_Sync_Output" in read_nwbfile.acquisition
+        assert "Digital_GPI_0" in read_nwbfile.acquisition
+        assert read_nwbfile.acquisition["GPIO-2"].data.shape[0] == 336
         for name, unit in self.MONITOR_UNITS.items():
-            time_series = nwbfile.acquisition[name]
-            assert isinstance(time_series, TimeSeries)
+            time_series = read_nwbfile.acquisition[name]
             assert time_series.unit == unit
             # Irregular sampling: explicit per-event timestamps, not a fixed rate.
             assert time_series.timestamps is not None
             assert time_series.rate is None
         # A general-purpose GPIO input has no known unit.
-        assert nwbfile.acquisition["GPIO-1"].unit == "a.u."
+        assert read_nwbfile.acquisition["GPIO-1"].unit == "a.u."
 
-    def test_exclude_channels(self, interface):
+    def test_exclude_channels(self):
         nwbfile = mock_NWBFile()
-        InscopixGpioInterface(
+        interface = InscopixGpioInterface(
             file_path=self.FILE_PATH, exclude_channels=["BNC Sync Output", "Digital GPI 0"]
-        ).add_to_nwbfile(nwbfile=nwbfile)
+        )
+        interface.add_to_nwbfile(nwbfile=nwbfile)
         assert len(nwbfile.acquisition) == 24
         assert "BNC_Sync_Output" not in nwbfile.acquisition
         assert "Digital_GPI_0" not in nwbfile.acquisition
+        # The dropped channels are absent from the metadata too, so nothing seeds an unwritten object.
+        assert len(interface.get_metadata()["TimeSeries"]) == 24
 
-    def test_channel_units_and_conversion_override(self, interface):
+    def test_the_unit_and_conversion_are_edited_in_the_metadata(self):
+        interface = InscopixGpioInterface(file_path=self.FILE_PATH)
+        metadata = interface.get_metadata()
+        metadata["TimeSeries"]["inscopix_gpio_gpio_1"].update(unit="volts", conversion=2.5)
+
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(
-            nwbfile=nwbfile,
-            channel_units={"GPIO-1": "volts"},
-            channel_conversion={"GPIO-1": 2.5},
-        )
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
         assert nwbfile.acquisition["GPIO-1"].unit == "volts"
         assert nwbfile.acquisition["GPIO-1"].conversion == 2.5
         assert nwbfile.acquisition["e-focus"].unit == "micrometers"
         assert nwbfile.acquisition["e-focus"].conversion == 1.0
 
-    def test_stub_test_truncates(self, interface):
+    def test_stub_test_truncates(self):
+        interface = InscopixGpioInterface(file_path=self.FILE_PATH)
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True)
         # GPIO-1 has 475 samples in full; stub_test writes at most 100.
         assert nwbfile.acquisition["GPIO-1"].data.shape[0] == 100
-
-    def test_round_trip(self, interface, tmp_path):
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile)
-        nwbfile_path = tmp_path / "test_inscopix_gpio.nwb"
-        with NWBHDF5IO(nwbfile_path, mode="w") as io:
-            io.write(nwbfile)
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            read_nwbfile = io.read()
-            assert read_nwbfile.acquisition["GPIO-2"].data.shape[0] == 336
-            assert read_nwbfile.acquisition["e-focus"].unit == "micrometers"

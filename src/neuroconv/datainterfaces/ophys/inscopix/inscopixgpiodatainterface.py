@@ -1,3 +1,4 @@
+import re
 from datetime import timezone
 
 import numpy as np
@@ -70,7 +71,8 @@ class InscopixGpioInterface(BaseDataInterface):
     regardless of whether a channel is a continuous signal or a discrete line, and the file records no
     way to tell them apart. Use ``exclude_channels`` to drop channels you do not want. The monitor
     channels (``EX-LED``, ``OG-LED``, ``DI-LED``, ``e-focus``) get their known physical units; every
-    other channel defaults to ``"a.u."`` and can be overridden via ``channel_units``.
+    other channel carries no unit the file can state, so it is written as ``"a.u."`` unless the
+    ``metadata["TimeSeries"]`` entry this interface seeds for it says otherwise.
 
     Discrete events (edges, coded levels) are a separate, additive product handled by
     :class:`.InscopixGpioEventsInterface`; the two interfaces read the same file independently.
@@ -87,6 +89,7 @@ class InscopixGpioInterface(BaseDataInterface):
         file_path: FilePath,
         *,
         exclude_channels: list[str] | None = None,
+        metadata_key: str = "inscopix_gpio",
         verbose: bool = False,
     ):
         """Initialize the InscopixGpioInterface.
@@ -97,10 +100,13 @@ class InscopixGpioInterface(BaseDataInterface):
             Path to the ``.gpio`` Inscopix file.
         exclude_channels : list of str, optional
             Names of channels to skip. If None (default), every present channel is written.
+        metadata_key : str, optional
+            Namespaces this interface's entries in ``metadata["TimeSeries"]``, one per written channel.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
         super().__init__(file_path=file_path, exclude_channels=exclude_channels, verbose=verbose)
+        self.metadata_key = metadata_key
 
     @classmethod
     def get_available_channels(cls, file_path) -> list[dict]:
@@ -112,12 +118,39 @@ class InscopixGpioInterface(BaseDataInterface):
         """
         return _get_gpio_channel_inventory(file_path)
 
+    def _get_channel_metadata_key(self, channel_name: str) -> str:
+        """The ``metadata["TimeSeries"]`` key this interface addresses one channel by."""
+        return f"{self.metadata_key}_{_to_snake_case(channel_name)}"
+
     def get_metadata(self) -> DeepDict:
-        """Get metadata, setting ``session_start_time`` from the file's absolute start time."""
+        """Get metadata: the session start time, and one ``TimeSeries`` entry per written channel.
+
+        Each entry carries the object ``name`` and a ``description``, and a ``unit`` only for the monitor
+        channels, whose units the format fixes. Every other channel records no unit, so the entry states
+        none and the writer falls back to ``"a.u."``. A user who knows what a channel measures says so by
+        setting ``unit``, and scales it with ``conversion``, in that entry, the way the analog recording
+        interfaces are edited.
+        """
         metadata = super().get_metadata()
         gpio = _read_gpio(self.source_data["file_path"])
         # ``timing.start.to_datetime()`` is a naive UTC datetime (isx.Time uses utcfromtimestamp).
         metadata["NWBFile"]["session_start_time"] = gpio.timing.start.to_datetime().replace(tzinfo=timezone.utc)
+
+        exclude = set(self.source_data.get("exclude_channels") or [])
+        time_series_metadata = {}
+        for index in range(gpio.num_channels):
+            channel_name = gpio.get_channel_name(index)
+            if channel_name in exclude:
+                continue
+            entry = dict(
+                name=_to_object_name(channel_name),
+                description=f"Inscopix GPIO channel '{channel_name}'.",
+            )
+            if channel_name in _DEFAULT_CHANNEL_UNITS:
+                entry["unit"] = _DEFAULT_CHANNEL_UNITS[channel_name]
+            time_series_metadata[self._get_channel_metadata_key(channel_name)] = entry
+        metadata["TimeSeries"] = time_series_metadata
+
         return metadata
 
     def add_to_nwbfile(
@@ -125,8 +158,6 @@ class InscopixGpioInterface(BaseDataInterface):
         nwbfile,
         metadata: dict | None = None,
         *,
-        channel_units: dict | None = None,
-        channel_conversion: dict | None = None,
         stub_test: bool = False,
     ) -> None:
         """Write every present, non-excluded channel as an irregular ``TimeSeries`` into acquisition.
@@ -136,18 +167,16 @@ class InscopixGpioInterface(BaseDataInterface):
         nwbfile : NWBFile
             The NWB file to add the channels to.
         metadata : dict, optional
-            Metadata dictionary (unused by this interface beyond the base contract).
-        channel_units : dict, optional
-            Maps a channel name to the physical unit of its values, overriding the default.
-        channel_conversion : dict, optional
-            Maps a channel name to a multiplicative conversion factor (``TimeSeries.conversion``).
+            Metadata dictionary. Each channel is written from its own ``metadata["TimeSeries"]`` entry,
+            which carries the object ``name``, its ``description``, and optionally the ``unit`` and the
+            ``conversion`` scaling the stored values into it. Defaults to ``self.get_metadata()``.
         stub_test : bool, optional
             If True, write only the first 100 samples of each channel (for fast testing).
         """
         from pynwb import TimeSeries
 
-        channel_units = channel_units or {}
-        channel_conversion = channel_conversion or {}
+        metadata = metadata or self.get_metadata()
+        time_series_metadata = metadata.get("TimeSeries", {})
         exclude = set(self.source_data.get("exclude_channels") or [])
 
         gpio = _read_gpio(self.source_data["file_path"])
@@ -164,19 +193,20 @@ class InscopixGpioInterface(BaseDataInterface):
                 timestamps_seconds = timestamps_seconds[:100]
                 amplitudes = amplitudes[:100]
 
-            unit = channel_units.get(channel_name) or _DEFAULT_CHANNEL_UNITS.get(channel_name, "a.u.")
-            nwbfile.add_acquisition(
-                TimeSeries(
-                    name=_to_object_name(channel_name),
-                    data=amplitudes,
-                    timestamps=timestamps_seconds,
-                    unit=unit,
-                    conversion=float(channel_conversion.get(channel_name, 1.0)),
-                    description=f"Inscopix GPIO channel '{channel_name}'.",
-                )
-            )
+            channel_metadata = dict(time_series_metadata.get(self._get_channel_metadata_key(channel_name), {}))
+            # ``unit`` is required by ``TimeSeries`` and this format states one only for the monitor
+            # channels, so the rest are defaulted here rather than in ``get_metadata``, which would be
+            # asserting a unit the file never recorded.
+            channel_metadata.setdefault("name", _to_object_name(channel_name))
+            channel_metadata.setdefault("unit", "a.u.")
+            nwbfile.add_acquisition(TimeSeries(data=amplitudes, timestamps=timestamps_seconds, **channel_metadata))
 
 
 def _to_object_name(channel_name: str) -> str:
     """Turn a channel name into a valid NWB object name (no ``/``; spaces to underscores; hyphens kept)."""
     return channel_name.replace("/", "_").replace(" ", "_")
+
+
+def _to_snake_case(name: str) -> str:
+    """``"BNC Sync Output"`` -> ``bnc_sync_output`` (a lowercase name the base writer CamelCases cleanly)."""
+    return re.sub(r"_+", "_", re.sub(r"[^0-9a-zA-Z]+", "_", name)).strip("_").lower()
