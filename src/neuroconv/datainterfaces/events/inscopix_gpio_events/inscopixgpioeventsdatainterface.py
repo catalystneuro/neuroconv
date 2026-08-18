@@ -6,8 +6,8 @@ from pydantic import FilePath, validate_call
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
 from ...ophys.inscopix.inscopixgpiodatainterface import (
+    _get_gpio_channel_inventory,
     _read_gpio,
-    get_gpio_channel_inventory,
 )
 from ....tools.events import (
     _get_event_type_source_ids,
@@ -125,7 +125,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
 
     @classmethod
     def get_available_channels(cls, file_path) -> list[dict]:
-        """Return the channel inventory of a ``.gpio`` file (see :func:`.get_gpio_channel_inventory`).
+        """Return one dict per channel of a ``.gpio`` file.
 
         Richer than the interface's own discovery, and the thing to call before writing a
         ``detection_configuration``: it reports each channel's value set, which is what tells you whether
@@ -133,7 +133,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         continuous signal (not events at all). It reads every channel's amplitudes, which is why the
         interface does not call it.
         """
-        return get_gpio_channel_inventory(file_path)
+        return _get_gpio_channel_inventory(file_path)
 
     def get_metadata(self) -> DeepDict:
         """Seed one ``event_types`` entry per event type the configuration resolves to.

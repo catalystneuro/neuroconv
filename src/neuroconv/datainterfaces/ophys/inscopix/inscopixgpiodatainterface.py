@@ -10,7 +10,7 @@ from ....utils import DeepDict
 # Monitor channels carry known physical units; every other channel (the general-purpose GPIO inputs,
 # the digital lines, the BNC lines) carries raw counts whose physical meaning is external experimenter
 # knowledge, so it defaults to "a.u.".
-DEFAULT_CHANNEL_UNITS = {
+_DEFAULT_CHANNEL_UNITS = {
     "e-focus": "micrometers",
     "EX-LED": "mW/mm^2",
     "OG-LED": "mW/mm^2",
@@ -24,7 +24,7 @@ def _read_gpio(file_path):
     return isx.GpioSet.read(str(file_path))
 
 
-def get_gpio_channel_inventory(file_path) -> list[dict]:
+def _get_gpio_channel_inventory(file_path) -> list[dict]:
     """List every channel in a ``.gpio`` file, to help decide what to convert and how.
 
     The Inscopix file records no analog-vs-digital flag (see the format notes), so which channels are
@@ -104,8 +104,13 @@ class InscopixGpioInterface(BaseDataInterface):
 
     @classmethod
     def get_available_channels(cls, file_path) -> list[dict]:
-        """Return the channel inventory of a ``.gpio`` file (see :func:`get_gpio_channel_inventory`)."""
-        return get_gpio_channel_inventory(file_path)
+        """Return one dict per channel of a ``.gpio`` file, to decide what to convert and how.
+
+        Each dict carries the channel's ``name``, ``num_samples``, ``num_unique``, ``unique_values``
+        (up to eight), ``min`` and ``max``. The file records no analog-versus-digital flag, so this is
+        what tells you which channels are worth writing and which to pass to ``exclude_channels``.
+        """
+        return _get_gpio_channel_inventory(file_path)
 
     def get_metadata(self) -> DeepDict:
         """Get metadata, setting ``session_start_time`` from the file's absolute start time."""
@@ -159,7 +164,7 @@ class InscopixGpioInterface(BaseDataInterface):
                 timestamps_seconds = timestamps_seconds[:100]
                 amplitudes = amplitudes[:100]
 
-            unit = channel_units.get(channel_name) or DEFAULT_CHANNEL_UNITS.get(channel_name, "a.u.")
+            unit = channel_units.get(channel_name) or _DEFAULT_CHANNEL_UNITS.get(channel_name, "a.u.")
             nwbfile.add_acquisition(
                 TimeSeries(
                     name=_to_object_name(channel_name),
