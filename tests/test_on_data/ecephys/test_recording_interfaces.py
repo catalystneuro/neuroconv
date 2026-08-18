@@ -192,8 +192,8 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 
 @pytest.mark.skipif(
-    platform == "darwin" or this_python_version > version.parse("3.9"),
-    reason="Interface unsupported for OSX. Interface only runs on Python 3.9",
+    platform != "win32" and this_python_version < version.parse("3.14"),
+    reason="sonpy has no usable wheels on Linux and macOS below Python 3.14",
 )
 class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Spike2RecordingInterface
@@ -1482,8 +1482,8 @@ class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
             dict(file_path=str(ECEPHY_DATA_PATH / "spike2" / "m365_1sec.smrx")),
             "spike2_recording",
             marks=pytest.mark.skipif(
-                platform == "darwin" or this_python_version > version.parse("3.9"),
-                reason="Interface unsupported for OSX. Interface only runs on Python 3.9",
+                platform != "win32" and this_python_version < version.parse("3.14"),
+                reason="sonpy has no usable wheels on Linux and macOS below Python 3.14",
             ),
         ),
     ],
