@@ -2101,7 +2101,7 @@ class TestAddUnitsTable(TestCase):
         ecephys_mod = get_module(
             nwbfile=self.nwbfile,
             name="ecephys",
-            description="Intermed`iate data from extracellular electrophysiology recordings, e.g., LFP.",
+            description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
         )
         self.assertIn(units_table_name, ecephys_mod.data_interfaces)
         units_table = ecephys_mod[units_table_name]
@@ -2277,6 +2277,9 @@ class TestAddUnitsTable(TestCase):
 
         recording = generate_recording(num_channels=4, durations=[1.0])
         recording = recording.rename_channels(new_channel_ids=["A", "B", "C", "D"])
+        # TODO: Add calibration presets to spikeinterface.core.generate.generate_recording.
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
 
         add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
 

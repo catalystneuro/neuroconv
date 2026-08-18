@@ -331,7 +331,6 @@ class BaseDataInterface(ABC):
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
-            backend=backend,
             backend_configuration=backend_configuration,
         )
 

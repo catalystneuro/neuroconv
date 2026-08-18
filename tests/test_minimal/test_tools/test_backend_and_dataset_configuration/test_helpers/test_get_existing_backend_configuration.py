@@ -43,7 +43,7 @@ def generate_complex_nwbfile() -> NWBFile:
 
 @pytest.fixture(scope="session")
 def hdf5_nwbfile_path(tmp_path_factory):
-    nwbfile_path = tmp_path_factory.mktemp("data") / "test_existing_backend_configuration_hdf5_nwbfile.nwb.h5"
+    nwbfile_path = tmp_path_factory.mktemp("data") / "test_existing_backend_configuration_hdf5_nwbfile.nwb"
     nwbfile = generate_complex_nwbfile()
 
     # Add a H5DataIO-compressed time series

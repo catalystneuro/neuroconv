@@ -2436,7 +2436,6 @@ def write_recording_to_nwbfile(
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
-            backend=backend,
             backend_configuration=backend_configuration,
         )
 
@@ -2656,6 +2655,10 @@ def _add_units_table_to_nwbfile(
         waveform_unit=waveform_unit,
         resolution=resolution,
     )
+    if unit_electrode_indices is not None:
+        # `electrodes` is a predefined Units column. Binding its target table here
+        # preserves its schema instead of redefining it through `add_column` below.
+        units_table_kwargs["target_tables"] = {"electrodes": nwbfile.electrodes}
 
     if write_in_processing_module:
         ecephys_mod = get_module(
@@ -2785,14 +2788,14 @@ def _add_units_table_to_nwbfile(
             table=nwbfile.electrodes,
         )
 
-    # For a new table, establish all rows in bulk via id.extend().
-    # All data (spike_times, waveforms, electrodes, properties) is then added as columns below.
-    if write_table_first_time:
+    # A table constructed with `target_tables` already has the predefined
+    # `electrodes` column, whose values must be added one row at a time.
+    units_table_previous_columns = set(units_table.colnames)
+    if write_table_first_time and not units_table_previous_columns:
         units_table.id.extend(list(range(num_units)))
 
     # Determine which properties already exist as columns and which are new.
     # Pre-existing columns must be provided per row via add_unit(); new properties are added as columns.
-    units_table_previous_columns = set(units_table.colnames)
     properties_to_add = set(data_to_add)
 
     # Determine which units need per-row insertion via add_unit().
@@ -3081,7 +3084,6 @@ def write_sorting_to_nwbfile(
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
-            backend=backend,
             backend_configuration=backend_configuration,
         )
 
@@ -3454,7 +3456,6 @@ def write_sorting_analyzer_to_nwbfile(
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
-            backend=backend,
             backend_configuration=backend_configuration,
         )
 

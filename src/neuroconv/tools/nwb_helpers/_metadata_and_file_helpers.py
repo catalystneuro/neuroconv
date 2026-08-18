@@ -580,5 +580,4 @@ def repack_nwbfile(
         nwbfile=nwbfile,
         backend_configuration=backend_configuration,
         nwbfile_path=export_nwbfile_path,
-        backend=export_backend,
     )
