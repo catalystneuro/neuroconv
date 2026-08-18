@@ -8,6 +8,8 @@
 
 ## Improvements
 
+* Reduced non-actionable CI warnings in test fixtures and NWB writing helpers.
+
 # v0.10.0 (August 18, 2026)
 
 ## Removals, Deprecations and Changes
