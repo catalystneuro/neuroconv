@@ -1243,8 +1243,15 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+@pytest.mark.filterwarnings(
+    "ignore:OME-XML contains Plane elements with DeltaT but only .* of .* timepoints have timestamps:UserWarning"
+)
 class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
-    """Test ThorImagingInterface."""
+    """Test ThorImagingInterface.
+
+    The fixture has an incomplete OME ``Plane/@DeltaT`` vector. ROIExtractors correctly rejects it and falls back to
+    the declared sampling rate; these tests cover Thor metadata and writing, not timestamp parsing.
+    """
 
     channel_name = "ChanA"
     optical_series_name: str = f"TwoPhotonSeries{channel_name}"
