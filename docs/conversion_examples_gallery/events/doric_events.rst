@@ -3,6 +3,8 @@ Doric Events data conversion
 
 Convert discrete events (digital IO) from Doric Neuroscience Studio recordings to NWB. Doric records digital IO as sampled ``0``/``1`` lines; each line is edge-detected and written as one ``pynwb.event.EventsTable`` per line into ``nwbfile.events``. Doric ships these in two container forms, each with its own interface.
 
+Both interfaces take a ``detection_configuration`` to select which lines are read and how each one's transitions become events. See :ref:`extract_events_from_signals` for that argument, and :ref:`annotate_events_metadata` for naming the resulting event types and grouping them into tables. This page covers the defaults and what is specific to the two Doric layouts.
+
 Convert from a .doric HDF5 file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
