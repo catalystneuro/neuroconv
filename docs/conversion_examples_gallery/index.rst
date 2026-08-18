@@ -133,6 +133,7 @@ Events
 
     CSV Events <events/csv_events>
     Doric Events <events/doric_events>
+    MedPC Events <events/medpc_events>
     NPM Events <events/npm_events>
     TDT Events <events/tdt_events>
 

@@ -1,6 +1,13 @@
 MedPC data conversion
 ---------------------
 
+.. deprecated::
+
+    ``MedPCInterface`` is deprecated and will be removed on or after August 2027. Use
+    :doc:`../events/medpc_events`, which reads the same files and writes their events as native
+    ``pynwb.event.EventsTable`` objects into ``nwbfile.events`` rather than as ``ndx-events`` objects and
+    ``IntervalSeries`` into the behavior processing module.
+
 MedPC output files contain information about operant behavior such as nose pokes and rewards.
 Install NeuroConv with the additional dependencies necessary for writing medpc behavioral data.
 
