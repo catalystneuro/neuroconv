@@ -90,13 +90,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         super().__init__(**source_data)
         self.recording_extractor = self._extractor_instance
-        property_names = self.recording_extractor.get_property_keys()
-        # TODO remove this and go and change all the uses of channel_name once spikeinterface > 0.101.0 is released
-        if "channel_name" not in property_names and "channel_names" in property_names:
-            channel_names = self.recording_extractor.get_property("channel_names")
-            self.recording_extractor.set_property("channel_name", channel_names)
-            self.recording_extractor.delete_property("channel_names")
-
         self.verbose = verbose
         self.es_key = es_key if es_key is not None else self._default_es_key
         self.metadata_key = metadata_key if metadata_key is not None else self.es_key
