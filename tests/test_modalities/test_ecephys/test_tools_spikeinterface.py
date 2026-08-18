@@ -2771,6 +2771,8 @@ class TestWriteSortingAnalyzer(TestCase):
                 units_name="units1",
             )
 
+    @pytest.mark.filterwarnings("ignore::UserWarning:spikeinterface\\..*")
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning:spikeinterface\\..*")
     def test_analyzer_channel_sliced(self):
         """This tests that the analyzer is written appropriately when the recording has been channel-sliced"""
         add_recording_to_nwbfile(
