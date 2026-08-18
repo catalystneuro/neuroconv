@@ -1329,6 +1329,9 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert series["field_of_view"] == pytest.approx([452.7e-6, 452.7e-6])
 
 
+@pytest.mark.filterwarnings(
+    "ignore:MiniscopeMultiRecordingImagingExtractor is deprecated and will be removed:FutureWarning"
+)
 class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = _MiniscopeMultiRecordingInterface
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
