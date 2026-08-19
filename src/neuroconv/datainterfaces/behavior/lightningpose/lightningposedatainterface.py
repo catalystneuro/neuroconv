@@ -437,7 +437,14 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         container_entry["description"] = legacy_metadata.get(
             "description", "Contains the pose estimation series for each keypoint."
         )
-        translated["Devices"][self.metadata_key]["name"] = legacy_metadata["camera_name"]
+        # The legacy shape names a camera and the dict-based one does not, so the cross-reference is set
+        # here rather than in get_metadata. It keeps the legacy write producing the device it always did,
+        # and goes with the legacy shape.
+        container_entry["device_metadata_key"] = self.metadata_key
+        translated["Devices"][self.metadata_key] = {
+            "name": legacy_metadata["camera_name"],
+            "description": "Camera used for behavioral recording and pose estimation.",
+        }
         translated["Pose"]["Skeletons"][self.metadata_key]["name"] = f"Skeleton{container_entry['name']}"
 
         for keypoint_name in self.keypoint_names:

@@ -5,6 +5,7 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
+from ._sleap_legacy import _SLEAPLegacyInterface
 from .sleap_utils import extract_timestamps
 from ..baseposeestimationinterface import BasePoseEstimationInterface
 from ....utils import DeepDict
@@ -34,6 +35,17 @@ class SLEAPInterface(BasePoseEstimationInterface):
 
         return [track.name for track in load_slp(Path(file_path)).tracks]
 
+    @staticmethod
+    def get_available_videos(file_path: FilePath) -> list[str]:
+        """Return the video names in a .slp file, one per recording labeled in it.
+
+        The stems of the paths the file stores, since those are absolute paths from the machine that did
+        the labeling and rarely resolve on the machine doing the conversion.
+        """
+        from sleap_io import load_slp
+
+        return [Path(video.filename).stem for video in load_slp(Path(file_path)).videos]
+
     @validate_call
     def __init__(
         self,
@@ -43,7 +55,8 @@ class SLEAPInterface(BasePoseEstimationInterface):
         verbose: bool = False,
         frames_per_second: float | None = None,
         track_name: str | None = None,
-        metadata_key: str = "sleap",
+        video_name: str | None = None,
+        metadata_key: str | None = None,
     ):
         """
         Interface for writing sleap .slp files to nwb using the sleap-io library.
@@ -62,8 +75,15 @@ class SLEAPInterface(BasePoseEstimationInterface):
             Which tracked individual to write. An NWB file holds one subject, so a multi-animal ``.slp``
             takes one interface per track. Call ``get_available_tracks`` to see them. Required when the
             file has more than one; the only track is used when it has one.
-        metadata_key : str, default: "sleap"
-            Key addressing this interface's entries in the dict-based metadata.
+        video_name : str, optional
+            Which recording to write, as the stem of its path. A ``.slp`` assembled in the SLEAP GUI can
+            hold several recordings, and those are separate sessions rather than separate views, so they
+            belong in separate NWB files. Call ``get_available_videos`` to see them. Required when the
+            file holds more than one; the only recording is used when it holds one.
+        metadata_key : str, optional
+            Key addressing this interface's entries in the dict-based metadata. Derived from the track
+            when not given (``"sleap_track_0"``), so one interface per track of the same file gets a
+            distinct key and a converter can merge them.
         """
         # Handle deprecated positional arguments
         if args:
@@ -104,7 +124,6 @@ class SLEAPInterface(BasePoseEstimationInterface):
         self.verbose = verbose
         self._timestamps = None
         self._labels = None
-        self.metadata_key = metadata_key
 
         track_names = self.get_available_tracks(file_path=file_path)
         if track_name is not None and track_name not in track_names:
@@ -112,6 +131,47 @@ class SLEAPInterface(BasePoseEstimationInterface):
         if track_name is None and len(track_names) == 1:
             track_name = track_names[0]
         self.track_name = track_name
+
+        video_names = self.get_available_videos(file_path=file_path)
+        if video_name is not None:
+            if video_names.count(video_name) > 1:
+                raise ValueError(
+                    f"Video '{video_name}' names {video_names.count(video_name)} recordings in this file. "
+                    "Two recordings share a file name, so the stem cannot address one of them."
+                )
+            if video_name not in video_names:
+                raise ValueError(f"Video '{video_name}' is not in this file. Available videos: {video_names}.")
+        elif len(video_names) > 1 and track_name is not None:
+            raise ValueError(
+                f"This file holds {len(video_names)} recordings ({video_names}). They are separate sessions "
+                "rather than separate views of one, so name the one to write with 'video_name' and use one "
+                "interface per recording; 'get_available_videos' lists them."
+            )
+        self.video_name = video_name if video_name is not None else (video_names[0] if video_names else None)
+        # Derived rather than constant: one file yields one interface per track, and a static default
+        # would collide on a single registry entry the moment a converter merged them.
+        self.metadata_key = metadata_key or ("sleap" if track_name is None else f"sleap_{track_name}")
+
+        # TODO: remove with the deprecation, along with _sleap_legacy.py and the five forwards below.
+        # Naming no track means the pre-track_name behaviour, which shares nothing with this class: a
+        # different writer, different timing and no pose metadata. It is the whole object that is legacy
+        # rather than one method of it, so the old interface is kept verbatim and delegated to.
+        self._legacy_interface = None
+        if track_name is None:
+            warnings.warn(
+                f"This file tracks {len(track_names)} individuals and an NWB file holds one subject, so "
+                "writing them all into one file is deprecated and will be removed on or after August 2027. "
+                "Name the individual with 'track_name' and use one interface per track; "
+                "'get_available_tracks' lists them.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            self._legacy_interface = _SLEAPLegacyInterface(
+                file_path=file_path,
+                video_file_path=video_file_path,
+                verbose=verbose,
+                frames_per_second=frames_per_second,
+            )
 
         super().__init__(file_path=file_path)
 
@@ -123,104 +183,97 @@ class SLEAPInterface(BasePoseEstimationInterface):
             self._labels = load_slp(self.file_path)
         return self._labels
 
-    def _get_frame_indices(self) -> np.ndarray:
-        """The video frame numbers this track was labeled on, in order."""
-        labels = self._get_labels()
-        frame_indices = [
-            labeled_frame.frame_idx
-            for labeled_frame in labels.labeled_frames
-            if any(
+    def _get_labeled_frames(self) -> list:
+        """This track's labeled frames in this recording, in frame order.
+
+        Both filters matter: ``frame_idx`` is only unique within a video, so a file holding several
+        recordings would otherwise collapse their frames onto each other.
+        """
+        labeled_frames = [
+            labeled_frame
+            for labeled_frame in self._get_labels().labeled_frames
+            if Path(labeled_frame.video.filename).stem == self.video_name
+            and any(
                 instance.track is not None and instance.track.name == self.track_name
                 for instance in labeled_frame.instances
             )
         ]
-        return np.asarray(sorted(frame_indices))
+        return sorted(labeled_frames, key=lambda labeled_frame: labeled_frame.frame_idx)
+
+    def _get_frame_indices(self) -> np.ndarray:
+        """The video frame numbers this track was labeled on, in order."""
+        return np.asarray([labeled_frame.frame_idx for labeled_frame in self._get_labeled_frames()])
 
     def get_original_timestamps(self) -> np.ndarray:
-        """The video's timeline, one time per video frame, not per labeled frame.
+        if self._legacy_interface is not None:
+            return self._legacy_interface.get_original_timestamps()
+        return self._get_original_timestamps()
 
-        Kept on the video's frames rather than on the predictions so ``set_aligned_timestamps`` takes the
-        same vector an alignment against another stream produces. ``get_timestamps`` selects from it.
+    def _get_original_timestamps(self) -> np.ndarray:
+        """One time per labeled frame, which is one per sample written.
+
+        Not every video frame carries a prediction, so this is the video's timeline selected by the frames
+        this track was labeled on. Selecting here rather than in ``get_timestamps`` is what lets
+        ``set_aligned_timestamps`` take back exactly what ``get_timestamps`` handed out.
         """
+        frame_indices = self._get_frame_indices()
         if self.video_file_path is not None:
-            return np.array(extract_timestamps(self.video_file_path))
+            return np.asarray(extract_timestamps(self.video_file_path))[frame_indices]
         if self.video_sample_rate is not None:
-            number_of_frames = int(self._get_frame_indices()[-1]) + 1
-            return np.arange(number_of_frames) / self.video_sample_rate
+            return frame_indices / self.video_sample_rate
         raise ValueError(
             "Unable to fetch the original timestamps from the video! "
             "Please specify 'video_file_path' or 'frames_per_second' when initializing the interface."
         )
 
     def get_timestamps(self) -> np.ndarray:
-        """The times of the frames this track was labeled on, selected from the video's timeline.
+        if self._legacy_interface is not None:
+            return self._legacy_interface.get_timestamps()
+        return self._get_timestamps()
 
-        Not every video frame carries a prediction, so the written series are shorter than the video.
-        """
-        timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
-        return np.asarray(timestamps)[self._get_frame_indices()]
+    def _get_timestamps(self) -> np.ndarray:
+        return self._timestamps if self._timestamps is not None else self._get_original_timestamps()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        if self._legacy_interface is not None:
+            return self._legacy_interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
         self._timestamps = aligned_timestamps
-
-    # TODO: remove on or after August 2027, with the branch in add_to_nwbfile that calls it.
-    def _add_every_track_to_nwbfile(self, nwbfile: NWBFile) -> None:
-        """The pre-``track_name`` path: hand the whole file to sleap-io and let it write every track.
-
-        It writes one ``PoseEstimation`` per track into a ``SLEAP_VIDEO_000_*`` processing module, so a
-        multi-animal file ends up holding several subjects, which is what ndx-pose says not to do and what
-        naming a track fixes.
-        """
-        from sleap_io.io.nwb_predictions import append_nwb_data
-
-        pose_estimation_metadata = dict()
-        if self.video_file_path or self._timestamps:
-            pose_estimation_metadata.update(video_timestamps=self.get_original_timestamps())
-        if self.video_sample_rate:
-            pose_estimation_metadata.update(video_sample_rate=self.video_sample_rate)
-
-        append_nwb_data(labels=self._get_labels(), nwbfile=nwbfile, pose_estimation_metadata=pose_estimation_metadata)
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options) -> None:
         """Write the named track's ``PoseEstimation`` container to the file's behavior module."""
-        if self.track_name is None:
-            warnings.warn(
-                f"This file tracks {len(self.get_available_tracks(file_path=self.file_path))} individuals and "
-                "an NWB file holds one subject, so writing them all into one file is deprecated and will be "
-                "removed on or after August 2027. Name the individual with 'track_name' and use one "
-                "interface per track; 'get_available_tracks' lists them.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            self._add_every_track_to_nwbfile(nwbfile=nwbfile)
-            return
-
+        if self._legacy_interface is not None:
+            return self._legacy_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
     def get_keypoint_names(self) -> list[str]:
         return [node.name for node in self._get_labels().skeletons[0].nodes]
 
     def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
-        labels = self._get_labels()
         keypoint_names = self.get_keypoint_names()
-        frame_indices = self._get_frame_indices()
 
-        # One row per labeled frame, in frame order. A frame where the track has no instance cannot
-        # happen here, since _get_frame_indices selects the frames where it does.
-        instances_by_frame = {}
-        for labeled_frame in labels.labeled_frames:
-            for instance in labeled_frame.instances:
+        # One row per labeled frame, in frame order, taking this track's instance from each. Only
+        # predicted instances are read: a proofread file also holds the human's corrections as plain
+        # Instances, which the path this replaced skipped too. See the pre-existing-defects note.
+        instances = []
+        for labeled_frame in self._get_labeled_frames():
+            for instance in labeled_frame.predicted_instances:
                 if instance.track is not None and instance.track.name == self.track_name:
-                    instances_by_frame[labeled_frame.frame_idx] = instance
+                    instances.append(instance)
+                    break
 
         # (num_frames, num_keypoints, 3), the last axis being x, y and the point's score.
-        points = np.stack([instances_by_frame[frame_index].numpy(scores=True) for frame_index in frame_indices])
+        points = np.stack([instance.numpy(scores=True) for instance in instances])
         return {
             keypoint_name: (points[:, index, :2], points[:, index, 2])
             for index, keypoint_name in enumerate(keypoint_names)
         }
 
     def get_metadata(self) -> DeepDict:
+        if self._legacy_interface is not None:
+            return self._legacy_interface.get_metadata()
+        return self._get_metadata()
+
+    def _get_metadata(self) -> DeepDict:
         """Name the objects after the track and add what the .slp file records about the run."""
         metadata = super().get_metadata()
         labels = self._get_labels()
