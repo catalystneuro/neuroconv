@@ -145,57 +145,6 @@ never resolves on the machine that reads the file.
        devices
        └── TopCamera
 
-How to Annotate Several Animals in One Recording
--------------------------------------------------
-
-Two mice in the same arena, tracked as two identities by SLEAP or as two individuals by DeepLabCut. An
-NWB file has a single root-level ``Subject`` and ``ndx-pose`` is built on that, so the usual answer is
-**one conversion per animal**: each interface reads one individual, and each file gets its own
-``Subject``. Nothing extra has to be said in the pose metadata, since the skeleton links to the file's
-own subject.
-
-.. code-block:: python
-
-    for subject_id in ["mouse_001", "mouse_002"]:
-        interface = MockPoseEstimationInterface(num_nodes=3)
-        metadata = interface.get_metadata()
-        metadata["Subject"] = dict(subject_id=subject_id, species="Mus musculus")
-        interface.run_conversion(nwbfile_path=f"session_001_{subject_id}.nwb", metadata=metadata)
-
-Which individual an interface reads is what its own arguments select:
-:py:meth:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPInterface.get_available_tracks`
-lists the identities in a ``.slp`` and ``track_name`` picks one, and ``subject_name`` picks one of the
-individuals in a multi-animal DeepLabCut project.
-
-.. note::
-
-    ``track_0`` is the tracker's label for a trajectory, not the name of your animal. Map it to your own
-    ``subject_id`` as above; the skeleton's ``subject`` field is what ties the keypoints to that identity
-    inside the file.
-
-The alternative is one file holding both animals, which is worth the trouble when everything around the
-pose is shared: one video, one trials table, and often electrophysiology recorded from one of the two.
-Separate files duplicate all of it. What you give up is that only one animal can be the file's
-``Subject``, so this is the pattern that needs the pose metadata to say more: each animal gets its own
-interface and its own ``metadata_key``, its own container and skeleton names, and its own ``subject``.
-
-.. code-block:: python
-
-    metadata["Subject"] = dict(subject_id="mouse_001", species="Mus musculus")
-
-    for subject_id in ["mouse_001", "mouse_002"]:
-        key = f"pose_{subject_id}"
-        metadata["Pose"]["PoseEstimations"][key]["name"] = f"PoseEstimation_{subject_id}"
-        skeleton = metadata["Pose"]["Skeletons"][key]
-        skeleton["name"] = f"Skeleton_{subject_id}"
-        skeleton["subject"] = subject_id
-
-``mouse_001`` matches the file's ``Subject`` and its skeleton is linked to it. ``mouse_002`` does not, so
-its skeleton is written unlinked rather than pointed at the wrong animal, and the ``subject`` field is
-what says so. That is the cost: the second animal is identified by the names you chose and by that field,
-not by anything NWB models, so a reader has to take your word for which mouse is which. Prefer separate
-files unless the shared data is what you are actually studying.
-
 How to Annotate Several Camera Views of One Animal
 ---------------------------------------------------
 
@@ -227,3 +176,55 @@ the node lists genuinely differ and each view wants its own skeleton.
 
 Two containers pointing at one ``skeleton_metadata_key`` produce one ``Skeleton`` in the file, which both
 link to.
+
+How to Annotate Several Animals in One Recording
+-------------------------------------------------
+
+Two mice in the same arena, tracked as two identities by SLEAP or as two individuals by DeepLabCut. An
+NWB file has a single root-level ``Subject`` and ``ndx-pose`` is built on that, so in most cases you
+want **one file per animal**: each interface reads one individual, each file gets its own ``Subject``,
+and nothing extra has to be said in the pose metadata.
+
+.. code-block:: python
+
+    for subject_id in ["mouse_001", "mouse_002"]:
+        interface = MockPoseEstimationInterface(num_nodes=3)
+        metadata = interface.get_metadata()
+        metadata["Subject"] = dict(subject_id=subject_id, species="Mus musculus")
+        interface.run_conversion(nwbfile_path=f"session_001_{subject_id}.nwb", metadata=metadata)
+
+Which individual an interface reads is what its own arguments select:
+:py:meth:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPInterface.get_available_tracks`
+lists the identities in a ``.slp`` and ``track_name`` picks one, and ``subject_name`` picks one of the
+individuals in a multi-animal DeepLabCut project.
+
+.. note::
+
+    ``track_0`` is the tracker's label for a trajectory, not the name of your animal. Map it to your own
+    ``subject_id`` as above; the skeleton's ``subject`` field is what ties the keypoints to that identity
+    inside the file.
+
+If you would rather keep both animals in one file, because the video, the trials and often the
+electrophysiology are shared and separate files duplicate all of it, the skeleton's ``subject`` field is
+what lets you: only one animal can be the file's ``Subject``, and ``subject`` is where the others say who
+they are. Each animal brings its own interface and ``metadata_key``, its own container and skeleton
+names, and its own ``subject``. Whether they also bring their own camera is the one thing that varies
+with the setup: two animals filmed by one overhead camera share a device, two filmed separately do not.
+
+.. code-block:: python
+
+    metadata["Subject"] = dict(subject_id="mouse_001", species="Mus musculus")
+    metadata["Devices"]["arena_camera"] = dict(name="ArenaCamera")
+
+    for subject_id in ["mouse_001", "mouse_002"]:
+        entry = metadata["Pose"]["PoseEstimations"][f"pose_{subject_id}"]
+        entry["name"] = f"PoseEstimation_{subject_id}"
+        entry["device_metadata_key"] = "arena_camera"  # one camera filmed both; one each if it did not
+
+        skeleton = metadata["Pose"]["Skeletons"][f"pose_{subject_id}"]
+        skeleton["name"] = f"Skeleton_{subject_id}"
+        skeleton["subject"] = subject_id
+
+``mouse_001`` matches the file's ``Subject`` and its skeleton is linked to it. ``mouse_002`` does not, so
+its skeleton is written unlinked rather than pointed at the wrong animal. That is what you are trading:
+the second animal is identified by the names you chose and by ``subject``, not by anything NWB models.
