@@ -37,8 +37,8 @@ The examples here use :py:class:`~neuroconv.tools.testing.mock_interfaces.MockPo
 which synthesizes keypoints instead of reading a file, so every snippet runs as written with no data to
 download. Everything after the constructor is the same for any pose interface: swap in the one for your
 tracker, with the arguments its format needs, and annotate the metadata exactly as shown. The
-:ref:`pose estimation section of the Conversion Gallery <conversion_gallery_pose_estimation>` lists them
-and shows how to construct each one.
+:ref:`pose estimation section of the Conversion Gallery <conversion_gallery_pose_estimation>` shows how
+to construct each one.
 
 A **keypoint** is one tracked body part and becomes one ``PoseEstimationSeries``. A **container** is one
 camera view of one subject: it holds those series, a ``Skeleton`` naming the keypoints and the edges

@@ -119,6 +119,7 @@ Pose estimation
     DeepLabCut <behavior/deeplabcut>
     LightningPose <behavior/lightningpose>
     SLEAP <behavior/sleap>
+    VAME <behavior/vame>
 
 Behavior
 --------
@@ -129,7 +130,6 @@ Behavior
     Audio <behavior/audio>
     FicTrac <behavior/fictrac>
     Neuralynx NVT <behavior/neuralynx_nvt>
-    VAME <behavior/vame>
     Videos <behavior/video>
     MedPC <behavior/medpc>
 
