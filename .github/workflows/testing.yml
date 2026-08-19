@@ -194,6 +194,14 @@ jobs:
         with:
           os: ${{ runner.os }}
 
+      # Neo downloads the Plexon reader DLL into the home directory the first time a .pl2 file is
+      # opened, with a bare urlopen that has no timeout. Caching it keeps the test run off the network.
+      - name: Cache the Plexon2 reader DLL
+        uses: actions/cache@v5
+        with:
+          path: ~/.plexon_dlls_for_neo
+          key: plexon-dlls-${{ runner.os }}
+
       - name: Run full pytest
         # Ternary operator: only the job that uploads to Codecov below pays for coverage instrumentation
         run: pytest -vv -rsx -n logical --dist loadscope ${{ (matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest') && '--cov=neuroconv --cov-report xml:./codecov.xml' || '' }}
