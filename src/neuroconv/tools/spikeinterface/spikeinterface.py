@@ -11,6 +11,10 @@ from pydantic import FilePath
 from spikeinterface import BaseRecording, BaseSorting, SortingAnalyzer
 from spikeinterface.core.segmentutils import AppendSegmentRecording
 
+from ._electrodes import (
+    _add_electrodes_from_registry_to_nwbfile,
+    _electrodes_table_is_stated,
+)
 from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
@@ -207,6 +211,8 @@ def _add_electrode_groups_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
+    *,
+    electrode_group_metadata_keys: list[str] | None = None,
 ):
     """
     Add electrode groups to an NWBFile using the dict-based metadata format.
@@ -217,6 +223,19 @@ def _add_electrode_groups_to_nwbfile(
     ``device_metadata_key`` is resolved against ``metadata["Devices"]`` and the device is
     created lazily on first reference; an entry naming no device falls to the attached probe when it
     names a model, and to the placeholder device otherwise.
+
+    Parameters
+    ----------
+    electrode_group_metadata_keys : list of str, optional
+        Write exactly these entries, instead of selecting them by matching the recording's channel
+        group names. This is the electrodes-registry path: a user who regroups channels in metadata
+        states the grouping there and nowhere else, so there is no channel property left to select on.
+
+    Returns
+    -------
+    dict of str to str
+        Maps each written entry's metadata key to the name of the group in the file. Entries
+        synthesized for channel groups the metadata does not cover have no key and are absent.
     """
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
@@ -258,21 +277,48 @@ def _add_electrode_groups_to_nwbfile(
         }
 
     electrode_groups_metadata = metadata.get("Ecephys", {}).get("ElectrodeGroups", {})
-    channel_group_names = set(_get_group_name(recording=recording).tolist())
 
-    user_entries = [entry for entry in electrode_groups_metadata.values() if entry.get("name") in channel_group_names]
-    desired_names = {entry["name"] for entry in user_entries}
-    missing_channel_group_names = channel_group_names - desired_names - set(nwbfile.electrode_groups.keys())
-    auto_entries = [
-        {
-            "name": group_name,
-            "description": default_group_template["description"],
-            "location": default_group_template["location"],
-        }
-        for group_name in sorted(missing_channel_group_names)
-    ]
+    if electrode_group_metadata_keys is not None:
+        undeclared = [key for key in electrode_group_metadata_keys if key not in electrode_groups_metadata]
+        if undeclared:
+            raise ValueError(
+                f"metadata['Ecephys']['ElectrodeGroups'] does not declare the keys {undeclared}, which "
+                f"electrodes point at. Declared keys: {sorted(electrode_groups_metadata)}."
+            )
+        # An entry stating no name is named after its key, which is the only name available and is what
+        # a hand-written registry tends to mean by it.
+        keyed_entries = [
+            (key, {"name": key, **electrode_groups_metadata[key]}) for key in electrode_group_metadata_keys
+        ]
+        keys_by_name: dict[str, str] = {}
+        for key, entry in keyed_entries:
+            if entry["name"] in keys_by_name:
+                raise ValueError(
+                    f"metadata['Ecephys']['ElectrodeGroups'] keys '{keys_by_name[entry['name']]}' and '{key}' "
+                    f"use name '{entry['name']}'. Use 1 key to share an electrode group."
+                )
+            keys_by_name[entry["name"]] = key
+    else:
+        channel_group_names = set(_get_group_name(recording=recording).tolist())
+        keyed_entries = [
+            (key, entry) for key, entry in electrode_groups_metadata.items() if entry.get("name") in channel_group_names
+        ]
+        desired_names = {entry["name"] for _, entry in keyed_entries}
+        missing_channel_group_names = channel_group_names - desired_names - set(nwbfile.electrode_groups.keys())
+        keyed_entries += [
+            (
+                None,
+                {
+                    "name": group_name,
+                    "description": default_group_template["description"],
+                    "location": default_group_template["location"],
+                },
+            )
+            for group_name in sorted(missing_channel_group_names)
+        ]
 
-    for group_metadata in (*user_entries, *auto_entries):
+    group_name_by_metadata_key = {}
+    for entry_metadata_key, group_metadata in keyed_entries:
         group_kwargs = group_metadata.copy()
 
         # ``description`` and ``location`` are required by the NWB ``ElectrodeGroup`` object but are often
@@ -281,6 +327,9 @@ def _add_electrode_groups_to_nwbfile(
         # a placeholder; this is the same template already applied to the auto-synthesized entries above.
         for field in ("description", "location"):
             group_kwargs.setdefault(field, default_group_template[field])
+
+        if entry_metadata_key is not None:
+            group_name_by_metadata_key[entry_metadata_key] = group_kwargs["name"]
 
         if group_kwargs["name"] in nwbfile.electrode_groups:
             continue
@@ -309,6 +358,8 @@ def _add_electrode_groups_to_nwbfile(
             group_kwargs["device"] = nwbfile.devices[default_device_name]
 
         nwbfile.create_electrode_group(**group_kwargs)
+
+    return group_name_by_metadata_key
 
 
 def add_recording_to_nwbfile(
@@ -464,7 +515,11 @@ def add_recording_to_nwbfile(
         metadata = _get_ecephys_metadata_placeholders()
 
     add_recording_metadata_to_nwbfile(
-        recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        null_values_for_properties=null_values_for_properties,
+        metadata_key=metadata_key,
     )
 
     number_of_segments = recording.get_num_segments()
@@ -662,13 +717,15 @@ def _add_recording_segment_to_nwbfile(
         if parent_container == "processing/FilteredEphys" and "Processed" not in ecephys_mod.data_interfaces:
             ecephys_mod.add(pynwb.ecephys.FilteredEphys(name="Processed"))
 
-    # The add_electrodes adds a column with channel name to the electrode table.
-    _add_electrodes_to_nwbfile(
-        recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+    # The add_electrodes adds a column with channel name to the electrode table, and answers which row
+    # each channel landed on, which is what the series' region is built from.
+    channel_map = _add_electrodes_to_nwbfile(
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        null_values_for_properties=null_values_for_properties,
+        metadata_key=metadata_key,
     )
-
-    # Create a region for the electrodes table by matching recording channels to table rows
-    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
     channel_ids = recording.get_channel_ids()
     electrode_table_indices = [channel_map[channel_id] for channel_id in channel_ids]
     electrode_table_region = nwbfile.create_electrode_table_region(
@@ -752,7 +809,14 @@ def _add_recording_segment_to_nwbfile(
                 f"metadata['Ecephys']['ElectricalSeries'] does not contain key '{metadata_key}'. "
                 f"Available keys: {sorted(electrical_series_metadata_dict)}"
             )
-        eseries_kwargs.update(electrical_series_metadata_dict[metadata_key])
+        # ``channel_to_electrode`` addresses rows of the electrodes table, which the region above was
+        # already built from. It is not a field of the series, so it never reaches the constructor.
+        series_metadata = {
+            field: value
+            for field, value in electrical_series_metadata_dict[metadata_key].items()
+            if field != "channel_to_electrode"
+        }
+        eseries_kwargs.update(series_metadata)
     elif metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
@@ -1177,12 +1241,21 @@ def _build_channel_id_to_electrodes_table_map(
     # Build lookup table from existing rows
     # Note: We check if columns exist before trying to access them
     table_lookup = {}
+    # The same rows addressed by ``(group_name, electrode_name)``, which is the identity a table written
+    # from the electrodes registry carries. That registry names every row's electrode, including for the
+    # formats with no contact ids, where the name is the channel's; a recording with no contact identity
+    # of its own cannot build the three-part id such a row was written under. A table derived from a
+    # recording without a probe has no ``electrode_name`` column at all, so this lookup stays empty there
+    # and the matching below is unchanged.
+    identity_lookup = {}
     for row_index in range(len(nwbfile.electrodes)):
         group = nwbfile.electrodes["group_name"][row_index]
         electrode = nwbfile.electrodes["electrode_name"][row_index] if has_electrode_column else ""
         channel = nwbfile.electrodes["channel_name"][row_index] if has_channel_column else ""
         virtual_id = f"{group}_{electrode}_{channel}"
         table_lookup[virtual_id] = row_index
+        if has_electrode_column:
+            identity_lookup.setdefault(f"{group}_{electrode}", row_index)
 
     # When there is no probe id information, the field is populated with empty strings
     group_names = _get_group_name(recording=recording)
@@ -1190,12 +1263,18 @@ def _build_channel_id_to_electrodes_table_map(
     channel_names = _get_channel_name(recording=recording)
 
     # Use empty strings for electrode names when no probe is attached
+    recording_has_electrode_names = electrode_names is not None
     if electrode_names is None:
         electrode_names = [""] * num_channels
 
     for channel_id, group, electrode, channel in zip(channel_ids, group_names, electrode_names, channel_names):
         virtual_id = f"{group}_{electrode}_{channel}"
-        channel_to_electrode_row[channel_id] = table_lookup.get(virtual_id, None)
+        row_index = table_lookup.get(virtual_id, None)
+        if row_index is None and not recording_has_electrode_names:
+            # The channel stands in for the contact nobody told us about, which is the same substitution
+            # the registry makes when it derives this row's key.
+            row_index = identity_lookup.get(f"{group}_{channel}", None)
+        channel_to_electrode_row[channel_id] = row_index
 
     return dict(channel_to_electrode_row)
 
@@ -1300,6 +1379,7 @@ def _add_electrodes_to_nwbfile(
     exclude: tuple = (),
     *,
     null_values_for_properties: dict | None = None,
+    metadata_key: str | None = None,
 ):
     """
     Build an electrode_table from the recording information and it to the nwbfile object.
@@ -1345,6 +1425,18 @@ def _add_electrodes_to_nwbfile(
 
     null_values_for_properties = dict() if null_values_for_properties is None else null_values_for_properties
 
+    # ``Ecephys.ElectrodesTable`` states the table outright. ``Ecephys.Electrodes``, which may be present
+    # beside it, is the column-description list annotating a table this function derives; the two are
+    # separate keys precisely so that neither has to be told apart from the other by its shape.
+    if _electrodes_table_is_stated(metadata):
+        return _add_electrodes_from_registry_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=metadata_key,
+            null_values_for_properties=null_values_for_properties,
+        )
+
     # Test that metadata has the expected structure
     electrodes_metadata = list()
     if metadata is not None:
@@ -1367,72 +1459,10 @@ def _add_electrodes_to_nwbfile(
     for property in electrodes_metadata:
         property_descriptions[property["name"]] = property["description"]
 
-    # 1. Build columns details from extractor properties: dict(name: dict(description='',data=data, index=False))
-    data_to_add = dict()
-
-    recording_properties = recording.get_property_keys()
-    spikeinterface_special_cases = [
-        "offset_to_uV",  # Written in the ElectricalSeries
-        "gain_to_uV",  # Written in the ElectricalSeries
-        "gain_to_physical_unit",  # Written in the ElectricalSeries
-        "offset_to_physical_unit",  # Written in the ElectricalSeries
-        "physical_unit",  # Written in the ElectricalSeries
-        "contact_vector",  # Structured array representing the probe
-        "channel_name",  # We handle this here with _get_channel_name
-        "channel_names",  # Some formats from neo also have this property, skip it
-        "group_name",  # We handle this here _get_group_name
-        "group",  # We handle this here with _get_group_name
-        "contact_ids",  # Handled via _get_electrode_name
-    ]
-
-    excluded_properties = list(exclude) + spikeinterface_special_cases
-    properties_to_extract = [property for property in recording_properties if property not in excluded_properties]
-
-    for property in properties_to_extract:
-        data = np.asarray(recording.get_property(property)).copy()  # Do not modify properties of the recording
-
-        index = isinstance(data[0], (list, np.ndarray, tuple))
-        if index and isinstance(data[0], np.ndarray):
-            index = data[0].ndim
-
-        # Fill with provided custom descriptions
-        description = property_descriptions.get(property, "no description")
-        data_to_add[property] = dict(description=description, data=data, index=index)
-
-    # Special cases properties
-    group_names = _get_group_name(recording=recording)
-    electrode_names = _get_electrode_name(recording=recording)
-    channel_names = _get_channel_name(recording=recording)
-
-    # Always write channel_name column
-    data_to_add["channel_name"] = dict(description="unique channel reference", data=channel_names, index=False)
-
-    # Write electrode_name column when probe is attached
-    if electrode_names is not None:
-        data_to_add["electrode_name"] = dict(
-            description="unique electrode reference from probe contact identifiers", data=electrode_names, index=False
-        )
-
-    data_to_add["group_name"] = dict(description="group_name", data=group_names, index=False)
-
-    # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
-    if "location" in data_to_add:
-        data = data_to_add["location"]["data"]
-        column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
-        for column_number in range(data.shape[1]):
-            property = column_number_to_property[column_number]
-            data_to_add[property] = dict(description=property, data=data[:, column_number], index=False)
-        data_to_add.pop("location")
-
-    # In the electrode table location is the brain area of spikeinterface
-    if "brain_area" in data_to_add:
-        data_to_add["location"] = data_to_add["brain_area"]
-        data_to_add["location"].update(description="location")
-        data_to_add.pop("brain_area")
-    else:
-        default_location = _get_default_ecephys_metadata()["Ecephys"]["ElectrodeGroup"][0]["location"]
-        data = np.full(recording.get_num_channels(), fill_value=default_location)
-        data_to_add["location"] = dict(description="location", data=data, index=False)
+    data_to_add = _build_electrode_column_data(
+        recording=recording, exclude=exclude, property_descriptions=property_descriptions
+    )
+    group_names = data_to_add["group_name"]["data"]
 
     # Add missing groups to the nwb file
     groupless_names = [group_name for group_name in group_names if group_name not in nwbfile.electrode_groups]
@@ -1566,6 +1596,100 @@ def _add_electrodes_to_nwbfile(
 
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
+
+    return dict(zip(recording.get_channel_ids(), indices_for_new_data))
+
+
+def _build_electrode_column_data(
+    recording: BaseRecording,
+    *,
+    exclude: tuple = (),
+    property_descriptions: dict | None = None,
+) -> dict:
+    """
+    The electrodes-table columns a recording produces, before anything is written.
+
+    One entry per column, each ``dict(description=..., data=..., index=...)`` in the recording's channel
+    order. This is the recording's own answer to "what does this table look like", and it is read by two
+    callers who must agree: the writer that derives the table from the recording, and the metadata
+    template, which states those same values as a registry the user can edit. Naming the columns twice
+    is how the two would drift, since the mapping from a spikeinterface property to an NWB column is not
+    the identity (``location`` becomes ``rel_x``/``rel_y``/``rel_z``, ``brain_area`` becomes
+    ``location``).
+
+    The ``group`` column is not here: it holds ``ElectrodeGroup`` objects, which exist only once an
+    NWBFile has been written to.
+    """
+    property_descriptions = dict() if property_descriptions is None else property_descriptions
+
+    # 1. Build columns details from extractor properties: dict(name: dict(description='',data=data, index=False))
+    data_to_add = dict()
+
+    recording_properties = recording.get_property_keys()
+    spikeinterface_special_cases = [
+        "offset_to_uV",  # Written in the ElectricalSeries
+        "gain_to_uV",  # Written in the ElectricalSeries
+        "gain_to_physical_unit",  # Written in the ElectricalSeries
+        "offset_to_physical_unit",  # Written in the ElectricalSeries
+        "physical_unit",  # Written in the ElectricalSeries
+        "contact_vector",  # Structured array representing the probe
+        "channel_name",  # We handle this here with _get_channel_name
+        "channel_names",  # Some formats from neo also have this property, skip it
+        "group_name",  # We handle this here _get_group_name
+        "group",  # We handle this here with _get_group_name
+        "contact_ids",  # Handled via _get_electrode_name
+    ]
+
+    excluded_properties = list(exclude) + spikeinterface_special_cases
+    properties_to_extract = [property for property in recording_properties if property not in excluded_properties]
+
+    for property in properties_to_extract:
+        data = np.asarray(recording.get_property(property)).copy()  # Do not modify properties of the recording
+
+        index = isinstance(data[0], (list, np.ndarray, tuple))
+        if index and isinstance(data[0], np.ndarray):
+            index = data[0].ndim
+
+        # Fill with provided custom descriptions
+        description = property_descriptions.get(property, "no description")
+        data_to_add[property] = dict(description=description, data=data, index=index)
+
+    # Special cases properties
+    group_names = _get_group_name(recording=recording)
+    electrode_names = _get_electrode_name(recording=recording)
+    channel_names = _get_channel_name(recording=recording)
+
+    # Always write channel_name column
+    data_to_add["channel_name"] = dict(description="unique channel reference", data=channel_names, index=False)
+
+    # Write electrode_name column when probe is attached
+    if electrode_names is not None:
+        data_to_add["electrode_name"] = dict(
+            description="unique electrode reference from probe contact identifiers", data=electrode_names, index=False
+        )
+
+    data_to_add["group_name"] = dict(description="group_name", data=group_names, index=False)
+
+    # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
+    if "location" in data_to_add:
+        data = data_to_add["location"]["data"]
+        column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
+        for column_number in range(data.shape[1]):
+            property = column_number_to_property[column_number]
+            data_to_add[property] = dict(description=property, data=data[:, column_number], index=False)
+        data_to_add.pop("location")
+
+    # In the electrode table location is the brain area of spikeinterface
+    if "brain_area" in data_to_add:
+        data_to_add["location"] = data_to_add["brain_area"]
+        data_to_add["location"].update(description="location")
+        data_to_add.pop("brain_area")
+    else:
+        default_location = _get_default_ecephys_metadata()["Ecephys"]["ElectrodeGroup"][0]["location"]
+        data = np.full(recording.get_num_channels(), fill_value=default_location)
+        data_to_add["location"] = dict(description="location", data=data, index=False)
+
+    return data_to_add
 
 
 def add_electrodes_to_nwbfile(
@@ -2200,6 +2324,7 @@ def add_recording_metadata_to_nwbfile(
     metadata: dict | None = None,
     *,
     null_values_for_properties: dict | None = None,
+    metadata_key: str | None = None,
 ):
     """
     Add device, electrode_groups, and electrodes info to the nwbfile.
@@ -2235,6 +2360,11 @@ def add_recording_metadata_to_nwbfile(
     null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
+    metadata_key : str, optional
+        Key of this recording's entry under ``metadata["Ecephys"]["ElectricalSeries"]``. Only the
+        ``channel_to_electrode`` mapping is read from it, so it is needed when the electrodes registry is
+        used and the channels were remapped, and ignored otherwise. It is read whether or not the series
+        itself is written, since an interface is one recording and the key already identifies it.
     """
     # Old-shaped metadata is converted here as well, since this is public and reachable without going
     # through ``add_recording_to_nwbfile``. Nothing about the electrode groups needs the series names, so
@@ -2254,7 +2384,11 @@ def add_recording_metadata_to_nwbfile(
         isinstance(electrical_series_metadata, dict)
         and any(isinstance(entry, dict) for entry in electrical_series_metadata.values())
     )
-    if metadata is not None and ecephys_is_dict_based:
+    # The stated table writes the groups its electrodes point at, so selecting them here as well would
+    # write the ones the recording happens to carry on top of them.
+    if _electrodes_table_is_stated(metadata):
+        pass
+    elif metadata is not None and ecephys_is_dict_based:
         # Devices are created lazily inside _add_electrode_groups_to_nwbfile when a group
         # references them via device_metadata_key, mirroring the roiextractors imaging-plane pattern.
         _add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
@@ -2263,7 +2397,11 @@ def add_recording_metadata_to_nwbfile(
         # via _add_devices_to_nwbfile_old_list_format, so no explicit device-creation call here.
         _add_electrode_groups_to_nwbfile_old_list_format(recording=recording, nwbfile=nwbfile, metadata=metadata)
     _add_electrodes_to_nwbfile(
-        recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        null_values_for_properties=null_values_for_properties,
+        metadata_key=metadata_key,
     )
 
 

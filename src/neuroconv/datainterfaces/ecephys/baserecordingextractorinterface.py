@@ -122,12 +122,30 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 type="object",
                 additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectricalSeriesEntry"},
             ),
-            # The electrode table's column descriptions are still a list in both formats.
+            # The column descriptions annotating a table derived from the recording. Superseded by
+            # ``ElectrodesTable`` below, which states the table instead, and kept until that block goes.
             Electrodes=dict(
                 type="array",
                 minItems=0,
                 renderForm=False,
                 items={"$ref": "#/properties/Ecephys/definitions/Electrodes"},
+            ),
+            # The table stated outright: ``rows`` is one entry per electrode, ``columns`` describes them.
+            # It does not render as a form, since a row per contact is 384 of them for a Neuropixels probe.
+            ElectrodesTable=dict(
+                type="object",
+                renderForm=False,
+                additionalProperties=False,
+                properties=dict(
+                    rows=dict(
+                        type="object",
+                        additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeEntry"},
+                    ),
+                    columns=dict(
+                        type="object",
+                        additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeColumnEntry"},
+                    ),
+                ),
             ),
         )
         metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
@@ -150,6 +168,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 properties=dict(
                     name=dict(type="string", pattern="^[^/]*$"),
                     description=dict(type="string"),
+                    channel_to_electrode=dict(
+                        type="object",
+                        additionalProperties=dict(type="string"),
+                        description=(
+                            "Maps each channel id of this recording to the key of the electrode it is "
+                            "recorded by in metadata['Ecephys']['Electrodes']."
+                        ),
+                    ),
                 ),
             ),
             Electrodes=dict(
@@ -159,6 +185,38 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 properties=dict(
                     name=dict(type="string", description="name of this electrodes column"),
                     description=dict(type="string", description="description of this electrodes column"),
+                ),
+            ),
+            # An entry is a row of the electrodes table, so it may carry any column the table holds and
+            # stays permissive. What is pinned is the group link, which is the one field the writer
+            # requires of every row.
+            ElectrodeEntry=dict(
+                type="object",
+                additionalProperties=True,
+                required=["electrode_group_metadata_key"],
+                properties=dict(
+                    electrode_group_metadata_key=dict(
+                        type="string",
+                        description="Key of this electrode's group in metadata['Ecephys']['ElectrodeGroups'].",
+                    ),
+                    electrode_name=dict(
+                        type="string",
+                        description="This electrode's identity within its group, written to the table.",
+                    ),
+                ),
+            ),
+            ElectrodeColumnEntry=dict(
+                type="object",
+                additionalProperties=False,
+                properties=dict(
+                    column_name=dict(type="string", description="The header this column is written under."),
+                    description=dict(type="string", description="description of this electrodes column"),
+                    dtype=dict(type="string", description="The dtype the column's values are written as."),
+                    column_categories=dict(
+                        type="object",
+                        properties=dict(labels=dict(type="object"), meanings=dict(type="object")),
+                        description="Display label and meaning per raw value, written as a MeaningsTable.",
+                    ),
                 ),
             ),
         )
@@ -244,6 +302,80 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             metadata["Ecephys"][self.es_key] = dict(
                 name=self.es_key, description=f"Acquisition traces for the {self.es_key}."
             )
+
+        return metadata
+
+    def get_metadata_template(self) -> DeepDict:
+        """Return the electrodes table this interface writes, stated row by row.
+
+        The counterpart to :meth:`get_metadata`, which reports only what the source recorded and leaves
+        the electrodes table to be derived from the recording at write time. This states that table
+        outright, as ``metadata["Ecephys"]["ElectrodesTable"]``: ``rows`` holds one entry per electrode,
+        each carrying its column values and pointing at its group, ``columns`` describes those columns,
+        and the channel-to-electrode mapping sits on the series entry. Edit what you care about and pass
+        the result to ``add_to_nwbfile`` or ``run_conversion``.
+
+        The registry replaces the recording as the source of the table, so a column value is changed by
+        editing the row rather than by calling ``set_property`` on the extractor, and a channel is moved
+        to another group by editing its ``electrode_group_metadata_key`` rather than by regrouping the
+        recording. What the recording still supplies is ``channel_name``, which is the acquisition
+        system's own label and has no metadata to be restated from.
+
+        The electrode keys are derived from the physical identity of each contact, ``(group, contact)``
+        where the recording carries contact identifiers and ``(group, channel)`` otherwise, so two
+        interfaces over the same contacts (the AP and LF bands of one probe) independently produce the
+        same keys and their rows merge rather than doubling. Rename the keys to suit the recording; they
+        are handles, not names in the file, but renaming one on only one side of such a pair splits the
+        rows back apart.
+        """
+        from ...tools.spikeinterface._electrodes import _build_electrodes_metadata
+        from ...tools.spikeinterface.spikeinterface import (
+            _get_ecephys_metadata_placeholders,
+            _get_group_name,
+        )
+
+        metadata = self.get_metadata()
+        recording = self.recording_extractor
+
+        # One group per channel group the recording reports, keyed by its own name so that two
+        # interfaces over one probe file their groups under the same key and the rows they point at
+        # resolve to one group rather than two.
+        group_template = _get_ecephys_metadata_placeholders()["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]
+        group_names = list(dict.fromkeys(_get_group_name(recording=recording).tolist()))
+        # No ``device_metadata_key``: the writer already resolves a group naming no device to the
+        # attached probe's identity, and a template that guessed one would state hardware in the file
+        # that nobody confirmed.
+        metadata["Ecephys"]["ElectrodeGroups"] = {
+            group_name: {
+                "name": group_name,
+                "description": group_template["description"],
+                "location": group_template["location"],
+            }
+            for group_name in group_names
+        }
+
+        # What this interface already says about its columns, which it emits as the column-description
+        # list under the older ``Electrodes`` key. Carried over so that stating the table does not lose a
+        # description the interface was supplying; SpikeGLX describes five of its columns this way.
+        column_descriptions = metadata["Ecephys"].get("Electrodes")
+        property_descriptions = (
+            {entry["name"]: entry["description"] for entry in column_descriptions if "description" in entry}
+            if isinstance(column_descriptions, list)
+            else {}
+        )
+
+        electrodes_metadata = _build_electrodes_metadata(
+            recording=recording,
+            group_metadata_key_by_name={group_name: group_name for group_name in group_names},
+            property_descriptions=property_descriptions,
+        )
+        metadata["Ecephys"]["ElectrodesTable"] = electrodes_metadata["ElectrodesTable"]
+        metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["channel_to_electrode"] = electrodes_metadata[
+            "channel_to_electrode"
+        ]
+        # The column-description list said the same thing in the weaker form and its descriptions have
+        # been carried across, so leaving it would describe the table twice.
+        metadata["Ecephys"].pop("Electrodes", None)
 
         return metadata
 
