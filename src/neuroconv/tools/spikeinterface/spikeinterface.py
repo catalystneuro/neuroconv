@@ -2659,6 +2659,18 @@ def _add_units_table_to_nwbfile(
         nwbfile, pynwb.NWBFile
     ), f"'nwbfile' should be of type pynwb.NWBFile but is of type {type(nwbfile)}"
 
+    # A sorting holding no unit at all has nothing to put in a units table. A unit that holds no spike in
+    # this session is a different thing and is written, since the unit itself is the result being recorded.
+    # See https://github.com/catalystneuro/neuroconv/issues/422.
+    if sorting.get_num_units() == 0:
+        raise ValueError(
+            f"{type(sorting).__name__} contains no units, so a units table built from it would have no "
+            "rows. This is usually a source file that carries no spike events, or a file whose data is "
+            "not where the format expected it. Writing it would produce an NWB file whose only spike "
+            "content is an empty units table, indistinguishable from a successful conversion, and NWB "
+            "Inspector reports such a table as a best practice violation."
+        )
+
     if unit_electrode_indices is not None:
         electrodes_table = nwbfile.electrodes
         if electrodes_table is None:
