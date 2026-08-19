@@ -19,6 +19,7 @@
 
 * Reduced non-actionable CI warnings in test fixtures and NWB writing helpers.
 * The EDF recording test now excludes the current, temperature and unitless channels of `edf+C.edf` instead of writing them into an `ElectricalSeries` as volts, the CI caches the Plexon reader DLL Neo downloads on first use, and pymatreader's report of MATLAB class objects it can only import approximately is filtered, since nothing in a conversion can change what a CellExplorer file holds. [PR #1958](https://github.com/catalystneuro/neuroconv/pull/1958)
+* A failed Wine install no longer fails the whole CI job. Wine is there for the Plexon2 tests alone, and the Ubuntu mirrors the runners point at go down often enough that one outage was costing an unrelated pull request its entire run. The install now reports and carries on, and the Plexon2 tests check for the `wine` binary and skip themselves when it is absent. [PR #1958](https://github.com/catalystneuro/neuroconv/pull/1958)
 
 # v0.10.0 (August 18, 2026)
 
