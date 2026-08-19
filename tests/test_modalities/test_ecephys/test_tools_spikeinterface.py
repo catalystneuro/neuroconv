@@ -3575,24 +3575,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
-@pytest.mark.parametrize(
-    "backend",
-    [
-        "hdf5",
-        pytest.param(
-            "zarr",
-            marks=pytest.mark.xfail(
-                raises=AttributeError,
-                strict=True,
-                reason="Appending to a Zarr file holding a DynamicTable fails in "
-                "`_is_dataset_written_to_file`: a `VectorData` column read back from Zarr carries a "
-                "`ConsolidatedMetadataStore`, and the check reads `zarr.Array.store.path`, which that "
-                "store does not have. A `TimeSeries` read from the same file carries a `DirectoryStore` "
-                "and passes, which is why the interface-level append tests do not see this.",
-            ),
-        ),
-    ],
-)
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_write_recording_to_nwbfile_append_on_disk(tmp_path, backend):
     """The append branch reads the backend off the file, so it is reached without naming one."""
     from pynwb import read_nwb
