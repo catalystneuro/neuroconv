@@ -48,13 +48,13 @@ tracker could not know.
 How to Annotate a Pose Estimation Session
 -----------------------------------------
 
-The baseline setup: one camera above the arena, one animal, one tracker run. Everything the other setups
+The baseline setup: one camera above the arena, one subject, one tracker run. Everything the other setups
 do is a variation on this one, so it is worked in full.
 
 **Name the objects.** Every object the conversion writes gets a name, and the writer falls back to
 generic ones: ``PoseEstimation``, ``SkeletonPoseEstimation``, ``PoseEstimationSeriesHead``. Those names
 are what someone browsing your file sees first, and in a session holding several recordings they are the
-only thing telling one apart from another, so a name that says which camera or which animal this is
+only thing telling one apart from another, so a name that says which camera or which subject this is
 saves a reader from opening every container to find out. Names are set through the registries under the
 top-level ``metadata["Pose"]``, addressed by the interface's ``metadata_key``.
 
@@ -103,16 +103,18 @@ keypoints it read, so this is the one field you usually leave alone; the order m
 the edges index into, and reordering it silently changes what they mean.
 
 ``edges`` say which body parts are joined, and they are what a skeleton is really for, since the nodes
-repeat what the series already say. Connectivity is a fact about the animal rather than about the
-recording, and the file records it nowhere else. A reader who has it can compute a limb length or a joint
-angle, which are only meaningful along a segment the body actually has, and can draw the animal rather
-than a cloud of points; a reader without it has to guess your anatomy or ask you. Most trackers already
+repeat what the series already say. Which parts you join is a modelling decision rather than an
+anatomical fact: it records what whoever built the project decided was worth relating, and two labs
+tracking the same animal can draw different skeletons. The file records that decision nowhere else. A
+reader who has it can compute a limb length or a joint angle, which are only meaningful along a segment
+you declared, and can draw the subject rather than a cloud of points; a reader without it has to guess
+your intent or ask you. Most trackers already
 know the edges, since connectivity is drawn when the project is set up rather than estimated per frame,
 and a bottom-up multi-animal model uses it to group keypoints into individuals. Lightning Pose is the
 exception, predicting each keypoint independently and recording no connectivity at all.
 
 ``subject`` names the individual within the source. The skeleton is linked to the file's ``Subject`` when
-the two ids match, which is what ties a body plan to an animal for anyone reading the file. A file without
+the two ids match, which is what ties a body plan to a subject for anyone reading the file. A file without
 a ``Subject``, or one whose id differs, gets a skeleton linked to nothing, which is how you say these
 keypoints belong to somebody other than the file's subject.
 
@@ -167,10 +169,10 @@ that reads the file.
        devices
        └── TopCamera
 
-How to Annotate Several Camera Views of One Animal
----------------------------------------------------
+How to Annotate Several Camera Views of One Subject
+----------------------------------------------------
 
-Two cameras filming the same mouse, each tracked separately. One animal means one file, and each view is
+Two cameras filming the same mouse, each tracked separately. One subject means one file, and each view is
 its own ``PoseEstimation`` with its own camera. Use a converter so both interfaces write into the same
 file, and give each a distinct registry key.
 
@@ -199,12 +201,12 @@ the node lists genuinely differ and each view wants its own skeleton.
 Two containers pointing at one ``skeleton_metadata_key`` produce one ``Skeleton`` in the file, which both
 link to.
 
-How to Annotate Several Animals in One Recording
--------------------------------------------------
+How to Annotate Several Subjects in One Recording
+--------------------------------------------------
 
 Two mice in the same arena, tracked as two identities by SLEAP or as two individuals by DeepLabCut. An
 NWB file has a single root-level ``Subject`` and ``ndx-pose`` is built on that, so in most cases you
-want **one file per animal**: each interface reads one individual, each file gets its own ``Subject``,
+want **one file per subject**: each interface reads one individual, each file gets its own ``Subject``,
 and nothing extra has to be said in the pose metadata.
 
 .. code-block:: python
@@ -222,15 +224,15 @@ individuals in a multi-animal DeepLabCut project. Neither is a name you chose: `
 are the tracker's labels for a trajectory, so map them to your own ``subject_id`` as above.
 
 An NWB file's ``Subject`` carries ``sex``, ``genotype``, ``strain`` and ``age``, and in a social
-recording those usually differ between the animals and are often the experiment itself, a mutant male
-with a wild-type female. One file per animal is what lets each of them carry its own.
+recording those usually differ between the subjects and are often the experiment itself, a mutant male
+with a wild-type female. One file per subject is what lets each of them carry its own.
 
-If you would rather keep both animals in one file, because the video, the trials and often the
+If you would rather keep both subjects in one file, because the video, the trials and often the
 electrophysiology are shared and separate files duplicate all of it, the skeleton's ``subject`` field is
-what lets you: only one animal can be the file's ``Subject``, and ``subject`` is where the others say who
-they are. Each animal brings its own interface and ``metadata_key``, its own container and skeleton
+what lets you: only one of them can be the file's ``Subject``, and ``subject`` is where the others say who
+they are. Each subject brings its own interface and ``metadata_key``, its own container and skeleton
 names, and its own ``subject``. Whether they also bring their own camera is the one thing that varies
-with the setup: two animals filmed by one overhead camera share a device, two filmed separately do not.
+with the setup: two subjects filmed by one overhead camera share a device, two filmed separately do not.
 
 .. code-block:: python
 
@@ -247,5 +249,5 @@ with the setup: two animals filmed by one overhead camera share a device, two fi
         skeleton["subject"] = subject_id
 
 ``mouse_001`` matches the file's ``Subject`` and its skeleton is linked to it. ``mouse_002`` does not, so
-its skeleton is written unlinked rather than pointed at the wrong animal. That is what you are trading:
-the second animal is identified by the names you chose and by ``subject``, not by anything NWB models.
+its skeleton is written unlinked rather than pointed at the wrong subject. That is what you are trading:
+the second subject is identified by the names you chose and by ``subject``, not by anything NWB models.

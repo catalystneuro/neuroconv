@@ -113,12 +113,22 @@ Fiber Photometry
 Pose estimation
 ---------------
 
+Keypoint estimation
+~~~~~~~~~~~~~~~~~~~
+
 .. toctree::
     :maxdepth: 1
 
     DeepLabCut <behavior/deeplabcut>
     LightningPose <behavior/lightningpose>
     SLEAP <behavior/sleap>
+
+Behavioral segmentation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
     VAME <behavior/vame>
 
 Behavior
