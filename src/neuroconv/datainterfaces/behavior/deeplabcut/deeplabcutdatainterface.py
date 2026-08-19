@@ -7,6 +7,7 @@ from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ....tools.pose_estimation import _add_pose_estimation_to_nwbfile
 from ....utils import DeepDict
 
 
@@ -633,14 +634,12 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         """
-        from ._dlc_utils import (
-            _add_pose_estimation_to_nwbfile,
-            _ensure_individuals_in_header,
-        )
+        from ._dlc_utils import _ensure_individuals_in_header
 
         # Dispatch on the shape of the user-supplied metadata: the dict-based format has the pose
-        # modality at the top-level metadata["Pose"]; anything else (including no metadata) uses the
-        # legacy path. The defaults are fetched in the matching shape, then user metadata is merged on.
+        # modality at the top-level metadata["Pose"]; anything else (including no metadata) is read in
+        # the legacy shape. The defaults are fetched in the matching shape, then user metadata is merged
+        # on, and the legacy shape is converted so there is a single write path.
         use_new_metadata_format = metadata is not None and "Pose" in metadata
 
         # Get default metadata
@@ -679,12 +678,43 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         df_animal = df.xs(self.subject_name, level="individuals", axis=1)
 
         default_key = "deep_lab_cut_metadata_key" if use_new_metadata_format else "PoseEstimationDeepLabCut"
+        metadata_key = self.metadata_key or default_key
+        if not use_new_metadata_format:
+            default_metadata = self._translate_legacy_metadata(metadata=default_metadata, metadata_key=metadata_key)
+
+        keypoint_data = {}
+        for keypoint in df_animal.columns.get_level_values("bodyparts").unique():
+            data = df_animal.xs(keypoint, level="bodyparts", axis=1).to_numpy()
+            keypoint_data[keypoint] = (data[:, :2], data[:, 2])
+
         _add_pose_estimation_to_nwbfile(
             nwbfile=nwbfile,
-            df_animal=df_animal,
+            keypoint_data=keypoint_data,
             timestamps=timestamps,
-            exclude_nans=False,
             metadata=default_metadata,
-            metadata_key=self.metadata_key or default_key,
-            use_new_metadata_format=use_new_metadata_format,
+            metadata_key=metadata_key,
         )
+
+    # TODO: remove with the legacy metadata["PoseEstimation"] block.
+    def _translate_legacy_metadata(self, metadata: dict, metadata_key: str) -> DeepDict:
+        """Convert the legacy ``metadata["PoseEstimation"]`` block into the dict-based shape.
+
+        A re-nesting rather than a rewrite: the legacy block already keys its containers, skeletons and
+        devices and carries every field, but names its cross-references by object name where the
+        dict-based shape names them by registry key.
+        """
+        legacy_metadata = metadata["PoseEstimation"]
+        container_entry = dict(legacy_metadata["PoseEstimationContainers"][metadata_key])
+        skeleton_name = container_entry.pop("skeleton", None)
+        device_names = container_entry.pop("devices", None)
+
+        translated = DeepDict({key: value for key, value in metadata.items() if key != "PoseEstimation"})
+        if skeleton_name is not None:
+            container_entry["skeleton_metadata_key"] = metadata_key
+            translated["Pose"]["Skeletons"][metadata_key] = legacy_metadata["Skeletons"][skeleton_name]
+        if device_names:
+            container_entry["device_metadata_key"] = metadata_key
+            translated["Devices"][metadata_key] = legacy_metadata["Devices"][device_names[0]]
+        translated["Pose"]["PoseEstimations"][metadata_key] = container_entry
+
+        return translated

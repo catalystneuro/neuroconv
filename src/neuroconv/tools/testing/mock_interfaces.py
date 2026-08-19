@@ -5,7 +5,6 @@ from typing import Literal
 import numpy as np
 from pynwb import NWBFile
 from pynwb.base import DynamicTable
-from pynwb.device import Device
 
 from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
@@ -36,7 +35,6 @@ from ...tools.events import (
     _validate_detection_configuration,
 )
 from ...tools.icephys import _RESPONSE_CLASS, _add_intracellular_electrode_to_nwbfile
-from ...tools.nwb_helpers import get_module
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
@@ -540,13 +538,20 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
             bit: entry[1] if isinstance(entry, tuple) else entry for bit, entry in entries.items()
         }
         self._digital_line_names = {bit: entry[0] for bit, entry in entries.items() if isinstance(entry, tuple)}
-        unknown_kinds = set(self._digital_line_waveforms.values()) - {"pulses", "idle", "unclosed_pulses"}
+        unknown_kinds = set(self._digital_line_waveforms.values()) - {
+            "pulses",
+            "idle",
+            "unclosed_pulses",
+        }
         if unknown_kinds:
             raise ValueError(
                 f"Unknown waveform kind(s) {sorted(unknown_kinds)}; valid kinds are pulses, idle, " "unclosed_pulses."
             )
         self._analog_waveforms = dict(analog_waveforms or {})
-        unknown_kinds = set(self._analog_waveforms.values()) - {"levels", "noisy_two_level"}
+        unknown_kinds = set(self._analog_waveforms.values()) - {
+            "levels",
+            "noisy_two_level",
+        }
         if unknown_kinds:
             raise ValueError(
                 f"Unknown analog waveform kind(s) {sorted(unknown_kinds)}; valid kinds are levels, " "noisy_two_level."
@@ -565,7 +570,10 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # settles both from its file's structure: SpikeGLX declares the inventory as niXDChans1, and the
         # keys of digital_line_waveforms stand in for that declaration here.
         self._available_signals = {
-            self.SIGNAL_SOURCE_ID: {"kind": "word", "bits": sorted(self._digital_line_waveforms)}
+            self.SIGNAL_SOURCE_ID: {
+                "kind": "word",
+                "bits": sorted(self._digital_line_waveforms),
+            }
         }
         self._available_signals.update({name: {"kind": "analog"} for name in self._analog_waveforms})
         if detection_configuration is None:
@@ -794,7 +802,10 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         return source_schema
 
     def __init__(
-        self, signal_duration: float = 7.0, ttl_times: list[list[float]] | None = None, ttl_duration: float = 1.0
+        self,
+        signal_duration: float = 7.0,
+        ttl_times: list[list[float]] | None = None,
+        ttl_duration: float = 1.0,
     ):
         """
         Define a mock SpikeGLXNIDQInterface by overriding the recording extractor to be a mock TTL signal.
@@ -838,14 +849,20 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
             )
 
         self.recording_extractor = NumpyRecording(
-            traces_list=traces, sampling_frequency=sampling_frequency, channel_ids=channel_ids
+            traces_list=traces,
+            sampling_frequency=sampling_frequency,
+            channel_ids=channel_ids,
         )
         # NIDQ channel gains
         self.recording_extractor.set_channel_gains(gains=[61.03515625] * self.recording_extractor.get_num_channels())
         self.recording_extractor.set_property(key="group_name", values=channel_groups)
 
         # Minimal meta so `get_metadata` works similarly to real NIDQ header
-        self.meta = {"acqMnMaXaDw": "0,0,8,1", "fileCreateTime": "2020-11-03T10:35:10", "niDev1ProductName": "PCI-6259"}
+        self.meta = {
+            "acqMnMaXaDw": "0,0,8,1",
+            "fileCreateTime": "2020-11-03T10:35:10",
+            "niDev1ProductName": "PCI-6259",
+        }
         self.verbose = None
         self.metadata_key = "spikeglx_nidq"
         self._analog_channel_groups = {
@@ -1535,86 +1552,23 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
         """Add mock pose estimation data to NWBFile using ndx-pose, reading names from metadata."""
-        from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
+        from ..pose_estimation import _add_pose_estimation_to_nwbfile
 
         if metadata is None:
             metadata = self.get_metadata()
 
-        pose_metadata = metadata["Pose"]
-        container_entry = pose_metadata["PoseEstimations"][self.metadata_key]
+        keypoint_data = {
+            node_name: (self.pose_data[:, index, :], np.ones(self.num_samples))
+            for index, node_name in enumerate(self.nodes)
+        }
 
-        behavior_module = get_module(nwbfile, "behavior")
-
-        # Lazy device creation: only write a device when the container references one. ndx-pose
-        # makes ``devices`` optional, so an absent ``device_metadata_key`` means "no device", not a
-        # fabricated placeholder. Reuse an existing Device with the same name when present, which
-        # lets multiple interfaces share a device by pointing at the same ``device_metadata_key``.
-        device = None
-        device_metadata_key = container_entry.get("device_metadata_key")
-        if device_metadata_key is not None:
-            device_entry = metadata["Devices"][device_metadata_key]
-            device_name = device_entry["name"]
-            if device_name in nwbfile.devices:
-                device = nwbfile.devices[device_name]
-            else:
-                device = Device(name=device_name, description=device_entry.get("description", ""))
-                nwbfile.add_device(device)
-
-        # Lazy skeleton creation: only write a skeleton when the container references one. Reuse an
-        # existing Skeleton with the same name when present.
-        skeleton = None
-        skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
-        if skeleton_metadata_key is not None:
-            skeleton_entry = pose_metadata["Skeletons"][skeleton_metadata_key]
-            skeleton_name = skeleton_entry["name"]
-            existing_skeletons = (
-                behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}
-            )
-            if skeleton_name in existing_skeletons:
-                skeleton = existing_skeletons[skeleton_name]
-            else:
-                skeleton = Skeleton(name=skeleton_name, nodes=skeleton_entry["nodes"], edges=self.edges)
-
-        pose_estimation_series_metadata = container_entry["PoseEstimationSeries"]
-        pose_estimation_series = []
-        for index, node_name in enumerate(self.nodes):
-            series_metadata = pose_estimation_series_metadata[node_name]
-            series = PoseEstimationSeries(
-                name=series_metadata["name"],
-                description=series_metadata["description"],
-                data=self.pose_data[:, index, :],
-                unit=series_metadata["unit"],
-                reference_frame=series_metadata["reference_frame"],
-                timestamps=self.get_timestamps(),
-                confidence=np.ones(self.num_samples),
-                confidence_definition=series_metadata["confidence_definition"],
-            )
-            pose_estimation_series.append(series)
-
-        pose_estimation = PoseEstimation(
-            name=container_entry["name"],
-            description=container_entry["description"],
-            pose_estimation_series=pose_estimation_series,
-            skeleton=skeleton,
-            devices=[device] if device is not None else None,
-            scorer=container_entry["scorer"],
-            source_software=container_entry["source_software"],
-            dimensions=(
-                np.array(container_entry["dimensions"], dtype="uint16")
-                if container_entry.get("dimensions") is not None
-                else None
-            ),
-            original_videos=container_entry.get("original_videos"),
-            labeled_videos=container_entry.get("labeled_videos"),
+        _add_pose_estimation_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=self.metadata_key,
+            keypoint_data=keypoint_data,
+            timestamps=self.get_timestamps(),
         )
-
-        behavior_module.add(pose_estimation)
-        if skeleton is not None:
-            if "Skeletons" not in behavior_module.data_interfaces:
-                skeletons = Skeletons(skeletons=[skeleton])
-                behavior_module.add(skeletons)
-            elif skeleton.name not in behavior_module["Skeletons"].skeletons:
-                behavior_module["Skeletons"].add_skeletons(skeleton)
 
 
 class MockIcephysInterface(BaseDataInterface):
@@ -1719,7 +1673,10 @@ class MockIcephysInterface(BaseDataInterface):
         # (a single key with a single name), the way several real interfaces recorded on one amplifier do.
         device_metadata_key = "mock_amplifier"
         metadata["Devices"] = {
-            device_metadata_key: {"name": "MockAmplifier", "description": "Mock patch-clamp amplifier."}
+            device_metadata_key: {
+                "name": "MockAmplifier",
+                "description": "Mock patch-clamp amplifier.",
+            }
         }
         metadata["Icephys"]["IntracellularElectrodes"] = {
             self.metadata_key: {
