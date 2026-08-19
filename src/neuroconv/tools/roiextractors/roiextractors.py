@@ -620,6 +620,21 @@ def _add_plane_segmentation_to_nwbfile(
     return nwbfile
 
 
+def _trace_is_all_zero(trace, iterator_options: dict) -> bool:
+    """Check whether a trace holds nothing but zeros without materializing all of it.
+
+    The trace is read through the same ``SliceableDataChunkIterator`` the writer uses, so a buffer is the
+    unit that reaches memory here and the peak is never worse than the peak of writing the trace. The scan
+    returns on the first buffer that holds anything, so a trace with data costs one buffer instead of a
+    full read.
+    """
+    for buffer in SliceableDataChunkIterator(trace, **iterator_options):
+        if np.any(buffer.data):
+            return False
+
+    return True
+
+
 def _add_roi_response_traces_to_nwbfile(
     *,
     segmentation_extractor: SegmentationExtractor,
@@ -695,6 +710,30 @@ def _add_roi_response_traces_to_nwbfile(
                 )
     else:
         roi_responses_metadata = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
+
+    # An all-zero trace is a valid output of a segmentation pipeline -suite2p writes one for `spks` when
+    # nothing was deconvolved- but it carries no information, so it is not written. A trace the caller named
+    # is written whatever it holds, as discarding something stated by hand is worse than an empty series.
+    caller_named_traces = set(roi_responses_metadata) if user_provided_roi_responses_metadata else set()
+    all_zero_traces = [
+        trace_name
+        for trace_name, trace in traces_to_add.items()
+        if trace_name not in caller_named_traces and _trace_is_all_zero(trace=trace, iterator_options=iterator_options)
+    ]
+    if all_zero_traces:
+        warnings.warn(
+            f"These traces hold only zeros and are not written: {sorted(all_zero_traces)}. "
+            f"Name them in metadata['Ophys']['RoiResponses'] to write them anyway.",
+            UserWarning,
+            stacklevel=2,
+        )
+        traces_to_add = {
+            trace_name: trace for trace_name, trace in traces_to_add.items() if trace_name not in all_zero_traces
+        }
+
+    # Nothing left to write, so the Fluorescence container is not created either.
+    if not traces_to_add:
+        return nwbfile
 
     # Resolve PlaneSegmentation via the same metadata_key, defaulting its name the same way the
     # segmentation writer does.
