@@ -1522,7 +1522,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
     def _pascal_case(node_name: str) -> str:
         return "".join(word.capitalize() for word in node_name.replace("_", " ").split())
 
-    def get_keypoint_names(self) -> list[str]:
+    def _get_keypoint_names(self) -> list[str]:
         return self.nodes
 
     def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:

@@ -281,7 +281,7 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
 
         return metadata
 
-    def get_keypoint_names(self) -> list[str]:
+    def _get_keypoint_names(self) -> list[str]:
         return self.keypoint_names
 
     def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:

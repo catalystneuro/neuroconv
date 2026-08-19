@@ -22,7 +22,6 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
     _timestamps = None
     _source_metadata = None
     _animal_dataframe = None
-    source_software = "DeepLabCut"
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -522,7 +521,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         )
         return self._source_metadata
 
-    def get_keypoint_names(self) -> list[str]:
+    def _get_keypoint_names(self) -> list[str]:
         return self._get_source_metadata()["bodyparts"]
 
     def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:

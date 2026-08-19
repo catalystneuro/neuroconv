@@ -16,7 +16,7 @@ class BasePoseEstimationInterface(BaseTemporalAlignmentInterface):
     keywords = ("behavior", "pose estimation")
 
     @abstractmethod
-    def get_keypoint_names(self) -> list[str]:
+    def _get_keypoint_names(self) -> list[str]:
         """Return the keypoint names, in the order their series are written."""
         raise NotImplementedError
 
@@ -46,7 +46,7 @@ class BasePoseEstimationInterface(BaseTemporalAlignmentInterface):
         """
         metadata = self._get_base_metadata()
         metadata_key = self.metadata_key
-        keypoint_names = self.get_keypoint_names()
+        keypoint_names = self._get_keypoint_names()
 
         container_name = "PoseEstimation"
         metadata["Pose"]["Skeletons"] = {
