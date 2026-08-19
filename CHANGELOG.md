@@ -1,6 +1,7 @@
 # v0.10.1 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* `DeepLabCutInterface`, `LightningPoseDataInterface` and `MockPoseEstimationInterface` now share one writer for the dict-based metadata shape, so descriptions, `unit`, `reference_frame` and `confidence_definition` are written only where the metadata supplies them and fall back to `ndx-pose`'s defaults otherwise. [PR #1950](https://github.com/catalystneuro/neuroconv/pull/1950)
 
 ## Bug Fixes
 

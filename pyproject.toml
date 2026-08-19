@@ -518,6 +518,11 @@ extend-exclude = '''
 
 
 [tool.ruff]
+# Kept equivalent to [tool.black] above, so that running ruff directly does not rewrap what black
+# formatted. Ruff's default line length is 88, and its default exclusions already cover the ones black
+# lists, so the width is the only setting that has to be restated.
+line-length = 120
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [
