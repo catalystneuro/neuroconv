@@ -76,8 +76,7 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         expected_devices = {
             "axon_device": dict(
                 name="Axon Instruments",
-                description="Axon Instruments data acquisition system (pCLAMP/AxoScope)",
-                manufacturer="Molecular Devices",
+                description="Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)",
             )
         }
         # The series keeps the name and description the old format gives it.
@@ -104,8 +103,10 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert len(devices) >= 1
         axon_device = devices[0]
         assert axon_device["name"] == "Axon Instruments"
-        assert axon_device["description"] == "Axon Instruments data acquisition system (pCLAMP/AxoScope)"
-        assert axon_device["manufacturer"] == "Molecular Devices"
+        assert (
+            axon_device["description"]
+            == "Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)"
+        )
 
         # Check electrode groups have device assigned
         electrode_groups = metadata["Ecephys"]["ElectrodeGroup"]
@@ -127,8 +128,13 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "axona_recording"
         expected_devices = {
-            "axona_device": dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
+            "axona_device": dict(
+                name="Axona",
+                description="Axona DacqUSB, sw_version=1.2.2.16",
+                device_model_metadata_key="axona_dacqusb_model",
+            )
         }
+        expected_device_models = {"axona_dacqusb_model": dict(name="DacqUSB", manufacturer="Axona")}
         # One group per tetrode, each linked to the single Axona device.
         expected_electrode_groups = {
             group_name: dict(name=group_name, device_metadata_key="axona_device") for group_name in ("1", "2", "3", "4")
@@ -136,14 +142,13 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Old list-based format: the Axona device lives in the Ecephys.Device list and every electrode
         # group points at it by name.
-        assert metadata["Ecephys"]["Device"] == [
-            dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
-        ]
+        assert metadata["Ecephys"]["Device"] == [dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16")]
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Axona"
 
@@ -433,7 +438,7 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
         # Old list-based format: the Intan device lives in the Ecephys.Device list and every
         # electrode group points at it by name.
         devices = metadata["Ecephys"]["Device"]
-        assert dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan") in devices
+        assert dict(name="Intan", description="RHS Stim/Recording System") in devices
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Intan"
 
@@ -484,7 +489,7 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         # Old list-based format: the Intan device lives in the Ecephys.Device list and every
         # electrode group points at it by name.
         devices = metadata["Ecephys"]["Device"]
-        assert dict(name="Intan", description="RHD Recording System", manufacturer="Intan") in devices
+        assert dict(name="Intan", description="RHD Recording System") in devices
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Intan"
 
@@ -577,12 +582,14 @@ class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
             "maxone_device": dict(
                 name="MaxOne",
                 description="Recorded using Maxwell version '20190530'.",
-                manufacturer="MaxWell Biosystems",
+                device_model_metadata_key="maxone_model",
             )
         }
+        expected_device_models = {"maxone_model": dict(name="MaxOne", manufacturer="MaxWell Biosystems")}
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert all(
             electrode_group["device_metadata_key"] == "maxone_device"
             for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()

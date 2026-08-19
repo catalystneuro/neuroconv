@@ -125,7 +125,6 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
                 dict(
                     name="Axona",
                     description=description,
-                    manufacturer="Axona",
                 ),
             ],
             ElectrodeGroup=[
@@ -154,12 +153,14 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
             # .set header carries, so the device is registered once at the top level and every tetrode
             # group links to it through ``device_metadata_key``.
             device_metadata_key = "axona_device"
+            device_model_metadata_key = "axona_dacqusb_model"
             sw_version = self.metadata_in_set_file["sw_version"]
+            metadata["DeviceModels"] = {device_model_metadata_key: dict(name="DacqUSB", manufacturer="Axona")}
             metadata["Devices"] = {
                 device_metadata_key: dict(
                     name="Axona",
                     description=f"Axona DacqUSB, sw_version={sw_version}",
-                    manufacturer="Axona",
+                    device_model_metadata_key=device_model_metadata_key,
                 )
             }
 
