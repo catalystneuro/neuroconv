@@ -10,6 +10,9 @@ from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
+from ...datainterfaces.behavior.baseposeestimationinterface import (
+    BasePoseEstimationInterface,
+)
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
@@ -1346,7 +1349,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         return metadata
 
 
-class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
+class MockPoseEstimationInterface(BasePoseEstimationInterface):
     """
     A mock pose estimation interface for testing purposes.
     """
@@ -1493,75 +1496,40 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self._timestamps = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the mock pose estimation interface in the dict-based shape.
-
-        Returns metadata with top-level ``metadata["Devices"]`` and the top-level pose modality at
-        ``metadata["Pose"]`` holding ``Skeletons`` and ``PoseEstimations`` registries,
-        all keyed by ``self.metadata_key`` and cross-referenced via ``device_metadata_key`` and
-        ``skeleton_metadata_key``.
-        """
+        """Name the objects after this interface's key and add what the mock pretends its source records."""
         metadata = super().get_metadata()
-        session_start_time = datetime.now().astimezone()
-        metadata["NWBFile"]["session_start_time"] = session_start_time
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
 
         container_name = self.metadata_key
-        skeleton_name = f"Skeleton{container_name}"
-        device_name = f"Camera{container_name}"
-
-        pose_estimation_series_entries = {}
-        for node in self.nodes:
-            pascal_case_node = "".join(word.capitalize() for word in node.replace("_", " ").split())
-            pose_estimation_series_entries[node] = {
-                "name": f"PoseEstimationSeries{pascal_case_node}",
-                "description": f"Mock pose estimation series for {node}.",
-                "unit": "pixels",
-                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                "confidence_definition": "Softmax output of the deep neural network.",
-            }
-
-        metadata["Pose"] = {
-            "Skeletons": {
-                self.metadata_key: {
-                    "name": skeleton_name,
-                    "nodes": self.nodes,
-                    "edges": self.edges.tolist(),
-                },
+        metadata["Pose"]["Skeletons"][self.metadata_key].update(
+            name=f"Skeleton{container_name}",
+            edges=self.edges.tolist(),
+        )
+        metadata["Pose"]["PoseEstimations"][self.metadata_key].update(
+            name=container_name,
+            description=f"Mock pose estimation data from {self.source_software}.",
+            source_software=self.source_software,
+            scorer=self.scorer,
+            dimensions=[[640, 480]],
+            original_videos=["mock_video.mp4"],
+            PoseEstimationSeries={
+                node: {"name": f"PoseEstimationSeries{self._pascal_case(node)}"} for node in self.nodes
             },
-            "PoseEstimations": {
-                self.metadata_key: {
-                    "name": container_name,
-                    "description": f"Mock pose estimation data from {self.source_software}.",
-                    "source_software": self.source_software,
-                    "scorer": self.scorer,
-                    "dimensions": [[640, 480]],
-                    "original_videos": ["mock_video.mp4"],
-                    "skeleton_metadata_key": self.metadata_key,
-                    "PoseEstimationSeries": pose_estimation_series_entries,
-                },
-            },
-        }
-
+        )
         return metadata
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
-        """Add mock pose estimation data to NWBFile using ndx-pose, reading names from metadata."""
-        from ..pose_estimation import _add_pose_estimation_to_nwbfile
+    @staticmethod
+    def _pascal_case(node_name: str) -> str:
+        return "".join(word.capitalize() for word in node_name.replace("_", " ").split())
 
-        if metadata is None:
-            metadata = self.get_metadata()
+    def get_keypoint_names(self) -> list[str]:
+        return self.nodes
 
-        keypoint_data = {
+    def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
+        return {
             node_name: (self.pose_data[:, index, :], np.ones(self.num_samples))
             for index, node_name in enumerate(self.nodes)
         }
-
-        _add_pose_estimation_to_nwbfile(
-            nwbfile=nwbfile,
-            metadata=metadata,
-            metadata_key=self.metadata_key,
-            keypoint_data=keypoint_data,
-            timestamps=self.get_timestamps(),
-        )
 
 
 class MockIcephysInterface(BaseDataInterface):
