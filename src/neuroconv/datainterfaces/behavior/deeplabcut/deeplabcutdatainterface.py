@@ -21,6 +21,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
 
     _timestamps = None
     _source_metadata = None
+    _animal_dataframe = None
     source_software = "DeepLabCut"
 
     @classmethod
@@ -525,9 +526,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         return self._get_source_metadata()["bodyparts"]
 
     def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
-        return self._get_keypoint_data_from(df_animal=self._read_animal_dataframe())
-
-    def _get_keypoint_data_from(self, df_animal) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
+        df_animal = self._read_animal_dataframe()
         keypoint_data = {}
         for keypoint in df_animal.columns.get_level_values("bodyparts").unique():
             data = df_animal.xs(keypoint, level="bodyparts", axis=1).to_numpy()
@@ -653,7 +652,10 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         self._timestamps = np.asarray(aligned_timestamps)
 
     def _read_animal_dataframe(self):
-        """Read the output file and select this interface's individual."""
+        """Read the output file and select this interface's individual, once."""
+        if self._animal_dataframe is not None:
+            return self._animal_dataframe
+
         from ._dlc_utils import _ensure_individuals_in_header
 
         file_path = Path(self.source_data["file_path"])
@@ -662,7 +664,8 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         elif ".csv" in file_path.suffixes:
             df = pd.read_csv(file_path, header=[0, 1, 2], index_col=0)
         df = _ensure_individuals_in_header(df, self.subject_name)
-        return df.xs(self.subject_name, level="individuals", axis=1)
+        self._animal_dataframe = df.xs(self.subject_name, level="individuals", axis=1)
+        return self._animal_dataframe
 
     def add_to_nwbfile(
         self,
@@ -686,9 +689,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         use_new_metadata_format = metadata is not None and "Pose" in metadata
 
         resolved_metadata = (
-            DeepDict(metadata)
-            if metadata is not None
-            else DeepDict(self.get_metadata(use_new_metadata_format=use_new_metadata_format))
+            metadata if metadata is not None else self.get_metadata(use_new_metadata_format=use_new_metadata_format)
         )
 
         df_animal = self._read_animal_dataframe()
@@ -716,7 +717,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
 
         _add_pose_estimation_to_nwbfile(
             nwbfile=nwbfile,
-            keypoint_data=self._get_keypoint_data_from(df_animal=df_animal),
+            keypoint_data=self._get_keypoint_data(),
             timestamps=timestamps,
             metadata=resolved_metadata,
             metadata_key=metadata_key,

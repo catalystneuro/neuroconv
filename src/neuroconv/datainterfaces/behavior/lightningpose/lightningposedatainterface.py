@@ -285,15 +285,12 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         return self.keypoint_names
 
     def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
-        return self._get_keypoint_data_from(pose_estimation_data=self.pose_estimation_data)
-
-    def _get_keypoint_data_from(self, pose_estimation_data) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
         # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
         # See https://github.com/hdmf-dev/hdmf/issues/1384
         return {
             keypoint_name: (
-                pose_estimation_data[keypoint_name][["x", "y"]].to_numpy(dtype="float64"),
-                pose_estimation_data[keypoint_name]["likelihood"].to_numpy(dtype="float64"),
+                self.pose_estimation_data[keypoint_name][["x", "y"]].to_numpy(dtype="float64"),
+                self.pose_estimation_data[keypoint_name]["likelihood"].to_numpy(dtype="float64"),
             )
             for keypoint_name in self.keypoint_names
         }
@@ -366,9 +363,9 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         # The caller's metadata is passed on as they wrote it; only an absent one falls back to this
         # interface's own.
         if metadata is None:
-            metadata_copy = DeepDict(self.get_metadata(use_new_metadata_format=True))
+            metadata_copy = self.get_metadata(use_new_metadata_format=True)
         elif use_new_metadata_format:
-            metadata_copy = DeepDict(deepcopy(metadata))
+            metadata_copy = deepcopy(metadata)
         else:
             metadata_copy = self._translate_legacy_metadata(
                 metadata=deepcopy(metadata), defaults=DeepDict(self.get_metadata(use_new_metadata_format=True))
@@ -398,16 +395,12 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
             for series_entry in series_metadata.values():
                 series_entry.update(deprecated_options)
 
-        pose_estimation_data = self.pose_estimation_data if not stub_test else self.pose_estimation_data.head(n=10)
-        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
-        # See https://github.com/hdmf-dev/hdmf/issues/1384
-        keypoint_data = {
-            keypoint_name: (
-                pose_estimation_data[keypoint_name][["x", "y"]].to_numpy(dtype="float64"),
-                pose_estimation_data[keypoint_name]["likelihood"].to_numpy(dtype="float64"),
-            )
-            for keypoint_name in self.keypoint_names
-        }
+        keypoint_data = self._get_keypoint_data()
+        if stub_test:
+            keypoint_data = {
+                keypoint_name: (positions[:10], confidence[:10])
+                for keypoint_name, (positions, confidence) in keypoint_data.items()
+            }
         _add_pose_estimation_to_nwbfile(
             nwbfile=nwbfile,
             keypoint_data=keypoint_data,
