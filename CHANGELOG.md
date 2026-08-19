@@ -1,6 +1,7 @@
 # v0.10.1 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* `DeepLabCutInterface`, `LightningPoseDataInterface` and `MockPoseEstimationInterface` now share one writer, so the container `description`, `unit` and `confidence_definition` are written only where the metadata supplies them and take `ndx-pose`'s defaults otherwise, while the series `description` and `reference_frame` fall back to one generic wording instead of a per-interface one. [PR #1950](https://github.com/catalystneuro/neuroconv/pull/1950)
 
 ## Bug Fixes
 
