@@ -291,9 +291,18 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+# The file holds two electrode channels next to a current, a temperature and an unitless channel, so
+# SpikeInterface warns about the mix while building the recording. The three are excluded below, which
+# is what the warning asks for, but it is emitted before the interface can drop them.
+@pytest.mark.filterwarnings("ignore:Found a mix of voltage and non-voltage units:UserWarning")
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
-    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
+    # ch3 is in pA, ch5 in Celsius and ch4 states no unit, so none of the three belongs in an
+    # ElectricalSeries. Only ch1 and ch2 are electrode channels.
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"),
+        channels_to_skip=["ch3", "ch4", "ch5"],
+    )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):

@@ -15,6 +15,7 @@
 ## Improvements
 
 * Reduced non-actionable CI warnings in test fixtures and NWB writing helpers.
+* The EDF recording test now excludes the current, temperature and unitless channels of `edf+C.edf` instead of writing them into an `ElectricalSeries` as volts, the CI caches the Plexon reader DLL Neo downloads on first use, and pymatreader's report of MATLAB class objects it can only import approximately is filtered, since nothing in a conversion can change what a CellExplorer file holds.
 
 # v0.10.0 (August 18, 2026)
 
