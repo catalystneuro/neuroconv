@@ -11,6 +11,7 @@ This section contains practical guides for using NeuroConv effectively.
 
    set_probe_on_recording_interfaces
    annotate_ecephys_data
+   annotate_ecephys_metadata
    annotate_ophys_metadata
    annotate_events_metadata
    annotate_fiber_photometry_metadata

@@ -14,6 +14,7 @@ The most common contribution is for a user/developer to help us integrate a new 
     Build a Data Interface <build_data_interface>
     Metadata Principles <metadata_principles>
     Ophys Metadata Structure <ophys_metadata_structure>
+    Ecephys Metadata Structure <ecephys_metadata_structure>
     Fiber Photometry Metadata Structure <fiber_photometry_metadata_structure>
     Events Metadata Structure <events_metadata_structure>
     Schemas <schemas>
