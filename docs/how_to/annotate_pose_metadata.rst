@@ -199,6 +199,10 @@ lists the identities in a ``.slp`` and ``track_name`` picks one, and ``subject_n
 individuals in a multi-animal DeepLabCut project. Neither is a name you chose: ``track_0`` and ``ind1``
 are the tracker's labels for a trajectory, so map them to your own ``subject_id`` as above.
 
+An NWB file's ``Subject`` carries ``sex``, ``genotype``, ``strain`` and ``age``, and in a social
+recording those usually differ between the animals and are often the experiment itself, a mutant male
+with a wild-type female. One file per animal is what lets each of them carry its own.
+
 If you would rather keep both animals in one file, because the video, the trials and often the
 electrophysiology are shared and separate files duplicate all of it, the skeleton's ``subject`` field is
 what lets you: only one animal can be the file's ``Subject``, and ``subject`` is where the others say who
