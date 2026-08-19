@@ -178,6 +178,37 @@ def _ensure_individuals_in_header(df, individual_name: str):
     return df
 
 
+def _get_edges_from_config(config_dict: dict, bodyparts: list) -> list:
+    """Return the project config's skeleton as pairs of bodypart indices.
+
+    DeepLabCut states the skeleton in the config as pairs of bodypart *names*, while ``ndx-pose`` wants
+    indices into the node list, so the names are looked up. A pair naming a bodypart this file does not
+    track is skipped rather than guessed at: a project config can outlive the bodyparts of any one run.
+
+    Parameters
+    ----------
+    config_dict : dict
+        The parsed project config. An empty one, which is what an interface built without a config file
+        carries, yields no edges.
+    bodyparts : list
+        The node names, in the order they are written, which is what the indices address.
+
+    Returns
+    -------
+    list
+        Pairs of indices into ``bodyparts``, empty when the config states no skeleton.
+    """
+    skeleton = config_dict.get("skeleton") or []
+    index_of = {bodypart: index for index, bodypart in enumerate(bodyparts)}
+
+    edges = []
+    for edge in skeleton:
+        if len(edge) == 2 and edge[0] in index_of and edge[1] in index_of:
+            edges.append([index_of[edge[0]], index_of[edge[1]]])
+
+    return edges
+
+
 def _get_graph_edges(metadata_file_path: Path):
     """
     Extracts the part affinity field graph from the metadata pickle file.

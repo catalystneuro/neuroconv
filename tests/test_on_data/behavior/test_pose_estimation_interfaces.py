@@ -695,6 +695,43 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
         self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         self.check_read_nwb(nwbfile_path=nwbfile_path)
 
+    def test_edges_come_from_the_project_config(self, setup_interface, tmp_path):
+        """The config states the skeleton as bodypart names, which is the source that is actually there.
+
+        The part affinity field graph the interface falls back to lives in a ``_meta.pickle`` beside the
+        output file that DeepLabCut does not always write, and this repository's own test data has none, so
+        without the config the skeleton is written with nodes and no edges.
+        """
+        import yaml
+
+        config_file_path = Path(self.interface_kwargs["config_file_path"])
+        config_dict = yaml.safe_load(config_file_path.read_text())
+        config_dict["skeleton"] = [["snout", "leftear"], ["leftear", "rightear"]]
+        config_with_skeleton_path = tmp_path / "config.yaml"
+        config_with_skeleton_path.write_text(yaml.safe_dump(config_dict))
+
+        interface = DeepLabCutInterface(
+            file_path=self.interface_kwargs["file_path"],
+            config_file_path=str(config_with_skeleton_path),
+            subject_name=self.interface_kwargs["subject_name"],
+            sampling_frequency=self.interface_kwargs["sampling_frequency"],
+        )
+
+        metadata = interface.get_metadata()
+        skeleton = metadata["Pose"]["Skeletons"]["deep_lab_cut_metadata_key"]
+        assert skeleton["nodes"] == ["snout", "leftear", "rightear", "tailbase"]
+        assert skeleton["edges"] == [[0, 1], [1, 2]]
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        written_skeleton = nwbfile.processing["behavior"]["Skeletons"][skeleton["name"]]
+        assert_array_equal(written_skeleton.edges[:], [[0, 1], [1, 2]])
+
+    def test_a_config_naming_no_skeleton_writes_no_edges(self, setup_interface):
+        """Which is this repository's test data: its config carries ``skeleton: []``."""
+        metadata = self.interface.get_metadata()
+        assert metadata["Pose"]["Skeletons"]["deep_lab_cut_metadata_key"]["edges"] == []
+
     def test_subject_not_linked(self, setup_interface):
         """
         Test that skeleton.subject is None if the subject_id in the metadata doesn't match the nwbfile.
