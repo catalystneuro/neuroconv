@@ -5,7 +5,7 @@ from pydantic import FilePath
 from pynwb import NWBFile
 
 from ..baserecordingtotimeseriesinterface import BaseRecordingToTimeSeriesInterface
-from ....utils import get_json_schema_from_method_signature
+from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
 class EDFAnalogInterface(BaseRecordingToTimeSeriesInterface):
@@ -174,12 +174,21 @@ class EDFAnalogInterface(BaseRecordingToTimeSeriesInterface):
             stream_name=stream_name,
         )
 
-    def _get_time_series_name(self) -> str:
-        return "TimeSeriesAnalogEDF"
+    @property
+    def channel_ids(self):
+        """Gets the channel ids of the data."""
+        return self.recording_extractor.get_channel_ids()
 
-    def _get_time_series_description(self) -> str:
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+
         channels_string = ", ".join(self.get_channel_names())
-        return f"Auxiliary signals from the EDF format. Channels: {channels_string}"
+        metadata["TimeSeries"][self.metadata_key] = dict(
+            name="TimeSeriesAnalogEDF",
+            description=f"Auxiliary signals from the EDF format. Channels: {channels_string}",
+        )
+
+        return metadata
 
     def add_to_nwbfile(
         self,

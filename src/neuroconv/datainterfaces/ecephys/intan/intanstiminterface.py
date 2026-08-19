@@ -111,12 +111,6 @@ class IntanStimInterface(BaseRecordingToTimeSeriesInterface):
             "intan_rhs2000_model": dict(name="RHS2000 Stim-Recording System", manufacturer="Intan")
         }
 
-        return metadata
-
-    def _get_time_series_name(self) -> str:
-        return "TimeSeriesIntanStim"
-
-    def _get_time_series_description(self) -> str:
         channel_names = [str(name) for name in self.get_channel_names()]
 
         annotations = self.recording_extractor._annotations
@@ -126,15 +120,20 @@ class IntanStimInterface(BaseRecordingToTimeSeriesInterface):
         recovery_current_limit = annotations.get("recovery_current_limit")
         recovery_target_voltage = annotations.get("recovery_target_voltage")
 
-        return (
-            "Electrical stimulation current channels (RHS Stim/Recording System). "
-            f"Data are in Amperes. Channels are {channel_names} in that order. "
-            f"Stim step size: {stim_step_size} A, "
-            f"charge recovery mode: {charge_recovery_mode}, "
-            f"amplifier settle mode: {amp_settle_mode}, "
-            f"recovery current limit: {recovery_current_limit} A, "
-            f"recovery target voltage: {recovery_target_voltage} V."
+        metadata["TimeSeries"][self.metadata_key] = dict(
+            name="TimeSeriesIntanStim",
+            description=(
+                "Electrical stimulation current channels (RHS Stim/Recording System). "
+                f"Data are in Amperes. Channels are {channel_names} in that order. "
+                f"Stim step size: {stim_step_size} A, "
+                f"charge recovery mode: {charge_recovery_mode}, "
+                f"amplifier settle mode: {amp_settle_mode}, "
+                f"recovery current limit: {recovery_current_limit} A, "
+                f"recovery target voltage: {recovery_target_voltage} V."
+            ),
         )
+
+        return metadata
 
     def get_channel_names(self) -> list[str]:
         """

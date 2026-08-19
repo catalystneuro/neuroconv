@@ -219,23 +219,22 @@ class SpikeGLXSyncChannelInterface(BaseRecordingToTimeSeriesInterface):
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        return metadata
-
-    def _get_time_series_name(self) -> str:
         # Named after the probe, with the band left to the description. A multi-segment recording has a
         # segment suffix appended automatically, so "TimeSeriesImec0Sync" becomes "TimeSeriesImec0Sync0".
-        return f"TimeSeriesImec{self._probe_index}Sync"
-
-    def _get_time_series_description(self) -> str:
-        return (
-            f"Synchronization channel (SY0) from Neuropixel probe {self._probe_index} "
-            f"{self._stream_kind} stream (stream: {self.stream_id}). Contains a 16-bit status word where bit 6 carries a 1 Hz "
-            f"square wave (toggling between 0 and 1 every 0.5 seconds) used for sub-millisecond timing "
-            f"alignment across acquisition devices and data streams. The other bits carry hardware status "
-            f"and error flags. For NP1.0 probes, the sync channel appears identically in both AP and LF files. "
-            f"The sync signal can be generated internally by the Imec module (PXIe or OneBox) or externally "
-            f"by an NI-DAQ device acting as the master sync generator for multi-device setups."
+        metadata["TimeSeries"][self.metadata_key] = dict(
+            name=f"TimeSeriesImec{self._probe_index}Sync",
+            description=(
+                f"Synchronization channel (SY0) from Neuropixel probe {self._probe_index} "
+                f"{self._stream_kind} stream (stream: {self.stream_id}). Contains a 16-bit status word where bit 6 carries a 1 Hz "
+                f"square wave (toggling between 0 and 1 every 0.5 seconds) used for sub-millisecond timing "
+                f"alignment across acquisition devices and data streams. The other bits carry hardware status "
+                f"and error flags. For NP1.0 probes, the sync channel appears identically in both AP and LF files. "
+                f"The sync signal can be generated internally by the Imec module (PXIe or OneBox) or externally "
+                f"by an NI-DAQ device acting as the master sync generator for multi-device setups."
+            ),
         )
+
+        return metadata
 
     def add_to_nwbfile(
         self,

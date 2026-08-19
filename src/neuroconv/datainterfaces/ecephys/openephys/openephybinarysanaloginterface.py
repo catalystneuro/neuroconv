@@ -150,13 +150,12 @@ class OpenEphysBinaryAnalogInterface(BaseRecordingToTimeSeriesInterface):
         if session_start_time is not None:
             metadata["NWBFile"].update(session_start_time=session_start_time)
 
+        metadata["TimeSeries"][self.metadata_key] = dict(
+            name=self.time_series_name,
+            description=f"ADC data acquired with OpenEphys system. \n Channels are {self.get_channel_names()} in that order.",
+        )
+
         return metadata
-
-    def _get_time_series_name(self) -> str:
-        return self.time_series_name
-
-    def _get_time_series_description(self) -> str:
-        return f"ADC data acquired with OpenEphys system. \n Channels are {self.get_channel_names()} in that order."
 
     def get_channel_names(self) -> list[str]:
         """

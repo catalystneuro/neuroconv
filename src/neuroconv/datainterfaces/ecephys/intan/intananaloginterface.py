@@ -181,14 +181,15 @@ class IntanAnalogInterface(BaseRecordingToTimeSeriesInterface):
         metadata["Devices"] = {"intan_device": intan_device}
         metadata["DeviceModels"] = {device_model_metadata_key: dict(name=device_model_name, manufacturer="Intan")}
 
-        return metadata
-
-    def _get_time_series_name(self) -> str:
-        return self._time_series_name
-
-    def _get_time_series_description(self) -> str:
         channel_names = self.get_channel_names()
-        return f"{self.stream_info[self._stream_name]['description']}. " f"Channels are {channel_names} in that order."
+        metadata["TimeSeries"][self.metadata_key] = dict(
+            name=self._time_series_name,
+            description=(
+                f"{self.stream_info[self._stream_name]['description']}. " f"Channels are {channel_names} in that order."
+            ),
+        )
+
+        return metadata
 
     def add_to_nwbfile(
         self,
