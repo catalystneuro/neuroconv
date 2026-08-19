@@ -66,18 +66,25 @@ top-level ``metadata["Pose"]``, addressed by the interface's ``metadata_key``.
 
 **Describe what the coordinates mean.** A pose file records numbers: an x, a y and a confidence per
 keypoint per frame, and nothing saying what any of them measure. neuroconv writes none of that unless
-you do, because any value it chose would be invented rather than read.
+you do, because any value it chose would be invented rather than read. Three fields carry it.
 
-``confidence_definition`` is the one worth your attention, because it is the field with no convention
-behind it. DeepLabCut's likelihood, SLEAP's instance score and Lightning Pose's confidence are computed
-differently and are not comparable, so a reader cannot tell whether 0.6 is good, or whether it means the
-same thing as the 0.6 in another file, unless you say. ``unit`` is the second: pixels and millimetres are
-both plausible, and which one it is decides whether the numbers mean anything outside your own rig.
+``unit`` is what the coordinates are measured in, pixels for a raw tracker output and millimetres or
+centimetres once they have been calibrated against something of known size. It is what lets a reader
+turn a distance into a physical one, compare a speed against another study, or pool sessions filmed at
+different resolutions or camera heights, none of which is possible while the numbers are in units nobody
+has named.
 
-``reference_frame`` matters less than the other two in practice, since pixel coordinates almost always
-put (0,0) at the top left with y increasing downwards, and most pose analysis is relative anyway.
-``ndx-pose`` requires it, though, so something is written whether you supply it or not, and what the
-writer supplies is "(0,0) is unknown.". Replacing that costs one line.
+``reference_frame`` says where (0,0) sits and which way the axes run. It is what relates the coordinates
+to the apparatus rather than to the image, so a reader can say an animal was in the left arm of the maze
+or three centimetres from the wall, and it is what lets pose be combined with anything else spatial in
+the file. ``ndx-pose`` requires it, so a value is written whether you supply one or not, and what the
+writer supplies is "(0,0) is unknown.".
+
+``confidence_definition`` says what the confidence number is. DeepLabCut's likelihood, SLEAP's instance
+score and Lightning Pose's confidence are computed differently, so the number alone does not tell a
+reader whether 0.6 is good, where to put a threshold when filtering, or whether a value from your file
+means what the same value means in another. Stating it is what makes filtering reproducible by someone
+who was not there.
 
 All three are set per series, and the container's ``description`` is where the recording itself is
 described.
