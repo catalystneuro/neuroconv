@@ -140,16 +140,20 @@ camera of its own.
 
 .. code-block:: python
 
-    # The video interface's own entry, keyed by the ``metadata_key`` it was constructed with.
-    metadata["Behavior"]["ExternalVideos"]["original_video"] = dict(
+    video_metadata_key = "source_video_key"      # the metadata_key the video interface was built with
+    camera_metadata_key = "top_camera_key"
+
+    metadata["Behavior"]["ExternalVideos"][video_metadata_key] = dict(
         name="OverheadVideo",
         description="Raw video the tracker ran on.",
-        device_metadata_key="top_camera",
+        device_metadata_key=camera_metadata_key,
     )
-    metadata["Devices"]["top_camera"] = dict(name="TopCamera", description="Overhead camera, 30 fps.")
+    metadata["Devices"][camera_metadata_key] = dict(
+        name="TopCamera", description="Overhead camera, 30 fps."
+    )
 
     # The pose container names that entry, and the writer resolves it to the ImageSeries.
-    container["source_video_metadata_key"] = "original_video"
+    container["source_video_metadata_key"] = video_metadata_key
 
 The video interface has to run before the pose one in the same conversion, since the writer resolves the
 link against an object that must already be in the file. Use ``labeled_video_metadata_key`` the same way
@@ -165,10 +169,14 @@ that one existed.
 
 .. code-block:: python
 
+    camera_metadata_key = "top_camera_key"
+
     container["original_videos"] = ["videos/top_camera.mp4"]  # relative to the NWB file
 
-    metadata["Devices"]["top_camera"] = dict(name="TopCamera", description="Overhead camera, 30 fps.")
-    container["device_metadata_key"] = "top_camera"
+    metadata["Devices"][camera_metadata_key] = dict(
+        name="TopCamera", description="Overhead camera, 30 fps."
+    )
+    container["device_metadata_key"] = camera_metadata_key
 
 .. admonition:: The file so far
    :class: tip
