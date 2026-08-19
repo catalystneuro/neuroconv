@@ -824,21 +824,35 @@ def _add_summary_images_to_nwbfile(
     user_provided_images_metadata = (
         metadata_key in segmentation_images_metadata and metadata_key != "default_metadata_key"
     )
-    if metadata_key in segmentation_images_metadata:
+    if user_provided_images_metadata:
         images_metadata = segmentation_images_metadata[metadata_key]
-        if user_provided_images_metadata:
-            requested_images = set(images_metadata.keys())
-            available_images = set(images_to_add.keys())
-            missing_images = requested_images - available_images
-            if missing_images:
-                warnings.warn(
-                    f"SegmentationImages metadata specifies images {missing_images} "
-                    f"but the segmentation extractor has no data for them. "
-                    f"These images will be skipped."
-                )
+        requested_images = set(images_metadata.keys())
+        available_images = set(images_to_add.keys())
+        missing_images = requested_images - available_images
+        if missing_images:
+            warnings.warn(
+                f"SegmentationImages metadata specifies images {missing_images} "
+                f"but the segmentation extractor has no data for them. "
+                f"These images will be skipped."
+            )
     else:
-        placeholders = _get_ophys_metadata_placeholders()
-        images_metadata = placeholders["Ophys"]["SegmentationImages"]["default_metadata_key"]
+        # The caller stated nothing for this key, so every image the extractor holds is written. The
+        # placeholders only name ``correlation`` and ``mean``, so letting them decide instead would
+        # drop any other summary image the source produced.
+        placeholders = _get_ophys_metadata_placeholders()["Ophys"]["SegmentationImages"]["default_metadata_key"]
+        supplied = segmentation_images_metadata.get(metadata_key, dict())
+        images_metadata = {
+            img_type: supplied.get(img_type, placeholders.get(img_type, dict())) for img_type in images_to_add
+        }
+
+    # ``images_metadata`` decides what is written, so an entry naming none of the images the extractor
+    # holds writes nothing. Resolve that before the container is built: ``Images`` requires at least one
+    # image, and an empty one makes the file invalid.
+    images_to_write = {
+        img_type: img_data for img_type, img_data in images_to_add.items() if img_type in images_metadata
+    }
+    if not images_to_write:
+        return nwbfile
 
     # Get or create the single shared Images container
     container_name = "SegmentationImages"
@@ -849,11 +863,7 @@ def _add_summary_images_to_nwbfile(
         ophys_module.add(Images(name=container_name, description=container_description))
     image_collection = ophys_module.data_interfaces[container_name]
 
-    for img_type, img_data in images_to_add.items():
-        # Skip image types not in metadata (metadata controls what gets written)
-        if img_type not in images_metadata:
-            continue
-
+    for img_type, img_data in images_to_write.items():
         image_metadata = images_metadata[img_type]
         image_name = image_metadata.get("name", img_type)
         image_description = image_metadata.get("description", f"Summary image: {img_type}.")

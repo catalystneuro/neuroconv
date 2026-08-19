@@ -3821,6 +3821,50 @@ class TestAddSegmentation:
         assert len(image_collection.images) == 1
         assert "mean_img" in image_collection.images
 
+    def test_summary_image_outside_the_placeholders_is_written(self):
+        """An image the placeholders do not name is still written when no metadata entry is given."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=20, has_summary_images=False
+        )
+        # Minian's only summary image, and one the placeholders do not name.
+        segmentation_extractor._summary_images["maximum_projection"] = np.random.rand(15, 20)
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_collection = ophys_module.data_interfaces["SegmentationImages"]
+        assert list(image_collection.images) == ["maximum_projection"]
+
+    def test_no_container_when_metadata_names_no_available_image(self):
+        """``Images`` requires at least one image, so a container that would be empty is not created."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=20, has_summary_images=False
+        )
+        segmentation_extractor._summary_images["mean"] = np.random.rand(15, 20)
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {"my_seg": {"name": "PlaneSegmentation", "description": "Segmented ROIs"}},
+                "SegmentationImages": {"my_seg": {"correlation": {"name": "corr_img"}}},
+            },
+        }
+
+        with pytest.warns(UserWarning, match="SegmentationImages metadata specifies images"):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
+
+        ophys_module = nwbfile.processing["ophys"]
+        assert "SegmentationImages" not in ophys_module.data_interfaces
+
     def test_image_masks_written_correctly(self):
         """Mask data values match the extractor's get_roi_image_masks()."""
         nwbfile = mock_NWBFile()
