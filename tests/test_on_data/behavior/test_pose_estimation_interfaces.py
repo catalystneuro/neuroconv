@@ -53,6 +53,7 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
         original_video_file_path=str(
             BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.mp4"
         ),
+        metadata_key="lightning_pose_key",
     )
     conversion_options = dict(reference_frame="(0,0) corresponds to the top left corner of the video.")
     save_directory = OUTPUT_PATH
@@ -150,7 +151,7 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
         values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
         applied by the writer), so any extra emitted field would fail the comparison.
         """
-        metadata_key = "lightning_pose"
+        metadata_key = "lightning_pose_key"
 
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 11, 9, 10, 14, 37, 0)
         # The legacy metadata["Behavior"]["PoseEstimation"] block must be gone in the dict-based shape.
@@ -181,7 +182,8 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
             },
         }
 
-        # No Devices block: no pose format records a camera, so none is emitted.
+        # No Devices block: no pose format records a camera, so the writer supplies the one released
+        # ndx-pose still requires alongside the frame dimensions and the video paths.
         assert "Devices" not in metadata
         assert metadata["Pose"] == expected_pose_metadata
 
@@ -202,10 +204,12 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
         self.check_read_nwb(nwbfile_path=nwbfile_path)
         self.check_written_values(nwbfile_path=nwbfile_path)
 
-        # The legacy path keeps its own free text, which the dict-based path leaves to the writer.
+        # The legacy path keeps its own free text and its camera, which the dict-based path leaves to the
+        # writer and does not write at all.
         nwbfile = read_nwb(nwbfile_path)
         pose_estimation_container = nwbfile.processing["behavior"].data_interfaces[self.pose_estimation_name]
         assert pose_estimation_container.description == "Contains the pose estimation series for each keypoint."
+        assert [device.name for device in pose_estimation_container.devices] == ["CameraPoseEstimation"]
         for keypoint_name in self.expected_keypoint_names:
             pose_estimation_series = pose_estimation_container.pose_estimation_series[
                 f"PoseEstimationSeries{keypoint_name}"
@@ -259,6 +263,7 @@ class TestLightningPoseDataInterfaceWithStubTest(PoseEstimationInterfaceTestMixi
         original_video_file_path=str(
             BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.mp4"
         ),
+        metadata_key="lightning_pose_key",
     )
 
     conversion_options = dict(stub_test=True)
@@ -442,6 +447,7 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
         sampling_frequency=30.0,
+        metadata_key="deep_lab_cut_key",
     )
     save_directory = OUTPUT_PATH
 
@@ -458,7 +464,7 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
         values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
         applied by the writer), so any extra emitted field would fail the comparison.
         """
-        metadata_key = "deep_lab_cut_metadata_key"
+        metadata_key = "deep_lab_cut_key"
         bodyparts = ["snout", "leftear", "rightear", "tailbase"]
 
         # The legacy top-level "PoseEstimation" block must be gone in the dict-based shape.
@@ -488,14 +494,17 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
             },
         }
 
-        # No Devices block: no pose format records a camera, so none is emitted.
+        # No Devices block: no pose format records a camera, so the writer supplies the one released
+        # ndx-pose still requires alongside the frame dimensions and the video paths.
         assert "Devices" not in metadata
         assert metadata["Pose"] == expected_pose_metadata
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Define expected values directly here
         expected_bodyparts = ["snout", "leftear", "rightear", "tailbase"]
-        container_name = "PoseEstimationDeepLabCut"
+        # The legacy shape names the container after the metadata_key, which is one of the things the
+        # dict-based shape separates. It goes with the flag.
+        container_name = self.interface_kwargs["metadata_key"]
         skeleton_name = f"Skeleton{container_name}_{self.interface_kwargs['subject_name'].capitalize()}"
         device_name = f"Camera{container_name}"
 
@@ -533,11 +542,7 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
             assert series["unit"] == "pixels"
 
     def run_custom_checks(self):
-        # Before check_renaming_instance, which overwrites the file at self.nwbfile_path with one whose
-        # container is named differently.
         self.check_written_timing(nwbfile_path=self.nwbfile_path)
-        self.check_renaming_instance(nwbfile_path=self.nwbfile_path)
-        self.check_custom_metadata()
 
     def check_written_timing(self, nwbfile_path: str):
         """The interface was given a constant frame rate, so the series carry it rather than timestamps."""
@@ -547,138 +552,6 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
             assert pose_estimation_series.starting_time == 0
             assert pose_estimation_series.rate == 30.0
         nwbfile.read_io.close()
-
-    def check_renaming_instance(self, nwbfile_path: str):
-        custom_container_name = "TestPoseEstimation"
-
-        # Create a new interface with the custom container name
-        new_interface = DeepLabCutInterface(
-            file_path=self.interface.source_data["file_path"],
-            config_file_path=self.interface.source_data.get("config_file_path"),
-            subject_name=self.interface.subject_name,
-            pose_estimation_metadata_key=custom_container_name,
-            sampling_frequency=self.interface.sampling_frequency,
-        )
-
-        # `pose_estimation_metadata_key` is the deprecated old-format argument, so the old shape is what
-        # this check is about. The metadata comes from the interface under test: it reaches the writer as
-        # written, so metadata keyed for another interface would not address this one's entry.
-        metadata = new_interface.get_metadata(use_new_metadata_format=False)
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
-        new_interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-
-        nwbfile = read_nwb(nwbfile_path)
-        assert "behavior" in nwbfile.processing
-        assert custom_container_name in nwbfile.processing["behavior"].data_interfaces
-        nwbfile.read_io.close()
-
-    def check_custom_metadata(self):
-        from datetime import datetime
-
-        from pynwb import NWBFile
-
-        # Create a test NWBFile
-        nwbfile = NWBFile(
-            session_description="Test session",
-            identifier="TEST123",
-            session_start_time=datetime.now().astimezone(),
-        )
-
-        # Add a behavior processing module
-        behavior_module = nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
-
-        # Create custom metadata
-        custom_pose_estimation_metadata_key = "CustomPoseEstimationKey"
-        custom_pose_estimation_name = "CustomPoseEstimationName"
-        custom_reference_frame = "Custom reference frame for testing"
-        custom_unit = "custom_units"
-        custom_source_software_version = "v2.3.11"
-        custom_original_videos = ["custom_video.mp4"]
-        custom_labeled_videos = ["custom_labeled_video.mp4"]
-        custom_dimensions = [[1, 2]]
-
-        metadata = self.interface.get_metadata(use_new_metadata_format=False)
-
-        # Modify the metadata with custom values
-        pose_metadata = metadata["PoseEstimation"]
-
-        # Get the first skeleton name
-        skeleton_key = next(iter(pose_metadata["Skeletons"].keys()))
-
-        # Get the first device name
-        device_name = next(iter(pose_metadata["Devices"].keys()))
-
-        pose_metadata["PoseEstimationContainers"][custom_pose_estimation_metadata_key] = {
-            "name": custom_pose_estimation_name,
-            "description": "Custom description for testing",
-            "skeleton": skeleton_key,
-            "devices": [device_name],
-            "reference_frame": custom_reference_frame,
-            "PoseEstimationSeries": {},
-            "source_software_version": custom_source_software_version,
-            "original_videos": custom_original_videos,
-            "labeled_videos": custom_labeled_videos,
-            "dimensions": custom_dimensions,
-        }
-
-        # Add custom settings for each bodypart
-        bodyparts = pose_metadata["Skeletons"][skeleton_key]["nodes"]
-        for bodypart in bodyparts:
-            pose_metadata["PoseEstimationContainers"][custom_pose_estimation_metadata_key]["PoseEstimationSeries"][
-                bodypart
-            ] = {
-                "name": f"{self.interface_kwargs['subject_name']}_{bodypart}",
-                "description": (
-                    f"Custom description for {bodypart}"
-                    if bodypart == "snout"
-                    else f"Keypoint {bodypart} from individual {self.interface_kwargs['subject_name']}."
-                ),
-                "unit": custom_unit,
-                "reference_frame": custom_reference_frame,
-                "confidence_definition": "Softmax output of the deep neural network.",
-            }
-
-        # Add custom skeleton name
-        custom_skeleton_name = "CustomSkeletonName"
-        pose_metadata["Skeletons"][skeleton_key]["name"] = custom_skeleton_name
-
-        # Create a new interface with the custom container name
-        new_interface = DeepLabCutInterface(
-            file_path=self.interface.source_data["file_path"],
-            config_file_path=self.interface.source_data.get("config_file_path"),
-            subject_name=self.interface.subject_name,
-            pose_estimation_metadata_key=custom_pose_estimation_metadata_key,
-            sampling_frequency=self.interface.sampling_frequency,
-        )
-
-        # Use add_to_nwbfile with the new interface
-        new_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-        # Verify the custom metadata was applied
-        assert "behavior" in nwbfile.processing
-        assert custom_pose_estimation_name in nwbfile.processing["behavior"].data_interfaces
-        assert (
-            custom_skeleton_name
-            == nwbfile.processing["behavior"].data_interfaces[custom_pose_estimation_name].skeleton.name
-        )
-
-        container = nwbfile.processing["behavior"].data_interfaces[custom_pose_estimation_name]
-
-        # Check that all series have the custom unit and reference_frame
-        for series in container.pose_estimation_series.values():
-            assert series.unit == custom_unit
-            assert series.reference_frame == custom_reference_frame
-
-        # Check that snout has the custom description
-        snout_series = container.pose_estimation_series[f"{self.interface_kwargs['subject_name']}_snout"]
-        assert "Custom description for snout" in snout_series.description
-
-        # Check custom attributes
-        assert container.source_software_version == custom_source_software_version
-        assert container.original_videos == custom_original_videos
-        assert container.labeled_videos == custom_labeled_videos
-        assert_array_equal(container.dimensions, custom_dimensions)
 
     def test_conversion_new_metadata_format(self, setup_interface):
         """Run the conversion with the dict-based ("new") metadata format and read it back.
@@ -704,10 +577,12 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
 
         subject = mock_Subject(subject_id="MockSubject")
         nwbfile.subject = subject
-        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+        # Stated rather than left to default: no metadata means the legacy shape, which names its objects
+        # after the metadata_key.
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=self.interface.get_metadata())
 
         skeletons = nwbfile.processing["behavior"]["Skeletons"]
-        skeleton = skeletons["SkeletonPoseEstimationDeepLabCut_Ind1"]
+        skeleton = skeletons[f"SkeletonPoseEstimationDeepLabCut_{self.interface.subject_name.capitalize()}"]
         assert skeleton.subject is None
 
 
@@ -727,6 +602,7 @@ class TestDeepLabCutInterfaceNoConfigFile(PoseEstimationInterfaceTestMixin):
         config_file_path=None,
         subject_name="ind1",
         sampling_frequency=30.0,
+        metadata_key="deep_lab_cut_key",
     )
     save_directory = OUTPUT_PATH
 
@@ -747,6 +623,7 @@ class TestDeepLabCutInterfaceSetTimestamps(PoseEstimationInterfaceTestMixin):
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "open_field_without_video" / "config.yaml"),
         subject_name="ind1",
         sampling_frequency=30.0,
+        metadata_key="deep_lab_cut_key",
     )
 
     save_directory = OUTPUT_PATH

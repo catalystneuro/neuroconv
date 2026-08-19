@@ -8,7 +8,7 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
-from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ..baseposeestimationinterface import BasePoseEstimationInterface
 from ....tools.pose_estimation import _add_pose_estimation_to_nwbfile
 from ....utils import (
     DeepDict,
@@ -16,7 +16,7 @@ from ....utils import (
 )
 
 
-class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
+class LightningPoseDataInterface(BasePoseEstimationInterface):
     """Data interface for Lightning Pose datasets."""
 
     display_name = "Lightning Pose"
@@ -215,70 +215,85 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         self._times = aligned_timestamps
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
-        metadata = super().get_metadata()
+        # TODO: remove the branch and _get_legacy_metadata with the legacy shape.
+        if not use_new_metadata_format:
+            return self._get_legacy_metadata()
 
-        # Update the session start time if folder structure is saved in the format: YYYY-MM-DD/HH-MM-SS
+        metadata = super().get_metadata()
+        self._add_session_start_time(metadata=metadata)
+
+        labeled_video_file_path = self.source_data["labeled_video_file_path"]
+        metadata["Pose"]["Skeletons"][self.metadata_key].update(
+            # Lightning Pose predicts each keypoint independently, so the source carries no edges.
+            nodes=[keypoint_name.replace(" ", "") for keypoint_name in self.keypoint_names],
+            edges=[],
+        )
+        metadata["Pose"]["PoseEstimations"][self.metadata_key].update(
+            source_software="LightningPose",
+            scorer=self.scorer_name,
+            dimensions=[list(self.dimension)],
+            original_videos=[str(self.original_video_file_path)],
+            labeled_videos=[str(labeled_video_file_path)] if labeled_video_file_path else None,
+            PoseEstimationSeries={
+                keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name.replace(' ', '')}"}
+                for keypoint_name in self.keypoint_names
+            },
+        )
+
+        return metadata
+
+    def _add_session_start_time(self, metadata: DeepDict) -> None:
+        """Take the session start time from the folder structure when it is saved as YYYY-MM-DD/HH-MM-SS."""
         pattern = r"(?P<date_time>\d{4}-\d{2}-\d{2}/\d{2}-\d{2}-\d{2})"
-        # Convert the file path parts to a string with forward slashes
         file_path = "/".join(self.file_path.parts)
         match = re.search(pattern, file_path)
         if match and "session_start_time" not in metadata["NWBFile"]:
-            datetime_str = match.group("date_time")
-            session_start_time = datetime.strptime(datetime_str, "%Y-%m-%d/%H-%M-%S")
+            session_start_time = datetime.strptime(match.group("date_time"), "%Y-%m-%d/%H-%M-%S")
             metadata["NWBFile"].update(session_start_time=session_start_time)
 
-        # Legacy shape (deprecated; removed with the flag): the container, the camera and every
-        # series flattened into a single metadata["Behavior"]["PoseEstimation"] block, with the
-        # default strings baked in here.
-        if not use_new_metadata_format:
+    # TODO: remove with the legacy metadata["Behavior"]["PoseEstimation"] block.
+    def _get_legacy_metadata(self) -> DeepDict:
+        """The container, the camera and every series flattened into one ``Behavior/PoseEstimation`` block.
+
+        Built from ``_get_base_metadata`` rather than from ``get_metadata`` so it never carries the
+        dict-based registries: ``add_to_nwbfile`` dispatches on a top-level "Pose" block being present.
+        """
+        metadata = self._get_base_metadata()
+        self._add_session_start_time(metadata=metadata)
+
+        metadata["Behavior"]["PoseEstimation"].update(
+            name="PoseEstimation",
+            description="Contains the pose estimation series for each keypoint.",
+            scorer=self.scorer_name,
+            source_software="LightningPose",
+            camera_name="CameraPoseEstimation",
+        )
+        for keypoint_name in self.keypoint_names:
+            keypoint_name_without_spaces = keypoint_name.replace(" ", "")
             metadata["Behavior"]["PoseEstimation"].update(
-                name="PoseEstimation",
-                description="Contains the pose estimation series for each keypoint.",
-                scorer=self.scorer_name,
-                source_software="LightningPose",
-                camera_name="CameraPoseEstimation",
-            )
-            for keypoint_name in self.keypoint_names:
-                keypoint_name_without_spaces = keypoint_name.replace(" ", "")
-                pose_estimation_series_metadata = {
+                {
                     keypoint_name: dict(
                         name=f"PoseEstimationSeries{keypoint_name_without_spaces}",
                         description=f"The estimated position (x, y) of {keypoint_name} over time.",
                     )
                 }
-                metadata["Behavior"]["PoseEstimation"].update(pose_estimation_series_metadata)
-
-            return metadata
-
-        labeled_video_file_path = self.source_data["labeled_video_file_path"]
-
-        # Lightning Pose predicts each keypoint independently, so the source carries no edges.
-        metadata["Pose"]["Skeletons"] = {
-            self.metadata_key: {
-                "name": "SkeletonPoseEstimation",
-                "nodes": [keypoint_name.replace(" ", "") for keypoint_name in self.keypoint_names],
-                "edges": [],
-            }
-        }
-
-        pose_estimation_series = {
-            keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name.replace(' ', '')}"}
-            for keypoint_name in self.keypoint_names
-        }
-        metadata["Pose"]["PoseEstimations"] = {
-            self.metadata_key: {
-                "name": "PoseEstimation",
-                "source_software": "LightningPose",
-                "scorer": self.scorer_name,
-                "dimensions": [list(self.dimension)],
-                "original_videos": [str(self.original_video_file_path)],
-                "labeled_videos": [str(labeled_video_file_path)] if labeled_video_file_path else None,
-                "skeleton_metadata_key": self.metadata_key,
-                "PoseEstimationSeries": pose_estimation_series,
-            }
-        }
+            )
 
         return metadata
+
+    def get_keypoint_names(self) -> list[str]:
+        return self.keypoint_names
+
+    def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return {
+            keypoint_name: (
+                self.pose_estimation_data[keypoint_name][["x", "y"]].to_numpy(dtype="float64"),
+                self.pose_estimation_data[keypoint_name]["likelihood"].to_numpy(dtype="float64"),
+            )
+            for keypoint_name in self.keypoint_names
+        }
 
     def add_to_nwbfile(
         self,
@@ -339,12 +354,10 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             confidence_definition = positional_values.get("confidence_definition", confidence_definition)
             stub_test = positional_values.get("stub_test", stub_test)
 
-        # Dispatch on the shape of the user-supplied metadata: the dict-based format has the pose
-        # modality at the top-level metadata["Pose"]; anything else (including no metadata) is read in
-        # the legacy metadata["Behavior"]["PoseEstimation"] shape and converted, so there is a single
-        # write path.
         # Dispatch on the legacy block being there rather than on the dict-based one being absent, since
-        # metadata that mentions neither is not legacy, it is a caller who said nothing about pose.
+        # metadata that mentions neither is not legacy, it is a caller who said nothing about pose. The
+        # caller's metadata is passed on as they wrote it; only an absent one falls back to this
+        # interface's own.
         # TODO: remove the branch with the legacy metadata["Behavior"]["PoseEstimation"] block.
         uses_legacy_metadata_format = metadata is not None and "PoseEstimation" in metadata.get("Behavior", {})
         describes_pose = metadata is not None and ("Pose" in metadata or uses_legacy_metadata_format)
@@ -391,16 +404,12 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             for series_entry in containers_metadata[self.metadata_key]["PoseEstimationSeries"].values():
                 series_entry.update(deprecated_options)
 
-        pose_estimation_data = self.pose_estimation_data if not stub_test else self.pose_estimation_data.head(n=10)
-        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
-        # See https://github.com/hdmf-dev/hdmf/issues/1384
-        keypoint_data = {
-            keypoint_name: (
-                pose_estimation_data[keypoint_name][["x", "y"]].to_numpy(dtype="float64"),
-                pose_estimation_data[keypoint_name]["likelihood"].to_numpy(dtype="float64"),
-            )
-            for keypoint_name in self.keypoint_names
-        }
+        keypoint_data = self._get_keypoint_data()
+        if stub_test:
+            keypoint_data = {
+                keypoint_name: (positions[:10], confidence[:10])
+                for keypoint_name, (positions, confidence) in keypoint_data.items()
+            }
         _add_pose_estimation_to_nwbfile(
             nwbfile=nwbfile,
             keypoint_data=keypoint_data,
