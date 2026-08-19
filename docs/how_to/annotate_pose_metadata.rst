@@ -68,14 +68,22 @@ top-level ``metadata["Pose"]``, addressed by the interface's ``metadata_key``.
     metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
 **Describe what the coordinates mean.** A pose file records numbers: an x, a y and a confidence per
-keypoint per frame. What those numbers are measured in, where their origin sits, and what the confidence
-value represents are not in it. Without them a reader cannot convert your coordinates to millimetres,
-cannot compare them to another session filmed from a different angle, and cannot tell whether a
-confidence of 0.6 is good. neuroconv writes none of them unless you do, because any value it chose would
-be invented rather than read. The one exception is ``reference_frame``, which ``ndx-pose`` requires, so
-the writer supplies "(0,0) is unknown." when you leave it out; that is a statement of ignorance sitting
-in your file, and replacing it is the most valuable line on this page. They are set per series, and the
-container's ``description`` is where the recording itself is described.
+keypoint per frame, and nothing saying what any of them measure. neuroconv writes none of that unless
+you do, because any value it chose would be invented rather than read.
+
+``confidence_definition`` is the one worth your attention, because it is the field with no convention
+behind it. DeepLabCut's likelihood, SLEAP's instance score and Lightning Pose's confidence are computed
+differently and are not comparable, so a reader cannot tell whether 0.6 is good, or whether it means the
+same thing as the 0.6 in another file, unless you say. ``unit`` is the second: pixels and millimetres are
+both plausible, and which one it is decides whether the numbers mean anything outside your own rig.
+
+``reference_frame`` matters less than the other two in practice, since pixel coordinates almost always
+put (0,0) at the top left with y increasing downwards, and most pose analysis is relative anyway.
+``ndx-pose`` requires it, though, so something is written whether you supply it or not, and what the
+writer supplies is "(0,0) is unknown.". Replacing that costs one line.
+
+All three are set per series, and the container's ``description`` is where the recording itself is
+described.
 
 .. code-block:: python
 
