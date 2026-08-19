@@ -131,7 +131,7 @@ class TestLightningPoseConverter(TestCase):
         metadata = self.converter.get_metadata(use_new_metadata_format=False)
         self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, **self.conversion_options)
 
-        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.conversion_options)
+        self.assertNWBFileStructure(nwbfile_path=nwbfile_path, links_video=False, **self.conversion_options)
 
     def test_run_conversion_add_conversion_options(self):
         nwbfile_path = str(self.test_dir / "test_lightningpose_converter_conversion_options.nwb")
@@ -146,7 +146,7 @@ class TestLightningPoseConverter(TestCase):
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.conversion_options)
 
-    def assertNWBFileStructure(self, nwbfile_path: str, stub_test: bool = False):
+    def assertNWBFileStructure(self, nwbfile_path: str, stub_test: bool = False, links_video: bool = True):
         from ndx_pose import PoseEstimation
 
         with NWBHDF5IO(path=nwbfile_path) as io:
@@ -180,10 +180,17 @@ class TestLightningPoseConverter(TestCase):
             self.assertIsInstance(behavior[self.pose_estimation_name], PoseEstimation)
             pose_estimation_container = nwbfile.processing["behavior"]["PoseEstimation"]
 
-            # The current link between the pose estimation container "original_videos" and "labeled_videos" and the
-            # ImageSeries is the name of the ImageSeries. TODO: update this when ndx-pose 0.2.0 is released.
-            self.assertEqual(pose_estimation_container.original_videos[:], [image_series.name])
-            self.assertEqual(pose_estimation_container.labeled_videos[:], [image_series_labeled_video.name])
+            if links_video:
+                # The container links the ImageSeries objects themselves rather than naming them in the
+                # ``original_videos`` / ``labeled_videos`` path fields, which are left unset.
+                self.assertIs(pose_estimation_container.source_video, image_series)
+                self.assertIs(pose_estimation_container.labeled_video, image_series_labeled_video)
+                self.assertIsNone(pose_estimation_container.original_videos)
+                self.assertIsNone(pose_estimation_container.labeled_videos)
+            else:
+                # The legacy shape names the ImageSeries in the path fields, which is what it always did.
+                self.assertEqual(pose_estimation_container.original_videos[:], [image_series.name])
+                self.assertEqual(pose_estimation_container.labeled_videos[:], [image_series_labeled_video.name])
 
             num_frames = 994 if not stub_test else 10
             for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
