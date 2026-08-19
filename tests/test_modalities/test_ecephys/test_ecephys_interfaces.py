@@ -389,6 +389,81 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         expected_electrode_groups = ["0", "0", "0", "0"]
         np.testing.assert_array_equal(electrode_group_names, expected_electrode_groups)
 
+    def test_set_probe_with_contact_id_to_channel_id(self, setup_interface):
+        """A wiring stated by ids, which is what a wiring table gives you."""
+        probe = Probe(ndim=2, si_units="um")
+        probe.set_contacts(
+            positions=np.array([[0, 0], [0, 20], [0, 40], [0, 60]]), shapes="circle", shape_params={"radius": 5}
+        )
+        probe.set_contact_ids(["e0", "e1", "e2", "e3"])
+        channel_ids = list(self.interface.channel_ids)
+
+        self.interface.set_probe(
+            probe,
+            group_mode="by_probe",
+            contact_id_to_channel_id=dict(zip(["e0", "e1", "e2", "e3"], channel_ids)),
+        )
+
+        assert self.interface.has_probe()
+        # The contact identity survives, which is what the electrodes table reads off the probe.
+        assert list(self.interface.recording_extractor.get_probe().contact_ids) == ["e0", "e1", "e2", "e3"]
+        # The caller's probe is not the one that was attached.
+        assert probe.device_channel_indices is None
+
+    def test_set_probe_leaves_an_unmapped_contact_unrecorded(self, setup_interface):
+        probe = Probe(ndim=2, si_units="um")
+        probe.set_contacts(
+            positions=np.array([[0, 0], [0, 20], [0, 40], [0, 60], [0, 80]]),
+            shapes="circle",
+            shape_params={"radius": 5},
+        )
+        probe.set_contact_ids(["e0", "e1", "e2", "e3", "e4"])
+        channel_ids = list(self.interface.channel_ids)
+
+        self.interface.set_probe(
+            probe,
+            group_mode="by_probe",
+            contact_id_to_channel_id=dict(zip(["e0", "e1", "e2", "e3"], channel_ids)),
+        )
+
+        assert list(self.interface.recording_extractor.get_probe().contact_ids) == ["e0", "e1", "e2", "e3"]
+
+    @pytest.mark.parametrize(
+        "mapping, match",
+        [
+            ({"e0": "not_a_channel"}, "names channels the recording does not have"),
+            ({"not_a_contact": "0"}, "names contacts the probe does not have"),
+            ({"e0": "0", "e1": "0"}, "both recorded by channel"),
+        ],
+    )
+    def test_set_probe_refuses_a_wiring_that_does_not_resolve(self, setup_interface, mapping, match):
+        probe = Probe(ndim=2, si_units="um")
+        probe.set_contacts(
+            positions=np.array([[0, 0], [0, 20], [0, 40], [0, 60]]), shapes="circle", shape_params={"radius": 5}
+        )
+        probe.set_contact_ids(["e0", "e1", "e2", "e3"])
+        channel_ids = list(self.interface.channel_ids)
+        mapping = {
+            contact: (channel_ids[int(channel)] if channel.isdigit() else channel)
+            for contact, channel in mapping.items()
+        }
+
+        with pytest.raises(ValueError, match=match):
+            self.interface.set_probe(probe, group_mode="by_probe", contact_id_to_channel_id=mapping)
+
+    def test_set_probe_refuses_a_wiring_stated_twice(self, setup_interface):
+        probe = Probe(ndim=2, si_units="um")
+        probe.set_contacts(
+            positions=np.array([[0, 0], [0, 20], [0, 40], [0, 60]]), shapes="circle", shape_params={"radius": 5}
+        )
+        probe.set_contact_ids(["e0", "e1", "e2", "e3"])
+        probe.set_device_channel_indices(np.arange(4))
+
+        with pytest.raises(ValueError, match="already states which channel recorded each contact"):
+            self.interface.set_probe(
+                probe, group_mode="by_probe", contact_id_to_channel_id={"e0": list(self.interface.channel_ids)[0]}
+            )
+
     def test_set_probe_group(self, setup_interface):
         """Test setting a ProbeGroup with multiple probes."""
         # Create first probe (2 channels)

@@ -369,8 +369,8 @@ away:
     interface = MockRecordingInterface(num_channels=32, durations=[0.1], metadata_key="probe0")
 
     probe = probeinterface.get_probe(manufacturer="neuronexus", probe_name="A1x32-Poly3-10mm-50-177")
-    probe.set_device_channel_indices(list(range(32)))
-    interface.set_probe(probe=probe, group_mode="by_probe")
+    wiring = dict(zip(probe.contact_ids, interface.channel_ids))
+    interface.set_probe(probe=probe, group_mode="by_probe", contact_id_to_channel_id=wiring)
 
     metadata = interface.get_metadata_template()
     list(metadata["Ecephys"]["ElectrodesTable"]["rows"])[:3]  # -> ['0_1', '0_2', '0_3']
@@ -383,10 +383,11 @@ they are ``{group}_{contact}``, so a key names the physical contact rather than 
 it. That is the whole mechanism behind two channels sharing a row.
 
 A catalogue probe describes a part rather than a wiring, so it arrives with no channel assignment and
-``set_probe`` refuses it until you say which channel each contact was recorded by; that is what
-``set_device_channel_indices`` states. ``group_mode`` decides whether the probe becomes one electrode
-group or one per shank, which :ref:`set_probe_on_recording_interfaces` covers along with building a
-probe from scratch.
+cannot be attached until you say which channel recorded each contact. That is
+``contact_id_to_channel_id``, keyed by contact id and valued by channel id, which is what a wiring table
+gives you; a contact left out of it is one nothing recorded. ``group_mode`` decides whether the probe
+becomes one electrode group or one per shank, which :ref:`set_probe_on_recording_interfaces` covers
+along with building a probe from scratch.
 
 Three things are filled in that you would otherwise write yourself:
 
