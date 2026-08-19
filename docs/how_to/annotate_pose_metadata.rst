@@ -150,17 +150,22 @@ How to Annotate Several Animals in One Recording
 
 Two mice in the same arena, tracked as two identities by SLEAP or as two individuals by DeepLabCut. An
 NWB file has a single root-level ``Subject``, and ``ndx-pose`` is built on that, so this is **one
-conversion per animal** rather than two containers in one file. Each interface names its individual, and
-each file gets its own ``Subject``. A ``.slp`` records which frame each pose came from rather than when,
-so the frame rate is given here; pass ``video_file_path`` instead to read the times off the video.
+conversion per animal** rather than two containers in one file. Each interface reads one individual, and
+each file gets its own ``Subject``.
 
 .. code-block:: python
 
-    for track_name in SLEAPInterface.get_available_tracks(file_path=predictions_path):
-        interface = SLEAPInterface(file_path=predictions_path, track_name=track_name, frames_per_second=30.0)
+    for subject_id in ["mouse_001", "mouse_002"]:
+        interface = MockPoseEstimationInterface(num_nodes=3)
         metadata = interface.get_metadata()
-        metadata["Subject"] = dict(subject_id=track_name, species="Mus musculus")
-        interface.run_conversion(nwbfile_path=f"session_001_{track_name}.nwb", metadata=metadata)
+        metadata["Subject"] = dict(subject_id=subject_id, species="Mus musculus")
+        metadata["Pose"]["Skeletons"][interface.metadata_key]["subject"] = subject_id
+        interface.run_conversion(nwbfile_path=f"session_001_{subject_id}.nwb", metadata=metadata)
+
+Which individual an interface reads is what its own arguments select:
+:py:meth:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPInterface.get_available_tracks`
+lists the identities in a ``.slp`` and ``track_name`` picks one, and ``subject_name`` picks one of the
+individuals in a multi-animal DeepLabCut project.
 
 .. note::
 
