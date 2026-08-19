@@ -114,9 +114,9 @@ container as well is a second link to the same object.
 
 If the video is not in the file, because it stays on disk or you have only the tracker output, then give
 its path and add the camera to the container, since nothing else in the file records that one existed.
-This is the usual DeepLabCut case. Prefer a path relative to the NWB file over an absolute one: the schema
-notes that these strings are fragile, and an absolute path from the machine that ran the tracker almost
-never resolves on the machine that reads the file.
+Prefer a path relative to the NWB file over an absolute one: the schema notes that these strings are
+fragile, and an absolute path from the machine that ran the tracker almost never resolves on the machine
+that reads the file.
 
 .. code-block:: python
 
