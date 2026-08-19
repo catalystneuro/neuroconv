@@ -149,9 +149,10 @@ How to Annotate Several Animals in One Recording
 -------------------------------------------------
 
 Two mice in the same arena, tracked as two identities by SLEAP or as two individuals by DeepLabCut. An
-NWB file has a single root-level ``Subject``, and ``ndx-pose`` is built on that, so this is **one
-conversion per animal** rather than two containers in one file. Each interface reads one individual, and
-each file gets its own ``Subject``.
+NWB file has a single root-level ``Subject`` and ``ndx-pose`` is built on that, so the usual answer is
+**one conversion per animal**: each interface reads one individual, and each file gets its own
+``Subject``. Nothing extra has to be said in the pose metadata, since the skeleton links to the file's
+own subject.
 
 .. code-block:: python
 
@@ -159,7 +160,6 @@ each file gets its own ``Subject``.
         interface = MockPoseEstimationInterface(num_nodes=3)
         metadata = interface.get_metadata()
         metadata["Subject"] = dict(subject_id=subject_id, species="Mus musculus")
-        metadata["Pose"]["Skeletons"][interface.metadata_key]["subject"] = subject_id
         interface.run_conversion(nwbfile_path=f"session_001_{subject_id}.nwb", metadata=metadata)
 
 Which individual an interface reads is what its own arguments select:
@@ -172,6 +172,29 @@ individuals in a multi-animal DeepLabCut project.
     ``track_0`` is the tracker's label for a trajectory, not the name of your animal. Map it to your own
     ``subject_id`` as above; the skeleton's ``subject`` field is what ties the keypoints to that identity
     inside the file.
+
+The alternative is one file holding both animals, which is worth the trouble when everything around the
+pose is shared: one video, one trials table, and often electrophysiology recorded from one of the two.
+Separate files duplicate all of it. What you give up is that only one animal can be the file's
+``Subject``, so this is the pattern that needs the pose metadata to say more: each animal gets its own
+interface and its own ``metadata_key``, its own container and skeleton names, and its own ``subject``.
+
+.. code-block:: python
+
+    metadata["Subject"] = dict(subject_id="mouse_001", species="Mus musculus")
+
+    for subject_id in ["mouse_001", "mouse_002"]:
+        key = f"pose_{subject_id}"
+        metadata["Pose"]["PoseEstimations"][key]["name"] = f"PoseEstimation_{subject_id}"
+        skeleton = metadata["Pose"]["Skeletons"][key]
+        skeleton["name"] = f"Skeleton_{subject_id}"
+        skeleton["subject"] = subject_id
+
+``mouse_001`` matches the file's ``Subject`` and its skeleton is linked to it. ``mouse_002`` does not, so
+its skeleton is written unlinked rather than pointed at the wrong animal, and the ``subject`` field is
+what says so. That is the cost: the second animal is identified by the names you chose and by that field,
+not by anything NWB models, so a reader has to take your word for which mouse is which. Prefer separate
+files unless the shared data is what you are actually studying.
 
 How to Annotate Several Camera Views of One Animal
 ---------------------------------------------------
