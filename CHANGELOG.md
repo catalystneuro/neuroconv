@@ -23,6 +23,7 @@
 * Pose estimation now supports device model addition in their metadata. [PR #1961](https://github.com/catalystneuro/neuroconv/pull/1961)
 
 ## Improvements
+* The pose estimation interfaces now offer `get_metadata_template()`, and its structure is published as YAML and JSON in the user guide. [PR #1968](https://github.com/catalystneuro/neuroconv/pull/1968)
 * Added `docs/how_to/annotate_pose_metadata.rst`, walking through the metadata a pose format does not record, one acquisition setup at a time. [PR #1967](https://github.com/catalystneuro/neuroconv/pull/1967)
 * The keypoint-name hook a pose interface implements is now private, `_get_keypoint_names`, matching its `_get_keypoint_data` sibling. [PR #1966](https://github.com/catalystneuro/neuroconv/pull/1966)
 * `DeepLabCutInterface`, `LightningPoseDataInterface` and `MockPoseEstimationInterface` now build their pose registries from a shared `BasePoseEstimationInterface`, which owns the registry construction and the write path, so a format states what it records and nothing else. [PR #1963](https://github.com/catalystneuro/neuroconv/pull/1963)
