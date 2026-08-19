@@ -3,6 +3,7 @@
 ## Removals, Deprecations and Changes
 
 * The Axona and MaxOne interfaces now emit their manufacturer on a linked `DeviceModel` (`DacqUSB` and `MaxOne`) instead of on the device entry, and the Axon and Intan interfaces drop the field entirely. pynwb 4.0 deprecated `Device.manufacturer` in favor of the linked model, and neither the ABF header nor the old list-based metadata format offers a device model to carry it.
+* Removed `get_device_metadata` from `spikeglx_utils`, deprecated since [PR #1599](https://github.com/catalystneuro/neuroconv/pull/1599) for removal on or after May 2026. Use `SpikeGLXRecordingInterface._get_device_metadata_from_probe()` instead.
 
 ## Bug Fixes
 
