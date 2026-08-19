@@ -51,8 +51,12 @@ How to Annotate a Pose Estimation Session
 The baseline setup: one camera above the arena, one animal, one tracker run. Everything the other setups
 do is a variation on this one, so it is worked in full.
 
-**Name the objects.** The container, the skeleton and each series are named through the registries under
-the top-level ``metadata["Pose"]``.
+**Name the objects.** Every object the conversion writes gets a name, and the writer falls back to
+generic ones: ``PoseEstimation``, ``SkeletonPoseEstimation``, ``PoseEstimationSeriesHead``. Those names
+are what someone browsing your file sees first, and in a session holding several recordings they are the
+only thing telling one apart from another, so a name that says which camera or which animal this is
+saves a reader from opening every container to find out. Names are set through the registries under the
+top-level ``metadata["Pose"]``, addressed by the interface's ``metadata_key``.
 
 .. code-block:: python
 
@@ -63,11 +67,15 @@ the top-level ``metadata["Pose"]``.
     container["name"] = "PoseEstimationTopCamera"
     metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
-**Describe what the coordinates mean.** Nothing in a pose file says where the origin is, what the units
-are, or what the confidence value represents. neuroconv writes none of these unless you do, because any
-value it chose would be invented rather than read. The one exception is ``reference_frame``, which
-``ndx-pose`` requires, so the writer supplies "(0,0) is unknown." when you leave it out. That is a
-statement of ignorance sitting in your file, and replacing it is the most valuable line on this page.
+**Describe what the coordinates mean.** A pose file records numbers: an x, a y and a confidence per
+keypoint per frame. What those numbers are measured in, where their origin sits, and what the confidence
+value represents are not in it. Without them a reader cannot convert your coordinates to millimetres,
+cannot compare them to another session filmed from a different angle, and cannot tell whether a
+confidence of 0.6 is good. neuroconv writes none of them unless you do, because any value it chose would
+be invented rather than read. The one exception is ``reference_frame``, which ``ndx-pose`` requires, so
+the writer supplies "(0,0) is unknown." when you leave it out; that is a statement of ignorance sitting
+in your file, and replacing it is the most valuable line on this page. They are set per series, and the
+container's ``description`` is where the recording itself is described.
 
 .. code-block:: python
 
@@ -88,8 +96,25 @@ statement of ignorance sitting in your file, and replacing it is the most valuab
 
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
 
-**Describe the skeleton.** A ``Skeleton`` has three fields: the ``nodes``, the ``edges`` between them,
-and the ``subject`` they belong to.
+**Describe the skeleton.** A ``Skeleton`` is the body plan behind the keypoints, and it has three fields.
+
+``nodes`` are the body parts, in the order their series are written. The interface fills them from the
+keypoints it read, so this is the one field you usually leave alone; the order matters because it is what
+the edges index into, and reordering it silently changes what they mean.
+
+``edges`` say which body parts are joined, and they are what a skeleton is really for, since the nodes
+repeat what the series already say. Connectivity is a fact about the animal rather than about the
+recording, and the file records it nowhere else. A reader who has it can compute a limb length or a joint
+angle, which are only meaningful along a segment the body actually has, and can draw the animal rather
+than a cloud of points; a reader without it has to guess your anatomy or ask you. Most trackers already
+know the edges, since connectivity is drawn when the project is set up rather than estimated per frame,
+and a bottom-up multi-animal model uses it to group keypoints into individuals. Lightning Pose is the
+exception, predicting each keypoint independently and recording no connectivity at all.
+
+``subject`` names the individual within the source. The skeleton is linked to the file's ``Subject`` when
+the two ids match, which is what ties a body plan to an animal for anyone reading the file. A file without
+a ``Subject``, or one whose id differs, gets a skeleton linked to nothing, which is how you say these
+keypoints belong to somebody other than the file's subject.
 
 .. code-block:: python
 
@@ -98,30 +123,15 @@ and the ``subject`` they belong to.
     skeleton["edges"] = [[0, 1], [1, 2]]  # head-neck, neck-left shoulder
     skeleton["subject"] = "mouse_001"
 
-``nodes`` are the body parts, in the order their series are written. The interface fills them from the
-keypoints it read, so this is the one field you usually leave alone; it is shown here because the order
-is what the edges index into, and reordering it silently changes what they mean.
+**Record where the frames came from.** Keypoints are a claim about a video, and a file that does not say
+which video cannot be checked. A reader who wants to see whether a low-confidence stretch is an occlusion
+or a tracking failure has to watch the frames, and a reader assembling a dataset needs to know that two
+sessions came from different cameras. Two things can carry it, and which you want depends on whether the
+video itself is in the file.
 
-``edges`` are pairs of indices into ``nodes``, and they are what a skeleton is really for, since the
-nodes repeat what the series already say. They are the only record in the file of which body parts are
-joined, and that connectivity is a fact about the animal rather than about the recording. It is what
-makes a derived quantity well defined, because a limb length or a joint angle is only meaningful along a
-segment the body actually has, and it is what lets anything reading the file draw the animal rather than
-a cloud of points. Most trackers already know them, since connectivity is drawn when the project is set
-up rather than estimated per frame, and a bottom-up multi-animal model uses it to group keypoints into
-individuals. Lightning Pose is the exception, predicting each keypoint independently and recording no
-connectivity at all.
-
-``subject`` names the individual within the source, and the skeleton is linked to the file's ``Subject``
-when the two ids match. A file without a ``Subject``, or one whose id differs, gets a skeleton linked to
-nothing, which is what says these keypoints belong to somebody other than the file's subject.
-
-**Record where the frames came from.** Two things can carry that, and which you want depends on whether
-the video itself is in the file.
-
-If a video interface wrote the recording into the file as an ``ImageSeries``, link that object. The
-``ImageSeries`` already carries its own camera ``Device``, so this one link records both the recording and
-the instrument, and the camera is reachable from the container through it. Adding a camera to the
+If a video interface wrote the recording into the file as an ``ImageSeries``, link that object. The link
+is a reference rather than a path, so it cannot rot, and the ``ImageSeries`` already carries its own
+camera ``Device``, so this one link records both the recording and the instrument. Adding a camera to the
 container as well is a second link to the same object.
 
 .. code-block:: python
