@@ -30,9 +30,6 @@ and nothing describing the recording they came from.
 
        devices                                (empty: no pose format records a camera)
 
-   Every series carries ``reference_frame`` "(0,0) is unknown." and no ``confidence_definition``,
-   because nothing in the source said what the origin is or how the confidence was computed.
-
 The examples here use :py:class:`~neuroconv.tools.testing.mock_interfaces.MockPoseEstimationInterface`,
 which synthesizes keypoints instead of reading a file, so every snippet runs as written with no data to
 download. Everything after the constructor is the same for any pose interface: swap in the one for your
