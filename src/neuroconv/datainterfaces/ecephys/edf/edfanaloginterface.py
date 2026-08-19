@@ -4,11 +4,11 @@ from pathlib import Path
 from pydantic import FilePath
 from pynwb import NWBFile
 
-from ....basedatainterface import BaseDataInterface
+from ..baserecordingastimeseriesinterface import BaseRecordingAsTimeSeriesInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
-class EDFAnalogInterface(BaseDataInterface):
+class EDFAnalogInterface(BaseRecordingAsTimeSeriesInterface):
     """
     Primary data interface for converting auxiliary data streams from EDF files.
 
@@ -182,17 +182,11 @@ class EDFAnalogInterface(BaseDataInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
-        # Add TimeSeries metadata
-        channel_names = self.channel_ids
-        channels_string = ", ".join(channel_names)
-        description = f"Auxiliary signals from the EDF format. Channels: {channels_string}"
-
-        metadata["TimeSeries"] = {
-            self.metadata_key: dict(
-                name="TimeSeriesAnalogEDF",
-                description=description,
-            )
-        }
+        channels_string = ", ".join(self.get_channel_names())
+        metadata["TimeSeries"][self.metadata_key] = dict(
+            name="TimeSeriesAnalogEDF",
+            description=f"Auxiliary signals from the EDF format. Channels: {channels_string}",
+        )
 
         return metadata
 
@@ -224,11 +218,6 @@ class EDFAnalogInterface(BaseDataInterface):
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
-        from ....tools.spikeinterface import (
-            _stub_recording,
-            add_recording_as_time_series_to_nwbfile,
-        )
-
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
@@ -260,19 +249,11 @@ class EDFAnalogInterface(BaseDataInterface):
             iterator_options = positional_values.get("iterator_options", iterator_options)
             always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
 
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        recording = self.recording_extractor
-        if stub_test:
-            recording = _stub_recording(recording=recording)
-
-        add_recording_as_time_series_to_nwbfile(
-            recording=recording,
+        super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
+            stub_test=stub_test,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            metadata_key=self.metadata_key,
         )
