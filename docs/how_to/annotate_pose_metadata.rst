@@ -202,13 +202,19 @@ The video interface has to run before the pose one in the same conversion, since
 link against an object that must already be in the file. Use ``labeled_video_metadata_key`` the same way
 for a tracker's annotated output video, when you have one.
 
-If the video is not going into the file, because it stays on disk or you have only the tracker output,
-then all you can record is where it was. ``original_videos`` is a list of plain strings on the container;
-nothing resolves them, nothing checks them, and they are the field ``ndx-pose`` intends to replace with
-the link above. Prefer a path relative to the NWB file, since the schema notes these strings are fragile
-and an absolute path from the machine that ran the tracker almost never resolves on the machine that
-reads the file. Add the camera here too, because with no ``ImageSeries`` nothing else in the file records
-that one existed.
+If the video is not going into the file, because it is too large, cannot be shared, or you only ever
+received the tracker output, then all you can record is where it was. ``original_videos`` is a list of
+plain strings on the container, and it is worth being clear about what that buys.
+
+What it gives you is a name and a location. A reader can see which recording the keypoints came from and
+go looking for it, and if the dataset ships the video alongside the NWB file the relative path resolves,
+so it is not purely documentary. What it does not give you is a link: nothing in the file points at an
+object, nothing checks that the path leads anywhere, and no camera comes with it, which is why the camera
+has to be added by hand here. ``ndx-pose`` says the same, calling these strings fragile and directing you
+to ``source_video`` whenever it is available.
+
+Prefer a path relative to the NWB file, since an absolute one from the machine that ran the tracker
+almost never resolves on the machine that reads the file.
 
 .. code-block:: python
 
