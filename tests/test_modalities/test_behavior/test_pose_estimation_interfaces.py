@@ -8,20 +8,14 @@ from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
 
 class TestMockPoseEstimationInterface(PoseEstimationInterfaceTestMixin):
     data_interface_cls = MockPoseEstimationInterface
-    interface_kwargs = dict(num_samples=100, num_nodes=3, seed=42)
+    interface_kwargs = dict(num_samples=100, num_nodes=3, seed=42, metadata_key="mock_pose_key")
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         container_name = metadata_key
-        device_name = f"Camera{container_name}"
         skeleton_name = f"Skeleton{container_name}"
 
-        assert metadata["Devices"] == {
-            metadata_key: {
-                "name": device_name,
-                "description": "Mock camera device for pose estimation testing.",
-            },
-        }
+        assert "Devices" not in metadata
 
         pose_metadata = metadata["Pose"]
 
@@ -32,7 +26,6 @@ class TestMockPoseEstimationInterface(PoseEstimationInterfaceTestMixin):
         container = pose_metadata["PoseEstimations"][metadata_key]
         assert container["name"] == container_name
         assert container["source_software"] == self.interface.source_software
-        assert container["device_metadata_key"] == metadata_key
         assert container["skeleton_metadata_key"] == metadata_key
         assert set(container["PoseEstimationSeries"].keys()) == set(self.interface.nodes)
 
@@ -300,13 +293,14 @@ class TestPoseEstimationMetadata:
         assert container_a.skeleton.name == "SkeletonA"
         assert container_b.skeleton.name == "SkeletonB"
 
-    def test_device_and_skeleton_omitted_are_not_written(self):
+    def test_device_omitted_and_skeleton_set_to_none_are_not_written(self):
         """A container that references no device or skeleton writes neither object.
 
         ndx-pose makes ``devices`` and ``skeleton`` optional, so the writer only creates objects the
-        metadata references: a container with no ``device_metadata_key`` / ``skeleton_metadata_key``
-        produces a ``PoseEstimation`` with no device and no skeleton, and no ``Skeletons`` collection
-        is added to the behavior module. The writer never fabricates a placeholder.
+        metadata references, and never fabricates a placeholder. The two are suppressed differently
+        because the interface's own defaults are merged underneath whatever the caller passes: no
+        interface emits a ``device_metadata_key``, so omitting it is enough, while a skeleton is
+        defaulted from the keypoints and has to be refused with an explicit ``None``.
         """
         metadata_key = "no_device_no_skeleton"
         bodyparts = ["head", "neck", "left_shoulder"]
@@ -321,8 +315,11 @@ class TestPoseEstimationMetadata:
                         "description": "Pose estimation without a device or skeleton.",
                         "source_software": "MockSourceSoftware",
                         "scorer": "MockScorer",
+                        "skeleton_metadata_key": None,
                         # No device, so the per-camera fields (dimensions, original_videos,
-                        # labeled_videos) are omitted too: they are parallel to the cameras.
+                        # labeled_videos) are suppressed too: they are parallel to the cameras.
+                        "dimensions": None,
+                        "original_videos": None,
                         "PoseEstimationSeries": {
                             bodypart: {
                                 "name": f"PoseEstimationSeries{bodypart.capitalize()}",

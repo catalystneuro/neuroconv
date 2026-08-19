@@ -1293,6 +1293,47 @@ class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin):
             )
         nwbfile.read_io.close()
 
+    def test_metadata_propagation(self, setup_interface):
+        """Every editable name and description under ``metadata["Pose"]`` reaches the written objects.
+
+        The interface's own metadata is edited and handed back, so this covers the whole addressing chain:
+        ``metadata_key`` to the container entry, its two cross-references to the skeleton and the device,
+        and each keypoint to its series entry.
+        """
+        metadata = _get_metadata_for_writing(self.interface)
+        pose_metadata = metadata["Pose"]
+
+        for metadata_key, container_entry in pose_metadata["PoseEstimations"].items():
+            container_entry["name"] = f"Custom{container_entry['name']}"
+            container_entry["description"] = f"Custom description for {metadata_key}."
+            skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
+            if skeleton_metadata_key is not None:
+                skeleton_entry = pose_metadata["Skeletons"][skeleton_metadata_key]
+                skeleton_entry["name"] = f"Custom{skeleton_entry['name']}"
+            for keypoint_name, series_entry in container_entry["PoseEstimationSeries"].items():
+                series_entry["name"] = f"Custom{series_entry['name']}"
+                series_entry["description"] = f"Custom description for {keypoint_name}."
+                series_entry["unit"] = "custom_units"
+                series_entry["reference_frame"] = "Custom reference frame."
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        behavior_module = nwbfile.processing["behavior"]
+        for container_entry in pose_metadata["PoseEstimations"].values():
+            container = behavior_module.data_interfaces[container_entry["name"]]
+            assert container.description == container_entry["description"]
+
+            skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
+            if skeleton_metadata_key is not None:
+                assert container.skeleton.name == pose_metadata["Skeletons"][skeleton_metadata_key]["name"]
+
+            for series_entry in container_entry["PoseEstimationSeries"].values():
+                series = container.pose_estimation_series[series_entry["name"]]
+                assert series.description == series_entry["description"]
+                assert series.unit == series_entry["unit"]
+                assert series.reference_frame == series_entry["reference_frame"]
+
     def _check_pose_estimation_container(self, nwbfile, behavior_module, metadata: dict, container_entry: dict):
         """One container entry, its cross-referenced device and skeleton, and one series per keypoint."""
         from ndx_pose import PoseEstimation, PoseEstimationSeries
