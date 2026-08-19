@@ -45,8 +45,8 @@ camera view of one subject: it holds those series, a ``Skeleton`` naming the key
 between them, and optionally the camera that recorded them. Annotating a recording is filling in what the
 tracker could not know.
 
-How to Annotate a Single Camera and a Single Animal
----------------------------------------------------
+How to Annotate a Pose Estimation Session
+-----------------------------------------
 
 The baseline setup: one camera above the arena, one animal, one tracker run. Everything the other setups
 do is a variation on this one, so it is worked in full.
