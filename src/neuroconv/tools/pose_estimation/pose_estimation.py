@@ -1,9 +1,12 @@
 """Shared writer for pose estimation data (the ``ndx-pose`` extension)."""
 
+import warnings
+
 import numpy as np
 from pynwb import NWBFile
 
 from ..nwb_helpers import get_module
+from ..nwb_helpers._metadata_and_file_helpers import _add_device_to_nwbfile
 from ...utils.checks import calculate_regular_series_rate
 
 # Key the placeholder registry entries are filed under when the caller supplies no metadata; mirrors the
@@ -84,8 +87,17 @@ def _add_pose_estimation_to_nwbfile(
     if metadata is None:
         metadata = placeholders
 
-    pose_metadata = metadata["Pose"]
-    container_entry = pose_metadata["PoseEstimations"][metadata_key]
+    # Checked rather than indexed: ``metadata`` is often a ``DeepDict``, where a missing key auto-vivifies
+    # into an empty entry instead of raising, and the write then succeeds against the placeholders with
+    # names nobody asked for.
+    pose_metadata = metadata.get("Pose", {})
+    containers_metadata = pose_metadata.get("PoseEstimations", {})
+    if metadata_key not in containers_metadata:
+        raise ValueError(
+            f"metadata_key '{metadata_key}' was not found in metadata['Pose']['PoseEstimations'] "
+            f"(available keys: {list(containers_metadata)})."
+        )
+    container_entry = containers_metadata[metadata_key]
     container_name = container_entry.get("name", placeholder_container["name"])
 
     behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
@@ -95,17 +107,18 @@ def _add_pose_estimation_to_nwbfile(
     device = None
     device_metadata_key = container_entry.get("device_metadata_key")
     if device_metadata_key is not None:
-        device_entry = metadata["Devices"][device_metadata_key]
-        device_name = device_entry["name"]
-        if device_name in nwbfile.devices:
-            device = nwbfile.devices[device_name]
-        else:
-            device = nwbfile.create_device(name=device_name, description=device_entry.get("description", ""))
+        device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key)
 
     skeleton = None
     skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
     if skeleton_metadata_key is not None:
-        skeleton_entry = pose_metadata["Skeletons"][skeleton_metadata_key]
+        skeletons_metadata = pose_metadata.get("Skeletons", {})
+        if skeleton_metadata_key not in skeletons_metadata:
+            raise ValueError(
+                f"skeleton_metadata_key '{skeleton_metadata_key}' was not found in "
+                f"metadata['Pose']['Skeletons'] (available keys: {list(skeletons_metadata)})."
+            )
+        skeleton_entry = skeletons_metadata[skeleton_metadata_key]
         skeleton_name = skeleton_entry["name"]
         existing_skeletons = (
             behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}
@@ -180,7 +193,16 @@ def _add_pose_estimation_to_nwbfile(
     if dimensions is not None:
         container_kwargs["dimensions"] = np.asarray(dimensions, dtype="uint16")
 
-    behavior_module.add(PoseEstimation(**container_kwargs))
+    # TODO: remove with the next ndx-pose release. Released ndx-pose (0.3.0) warns when the frame dimensions
+    # or the video paths are written without an equal number of camera devices, but writes them anyway, so a
+    # camera would buy nothing but silence and no pose format records one. rly/ndx-pose#57 deprecates all
+    # three fields in favour of the ``source_video`` link and drops the check, at which point this goes.
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message=".*must equal the number of camera devices.*", category=DeprecationWarning
+        )
+        pose_estimation = PoseEstimation(**container_kwargs)
+    behavior_module.add(pose_estimation)
 
     if skeleton is not None:
         if "Skeletons" not in behavior_module.data_interfaces:

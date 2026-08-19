@@ -131,12 +131,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         .. code-block:: python
 
             metadata = {
-                "Devices": {
-                    "deep_lab_cut_metadata_key": {  # registry key (snake_case, never written to the file)
-                        "name": "CameraPoseEstimationDeepLabCut",
-                        "description": "Camera used for behavioral recording and pose estimation.",
-                    }
-                },
                 "Pose": {
                     "Skeletons": {
                         "deep_lab_cut_metadata_key": {
@@ -153,7 +147,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                             "scorer": "...",
                             "dimensions": [[height, width]],
                             "original_videos": ["path/to/video.mp4"],
-                            "device_metadata_key": "deep_lab_cut_metadata_key",  # -> metadata["Devices"]
                             "skeleton_metadata_key": "deep_lab_cut_metadata_key",  # -> Pose.Skeletons
                             "PoseEstimationSeries": {
                                 "bodypart1": {"name": "PoseEstimationSeriesBodypart1"},
@@ -557,18 +550,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         metadata_key = self.metadata_key or "deep_lab_cut_metadata_key"
         container_name = "PoseEstimationDeepLabCut"
         skeleton_name = f"Skeleton{container_name}_{self.subject_name.capitalize()}"
-        device_name = f"Camera{container_name}"
-
-        # We add an artificial camera device even when one is not available from the source, only to
-        # avoid an ndx-pose warning: ndx-pose ties the number of dimensions/original_videos to the
-        # number of camera devices, so a device is required to carry the frame dimensions and video
-        # path. Remove once ndx-pose decouples those recording fields from the camera-device count.
-        metadata["Devices"] = {
-            metadata_key: {
-                "name": device_name,
-                "description": "Camera used for behavioral recording and pose estimation.",
-            }
-        }
 
         metadata["Pose"]["Skeletons"] = {
             metadata_key: {
@@ -589,7 +570,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                 "scorer": scorer,
                 "dimensions": dimensions,
                 "original_videos": [video_file_path] if video_file_path else None,
-                "device_metadata_key": metadata_key,
                 "skeleton_metadata_key": metadata_key,
                 "PoseEstimationSeries": pose_estimation_series,
             }
@@ -640,14 +620,15 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         # modality at the top-level metadata["Pose"]; anything else (including no metadata) is read in
         # the legacy shape. The defaults are fetched in the matching shape, then user metadata is merged
         # on, and the legacy shape is converted so there is a single write path.
-        use_new_metadata_format = metadata is not None and "Pose" in metadata
+        # Dispatch on the legacy block being there rather than on the dict-based one being absent, since
+        # metadata that mentions neither is not legacy, it is a caller who said nothing about pose.
+        # TODO: remove the branch with the legacy metadata["PoseEstimation"] block.
+        uses_legacy_metadata_format = metadata is not None and "PoseEstimation" in metadata
+        describes_pose = metadata is not None and ("Pose" in metadata or uses_legacy_metadata_format)
 
-        # Get default metadata
-        default_metadata = DeepDict(self.get_metadata(use_new_metadata_format=use_new_metadata_format))
-
-        # Update with user-provided metadata if available
-        if metadata is not None:
-            default_metadata.deep_update(metadata)
+        # Per block, not per field: a caller who wrote a pose block gets it as they wrote it, absent keys
+        # and all, and a caller who wrote none gets this interface's own rather than an error.
+        default_metadata = metadata if describes_pose else self.get_metadata()
 
         file_path = Path(self.source_data["file_path"])
 
@@ -677,9 +658,9 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         df_animal = df.xs(self.subject_name, level="individuals", axis=1)
 
-        default_key = "deep_lab_cut_metadata_key" if use_new_metadata_format else "PoseEstimationDeepLabCut"
+        default_key = "PoseEstimationDeepLabCut" if uses_legacy_metadata_format else "deep_lab_cut_metadata_key"
         metadata_key = self.metadata_key or default_key
-        if not use_new_metadata_format:
+        if uses_legacy_metadata_format:
             default_metadata = self._translate_legacy_metadata(metadata=default_metadata, metadata_key=metadata_key)
 
         keypoint_data = {}
