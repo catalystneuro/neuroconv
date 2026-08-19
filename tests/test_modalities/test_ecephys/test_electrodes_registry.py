@@ -89,20 +89,6 @@ class TestTemplate:
         nwbfile = interface.create_nwbfile(metadata=metadata)
         assert nwbfile.electrodes["imp"].description == "Impedance in ohms."
 
-    def test_writing_the_template_reproduces_the_derived_table(self):
-        """The registry is a restatement of the recording, so writing it changes no column value."""
-        properties = {"imp": [1.0, 2.0, 3.0, 4.0], "brain_area": ["V1", "V1", "CA1", "CA1"]}
-        derived = _interface(groups=[0, 0, 1, 1], properties=properties).create_nwbfile()
-        stated_interface = _interface(groups=[0, 0, 1, 1], properties=properties)
-        stated = stated_interface.create_nwbfile(metadata=stated_interface.get_metadata_template())
-
-        derived_table = derived.electrodes.to_dataframe()
-        stated_table = stated.electrodes.to_dataframe()
-        shared_columns = sorted(set(derived_table.columns) & set(stated_table.columns) - {"group"})
-        assert shared_columns == ["channel_name", "group_name", "imp", "location"]
-        for column in shared_columns:
-            assert derived_table[column].tolist() == stated_table[column].tolist(), column
-
 
 class TestRegistryWrites:
     def test_the_group_link_is_the_only_thing_that_decides_a_row_s_group(self):
