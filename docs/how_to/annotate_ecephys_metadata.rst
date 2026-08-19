@@ -401,9 +401,9 @@ stereotaxic coordinates, stay yours to state exactly as in the previous scenario
 How to Write Your Own Electrode Rows
 ------------------------------------
 
-Every scenario above edited the rows ``get_metadata_template`` returned. If you would rather write
-them yourself, under keys of your own choosing, one thing has to be said that those rows were saying for
-you: which channel recorded which electrode. That is ``channel_to_electrode`` on the series entry, and it maps each
+Every scenario above edited rows that came ready-made. If you would rather write them yourself,
+under keys of your own choosing, one thing has to be said that those rows were saying for you: which
+channel recorded which electrode. That is ``channel_to_electrode`` on the series entry, and it maps each
 **channel id** to a row key. Channel ids are not channel names, and the two differ in most formats: a
 SpikeGLX channel has id ``imec0.ap#AP0`` and name ``AP0``, an Intan channel has id ``A-000`` and name
 ``F1-01``.
@@ -433,8 +433,8 @@ SpikeGLX channel has id ``imec0.ap#AP0`` and name ``AP0``, an Intan channel has 
 Leave out the mapping there and the conversion stops, naming the keys it derived and could not find, so
 this is a mistake you are told about rather than one you discover in the file.
 
-**You do not need it when you edit the rows ``get_metadata_template`` returned**, which is every
-scenario above: the mapping comes back alongside those rows, and the two already agree.
+**You do not need it when you edit the rows above**, which is every scenario so far: the mapping
+comes back alongside them, and the two already agree.
 
 One thing it cannot do is make two recordings share electrodes when nothing in the file says they are
 the same. Two bands of one probe share rows because both name the same contacts, not because of this
