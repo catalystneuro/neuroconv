@@ -28,8 +28,6 @@ and nothing describing the recording they came from.
        └── Skeletons
            └── SkeletonMockPoseEstimation     nodes ['head', 'neck', 'left_shoulder']
 
-       devices                                (empty: no pose format records a camera)
-
 The examples here use :py:class:`~neuroconv.tools.testing.mock_interfaces.MockPoseEstimationInterface`,
 which synthesizes keypoints instead of reading a file, so every snippet runs as written with no data to
 download. Everything after the constructor is the same for any pose interface: swap in the one for your
@@ -59,7 +57,11 @@ saves a reader from opening every container to find out. Names are set through t
 top-level ``metadata["Pose"]``, addressed by the interface's ``metadata_key``.
 
 .. code-block:: python
+   :emphasize-lines: 7-9
 
+    from neuroconv.tools.testing import MockPoseEstimationInterface
+
+    interface = MockPoseEstimationInterface(num_nodes=3)
     metadata = interface.get_metadata()
     key = interface.metadata_key
 
@@ -96,6 +98,17 @@ All three are set per series, and the container's ``description`` is where the r
 described.
 
 .. code-block:: python
+   :emphasize-lines: 11-26
+
+    from neuroconv.tools.testing import MockPoseEstimationInterface
+
+    interface = MockPoseEstimationInterface(num_nodes=3)
+    metadata = interface.get_metadata()
+    key = interface.metadata_key
+
+    container = metadata["Pose"]["PoseEstimations"][key]
+    container["name"] = "PoseEstimationTopCamera"
+    metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
     unit = "pixels"
     reference_frame = "(0,0) is the top left corner of the video."
@@ -140,6 +153,34 @@ a ``Subject``, or one whose id differs, gets a skeleton linked to nothing, which
 keypoints belong to somebody other than the file's subject.
 
 .. code-block:: python
+   :emphasize-lines: 28-31
+
+    from neuroconv.tools.testing import MockPoseEstimationInterface
+
+    interface = MockPoseEstimationInterface(num_nodes=3)
+    metadata = interface.get_metadata()
+    key = interface.metadata_key
+
+    container = metadata["Pose"]["PoseEstimations"][key]
+    container["name"] = "PoseEstimationTopCamera"
+    metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
+
+    unit = "pixels"
+    reference_frame = "(0,0) is the top left corner of the video."
+    confidence_definition = "Softmax output of the deep neural network."
+
+    series = container["PoseEstimationSeries"]
+    series["head"].update(
+        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
+    )
+    series["neck"].update(
+        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
+    )
+    series["left_shoulder"].update(
+        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
+    )
+
+    container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
 
     skeleton = metadata["Pose"]["Skeletons"][key]
     skeleton["nodes"] = ["head", "neck", "left_shoulder"]
@@ -158,8 +199,6 @@ keypoints belong to somebody other than the file's subject.
        │   └── PoseEstimationSeriesLeftShou…  data (1000, 2)
        └── Skeletons
            └── SkeletonMouse                  nodes, edges, subject
-
-       devices                                (empty: nothing so far records a camera)
 
 How to Link a Pose Estimation to its Source Video
 -------------------------------------------------
@@ -229,6 +268,23 @@ on different keypoint sets, for instance a side view that labels a paw the overh
 the node lists genuinely differ and each view wants its own skeleton.
 
 .. code-block:: python
+   :emphasize-lines: 17-36
+
+    from neuroconv import NWBConverter
+    from neuroconv.tools.testing import MockPoseEstimationInterface
+
+
+    class TwoViewConverter(NWBConverter):
+        data_interface_classes = dict(Top=MockPoseEstimationInterface, Side=MockPoseEstimationInterface)
+
+
+    converter = TwoViewConverter(
+        source_data=dict(
+            Top=dict(num_nodes=3, metadata_key="pose_top"),
+            Side=dict(num_nodes=3, metadata_key="pose_side"),
+        )
+    )
+    metadata = converter.get_metadata()
 
     top_camera_key = "top_camera"
     side_camera_key = "side_camera"
@@ -258,11 +314,23 @@ How to Annotate Several Subjects in One Recording
 --------------------------------------------------
 
 Two mice in the same arena, tracked as two identities by SLEAP or as two individuals by DeepLabCut. An
-NWB file has a single root-level ``Subject`` and ``ndx-pose`` is built on that, so in most cases you
-want **one file per subject**: each interface reads one individual, each file gets its own ``Subject``,
-and nothing extra has to be said in the pose metadata.
+NWB file has a single root-level ``Subject`` and ``ndx-pose`` is built on that, so which of the two
+arrangements below you want turns on what the second subject is to your experiment.
+
+One file per subject
+~~~~~~~~~~~~~~~~~~~~
+
+The usual answer. Each interface reads one individual, each file gets its own ``Subject``, and nothing
+extra has to be said in the pose metadata, since the skeleton links to the file's own subject.
+
+An NWB file's ``Subject`` carries ``sex``, ``genotype``, ``strain`` and ``age``, and in a social
+recording those usually differ between the subjects and are often the experiment itself, a mutant male
+with a wild-type female. One file per subject is what lets each of them carry its own.
 
 .. code-block:: python
+   :emphasize-lines: 6-7
+
+    from neuroconv.tools.testing import MockPoseEstimationInterface
 
     for subject_id in ["mouse_001", "mouse_002"]:
         interface = MockPoseEstimationInterface(num_nodes=3)
@@ -276,30 +344,48 @@ lists the identities in a ``.slp`` and ``track_name`` picks one, and ``subject_n
 individuals in a multi-animal DeepLabCut project. Neither is a name you chose: ``track_0`` and ``ind1``
 are the tracker's labels for a trajectory, so map them to your own ``subject_id`` as above.
 
-An NWB file's ``Subject`` carries ``sex``, ``genotype``, ``strain`` and ``age``, and in a social
-recording those usually differ between the subjects and are often the experiment itself, a mutant male
-with a wild-type female. One file per subject is what lets each of them carry its own.
+Both subjects in one file
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you would rather keep both subjects in one file, because the video, the trials and often the
-electrophysiology are shared and separate files duplicate all of it, the skeleton's ``subject`` field is
-what lets you: only one of them can be the file's ``Subject``, and ``subject`` is where the others say who
-they are. Each subject brings its own interface and ``metadata_key``, its own container and skeleton
-names, and its own ``subject``. Whether they also bring their own camera is the one thing that varies
-with the setup: two subjects filmed by one overhead camera share a device, two filmed separately do not.
+Worth it when the video, the trials and often the electrophysiology are shared and separate files
+duplicate all of it. Each subject brings its own interface and ``metadata_key``, its own container and
+skeleton names, and its own ``subject``. Whether they also bring their own camera is the one thing that
+varies with the setup: two subjects filmed by one overhead camera share a device, two filmed separately
+do not.
 
 .. code-block:: python
+   :emphasize-lines: 17-30
+
+    from neuroconv import NWBConverter
+    from neuroconv.tools.testing import MockPoseEstimationInterface
+
+
+    class SocialConverter(NWBConverter):
+        data_interface_classes = dict(Mouse1=MockPoseEstimationInterface, Mouse2=MockPoseEstimationInterface)
+
+
+    converter = SocialConverter(
+        source_data=dict(
+            Mouse1=dict(num_nodes=3, metadata_key="pose_mouse_001"),
+            Mouse2=dict(num_nodes=3, metadata_key="pose_mouse_002"),
+        )
+    )
+    metadata = converter.get_metadata()
 
     metadata["Subject"] = dict(subject_id="mouse_001", species="Mus musculus")
-    metadata["Devices"]["arena_camera"] = dict(name="ArenaCamera")
 
-    for subject_id in ["mouse_001", "mouse_002"]:
-        entry = metadata["Pose"]["PoseEstimations"][f"pose_{subject_id}"]
-        entry["name"] = f"PoseEstimation_{subject_id}"
-        entry["device_metadata_key"] = "arena_camera"  # one camera filmed both; one each if it did not
+    camera_key = "arena_camera"
+    metadata["Devices"][camera_key] = dict(name="ArenaCamera")
 
-        skeleton = metadata["Pose"]["Skeletons"][f"pose_{subject_id}"]
-        skeleton["name"] = f"Skeleton_{subject_id}"
-        skeleton["subject"] = subject_id
+    first = metadata["Pose"]["PoseEstimations"]["pose_mouse_001"]
+    first["name"] = "PoseEstimationMouse001"
+    first["device_metadata_key"] = camera_key
+    metadata["Pose"]["Skeletons"]["pose_mouse_001"].update(name="SkeletonMouse001", subject="mouse_001")
+
+    second = metadata["Pose"]["PoseEstimations"]["pose_mouse_002"]
+    second["name"] = "PoseEstimationMouse002"
+    second["device_metadata_key"] = camera_key
+    metadata["Pose"]["Skeletons"]["pose_mouse_002"].update(name="SkeletonMouse002", subject="mouse_002")
 
 ``mouse_001`` matches the file's ``Subject`` and its skeleton is linked to it. ``mouse_002`` does not, so
 its skeleton is written unlinked rather than pointed at the wrong subject. That is what you are trading:
