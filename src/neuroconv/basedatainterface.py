@@ -193,16 +193,6 @@ class BaseDataInterface(ABC):
 
         return nwbfile
 
-    def _has_data(self) -> bool:
-        """
-        Whether this interface's source holds anything to write.
-
-        Interfaces whose source can be empty override this so a converter can ask every interface it holds
-        the same question without knowing the modality. The base answer is True, since most sources cannot
-        be empty in a way that matters.
-        """
-        return True
-
     @abstractmethod
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, **conversion_options) -> None:
         """

@@ -154,10 +154,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
     def register_recording(self, recording_interface: BaseRecordingExtractorInterface):
         self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)
 
-    def _has_data(self) -> bool:
-        """Whether the source holds any unit. A unit with no spikes still counts, the unit is the result."""
-        return self.sorting_extractor.get_num_units() > 0
-
     def get_original_timestamps(self) -> np.ndarray:
         raise NotImplementedError(
             "Unable to fetch original timestamps for a SortingInterface since it relies upon an attached recording."
