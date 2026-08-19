@@ -1255,7 +1255,7 @@ def _build_channel_id_to_electrodes_table_map(
         virtual_id = f"{group}_{electrode}_{channel}"
         table_lookup[virtual_id] = row_index
         if has_electrode_column:
-            identity_lookup.setdefault(f"{group}_{electrode}", row_index)
+            identity_lookup.setdefault(f"{group}_{electrode}", (row_index, channel))
 
     # When there is no probe id information, the field is populated with empty strings
     group_names = _get_group_name(recording=recording)
@@ -1272,8 +1272,15 @@ def _build_channel_id_to_electrodes_table_map(
         row_index = table_lookup.get(virtual_id, None)
         if row_index is None and not recording_has_electrode_names:
             # The channel stands in for the contact nobody told us about, which is the same substitution
-            # the registry makes when it derives this row's key.
-            row_index = identity_lookup.get(f"{group}_{channel}", None)
+            # the electrodes-table metadata makes when it derives this row's key.
+            #
+            # The row's own channel name has to agree, or be absent because no channel has reached it yet.
+            # Without that, a row written from a probe whose contact ids happen to read like this
+            # recording's channel names ('0', '1', ...) in a same-named group would match, and two
+            # unrelated sets of electrodes would silently collapse onto one.
+            candidate = identity_lookup.get(f"{group}_{channel}", None)
+            if candidate is not None and candidate[1] in ("", channel):
+                row_index = candidate[0]
         channel_to_electrode_row[channel_id] = row_index
 
     return dict(channel_to_electrode_row)

@@ -415,6 +415,35 @@ class TestOtherWritersFindTheRows:
         # for. Every index resolves, which is the point: nothing fell back to appending a new row.
         assert list(nwbfile.units["electrodes"].target.data[:]) == [0, 1, 2, 3]
 
+    def test_a_probes_contact_ids_do_not_capture_another_recordings_channels(self):
+        """The fallback that lets a probe-less recording find a stated row must not over-match.
+
+        A probe whose contact ids read like the next recording's channel names, in a group of the same
+        name, is close enough to collide: both are '0', '1', ... by default. The row's own channel name
+        is what keeps them apart.
+        """
+        probed = generate_recording(num_channels=4, durations=[0.1])
+        probed.set_property("channel_name", np.array(["a", "b", "c", "d"]))
+        assert list(probed.get_probe().contact_ids) == ["0", "1", "2", "3"]
+
+        plain = generate_recording(num_channels=4, durations=[0.1])
+        plain.delete_property("contact_vector")
+        assert not plain.has_probe()
+
+        nwbfile = mock_NWBFile()
+        for recording, name in ((probed, "A"), (plain, "B")):
+            add_recording_to_nwbfile(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata={"Ecephys": {name: {"name": name}}},
+                es_key=name,
+                iterator_type=None,
+            )
+
+        assert len(nwbfile.electrodes) == 8
+        assert list(nwbfile.acquisition["A"].electrodes.data) == [0, 1, 2, 3]
+        assert list(nwbfile.acquisition["B"].electrodes.data) == [4, 5, 6, 7]
+
 
 class TestRegistryValidation:
     def test_an_electrode_the_channels_resolve_to_but_nobody_declared(self):
