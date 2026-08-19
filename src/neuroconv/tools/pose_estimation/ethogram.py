@@ -1,8 +1,8 @@
-"""Tool-agnostic helpers for behavioral-segmentation output (the ``ndx-ethogram`` extension)."""
+"""Helpers for behavioral-segmentation output downstream of pose estimation (the ``ndx-ethogram`` extension)."""
 
 import numpy as np
 
-from .signal_processing import _run_length_encode_labels
+from ..signal_processing import _run_length_encode_labels
 
 
 def _build_ethogram_from_labels(
