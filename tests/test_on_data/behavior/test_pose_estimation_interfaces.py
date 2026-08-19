@@ -5,10 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-import sleap_io
-from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
-from parameterized import param, parameterized
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 
@@ -18,9 +15,7 @@ from neuroconv.datainterfaces import (
     SLEAPInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
-    DataInterfaceTestMixin,
     PoseEstimationInterfaceTestMixin,
-    TemporalAlignmentMixin,
 )
 from neuroconv.utils import DeepDict
 
@@ -279,156 +274,191 @@ class TestLightningPoseDataInterfaceWithStubTest(PoseEstimationInterfaceTestMixi
         nwbfile.read_io.close()
 
 
-class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestSLEAPInterface(PoseEstimationInterfaceTestMixin):
     data_interface_cls = SLEAPInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"),
         video_file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "melanogaster_courtship.mp4"),
+        track_name="track_0",
     )
     save_directory = OUTPUT_PATH
 
-    def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
-        nwbfile = read_nwb(nwbfile_path)
-        assert "SLEAP_VIDEO_000_20190128_113421" in nwbfile.processing
-        processing_module_interfaces = nwbfile.processing["SLEAP_VIDEO_000_20190128_113421"].data_interfaces
-        assert "track=track_0" in processing_module_interfaces
+    def check_extracted_metadata(self, metadata: dict):
+        """What the .slp file records about the run, which is the provenance block and the video."""
+        container_entry = metadata["Pose"]["PoseEstimations"]["sleap_track_0"]
+        assert container_entry["name"] == "PoseEstimationTrack0"
+        assert container_entry["source_software"] == "SLEAP"
+        assert container_entry["source_software_version"] == "1.2.7"
+        assert container_entry["scorer"] == "TopDownPredictor"
 
-        pose_estimation_series_in_nwb = processing_module_interfaces["track=track_0"].pose_estimation_series
-        expected_pose_estimation_series = [
-            "abdomen",
-            "eyeL",
-            "eyeR",
-            "forelegL4",
-            "forelegR4",
+        skeleton_entry = metadata["Pose"]["Skeletons"]["sleap_track_0"]
+        assert skeleton_entry["subject"] == "track_0"
+        assert skeleton_entry["nodes"] == [
             "head",
-            "hindlegL4",
-            "hindlegR4",
-            "midlegL4",
-            "midlegR4",
             "thorax",
+            "abdomen",
             "wingL",
             "wingR",
+            "forelegL4",
+            "forelegR4",
+            "midlegL4",
+            "midlegR4",
+            "hindlegL4",
+            "hindlegR4",
+            "eyeL",
+            "eyeR",
         ]
 
-        assert set(pose_estimation_series_in_nwb) == set(expected_pose_estimation_series)
-        nwbfile.read_io.close()
 
+@pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPMultipleVideos:
+    """A .slp assembled in the SLEAP GUI can label several recordings, which are separate sessions.
 
-class CustomTestSLEAPInterface(TestCase):
-    savedir = OUTPUT_PATH
+    Built rather than downloaded: every .slp in the test data holds one video, and what is under test is
+    our own indexing, since ``frame_idx`` is only unique within a video.
+    """
 
-    @parameterized.expand(
-        [
-            param(
-                data_interface=SLEAPInterface,
-                interface_kwargs=dict(
-                    file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"),
-                ),
-            )
-        ]
-    )
-    @pytest.mark.skipif(
-        SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
-        reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
-    )
-    def test_sleap_to_nwb_interface(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+    @staticmethod
+    def _write_two_video_file(file_path) -> None:
+        import sleap_io
 
-        interface = SLEAPInterface(**interface_kwargs)
-        metadata = interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-
-        slp_predictions_path = interface_kwargs["file_path"]
-        labels = sleap_io.load_slp(slp_predictions_path)
-
-        nwbfile = read_nwb(nwbfile_path)
-
-        # Test processing module naming as video
-        processing_module_name = "SLEAP_VIDEO_000_20190128_113421"
-        assert processing_module_name in nwbfile.processing
-
-        # For this case we have as many containers as tracks
-        # Each track usually represents a subject
-        processing_module = nwbfile.processing[processing_module_name]
-        processing_module_interfaces = processing_module.data_interfaces
-        assert len(processing_module_interfaces) == len(labels.tracks)
-
-        # Test name of PoseEstimation containers
-        extracted_container_names = processing_module_interfaces.keys()
-        for track in labels.tracks:
-            expected_track_name = f"track={track.name}"
-            assert expected_track_name in extracted_container_names
-
-        # Test one PoseEstimation container
-        container_name = f"track={track.name}"
-        pose_estimation_container = processing_module_interfaces[container_name]
-        # Test that the skeleton nodes are store as nodes in containers
-        expected_node_names = [node.name for node in labels.skeletons[0]]
-        assert expected_node_names == list(pose_estimation_container.nodes[:])
-
-        # Test that each PoseEstimationSeries is named as a node
-        for node_name in pose_estimation_container.nodes[:]:
-            assert node_name in pose_estimation_container.pose_estimation_series
-        nwbfile.read_io.close()
-
-    @parameterized.expand(
-        [
-            param(
-                data_interface=SLEAPInterface,
-                interface_kwargs=dict(
-                    file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "melanogaster_courtship.slp"),
-                    video_file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "melanogaster_courtship.mp4"),
-                ),
-            )
-        ]
-    )
-    @pytest.mark.skipif(
-        SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
-        reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
-    )
-    def test_sleap_interface_timestamps_propagation(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
-
-        interface = SLEAPInterface(**interface_kwargs)
-        metadata = interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-
-        slp_predictions_path = interface_kwargs["file_path"]
-        labels = sleap_io.load_slp(slp_predictions_path)
-
-        from neuroconv.datainterfaces.behavior.sleap.sleap_utils import (
-            extract_timestamps,
+        skeleton = sleap_io.Skeleton(["head", "tail"])
+        track = sleap_io.Track(name="track_0")
+        videos = [sleap_io.Video(filename=f"recording_{index}.mp4") for index in range(2)]
+        labeled_frames = []
+        for video_index, video in enumerate(videos):
+            for frame_index in range(3):
+                instance = sleap_io.PredictedInstance.from_numpy(
+                    points_data=np.array([[video_index * 100.0 + frame_index, 1.0], [2.0, 3.0]]),
+                    point_scores=np.array([0.9, 0.8]),
+                    score=0.9,
+                    skeleton=skeleton,
+                    track=track,
+                )
+                labeled_frames.append(sleap_io.LabeledFrame(video=video, frame_idx=frame_index, instances=[instance]))
+        sleap_io.save_slp(
+            sleap_io.Labels(labeled_frames=labeled_frames, videos=videos, skeletons=[skeleton], tracks=[track]),
+            str(file_path),
         )
 
-        expected_timestamps = set(extract_timestamps(interface_kwargs["video_file_path"]))
+    @pytest.fixture
+    def two_video_file_path(self, tmp_path):
+        file_path = tmp_path / "two_recordings.slp"
+        self._write_two_video_file(file_path=file_path)
+        return str(file_path)
 
-        nwbfile = read_nwb(nwbfile_path)
+    def test_available_videos(self, two_video_file_path):
+        assert SLEAPInterface.get_available_videos(file_path=two_video_file_path) == ["recording_0", "recording_1"]
 
-        # Test processing module naming as video
-        video_name = Path(labels.videos[0].filename).stem
-        processing_module_name = f"SLEAP_VIDEO_000_{video_name}"
+    def test_naming_a_video_is_required(self, two_video_file_path):
+        with pytest.raises(ValueError, match="holds 2 recordings"):
+            SLEAPInterface(file_path=two_video_file_path, track_name="track_0", frames_per_second=1.0)
 
-        # For this case we have as many containers as tracks
-        processing_module_interfaces = nwbfile.processing[processing_module_name].data_interfaces
+    def test_unknown_video_raises(self, two_video_file_path):
+        with pytest.raises(ValueError, match="Video 'nowhere' is not in this file"):
+            SLEAPInterface(
+                file_path=two_video_file_path, track_name="track_0", video_name="nowhere", frames_per_second=1.0
+            )
 
-        extracted_container_names = processing_module_interfaces.keys()
-        for track in labels.tracks:
-            expected_track_name = f"track={track.name}"
-            assert expected_track_name in extracted_container_names
+    def test_each_recording_writes_its_own_frames(self, two_video_file_path):
+        """Frames of the two recordings share indices 0..2 and must not collapse onto each other."""
+        for video_index, video_name in enumerate(["recording_0", "recording_1"]):
+            interface = SLEAPInterface(
+                file_path=two_video_file_path,
+                track_name="track_0",
+                video_name=video_name,
+                frames_per_second=1.0,
+            )
+            nwbfile = mock_NWBFile()
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-            container_name = f"track={track.name}"
-            pose_estimation_container = processing_module_interfaces[container_name]
+            series = nwbfile.processing["behavior"]["PoseEstimationTrack0"].pose_estimation_series
+            head = series["PoseEstimationSeriesHead"]
+            assert head.data.shape == (3, 2)
+            # The x coordinate encodes which recording the frame came from.
+            assert_array_equal(head.data[:, 0], [video_index * 100.0 + frame for frame in range(3)])
+            assert_array_equal(head.get_timestamps(), [0.0, 1.0, 2.0])
 
-            # Test that each PoseEstimationSeries is named as a node
-            for node_name in pose_estimation_container.nodes[:]:
-                pose_estimation_series = pose_estimation_container.pose_estimation_series[node_name]
-                extracted_timestamps = pose_estimation_series.timestamps[:]
 
-                # Some frames do not have predictions associated with them, so we test for sub-set
-                assert set(extracted_timestamps).issubset(expected_timestamps)
-        nwbfile.read_io.close()
+@pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPMultipleTracks:
+    """A multi-animal .slp takes one interface per track, since an NWB file holds one subject."""
+
+    file_path = str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp")
+    video_file_path = str(BEHAVIOR_DATA_PATH / "sleap" / "melanogaster_courtship.mp4")
+
+    def test_writing_every_track_is_deprecated(self):
+        """Not naming a track delegates to the pre-``track_name`` interface, behind a FutureWarning.
+
+        The warning is raised where the choice is made, in the constructor, and the whole object is then
+        the old one: it emits no pose metadata and writes into a per-video processing module.
+        """
+        with pytest.warns(FutureWarning, match="one interface per track"):
+            interface = SLEAPInterface(file_path=self.file_path, video_file_path=self.video_file_path)
+
+        assert sorted(interface.get_metadata()) == ["NWBFile"]
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        processing_module = nwbfile.processing["SLEAP_VIDEO_000_20190128_113421"]
+        assert set(processing_module.data_interfaces) == {"track=track_0", "track=track_1"}
+
+    def test_unknown_track_raises(self):
+        with pytest.raises(ValueError, match="Track 'nobody' is not in this file"):
+            SLEAPInterface(file_path=self.file_path, track_name="nobody")
+
+    def test_one_container_per_track(self):
+        nwbfile = mock_NWBFile()
+        for track_name in SLEAPInterface.get_available_tracks(file_path=self.file_path):
+            interface = SLEAPInterface(
+                file_path=self.file_path,
+                video_file_path=self.video_file_path,
+                track_name=track_name,
+            )
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        behavior_module = nwbfile.processing["behavior"]
+        assert "PoseEstimationTrack0" in behavior_module.data_interfaces
+        assert "PoseEstimationTrack1" in behavior_module.data_interfaces
+        assert set(behavior_module["Skeletons"].skeletons) == {
+            "SkeletonPoseEstimationTrack0",
+            "SkeletonPoseEstimationTrack1",
+        }
+
+    def test_aligning_a_named_track_round_trips(self):
+        """What ``get_timestamps`` hands out is what ``set_aligned_timestamps`` takes back.
+
+        Both are one time per labeled frame, not per video frame, so a shift applied through the base
+        class does not re-index a vector that is already selected.
+        """
+        for track_name in SLEAPInterface.get_available_tracks(file_path=self.file_path):
+            interface = SLEAPInterface(
+                file_path=self.file_path, video_file_path=self.video_file_path, track_name=track_name
+            )
+            before = interface.get_timestamps()
+            interface.set_aligned_starting_time(aligned_starting_time=1.23)
+            after = interface.get_timestamps()
+            assert len(after) == len(before)
+            assert after[0] == pytest.approx(before[0] + 1.23)
+
+    def test_timestamps_come_from_the_video(self):
+        from neuroconv.datainterfaces.behavior.sleap.sleap_utils import extract_timestamps
+
+        interface = SLEAPInterface(file_path=self.file_path, video_file_path=self.video_file_path, track_name="track_0")
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        # Not every video frame carries a prediction, so the written times are a subset of the video's.
+        expected_timestamps = set(extract_timestamps(self.video_file_path))
+        container = nwbfile.processing["behavior"]["PoseEstimationTrack0"]
+        for series in container.pose_estimation_series.values():
+            assert set(series.get_timestamps()).issubset(expected_timestamps)
 
 
 @pytest.mark.skipif(
