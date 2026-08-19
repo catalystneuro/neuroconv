@@ -252,13 +252,6 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         labeled_video_file_path = self.source_data["labeled_video_file_path"]
 
-        metadata["Devices"] = {
-            self.metadata_key: {
-                "name": "CameraPoseEstimation",
-                "description": "Camera used for behavioral recording and pose estimation.",
-            }
-        }
-
         # Lightning Pose predicts each keypoint independently, so the source carries no edges.
         metadata["Pose"]["Skeletons"] = {
             self.metadata_key: {
@@ -280,7 +273,6 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
                 "dimensions": [list(self.dimension)],
                 "original_videos": [str(self.original_video_file_path)],
                 "labeled_videos": [str(labeled_video_file_path)] if labeled_video_file_path else None,
-                "device_metadata_key": self.metadata_key,
                 "skeleton_metadata_key": self.metadata_key,
                 "PoseEstimationSeries": pose_estimation_series,
             }
@@ -351,15 +343,22 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         # modality at the top-level metadata["Pose"]; anything else (including no metadata) is read in
         # the legacy metadata["Behavior"]["PoseEstimation"] shape and converted, so there is a single
         # write path.
-        use_new_metadata_format = metadata is not None and "Pose" in metadata
+        # Dispatch on the legacy block being there rather than on the dict-based one being absent, since
+        # metadata that mentions neither is not legacy, it is a caller who said nothing about pose.
+        # TODO: remove the branch with the legacy metadata["Behavior"]["PoseEstimation"] block.
+        uses_legacy_metadata_format = metadata is not None and "PoseEstimation" in metadata.get("Behavior", {})
+        describes_pose = metadata is not None and ("Pose" in metadata or uses_legacy_metadata_format)
 
-        metadata_copy = DeepDict(self.get_metadata(use_new_metadata_format=True))
-        if use_new_metadata_format:
-            metadata_copy.deep_update(deepcopy(metadata))
+        # Per block, not per field: a caller who wrote a pose block gets it as they wrote it, absent keys
+        # and all, and a caller who wrote none gets this interface's own rather than an error.
+        if not describes_pose:
+            metadata_copy = self.get_metadata()
+        elif uses_legacy_metadata_format:
+            metadata_copy = self._translate_legacy_metadata(
+                metadata=deepcopy(metadata), defaults=DeepDict(self.get_metadata(use_new_metadata_format=True))
+            )
         else:
-            metadata_copy = self._translate_legacy_metadata(metadata=deepcopy(metadata), defaults=metadata_copy)
-
-        series_metadata = metadata_copy["Pose"]["PoseEstimations"][self.metadata_key]["PoseEstimationSeries"]
+            metadata_copy = deepcopy(metadata)
 
         # These two are deprecated as conversion options: the dict-based shape carries them per
         # series, so the values are routed into every series entry rather than applied here.
@@ -380,7 +379,16 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
                 FutureWarning,
                 stacklevel=2,
             )
-            for series_entry in series_metadata.values():
+            # Reached with ``.get`` and checked rather than indexed: ``metadata_copy`` is often a
+            # ``DeepDict``, where indexing a key that addresses nothing creates it, which would leave the
+            # writer's own check with an empty entry to find instead of a missing one.
+            containers_metadata = metadata_copy.get("Pose", {}).get("PoseEstimations", {})
+            if self.metadata_key not in containers_metadata:
+                raise ValueError(
+                    f"metadata_key '{self.metadata_key}' was not found in metadata['Pose']['PoseEstimations'] "
+                    f"(available keys: {list(containers_metadata)})."
+                )
+            for series_entry in containers_metadata[self.metadata_key]["PoseEstimationSeries"].values():
                 series_entry.update(deprecated_options)
 
         pose_estimation_data = self.pose_estimation_data if not stub_test else self.pose_estimation_data.head(n=10)
@@ -420,7 +428,14 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         container_entry["description"] = legacy_metadata.get(
             "description", "Contains the pose estimation series for each keypoint."
         )
-        translated["Devices"][self.metadata_key]["name"] = legacy_metadata["camera_name"]
+        # The legacy shape names a camera and the dict-based one does not, so the cross-reference is set
+        # here rather than in get_metadata. It keeps the legacy write producing the device it always did,
+        # and goes with the legacy shape.
+        container_entry["device_metadata_key"] = self.metadata_key
+        translated["Devices"][self.metadata_key] = {
+            "name": legacy_metadata["camera_name"],
+            "description": "Camera used for behavioral recording and pose estimation.",
+        }
         translated["Pose"]["Skeletons"][self.metadata_key]["name"] = f"Skeleton{container_entry['name']}"
 
         for keypoint_name in self.keypoint_names:

@@ -156,13 +156,6 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
         # The legacy metadata["Behavior"]["PoseEstimation"] block must be gone in the dict-based shape.
         assert "Behavior" not in metadata
 
-        expected_devices = {
-            metadata_key: {
-                "name": "CameraPoseEstimation",
-                "description": "Camera used for behavioral recording and pose estimation.",
-            },
-        }
-
         expected_pose_metadata = {
             "Skeletons": {
                 metadata_key: {
@@ -179,7 +172,6 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
                     "dimensions": [[self.original_video_height, self.original_video_width]],
                     "original_videos": [self.interface_kwargs["original_video_file_path"]],
                     "labeled_videos": None,
-                    "device_metadata_key": metadata_key,
                     "skeleton_metadata_key": metadata_key,
                     "PoseEstimationSeries": {
                         keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name}"}
@@ -189,7 +181,8 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
             },
         }
 
-        assert metadata["Devices"] == expected_devices
+        # No Devices block: no pose format records a camera, so none is emitted.
+        assert "Devices" not in metadata
         assert metadata["Pose"] == expected_pose_metadata
 
     # TODO: remove when the legacy metadata["Behavior"]["PoseEstimation"] block is removed. The
@@ -471,13 +464,6 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
         # The legacy top-level "PoseEstimation" block must be gone in the dict-based shape.
         assert "PoseEstimation" not in metadata
 
-        expected_devices = {
-            metadata_key: {
-                "name": "CameraPoseEstimationDeepLabCut",
-                "description": "Camera used for behavioral recording and pose estimation.",
-            },
-        }
-
         expected_pose_metadata = {
             "Skeletons": {
                 metadata_key: {
@@ -494,7 +480,6 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
                     "scorer": "DLC_resnet50_openfieldAug20shuffle1_30000",
                     "dimensions": [[0, 0]],
                     "original_videos": None,
-                    "device_metadata_key": metadata_key,
                     "skeleton_metadata_key": metadata_key,
                     "PoseEstimationSeries": {
                         bodypart: {"name": f"PoseEstimationSeries{bodypart.capitalize()}"} for bodypart in bodyparts
@@ -503,7 +488,8 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
             },
         }
 
-        assert metadata["Devices"] == expected_devices
+        # No Devices block: no pose format records a camera, so none is emitted.
+        assert "Devices" not in metadata
         assert metadata["Pose"] == expected_pose_metadata
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
@@ -565,11 +551,6 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
     def check_renaming_instance(self, nwbfile_path: str):
         custom_container_name = "TestPoseEstimation"
 
-        # `pose_estimation_metadata_key` is the deprecated old-format argument, so the old shape is what
-        # this check is about.
-        metadata = self.interface.get_metadata(use_new_metadata_format=False)
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-
         # Create a new interface with the custom container name
         new_interface = DeepLabCutInterface(
             file_path=self.interface.source_data["file_path"],
@@ -578,6 +559,12 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
             pose_estimation_metadata_key=custom_container_name,
             sampling_frequency=self.interface.sampling_frequency,
         )
+
+        # `pose_estimation_metadata_key` is the deprecated old-format argument, so the old shape is what
+        # this check is about. The metadata comes from the interface under test: it reaches the writer as
+        # written, so metadata keyed for another interface would not address this one's entry.
+        metadata = new_interface.get_metadata(use_new_metadata_format=False)
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         new_interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 

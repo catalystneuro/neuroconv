@@ -1519,12 +1519,6 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
                 "confidence_definition": "Softmax output of the deep neural network.",
             }
 
-        metadata["Devices"] = {
-            self.metadata_key: {
-                "name": device_name,
-                "description": "Mock camera device for pose estimation testing.",
-            }
-        }
         metadata["Pose"] = {
             "Skeletons": {
                 self.metadata_key: {
@@ -1541,7 +1535,6 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
                     "scorer": self.scorer,
                     "dimensions": [[640, 480]],
                     "original_videos": ["mock_video.mp4"],
-                    "device_metadata_key": self.metadata_key,
                     "skeleton_metadata_key": self.metadata_key,
                     "PoseEstimationSeries": pose_estimation_series_entries,
                 },
