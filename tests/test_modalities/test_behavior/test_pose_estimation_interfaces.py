@@ -13,15 +13,9 @@ class TestMockPoseEstimationInterface(PoseEstimationInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         container_name = metadata_key
-        device_name = f"Camera{container_name}"
         skeleton_name = f"Skeleton{container_name}"
 
-        assert metadata["Devices"] == {
-            metadata_key: {
-                "name": device_name,
-                "description": "Mock camera device for pose estimation testing.",
-            },
-        }
+        assert "Devices" not in metadata
 
         pose_metadata = metadata["Pose"]
 
@@ -32,7 +26,6 @@ class TestMockPoseEstimationInterface(PoseEstimationInterfaceTestMixin):
         container = pose_metadata["PoseEstimations"][metadata_key]
         assert container["name"] == container_name
         assert container["source_software"] == self.interface.source_software
-        assert container["device_metadata_key"] == metadata_key
         assert container["skeleton_metadata_key"] == metadata_key
         assert set(container["PoseEstimationSeries"].keys()) == set(self.interface.nodes)
 
