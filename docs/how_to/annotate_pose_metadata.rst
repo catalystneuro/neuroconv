@@ -196,13 +196,8 @@ and nothing extra has to be said in the pose metadata.
 Which individual an interface reads is what its own arguments select:
 :py:meth:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPInterface.get_available_tracks`
 lists the identities in a ``.slp`` and ``track_name`` picks one, and ``subject_name`` picks one of the
-individuals in a multi-animal DeepLabCut project.
-
-.. note::
-
-    ``track_0`` is the tracker's label for a trajectory, not the name of your animal. Map it to your own
-    ``subject_id`` as above; the skeleton's ``subject`` field is what ties the keypoints to that identity
-    inside the file.
+individuals in a multi-animal DeepLabCut project. Neither is a name you chose: ``track_0`` and ``ind1``
+are the tracker's labels for a trajectory, so map them to your own ``subject_id`` as above.
 
 If you would rather keep both animals in one file, because the video, the trials and often the
 electrophysiology are shared and separate files duplicate all of it, the skeleton's ``subject`` field is
