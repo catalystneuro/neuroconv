@@ -125,12 +125,6 @@ that reads the file.
     metadata["Devices"]["top_camera"] = dict(name="TopCamera", description="Overhead camera, 30 fps.")
     container["device_metadata_key"] = "top_camera"
 
-.. note::
-
-    Calibrated multi-camera setups are the exception. There the camera is not just provenance, it is what
-    makes a 3D reconstruction possible, so the intrinsics and extrinsics belong on the container's own
-    device rather than on the recording.
-
 .. admonition:: The file so far
    :class: tip
 
