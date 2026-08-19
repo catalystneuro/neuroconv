@@ -354,24 +354,24 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
             confidence_definition = positional_values.get("confidence_definition", confidence_definition)
             stub_test = positional_values.get("stub_test", stub_test)
 
-        # Dispatch on the shape of the user-supplied metadata: the dict-based format has the pose
-        # modality at the top-level metadata["Pose"]; anything else (including no metadata) is read in
-        # the legacy metadata["Behavior"]["PoseEstimation"] shape and converted, so there is a single
-        # write path.
-        use_new_metadata_format = metadata is not None and "Pose" in metadata
-
-        # The caller's metadata is passed on as they wrote it; only an absent one falls back to this
+        # Dispatch on the legacy block being there rather than on the dict-based one being absent, since
+        # metadata that mentions neither is not legacy, it is a caller who said nothing about pose. The
+        # caller's metadata is passed on as they wrote it; only an absent one falls back to this
         # interface's own.
-        if metadata is None:
-            metadata_copy = self.get_metadata(use_new_metadata_format=True)
-        elif use_new_metadata_format:
-            metadata_copy = deepcopy(metadata)
-        else:
+        # TODO: remove the branch with the legacy metadata["Behavior"]["PoseEstimation"] block.
+        uses_legacy_metadata_format = metadata is not None and "PoseEstimation" in metadata.get("Behavior", {})
+        describes_pose = metadata is not None and ("Pose" in metadata or uses_legacy_metadata_format)
+
+        # Per block, not per field: a caller who wrote a pose block gets it as they wrote it, absent keys
+        # and all, and a caller who wrote none gets this interface's own rather than an error.
+        if not describes_pose:
+            metadata_copy = self.get_metadata()
+        elif uses_legacy_metadata_format:
             metadata_copy = self._translate_legacy_metadata(
                 metadata=deepcopy(metadata), defaults=DeepDict(self.get_metadata(use_new_metadata_format=True))
             )
-
-        series_metadata = metadata_copy["Pose"]["PoseEstimations"][self.metadata_key]["PoseEstimationSeries"]
+        else:
+            metadata_copy = deepcopy(metadata)
 
         # These two are deprecated as conversion options: the dict-based shape carries them per
         # series, so the values are routed into every series entry rather than applied here.
@@ -392,7 +392,16 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
                 FutureWarning,
                 stacklevel=2,
             )
-            for series_entry in series_metadata.values():
+            # Reached with ``.get`` and checked rather than indexed: ``metadata_copy`` is often a
+            # ``DeepDict``, where indexing a key that addresses nothing creates it, which would leave the
+            # writer's own check with an empty entry to find instead of a missing one.
+            containers_metadata = metadata_copy.get("Pose", {}).get("PoseEstimations", {})
+            if self.metadata_key not in containers_metadata:
+                raise ValueError(
+                    f"metadata_key '{self.metadata_key}' was not found in metadata['Pose']['PoseEstimations'] "
+                    f"(available keys: {list(containers_metadata)})."
+                )
+            for series_entry in containers_metadata[self.metadata_key]["PoseEstimationSeries"].values():
                 series_entry.update(deprecated_options)
 
         keypoint_data = self._get_keypoint_data()
