@@ -15,7 +15,7 @@
 ## Features
 
 ## Improvements
-
+* The interfaces that write a recording as a `TimeSeries` rather than an `ElectricalSeries`, EDF analog, Intan analog, Intan stimulation, Open Ephys analog and the SpikeGLX sync channel, now share `BaseRecordingToTimeSeriesInterface`. Each had copied the same `add_to_nwbfile` body and the same `metadata["TimeSeries"]` shape between them, and now states only the series name and description. Nothing about their behavior changes.
 * Reduced non-actionable CI warnings in test fixtures and NWB writing helpers.
 
 # v0.10.0 (August 18, 2026)
