@@ -223,7 +223,6 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         intan_device = dict(
             name="Intan",
             description=device_description,
-            manufacturer="Intan",
         )
         device_list = [intan_device]
         ecephys_metadata.update(Device=device_list)

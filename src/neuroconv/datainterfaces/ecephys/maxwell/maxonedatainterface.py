@@ -144,8 +144,14 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
             # the device itself unnamed. Here the recording system is named after the format it is, with
             # the Maxwell software version the file records as its description.
             device_metadata_key = "maxone_device"
+            device_model_metadata_key = "maxone_model"
+            metadata["DeviceModels"] = {
+                device_model_metadata_key: dict(name="MaxOne", manufacturer="MaxWell Biosystems")
+            }
             metadata["Devices"] = {
-                device_metadata_key: dict(name="MaxOne", description=description, manufacturer="MaxWell Biosystems")
+                device_metadata_key: dict(
+                    name="MaxOne", description=description, device_model_metadata_key=device_model_metadata_key
+                )
             }
 
             channel_group_names = set(_get_group_name(recording=self.recording_extractor).tolist())

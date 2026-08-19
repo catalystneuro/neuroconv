@@ -247,6 +247,12 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         template.deep_update(source_metadata)
         return template
 
+    def _has_segmentation_data(self) -> bool:
+        """Whether the source holds anything to write: ROIs, traces or summary images."""
+        from ...tools.roiextractors.roiextractors import _segmentation_extractor_has_data
+
+        return _segmentation_extractor_has_data(segmentation_extractor=self.segmentation_extractor)
+
     def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self._initialize_extractor(self.source_data)
         return reinitialized_extractor.get_timestamps()

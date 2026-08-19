@@ -5,6 +5,7 @@ from shutil import rmtree
 from tempfile import mkdtemp
 
 import numpy as np
+import pytest
 from pynwb import NWBFile
 
 from neuroconv import (
@@ -163,17 +164,19 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         self.assertListEqual(data_interface_names, expected_interface_names)
 
 
-def test_converter_pipe_append_on_disk(tmp_path):
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_converter_pipe_append_on_disk(tmp_path, backend):
     """Test that append_on_disk_nwbfile works for ConverterPipe with multiple interfaces."""
-    from pynwb import NWBHDF5IO
     from pynwb.testing.mock.file import mock_NWBFile
 
+    from neuroconv.tools.nwb_helpers import BACKEND_NWB_IO
     from neuroconv.tools.testing.mock_interfaces import MockTimeSeriesInterface
 
-    nwbfile_path = tmp_path / "test_append.nwb"
+    nwbfile_path = tmp_path / ("test_append.nwb" if backend == "hdf5" else "test_append.nwb.zarr")
 
     nwbfile = mock_NWBFile()
-    with NWBHDF5IO(nwbfile_path, mode="w") as io:
+    IO = BACKEND_NWB_IO[backend]
+    with IO(str(nwbfile_path), mode="w") as io:
         io.write(nwbfile)
 
     # Append to existing file with converter containing two TimeSeries interfaces
@@ -188,8 +191,8 @@ def test_converter_pipe_append_on_disk(tmp_path):
 
     converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, append_on_disk_nwbfile=True)
 
-    # Verify all interfaces' data was appended
-    with NWBHDF5IO(nwbfile_path, "r") as io:
+    # Verify all interfaces' data was appended, in a file still written with the backend it started with
+    with IO(str(nwbfile_path), "r") as io:
         nwbfile = io.read()
         # Original mock file data still exists
         assert nwbfile.session_description is not None
