@@ -44,7 +44,7 @@ from ..nwb_helpers import (
 from ..nwb_helpers._device_types import _build_inline_containers
 from ..nwb_helpers._metadata_and_file_helpers import (
     _add_device_to_nwbfile,
-    _resolve_backend,
+    _fetch_backend_from_nwbfile_on_disk,
     configure_and_write_nwbfile,
 )
 from ...utils import (
@@ -1245,8 +1245,11 @@ def write_imaging_to_nwbfile(
             "or remove the nwbfile parameter to append to the existing file on disk."
         )
 
-    # Resolve backend
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    # An append is bound to the backend of the file on disk; a new file gets its backend from the caller
+    if append_on_disk_nwbfile:
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
 
     # Determine if we're writing a new file or appending
     writing_new_file = not append_on_disk_nwbfile
@@ -1265,12 +1268,10 @@ def write_imaging_to_nwbfile(
             iterator_options=iterator_options,
         )
 
-        if backend_configuration is None:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
-
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
+            backend=backend,
             backend_configuration=backend_configuration,
         )
 
@@ -1635,8 +1636,11 @@ def write_segmentation_to_nwbfile(
             "or remove the nwbfile parameter to append to the existing file on disk."
         )
 
-    # Resolve backend
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    # An append is bound to the backend of the file on disk; a new file gets its backend from the caller
+    if append_on_disk_nwbfile:
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
 
     # Determine if we're writing a new file or appending
     writing_new_file = not append_on_disk_nwbfile
@@ -1658,12 +1662,10 @@ def write_segmentation_to_nwbfile(
                 iterator_options=iterator_options,
             )
 
-        if backend_configuration is None:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
-
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
+            backend=backend,
             backend_configuration=backend_configuration,
         )
 
