@@ -245,11 +245,11 @@ class SLEAPInterface(BasePoseEstimationInterface):
             return self._legacy_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
-    def get_keypoint_names(self) -> list[str]:
+    def _get_keypoint_names(self) -> list[str]:
         return [node.name for node in self._get_labels().skeletons[0].nodes]
 
     def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
-        keypoint_names = self.get_keypoint_names()
+        keypoint_names = self._get_keypoint_names()
 
         # One row per labeled frame, in frame order, taking this track's instance from each. Only
         # predicted instances are read: a proofread file also holds the human's corrections as plain
@@ -291,7 +291,7 @@ class SLEAPInterface(BasePoseEstimationInterface):
             source_software="SLEAP",
             PoseEstimationSeries={
                 keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}"}
-                for keypoint_name in self.get_keypoint_names()
+                for keypoint_name in self._get_keypoint_names()
             },
         )
         if "sleap_version" in provenance:
