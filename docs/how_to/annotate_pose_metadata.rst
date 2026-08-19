@@ -126,25 +126,42 @@ keypoints belong to somebody other than the file's subject.
     skeleton["subject"] = "mouse_001"
 
 **Record where the frames came from.** Keypoints are a claim about a video, and a file that does not say
-which video cannot be checked. A reader who wants to see whether a low-confidence stretch is an occlusion
-or a tracking failure has to watch the frames, and a reader assembling a dataset needs to know that two
-sessions came from different cameras. Two things can carry it, and which you want depends on whether the
-video itself is in the file.
+which video cannot be checked. A reader who wants to know whether a low-confidence stretch is an
+occlusion or a tracking failure has to watch the frames, and a reader assembling a dataset needs to know
+that two sessions came from different cameras.
 
-If a video interface wrote the recording into the file as an ``ImageSeries``, link that object. The link
-is a reference rather than a path, so it cannot rot, and the ``ImageSeries`` already carries its own
-camera ``Device``, so this one link records both the recording and the instrument. Adding a camera to the
-container as well is a second link to the same object.
+The way you want is a link to the video itself. Write it into the same file with an
+:doc:`external video interface <../conversion_examples_gallery/behavior/video>`, which stores it as an
+``ImageSeries`` pointing at the file on disk and gives it an entry in
+``metadata["Behavior"]["ExternalVideos"]``. Then name that entry from the pose container. The link is a
+reference to the object rather than a path, so it cannot rot, and the ``ImageSeries`` carries its own
+camera ``Device``, so one link records both the recording and the instrument and the container needs no
+camera of its own.
 
 .. code-block:: python
 
-    container["source_video_metadata_key"] = "original_video"  # -> metadata["Behavior"]["ExternalVideos"]
+    # The video interface's own entry, keyed by the ``metadata_key`` it was constructed with.
+    metadata["Behavior"]["ExternalVideos"]["original_video"] = dict(
+        name="OverheadVideo",
+        description="Raw video the tracker ran on.",
+        device_metadata_key="top_camera",
+    )
+    metadata["Devices"]["top_camera"] = dict(name="TopCamera", description="Overhead camera, 30 fps.")
 
-If the video is not in the file, because it stays on disk or you have only the tracker output, then give
-its path and add the camera to the container, since nothing else in the file records that one existed.
-Prefer a path relative to the NWB file over an absolute one: the schema notes that these strings are
-fragile, and an absolute path from the machine that ran the tracker almost never resolves on the machine
-that reads the file.
+    # The pose container names that entry, and the writer resolves it to the ImageSeries.
+    container["source_video_metadata_key"] = "original_video"
+
+The video interface has to run before the pose one in the same conversion, since the writer resolves the
+link against an object that must already be in the file. Use ``labeled_video_metadata_key`` the same way
+for a tracker's annotated output video, when you have one.
+
+If the video is not going into the file, because it stays on disk or you have only the tracker output,
+then all you can record is where it was. ``original_videos`` is a list of plain strings on the container;
+nothing resolves them, nothing checks them, and they are the field ``ndx-pose`` intends to replace with
+the link above. Prefer a path relative to the NWB file, since the schema notes these strings are fragile
+and an absolute path from the machine that ran the tracker almost never resolves on the machine that
+reads the file. Add the camera here too, because with no ``ImageSeries`` nothing else in the file records
+that one existed.
 
 .. code-block:: python
 
