@@ -37,6 +37,35 @@ def _get_pose_metadata_placeholders(keypoint_names) -> dict:
     }
 
 
+def _resolve_image_series(nwbfile: NWBFile, metadata: dict, metadata_key: str, field: str):
+    """Find the ``ImageSeries`` a video interface wrote, by way of its metadata entry.
+
+    Unlike the other cross-references the writer follows, this one cannot be created here: the
+    ``ImageSeries`` belongs to a video interface, which also chooses whether it lands in ``acquisition``
+    or in the behavior processing module, so both are searched and a missing one is a caller error about
+    ordering rather than about metadata.
+    """
+    videos_metadata = metadata.get("Behavior", {}).get("ExternalVideos", {})
+    if metadata_key not in videos_metadata:
+        raise ValueError(
+            f"{field} '{metadata_key}' was not found in metadata['Behavior']['ExternalVideos'] "
+            f"(available keys: {list(videos_metadata)})."
+        )
+
+    image_series_name = videos_metadata[metadata_key]["name"]
+    if image_series_name in nwbfile.acquisition:
+        return nwbfile.acquisition[image_series_name]
+    behavior_module = nwbfile.processing.get("behavior")
+    if behavior_module is not None and image_series_name in behavior_module.data_interfaces:
+        return behavior_module[image_series_name]
+
+    raise ValueError(
+        f"{field} '{metadata_key}' names the ImageSeries '{image_series_name}', which is not in the file. "
+        "The video has to be written before the pose that links it, so add the video interface to the same "
+        "conversion and let it run first."
+    )
+
+
 def _add_pose_estimation_to_nwbfile(
     nwbfile: NWBFile,
     *,
@@ -50,7 +79,9 @@ def _add_pose_estimation_to_nwbfile(
     The data comes from ``keypoint_data`` and everything else from ``metadata``: the container entry is
     read from ``metadata["Pose"]["PoseEstimations"][metadata_key]``, and its ``device_metadata_key`` and
     ``skeleton_metadata_key`` are followed into ``metadata["Devices"]`` and
-    ``metadata["Pose"]["Skeletons"]``. Both cross-references are optional; an absent one means the
+    ``metadata["Pose"]["Skeletons"]``, while ``source_video_metadata_key`` and
+    ``labeled_video_metadata_key`` are followed into ``metadata["Behavior"]["ExternalVideos"]`` and linked
+    as objects rather than as paths. Both cross-references are optional; an absent one means the
     container has no device or no skeleton rather than a fabricated placeholder. A ``Device`` or
     ``Skeleton`` whose name is already in the file is reused, so several containers can share one by
     pointing at the same key.
@@ -188,6 +219,18 @@ def _add_pose_estimation_to_nwbfile(
     for field in optional_container_fields:
         if container_entry.get(field) is not None:
             container_kwargs[field] = container_entry[field]
+
+    # A link to the video object in the file, which ndx-pose prefers over the ``original_videos`` paths
+    # "as it provides a formal reference rather than a file path string".
+    for field, container_field in (
+        ("source_video_metadata_key", "source_video"),
+        ("labeled_video_metadata_key", "labeled_video"),
+    ):
+        video_metadata_key = container_entry.get(field)
+        if video_metadata_key is not None:
+            container_kwargs[container_field] = _resolve_image_series(
+                nwbfile=nwbfile, metadata=metadata, metadata_key=video_metadata_key, field=field
+            )
 
     dimensions = container_entry.get("dimensions")
     if dimensions is not None:
