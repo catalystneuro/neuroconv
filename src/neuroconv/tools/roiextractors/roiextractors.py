@@ -1271,7 +1271,6 @@ def write_imaging_to_nwbfile(
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
-            backend=backend,
             backend_configuration=backend_configuration,
         )
 
@@ -1665,7 +1664,6 @@ def write_segmentation_to_nwbfile(
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
-            backend=backend,
             backend_configuration=backend_configuration,
         )
 

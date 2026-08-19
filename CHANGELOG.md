@@ -9,6 +9,8 @@
 
 ## Improvements
 
+* Reduced non-actionable CI warnings in test fixtures and NWB writing helpers.
+
 # v0.10.0 (August 18, 2026)
 
 ## Removals, Deprecations and Changes
@@ -59,6 +61,7 @@
 * The removal deadlines for the deprecations announced in this release moved from December 2026 to February 2027, and the warning messages and docstrings state the later date. [PR #1936](https://github.com/catalystneuro/neuroconv/pull/1936)
 
 ## Bug Fixes
+* Reduced non-actionable CI warnings in test fixtures and NWB writing helpers.
 * Fixed the Inscopix segmentation gallery page not showing its install command: the `.. code-block:: bash` directive had no blank line before its content, so docutils dropped the block and `pip install "neuroconv[inscopix]"` appeared nowhere on the rendered page. [PR #1945](https://github.com/catalystneuro/neuroconv/pull/1945)
 * Fixed `DeepLabCutInterface` writing the row index into the pose series as if it were seconds, so a conversion that stated no timestamps produced a file timed at 1 Hz. Neither the `.h5`/`.csv` nor the project config records a frame rate, so it has to come from the caller through the new `sampling_frequency` argument or `set_aligned_timestamps`, and writing with neither now raises. Files already written this way carry wrong timing rather than missing timing and need re-converting. [PR #1937](https://github.com/catalystneuro/neuroconv/pull/1937)
 * Fixed `EDFRecordingInterface` discarding the subject fields it read from the header and writing `experimenter` as a string instead of the list the schema types it as, and added the patient field's sex. [PR #1929](https://github.com/catalystneuro/neuroconv/pull/1929)
