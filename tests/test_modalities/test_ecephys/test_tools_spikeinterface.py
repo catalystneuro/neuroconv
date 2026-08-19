@@ -3573,3 +3573,50 @@ class TestAddRecording:
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@pytest.mark.parametrize(
+    "backend",
+    [
+        "hdf5",
+        pytest.param(
+            "zarr",
+            marks=pytest.mark.xfail(
+                raises=AttributeError,
+                strict=True,
+                reason="Appending to a Zarr file holding a DynamicTable fails in "
+                "`_is_dataset_written_to_file`: a `VectorData` column read back from Zarr carries a "
+                "`ConsolidatedMetadataStore`, and the check reads `zarr.Array.store.path`, which that "
+                "store does not have. A `TimeSeries` read from the same file carries a `DirectoryStore` "
+                "and passes, which is why the interface-level append tests do not see this.",
+            ),
+        ),
+    ],
+)
+def test_write_recording_to_nwbfile_append_on_disk(tmp_path, backend):
+    """The append branch reads the backend off the file, so it is reached without naming one."""
+    from pynwb import read_nwb
+
+    from neuroconv.tools.spikeinterface import write_recording_to_nwbfile
+
+    nwbfile_path = tmp_path / ("recording.nwb" if backend == "hdf5" else "recording.nwb.zarr")
+    metadata = dict(NWBFile=dict(session_start_time=datetime.now().astimezone()))
+
+    first_recording = generate_recording(num_channels=2, durations=[0.1])
+    write_recording_to_nwbfile(recording=first_recording, nwbfile_path=nwbfile_path, metadata=metadata, backend=backend)
+
+    # The appended recording goes to a different container so it does not collide with the first one.
+    second_recording = generate_recording(num_channels=2, durations=[0.1])
+    write_recording_to_nwbfile(
+        recording=second_recording,
+        nwbfile_path=nwbfile_path,
+        parent_container="processing/LFP",
+        append_on_disk_nwbfile=True,
+    )
+
+    expected_io_class = "NWBHDF5IO" if backend == "hdf5" else "NWBZarrIO"
+    nwbfile = read_nwb(nwbfile_path)
+    assert type(nwbfile.read_io).__name__ == expected_io_class
+    assert "ElectricalSeriesRaw" in nwbfile.acquisition
+    assert "LFP" in nwbfile.processing["ecephys"].data_interfaces
+    nwbfile.read_io.close()
