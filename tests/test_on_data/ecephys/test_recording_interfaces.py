@@ -351,10 +351,12 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
     data_interface_cls = EDFRecordingInterface
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "edf" / "heterogeneous_offsets" / "same_unit_offsets_multirate.edf"),
-        stream_name="stream ((1.0,) Hz)",
+        stream_name="stream ((100.0,) Hz)",
     )
-    # The channels of this stream carry a per-channel offset, which a single ElectricalSeries can
-    # hold only in physical units.
+    # This stream is three electrode channels that all state uV and carry a per-channel offset, which a
+    # single ElectricalSeries can hold only in physical units. The 1 Hz stream is not the case to use
+    # here: its offsets differ because a respiration, a temperature and a marker channel each bring
+    # their own physical range, so it asks to have those channels excluded instead.
     conversion_options = dict(data_representation="physical_units")
     save_directory = OUTPUT_PATH
 
@@ -372,8 +374,8 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
             EDFRecordingInterface(file_path=self.interface_kwargs["file_path"])
 
     def test_stream_name_selects_the_channels_of_its_stream(self, setup_interface):
-        assert list(self.interface.channel_ids) == ["Resp oro-nasal", "EMG submental", "Temp rectal", "Event marker"]
-        assert self.interface.recording_extractor.get_sampling_frequency() == 1.0
+        assert list(self.interface.channel_ids) == ["EEG Fpz-Cz", "EEG Pz-Oz", "EOG horizontal"]
+        assert self.interface.recording_extractor.get_sampling_frequency() == 100.0
 
     def test_channels_to_skip_applies_within_the_selected_stream(self):
         interface = EDFRecordingInterface(
