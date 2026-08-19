@@ -48,9 +48,12 @@ How to Annotate a Pose Estimation Session
 The baseline setup: one camera above the arena, one subject, one tracker run. Everything the other setups
 do is a variation on this one, so it is worked in full.
 
-**Name the objects.** Every object the conversion writes gets a name, and the writer falls back to
-generic ones: ``PoseEstimation``, ``SkeletonPoseEstimation``, ``PoseEstimationSeriesHead``. Those names
-are what someone browsing your file sees first, and in a session holding several recordings they are the
+Name the objects
+~~~~~~~~~~~~~~~~
+
+Every object the conversion writes gets a name, and the writer falls back to generic ones:
+``PoseEstimation``, ``SkeletonPoseEstimation``, ``PoseEstimationSeriesHead``. Those names are what
+someone browsing your file sees first, and in a session holding several recordings they are the
 only thing telling one apart from another, so a name that says which camera or which subject this is
 saves a reader from opening every container to find out. Names are set through the registries under the
 top-level ``metadata["Pose"]``, addressed by the interface's ``metadata_key``.
@@ -64,8 +67,11 @@ top-level ``metadata["Pose"]``, addressed by the interface's ``metadata_key``.
     container["name"] = "PoseEstimationTopCamera"
     metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
-**Describe what the coordinates mean.** A pose file records numbers: an x, a y and a confidence per
-keypoint per frame, and nothing saying what any of them measure. neuroconv writes none of that unless
+Describe what the coordinates mean
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A pose file records numbers: an x, a y and a confidence per keypoint per frame, and nothing saying
+what any of them measure. neuroconv writes none of that unless
 you do, because any value it chose would be invented rather than read. Three fields carry it.
 
 ``unit`` is what the coordinates are measured in, pixels for a raw tracker output and millimetres or
@@ -108,7 +114,10 @@ described.
 
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
 
-**Describe the skeleton.** A ``Skeleton`` is the body plan behind the keypoints, and it has three fields.
+Describe the skeleton
+~~~~~~~~~~~~~~~~~~~~~
+
+A ``Skeleton`` is the body plan behind the keypoints, and it has three fields.
 
 ``nodes`` are the body parts, in the order their series are written. The interface fills them from the
 keypoints it read, so this is the one field you usually leave alone; the order matters because it is what
@@ -160,13 +169,17 @@ reader who wants to know whether a low-confidence stretch is an occlusion or a t
 watch the frames, and a reader assembling a dataset needs to know that two sessions came from different
 cameras.
 
-The way you want is a link to the video itself. Write it into the same file with an
-:doc:`external video interface <../conversion_examples_gallery/behavior/video>`, which stores it as an
-``ImageSeries`` pointing at the file on disk and gives it an entry in
-``metadata["Behavior"]["ExternalVideos"]``. Then name that entry from the pose container. The link is a
-reference to the object rather than a path, so it cannot rot, and the ``ImageSeries`` carries its own
-camera ``Device``, so one link records both the recording and the instrument and the container needs no
-camera of its own.
+If you have the original video, it should go into the same file. That is what
+:doc:`ExternalVideoInterface <../conversion_examples_gallery/behavior/video>` is for: it stores the video
+as an ``ImageSeries`` pointing at the file on disk, and gives it an entry in
+``metadata["Behavior"]["ExternalVideos"]``.
+
+On top of storing it, the pose container can formally link to it. The link is a reference to the object
+rather than a path, so it cannot rot, and it makes the pairing explicit rather than something a reader
+infers from names. That matters most when a file holds more than one of either: two trackers run over the
+same recording, or one tracker run over several camera recordings, and nothing but the link says which
+output came from which video. It also brings the camera along, since the ``ImageSeries`` carries its own
+``Device``, so the pose container needs none of its own.
 
 .. code-block:: python
 
