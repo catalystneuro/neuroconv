@@ -79,22 +79,19 @@ statement of ignorance sitting in your file, and replacing it is the most valuab
 
 .. code-block:: python
 
-    series = container["PoseEstimationSeries"]
+    unit = "pixels"
+    reference_frame = "(0,0) is the top left corner of the video."
+    confidence_definition = "Softmax output of the deep neural network."
 
+    series = container["PoseEstimationSeries"]
     series["head"].update(
-        unit="pixels",
-        reference_frame="(0,0) is the top left corner of the video.",
-        confidence_definition="Softmax output of the deep neural network.",
+        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
     )
     series["neck"].update(
-        unit="pixels",
-        reference_frame="(0,0) is the top left corner of the video.",
-        confidence_definition="Softmax output of the deep neural network.",
+        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
     )
     series["left_shoulder"].update(
-        unit="pixels",
-        reference_frame="(0,0) is the top left corner of the video.",
-        confidence_definition="Softmax output of the deep neural network.",
+        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
     )
 
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
