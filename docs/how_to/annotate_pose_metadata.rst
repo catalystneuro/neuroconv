@@ -125,10 +125,28 @@ keypoints belong to somebody other than the file's subject.
     skeleton["edges"] = [[0, 1], [1, 2]]  # head-neck, neck-left shoulder
     skeleton["subject"] = "mouse_001"
 
-**Record where the frames came from.** Keypoints are a claim about a video, and a file that does not say
-which video cannot be checked. A reader who wants to know whether a low-confidence stretch is an
-occlusion or a tracking failure has to watch the frames, and a reader assembling a dataset needs to know
-that two sessions came from different cameras.
+.. admonition:: The file so far
+   :class: tip
+
+   .. code-block:: text
+
+       processing/behavior
+       ├── PoseEstimationTopCamera            PoseEstimation   description, unit, reference frame
+       │   ├── PoseEstimationSeriesHead       data (1000, 2)
+       │   ├── PoseEstimationSeriesNeck       data (1000, 2)
+       │   └── PoseEstimationSeriesLeftShou…  data (1000, 2)
+       └── Skeletons
+           └── SkeletonMouse                  nodes, edges, subject
+
+       devices                                (empty: nothing so far records a camera)
+
+How to Link a Pose Estimation to its Source Video
+-------------------------------------------------
+
+Keypoints are a claim about a video, and a file that does not say which video cannot be checked. A
+reader who wants to know whether a low-confidence stretch is an occlusion or a tracking failure has to
+watch the frames, and a reader assembling a dataset needs to know that two sessions came from different
+cameras.
 
 The way you want is a link to the video itself. Write it into the same file with an
 :doc:`external video interface <../conversion_examples_gallery/behavior/video>`, which stores it as an
@@ -177,22 +195,6 @@ that one existed.
         name="TopCamera", description="Overhead camera, 30 fps."
     )
     container["device_metadata_key"] = camera_metadata_key
-
-.. admonition:: The file so far
-   :class: tip
-
-   .. code-block:: text
-
-       processing/behavior
-       ├── PoseEstimationTopCamera            PoseEstimation   description, unit, reference frame
-       │   ├── PoseEstimationSeriesHead       data (1000, 2)
-       │   ├── PoseEstimationSeriesNeck       data (1000, 2)
-       │   └── PoseEstimationSeriesLeftShou…  data (1000, 2)
-       └── Skeletons
-           └── SkeletonMouse                  nodes, edges, subject
-
-       devices
-       └── TopCamera
 
 How to Annotate Several Camera Views of One Subject
 ----------------------------------------------------
