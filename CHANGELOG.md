@@ -2,6 +2,8 @@
 
 ## Removals, Deprecations and Changes
 
+* The Axona and MaxOne interfaces now emit their manufacturer on a linked `DeviceModel` (`DacqUSB` and `MaxOne`) instead of on the device entry, and the Axon and Intan interfaces drop the field entirely. pynwb 4.0 deprecated `Device.manufacturer` in favor of the linked model, and neither the ABF header nor the old list-based metadata format offers a device model to carry it.
+
 ## Bug Fixes
 
 ## Features

@@ -136,8 +136,7 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
 
         axon_device = dict(
             name="Axon Instruments",
-            description="Axon Instruments data acquisition system (pCLAMP/AxoScope)",
-            manufacturer="Molecular Devices",
+            description="Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)",
         )
         if use_new_metadata_format:
             from ....tools.spikeinterface.spikeinterface import _get_group_name
