@@ -77,17 +77,18 @@ def _as_plain_value(value):
     return value
 
 
-def _is_ragged(values: list) -> bool:
-    """Whether a column's values are sequences of differing length, which needs an indexed column.
+def _column_index(values: list) -> int | bool:
+    """The ``index`` an indexed column needs, or ``False`` for a plain one.
 
-    Equal-length sequences are a rectangular array, which is how a multi-dimensional electrode property
-    is written; only the uneven case needs the index. Inferred from the values rather than declared,
-    since the length of a row is not something a specification could restate.
+    A column whose values are sequences is written indexed, whatever their lengths, which is what the path
+    that derives the table from the recording has always done: equal lengths today do not make the column
+    rectangular, they make it a ragged column that happens to be even. Read off the values rather than
+    declared, since the shape of a row is not something a specification could restate.
     """
-    sequences = [value for value in values if isinstance(value, (list, tuple, np.ndarray))]
-    if not sequences or len(sequences) != len(values):
-        return len(sequences) > 0 and len(sequences) != len(values)
-    return len({len(value) for value in sequences}) > 1
+    sample = next((value for value in values if value is not None), None)
+    if not isinstance(sample, (list, tuple, np.ndarray)):
+        return False
+    return np.asarray(sample).ndim
 
 
 def _get_registry_dtype(data: np.ndarray) -> str | None:
@@ -110,6 +111,7 @@ def _build_electrodes_metadata(
     *,
     group_metadata_key_by_name: dict[str, str],
     property_descriptions: dict | None = None,
+    exclude: tuple = (),
 ) -> dict:
     """The ``ElectrodesTable`` block and the ``channel_to_electrode`` map for a recording.
 
@@ -136,20 +138,19 @@ def _build_electrodes_metadata(
     from .spikeinterface import _build_electrode_column_data, _get_group_name
 
     property_descriptions = dict() if property_descriptions is None else property_descriptions
-    column_data = _build_electrode_column_data(recording=recording, property_descriptions=property_descriptions)
+    column_data = _build_electrode_column_data(
+        recording=recording, exclude=exclude, property_descriptions=property_descriptions
+    )
     group_names = _get_group_name(recording=recording)
     electrode_keys = _derive_electrode_keys(recording=recording)
     channel_ids = recording.get_channel_ids()
 
-    # ``electrode_name`` is written for every row, including the formats with no probe, where it holds
-    # the channel's name. That is what the key already derives from, and stating it makes the row's
-    # identity readable in the file, which is what lets a second interface over the same contacts find
-    # the row it should reference instead of adding its own.
+    # ``electrode_name`` is the contact's own name and is stated only where there is one. For the formats
+    # that supply no contact identity, which is eight of the ten measured, the row says nothing about an
+    # electrode it cannot name, and the channel name carries the identity instead, exactly as on the path
+    # that derives the table from the recording.
     electrode_names = column_data.get("electrode_name")
-    if electrode_names is None:
-        identities = [key.removeprefix(f"{group_name}_") for key, group_name in zip(electrode_keys, group_names)]
-    else:
-        identities = np.asarray(electrode_names["data"]).tolist()
+    identities = None if electrode_names is None else np.asarray(electrode_names["data"]).tolist()
 
     row_columns = [
         column_name for column_name in column_data if column_name not in (*_WRITER_OWNED_COLUMNS, "electrode_name")
@@ -161,10 +162,9 @@ def _build_electrodes_metadata(
         # support. The second channel states nothing new about the row, so the first one wins.
         if electrode_key in electrodes:
             continue
-        entry = {
-            "electrode_group_metadata_key": group_metadata_key_by_name[group_names[channel_index]],
-            "electrode_name": identities[channel_index],
-        }
+        entry = {"electrode_group_metadata_key": group_metadata_key_by_name[group_names[channel_index]]}
+        if identities is not None:
+            entry["electrode_name"] = identities[channel_index]
         for column_name in row_columns:
             entry[column_name] = _as_plain_value(column_data[column_name]["data"][channel_index])
         electrodes[electrode_key] = entry
@@ -193,6 +193,64 @@ def _build_electrodes_metadata(
         "ElectrodesTable": {"rows": electrodes, "columns": electrode_columns},
         "channel_to_electrode": channel_to_electrode,
     }
+
+
+def _generate_electrodes_table(
+    recording,
+    metadata: dict | None,
+    *,
+    exclude: tuple = (),
+) -> dict:
+    """Derive the ``ElectrodesTable`` block for a recording that was handed none, and return the metadata.
+
+    This is the whole of what used to be a second writer. A caller who states nothing about the electrodes
+    table gets one generated from the recording's channels and properties, and the writer then has one path
+    rather than two implementations that a test has to keep in agreement.
+
+    Electrode groups the caller already declared are kept and matched by ``name`` against the recording's
+    channel groups, which is how the metadata that names a group keeps naming it. Groups the caller did not
+    cover get an entry of their own, keyed by the channel group's name.
+
+    The caller's dictionary is not modified; the block is added to a shallow copy of the ``Ecephys`` block.
+    """
+    from .spikeinterface import _get_group_name
+
+    metadata = dict(metadata) if metadata is not None else {}
+    ecephys_metadata = dict(metadata.get("Ecephys", {}))
+
+    # The column-description list is the older, weaker way of saying the same thing and interfaces still
+    # emit it, so it seeds the descriptions rather than being dropped.
+    column_descriptions = ecephys_metadata.get("Electrodes")
+    property_descriptions = (
+        {entry["name"]: entry["description"] for entry in column_descriptions if "description" in entry}
+        if isinstance(column_descriptions, list)
+        else {}
+    )
+
+    declared_groups = ecephys_metadata.get("ElectrodeGroups", {})
+    group_key_by_name = {
+        entry["name"]: key for key, entry in declared_groups.items() if isinstance(entry, dict) and "name" in entry
+    }
+
+    electrode_groups = dict(declared_groups)
+    group_metadata_key_by_name = {}
+    for group_name in dict.fromkeys(_get_group_name(recording=recording).tolist()):
+        key = group_key_by_name.get(group_name)
+        if key is None:
+            key = group_name
+            electrode_groups[key] = {"name": group_name}
+        group_metadata_key_by_name[group_name] = key
+
+    generated = _build_electrodes_metadata(
+        recording=recording,
+        group_metadata_key_by_name=group_metadata_key_by_name,
+        property_descriptions=property_descriptions,
+        exclude=exclude,
+    )
+    ecephys_metadata["ElectrodeGroups"] = electrode_groups
+    ecephys_metadata["ElectrodesTable"] = generated["ElectrodesTable"]
+    metadata["Ecephys"] = ecephys_metadata
+    return metadata
 
 
 def _resolve_channel_to_electrode_key(recording, metadata: dict, metadata_key: str | None) -> dict:
@@ -248,8 +306,13 @@ def _validate_electrodes_registry(registry: dict, group_name_by_key: dict[str, s
     """
     key_by_identity: dict[tuple[str, str], str] = {}
     for electrode_key, entry in registry.items():
+        electrode_name = entry.get("electrode_name")
+        if electrode_name is None:
+            # Addressed by its channel, which the writer resolves; two such rows cannot collide, since
+            # their keys derive from distinct channels.
+            continue
         group_metadata_key = entry.get("electrode_group_metadata_key")
-        identity = (group_name_by_key[group_metadata_key], str(entry.get("electrode_name", electrode_key)))
+        identity = (group_name_by_key[group_metadata_key], str(electrode_name))
         if identity in key_by_identity:
             raise ValueError(
                 f"metadata['Ecephys']['ElectrodesTable']['rows'] keys '{key_by_identity[identity]}' and '{electrode_key}' "
@@ -358,15 +421,24 @@ def _add_electrodes_from_registry_to_nwbfile(
     # Rows already in the file are addressed by the identity columns rather than by the metadata key,
     # which exists only inside a metadata dictionary. Renaming a key therefore changes nothing about
     # what a later call matches on.
-    def row_identity(group_name, electrode_name):
-        return f"{group_name}_{electrode_name}"
+    def row_identity(group_name, electrode_name, channel_name):
+        """How a row is addressed inside a file, which is the same identity the derived path uses.
+
+        A row naming its contact is addressed by that, so two channels of one contact reach one row. A row
+        that names no contact is addressed by the channel, which is the only identity such a format has.
+        """
+        return f"{group_name}_{electrode_name}_" if electrode_name else f"{group_name}__{channel_name}"
 
     existing_rows = {}
     electrodes_table = nwbfile.electrodes
-    if electrodes_table is not None and len(electrodes_table) > 0 and "electrode_name" in electrodes_table.colnames:
+    if electrodes_table is not None and len(electrodes_table) > 0:
+        has_electrode_column = "electrode_name" in electrodes_table.colnames
+        has_channel_column = "channel_name" in electrodes_table.colnames
         for row_index in range(len(electrodes_table)):
             identity = row_identity(
-                electrodes_table["group_name"][row_index], electrodes_table["electrode_name"][row_index]
+                electrodes_table["group_name"][row_index],
+                electrodes_table["electrode_name"][row_index] if has_electrode_column else "",
+                electrodes_table["channel_name"][row_index] if has_channel_column else "",
             )
             existing_rows.setdefault(identity, row_index)
 
@@ -385,8 +457,8 @@ def _add_electrodes_from_registry_to_nwbfile(
     for electrode_key in ordered_keys:
         entry = registry[electrode_key]
         group_name = group_name_by_key[entry["electrode_group_metadata_key"]]
-        electrode_name = str(entry.get("electrode_name", electrode_key))
-        identity = row_identity(group_name, electrode_name)
+        electrode_name = str(entry.get("electrode_name", ""))
+        identity = row_identity(group_name, electrode_name, str(channel_names_by_key.get(electrode_key, "")))
         if identity in existing_rows:
             row_index_by_key[electrode_key] = existing_rows[identity]
             continue
@@ -425,20 +497,20 @@ def _add_electrodes_from_registry_to_nwbfile(
         if not stated:
             continue
         # A row omitting a column means null, the same as a channel lacking a property today.
-        null_value = (
-            _get_null_value_for_property(
-                property=field, sample_data=stated[0], null_values_for_properties=null_values_for_properties
+        null_value = None
+        if len(stated) != len(values):
+            null_value = (
+                null_values_for_properties.get(field, [])
+                if isinstance(stated[0], (list, tuple, np.ndarray))
+                else _get_null_value_for_property(
+                    property=field, sample_data=stated[0], null_values_for_properties=null_values_for_properties
+                )
             )
-            if len(stated) != len(values)
-            else None
-        )
         values = [null_value if value is None else value for value in values]
 
-        # Raggedness is a property of the values, not something a specification declares, and it is what
-        # separates a column numpy can hold from one that has to be written with an index. A column of
-        # equal-length sequences stays a rectangular array, which is how a two-dimensional electrode
-        # property is written today.
-        ragged = _is_ragged(values)
+        # A sequence-valued column is written with an index, matching what the derived table does.
+        column_index = _column_index(values)
+        ragged = bool(column_index)
         if ragged:
             data = np.empty(shape=len(values), dtype=object)
             for position, value in enumerate(values):
@@ -462,15 +534,19 @@ def _add_electrodes_from_registry_to_nwbfile(
             "data": data,
             "categories": categories,
             "ragged": ragged,
+            "index": column_index,
         }
 
     # The identity columns, which the writer owns. A ``columns`` entry for either of them
     # carries only a description, since the values are not a row's to state.
-    column_data["electrode_name"] = {
-        "description": column_specifications.get("electrode_name", {}).get("description", "unique electrode reference"),
-        "data": np.array([str(registry[key].get("electrode_name", key)) for key in ordered_keys], dtype=str),
-        "categories": None,
-    }
+    if any("electrode_name" in entry for entry in registry.values()):
+        column_data["electrode_name"] = {
+            "description": column_specifications.get("electrode_name", {}).get(
+                "description", "unique electrode reference from probe contact identifiers"
+            ),
+            "data": np.array([str(registry[key].get("electrode_name", "")) for key in ordered_keys], dtype=str),
+            "categories": None,
+        }
     column_data["channel_name"] = {
         "description": column_specifications.get("channel_name", {}).get("description", "unique channel reference"),
         "data": np.array(
@@ -530,6 +606,20 @@ def _add_electrodes_from_registry_to_nwbfile(
             continue
         data = column["data"]
         ragged = column.get("ragged", False)
+        if column_name == "channel_name" and indices_for_null_values:
+            # A row written before this column existed gets its table id, which is what the derived path
+            # has always done: the id is the only handle such a row has, and an empty string would read as
+            # a channel named nothing.
+            extended_data = np.empty(shape=table_size, dtype=object)
+            table_ids = list(nwbfile.electrodes.id[:])
+            for index in indices_for_null_values:
+                extended_data[index] = str(table_ids[index])
+            for position, index in enumerate(indices_for_registry):
+                extended_data[index] = str(data[position])
+            nwbfile.add_electrode_column(
+                column_name, description=column["description"], data=list(extended_data), index=False
+            )
+            continue
         if indices_for_null_values:
             if ragged:
                 # A ragged column takes an empty row whatever its element type is.
@@ -541,7 +631,7 @@ def _add_electrodes_from_registry_to_nwbfile(
             else:
                 null_value = _get_null_value_for_property(
                     property=column_name,
-                    sample_data=data[0],
+                    sample_data=data[0] if data.ndim == 1 else data[0].copy(),
                     null_values_for_properties=null_values_for_properties,
                 )
                 extended_data = np.empty(shape=(table_size, *data.shape[1:]), dtype=data.dtype)
@@ -550,7 +640,9 @@ def _add_electrodes_from_registry_to_nwbfile(
             data = extended_data
         if ragged:
             data = [list(value) for value in data]
-        nwbfile.add_electrode_column(column_name, description=column["description"], data=data, index=bool(ragged))
+        nwbfile.add_electrode_column(
+            column_name, description=column["description"], data=data, index=column.get("index", False)
+        )
         if column["categories"] is not None:
             _add_meanings_table(table=nwbfile.electrodes, column_name=column_name, categories=column["categories"])
 

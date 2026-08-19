@@ -1011,6 +1011,10 @@ class TestAddElectrodes(TestCase):
 
         recording2 = generate_recording(num_channels=2, durations=[1.0])
         recording2 = recording2.rename_channels(new_channel_ids=["c", "d"])
+        # A generated recording carries a probe whose contacts are named "0", "1", so a second one is
+        # the same two contacts unless it says otherwise. Naming its group is what makes it a second
+        # set of electrodes rather than the same ones recorded again.
+        recording2.set_property(key="group_name", values=["B", "B"])
 
         recording2.set_property(key="incomplete_int_property", values=[10, 11])
         with self.assertRaises(ValueError):
@@ -1043,6 +1047,10 @@ class TestAddElectrodes(TestCase):
 
         recording2 = generate_recording(num_channels=2, durations=[1.0])
         recording2 = recording2.rename_channels(new_channel_ids=["c", "d"])
+        # A generated recording carries a probe whose contacts are named "0", "1", so a second one is
+        # the same two contacts unless it says otherwise. Naming its group is what makes it a second
+        # set of electrodes rather than the same ones recorded again.
+        recording2.set_property(key="group_name", values=["B", "B"])
         _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
 
         ragged_property = self.nwbfile.electrodes["ragged_property"]
@@ -1062,6 +1070,10 @@ class TestAddElectrodes(TestCase):
 
         recording2 = generate_recording(num_channels=2)
         recording2 = recording2.rename_channels(new_channel_ids=["c", "d"])
+        # A generated recording carries a probe whose contacts are named "0", "1", so a second one is
+        # the same two contacts unless it says otherwise. Naming its group is what makes it a second
+        # set of electrodes rather than the same ones recorded again.
+        recording2.set_property(key="group_name", values=["B", "B"])
 
         recording2.set_property(key="incomplete_bool_property", values=[True, False])
         with self.assertRaises(ValueError):
@@ -1111,13 +1123,12 @@ class TestAddElectrodes(TestCase):
         """
         Test electrode table behavior with probes across multiple scenarios.
 
-        The electrode table uses (group_name, electrode_name, channel_name) as the unique
-        identifier. This allows storing channel-specific metadata while the electrode_name
-        column indicates which physical electrode each channel records from.
+        A row is a contact: the electrode table identifies a row by (group_name, electrode_name)
+        where the recording names a contact, and by (group_name, channel_name) where it does not.
 
         This test verifies:
-        1. Same everything (group, electrode, channel) → deduplicated (same row reused)
-        2. Same electrode, different channel → new row (for channel-specific properties)
+        1. Same everything → deduplicated (same row reused)
+        2. Same contact, different channel → same row (two channels recorded one electrode)
         3. Different group, same electrode_name → new row (different physical location)
         """
         from probeinterface import Probe
@@ -1153,20 +1164,21 @@ class TestAddElectrodes(TestCase):
         assert len(self.nwbfile.electrodes) == 3  # Still 3 rows (deduplicated)
 
         # Scenario 3: Same electrodes, but DIFFERENT channel names (e.g., AP vs LF bands)
-        # This creates new rows to store channel-specific properties
+        # A row is the contact, so the second recording reaches the rows that already describe it.
         recording2 = generate_recording(num_channels=3)
         recording2 = recording2.rename_channels(new_channel_ids=["AP0", "AP1", "AP2"])
         recording2.set_probe(probe, group_mode="by_probe", in_place=True)
 
         _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
 
-        # Now should have 6 rows: 3 original + 3 new (different channel names)
-        assert len(self.nwbfile.electrodes) == 6
+        # Still 3 rows: three contacts, recorded twice.
+        assert len(self.nwbfile.electrodes) == 3
         electrode_names = list(self.nwbfile.electrodes["electrode_name"][:])
         channel_names = list(self.nwbfile.electrodes["channel_name"][:])
-        # electrode_name shows which channels share physical electrodes
-        self.assertListEqual(electrode_names, ["e0", "e1", "e2", "e0", "e1", "e2"])
-        self.assertListEqual(channel_names, ["ch0", "ch1", "ch2", "AP0", "AP1", "AP2"])
+        self.assertListEqual(electrode_names, ["e0", "e1", "e2"])
+        # The row keeps the name of the channel that created it, which is a limitation of one
+        # channel_name column rather than of the identity.
+        self.assertListEqual(channel_names, ["ch0", "ch1", "ch2"])
 
         # Scenario 4: Different group (different physical probe), same electrode_name
         # This creates new rows because it's a different physical location
@@ -1184,8 +1196,8 @@ class TestAddElectrodes(TestCase):
 
         _add_electrodes_to_nwbfile(recording=recording3, nwbfile=self.nwbfile)
 
-        # Now should have 8 rows: 6 previous + 2 new (different group)
-        assert len(self.nwbfile.electrodes) == 8
+        # Now should have 5 rows: 3 previous + 2 new (different group)
+        assert len(self.nwbfile.electrodes) == 5
         electrode_names = list(self.nwbfile.electrodes["electrode_name"][:])
         channel_names = list(self.nwbfile.electrodes["channel_name"][:])
         group_names = list(self.nwbfile.electrodes["group_name"][:])

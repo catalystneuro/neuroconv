@@ -46,7 +46,9 @@ class TestTemplate:
         assert list(metadata["Ecephys"]["ElectrodeGroups"]) == ["0", "1"]
         first_entry = metadata["Ecephys"]["ElectrodesTable"]["rows"]["0_0"]
         assert first_entry["electrode_group_metadata_key"] == "0"
-        assert first_entry["electrode_name"] == "0"
+        # No probe, so no contact to name: the channel carries the identity and the row says nothing
+        # about an electrode it cannot name.
+        assert "electrode_name" not in first_entry
 
     def test_keys_and_values_are_plain_python(self):
         """A registry is validated as JSON and written to YAML, so a numpy scalar cannot reach it."""
@@ -132,7 +134,7 @@ class TestRegistryWrites:
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
-        assert list(nwbfile.electrodes["electrode_name"][:]) == ["3", "2", "1", "0"]
+        assert list(nwbfile.electrodes["channel_name"][:]) == ["3", "2", "1", "0"]
         # The series still reaches the channels it recorded, in channel order.
         assert nwbfile.acquisition["ElectricalSeries"].electrodes.data[:] == [3, 2, 1, 0]
 
@@ -483,6 +485,7 @@ class TestRegistryValidation:
     def test_two_electrodes_describing_one_contact(self):
         interface = _interface(num_channels=4)
         metadata = interface.get_metadata_template()
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["electrode_name"] = "0"
         metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_1"]["electrode_name"] = "0"
 
         with pytest.raises(ValueError, match="both describe the electrode named"):
@@ -536,6 +539,6 @@ def test_the_registry_survives_a_file_round_trip(tmp_path):
         read_nwbfile = io.read()
         table = read_nwbfile.electrodes.to_dataframe()
         assert table["impedance"].tolist() == [1.0, 2.0, 3.0, 4.0]
-        assert table["electrode_name"].tolist() == ["0", "1", "2", "3"]
+        assert table["channel_name"].tolist() == ["0", "1", "2", "3"]
         assert table["group_name"].tolist() == ["0", "0", "1", "1"]
         assert read_nwbfile.acquisition["ElectricalSeries"].electrodes.data[:].tolist() == [0, 1, 2, 3]
