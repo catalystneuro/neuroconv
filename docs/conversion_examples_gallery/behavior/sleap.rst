@@ -32,3 +32,9 @@ Convert SLEAP pose estimation data to NWB using :py:class:`~neuroconv.datainterf
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+NeuroConv writes as much metadata as is available in the source format, but most of the time the
+experimenter has metadata that the records do not carry. Adding the rest improves the provenance of
+the file and makes it more useful for future users and for the community as a whole. To add it, follow
+:ref:`the pose estimation how-to <annotate_pose_metadata>`, which walks through common experimental
+configurations.

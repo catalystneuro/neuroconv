@@ -191,11 +191,3 @@ the node lists genuinely differ and each view wants its own skeleton.
 
 Two containers pointing at one ``skeleton_metadata_key`` produce one ``Skeleton`` in the file, which both
 link to.
-
-How to Annotate from a Template
--------------------------------
-
-.. note::
-
-    Pose estimation does not offer ``get_metadata_template()`` yet. When it does, this section will point
-    at :ref:`metadata_templates` the way the fiber photometry and optical physiology pages do.

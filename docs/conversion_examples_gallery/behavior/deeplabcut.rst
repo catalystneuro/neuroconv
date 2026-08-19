@@ -32,6 +32,12 @@ This interface supports both .h5 and .csv output files from DeepLabCut.
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
 
 
+NeuroConv writes as much metadata as is available in the source format, but most of the time the
+experimenter has metadata that the records do not carry. Adding the rest improves the provenance of
+the file and makes it more useful for future users and for the community as a whole. To add it, follow
+:ref:`the pose estimation how-to <annotate_pose_metadata>`, which walks through common experimental
+configurations.
+
 Specifying Metadata
 ~~~~~~~~~~~~~~~~~~~
 
