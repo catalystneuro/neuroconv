@@ -1,9 +1,7 @@
 # v0.10.1 (Upcoming)
 
 ## Removals, Deprecations and Changes
-* Added `BasePoseEstimationInterface`, which `DeepLabCutInterface` and `LightningPoseDataInterface` now build their pose registries from, and neither emits a camera device any more, since no pose format records one. [PR #1952](https://github.com/catalystneuro/neuroconv/pull/1952)
-* `SLEAPInterface` gains a `track_name` argument naming which tracked individual to write (`get_available_tracks` lists them), and with it writes the container itself through the shared pose writer, into the `behavior` processing module like every other pose interface and with pose metadata where it emitted none. Not naming a track still hands the whole file to `sleap_io.io.nwb_predictions.append_nwb_data`, which writes every track into a per-video `SLEAP_VIDEO_000_*` module, but that is deprecated and will be removed on or after August 2027: an NWB file holds one subject, so a multi-animal `.slp` wants one interface per track. [PR #1952](https://github.com/catalystneuro/neuroconv/pull/1952)
-* The pose interfaces pass the metadata you give them to the writer as written instead of merging it over their own defaults, so a partial dictionary no longer picks up source-derived values and an absent optional cross-reference means "there is no such object". A `metadata_key`, `device_metadata_key` or `skeleton_metadata_key` that addresses no entry now raises `ValueError` naming the registry and the keys it holds, where before it silently wrote a placeholder-named object. [PR #1952](https://github.com/catalystneuro/neuroconv/pull/1952)
+* Writing every track of a multi-animal `.slp` at once is deprecated, to be removed on or after August 2027, since an NWB file holds one subject. Name the individual with `SLEAPInterface`'s new `track_name` argument and use one interface per track. [PR #1952](https://github.com/catalystneuro/neuroconv/pull/1952)
 * Deprecated the `make_or_load_nwbfile` context manager, to be removed on or after February 2027. Nothing in the library has called it since append mode moved into `run_conversion`. Use the `run_conversion` method of an interface or converter, or `configure_and_write_nwbfile` for an NWBFile that is already assembled. [PR #1951](https://github.com/catalystneuro/neuroconv/pull/1951)
 * `DeepLabCutInterface`, `LightningPoseDataInterface` and `MockPoseEstimationInterface` now share one writer, so the container `description`, `unit` and `confidence_definition` are written only where the metadata supplies them and take `ndx-pose`'s defaults otherwise, while the series `description` and `reference_frame` fall back to one generic wording instead of a per-interface one. [PR #1950](https://github.com/catalystneuro/neuroconv/pull/1950)
 
@@ -14,7 +12,7 @@
 * Pose estimation now supports device model addition in their metadata. [PR #1952](https://github.com/catalystneuro/neuroconv/pull/1952)
 
 ## Improvements
-
+* `DeepLabCutInterface`, `LightningPoseDataInterface` and `SLEAPInterface` now share `BasePoseEstimationInterface` and one write path: none of them emits a camera device any more, the metadata you pass reaches the writer unmerged, and a key addressing no entry raises instead of writing a placeholder-named object. [PR #1952](https://github.com/catalystneuro/neuroconv/pull/1952)
 * Reduced non-actionable CI warnings in test fixtures and NWB writing helpers.
 
 # v0.10.0 (August 18, 2026)
