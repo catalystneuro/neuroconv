@@ -35,23 +35,15 @@ and nothing describing the recording they came from.
 
 The examples here use :py:class:`~neuroconv.tools.testing.mock_interfaces.MockPoseEstimationInterface`,
 which synthesizes keypoints instead of reading a file, so every snippet runs as written with no data to
-download. Everything after the constructor is the same for any pose interface: swap in
-:py:class:`~neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface.DeepLabCutInterface`,
-:py:class:`~neuroconv.datainterfaces.behavior.lightningpose.lightningposedatainterface.LightningPoseDataInterface`
-or :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPInterface` with the
-arguments its format needs, and annotate the metadata exactly as shown. See the
-:ref:`Conversion Gallery <conversion_gallery>` for how to construct each one.
+download. Everything after the constructor is the same for any pose interface: swap in the one for your
+tracker, with the arguments its format needs, and annotate the metadata exactly as shown. The
+:ref:`pose estimation section of the Conversion Gallery <conversion_gallery_pose_estimation>` lists them
+and shows how to construct each one.
 
 A **keypoint** is one tracked body part and becomes one ``PoseEstimationSeries``. A **container** is one
 camera view of one subject: it holds those series, a ``Skeleton`` naming the keypoints and the edges
 between them, and optionally the camera that recorded them. Annotating a recording is filling in what the
 tracker could not know.
-
-.. note::
-
-    Every entry below is addressed by a *registry key*, such as ``"lightning_pose"``. That key is an
-    internal handle and never appears in the NWB file. What appears is the entry's ``name`` field.
-    Renaming an object means editing ``name``, not the key.
 
 How to Annotate a Single Camera and a Single Animal
 ---------------------------------------------------
