@@ -86,14 +86,17 @@ statement of ignorance sitting in your file, and replacing it is the most valuab
 
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
 
-**Describe the skeleton.** Edges are pairs of node indices. The ``subject`` field links the skeleton to
-the file's ``Subject`` when the ids match.
+**Describe the skeleton.** Edges are pairs of node indices. The ``subject`` field names the individual
+within the source, and the skeleton is linked to the file's ``Subject`` when the two ids match. A file
+without a ``Subject``, or one whose id differs, gets a skeleton linked to nothing.
 
 .. code-block:: python
 
     skeleton = metadata["Pose"]["Skeletons"][key]
     skeleton["edges"] = [[0, 1], [1, 2]]  # head-neck, neck-left shoulder
     skeleton["subject"] = "mouse_001"
+
+    metadata["Subject"] = dict(subject_id="mouse_001", species="Mus musculus", sex="M", age="P30D")
 
 **Record where the frames came from.** Two things can carry that, and which you want depends on whether
 the video itself is in the file.
@@ -148,12 +151,13 @@ How to Annotate Several Animals in One Recording
 Two mice in the same arena, tracked as two identities by SLEAP or as two individuals by DeepLabCut. An
 NWB file has a single root-level ``Subject``, and ``ndx-pose`` is built on that, so this is **one
 conversion per animal** rather than two containers in one file. Each interface names its individual, and
-each file gets its own ``Subject``.
+each file gets its own ``Subject``. A ``.slp`` records which frame each pose came from rather than when,
+so the frame rate is given here; pass ``video_file_path`` instead to read the times off the video.
 
 .. code-block:: python
 
     for track_name in SLEAPInterface.get_available_tracks(file_path=predictions_path):
-        interface = SLEAPInterface(file_path=predictions_path, track_name=track_name)
+        interface = SLEAPInterface(file_path=predictions_path, track_name=track_name, frames_per_second=30.0)
         metadata = interface.get_metadata()
         metadata["Subject"] = dict(subject_id=track_name, species="Mus musculus")
         interface.run_conversion(nwbfile_path=f"session_001_{track_name}.nwb", metadata=metadata)
@@ -182,6 +186,10 @@ the node lists genuinely differ and each view wants its own skeleton.
 
     metadata["Devices"]["top_camera"] = dict(name="TopCamera")
     metadata["Devices"]["side_camera"] = dict(name="SideCamera")
+
+    metadata["Pose"]["Skeletons"]["shared_skeleton"] = dict(
+        name="SkeletonMouse", nodes=["head", "neck", "left_shoulder"], edges=[[0, 1], [1, 2]]
+    )
 
     for view, device_key in [("top", "top_camera"), ("side", "side_camera")]:
         entry = metadata["Pose"]["PoseEstimations"][f"pose_{view}"]
