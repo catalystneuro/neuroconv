@@ -14,6 +14,7 @@ import pytest
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
+from spikeinterface.core import NumpySorting
 from spikeinterface.core.generate import (
     generate_ground_truth_recording,
     generate_recording,
@@ -3573,3 +3574,31 @@ class TestAddRecording:
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSortingWithoutUnits:
+    """A sorting holding no unit has nothing to put in a units table."""
+
+    @staticmethod
+    def _sorting(unit_ids=None):
+        """A sorting with no spikes at all, holding the unit ids it is given."""
+        return NumpySorting.from_samples_and_labels(
+            samples_list=[np.array([], dtype="int64")],
+            labels_list=[np.array([], dtype="int64")],
+            sampling_frequency=30_000.0,
+            unit_ids=unit_ids,
+        )
+
+    def test_sorting_without_units_raises(self):
+        with pytest.raises(ValueError, match="contains no units"):
+            add_sorting_to_nwbfile(sorting=self._sorting(), nwbfile=mock_NWBFile())
+
+    def test_units_without_spikes_are_written(self):
+        """A unit that fired nothing in this session is a result, not an empty file."""
+        nwbfile = mock_NWBFile()
+
+        add_sorting_to_nwbfile(sorting=self._sorting(unit_ids=["0", "1"]), nwbfile=nwbfile)
+
+        assert len(nwbfile.units.id) == 2
+        assert "spike_times" in nwbfile.units.colnames
+        assert list(nwbfile.units["spike_times"][0]) == []

@@ -247,7 +247,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         template.deep_update(source_metadata)
         return template
 
-    def _has_segmentation_data(self) -> bool:
+    def _has_data(self) -> bool:
         """Whether the source holds anything to write: ROIs, traces or summary images."""
         from ...tools.roiextractors.roiextractors import _segmentation_extractor_has_data
 
