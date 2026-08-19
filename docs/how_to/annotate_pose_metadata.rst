@@ -88,31 +88,33 @@ statement of ignorance sitting in your file, and replacing it is the most valuab
 
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
 
-**Describe the skeleton.** The nodes repeat what the series already say, so the edges are what a skeleton
-is really for: they are the only record in the file of which body parts are joined. That connectivity is
-a fact about the animal rather than about the recording, and it is what makes a derived quantity well
-defined, since a limb length or a joint angle is only meaningful along a segment the body actually has.
-It is also what lets anything reading the file draw the animal rather than a cloud of points. Edges are
-pairs of indices into ``nodes``, in the order the series are written, so reordering the nodes changes
-what the edges mean.
-
-Most trackers already know them, because the connectivity is drawn when the project is set up rather than
-estimated per frame, and a bottom-up multi-animal model uses it to group keypoints into individuals. The
-interfaces read them where the format records them, so this step is usually a matter of checking rather
-than supplying. Lightning Pose is the exception, since it predicts each keypoint independently and its
-output carries no connectivity at all.
-
-The ``subject`` field names the individual within the source, and the skeleton is linked to the file's
-``Subject`` when the two ids match. A file without a ``Subject``, or one whose id differs, gets a skeleton
-linked to nothing.
+**Describe the skeleton.** A ``Skeleton`` has three fields: the ``nodes``, the ``edges`` between them,
+and the ``subject`` they belong to.
 
 .. code-block:: python
 
     skeleton = metadata["Pose"]["Skeletons"][key]
+    skeleton["nodes"] = ["head", "neck", "left_shoulder"]
     skeleton["edges"] = [[0, 1], [1, 2]]  # head-neck, neck-left shoulder
     skeleton["subject"] = "mouse_001"
 
-    metadata["Subject"] = dict(subject_id="mouse_001", species="Mus musculus", sex="M", age="P30D")
+``nodes`` are the body parts, in the order their series are written. The interface fills them from the
+keypoints it read, so this is the one field you usually leave alone; it is shown here because the order
+is what the edges index into, and reordering it silently changes what they mean.
+
+``edges`` are pairs of indices into ``nodes``, and they are what a skeleton is really for, since the
+nodes repeat what the series already say. They are the only record in the file of which body parts are
+joined, and that connectivity is a fact about the animal rather than about the recording. It is what
+makes a derived quantity well defined, because a limb length or a joint angle is only meaningful along a
+segment the body actually has, and it is what lets anything reading the file draw the animal rather than
+a cloud of points. Most trackers already know them, since connectivity is drawn when the project is set
+up rather than estimated per frame, and a bottom-up multi-animal model uses it to group keypoints into
+individuals. Lightning Pose is the exception, predicting each keypoint independently and recording no
+connectivity at all.
+
+``subject`` names the individual within the source, and the skeleton is linked to the file's ``Subject``
+when the two ids match. A file without a ``Subject``, or one whose id differs, gets a skeleton linked to
+nothing, which is what says these keypoints belong to somebody other than the file's subject.
 
 **Record where the frames came from.** Two things can carry that, and which you want depends on whether
 the video itself is in the file.
@@ -150,7 +152,7 @@ that reads the file.
        │   ├── PoseEstimationSeriesNeck       data (1000, 2)
        │   └── PoseEstimationSeriesLeftShou…  data (1000, 2)
        └── Skeletons
-           └── SkeletonMouse                  nodes, edges, subject -> mouse_001
+           └── SkeletonMouse                  nodes, edges, subject
 
        devices
        └── TopCamera
