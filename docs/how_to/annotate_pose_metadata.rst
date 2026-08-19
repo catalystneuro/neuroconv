@@ -202,25 +202,12 @@ The video interface has to run before the pose one in the same conversion, since
 link against an object that must already be in the file. Use ``labeled_video_metadata_key`` the same way
 for a tracker's annotated output video, when you have one.
 
-If the video is not going into the file, because it is too large, cannot be shared, or you only ever
-received the tracker output, then all you can record is where it was. ``original_videos`` is a list of
-plain strings on the container, and it is worth being clear about what that buys.
-
-What it gives you is a name and a location. A reader can see which recording the keypoints came from and
-go looking for it, and if the dataset ships the video alongside the NWB file the relative path resolves,
-so it is not purely documentary. What it does not give you is a link: nothing in the file points at an
-object, nothing checks that the path leads anywhere, and no camera comes with it, which is why the camera
-has to be added by hand here. ``ndx-pose`` says the same, calling these strings fragile and directing you
-to ``source_video`` whenever it is available.
-
-Prefer a path relative to the NWB file, since an absolute one from the machine that ran the tracker
-almost never resolves on the machine that reads the file.
+If the video cannot go into the file, there is nothing to link, so add the camera to the pose container
+yourself: with no ``ImageSeries`` to carry it, nothing else in the file records that a camera existed.
 
 .. code-block:: python
 
     camera_metadata_key = "top_camera_key"
-
-    container["original_videos"] = ["videos/top_camera.mp4"]  # relative to the NWB file
 
     metadata["Devices"][camera_metadata_key] = dict(
         name="TopCamera", description="Overhead camera, 30 fps."
@@ -243,18 +230,26 @@ the node lists genuinely differ and each view wants its own skeleton.
 
 .. code-block:: python
 
-    metadata["Devices"]["top_camera"] = dict(name="TopCamera")
-    metadata["Devices"]["side_camera"] = dict(name="SideCamera")
+    top_camera_key = "top_camera"
+    side_camera_key = "side_camera"
+    skeleton_key = "shared_skeleton"
 
-    metadata["Pose"]["Skeletons"]["shared_skeleton"] = dict(
+    metadata["Devices"][top_camera_key] = dict(name="TopCamera")
+    metadata["Devices"][side_camera_key] = dict(name="SideCamera")
+
+    metadata["Pose"]["Skeletons"][skeleton_key] = dict(
         name="SkeletonMouse", nodes=["head", "neck", "left_shoulder"], edges=[[0, 1], [1, 2]]
     )
 
-    for view, device_key in [("top", "top_camera"), ("side", "side_camera")]:
-        entry = metadata["Pose"]["PoseEstimations"][f"pose_{view}"]
-        entry["name"] = f"PoseEstimation{view.capitalize()}"
-        entry["device_metadata_key"] = device_key
-        entry["skeleton_metadata_key"] = "shared_skeleton"  # same body plan, written once
+    top_view = metadata["Pose"]["PoseEstimations"]["pose_top"]
+    top_view["name"] = "PoseEstimationTop"
+    top_view["device_metadata_key"] = top_camera_key
+    top_view["skeleton_metadata_key"] = skeleton_key       # same body plan, written once
+
+    side_view = metadata["Pose"]["PoseEstimations"]["pose_side"]
+    side_view["name"] = "PoseEstimationSide"
+    side_view["device_metadata_key"] = side_camera_key
+    side_view["skeleton_metadata_key"] = skeleton_key
 
 Two containers pointing at one ``skeleton_metadata_key`` produce one ``Skeleton`` in the file, which both
 link to.
