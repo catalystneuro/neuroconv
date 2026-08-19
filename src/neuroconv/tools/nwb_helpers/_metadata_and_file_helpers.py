@@ -131,16 +131,55 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
         nwbfile_kwargs["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
         nwbfile_kwargs["source_script_file_name"] = __file__  # Required for validation
 
-    if "Subject" in metadata:
-        nwbfile_kwargs["subject"] = metadata["Subject"]
-        # convert ISO 8601 string to datetime
-        if "date_of_birth" in nwbfile_kwargs["subject"] and isinstance(nwbfile_kwargs["subject"]["date_of_birth"], str):
-            nwbfile_kwargs["subject"]["date_of_birth"] = datetime.fromisoformat(
-                nwbfile_kwargs["subject"]["date_of_birth"]
-            )
-        nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["subject"])
+    nwbfile = NWBFile(**nwbfile_kwargs)
+    add_subject_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-    return NWBFile(**nwbfile_kwargs)
+    return nwbfile
+
+
+def add_subject_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> None:
+    """
+    Add the subject described by ``metadata["Subject"]`` to an NWBFile.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWBFile to add the subject to.
+    metadata : dict, optional
+        Metadata dictionary. The subject is read from ``metadata["Subject"]``, whose keys are the
+        arguments of :py:class:`~pynwb.file.Subject`::
+
+            metadata["Subject"] = dict(subject_id="M1", species="Mus musculus", sex="M")
+
+        A ``date_of_birth`` stated as an ISO 8601 string is converted. Metadata that names no subject
+        is not an error: a source that did not record one leaves the file without one.
+
+    Raises
+    ------
+    ValueError
+        If the NWBFile already holds a subject. An NWBFile describes one subject and pynwb refuses to
+        replace it, so a second one is a conflict for the caller to resolve rather than something to
+        overwrite silently.
+    """
+    metadata = metadata or dict()
+    if "Subject" not in metadata:
+        return
+
+    if nwbfile.subject is not None:
+        raise ValueError(
+            f"This NWBFile already holds the subject '{nwbfile.subject.subject_id}' and an NWBFile describes "
+            f"one subject. The metadata states '{metadata['Subject'].get('subject_id')}'. Write the two subjects "
+            "to separate files, or drop metadata['Subject'] to keep the one already there."
+        )
+
+    # Copied because the ISO 8601 conversion below writes into the entry, and the metadata belongs to
+    # the caller.
+    subject_metadata = deepcopy(metadata["Subject"])
+    date_of_birth = subject_metadata.get("date_of_birth")
+    if isinstance(date_of_birth, str):
+        subject_metadata["date_of_birth"] = datetime.fromisoformat(date_of_birth)
+
+    nwbfile.subject = Subject(**subject_metadata)
 
 
 def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: dict | None = None):
